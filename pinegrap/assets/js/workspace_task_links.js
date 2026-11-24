@@ -86,7 +86,7 @@
         // ones the reader can see (the # picker's search).
         function finder() {
             var box = h.el('div', 'ws-task-links-find position-relative mt-1');
-            var input = h.el('input', 'form-control form-control-sm');
+            var input = h.el('input', 'pg-input pg-input-sm');
             var list = h.el('div', 'ws-task-links-results list-group d-none');
             var serial = 0;
 

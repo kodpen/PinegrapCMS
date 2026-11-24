@@ -108,7 +108,7 @@
         form.appendChild(el('div', 'small fg-secondary mb-3', t('mail_reply_to', data.name ? data.name + ' <' + data.to + '>' : data.to)));
 
         function addresses(name, label) {
-            var field = el('input', 'form-control form-control-sm');
+            var field = el('input', 'pg-input pg-input-sm');
 
             field.type = 'text';
             field.name = name;
@@ -578,7 +578,7 @@
         var field = (!plain && h.richField && window.PGWsEditor) ? h.richField(wrap, {}) : null;
 
         if (!field) {
-            var area = h.el('textarea', 'form-control');
+            var area = h.el('textarea', 'pg-input');
 
             area.name = 'text';
             area.rows = 10;
@@ -878,7 +878,7 @@
     function whatsappText(form, data, view, h, sms) {
         var t = h.t;
         var el = h.el;
-        var text = el('textarea', 'form-control');
+        var text = el('textarea', 'pg-input');
 
         text.id = h.nextId('ws-wa-reply-');
         text.name = 'text';
@@ -1001,7 +1001,7 @@
         });
 
         chat.appendChild(message);
-        shell.appendChild(el('div', 'form-label', h.t('wa_reply_preview')));
+        shell.appendChild(el('div', 'pg-field-label', h.t('wa_reply_preview')));
         shell.appendChild(chat);
 
         return shell;
@@ -1063,7 +1063,7 @@
             }
 
             item.slots.forEach(function (slot) {
-                var input = el('input', 'form-control');
+                var input = el('input', 'pg-input');
 
                 input.type = 'text';
                 input.maxLength = 1000;
@@ -1703,7 +1703,7 @@
             var body = h.clear(node.querySelector('.drawer-body'));
             var footer = h.clear(node.querySelector('.drawer-footer'));
             var form = h.el('form', 'ws-mail-remind-at');
-            var field = h.el('input', 'form-control');
+            var field = h.el('input', 'pg-input');
             var save = lookButton(h, 'pg-button pg-button-fill', t('mail_remind_save'), 'bi-alarm');
 
             node.querySelector('.drawer-title').textContent = t('mail_remind_at');
@@ -2377,9 +2377,9 @@
         var grid = el('div', 'row g-3');
         var startCell = el('div', 'col-6');
         var endCell = el('div', 'col-6');
-        var start = el('input', 'form-control form-control-sm');
-        var end = el('input', 'form-control form-control-sm');
-        var text = el('textarea', 'form-control');
+        var start = el('input', 'pg-input pg-input-sm');
+        var end = el('input', 'pg-input pg-input-sm');
+        var text = el('textarea', 'pg-input');
         var people = [['', t('mail_away_nobody')]].concat((data.people || []).map(function (person) {
             return [String(person.id), person.name];
         }));
@@ -2444,7 +2444,7 @@
             var body = h.clear(node.querySelector('.drawer-body'));
             var footer = h.clear(node.querySelector('.drawer-footer'));
             var form = el('form', 'ws-mail-my-settings');
-            var field = el('textarea', 'form-control');
+            var field = el('textarea', 'pg-input');
             var preview = el('div', 'ws-mail-new-signature small fg-secondary');
             var lines = el('div', 'ws-mail-new-signature-text');
             // The box's Signature differs by mailbox: a stand-in under the
@@ -2536,7 +2536,7 @@
         var el = h.el;
         var wrap = el('div', 'ws-mail-later mb-3');
         var open = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('mail_later'), 'bi-clock');
-        var field = el('input', 'form-control form-control-sm');
+        var field = el('input', 'pg-input pg-input-sm');
         var close = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('mail_later_none'), 'bi-x-lg');
         var row;
         var heard = [];
@@ -2799,12 +2799,12 @@
         from.name = 'box_id';
         form.appendChild(h.formRow(t('mail_new_from'), from));
 
-        var where = el('select', 'form-control form-control-sm');
+        var where = el('select', 'pg-input pg-input-sm');
         where.name = 'channel_id';
         form.appendChild(h.formRow(t('mail_new_channel'), where, t('mail_new_channel_hint')));
 
         function input(name, label, type, hint) {
-            var field = el('input', 'form-control form-control-sm');
+            var field = el('input', 'pg-input pg-input-sm');
 
             field.type = type || 'text';
             field.name = name;

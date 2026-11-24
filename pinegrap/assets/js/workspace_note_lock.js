@@ -98,8 +98,8 @@
 
     function pinField(kit, label, id) {
         var wrap = kit.el('div', 'mb-4');
-        var name = kit.el('label', 'form-label small', label);
-        var input = kit.el('input', 'form-control form-control-sm ws-nb-lock-pin');
+        var name = kit.el('label', 'pg-field-label', label);
+        var input = kit.el('input', 'pg-input pg-input-sm ws-nb-lock-pin');
 
         input.type = 'password';
         input.inputMode = 'numeric';
@@ -117,8 +117,8 @@
 
     function timeField(kit, minutes) {
         var wrap = kit.el('div', 'mb-2');
-        var name = kit.el('label', 'form-label small', kit.t('nlock_again_after'));
-        var select = kit.el('select', 'form-control form-control-sm');
+        var name = kit.el('label', 'pg-field-label', kit.t('nlock_again_after'));
+        var select = kit.el('select', 'pg-input pg-input-sm');
 
         select.id = 'ws-nb-lock-minutes';
         name.htmlFor = select.id;
@@ -520,8 +520,8 @@
 
             var sent = kit.el('p', 'small mb-1', kit.t('nlock_code_sent', email));
             var codeWrap = kit.el('div', 'mb-4');
-            var codeName = kit.el('label', 'form-label small', kit.t('nlock_code'));
-            var code = kit.el('input', 'form-control form-control-sm');
+            var codeName = kit.el('label', 'pg-field-label', kit.t('nlock_code'));
+            var code = kit.el('input', 'pg-input pg-input-sm');
             var pin = pinField(kit, kit.t('nlock_pin_new'), 'ws-nb-lock-pane-new');
             var pin2 = pinField(kit, kit.t('nlock_pin_again'), 'ws-nb-lock-pane-new2');
             var save = kit.lookButton('pg-button pg-button-fill pg-button-sm', kit.t('nlock_new_pin_save'), 'bi-key');

@@ -145,7 +145,7 @@
             var box = el('div', 'ws-task-approvals-form');
             var field = function (label, input, help) {
                 var row = el('div', 'mb-3');
-                var caption = el('label', 'form-label small mb-1', label);
+                var caption = el('label', 'pg-field-label', label);
 
                 input.id = h.nextId('ws-tap-');
                 caption.htmlFor = input.id;
@@ -159,7 +159,7 @@
                 return row;
             };
             var input = function (type, max, value) {
-                var node = el('input', 'form-control form-control-sm');
+                var node = el('input', 'pg-input pg-input-sm');
 
                 node.type = type;
                 node.maxLength = max;
@@ -171,7 +171,7 @@
             var subject = input('text', 255, task.title);
             var name = input('text', 60);
             var mail = input('email', 255);
-            var text = el('textarea', 'form-control form-control-sm');
+            var text = el('textarea', 'pg-input pg-input-sm');
             var date = h.dateField(input('text', 10), 'date');
             var grid = el('div', 'row g-3');
             var nameCell = el('div', 'sm:col-5');

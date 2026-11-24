@@ -198,7 +198,7 @@
                     return;
                 }
 
-                var answer = el('input', 'form-control form-control-sm');
+                var answer = el('input', 'pg-input pg-input-sm');
 
                 answer.type = 'text';
                 answer.maxLength = 255;
@@ -218,7 +218,7 @@
             });
 
             reject.addEventListener('click', function () {
-                var note = el('input', 'form-control form-control-sm');
+                var note = el('input', 'pg-input pg-input-sm');
 
                 note.type = 'text';
                 note.maxLength = 255;
@@ -283,7 +283,7 @@
 
         footer.classList.remove('d-none');
 
-        var title = el('input', 'form-control form-control-sm');
+        var title = el('input', 'pg-input pg-input-sm');
         title.type = 'text';
         title.maxLength = 255;
         title.id = h.nextId('ws-apv-title-');
@@ -300,14 +300,14 @@
             wrap.appendChild(rich.input);
             wrap.appendChild(rich.tools(false));
         } else {
-            area = el('textarea', 'form-control form-control-sm');
+            area = el('textarea', 'pg-input pg-input-sm');
             area.rows = 3;
             area.value = (fill && fill.text) || '';
             wrap.appendChild(area);
         }
 
         var textRow = el('div', 'mb-5');
-        textRow.appendChild(el('div', 'form-label', t('apv_text')));
+        textRow.appendChild(el('div', 'pg-field-label', t('apv_text')));
         textRow.appendChild(wrap);
         textRow.appendChild(el('div', 'form-text', t('apv_text_help')));
         body.appendChild(textRow);
@@ -316,7 +316,7 @@
         var people = h.peoplePicker((fill && fill.approvers) || [], members);
         var peopleRow = el('div', 'mb-5');
 
-        peopleRow.appendChild(el('div', 'form-label', t('apv_people')));
+        peopleRow.appendChild(el('div', 'pg-field-label', t('apv_people')));
         peopleRow.appendChild(people);
         peopleRow.appendChild(el('div', 'form-text', t('apv_people_help')));
         body.appendChild(peopleRow);
@@ -328,7 +328,7 @@
         if (agents) {
             var agentsRow = el('div', 'mb-5');
 
-            agentsRow.appendChild(el('div', 'form-label', t('apv_agents')));
+            agentsRow.appendChild(el('div', 'pg-field-label', t('apv_agents')));
             agentsRow.appendChild(agents);
             agentsRow.appendChild(el('div', 'form-text', t('apv_agents_help')));
             body.appendChild(agentsRow);
@@ -345,7 +345,7 @@
         var group = h.nextId('ws-apv-rule-');
         var rule = 'any';
 
-        ruleRow.appendChild(el('div', 'form-label', t('apv_rule')));
+        ruleRow.appendChild(el('div', 'pg-field-label', t('apv_rule')));
 
         [['any', t('apv_rule_any')], ['all', t('apv_rule_all')]].forEach(function (item) {
             var line = el('div', 'form-field');
@@ -368,8 +368,8 @@
         var grid = el('div', 'row g-3');
         var dateCell = el('div', 'col-7');
         var timeCell = el('div', 'col-5');
-        var date = el('input', 'form-control form-control-sm');
-        var time = el('input', 'form-control form-control-sm');
+        var date = el('input', 'pg-input pg-input-sm');
+        var time = el('input', 'pg-input pg-input-sm');
 
         h.dateField(date, 'date');
         date.id = h.nextId('ws-apv-date-');
@@ -483,8 +483,8 @@
             var nameCell = el('div', 'col-5');
             var mailCell = el('div', 'col-6');
             var dropCell = el('div', 'col-1 text-end');
-            var name = el('input', 'form-control form-control-sm');
-            var mail = el('input', 'form-control form-control-sm');
+            var name = el('input', 'pg-input pg-input-sm');
+            var mail = el('input', 'pg-input pg-input-sm');
             var drop = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('apv_guest_remove'));
             var item = { name: name, mail: mail };
 
@@ -525,7 +525,7 @@
             rows[rows.length - 1].name.focus();
         });
 
-        box.appendChild(el('div', 'form-label', t('apv_guests')));
+        box.appendChild(el('div', 'pg-field-label', t('apv_guests')));
         box.appendChild(list);
         box.appendChild(add);
         box.appendChild(el('div', 'form-text', t('apv_guests_help')));

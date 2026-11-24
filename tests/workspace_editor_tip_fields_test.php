@@ -4,7 +4,8 @@
  *
  * Tests for the fields of the writing box's tips on a phone
  * (assets/js/workspace_editor.js). iOS Safari zooms the page in when a field
- * under 16px takes the focus and leaves it zoomed; form-control-sm is 14px.
+ * under 16px takes the focus and leaves it zoomed; pg-input is 14px, so the
+ * touch field adds ws-tip-touch (16px).
  * Run under Node: tipFieldClass() answers the full-size field on a touch
  * screen and the small one elsewhere. The rest holds the wiring: the link
  * tip's Text and address fields, the find tip's two fields and the fields of
@@ -31,8 +32,8 @@ function test_workspace_editor_tip_field_class()
 		return;
 	}
 
-	pg_assert_same('form-control', $answer[0], 'A touch screen gets the full-size field');
-	pg_assert_same('form-control form-control-sm', $answer[1], 'A mouse gets the small field');
+	pg_assert_same('pg-input ws-tip-touch', $answer[0], 'A touch screen gets the full-size field');
+	pg_assert_same('pg-input pg-input-sm', $answer[1], 'A mouse gets the small field');
 }
 
 // The windows of the insert menu: the block's title, the table's formula
@@ -49,7 +50,7 @@ function test_workspace_editor_window_fields_ask_the_class()
 	foreach ($checks as $name => $needle) {
 		$part = workspace_editor_lists_test_function($name);
 		pg_assert_true(strpos($part, $needle) !== false, $name . ' builds its field from tipFieldClass()');
-		pg_assert_same(false, strpos($part, "'form-control form-control-sm"), 'No small field is left in ' . $name);
+		pg_assert_same(false, strpos($part, "'pg-input pg-input-sm"), 'No small field is left in ' . $name);
 	}
 }
 
@@ -60,7 +61,7 @@ function test_workspace_editor_tip_fields_ask_the_class()
 	$find = workspace_editor_lists_test_function('openFind');
 
 	pg_assert_same(2, substr_count($link, "el('input', tipFieldClass(touchScreen()))"), 'The link tip\'s Text and address fields');
-	pg_assert_same(false, strpos($link, "el('input', 'form-control form-control-sm')"), 'No small field is left in the link tip');
+	pg_assert_same(false, strpos($link, "el('input', 'pg-input pg-input-sm')"), 'No small field is left in the link tip');
 	pg_assert_same(2, substr_count($find, "el('input', tipFieldClass(touchScreen()))"), 'The find tip\'s find and replace fields');
-	pg_assert_same(false, strpos($find, "el('input', 'form-control form-control-sm')"), 'No small field is left in the find tip');
+	pg_assert_same(false, strpos($find, "el('input', 'pg-input pg-input-sm')"), 'No small field is left in the find tip');
 }

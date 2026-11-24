@@ -221,7 +221,7 @@
 
             var prefixRow = el('div', 'ws-cha-field');
             var prefixLabel = el('label', 'pg-field-label', t('cha_prefix'));
-            var prefix = el('input', 'form-control form-control-sm');
+            var prefix = el('input', 'pg-input pg-input-sm');
 
             prefix.type = 'text';
             prefix.maxLength = 32;
@@ -423,7 +423,7 @@
             var all = h.button('pg-button pg-button-quiet pg-button-sm text-nowrap', t('cha_add_all'), 'bi-plus-lg');
             var some = h.button('pg-button pg-button-ghost pg-button-sm text-nowrap', t('cha_add_chosen'), 'bi-check2');
 
-            wrap.appendChild(el('div', 'form-label', t('cha_from_channel')));
+            wrap.appendChild(el('div', 'pg-field-label', t('cha_from_channel')));
             wrap.appendChild(el('div', 'pg-field-help', t('cha_from_channel_help')));
 
             state.from_channel.forEach(function (agent) {
@@ -514,11 +514,11 @@
             }
 
             root.classList.remove('d-none');
-            // The drawer's other parts keep .form-label titles until the drawer is
-            // redrawn; the section's title matches them.
+            // The drawer's other parts are titled with field labels
+            // (.pg-field-label); the section's title matches them.
             // In a discussion's people panel it is titled as the panel's other
             // sections are.
-            var title = root.appendChild(discussion ? el('h3', 'ws-panel-kicker mt-5', t('cha_title')) : el('div', 'form-label', t('cha_title')));
+            var title = root.appendChild(discussion ? el('h3', 'ws-panel-kicker mt-5', t('cha_title')) : el('div', 'pg-field-label', t('cha_title')));
             root.appendChild(el('div', 'pg-field-help ws-cha-intro', t('cha_help')));
 
             if (!state.agents.length) {

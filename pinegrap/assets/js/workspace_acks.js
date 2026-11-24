@@ -48,7 +48,7 @@
             [['read', t('ack_read')], ['unread', t('ack_unread')]].forEach(function (part) {
                 var list = data[part[0]] || [];
 
-                body.appendChild(el('div', 'form-label mt-3', part[1] + ' (' + list.length + ')'));
+                body.appendChild(el('div', 'pg-field-label mt-3', part[1] + ' (' + list.length + ')'));
 
                 if (!list.length && part[0] === 'unread') {
                     body.appendChild(el('div', 'small fg-secondary', t('ack_nobody_left')));

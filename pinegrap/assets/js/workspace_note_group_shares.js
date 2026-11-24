@@ -80,7 +80,7 @@
         var kit = ctx.kit;
         var box = kit.el('div', 'ws-nb-shares');
 
-        box.appendChild(kit.el('div', 'form-label mb-1', kit.t('notes_shares')));
+        box.appendChild(kit.el('div', 'pg-field-label', kit.t('notes_shares')));
 
         if (!shares.length) {
             box.appendChild(kit.el('div', 'small fg-secondary', kit.t('notes_group_only_you')));
@@ -140,7 +140,7 @@
             details.appendChild(picker);
             details.appendChild(right);
             details.appendChild(kit.el('div', 'form-text', kit.t('notes_group_share_help')));
-            details.appendChild(kit.el('div', 'form-label small mt-4 mb-0', kit.t('notes_group_channel')));
+            details.appendChild(kit.el('div', 'pg-field-label mt-4 mb-0', kit.t('notes_group_channel')));
             details.appendChild(channel);
             details.appendChild(sharesList(ctx, group, data.shares || [], function () { ctx.reload(); }));
 

@@ -359,11 +359,11 @@
 
         // ── How it repeats ──
 
-        var label = el('label', 'form-label', text('repeat'));
+        var label = el('label', 'pg-field-label', text('repeat'));
         label.htmlFor = id + '-choice';
         wrap.appendChild(label);
 
-        var choice = el('select', 'form-control form-control-sm');
+        var choice = el('select', 'pg-input pg-input-sm');
         choice.id = id + '-choice';
         var options = {};
 
@@ -381,7 +381,7 @@
         var everyGroup = el('div', 'input-group input-group-sm');
         everyGroup.appendChild(el('span', 'input-group-text', text('repeat_every')));
 
-        var interval = el('input', 'form-control');
+        var interval = el('input', 'pg-input pg-input-sm');
         interval.type = 'number';
         interval.min = '1';
         interval.max = '99';
@@ -390,7 +390,7 @@
         interval.setAttribute('aria-label', text('repeat_every'));
         everyGroup.appendChild(interval);
 
-        var unit = el('select', 'form-control');
+        var unit = el('select', 'pg-input pg-input-sm');
         unit.setAttribute('aria-label', text('repeat'));
 
         ['daily', 'weekly', 'monthly', 'yearly'].forEach(function (key) {
@@ -431,12 +431,12 @@
 
         // When the repeat ends: never, or on a date.
         var endBox = el('div', 'ws-when-end d-none');
-        var endLabel = el('label', 'form-label', text('repeat_ends'));
+        var endLabel = el('label', 'pg-field-label', text('repeat_ends'));
         endLabel.htmlFor = id + '-ends';
         endBox.appendChild(endLabel);
 
         var endGroup = el('div', 'd-flex gap-3');
-        var ends = el('select', 'form-control form-control-sm w-auto');
+        var ends = el('select', 'pg-input pg-input-sm w-auto');
         ends.id = id + '-ends';
 
         [['never', text('repeat_ends_never')], ['on', text('repeat_ends_on')]].forEach(function (item) {
@@ -447,7 +447,7 @@
 
         // The end date's box is drawn after it, so they hide together.
         var untilBox = el('span', '');
-        var until = el('input', 'form-control form-control-sm w-auto');
+        var until = el('input', 'pg-input pg-input-sm w-auto');
         helpers.dateField(until, 'date');
         until.setAttribute('aria-label', text('repeat_ends_on'));
         until.value = (active && current.end_date) ? current.end_date : '';
