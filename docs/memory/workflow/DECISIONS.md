@@ -120,6 +120,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-10.md: What does Pinegrap AI do with a new e-mail conversation? (#3744)
 - decisions-made-product-10.md: Do channel and note attachments take the import's upload steps? (#3745)
 - decisions-made-product-10.md: Do collection items get schedule columns? (#3746)
+- decisions-made-product-100.md: Where are the rules and the earlier parts?
+- decisions-made-product-100.md: Do Claude's routine address and the MCP servers move to Connections? (owner, 2026-11-24, agent channel poll 222, message 12409)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)

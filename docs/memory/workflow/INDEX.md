@@ -94,6 +94,7 @@
 - decisions-made-panel-9.md: Decisions list, panel part 9 (2026-11-14 on): assistant chat after a reload; a link that opens reads "Aç"; kept screens' two buttons and widths; Site Settings keeps its place after a save
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
+- decisions-made-product-100.md: Decisions list, product part 100 (2026-11-24 on): Claude's routine address and token and the MCP servers move from the Assistants and agents tab to Connections, a leading line stays
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
