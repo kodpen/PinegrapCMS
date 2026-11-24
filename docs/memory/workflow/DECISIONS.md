@@ -1296,6 +1296,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; a Workspace title's name and verb; the push banner keeps the sentence (#8897)
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/connections-chat-notify-page.md: Slack's, Microsoft Teams' and Telegram's pages on Connections (CX11j2): each lists its chat notification targets and adds one; the Chat notifications card only leads there
+- ui/connections-claude-page.md: Claude's page on Connections (CX11k2): the routine's address and token in Connection details, Save and try; Claude's row in Assistants and agents and set-up step 4 only lead there
 - ui/connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection
 - ui/connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button
 - ui/connections-mailchimp-page.md: Mailchimp's page on Connections (EM6): sync switch, key, list, store and limits set there under E-mail › Sending's gate; Campaign mail shows the connection; old anchors open the page
@@ -1392,7 +1393,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/settings-assistants-help-lines.md: Site Settings › Assistants and agents, the help (AT3): one line per part with "How does this work?" opening a drawer of numbered steps; Add an agent's "Start from an application"
 - ui/settings-assistants-long-lists.md: Site Settings › Assistants and agents, the long lists (AT6): MCP servers, Workspace agents and Canvas templates show at most five rows, then "Show all N" and the part's drawer
 - ui/settings-card-shared-style.md: What every Site Settings card shares since the scan of 2026-11-21: text sizes, one 32px field height, the select column and chevron, tag fields, swatch edge, quiet head buttons
-- ui/settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai
+- ui/settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, the line to Connections, Try and Set up, the fold Key and secret, the drawer Set up on claude.ai
 - ui/settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab
 - ui/settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed
 - ui/settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows

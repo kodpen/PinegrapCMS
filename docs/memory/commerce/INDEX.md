@@ -313,6 +313,7 @@
 - pick-pack-pack.md: Orders › Pack (pack.php): access, the order code and the address list, a scan's verdict and its words, the checked pack's label, marketplace accept, audit line and order.packed
 - pick-pack-rules.md: Pick and pack's pure rules (includes/fn/pick_pack.php): shelf address sort, wave rule filter and ship-by day, cancelled order leaving a wave, pick list totals, scan verdict codes, pack state
 - pick-pack-shelf-address.md: Shelf address (product_bins): the "Shelf" box on the stock card, Modify Selected's "Shelf address", shelf import columns, shelf in POST /products/{id}/inventory
+- pick-pack-short.md: Short picks (PP5, #11259): the "Short…" drawer, the count fix as a stock_moves count line, Finish the pack, pack_short alert, order.pack_short, the Packing dashboard card
 - pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing [decision: here]
 - pick-pack-waves.md: Orders › Pick waves (view_pick_waves.php, pick_wave.php, print_pick_list.php): access, waiting addresses, Make a wave, ticks on a phone, close, delete, leavers, the order code
 - place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country [decision: decisions-made-product-17.md]

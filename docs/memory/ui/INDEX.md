@@ -100,6 +100,7 @@
 - connections-address-merchant-page.md: Address autocomplete providers and Merchant Center on Connections (CX11g4): keys, server, account, country on their pages; the card keeps switch and provider
 - connections-backup-accounts.md: Backup accounts (CX11j1): Connect a … account for backups on Google Drive's, OneDrive's and Dropbox's pages, the return to the Backups card, the card without a Connect button
 - connections-chat-notify-page.md: Slack's, Microsoft Teams' and Telegram's pages on Connections (CX11j2): each lists its chat notification targets and adds one; the Chat notifications card only leads there [decision: here]
+- connections-claude-page.md: Claude's page on Connections (CX11k2): the routine's address and token in Connection details, Save and try; Claude's row in Assistants and agents and set-up step 4 only lead there [decision: here]
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-reviews-page.md: Google reviews' page on Connections (CX11i): the Places API key and Place ID typed there under the Integrations gate; the Google Reviews card shows the connection
@@ -687,7 +688,7 @@
 - settings-card-row-layout.md: How a settings card lays out one setting per row via stylesheet only: shape-based :has() rule, dividers between rows, name+control grid, single vertical rhythm.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
 - settings-card-shared-style.md: What every Site Settings card shares since the scan of 2026-11-21: text sizes, one 32px field height, the select column and chevron, tag fields, swatch edge, quiet head buttons [decision: here]
-- settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai [decision: here]
+- settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, the line to Connections, Try and Set up, the fold Key and secret, the drawer Set up on claude.ai [decision: here]
 - settings-code-field-texts.md: A Site Settings code field is attached by the card that prints it, never in includes/settings/prep.php, so every category's editors get their translated texts
 - settings-communication.md: Site Settings › Communication as folded rows (#11151, #11194): Chat and Chat on the site split from the old two-popover card, state lines, what moved, what stayed
 - settings-dashboard-card.md: Dashboard row of Site Settings > Appearance (pgset-dashboard): Card style, Panel backdrop, Reset widgets, Refresh every per sign-in; role < 2 gate; a save shown on the dashboard [decision: decisions-made-access.md]
