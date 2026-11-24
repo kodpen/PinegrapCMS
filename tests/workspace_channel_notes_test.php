@@ -309,3 +309,14 @@ function test_ws_note_move_checks()
 	pg_assert_contains('ws_note_channel_of($note) <= 0', $copy, 'the copy takes a channel\'s note only');
 	pg_assert_contains("ws_note_save(\$viewer, array('note_id' => 0,", $copy, 'and writes a new note of the reader\'s, in their limit');
 }
+
+// A channel's note keeps its card: its writer owns nothing, so taking the
+// card's share back is refused before any row is read.
+function test_ws_note_unshare_refuses_a_channel_note()
+{
+	$result = ws_note_unshare(array('id' => 7), array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), 99);
+
+	pg_assert_same(false, $result['ok'], 'the writer cannot take the card away');
+	pg_assert_same(lang('A channel\'s note keeps its card in its channel.'), $result['error'], 'and is told why');
+}
+

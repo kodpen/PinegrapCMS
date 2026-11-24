@@ -2232,6 +2232,12 @@ function ws_note_share_channel($viewer, $note, $channel, $options = array())
  */
 function ws_note_unshare($viewer, $note, $share_id = 0)
 {
+    // A channel's note has no owner and no share but its card, which stays
+    // while the note does (ws_note_access_of()).
+    if (ws_note_channel_of($note) > 0) {
+        return array('ok' => false, 'error' => lang('A channel\'s note keeps its card in its channel.'));
+    }
+
     $owner = ((int) $note['user_id'] === (int) $viewer['id']);
 
     $share = ((int) $share_id > 0)
