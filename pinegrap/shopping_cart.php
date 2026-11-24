@@ -1165,9 +1165,8 @@ if ($express_order_name) {
                 for the ship to and all order items.
         */
         
-        // determine if an active shipping discount offer exists (we will use this later below)
-        $active_shipping_discount_offer_exists = check_if_active_shipping_discount_offer_exists();
-        
+        require_once(dirname(__FILE__) . '/shipping.php');
+
         $ship_tos = array();
         
         // get completed ship tos
@@ -1190,22 +1189,8 @@ if ($express_order_name) {
             $shipping_method_id = $ship_to['shipping_method_id'];
             
             // get all order items for this ship to
-            $query = "SELECT
-                        order_items.id,
-                        order_items.product_id,
-                        order_items.quantity,
-                        products.name,
-                        products.weight,
-                        products.primary_weight_points,
-                        products.secondary_weight_points,
-                        products.length,
-                        products.width,
-                        products.height,
-                        products.container_required,
-                        products.free_shipping,
-                        products.extra_shipping_cost
+            $query = "SELECT order_items.product_id
                      FROM order_items
-                     LEFT JOIN products ON products.id = order_items.product_id
                      WHERE order_items.order_id = ? AND order_items.ship_to_id = ?" . pg_order_item_active_sql('order_items') . "
                      ORDER BY order_items.id ASC";
             $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id)) or output_error('Query failed.');
@@ -1217,303 +1202,42 @@ if ($express_order_name) {
                 $order_items[] = $row;
             }
             
-            // loop through all order items for this ship to
-            foreach ($order_items as $order_item) {
+            // A recipient with no line to ship has nothing the destination can refuse.
+            $order_items_are_valid_for_destination = true;
 
-                // if order item is valid for destination
-                if (validate_product_for_destination($order_item['product_id'], $country_code, $state_code) == true) {
-                    $order_items_are_valid_for_destination = true;
-                    
-                } else {
+            foreach ($order_items as $order_item) {
+                if (validate_product_for_destination($order_item['product_id'], $country_code, $state_code) == false) {
                     $order_items_are_valid_for_destination = false;
                     break;
                 }
             }
-            
-            // if all order items were valid for the destination, continue with checking if shipping method is still valid
-            if ($order_items_are_valid_for_destination == true) {
-                // get the current day of the week
-                $day_of_week = mb_strtolower(date('l'));
-                
-                // get shipping method information
-                $query = "SELECT id
-                         FROM shipping_methods
-                         WHERE
-                            (id = ?)
-                            AND (status = 'enabled')
-                            AND (start_time <= NOW())
-                            AND (end_time >= NOW())
-                            " . get_protected_shipping_method_filter() . "
-                            AND (available_on_" . $day_of_week . " = '1')
-                            AND ((available_on_" . $day_of_week . "_cutoff_time = '00:00:00') OR (available_on_" . $day_of_week . "_cutoff_time > CURRENT_TIME()))";
-                $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
-                
-                // if shipping method is still valid
-                if (mysqli_num_rows($result) > 0) {
-                    $shipping_method_is_valid = true;
-                
-                // else shipping method is no longer valid
-                } else {
-                    $shipping_method_is_valid = false;
-                }
 
-                // if shipping method is still valid, continue with checking if shipment can get to recipient by requested arrival date
-                if ($shipping_method_is_valid == true) {
+            // The chosen method is checked the way the shipping method screen
+            // and the express order check it: still on, offered for the
+            // address type and today, still serving the recipient's zone (or
+            // still the method forced for it), and still in time for the
+            // arrival date. The zone it serves now is stored, and the cost is
+            // worked out by the one function that prices a stored recipient.
+            $check = array('status' => 'error');
 
-                    // if the requested arrival date is not at once
-                    if ($arrival_date != '0000-00-00') {
-
-                        // determine if there is a shipping cut-off for the arrival date and shipping method
-                        $query =
-                            "SELECT
-                                shipping_cutoffs.date_and_time
-                            FROM shipping_cutoffs
-                            LEFT JOIN arrival_dates ON shipping_cutoffs.arrival_date_id = arrival_dates.id
-                            WHERE
-                                (arrival_dates.arrival_date = ?)
-                                AND (shipping_cutoffs.shipping_method_id = ?)";
-                        $result = db_q($query, array((string) $arrival_date, (string) $shipping_method_id)) or output_error('Query failed.');
-                        
-                        // if there is a shipping cut-off, then determine if this shipping method is valid by looking at the cut-off date & time
-                        if (mysqli_num_rows($result) > 0) {
-                            $row = mysqli_fetch_assoc($result);
-                            $shipping_cutoff_date_and_time = $row['date_and_time'];
-                            
-                            // if the shipping cut-off date & time is greater than the current date & time, then the shipment can be sent to the recipient in time for the requested arrival date
-                            if ($shipping_cutoff_date_and_time > date('Y-m-d H:i:s')) {
-                                $shipment_can_be_delivered_in_time = TRUE;
-                                
-                            // else the shipment cannot be sent to the recipient in time
-                            } else {
-                                $shipment_can_be_delivered_in_time = FALSE;
-                            }
-                            
-                        // else there is not a shipping cut-off, so determine if this shipping method is valid by looking at the transit time
-                        } else {
-
-                            require_once(dirname(__FILE__) . '/shipping.php');
-                            
-                            $response = get_delivery_date(array(
-                                'ship_to_id' => $ship_to_id,
-                                'shipping_method' => array('id' => $shipping_method_id),
-                                'zip_code' => $zip_code,
-                                'country' => $country_code));
-
-                            $delivery_date = $response['delivery_date'];
-
-                            // If a delivery date was found, and it is before or on the arrival
-                            // date, then remember that shipment can be delivered in time.
-                            if ($delivery_date and $delivery_date <= $arrival_date) {
-                                $shipment_can_be_delivered_in_time = true;
-                            } else {
-                                $shipment_can_be_delivered_in_time = false;
-                            }
-                        }
-                        
-                    // else the requested arrival date is at once, so the shipment can be delivered in time
-                    } else {
-                        $shipment_can_be_delivered_in_time = true;
-                    }
-                }
-            }
-            
-            // if the order items are valid for the destination and shipping method is still valid and the shipment can be delivered in time,
-            // this ship to has no problems so it can remain completed.
-            // we just need to update the shipping cost for this ship to and all order items
-            if (($order_items_are_valid_for_destination == true) && ($shipping_method_is_valid == true) && ($shipment_can_be_delivered_in_time == true)) {
-                // get shipping method information
-                $query = "SELECT
-                            service,
-                            realtime_rate" . pg_shipping_label_rate_select() . ",
-                            base_rate,
-                            variable_base_rate,
-                            base_rate_2,
-                            base_rate_2_subtotal,
-                            base_rate_3,
-                            base_rate_3_subtotal,
-                            base_rate_4,
-                            base_rate_4_subtotal,
-                            primary_weight_rate,
-                            primary_weight_rate_first_item_excluded,
-                            secondary_weight_rate,
-                            secondary_weight_rate_first_item_excluded,
-                            item_rate,
-                            item_rate_first_item_excluded
-                         FROM shipping_methods
-                         WHERE id = ?";
-                $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-
-                $shipping_method_service = $row['service'];
-                $shipping_method_realtime_rate = $row['realtime_rate'];
-                $shipping_method_label_driver = $row['label_driver'];
-                $shipping_method_label_service = $row['label_service'];
-                $shipping_method_base_rate = $row['base_rate'];
-                $shipping_method_variable_base_rate = $row['variable_base_rate'];
-                $shipping_method_base_rate_2 = $row['base_rate_2'];
-                $shipping_method_base_rate_2_subtotal = $row['base_rate_2_subtotal'];
-                $shipping_method_base_rate_3 = $row['base_rate_3'];
-                $shipping_method_base_rate_3_subtotal = $row['base_rate_3_subtotal'];
-                $shipping_method_base_rate_4 = $row['base_rate_4'];
-                $shipping_method_base_rate_4_subtotal = $row['base_rate_4_subtotal'];
-                $shipping_method_primary_weight_rate = $row['primary_weight_rate'];
-                $shipping_method_primary_weight_rate_first_item_excluded = $row['primary_weight_rate_first_item_excluded'];
-                $shipping_method_secondary_weight_rate = $row['secondary_weight_rate'];
-                $shipping_method_secondary_weight_rate_first_item_excluded = $row['secondary_weight_rate_first_item_excluded'];
-                $shipping_method_item_rate = $row['item_rate'];
-                $shipping_method_item_rate_first_item_excluded = $row['item_rate_first_item_excluded'];
-                
-                $zones = get_valid_zones_for_destination($country_code, $state_code);
-                
-                // loop through all valid zones in order to find a zone that is allowed for this shipping method
-                foreach ($zones as $zone_id) {
-                    $query = "SELECT shipping_method_id
-                             FROM shipping_methods_zones_xref
-                             WHERE (shipping_method_id = ?) AND (zone_id = ?)";
-                    $result = db_q($query, array((string) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
-
-                    // if this zone is allowed for selected shipping method, get zone info
-                    if (mysqli_num_rows($result) > 0) {
-                        // get zone info
-                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = ?";
-                        $result = db_q($query, array((string) $zone_id)) or output_error('Query failed.');
-                        $row = mysqli_fetch_assoc($result);
-
-                        $zone_base_rate = $row['base_rate'];
-                        $zone_primary_weight_rate = $row['primary_weight_rate'];
-                        $zone_secondary_weight_rate = $row['secondary_weight_rate'];
-                        $zone_item_rate = $row['item_rate'];
-
-                        // we have found a zone, so we need to break out of this loop
-                        break;
-                    }
-                }
-
-                $shipping_cost = 0;
-
-                require_once(dirname(__FILE__) . '/shipping.php');
-
-                $realtime_rate = get_shipping_realtime_rate(array(
+            if ($order_items_are_valid_for_destination) {
+                $check = check_shipping_method(array(
+                    'shipping_method_id' => $shipping_method_id,
                     'ship_to_id' => $ship_to_id,
-                    'service' => $shipping_method_service,
-                    'realtime_rate' => $shipping_method_realtime_rate,
-                    'label_driver' => $shipping_method_label_driver,
-                    'label_service' => $shipping_method_label_service,
-                    'country' => $country_code,
+                    'address_1' => $address_1,
                     'state' => $state_code,
                     'zip_code' => $zip_code,
-                    'items' => $order_items));
+                    'country' => $country_code,
+                    'arrival_date' => $arrival_date));
+            }
 
-                // If there was an error getting the realtime rate, then this shipping method
-                // is not valid for the recipient, so mark recipient incomplete, so customer
-                // will be forced to choose a different shipping method.  Also, skip to next
-                // recipient.
-                if ($realtime_rate === false) {
-                    db("UPDATE ship_tos SET complete = '0' WHERE id = '" . e($ship_to_id) . "'");
-                    continue;
-                }
+            if ($check['status'] == 'success') {
+                db_q("UPDATE ship_tos SET zone_id = ? WHERE id = ?", array((string) (int) ($check['zone']['id'] ?? 0), (string) $ship_to_id)) or output_error('Query failed.');
 
-                $shipping_cost += $realtime_rate;
+                update_shipping_cost_for_ship_to($ship_to_id);
 
-                $shipping_cost += get_shipping_method_base_rate(array(
-                    'base_rate' => $shipping_method_base_rate,
-                    'variable_base_rate' => $shipping_method_variable_base_rate,
-                    'base_rate_2' => $shipping_method_base_rate_2,
-                    'base_rate_2_subtotal' => $shipping_method_base_rate_2_subtotal,
-                    'base_rate_3' => $shipping_method_base_rate_3,
-                    'base_rate_3_subtotal' => $shipping_method_base_rate_3_subtotal,
-                    'base_rate_4' => $shipping_method_base_rate_4,
-                    'base_rate_4_subtotal' => $shipping_method_base_rate_4_subtotal,
-                    'ship_to_id' => $ship_to_id));
-
-                $shipping_cost += $zone_base_rate;
-
-                // Create a counter so that later we can determine if the first item
-                // should be excluded from shipping charges based on shipping method settings.
-                $count = 0;
-                
-                // loop through all order items for this ship to in order to calculate shipping cost
-                foreach ($order_items as $order_item) {
-                    $quantity = $order_item['quantity'];
-                    $primary_weight_points = $order_item['primary_weight_points'];
-                    $secondary_weight_points = $order_item['secondary_weight_points'];
-                    $free_shipping = $order_item['free_shipping'];
-                    $extra_shipping_cost = $order_item['extra_shipping_cost'];
-
-                    // if this is not a free shipping product, calculate shipping cost for product
-                    if (($free_shipping == 0)) {
-                        $count++;
-
-                        $shipping_method_primary_weight_rate_quantity = $quantity;
-                        $shipping_method_secondary_weight_rate_quantity = $quantity;
-                        $shipping_method_item_rate_quantity = $quantity;
-
-                        // If this is the first order item that has a shipping charge,
-                        // then check if we need to reduce the quantity in order to exclude the first item
-                        // from shipping charges.
-                        if ($count == 1) {
-                            // If the first item should be excluded for the primary weight calculation
-                            // for the shipping method, then reduce the quantity by one.
-                            if ($shipping_method_primary_weight_rate_first_item_excluded == 1) {
-                                $shipping_method_primary_weight_rate_quantity--;
-                            }
-
-                            // If the first item should be excluded for the secondary weight calculation
-                            // for the shipping method, then reduce the quantity by one.
-                            if ($shipping_method_secondary_weight_rate_first_item_excluded == 1) {
-                                $shipping_method_secondary_weight_rate_quantity--;
-                            }
-
-                            // If the first item should be excluded for the item calculation
-                            // for the shipping method, then reduce the quantity by one.
-                            if ($shipping_method_item_rate_first_item_excluded == 1) {
-                                $shipping_method_item_rate_quantity--;
-                            }
-                        }
-
-                        $shipping_method_cost = ($primary_weight_points * $shipping_method_primary_weight_rate * $shipping_method_primary_weight_rate_quantity) + ($secondary_weight_points * $shipping_method_secondary_weight_rate * $shipping_method_secondary_weight_rate_quantity) + ($shipping_method_item_rate * $shipping_method_item_rate_quantity);
-                        $zone_cost = ($primary_weight_points * $zone_primary_weight_rate * $quantity) + ($secondary_weight_points * $zone_secondary_weight_rate * $quantity) + ($zone_item_rate * $quantity);
-                        $extra_shipping_cost = $extra_shipping_cost * $quantity;
-                        $shipping_cost_for_item = $shipping_method_cost + $zone_cost + $extra_shipping_cost;
-                        $shipping_cost = $shipping_cost + $shipping_cost_for_item;
-                        
-                        // update shipping cost column for order item record
-                        $shipping_cost_for_item_per_unit = round($shipping_cost_for_item / $quantity);
-                        $query = "UPDATE order_items SET shipping = ? WHERE id = ?";
-                        $result = db_q($query, array((string) $shipping_cost_for_item_per_unit, (string) $order_item['id'])) or output_error('Query failed.');
-                    }
-                }
-                
-                // prepare for checking for shipping discounts
-                $original_shipping_cost = 0;
-                $offer = array();
-                
-                // if there is at least one active shipping discount offer, then continue with check
-                if ($active_shipping_discount_offer_exists == TRUE) {
-                    $offer = get_best_shipping_discount_offer($ship_to_id, $shipping_method_id);
-                    
-                    // if a shipping discount offer was found, then discount shipping
-                    if ($offer != FALSE) {
-                        // remember the original shipping cost, before it is updated
-                        $original_shipping_cost = $shipping_cost;
-                        
-                        // update shipping cost to contain discount
-                        $shipping_cost = pg_percent_off($shipping_cost, $offer['discount_shipping_percentage']);
-                    }
-                }
-                
-                // update shipping cost for ship to
-                $query =
-                    "UPDATE ship_tos
-                    SET
-                        shipping_cost = ?,
-                        original_shipping_cost = ?,
-                        offer_id = ?
-                    WHERE id = ?";
-                $result = db_q($query, array((string) $shipping_cost, (string) $original_shipping_cost, (string) (int) ($offer['id'] ?? 0), (string) $ship_to_id)) or output_error('Query failed.');
-                    
-            // else the ship to has problems, so we will mark it incomplete,
-            // and that will force the user to go through the shipping screens for this ship to again
+            // Otherwise the shopper goes through the shipping screens for this
+            // recipient again.
             } else {
                 $query = "UPDATE ship_tos SET complete = '0' WHERE id = ?";
                 $result = db_q($query, array((string) $ship_to_id)) or output_error('Query failed.');
