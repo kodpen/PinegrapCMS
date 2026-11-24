@@ -1067,9 +1067,40 @@ function pg_privacy_rule_facts(array $found, array $scope, $now, $active = null)
 }
 
 /**
+ * The records whose time says a person did something: table, time column
+ * and the condition finding the person's rows ('' when nothing finds them).
+ * A queue number taken, a visit tied to the contact and a journey row
+ * (newsletter, campaign click, download) write neither the contact nor an
+ * order, so without them the passive contacts rule took a person who came
+ * yesterday. Pure.
+ *
+ * @param array $scope  order_ids, form_ids, contact_ids, emails, phones
+ * @return array  list of array(table, column, where)
+ */
+function pg_privacy_rule_activity_checks(array $scope)
+{
+    $list = function ($key) use ($scope) {
+        return isset($scope[$key]) ? (array) $scope[$key] : array();
+    };
+
+    return array(
+        array('orders', 'order_date', _pg_privacy_export_in('id', $list('order_ids'))),
+        array('forms', 'submitted_timestamp', _pg_privacy_export_in('id', $list('form_ids'))),
+        array('waiting_tickets', 'joined_at', _pg_privacy_export_any(array(
+            _pg_privacy_export_in('contact_id', $list('contact_ids')),
+            _pg_privacy_export_in('email', $list('emails')),
+            _pg_privacy_export_in('phone', $list('phones')),
+        ))),
+        array('lead_visits', 'started_at', _pg_privacy_export_in('contact_id', $list('contact_ids'))),
+        array('contact_journey', 'at', _pg_privacy_export_in('contact_id', $list('contact_ids'))),
+    );
+}
+
+/**
  * Whether a person did anything since the cutoff: an order, a form
- * submission, a sign-in, a change to their contact, a consent answer; or
- * holds a volunteer profile they have not left, or left since.
+ * submission, a queue number, a visit or journey row tied to their contact,
+ * a sign-in, a change to their contact, a consent answer; or holds a
+ * volunteer profile they have not left, or left since.
  *
  * @param array $found
  * @param array $scope
@@ -1092,10 +1123,14 @@ function _pg_privacy_rule_active(array $found, array $scope, $cutoff)
         }
     }
 
-    $checks = array(
-        array('orders', 'order_date', _pg_privacy_export_in('id', $scope['order_ids'])),
-        array('forms', 'submitted_timestamp', _pg_privacy_export_in('id', $scope['form_ids'])),
-    );
+    // A table a site has not made yet is skipped.
+    $checks = array();
+
+    foreach (pg_privacy_rule_activity_checks($scope) as $check) {
+        if (pg_schema_has($check[0], $check[1])) {
+            $checks[] = $check;
+        }
+    }
 
     if (pg_consent_log_ready()) {
         $checks[] = array('consent_log', 'created_at', _pg_privacy_export_any(array(
