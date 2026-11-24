@@ -317,3 +317,33 @@ function test_image_editor_access_tool_groups_and_reach()
 	pg_assert_true($r['own'], 'the sheet gets a copy of the rows');
 	pg_assert_same(array(22, 10, 6, 30, 8), $r['reach'], 'touch reach');
 }
+
+// The top bar's question mark opens the documentation (openHelp() in the
+// core); the shortcuts sheet has its own name (openKeys()), so no part of
+// the bundle may define openHelp() a second time and turn the question mark
+// back into the sheet. The ? key and the footer's keyboard button open the
+// sheet.
+function test_image_editor_access_help_is_not_the_keys_sheet()
+{
+	$defined = array();
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor*.js') as $file) {
+		if (substr($file, -7) === '.min.js') {
+			continue;
+		}
+
+		$n = preg_match_all('/Editor\.prototype\.openHelp\s*=/', (string) file_get_contents($file));
+
+		if ($n) {
+			$defined[basename($file)] = $n;
+		}
+	}
+
+	pg_assert_same(array('pg_image_editor.js' => 1), $defined, 'openHelp() is the core help link only');
+
+	$access = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_access.js');
+
+	pg_assert_true(strpos($access, 'Editor.prototype.openKeys = function') !== false, 'the sheet opens with openKeys()');
+	pg_assert_true((bool) preg_match("/t\\('keysTitle'\\), 'keyboard', function \\(\\) \\{ self\\.openKeys\\(\\); \\}/", $access), 'the keyboard button opens the sheet');
+	pg_assert_true((bool) preg_match("/if \\(k === '\\?'\\) \\{\\s*this\\.openKeys\\(\\);/", $access), 'the ? key opens the sheet');
+}

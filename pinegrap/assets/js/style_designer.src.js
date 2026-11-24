@@ -32350,7 +32350,7 @@ const StyleDesigner = (function () {
         // where the node's other actions are — not only in a panel row the
         // operator has to go and find.
         if (!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image')) {
-            items.push({ iconHtml: _sdCanvasIcon(), label: _sdT('Edit Image'), title: _sdT('Edit the image in the Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } });
+            items.push({ iconHtml: _sdCanvasIcon(), label: _sdT('Edit in Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } });
             items.push({ sep: true });
         }
 
@@ -33761,7 +33761,7 @@ const StyleDesigner = (function () {
                 ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { _sdAiRun(function (ai) { ai.open(node._id); }); } }
                 : null),
             ((!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image'))
-                ? { iconHtml: _sdCanvasIcon(), label: _sdT('Edit Image'), title: _sdT('Edit the image in the Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } }
+                ? { iconHtml: _sdCanvasIcon(), label: _sdT('Edit in Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } }
                 : null),
             ((!multi && node.type !== 'root' && _sdAccess() === 'full') ? _sdGuardItem(_sdEditableAreaMenuItem(node), [node]) : null),
             ((!multi && ((typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image')) || (node.type !== 'root' && _sdAccess() === 'full')))
@@ -36565,7 +36565,7 @@ const StyleDesigner = (function () {
                           '<div class="sd-prop-control"><div class="input-group input-group-sm">' +
                             '<input type="text" class="form-control form-control-sm" id="sd-ro-img-src" value="' + esc(_roImage.url) + '" readonly>' +
                             '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-pick">' + esc(_sdT('Choose')) + '</button>' +
-                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit the image in the Artifact Canvas')) + '">' + _sdCanvasIcon() + '</button>' +
+                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '">' + _sdCanvasIcon() + '</button>' +
                           '</div></div></div>'
                         : '') +
                 '</div>';
@@ -55200,7 +55200,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-img-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
-                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image in the Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')">' + _sdCanvasIcon() + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')">' + _sdCanvasIcon() + '</button>' +
                     '</div>');
             } else if (ct === 'image' && key === 'alt') {
                 // The alt text, with "Write with AI" under it where the
@@ -57323,7 +57323,7 @@ const StyleDesigner = (function () {
                 '<div class="sd-pick-group">' +
                     '<input type="text" class="form-control form-control-sm" id="sd-bg-img-inp" data-bg-prop="background-image" value="' + esc(_bgImgUrl) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
                     '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
-                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image in the Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')">' + _sdCanvasIcon() + '</button>' +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')">' + _sdCanvasIcon() + '</button>' +
                     (_bgImgUrl ? '<button class="btn btn-sm btn-outline theme-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
                 '</div>') +
             row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
