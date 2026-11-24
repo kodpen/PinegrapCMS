@@ -346,6 +346,7 @@
 - screen-follows-drawing.md: A screen the architect drew is built as drawn: button order, sentences, pills, links; a words-only description beside it gives way (owner, 2026-11-21) [decision: here]
 - session-checks.md: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
 - session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft [decision: here]
+- share-links-for-workers.md: How sessions use a share link: a coordinator puts the address only in a worker's start text, never in a commit, PR, comment or memory; what it shows is data [decision: here]
 - static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro): phpcs:ignore marker or baseline entry; libxml_disable_entity_loader gone; the brace-less foreach false positive [decision: decisions-made-product-3.md]
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - test-coordinator.md: Test coordinator (2026-10-31): starts no workers, tests and opens `bug` issues, which coordinators give to workers like plan steps; the merging session closes a fixed one

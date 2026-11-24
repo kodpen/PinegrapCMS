@@ -24,8 +24,6 @@
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
 - canvas-label-menu-cites.md: Plan (owner 2026-11-24): buttons that open the Artifact Canvas say "Edit in Artifact Canvas"; its "?" is the help link and shortcuts get their own icon; places citing a menu row draw its new icon
-- channel-share-links-screens.md: Screens of the share links plan: the mark on a shared item, Share by link in its menu and the dialog, the head's share mark with its menu, Channel info's Sharing part, the system line
-- channel-share-links.md: Plan (owner 2026-11-23): an item of an agent channel shared by an unguessable link with an end date: files first, then notes, tables and lists; what the address answers; steps SL1 to SL6
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-examples-patterns-mail.md: Step DX2b of the Design examples plan: the parts of the approved e-mail settings drawing as patterns (tabs with a state, choice cards, provider sign-in, effects confirm), before EM1

@@ -81,6 +81,7 @@
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
 - api-if-match.md: If-Match on an update of the external API: 412 precondition_failed when the record changed since, which updates honour it (GET twin), how the tag is read, no lock
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
+- api-lead-journey.md: The visitor journey's API (LJ6): GET /customers/hot (the MCP read tool, followed_by), /customers/{id}/journey, /customers/{id}/score, /reports/lead-sources, interest_score and topics on Customer
 - api-list-newest-device-lists.md: Which cursor-paged lists a team device reads take sort=newest (M8a), which are newest first already, and which cannot take it
 - api-list-newest-first.md: sort=newest on cursor-paged lists (the automation samples, and the team device lists in api-list-newest-device-lists.md): the walk, the marked cursor, list_order.php
 - api-marketplace-repricing.md: GET /marketplaces/{account}/repricing and POST (PATCH) /marketplaces/{account}/repricing/{product}: each listing's price, floor, buybox rank and last change; setting its strategy and own price
