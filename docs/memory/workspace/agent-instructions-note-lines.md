@@ -17,5 +17,5 @@ description: The agent instructions' block: a plan or long explanation is a note
 
 ## What changed for running agents?
 - Adding the block changed every agent's `instructions_version` (`agent-instructions.md`), so a session reads the text again at its next brief.
-- The channel's notes and the move line changed the version again in the move and copy step.
+- The channel's notes and the move line changed the version again (PR #11272).
 - Test: `test_workspace_agent_instructions_note_lines` in `tests/workspace_agent_instructions_test.php` (its place, the routes, the move and list routes, no `tools/`, `.php` or git, the version change).

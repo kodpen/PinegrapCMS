@@ -10,7 +10,7 @@ description: Decisions made, workspace part 49 (2026-11-23 on): a note written i
 - The channel's. His words: "notlarda karışmadan kanal notu olarak kalsa? bugün için notlar benim notlarıma karışıyor."
 - It is on nobody's My Notes screen and counts in nobody's note limit; it opens from the channel. Versions, editing in place and export stay.
 - This replaces the architect's call of 2026-11-20 that an agent's note belongs to the person its key acts for: the agents' plans filled the owner's own notes. A person's own note shared into a channel stays that person's.
-- Built by PR #11198, #11226 and the move and copy step: `workspace/channel-note-owned.md`; the column: `decisions-made-schema-48.md`.
+- Built by PR #11198, #11226 and #11272: `workspace/channel-note-owned.md`; the column: `decisions-made-schema-48.md`.
 
 ## Is an item of an agent channel shared by a link? (owner, 2026-11-23, in the architect's window)
 - Yes. His words: "ajan kanalında paylaşılan içerikler karışık bir kısa bağlantı ile paylaşılabilir olsa ve koordinatör işçileri ile paylaşsa bu sayede görseller işçiler tarafından görüntülenebilse?"
