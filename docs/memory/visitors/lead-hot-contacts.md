@@ -16,6 +16,7 @@ module: contact_list
 ## What do the row actions do?
 - Open: the contact screen. Remind me: only with the Workspace on and the user a member with the contacts right (`pg_contact_list_hot_remind()`).
 - Remind me opens a dialog (`pg_contact_list_hot_remind_dialog()`, `assets/js/pg_hot_contacts.js`, served as written): what to follow up on, day (a week ahead), time. Save asks `ws_contact_followup` (api.php, Workspace family): `ws_contact_followup_open()` opens a follow-up task tagged with the contact, for the person, on no channel (`workspace/workspace-followups.md`). A toast says the task number and day.
+- A contact a user-role reader may not see (outside their contact groups, `ws_viewer_contacts_open()`) is refused as "The contact could not be found." (#11374); before, a posted id tagged any contact.
 
 ## What shows with no row?
 - "No contact is hot today." and, for Manager and above, a link "Change when a contact is hot" to Site Settings › Visitors and privacy, row Interest score (`pg_contact_list_hot_empty()`), through the list driver's new `empty` source key (HTML; '' keeps "No records found.").
