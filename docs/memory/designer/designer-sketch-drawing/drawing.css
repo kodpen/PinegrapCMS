@@ -118,12 +118,13 @@
 .bx.gh { border-color: var(--c-acc); background: rgba(88,166,255,.1); }
 .bx.wait { border-color: #3a4049; background: rgba(255,255,255,.05); }
 .bx.gone { opacity: .35; }
+.bx.lit { border-style: solid; border-color: #ffc107; background: rgba(255,193,7,.1); }
 .bx.kid { border-radius: 4px; background: rgba(255,255,255,.07); }
 .bx > b { max-width: calc(100% - 16px); padding-top: 12px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bx.low > b { padding-top: 0; }
 .chip { position: absolute; top: 4px; left: 4px; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 10px; background: #3a4049; color: var(--c-fg); font-size: 10.9px; line-height: 1.5; white-space: nowrap; }
 .chip .bi { font-size: 8px; } .chip .bi.mk { font-size: 9.5px; color: var(--c-fg3); }
-.chip.am { background: rgba(255,193,7,.18); color: #ffc107; }
+.chip.am .bi.mk { color: #ffc107; }
 .chip.foc { box-shadow: 0 0 0 2px var(--c-acc); }
 .hd4 i { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; box-sizing: border-box; border: 1.5px solid var(--c-acc); border-radius: 2px; background: #1f2329; }
 .sft { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid #2a313b; font-size: 12.5px; color: var(--c-fg2); } .sft > span:first-child { flex: 1; }
@@ -170,3 +171,11 @@
 .sentl { display: flex; gap: 7px; margin: 10px 0 0; font-size: 12px; color: var(--c-fg3); }
 .shotd.map2 .under { display: block; opacity: 1; } .shotd.map2 .under .at { position: absolute; } .shotd.map2 { padding: 40px 0 46px; }
 .shotd > .cdlg { position: relative; z-index: 1; }
+
+/* the list of the boxes to check, the running mark in a page's head, a foot shown on its own */
+.ckl { padding: 0; } .ckh { padding: 12px 14px 10px; border-bottom: 1px solid #2a313b; } .ckh b { display: block; font-size: 13.5px; color: var(--c-fg); } .ckh small { display: block; margin-top: 2px; font-size: 12px; color: var(--c-fg3); }
+.ckr { display: grid; gap: 8px; padding: 11px 14px; border-top: 1px solid #262c34; } .ckh + .ckr { border-top: 0; } .ckr.on { background: rgba(255,193,7,.07); box-shadow: inset 2px 0 0 #ffc107; }
+.ckr .n b { font-size: 13px; color: var(--c-fg); } .ckr .n small { margin-left: 8px; font-size: 12px; color: var(--c-fg3); } .ckr .nh { font-weight: 400; color: var(--c-fg3); } .ckr .cseg { justify-self: start; }
+.ckl .cdf.line { margin-top: 0; padding: 10px 14px 12px; }
+.sf .nm small .run, .run { display: inline-flex; align-items: center; gap: 6px; } .run .spin { width: 10px; height: 10px; border-width: 1.5px; }
+.sft.alone { border-top: 0; border-radius: 8px; background: #1f2329; box-shadow: inset 0 0 0 1px #343c48; align-items: flex-start; } .sft.alone .cb { margin-top: 1px; }

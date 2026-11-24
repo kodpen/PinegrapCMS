@@ -16,11 +16,11 @@ description: The reference picture as drawn (ai-and-picture.html, boards E4 and 
 - Under "Pinegrap AI" the row "Read the picture" joins "Describe the page" and "Write the texts"; with Pinegrap AI off it is not in the menu.
 
 ## How does "Read the picture" run?
-- The first use on a site shows one line of what is sent, in the place of the foot under the frame: "“Read the picture” sends this picture to Pinegrap AI to find its boxes." with "Cancel" (quiet, small) and "Read the picture" (filled, small). Later uses start at once.
+- A person's first use shows one line of what is sent, in the place of the foot under the frame: "“Read the picture” sends this picture to Pinegrap AI to find its boxes." with "Cancel" (quiet, small) and "Read the picture" (filled, small). It is remembered per person, as the other first-use lines are; later uses start at once.
 - Busy: the head shows a spinner, "Reading the picture…" and "Stop" (quiet, small).
 - The proposal is drawn in the accent, without chips, over the picture. A foot under the frame counts it: "9 boxes proposed from the picture", with "Discard" (quiet, small) and "Keep" (filled, small).
 - "Keep" makes them boxes, read like any other. "Discard" or Escape takes them away.
-- On a page that has boxes the foot reads "9 boxes proposed · they replace the 3 drawn" and "Keep" replaces them; Ctrl+Z brings the old ones back.
+- On a page that already has boxes the foot says so in one line: "9 boxes proposed. “Keep” replaces the 3 on the page; one Undo brings them back."
 
 ## What are its messages?
 - Nothing found: "No boxes could be read from this picture."

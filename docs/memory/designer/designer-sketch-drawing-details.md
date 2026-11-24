@@ -24,7 +24,7 @@ description: "Page details" as drawn (details.html, boards D1 to D4): the window
 
 ## Where are the values kept?
 - Before the build, with the sketch; the build makes the page with them. The frame's head takes a new name at once.
-- On a built page the window shows and writes the page's own settings, the same ones the Settings window shows.
+- After the build the window reads and writes the page's own values, the ones Page Settings shows: there is no second copy (Architect, 2026-11-24).
 
 ## What do errors, saving and a page the user may not change look like?
 - A value that cannot be saved: the field gets the rose edge and the line under it says what is wrong ("A page needs a name.", "This address is used by the page “Classes”."); the first one is focused; nothing is saved until every row is right.

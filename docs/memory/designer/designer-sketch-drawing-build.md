@@ -1,11 +1,11 @@
 ---
 name: designer-sketch-drawing-build
-description: "Build the page" as drawn (build.html, boards B1 to B5): the two actions in the sketch page's head, the "More" menu, the palette rows, the unsure boxes asked, busy and the built page
+description: "Build the page" as drawn (build.html, boards B1 to B5): the two actions in the sketch page's head, the "More" menu, the palette rows, the unsure boxes marked, busy and the built page
 ---
 
 ## Where do "Build the page" and "More" stand?
 - In the head of the selected sketch page only: "Build the page" (filled, small) and "More" (the three dots, title "More"). Another page selected, or Sketch off, and they are gone.
-- Beside the box count an amber pill "n to check" counts the boxes the reader is not sure of; their chips are amber and end in a question mark ("Cards?", "Text?").
+- Beside the box count an amber pill "n to check" counts the boxes the reader is not sure of; the chip of each carries a small amber question mark before its kind.
 - The two actions keep their size on the screen at every zoom.
 
 ## What does "More" hold?
@@ -22,10 +22,7 @@ description: "Build the page" as drawn (build.html, boards B1 to B5): the two ac
 - "Got it" closes it for good; so does the first build.
 
 ## How is a box the reader is not sure of asked?
-- While drawing nothing is asked; the amber chip and the pill only say so. The chip opens the question at any time.
-- "Build the page" with boxes to check opens the first question on its chip: the caption "It could be", the kinds the reader hesitates between, then "Something else" for the chip's full list.
-- The foot line counts and gives the reason: "1 of 2 · the words “Blog cards” name both."; for the reader's other reasons "the box is empty" and "unlike boxes side by side".
-- An answer turns the chip grey and opens the next; after the last the page is built. Escape leaves the questions: nothing is built, the answers given stay.
+- While drawing nothing is asked: the chip's mark and the pill only say so. At "Build the page" all of them are asked in one list in one step (`designer-sketch-drawing-check.md`).
 
 ## What does the build look like while it runs?
 - The head shows a spinner and "Building the page…" in place of the two actions; the boxes do not take the pointer. Nothing to stop: the build is one save.

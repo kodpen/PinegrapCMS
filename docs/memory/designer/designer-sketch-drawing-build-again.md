@@ -12,6 +12,8 @@ description: "Build again" as drawn (build.html, boards B6 to B8): when it asks,
 - Rows, each a title and one line: "5 sections stay as they are" (their names), teal; "Features is built again" ("It has 4 columns now and was not edited."), blue; "Gallery is new" ("It is placed after Blog list."), blue; "Text is removed" ("Its box was deleted in the sketch; what was written in it goes with it."), rose.
 - "More" is shown only with an edited section whose box changed. Open, it lists each: "**Intro** was edited in Design and its box changed in the sketch. It keeps your edits." with the tick box "Build Intro again from the sketch", off.
 - Foot: the note "History keeps the page as it is now.", "Cancel" (quiet), "Build again" (filled). Enter builds, Escape cancels.
+- A History entry of the page is written before the build runs, with or without the question; a build whose entry could not be written does not start. Architect (2026-11-24): without that entry the dialog may not lean on History; step SK4 keeps it.
+- The blue tile and the filled button are "Confirm with its effects" in a tone and with a button the examples already hold; step SK4 adds that state to the example on the Design examples screen.
 
 ## What when there is nothing to build?
 - A page with no box: "Build the page" is dimmed, its title says "Draw a box first"; the body keeps today's line "Drag here to draw a box".
