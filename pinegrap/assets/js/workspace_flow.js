@@ -171,6 +171,9 @@
         agent: { name: 'fl_kind_agent', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
+        // A split leaves on each of its arms, by its place (kindOf(),
+        // ws_flow_split_arrow_outcomes()).
+        split: { name: 'fl_kind_split', group: 'logic', into: true, out: ['arm_1', 'arm_2'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
         end: { name: 'fl_kind_end', group: 'logic', into: true, out: [] },
         // A loop: the boxes the each arrow of a For each box leads into run
@@ -220,6 +223,7 @@
         ['mention', 'fl_kind_mention'],
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
+        ['split', 'fl_kind_split'],
         ['delay', 'fl_kind_delay'],
         ['for_each', 'fl_kind_for_each'],
         ['for_each_end', 'fl_kind_for_each_end'],
@@ -470,16 +474,26 @@
             return { name: kind.name, group: kind.group, into: true, out: aiClasses(node.config).map(function (name, index) { return 'class_' + (index + 1); }).concat(['other', 'failed']) };
         }
 
+        // A split leaves on each of its arms.
+        if ((node.kind === 'split') && node.config) {
+            return { name: kind.name, group: kind.group, into: true, out: splitArms(node.config).map(function (arm, index) { return 'arm_' + (index + 1); }) };
+        }
+
         return kind;
     }
 
     // What an arrow is taken on, in words: a classifying Pinegrap AI box's
-    // outcome by the name it gives it.
+    // outcome by the name it gives it, a split's arm by its name.
     function outcomeText(node, on) {
         var match = /^class_([1-9][0-9]?)$/.exec(on || '');
+        var arm = /^arm_([1-9])$/.exec(on || '');
 
         if (match) {
             return aiClasses(node ? node.config : null)[parseInt(match[1], 10) - 1] || t('fl_ai_class_n', match[1]);
+        }
+
+        if (arm) {
+            return (splitArms(node ? node.config : null)[parseInt(arm[1], 10) - 1] || {}).name || splitLetter(parseInt(arm[1], 10) - 1);
         }
 
         return t(OUTCOMES[on] || 'fl_on_done');
@@ -883,6 +897,10 @@
 
         if (node.kind === 'ai') {
             return aiMeta(node);
+        }
+
+        if (node.kind === 'split') {
+            return splitMeta(node);
         }
 
         if (node.kind === 'agent') {
@@ -3908,11 +3926,11 @@
     }
 
     // An arrow names its outcome when its box has more than one (done or
-    // failed, yes or no, a class of the AI box), and on always, each and
-    // other, which say how it is taken; the only outcome of a box goes
-    // unnamed.
+    // failed, yes or no, a class of the AI box, a split's arm), and on
+    // always, each and other, which say how it is taken; the only outcome of
+    // a box goes unnamed.
     function edgeNamed(from, on) {
-        return (kindOf(from).out.length > 1) || (on === 'cancelled') || (on === 'failed') || (on === 'always') || (on === 'each') || (on === 'other') || /^class_/.test(on || '');
+        return (kindOf(from).out.length > 1) || (on === 'cancelled') || (on === 'failed') || (on === 'always') || (on === 'each') || (on === 'other') || /^(class|arm)_/.test(on || '');
     }
 
     // The outcome's name on a pill at the middle of its arrow, measured
@@ -8820,6 +8838,10 @@
             conditionFields(box, node);
         }
 
+        if (node.kind === 'split') {
+            splitFields(box, node);
+        }
+
         if (node.kind === 'delay') {
             delayFields(box, node);
         }
@@ -11753,6 +11775,115 @@
         box.appendChild(field(t('fl_ai_closes'), hours, t('fl_ai_closes_help')));
     }
 
+    // The arms of a Split box, as the server keeps them.
+    function splitArms(config) {
+        return ((config && Array.isArray(config.arms)) ? config.arms : []).filter(function (arm) { return arm && (typeof arm === 'object'); });
+    }
+
+    // The letter an arm is called by at its place: A to E.
+    function splitLetter(index) {
+        return String.fromCharCode(65 + Math.max(0, Math.min(25, index)));
+    }
+
+    // The arms and their shares: A 50% · B 50%.
+    function splitMeta(node) {
+        return splitArms(node.config).map(function (arm, index) {
+            return t('fl_split_arm_share', (String(arm.name || '').trim() || splitLetter(index)), String(parseInt(arm.share, 10) || 0));
+        }).join(' · ');
+    }
+
+    // The shares of the arms added up. Pure.
+    function splitTotal(arms) {
+        return arms.reduce(function (sum, arm) { return sum + (parseInt(arm.share, 10) || 0); }, 0);
+    }
+
+    // The arrows of a box after the arm at a place is taken away: one on
+    // that arm goes, one on a later arm moves up with it. Pure.
+    function splitEdgesWithout(edges, id, index) {
+        return edges.filter(function (edge) {
+            return !((edge.from === id) && (edge.on === 'arm_' + (index + 1)));
+        }).map(function (edge) {
+            var match = (edge.from === id) ? /^arm_([1-9])$/.exec(edge.on) : null;
+
+            return (match && (parseInt(match[1], 10) > index + 1)) ? Object.assign({}, edge, { on: 'arm_' + (parseInt(match[1], 10) - 1) }) : edge;
+        });
+    }
+
+    // A Split box (flow_split.php): its arms, two to five, each a name and a
+    // share in whole percent, each an arrow of its own; the total says
+    // whether the shares add up to 100.
+    function splitFields(box, node) {
+        var config = node.config;
+        var list = el('div', 'wsf-split-arms mb-2');
+        var total = el('p', 'small mb-2');
+
+        if (!Array.isArray(config.arms)) {
+            config.arms = [];
+        }
+
+        function showTotal() {
+            var sum = splitTotal(config.arms);
+
+            total.textContent = t('fl_split_total', String(sum));
+            total.className = 'small mb-2 ' + ((sum === 100) ? 'fg-secondary' : 'fg-danger');
+        }
+
+        config.arms.forEach(function (arm, index) {
+            var line = el('div', 'input-group input-group-sm mb-1');
+            var name = textInput(arm.name || '', 60, function (value) {
+                arm.name = value;
+                refreshNode(node);
+            });
+            var share = el('input', 'form-control form-control-sm wsf-number');
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_split_arm_remove', arm.name || splitLetter(index)));
+
+            name.setAttribute('aria-label', t('fl_split_arm_n', splitLetter(index)));
+            name.setAttribute('data-refocus', 'split-arm-' + node.id + '-' + index);
+            share.type = 'number';
+            share.min = '1';
+            share.max = '99';
+            share.value = String(parseInt(arm.share, 10) || 0);
+            share.disabled = !state.edit;
+            share.setAttribute('aria-label', t('fl_split_share_n', arm.name || splitLetter(index)));
+            share.addEventListener('input', function () {
+                arm.share = clamp(parseInt(share.value, 10) || 0, 0, 100);
+                showTotal();
+                refreshNode(node);
+            });
+            remove.disabled = !state.edit || (config.arms.length <= 2);
+            remove.addEventListener('click', function () {
+                config.arms.splice(index, 1);
+                state.graph.edges = splitEdgesWithout(state.graph.edges, node.id, index);
+                state.refocus = 'split-arm-add-' + node.id;
+                changed(true);
+                drawSettings();
+            });
+            line.appendChild(name);
+            line.appendChild(share);
+            line.appendChild(el('span', 'input-group-text', '%'));
+            line.appendChild(remove);
+            list.appendChild(line);
+        });
+
+        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_split_arms')));
+        box.appendChild(list);
+        showTotal();
+        box.appendChild(total);
+
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-2', t('fl_split_arm_add'), 'bi-plus-lg');
+
+        add.setAttribute('data-refocus', 'split-arm-add-' + node.id);
+        add.disabled = !state.edit || (config.arms.length >= 5);
+        add.addEventListener('click', function () {
+            config.arms.push({ name: splitLetter(config.arms.length), share: 0 });
+            state.refocus = 'split-arm-' + node.id + '-' + (config.arms.length - 1);
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(add);
+        box.appendChild(el('p', 'small fg-secondary', t('fl_split_help')));
+    }
+
     // The agent an agent box asks, from the list the server sent.
     function agentOf(config) {
         return stepLists().agents.filter(function (item) { return item.id === config.agent_id; })[0] || null;
@@ -13156,6 +13287,9 @@
             config = { group_id: (groups.length === 1) ? groups[0].id : 0, way: 'add', contact: '' };
         } else if (kind === 'ai') {
             config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
+        } else if (kind === 'split') {
+            // Two arms, half the runs each.
+            config = { arms: [{ name: 'A', share: 50 }, { name: 'B', share: 50 }] };
         } else if (kind === 'agent') {
             var agents = stepLists().agents;
             var only = (agents.length === 1) ? agents[0] : null;

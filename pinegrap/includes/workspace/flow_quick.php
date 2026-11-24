@@ -111,7 +111,7 @@ function ws_flow_quick_groups()
         'message' => array('label' => lang('Message'), 'kinds' => array('email', 'sms', 'whatsapp', 'notify', 'post', 'report')),
         'people'  => array('label' => lang('People'), 'kinds' => array('task_open', 'task', 'approval', 'lead', 'checkin', 'task_digest')),
         'records' => array('label' => lang('Records'), 'kinds' => array('change', 'contact_group', 'record_get', 'list_records', 'row_add', 'row_set', 'row_get', 'rows_get')),
-        'logic'   => array('label' => lang('Logic'), 'kinds' => array('delay', 'condition', 'for_each')),
+        'logic'   => array('label' => lang('Logic'), 'kinds' => array('delay', 'condition', 'split', 'for_each')),
         'system'  => array('label' => lang('System'), 'kinds' => array('ai', 'agent', 'webhook', 'web_check', 'start_flow', 'mcp')),
     );
 }
@@ -474,8 +474,8 @@ function ws_flow_quick_steps_read($steps, $kinds, $depth, $loop, &$seen, &$count
 /**
  * The arrow a box leaves on to the step after it in a chain: its first
  * outcome (a task done, an approval approved, a wait over), or any
- * outcome for a Pinegrap AI box that sorts, none of whose classes is the
- * one to go on from. Pure.
+ * outcome for a Pinegrap AI box that sorts or a Split box, none of whose
+ * classes or arms is the one to go on from. Pure.
  *
  * @param array $kinds ws_flow_kinds()
  * @param array $node  id, kind, config
@@ -486,7 +486,7 @@ function ws_flow_quick_on($kinds, $node)
     $outcomes = ws_flow_node_arrow_outcomes($kinds[$node['kind']], array('kind' => $node['kind'], 'config' => ws_flow_config_normalize($node['kind'], $node['config'])));
     $first = (string) ($outcomes[0] ?? 'always');
 
-    return (strpos($first, 'class_') === 0) ? 'always' : $first;
+    return ((strpos($first, 'class_') === 0) || (strpos($first, 'arm_') === 0)) ? 'always' : $first;
 }
 
 /**
