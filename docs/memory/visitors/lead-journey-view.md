@@ -18,7 +18,7 @@ module: lead_journey_view
 
 ## What do erase, export and the inventory do?
 - Erase (`pg_privacy_erase_tables()`, after `course_progress`): `lead_visits`, `contact_journey`, `contact_scores`, `lead_browsers` deleted by `contact_ids`; `pg_contact_holders()` erase `find` for the four. A visit no contact holds stays until the keep period.
-- Export sections `journey_visits`, `journey`, `interest_score` (after `courses`).
+- Export sections `journey_visits`, `journey`, `interest_score`, `journey_browsers` (after `courses`); the browsers with consent, tie and last-seen times, never `key_hash` (#11381).
 - Inventory: the four tables, category `ip_cookie`, ground consent, retention `lead_journey` ("The journey's keep period (13 months)").
 
 ## How is the keep period kept?
