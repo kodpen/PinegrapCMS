@@ -1,6 +1,6 @@
 ---
 name: order-view-timeline-invoice-card
-description: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge stages.
+description: Order view timeline events/sources, readonly form/gift-card blocks, masked card number, status badge stages.
 ---
 
 ## What does the timeline show? (the `order.steps` list, flag `has_timeline`)
@@ -16,12 +16,8 @@ description: Order view timeline events/sources, printable invoice endpoint and 
 - #3454: the steps compared the checkout estimates with today, so an unpaid offline-payment order with a same-day estimate read "Sevk edildi <today>" right after checkout. Since #3574 an estimate stays "Estimated …" even after its day. There is no payment gate: a cash-on-delivery order ships before it is paid, and the record rule already keeps an unshipped order from saying Shipped.
 | İptal Edildi | bi-x-circle | danger | `orders.cancelled_at` (probe, 2026.1.26+) |
 
-## How is the printable invoice served? (`__order_invoice_pdf_url`, flag `can_print_invoice`)
-- Flag is true only for a logged-in owner; hidden for guest orders. Endpoint `order_invoice_print.php`: GET-only (no state change, no CSRF token), `order_id` required.
-- Ownership: `orders.user_id === USER_ID` or admin (`USER_ROLE === 0`). Page auto-calls `window.print()`.
-- Totals rows: `pg_order_print_totals()`, gift card and instalment charge included (#7203: they did not add up).
-- No dependency: HTML print-CSS is a deliberate choice for this endpoint and the signature receipt; the customer prints from the browser. `order_invoice_print.php` and the signature receipt do NOT use dompdf.
-- The ERP invoice is the exception (2026-09-17): it needs server-side PDF (attached to email, archived, base for e-archive rendering) with an admin-editable template, so `includes/dompdf/` is embedded (docs/memory/erp/erp-invoice-document-pdf.md).
+## Where is the printable invoice?
+- `order_invoice_print.php` behind `__order_invoice_pdf_url` (flag `can_print_invoice`): `order-invoice-print.md`.
 
 ## Which blocks are read-only, and how is the card masked? (2026.1.30 legacy parity)
 - Readonly blocks `_pg_render_order_item_form_data_readonly()` / `_pg_render_order_item_gift_card_readonly()`; tokens `__item_form_data_html`, `__item_gift_card_html`. If the designer did not place the token, it is appended to the line end (same pattern as shopping_cart).
@@ -31,4 +27,4 @@ description: Order view timeline events/sources, printable invoice endpoint and 
 ## Which status badge classes are used?
 - `_pg_order_status_stage()` reduces status to 6 stages (complete / pending / shipped / cancelled / refunded / default), token `__order_status_stage`; the status badge part draws one badge per stage, its classes from cfg `status_class_<stage>` or `_pg_order_status_badge_class()`'s defaults when the part is made ([[widget-default-parts]]). JS twin `SD_OV_STATUS_CLASS_DEFAULTS`: update in lockstep.
 
-Related: docs/memory/commerce/order-cancellation-flow.md
+Related: docs/memory/commerce/order-cancellation-flow.md, docs/memory/commerce/order-invoice-print.md
