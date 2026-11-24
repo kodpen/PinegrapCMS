@@ -1,0 +1,31 @@
+---
+name: options-panel-census-look
+description: Options panel census, part 3: gaps to dress and move an element (hover/focus/pressed, transitions, gradients, filters, blend, transforms, text effects, masks)
+---
+
+## Hover, focus and pressed states?
+- No Options row is written for a state. Interactions' hover trigger plays one effect (fade, lift, scale); click toggles `pg-fx-on`; Focus Ring is one switch. A hover colour, a focus outline or a pressed shadow is code in "This element" (`.pgs-x:hover { … }`).
+- Missing: a state chooser in the Options panel head (Normal, Hover, Focus, Pressed) under which Color and background, Border and corner, Shadow and effect and transforms write `:hover`, `:focus-visible`, `:active` rules on the element's class; the canvas previews a state on the selected element. M. Reads the theme colours (`--bs-*`, `--pg-primary-fg`), `--pg-shadow*`, `--pg-btn-hover-transform`, `--pg-card-hover-transform`, `--pg-card-shadow-hover`.
+
+## Transitions and entrance motion?
+- A transition between states is code. Missing: Transition (property group, duration, easing) on the element. S. Reads `--pg-duration` and `--pg-ease`.
+- Entrance motion has six effects (Fade in, four slides, Scale) with Duration, Delay, Easing, Distance, Stagger. Missing: zoom out, blur in, rotate in, clip reveal, and a choice of easing curves beyond the stored list. S each. Reads `--pg-duration`, `--pg-ease`. Endless motion (pulse, float) is not offered; `designer-block-motion.md` binds what blocks may do.
+
+## Gradients and several backgrounds?
+- Custom Background Color gives one gradient of two colours with a middle, and Bg Image one picture. A picture over a gradient, a gradient overlay on a photo, three or more stops, conic gradients are code. Missing: a list of background layers (colour, gradient, picture) in order, each with its own size, position and repeat. M. Reads the theme colours as stop choices.
+- The gradient colours are typed hex values, not theme colours. Missing: stops chosen from the palette (`var(--bs-primary)`), so a palette change follows. S. Reads `--bs-*` theme colours.
+
+## Filters and blend?
+- Opacity has five steps; nothing else. Missing: Filter (blur, brightness, contrast, grayscale, saturate, sepia, hue) with sliders (S), Backdrop blur for glass panels (S), Blend mode (mix-blend-mode, background-blend-mode) (S). Reads none; backdrop blur may read `--pg-radius-*` for its corner.
+
+## Transforms?
+- Only through Interactions' start states. Missing: Rotate, Scale, Move X and Y, Skew and Origin on the element, combined with Interactions' own transform (`pgFxBase` keeps the node's). M (composition with pg_fx and per state). Reads none.
+
+## Text effects?
+- Missing: Text shadow (S, reads `--pg-shadow*` colours or none), Letter spacing (S, reads `--pg-heading-tracking`), Font family per element from the design's two families (S, reads `--pg-font-body`, `--pg-font-heading`), text gradient fill and stroke (S, reads the theme colours), Line clamp to N lines (S, none), Text wrap balance for headings (S, none).
+
+## Masks and clip shapes?
+- Missing: Clip shape (circle, ellipse, inset with corners, a few polygons such as slant and arrow) and Mask (a fade to transparent at one edge, a picture as mask) on any element. M (shape editor and canvas preview). Reads `--pg-radius-*` for inset corners.
+
+## Cursor and pointer?
+- Missing: Cursor (pointer, default, not-allowed) and "Let clicks through" (`pe-none`, a Bootstrap class). S. Reads none.
