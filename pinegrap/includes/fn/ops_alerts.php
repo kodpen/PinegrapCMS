@@ -420,6 +420,53 @@ function pg_ops_alert_reader_url($code, $role, $hosted = null)
 }
 
 /**
+ * The address an alert's bell row opens for one reader: the product a sales
+ * watch row names while that product is there, the code's own screen
+ * otherwise - a deleted product's screen only says "Page not found".
+ *
+ * @param string          $code
+ * @param int|string|null $role
+ * @param int             $product_id     the row's product, 0 for none
+ * @param bool            $product_exists whether that product's row is there
+ * @param bool|null       $hosted         pg_hosted() when null
+ * @return string
+ */
+function pg_ops_alert_bell_url($code, $role, $product_id, $product_exists, $hosted = null)
+{
+    $codes = pg_ops_alert_codes();
+
+    if (((int) $product_id > 0) && $product_exists && (($codes[$code]['group'] ?? '') === 'sales')) {
+        return 'edit_product.php?id=' . (int) $product_id;
+    }
+
+    return pg_ops_alert_reader_url($code, $role, $hosted);
+}
+
+/**
+ * Whether an alert's bell row reaches a reader: manager and above, and for
+ * an alert about the shop (the sales watch, the delivery tower, a pack closed
+ * short) only while commerce is switched on - the screens they open refuse
+ * then, as the order and stock lines of the bell are hidden. The row stays in
+ * the table and on System Status. Pure but for the catalogue.
+ *
+ * @param string     $code
+ * @param int|string $role
+ * @param bool       $commerce_on ECOMMERCE
+ * @return bool
+ */
+function pg_ops_alert_visible($code, $role, $commerce_on)
+{
+    if ((int) $role >= 3) {
+        return false;
+    }
+
+    $codes = pg_ops_alert_codes();
+    $group = $codes[(string) $code]['group'] ?? '';
+
+    return $commerce_on || (($group !== 'sales') && ($group !== 'shipping'));
+}
+
+/**
  * The panel address an alert points at.
  *
  * @param string $code
@@ -670,9 +717,11 @@ function pg_ops_alert($code, $detail = '', $subject = '', $product_id = 0)
         include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
 
         if (function_exists('pg_push_enqueue_notification')) {
+            // The code is what pg_ops_alert_visible() decides on.
             pg_push_enqueue_notification(array(
-                'id'     => $result['notification_id'],
-                'action' => 'ops',
+                'id'          => $result['notification_id'],
+                'action'      => 'ops',
+                'order_total' => $code,
             ));
         }
     }

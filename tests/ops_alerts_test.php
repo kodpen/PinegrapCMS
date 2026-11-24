@@ -356,3 +356,31 @@ function test_ops_alerts_integrity_waits_for_the_upgrade()
 
 	pg_assert_contains('pg_schema_upgrade_pending()', $body);
 }
+
+// An alert about the shop (the sales watch, the delivery tower, a pack
+// closed short) leaves the bell while commerce is switched off: its link
+// opens a screen that refuses then. The software's own alerts stay.
+function test_ops_alerts_shop_alerts_follow_commerce()
+{
+	pg_assert_true(pg_ops_alert_visible('pack_short', 1, true), 'a pack closed short, commerce on');
+	pg_assert_false(pg_ops_alert_visible('pack_short', 1, false), 'a pack closed short, commerce off');
+	pg_assert_false(pg_ops_alert_visible('return_spike', 0, false), 'a sales watch alert, commerce off');
+	pg_assert_false(pg_ops_alert_visible('parcel_stuck', 0, false), 'a delivery tower alert, commerce off');
+	pg_assert_true(pg_ops_alert_visible('backup_failed', 2, false), 'a software alert, commerce off');
+	pg_assert_true(pg_ops_alert_visible('contacts_hot', 2, false), 'hot contacts, commerce off');
+	pg_assert_false(pg_ops_alert_visible('pack_short', 3, true), 'never below manager');
+	pg_assert_true(pg_ops_alert_visible('gone_code', 1, false), 'an unknown code still reaches the manager');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+	pg_assert_true(pg_notification_visible(array('action' => 'ops', 'order_total' => 'pack_short'), array('id' => 5, 'role' => 1)), 'the bell asks it');
+}
+
+// A sales watch row opens the product it names while the product is there,
+// the alert's own screen once the product was deleted.
+function test_ops_alerts_bell_url_of_a_deleted_product()
+{
+	pg_assert_same('edit_product.php?id=42', pg_ops_alert_bell_url('price_error', 1, 42, true, false), 'the product');
+	pg_assert_same('view_products.php', pg_ops_alert_bell_url('price_error', 1, 42, false, false), 'the product was deleted');
+	pg_assert_same('view_pick_waves.php', pg_ops_alert_bell_url('pack_short', 1, 42, true, false), 'only a sales row opens a product');
+	pg_assert_same('welcome.php', pg_ops_alert_bell_url('integrity', 1, 0, false, false), 'the reader rule still holds');
+}
