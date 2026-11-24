@@ -299,8 +299,49 @@ function pg_gal_flags($rows, $in_album)
         'has_albums'        => $albums > 0,
         'has_photos'        => $photos > 0,
         'in_album'          => (bool)$in_album,
+        // A classic layout's headings: at the gallery's top, a folder of
+        // photos only, a folder with no photo.
+        'not_in_album'      => !$in_album,
+        'only_photos'       => $albums === 0 && $photos > 0,
+        'no_photos'         => $photos === 0,
     );
     return $gal_flags;
+}
+
+/**
+ * A row's own flags: its kind, and an album holding more than one photo.
+ *
+ * @param array $row a row of pg_gal_rows()
+ * @return array
+ */
+function pg_gal_row_flags($row)
+{
+    $album = !empty($row['__gallery_item_is_album']);
+    $gal_row_flags = array(
+        'gallery_item_is_album'    => $album,
+        'gallery_item_is_photo'    => !$album,
+        'gallery_item_many_photos' => $album && (int)($row['__gallery_item_photo_count'] ?? 0) > 1,
+    );
+    return $gal_row_flags;
+}
+
+/**
+ * One row drawn from the list's nodes: a node under a flag of
+ * pg_gal_row_flags() the row does not hold goes, the row's values filled,
+ * each escaped once.
+ *
+ * @param array $nodes the loop area's children
+ * @param array $row   a row of pg_gal_rows()
+ * @return string HTML
+ */
+function pg_gal_row_html($nodes, $row)
+{
+    $holder = array('type' => 'root', 'props' => array(), 'children' => array_values((array)$nodes));
+    $gal_row_flags = pg_gal_row_flags($row);
+    _eo_apply_visibility_bindings($holder, $gal_row_flags);
+    $html = '';
+    foreach ($holder['children'] as $child) $html .= _render_tree_node($child, 0, 0);
+    return pg_sw_sweep_tokens(_pg_sw_fill_tokens(trim($html), pg_sw_escape_token_values($row)));
 }
 
 // A folder's parent id, null when the folder does not exist: the
@@ -393,7 +434,7 @@ function _pg_gal_read($folder_id)
 // photo, empty for an empty album), ^^__gallery_item_description^^,
 // ^^__gallery_item_photo_count^^, ^^__gallery_item_count_label^^,
 // ^^__gallery_item_is_album^^, ^^__gallery_item_is_photo^^ ('1' or empty,
-// for conditions).
+// for conditions). Row flags: pg_gal_row_flags().
 // Tokens: ^^__album_name^^ (the folder shown), ^^__back_url^^ (the album
 // above, the link drops at the top).
 // Flags: pg_gal_flags(). Messages: 'photo_gallery'.
@@ -437,24 +478,19 @@ function _render_system_widget_photo_gallery($tree_json, $widget_id, $cfg = arra
     }
 
     $gal_flags = pg_gal_flags($rows, $in_album);
-    _eo_apply_visibility_bindings($tree, $gal_flags);
+    // A row's own flags are decided per row, below.
+    _eo_apply_visibility_bindings($tree, $gal_flags + array_fill_keys(array_keys(pg_gal_row_flags(array())), true));
     _pg_member_drop_empty_links($tree, array('__back_url' => $back_url));
     _pg_inject_messages_node($tree, 'photo_gallery');
 
     $split = _split_widget_tree($tree);
-    $loop_template = '';
+    $loop_rendered = '';
     if ($split['loop_children'] === null) {
         $static_html = trim(_render_tree_node($tree, 0, 0));
     } else {
-        foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
-        $loop_template = trim($loop_template);
         $static_html = trim(_render_tree_node($split['static_tree'], 0, 0));
-    }
-    $loop_rendered = '';
-    if ($loop_template !== '') {
         foreach ($rows as $i => $row) {
-            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($row)));
-            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $i + 1);
+            $loop_rendered .= pg_sw_uniquify_row_ids(pg_gal_row_html($split['loop_children'], $row), $widget_id, $i + 1);
         }
     }
     $static_values = pg_sw_escape_token_values(array(
