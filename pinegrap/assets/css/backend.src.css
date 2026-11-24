@@ -13045,7 +13045,7 @@ body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
 .ws-app.ws-thread-resizing iframe {
   pointer-events: none;
 }
-.ws-send-group .btn {
+.ws-send-group .pg-button {
   white-space: nowrap;
 }
 .ws-thread-panel > .ws-head,
@@ -14013,7 +14013,8 @@ b.ws-agent-card-anchor:focus-visible {
   text-transform: uppercase;
   color: var(--pg-fg-2);
 }
-.ws-thread-source-head .btn-link {
+.ws-thread-source-head .btn-link,
+.ws-thread-source-head .pg-button {
   font-size: .75rem;
   text-transform: none;
   letter-spacing: 0;
@@ -14843,7 +14844,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 /* Versions of a conversation: one list in a settings card, the current
    conversation first. */
-.ws-era-row > .btn {
+.ws-era-row > .btn,
+.ws-era-row > .pg-button {
   flex-shrink: 0;
 }
 /* Channel settings: the segmented control at the top places its tabs
@@ -15166,7 +15168,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-head-icon {
   background: var(--bs-warning-base);
   color: var(--bs-warning-contrast);
 }
-.ws-head-share {
+.pg-icon-button.ws-head-share {
   color: var(--bs-warning-fg-emphasis);
 }
 .ws-avatars {
@@ -15827,7 +15829,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   display: none;
 }
 /* Send goes right even where nothing grows before it. */
-.ws-composer-tools > .btn-solid.theme-primary:last-child {
+.ws-composer-tools > .pg-button-fill:last-child {
   margin-left: auto;
 }
 .ws-pane-messages {
@@ -16124,6 +16126,9 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   margin-inline-start: auto;
   padding-block: 0;
   font-size: .78rem;
+}
+.ws-pane-decisions > .ws-msg .ws-msg-meta > .pg-button {
+  margin-inline-start: auto;
 }
 .ws-pane-decisions > .ws-msg .ws-msg-quote {
   margin-bottom: .45rem;
@@ -16790,11 +16795,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   gap: .4rem;
   margin-top: .4rem;
 }
-.ws-poll-send > :not(.btn) {
+.ws-poll-send > :not(.btn, .pg-button) {
   flex: 1 1 10rem;
   min-width: 0;
 }
-.ws-poll-send > .btn {
+.ws-poll-send > .btn,
+.ws-poll-send > .pg-button {
   flex: 0 0 auto;
   margin-left: auto;
 }
@@ -16817,7 +16823,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-poll-foot-label {
   margin-left: .25rem;
 }
-.ws-poll-foot > .btn {
+.ws-poll-foot > .btn,
+.ws-poll-foot > .pg-button {
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -16835,7 +16842,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     flex-basis: 100%;
     padding-left: 1.5rem;
   }
-  .ws-poll-foot > .btn {
+  .ws-poll-foot > .btn,
+  .ws-poll-foot > .pg-button {
     padding-inline: .35rem;
   }
   .ws-poll-foot-tight .ws-poll-foot-label {
@@ -16857,7 +16865,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     flex-basis: 100%;
     padding-left: 1.5rem;
   }
-  .ws-poll-foot > .btn {
+  .ws-poll-foot > .btn,
+  .ws-poll-foot > .pg-button {
     padding-inline: .35rem;
   }
   .ws-poll-foot-tight .ws-poll-foot-label {
@@ -17000,7 +17009,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border: 1px solid var(--pg-border-color);
   border-radius: var(--ws-radius-xs);
 }
-.ws-poll-form-more > .btn {
+.ws-poll-form-more > .btn,
+.ws-poll-form-more > .pg-button {
   justify-self: start;
 }
 .ws-poll-form-links {
@@ -17481,9 +17491,6 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   margin-bottom: .5rem;
 }
 .ws-sa-view .ws-sa-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
   margin-bottom: .5rem;
 }
 .ws-sa-list-item {
@@ -18846,11 +18853,6 @@ a.ws-chip-message:hover,
    half, the line above the box that says some wait, and their cards. */
 .ws-composer-tools > .ws-send-group {
   margin-left: auto;
-}
-.ws-send-group .ws-send-later {
-  padding-left: .55rem;
-  padding-right: .65rem;
-  border-left: 1px solid rgba(255, 255, 255, .35);
 }
 .ws-sm-bar {
   display: flex;
@@ -22733,7 +22735,9 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   /* Narrow pads keep the inserts, Send and Send later on one line at
      375 px; the row still wraps where even that has no room. 44 px high,
      the touch target a finger hits; the height costs no width. */
-  .ws-composer-tools .btn {
+  .ws-composer-tools .btn,
+  .ws-composer-tools .pg-button,
+  .ws-composer-tools .pg-icon-button {
     min-height: 2.75rem;
     padding: .3rem .4rem;
   }
@@ -22743,7 +22747,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     padding: .3rem .35rem;
   }
   /* Send keeps its icon and a narrow pad, so the row fits a phone. */
-  .ws-composer-tools .btn.px-5 {
+  .ws-composer-tools .pg-button-fill {
     padding-inline: .6rem;
   }
   /* A recording row as tall as the box it stands in for, with buttons a

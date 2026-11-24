@@ -56,7 +56,7 @@ function test_workspace_view_back_kept_where_the_arrow_cannot_reach()
 
 	// The OneNote sections are a step inside the modal Import dialog: the
 	// page behind it, and so its arrow, cannot be reached while it is open.
-	pg_assert_contains("theme-secondary mb-3', t('notes_onenote_back'), 'bi-arrow-left')", $source, 'OneNote back stays in the dialog');
+	pg_assert_contains("pg-button-sm mb-3', t('notes_onenote_back'), 'bi-arrow-left')", $source, 'OneNote back stays in the dialog');
 	// The phone switch between the note list and a note: on a wide screen
 	// both are shown, so it is no step back.
 	pg_assert_contains("lg:d-none', '', 'bi-arrow-left', t('notes_back')", $source, 'phone list switch kept');

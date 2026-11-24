@@ -104,7 +104,7 @@ function test_workspace_composer_phone_send_never_cut()
 	$row = workspace_composer_phone_test_rule($css, '.ws-composer-tools');
 	pg_assert_true($row !== null && strpos($row, 'flex-wrap: wrap') !== false, 'the row of tools wraps where it has no room');
 
-	$send = workspace_composer_phone_test_rule(workspace_composer_phone_test_phone_css(), '.ws-composer-tools .btn.px-5');
+	$send = workspace_composer_phone_test_rule(workspace_composer_phone_test_phone_css(), '.ws-composer-tools .pg-button-fill');
 	pg_assert_true($send !== null && strpos($send, 'padding-inline: .6rem') !== false, 'Send keeps a narrow pad on a phone');
 }
 
