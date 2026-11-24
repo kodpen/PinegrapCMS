@@ -1336,7 +1336,29 @@ function _sc_unique_name($desired)
  */
 function pg_common_region_component_html($sid, $mode = 'preview', $email = false)
 {
-    $html = pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email);
+    return pg_common_region_component_finish(
+        pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email), $email);
+}
+
+/**
+ * The page passes a component drawn after them still needs, in the page's
+ * order: links kept by page id pointed at the page's current address, page
+ * conditions (signed in, cart, audience) decided and the record's values
+ * filled in, then custom PHP. Without them a converted common region or a
+ * designed pop-up showed every conditional element to every visitor.
+ *
+ * @param string $html  the component drawn, nested components expanded
+ * @param bool   $email drawn for an e-mail
+ * @return string
+ */
+function pg_common_region_component_finish($html, $email = false)
+{
+    if (stripos($html, 'data-pg-page-link=') !== false && function_exists('pg_page_link_expand')) {
+        $html = pg_page_link_expand($html);
+    }
+    if ((strpos($html, '<!--pg-pf:') !== false || strpos($html, '{pg-r') !== false) && function_exists('pg_page_facts_apply')) {
+        $html = pg_page_facts_apply($html, $email);
+    }
     if (strpos($html, '<!--pg-custom-php:') !== false) {
         $html = _expand_custom_php($html);
     }
