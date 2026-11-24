@@ -5,7 +5,7 @@ module: pick_pack
 ---
 
 ## What does `includes/fn/pick_pack.php` hold?
-- Only pure functions: no query, no lang text. Callers hand in the rows they read and store what comes back. Plan `plans/pick-pack.md`; its close-out step writes the lasting topic file.
+- Only pure functions: no query, no lang text. Callers hand in the rows they read and store what comes back. The feature's start file: `pick-pack.md`.
 - Loaded by `functions.php` through `includes/fn/pick_waves.php` (the wave screens' module, `pick-pack-waves.md`). The tests require it themselves.
 
 ## How are shelf addresses sorted?
