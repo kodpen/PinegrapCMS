@@ -7150,7 +7150,7 @@ function api_schema() {
 			'returns' => 'QueueTicket',
 			'summary' => 'Call the next number to a desk',
 			'description' => 'Call next, as on the desk screen: the first number in calling order among the desk\'s services goes to the desk, for the user who has the desk open. 409 desk_not_open when the desk is closed or paused (it is opened on the desk screen); 409 desk_busy while a number is still at it; 409 nobody_waiting when nobody waits for its services. Sends the "called" notice and announces queue.called. Answers the number called.',
-			'details' => 'The calling order puts a priority person and a booking within its grace window before the others. Two desks never call one person: when another desk took them a moment earlier, the next one is called.',
+			'details' => 'The calling order puts a priority person and a booking within its grace window before the others. Two desks never call one person: when another desk took them a moment earlier, the next one is called. An owner with the user role works only at the desk they have open: another desk is 403 forbidden.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -7166,6 +7166,7 @@ function api_schema() {
 			'returns' => 'QueueTicket',
 			'summary' => 'Finish a queue number',
 			'description' => 'Finish, as on the desk screen: the number at its desk was served, and the desk may call the next. 409 ticket_state when the number is not at a desk. Announces queue.served. Answers the number.',
+			'details' => 'An owner with the user role finishes only the number at the desk they have open: another desk\'s number is 403 forbidden.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)

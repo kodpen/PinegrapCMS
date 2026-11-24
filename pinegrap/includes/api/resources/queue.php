@@ -212,6 +212,21 @@ function api_queue_scope() {
 
 }
 
+// Whether the owner may work at a desk: roles 0-2 (scope null) at any desk,
+// for whoever has it open; a user-role staff member only at the desk they
+// have open, as the desk screen. Pure.
+function api_queue_desk_reaches($scope, $desk_user_id, $owner_id) {
+
+	if ($scope === null) {
+
+		return true;
+
+	}
+
+	return ((int)$desk_user_id > 0) && ((int)$desk_user_id === (int)$owner_id);
+
+}
+
 function api_queue_place_or_fail($id, $scope) {
 
 	$place = ((int)$id > 0) ? pg_waiting_place_get($id) : null;
@@ -447,6 +462,12 @@ function api_queue_desks_call($params) {
 
 	$desk = array('id' => (int)$row['id'], 'name' => (string)$row['name'], 'state' => (string)$row['state'], 'user_id' => (int)$row['user_id'], 'services' => is_array($services) ? array_values(array_map('strval', $services)) : array());
 
+	if (!api_queue_desk_reaches($scope, $desk['user_id'], (int)api_current_app()['owner']['id'])) {
+
+		api_fail(403, 'forbidden', lang('Only the person who has this desk open can work at it.'));
+
+	}
+
 	if ($desk['state'] !== 'open') {
 
 		api_fail(409, 'desk_not_open', lang('The desk is not open. Open it on the desk screen first.'));
@@ -493,6 +514,12 @@ function api_queue_tickets_finish($params) {
 	if ((string)$row['state'] !== 'called') {
 
 		api_fail(409, 'ticket_state', lang('Only a number called to a desk can be finished.'));
+
+	}
+
+	if (!api_queue_desk_reaches($scope, (int)api_value("SELECT user_id FROM waiting_desks WHERE id = '" . (int)$row['desk_id'] . "' LIMIT 1"), (int)api_current_app()['owner']['id'])) {
+
+		api_fail(403, 'forbidden', lang('Only the person who has this desk open can work at it.'));
 
 	}
 
