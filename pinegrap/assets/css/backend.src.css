@@ -15803,6 +15803,24 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   font-weight: 600;
   color: var(--pg-fg-2);
 }
+/* The "New" line over the first message that came since the last visit: a
+   rose hairline with its words in the middle. */
+.ws-new-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 4px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--pg-tone-rose);
+  scroll-margin-top: 1rem;
+}
+.ws-new-line::before,
+.ws-new-line::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid color-mix(in srgb, var(--pg-tone-rose) 45%, transparent);
+}
 .ws-msg {
   position: relative;
   display: grid;

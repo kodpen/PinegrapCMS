@@ -2226,6 +2226,9 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array(
                 'briefing'   => $briefing,
+                // The reader's read mark before this visit moved it: the
+                // channel's "New" line stands over what came after it.
+                'read_mark'  => $membership_before ? (int) $membership_before['last_read_id'] : 0,
                 'channel'    => ws_channel_detail($viewer, $channel),
                 // Polls, agent questions, the check-in and approval requests
                 // still open, over the conversation (open_items.php).
