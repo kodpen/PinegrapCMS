@@ -4552,6 +4552,7 @@
     "Currency ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Para birimi ({var:1}) API üzerinden {var:2} uygulaması tarafından silindi (anahtar {var:3}).",
     "Currency Picker": "Para Birimi Seçici",
     "Currency code": "Para birimi kodu",
+    "Currency code shown beside amounts (empty when the site shows none)": "Tutarların yanında gösterilen para birimi kodu (site göstermiyorsa boş)",
     "Currency conversion": "Döviz çevirme",
     "Currency not enabled.": "Para birimi etkin değil.",
     "Currency picker — its own form (HTML)": "Para birimi seçici — kendi formu (HTML)",

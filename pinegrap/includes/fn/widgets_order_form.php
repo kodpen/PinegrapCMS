@@ -171,11 +171,11 @@ function pg_of_page_row_changes($row, $cfg)
 function pg_of_tokens($add_label, $skip_label, $symbol, $cart_url, $code = '')
 {
     return array(
-        '__currency_code'     => h((string)$code),
         '__add_button_label'  => h((string)$add_label),
         '__skip_button_label' => h((string)$skip_label),
         '__currency_symbol'   => h(html_entity_decode((string)$symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
         '__cart_url'          => h((string)$cart_url),
+        '__currency_code'     => h((string)$code),
     );
 }
 

@@ -1,6 +1,6 @@
 ---
 name: layout-type-converter
-description: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run
+description: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; the order form in its own file
 module: layout_convert
 ---
 
@@ -10,10 +10,12 @@ module: layout_convert
 - `ctx`: `state` (`pg_layout_convert_state()`, in `layouts.php`, from the type row), `row` (the starter's row template, `pg_layout_convert_row()`: the loop area's one column's content), `header`, `footer`.
 
 ## What is the piece map?
-- `pg_layout_piece_map($type)`: `echo` (a printed value: `none`, `token:<name>`, `ctx:<key>`, `row`), `if` (a condition: `widget` skipped, `flag` shown under the widget's flag, `empty` the widget's empty message, `keep`, `drop`; `state` = settings without which it is never drawn, `drop_when`), `else` (the flag of an "otherwise"), `loop` (`list`). Types: `pg_layout_convert_types()`; LE7 to LE10 add theirs.
+- `pg_layout_piece_map($type)`: `echo` (a printed value: `none`, `token:<name>[,<name>]`, `submit:<token>`, `ctx:<key>`, `row`), `if` (a condition: `widget` skipped, `flag` (one or nested flags) shown under the widget's flag, `empty` the widget's empty message, `section`, `keep`, `drop`; `state` = settings without which it is never drawn, `drop_when`; a key `elseif:<cond>` read only after an "else").
+- `else` (the flag of an "otherwise", or `keep`), `loop` (`list`).
+- Options `forms`, `flag_list`, `controls`, `submits`, `media`: [[layout-type-converter-order-form]]. Types: `pg_layout_convert_types()`; LE8 to LE10 add theirs.
 - A condition whose settings are off is left out unreported: the visitor never sees it. Anything the map does not name is dropped with what it holds.
-- A flag never goes on a node holding the list: the widget's empty message sits in the list's place.
-- An address or text that is one widget value alone is bound (`_bindings.href` / `text`), never typed.
+- A flag never goes on a node holding the list (the widget's empty message sits in the list's place), unless the map says `flag_list`.
+- An address, text or image source that is one widget value alone is bound (`_bindings.href` / `text` / `src`), never typed.
 
 ## What do the form list pieces become?
 - Messages, `<form>` attributes and hidden fields, the pagination: nothing, the widget draws them. The browse and search form: the widget's search box; with browse on it is dropped (`browse`).
