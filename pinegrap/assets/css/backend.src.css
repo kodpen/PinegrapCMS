@@ -23941,9 +23941,9 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   padding-right: 0;
   text-align: start;
 }
-/* Two squares beside the name, so the solid New channel button is a circle:
-   narrowed to 1.625rem and still 1.9rem tall it was an upright oval against
-   the menu's edge. A little smaller than the list's buttons, so the name
+/* Two squares beside the name: the New channel button narrowed to
+   1.625rem and still 1.9rem tall was an upright oval against the menu's
+   edge. A little smaller than the list's buttons, so the name
    keeps to one line when a long list gives the menu body a classic
    scrollbar; still over the 24px target size. */
 #menu .pg-menu-panel-head .ws-side-head-tools .ws-side-tool {

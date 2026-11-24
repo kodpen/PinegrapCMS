@@ -160,22 +160,22 @@
         "field": 128
     },
     "assets/js/workspace_acks.js": {
-        "button": 2,
+        "button": 0,
         "tabs": 0,
         "field": 1
     },
     "assets/js/workspace_approvals.js": {
-        "button": 9,
+        "button": 0,
         "tabs": 0,
         "field": 20
     },
     "assets/js/workspace_board_channel.js": {
-        "button": 4,
+        "button": 2,
         "tabs": 0,
         "field": 2
     },
     "assets/js/workspace_customer.js": {
-        "button": 12,
+        "button": 0,
         "tabs": 0,
         "field": 5
     },
@@ -204,32 +204,32 @@
         "field": 35
     },
     "assets/js/workspace_note_group_shares.js": {
-        "button": 2,
+        "button": 0,
         "tabs": 0,
         "field": 3
     },
     "assets/js/workspace_note_groups.js": {
-        "button": 1,
+        "button": 0,
         "tabs": 0,
         "field": 3
     },
     "assets/js/workspace_note_lock.js": {
-        "button": 5,
+        "button": 0,
         "tabs": 0,
         "field": 6
     },
     "assets/js/workspace_page_card.js": {
-        "button": 16,
+        "button": 0,
         "tabs": 0,
         "field": 1
     },
     "assets/js/workspace_palette.js": {
-        "button": 4,
+        "button": 1,
         "tabs": 0,
         "field": 1
     },
     "assets/js/workspace_recurrence.js": {
-        "button": 4,
+        "button": 1,
         "tabs": 0,
         "field": 10
     },
@@ -238,37 +238,33 @@
         "tabs": 0,
         "field": 7
     },
-    "assets/js/workspace_side.js": {
-        "button": 5,
-        "tabs": 0
-    },
     "assets/js/workspace_status.js": {
-        "button": 6,
+        "button": 1,
         "tabs": 0,
         "field": 9
     },
     "assets/js/workspace_task_approval.js": {
-        "button": 4,
+        "button": 0,
         "tabs": 0,
         "field": 5
     },
     "assets/js/workspace_task_delegate.js": {
-        "button": 7,
+        "button": 0,
         "tabs": 0,
         "field": 3
     },
     "assets/js/workspace_task_links.js": {
-        "button": 1,
+        "button": 0,
         "tabs": 0,
         "field": 1
     },
     "assets/js/workspace_task_time.js": {
-        "button": 10,
+        "button": 0,
         "tabs": 0,
         "field": 10
     },
     "assets/js/workspace_templates.js": {
-        "button": 13,
+        "button": 2,
         "tabs": 0,
         "field": 13
     },
@@ -909,10 +905,6 @@
         "tabs": 0,
         "field": 7
     },
-    "includes/workspace/templates.php": {
-        "button": 5,
-        "tabs": 0
-    },
     "includes/workspace/workdays.php": {
         "button": 7,
         "tabs": 0,
@@ -1178,7 +1170,7 @@
         "field": 6
     },
     "workspace_template.php": {
-        "button": 2,
+        "button": 0,
         "tabs": 0,
         "field": 23
     },

@@ -351,8 +351,8 @@ pg_page_shell([
              inside its parent, and the row (the form) is as tall as the page. -->
         <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                <a class="btn btn-sm btn-text theme-secondary" href="' . h($back_url) . '">' . h(lang('Cancel')) . '</a>
-                <button type="submit" name="submit_save" value="Save" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
+                <a class="pg-button pg-button-ghost pg-button-sm" href="' . h($back_url) . '">' . h(lang('Cancel')) . '</a>
+                <button type="submit" name="submit_save" value="Save" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
             </nav>
         </div>
     </form>

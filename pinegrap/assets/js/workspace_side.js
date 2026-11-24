@@ -257,7 +257,8 @@
         node.type = 'button';
 
         if (iconName) {
-            node.appendChild(icon(iconName, label ? 'me-1' : ''));
+            // A button of the look's recipes spaces its icon with its gap.
+            node.appendChild(icon(iconName, (label && !/\bpg-button\b/.test(className)) ? 'me-1' : ''));
         }
 
         if (label) {
@@ -609,7 +610,7 @@
         var add;
 
         if (typeof hooks.newChannel === 'function') {
-            add = button('btn btn-sm btn-solid theme-primary rounded-pill ws-side-tool', '', 'bi-plus-lg', t('new_channel'));
+            add = button('pg-icon-button pg-icon-button-sm ws-side-tool', '', 'bi-plus-lg', t('new_channel'));
             add.addEventListener('click', function () {
                 if (menu()) {
                     menu().dismiss();
@@ -618,7 +619,7 @@
                 hooks.newChannel();
             });
         } else {
-            add = link('btn btn-sm btn-solid theme-primary rounded-pill ws-side-tool no-popover', workspaceUrl('view=home&new=channel'));
+            add = link('pg-icon-button pg-icon-button-sm ws-side-tool no-popover', workspaceUrl('view=home&new=channel'));
             add.title = t('new_channel');
             add.setAttribute('aria-label', add.title);
             add.setAttribute('data-pg-menu-skip', '');
@@ -630,7 +631,7 @@
 
         // Workspace Settings, for whoever holds the right (ws_nav_groups()).
         (nav.head || []).forEach(function (item) {
-            var gear = link('btn btn-sm btn-text theme-secondary rounded-pill ws-side-tool no-popover' + (navActive(item) ? ' active' : ''), item.url);
+            var gear = link('pg-icon-button pg-icon-button-sm ws-side-tool no-popover' + (navActive(item) ? ' active' : ''), item.url);
 
             gear.setAttribute('data-ws-nav', item.key);
             gear.setAttribute('data-ws-side-key', 'nav:' + item.key);
@@ -1281,7 +1282,7 @@
             });
 
             if (!talksShut && (threads.length > THREADS_SHOWN)) {
-                var more = button('btn btn-sm btn-link pg-link-secondary ws-side-more', state.threadsAll ? t('th_show_fewer') : t('th_show_all', threads.length));
+                var more = button('pg-button pg-button-ghost pg-button-sm ws-side-more', state.threadsAll ? t('th_show_fewer') : t('th_show_all', threads.length));
 
                 more.setAttribute('data-ws-side-key', 'threads-more');
                 more.addEventListener('click', function () {
@@ -1423,7 +1424,7 @@
         box.setAttribute('role', 'alert');
         box.appendChild(el('div', '', message || root.getAttribute('data-ws-side-error') || ''));
 
-        var again = button('btn btn-sm btn-outline theme-secondary', root.getAttribute('data-ws-side-retry') || '', 'bi-arrow-clockwise');
+        var again = button('pg-button pg-button-quiet pg-button-sm', root.getAttribute('data-ws-side-retry') || '', 'bi-arrow-clockwise');
 
         again.addEventListener('click', function () {
             load();

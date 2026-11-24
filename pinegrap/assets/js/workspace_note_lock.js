@@ -466,8 +466,8 @@
             kit.clear(formNode);
 
             var pin = pinField(kit, kit.t('nlock_pin'), 'ws-nb-lock-pane-pin');
-            var open = kit.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', kit.t('nlock_open'), 'bi-unlock');
-            var forgot = kit.button('btn btn-sm btn-text theme-secondary', kit.t('nlock_forgot'));
+            var open = kit.lookButton('pg-button pg-button-fill pg-button-sm', kit.t('nlock_open'), 'bi-unlock');
+            var forgot = kit.lookButton('pg-button pg-button-ghost pg-button-sm', kit.t('nlock_forgot'), '');
 
             open.type = 'submit';
             forgot.type = 'button';
@@ -524,8 +524,8 @@
             var code = kit.el('input', 'form-control form-control-sm');
             var pin = pinField(kit, kit.t('nlock_pin_new'), 'ws-nb-lock-pane-new');
             var pin2 = pinField(kit, kit.t('nlock_pin_again'), 'ws-nb-lock-pane-new2');
-            var save = kit.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', kit.t('nlock_new_pin_save'), 'bi-key');
-            var back = kit.button('btn btn-sm btn-text theme-secondary', kit.t('nlock_back_to_pin'));
+            var save = kit.lookButton('pg-button pg-button-fill pg-button-sm', kit.t('nlock_new_pin_save'), 'bi-key');
+            var back = kit.lookButton('pg-button pg-button-ghost pg-button-sm', kit.t('nlock_back_to_pin'), '');
 
             sent.setAttribute('role', 'status');
             code.id = 'ws-nb-lock-pane-code';

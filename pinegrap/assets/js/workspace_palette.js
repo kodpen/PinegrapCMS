@@ -221,7 +221,7 @@
         content.appendChild(head);
 
         ui.filters = el('div', 'ws-palette-filters');
-        ui.scope = el('div', 'btn-group btn-group-sm ws-palette-scope');
+        ui.scope = el('div', 'pg-seg ws-palette-scope');
         ui.scope.setAttribute('role', 'group');
         ui.filters.appendChild(ui.scope);
         ui.kinds = el('div', 'ws-palette-kinds');
@@ -283,7 +283,7 @@
 
         if (here) {
             [['all', t('pal_everywhere')], ['here', t('pal_here', here.name)]].forEach(function (option) {
-                var item = el('button', 'btn btn-text theme-secondary' + (state.scope === option[0] ? ' active' : ''), option[1]);
+                var item = el('button', 'pg-seg-item', option[1]);
                 item.type = 'button';
                 item.setAttribute('aria-pressed', state.scope === option[0] ? 'true' : 'false');
                 item.addEventListener('click', function () {
@@ -390,7 +390,7 @@
         head.appendChild(icon('bi-clock-history', 'me-1'));
         head.appendChild(document.createTextNode(t('pal_recent')));
 
-        var wipe = el('button', 'btn btn-link btn-sm ms-auto p-0 ws-palette-forget', t('pal_clear_recent'));
+        var wipe = el('button', 'pg-button pg-button-ghost pg-button-sm ms-auto ws-palette-forget', t('pal_clear_recent'));
         wipe.type = 'button';
         wipe.addEventListener('click', function () {
             forget();
@@ -499,7 +499,7 @@
         // a mouse shortcut only: no Tab stop and no part of the option's
         // name; the keyboard opens the account with Shift+Enter (onKey()).
         if (hasAccount(item)) {
-            var account = el('a', 'btn btn-sm btn-text theme-secondary ws-palette-side');
+            var account = el('a', 'pg-icon-button pg-icon-button-sm ws-palette-side');
             account.href = item.url;
             account.title = t('pal_profile');
             account.tabIndex = -1;
