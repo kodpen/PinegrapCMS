@@ -888,6 +888,9 @@ function ws_notes_present($viewer, $rows, $full = false)
             'unread'     => !empty($news[$id]['unread']),
             'claude_state' => (string) ($news[$id]['claude'] ?? ''),
             'channel'    => $made ? array('id' => (int) $made['id'], 'name' => (string) $made['name'], 'url' => $base . 'workspace.php?channel=' . (int) $made['id']) : null,
+            // The channel it belongs to (a note written there); 0 for a
+            // person's own note.
+            'owner_channel_id' => ws_note_channel_of($row),
         );
 
         if ($full) {
@@ -1089,7 +1092,7 @@ function ws_notes_list_columns()
     return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
         n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
         n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '')
-        . (ws_note_app_ready() ? ', n.updated_app_id' : '');
+        . (ws_note_app_ready() ? ', n.updated_app_id' : '') . (ws_note_channel_owner_ready() ? ', n.owner_channel_id' : '');
 }
 
 /**
@@ -1404,6 +1407,96 @@ function ws_notes_page($viewer, $options)
 }
 
 /**
+ * The rows of one page of a channel's own notes (owner_channel_id), the
+ * latest change first, then the higher id; search finds words in the
+ * titles. The position is the notes list's (ws_notes_position_pack(),
+ * group 0), so a cursor reads the same way.
+ *
+ * @param int   $channel_id
+ * @param array $options search, after (a position, null for the first
+ *                       page), limit
+ * @return array rows (with list_group), next, total
+ */
+function ws_note_channel_page_rows($channel_id, $options)
+{
+    if (((int) $channel_id <= 0) || !ws_note_channel_owner_ready()) {
+        return array('rows' => array(), 'next' => null, 'total' => 0);
+    }
+
+    $limit = max(1, min(WS_NOTES_PAGE_MAX, (int) ($options['limit'] ?? 100)));
+    $after = is_array($options['after'] ?? null) ? $options['after'] : null;
+    $search = trim(mb_substr((string) ($options['search'] ?? ''), 0, 100));
+    $where = "n.owner_channel_id = '" . (int) $channel_id . "'"
+        . (($search !== '') ? ' AND ' . ws_search_like_sql($search, array('n.title'), pg_list_search_connection_charset()) : '');
+
+    $total = (int) db_value("SELECT COUNT(*) FROM ws_notes n WHERE " . $where);
+    $rows = (array) db_items("SELECT " . ws_notes_list_columns() . ", 0 AS list_group FROM ws_notes n
+        WHERE " . $where . ws_notes_after_sql('0', $after) . "
+        ORDER BY n.updated_at DESC, n.id DESC LIMIT " . ($limit + 1));
+    $next = null;
+
+    if (count($rows) > $limit) {
+        $rows = array_slice($rows, 0, $limit);
+        $last = $rows[$limit - 1];
+        $next = array('group' => 0, 'updated_at' => (int) $last['updated_at'], 'id' => (int) $last['id']);
+    }
+
+    return array('rows' => $rows, 'next' => $next, 'total' => $total);
+}
+
+/**
+ * One page of a channel's notes for a reader of the channel (the Notes tab
+ * and GET /workspace/channels/{id}/notes), presented as the notes list
+ * presents them. Each row's access is the channel's (ws_note_access_of()):
+ * edit for who may post there, view otherwise; can_delete follows
+ * ws_note_channel_may_delete().
+ *
+ * @param array $viewer
+ * @param array $channel one the viewer may read
+ * @param array $options see ws_note_channel_page_rows()
+ * @return array rows (presented), next, total
+ */
+function ws_note_channel_page($viewer, $channel, $options)
+{
+    if (!ws_notes_ready() || !is_array($channel) || !ws_can_read_channel($viewer, $channel)) {
+        return array('rows' => array(), 'next' => null, 'total' => 0);
+    }
+
+    $page = ws_note_channel_page_rows((int) $channel['id'], $options);
+    $access = ws_can_post_channel($viewer, $channel) ? 'edit' : 'view';
+    $manages = ws_can_manage_channel($viewer, $channel);
+
+    foreach ($page['rows'] as $index => $row) {
+        $page['rows'][$index]['access'] = $access;
+    }
+
+    $presented = ws_notes_present($viewer, $page['rows']);
+
+    foreach ($presented as $index => $note) {
+        $presented[$index]['can_delete'] = ws_note_channel_may_delete((int) $page['rows'][$index]['user_id'] === (int) $viewer['id'], true, $manages);
+    }
+
+    $page['rows'] = $presented;
+
+    return $page;
+}
+
+/**
+ * How many notes a channel keeps: the Notes tab is shown once it has one.
+ *
+ * @param int $channel_id
+ * @return int
+ */
+function ws_note_channel_count($channel_id)
+{
+    if (((int) $channel_id <= 0) || !ws_notes_ready() || !ws_note_channel_owner_ready()) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT COUNT(*) FROM ws_notes WHERE owner_channel_id = '" . (int) $channel_id . "'");
+}
+
+/**
  * Whether the person may write this note: the checks of ws_note_save(), made
  * on their own so that the API's dry run meets the same refusals.
  *
@@ -1651,8 +1744,24 @@ function ws_note_ask_tags($viewer, $note, $old, $new, $only_channel_id = 0)
 }
 
 /**
- * Whether the person may delete a note: its owner only. The screen's delete
- * and the API's (and its dry run) meet the same refusal.
+ * Who may delete a channel's note: its writer while they still read the
+ * channel, and whoever manages the channel. Pure.
+ *
+ * @param bool $writer     the person wrote it (user_id)
+ * @param bool $can_read   the person reads its channel
+ * @param bool $can_manage the person manages its channel
+ * @return bool
+ */
+function ws_note_channel_may_delete($writer, $can_read, $can_manage)
+{
+    return ($writer && $can_read) || $can_manage;
+}
+
+/**
+ * Whether the person may delete a note: a person's note by its owner only;
+ * a channel's note by its writer or whoever manages the channel
+ * (ws_note_channel_may_delete()). The screen's delete and the API's (and
+ * its dry run) meet the same refusal.
  *
  * @param array $viewer
  * @param array $note
@@ -1660,6 +1769,20 @@ function ws_note_ask_tags($viewer, $note, $old, $new, $only_channel_id = 0)
  */
 function ws_note_delete_check($viewer, $note)
 {
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        $channel = ws_channel($owner_channel);
+        $may = is_array($channel) && ws_note_channel_may_delete(
+            (int) $note['user_id'] === (int) $viewer['id'],
+            ws_can_read_channel($viewer, $channel),
+            ws_can_manage_channel($viewer, $channel)
+        );
+
+        return $may ? array('ok' => true, 'error' => '')
+            : array('ok' => false, 'error' => lang('Only the one who wrote a note or who manages its channel can delete it.'));
+    }
+
     if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
         return array('ok' => false, 'error' => lang('Only the one who wrote a note can delete it.'));
     }
@@ -2432,6 +2555,8 @@ function ws_note_cards_map($viewer, $message_ids)
             'channel_edit' => !empty($share['can_edit']),
             'via_group'    => !empty($share['via_group']),
             'versions'     => $kept[(int) $note['id']] ?? 0,
+            // A note of the channel's own: its foot says who wrote it.
+            'owned'        => ws_note_channel_of($note) > 0,
         );
     }
 
@@ -3316,5 +3441,16 @@ function ws_notes_js_strings()
         'cn_open_notes'         => lang('Open on the notes screen'),
         'cn_show'               => lang('Show'),
         'cn_put_back_done'      => lang('The version was put back.'),
+        // A channel's own notes: the card's foot and the Notes tab.
+        'cn_written_by'         => ws_js_template('Written by {var:1}', 1),
+        'cn_changed_by'         => ws_js_template('Changed by {var:1}', 1),
+        'cn_tab'                => lang('Notes'),
+        'cn_tab_count'          => ws_js_template('{var:1} notes', 1),
+        'cn_search'             => lang('Search the titles'),
+        'cn_open'               => lang('Open'),
+        'cn_none'               => lang('No notes have been written here yet.'),
+        'cn_none_found'         => lang('No note has that in its title.'),
+        'cn_older'              => lang('Older notes'),
+        'cn_delete_confirm'     => lang('Delete this note? It disappears for everybody in the channel.'),
     );
 }

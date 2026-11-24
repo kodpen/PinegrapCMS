@@ -26,7 +26,7 @@ priority: 6
 
 ## Which steps? (all enter `includes/workspace/notes.php`: one worker at a time)
 - CN1 (M), done (#11198): the column in a migration step; `ws_note_access_of()`; every reader of a person's notes leaves a channel's note out, held by a guard test like the notes lock's (`workspace/workspace-note-lock-readers.md`); the two writers; the channel's delete and the limit.
-- CN2 (M): the Notes tab, the list route, "Written by", who deletes.
+- CN2 (M), done (#11226): the Notes tab, the list route, "Written by", who deletes.
 - CN3 (S): "Move to this channel", "Copy to my notes", the move route, the agent instructions' note lines, then the close-out.
 - Check of a step on a sandbox with the Workspace on, 1440 and 390 px, both themes: a note written by a person and by an agent's key, My Notes before and after, an archived channel.
 

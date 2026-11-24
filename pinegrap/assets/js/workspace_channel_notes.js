@@ -23,7 +23,15 @@
  * list the notes screen reads; Put back saves the chosen version's text as
  * a change of the note, for who may edit. Write a note (the composer's
  * attach menu) writes the note and its card in one move
- * (ws_note_channel_write).
+ * (ws_note_channel_write); the note belongs to the channel, and its card's
+ * foot names who wrote it ("Written by").
+ *
+ * The channel's Notes tab (tab()) lists the notes that belong to it as the
+ * Files tab lists files: a bar with a search over the titles and "Write a
+ * note" at its end, then one row per note (title, "Changed by <name> ·
+ * <time>"), the latest change first, read a page at a time
+ * (ws_channel_notes). A row opens the note; its menu holds Open, Versions,
+ * Export and, for its writer and the channel's managers, Delete.
  *
  * assets/js/workspace.js calls card() from noteCardNode() and write() from
  * the attach menu, lending its helpers through window.PGWsKit and the
@@ -89,12 +97,13 @@
         return (version && version.changed_by) ? version.changed_by : t('notes_person');
     }
 
-    // The foot's words, in order: the owner, then who changed it last. Pure.
+    // The foot's words, in order: the owner (for a channel's note, who
+    // wrote it), then who changed it last. Pure.
     function footWords(card, t) {
         var words = [];
 
         if (card && card.owner) {
-            words.push(t('notes_owner', card.owner.name));
+            words.push(t(card.owned ? 'cn_written_by' : 'notes_owner', card.owner.name));
         }
 
         var changed = changedWords(card, t);
@@ -122,10 +131,11 @@
         return !!card && (card.access === 'owner' || card.access === 'edit');
     }
 
-    // The card menu's items a reader gets, in order: everyone reads it,
-    // sees its versions and opens it on the notes screen; Edit for who may
-    // change it; the channel's edit switch for its owner on the channel's
-    // own share (a group's share is the group's). Pure.
+    // The card menu's items a reader gets, in order: everyone reads it and
+    // sees its versions; a person's note opens on the notes screen (a
+    // channel's note is on nobody's); Edit for who may change it; the
+    // channel's edit switch for its owner on the channel's own share (a
+    // group's share is the group's). Pure.
     function menuItems(card) {
         var items = ['read'];
 
@@ -133,13 +143,48 @@
             items.push('edit');
         }
 
-        items.push('versions', 'open');
+        items.push('versions');
+
+        if (!card || !card.owned) {
+            items.push('open');
+        }
 
         if (card && card.access === 'owner' && (card.channel_id > 0) && !card.via_group) {
             items.push('channel_edit');
         }
 
         return items;
+    }
+
+    // A row menu's items in the Notes tab, in order: Open, Versions, Export
+    // when the screen can export, Delete for who may. Pure.
+    function rowItems(note, canExport) {
+        var items = ['open', 'versions'];
+
+        if (canExport) {
+            items.push('export');
+        }
+
+        if (note && note.can_delete) {
+            items.push('delete');
+        }
+
+        return items;
+    }
+
+    // Whether the channel shows its Notes tab: once it has a note, or while
+    // the tab is the one open (its last note was just deleted). Pure.
+    function tabShown(counts, current) {
+        return (current === 'notes') || (!!counts && (counts.notes > 0));
+    }
+
+    // A row's meta line: who changed it last and when. Pure.
+    function rowMeta(note, t) {
+        if (!note || !note.changed_by) {
+            return note && note.updated ? note.updated : '';
+        }
+
+        return t('cn_changed_by', note.changed_by) + (note.updated ? ' · ' + note.updated : '');
     }
 
     // A Bootstrap 6 dialog with a header, a body and a footer, added to the
@@ -247,9 +292,6 @@
             return;
         }
 
-        var edit = kit.form.switchRow(kit.t('cn_channel_edit'), false);
-
-        win.body.appendChild(edit.row);
         win.footer.appendChild(kit.el('span', 'flex-grow-1'));
 
         var cancel = lookButton(kit, 'ghost', kit.t('cancel'));
@@ -267,8 +309,7 @@
             kit.api('ws_note_channel_write', {
                 channel_id: hooks.channelId,
                 title: box.title.value,
-                body: box.field.value(),
-                channel_edit: edit.input.checked ? 1 : 0
+                body: box.field.value()
             }).then(function () {
                 pgUI.dialog.hide(win.node).then(function () {
                     if (hooks.sync) {
@@ -748,8 +789,184 @@
         return box;
     }
 
+    /**
+     * The channel's Notes tab: its bar, then its notes a page at a time.
+     *
+     * @param {object}      kit     window.PGWsKit
+     * @param {HTMLElement} pane    the tab's pane
+     * @param {object}      channel the open channel (id, can_post)
+     * @param {object}      hooks   noteHooks() of the screen, with
+     *                              current() (whether the pane is still
+     *                              shown) and counted() (the tab marks
+     *                              may have changed)
+     */
+    function tab(kit, pane, channel, hooks) {
+        var loaded = [];
+        var after = 0;
+        var afterId = 0;
+        var query = '';
+        var bar = kit.el('div', 'pg-toolbar ws-pane-toolbar ws-cn-bar');
+        var search = kit.el('label', 'pg-input pg-input-sm ws-bar-search');
+        var input = kit.el('input', '');
+        var body = kit.el('div', 'ws-cn-tab-body');
+
+        search.appendChild(kit.icon('bi-search', ''));
+        input.type = 'search';
+        input.placeholder = kit.t('cn_search');
+        input.setAttribute('aria-label', kit.t('cn_search'));
+        search.appendChild(input);
+        bar.appendChild(search);
+        bar.appendChild(kit.el('span', 'flex-grow-1'));
+
+        if (channel.can_post) {
+            var add = lookButton(kit, 'fill', kit.t('cn_write'), 'bi-journal-plus');
+
+            add.classList.add('pg-button-sm');
+            add.addEventListener('click', function () { write(kit, hooks); });
+            bar.appendChild(add);
+        }
+
+        pane.appendChild(bar);
+        pane.appendChild(body);
+
+        var remove = function (note) {
+            kit.ask(kit.t('cn_delete_confirm'), kit.t('notes_delete'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                kit.api('ws_note_delete', { note_id: note.id }).then(function () {
+                    kit.toast(kit.t('notes_deleted'), 'success');
+                    loaded = loaded.filter(function (one) { return one.id !== note.id; });
+                    draw();
+
+                    if (hooks.counted) {
+                        hooks.counted();
+                    }
+                }).catch(kit.fail);
+            });
+        };
+
+        var menu = function (note) {
+            var url = kit.cfg.urls && kit.cfg.urls.notes_export;
+            var actions = {
+                open: { icon: 'bi-eye', label: kit.t('cn_open'), action: function () { hooks.read(note.id); } },
+                versions: { icon: 'bi-clock-history', label: kit.t('cn_versions'), action: function () { versions(kit, hooks, note); } },
+                'export': { icon: 'bi-filetype-md', label: kit.t('notes_export_md'), action: function () { window.location.href = url + '?note=' + note.id; } },
+                'delete': { icon: 'bi-trash', label: kit.t('notes_delete'), danger: true, action: function () { remove(note); } }
+            };
+            var items = [{ header: note.name }];
+
+            rowItems(note, !!url).forEach(function (name) {
+                if (name === 'delete') {
+                    items.push('-');
+                }
+
+                items.push(actions[name]);
+            });
+
+            return items;
+        };
+
+        var draw = function () {
+            kit.clear(body);
+
+            if (!loaded.length) {
+                var empty = kit.el('div', 'ws-empty');
+
+                empty.appendChild(kit.icon('bi-journal-text'));
+                empty.appendChild(document.createTextNode(kit.t(query ? 'cn_none_found' : 'cn_none')));
+                body.appendChild(empty);
+                return;
+            }
+
+            var list = kit.el('div', 'ws-file-list');
+
+            loaded.forEach(function (note) {
+                var row = kit.el('div', 'ws-file-row ws-file-shows ws-cn-row');
+                var link = kit.el('button', 'ws-file-link');
+
+                link.type = 'button';
+                link.appendChild(kit.icon('bi-journal-text', 'ws-cn-row-icon'));
+                link.appendChild(kit.el('span', 'text-truncate', note.name));
+                link.addEventListener('click', function () { hooks.read(note.id); });
+                row.appendChild(link);
+
+                var meta = kit.el('small', 'fg-secondary ws-grow ws-file-meta', rowMeta(note, kit.t));
+
+                meta.title = meta.textContent;
+                row.appendChild(meta);
+
+                var more = kit.el('button', 'pg-icon-button pg-icon-button-sm');
+
+                more.type = 'button';
+                more.setAttribute('aria-label', kit.t('cn_menu'));
+                more.setAttribute('aria-haspopup', 'menu');
+                more.title = kit.t('cn_menu');
+                more.appendChild(kit.icon('bi-three-dots'));
+                more.addEventListener('click', function (event) {
+                    var place = more.getBoundingClientRect();
+
+                    event.stopPropagation();
+                    hooks.menu(more, place.left, place.bottom + 4, menu(note));
+                });
+                row.appendChild(more);
+                row.addEventListener('click', function (event) {
+                    if (!event.target.closest('button')) {
+                        hooks.read(note.id);
+                    }
+                });
+                kit.onContext(row, function () { return menu(note); });
+                list.appendChild(row);
+            });
+
+            body.appendChild(list);
+
+            if (afterId > 0) {
+                var older = lookButton(kit, 'quiet', kit.t('cn_older'), 'bi-chevron-down');
+
+                older.classList.add('pg-button-sm', 'ws-files-older');
+                older.addEventListener('click', function () {
+                    older.disabled = true;
+                    load(false);
+                });
+                body.appendChild(older);
+            }
+        };
+
+        // A page; a new search starts again from the top.
+        var load = function (fresh) {
+            var params = { channel_id: channel.id, q: query };
+
+            if (!fresh && (afterId > 0)) {
+                params.after = after;
+                params.after_id = afterId;
+            }
+
+            kit.api('ws_channel_notes', params).then(function (data) {
+                if (hooks.current && !hooks.current()) {
+                    return;
+                }
+
+                loaded = fresh ? (data.notes || []) : loaded.concat(data.notes || []);
+                after = data.after || 0;
+                afterId = data.after_id || 0;
+                draw();
+            }).catch(kit.fail);
+        };
+
+        input.addEventListener('input', kit.debounce(function () {
+            query = input.value.trim();
+            load(true);
+        }, 300));
+
+        load(true);
+    }
+
     window.PGWsChannelNotes = {
         card: cardNode,
-        write: write
+        write: write,
+        tab: tab,
+        tabShown: tabShown
     };
 })();

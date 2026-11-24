@@ -6,7 +6,8 @@
  * (POST /workspace/channels/{id}/notes): the note and its card in one move,
  * as "Write a note" under the composer's paperclip does. The route runs the
  * panel's own check (ws_note_channel_write_check()) before its dry run stops,
- * so both meet the same refusals.
+ * so both meet the same refusals. GET lists the channel's own notes, as its
+ * Notes tab does (ws_note_channel_page()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -31,6 +32,24 @@ function ws_channel_note_api_routes()
 {
     return array(
         array(
+            'id'          => 'workspace.channels.notes.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/notes',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_notes_list',
+            'returns'     => array('list' => 'WorkspaceNote'),
+            'summary'     => 'The notes of a channel',
+            'description' => 'The channel\'s Notes tab: the notes written in the channel, which belong to it (owner_channel_id), the latest changed first. search finds words in the titles; page.total counts the matches. Page with next_cursor until has_more is false. text and body are null here: GET /workspace/notes/{id}. access is edit for who may post in the channel, view otherwise. A channel the owner may not read: 404.',
+            'details'     => 'A channel\'s note is on nobody\'s own notes (GET /workspace/notes): it is read and changed by the channel\'s rights. owner is the one who wrote it. Its writer and whoever manages the channel delete it with DELETE /workspace/notes/{id}. A person\'s own note shared in the channel is not listed here.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words in the title.'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 100, 'description' => 'Notes per page.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.channels.notes.create',
             'method'      => 'POST',
             'path'        => '/workspace/channels/{id}/notes',
@@ -40,13 +59,13 @@ function ws_channel_note_api_routes()
             'returns'     => ws_api_channel_note_written_schema(),
             'status'      => 201,
             'summary'     => 'Write a note in a channel',
-            'description' => 'Writes a new note of the owner\'s and posts its card in a channel the owner may post in, in one move. The card always shows the note as it is; change it later with POST /workspace/notes/{id} and its revision (no new message). A body over 60,000 characters: 422, never cut. channel_edit true lets the channel\'s posters change it; left out, they only read it. The answer gives the card\'s message id, the note id and its revision. A channel the owner may not post in: 403; an empty or too long note, or the note limit: 422 validation_failed.',
-            'details'     => 'As Write a note under the panel\'s paperclip does. A change to the note touches the card\'s message, so changed_since returns it. body Markdown: a heading of four or more # becomes ###, a line underlined with = or - becomes a heading. channel_edit gives access edit. Who the card\'s message is written as follows POST /workspace/channels/{id}/files. The revision is the base of the next change. Send an Idempotency-Key so a retried call does not write twice.',
+            'description' => 'Writes a new note of the channel\'s and posts its card in a channel the owner may post in, in one move; who may post there changes it. The card always shows the note as it is; change it later with POST /workspace/notes/{id} and its revision (no new message). A body over 60,000 characters: 422, never cut. The answer gives the card\'s message id, the note id and its revision. A channel the owner may not post in: 403; an empty or too long note, or the channel\'s note limit: 422 validation_failed.',
+            'details'     => 'The note belongs to the channel: GET /workspace/channels/{id}/notes lists it, and it is on nobody\'s own notes. As Write a note under the panel\'s paperclip does. A change to the note touches the card\'s message, so changed_since returns it. body Markdown: a heading of four or more # becomes ###, a line underlined with = or - becomes a heading. channel_edit gives access edit. Who the card\'s message is written as follows POST /workspace/channels/{id}/files. The revision is the base of the next change. Send an Idempotency-Key so a retried call does not write twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The note\'s title. Left out, its first line names it.'),
                 array('name' => 'body', 'in' => 'body', 'type' => 'string', 'required' => true, 'description' => 'The note\'s text, in Markdown, at most 60,000 characters.'),
-                array('name' => 'channel_edit', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the people who may post in the channel may change the note. Left out, false.'),
+                array('name' => 'channel_edit', 'in' => 'body', 'type' => 'bool', 'description' => 'Kept for older callers and ignored: who may post in the channel changes its notes.'),
             ),
         ),
     );
@@ -56,6 +75,43 @@ function ws_channel_note_api_routes()
 function ws_api_channel_note_written_schema()
 {
     return array('message_id' => 'integer', 'note_id' => 'integer', 'revision' => 'integer');
+}
+
+/**
+ * A channel's own notes, a page at a time (ws_note_channel_page()).
+ */
+function ws_api_channel_notes_list($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+    $after = null;
+
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+        $after = ($cursor === null) ? null : ws_notes_position_unpack($cursor['v'], $cursor['i']);
+
+        if (($after === null) || ((int) $after['group'] !== 0)) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
+    }
+
+    $limit = (int) ($params['limit'] ?? 100);
+    $page = ws_note_channel_page($viewer, $channel, array(
+        'search' => (string) ($params['search'] ?? ''),
+        'after'  => $after,
+        'limit'  => $limit,
+    ));
+    $out = array();
+
+    foreach ($page['rows'] as $note) {
+        $out[] = ws_api_note_present($viewer, $note);
+    }
+
+    $next = ($page['next'] !== null)
+        ? api_cursor_encode(ws_notes_position_pack(0, $page['next']['updated_at']), $page['next']['id'])
+        : null;
+
+    api_ok_list($out, $limit, $next, $page['total']);
 }
 
 /**

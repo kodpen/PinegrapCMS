@@ -207,3 +207,45 @@ function test_ws_channel_notes_card_send_options()
 	pg_assert_contains('ws_note_card_send_options($options)', $share, 'the share passes them on');
 	pg_assert_contains("empty(\$options['can_edit']) ? 0 : 1", $share, 'and stores the switch');
 }
+
+// Who deletes a channel's note: its writer while they read the channel, and
+// whoever manages the channel.
+function test_ws_channel_notes_who_deletes()
+{
+	pg_assert_true(ws_note_channel_may_delete(true, true, false), 'the writer who reads the channel');
+	pg_assert_true(!ws_note_channel_may_delete(true, false, false), 'not a writer who left the channel');
+	pg_assert_true(ws_note_channel_may_delete(false, true, true), 'whoever manages the channel');
+	pg_assert_true(!ws_note_channel_may_delete(false, true, false), 'not another reader or poster');
+
+	$check = ws_channel_notes_test_source('ws_note_delete_check');
+
+	pg_assert_contains('ws_note_channel_may_delete(', $check, 'the delete check asks the pure rule for a channel\'s note');
+	pg_assert_contains('ws_can_manage_channel($viewer, $channel)', $check, 'with the channel\'s managers');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_contains("case 'ws_note_delete':\n            // ws_note_delete() checks who may", $actions, 'the panel\'s delete leaves the decision to the check');
+}
+
+// The Notes tab's list and its route.
+function test_ws_channel_notes_list()
+{
+	pg_assert_same(array('rows' => array(), 'next' => null, 'total' => 0), ws_note_channel_page_rows(0, array()), 'no channel, no notes');
+
+	$rows = ws_channel_notes_test_source('ws_note_channel_page_rows');
+
+	pg_assert_contains("n.owner_channel_id = '\" . (int) \$channel_id . \"'", $rows, 'only the channel\'s own notes');
+	pg_assert_contains("array('n.title')", $rows, 'the search is over the titles');
+	pg_assert_contains('ORDER BY n.updated_at DESC, n.id DESC', $rows, 'the latest change first');
+
+	$page = ws_channel_notes_test_source('ws_note_channel_page');
+
+	pg_assert_contains("ws_can_post_channel(\$viewer, \$channel) ? 'edit' : 'view'", $page, 'access is the channel\'s');
+
+	$routes = ws_channel_note_api_routes();
+	$ids = array_column($routes, 'id');
+
+	pg_assert_true(in_array('workspace.channels.notes.list', $ids, true), 'GET /workspace/channels/{id}/notes is a route');
+	pg_assert_same('ws_api_channel_notes_list', $routes[array_search('workspace.channels.notes.list', $ids, true)]['handler'], 'with its handler');
+	pg_assert_true(function_exists('ws_api_channel_notes_list'), 'which exists');
+}

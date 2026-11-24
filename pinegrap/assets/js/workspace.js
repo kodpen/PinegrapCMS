@@ -12346,7 +12346,15 @@
             tabs.setAttribute('role', 'tablist');
             self.tabsNode = tabs;
 
-            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]];
+            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')]];
+
+            // The Notes tab beside Files, once the channel has a note of its
+            // own (workspace_channel_notes.js).
+            if (window.PGWsChannelNotes && window.PGWsChannelNotes.tabShown(channel.tab_counts, self.tab)) {
+                tabList.push(['notes', t('cn_tab')]);
+            }
+
+            tabList.push(['summary', t('tab_summary')]);
 
             if (self.hasBoard(channel)) {
                 tabList.push(['board', t('tab_board')]);
@@ -12495,6 +12503,11 @@
                 self.loadList('ws_channel_decisions', t('no_decisions'));
             } else if (self.tab === 'files') {
                 self.drawFiles();
+            } else if ((self.tab === 'notes') && window.PGWsChannelNotes) {
+                window.PGWsChannelNotes.tab(window.PGWsKit, pane, channel, Object.assign(self.noteHooks(), {
+                    current: function () { return (self.channel === channel) && (self.pane === pane); },
+                    counted: function () { self.sync(); }
+                }));
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
             } else if ((self.tab === 'memory') && window.PGWsMemory && channel.memory) {
@@ -12528,7 +12541,28 @@
                 return;
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            // The channel's first note came while the screen was open: its
+            // Notes tab is added after Files, as drawCenter() places it.
+            var filesTab = self.tabsNode.querySelector('[data-ws-tab="files"]');
+
+            if (filesTab && window.PGWsChannelNotes && window.PGWsChannelNotes.tabShown(counts, self.tab) && !self.tabsNode.querySelector('[data-ws-tab="notes"]')) {
+                var notesTab = button('', t('cn_tab'));
+
+                notesTab.id = filesTab.id.replace(/-files$/, '-notes');
+                notesTab.setAttribute('role', 'tab');
+                notesTab.setAttribute('aria-selected', 'false');
+                notesTab.setAttribute('aria-controls', filesTab.getAttribute('aria-controls'));
+                notesTab.tabIndex = -1;
+                notesTab.setAttribute('data-ws-tab', 'notes');
+                notesTab.addEventListener('click', function () {
+                    self.tab = 'notes';
+                    self.drawCenter();
+                    self.syncAddress();
+                });
+                filesTab.insertAdjacentElement('afterend', notesTab);
+            }
+
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['notes', counts.notes, 'cn_tab_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
