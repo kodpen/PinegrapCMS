@@ -187,6 +187,12 @@ function webhook_payloads_test_builders()
 		'pg_lead_event_payload' => function () {
 			return pg_lead_event_payload(array('contact_id' => 4, 'interest' => 70, 'fit' => 40, 'reasons' => array(array('kind' => 'form', 'points' => 20)), 'topics' => array(array('name' => 'Services')), 'last_visit_at' => 1000), 60);
 		},
+		'pg_proto_verdict_event_payload' => function () {
+			return pg_proto_verdict_event_payload(array('id' => 9, 'link_id' => 7, 'style_id' => 3, 'page_id' => 57, 'verdict' => 'approved', 'author_name' => 'A', 'note' => '', 'created_at' => 1000), 'about-us');
+		},
+		'pg_proto_comment_event_payload' => function () {
+			return pg_proto_comment_event_payload(array('id' => 4, 'link_id' => 7, 'style_id' => 3, 'page_id' => 57, 'parent_id' => 0, 'node_id' => 'n1', 'author_name' => 'A', 'body' => 'B', 'created_at' => 1000), 'about-us');
+		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());
 		},
