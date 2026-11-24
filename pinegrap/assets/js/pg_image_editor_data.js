@@ -419,6 +419,13 @@
 
             kinds = self.dataPick.show ? M.dataShowKinds(self.dataPick.show, read.columns, read.rows) : M.dataFits(read.columns, read.rows);
 
+            // A table whose every column was deleted fits no kind, not even
+            // a plain table.
+            if (!M.dataColumns(read.columns, read.rows).length) {
+                cards.appendChild(el('p', { class: 'pgie-note', text: t('dataNoColumns') }));
+                return;
+            }
+
             if ((self.dataPick.show !== 'table') && (M.dataFits(read.columns, read.rows).length === 1)) {
                 box.insertBefore(el('p', { class: 'pgie-note', text: t('dataOnlyTable') }), cards);
             }

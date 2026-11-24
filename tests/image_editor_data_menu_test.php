@@ -282,6 +282,31 @@ function test_image_editor_data_menu_panel_column_gone()
 	pg_assert_false(in_array('dataColumnGone', $r['after'], true), 'no note once every column is there');
 }
 
+// A table with no column left: "Show on a canvas" and the Data picker say
+// so in place of the cards, and draw nothing that would fail.
+function test_image_editor_data_menu_picker_no_columns()
+{
+	$r = image_editor_data_menu_node(
+		'var answers = { data_tables: { status: "success", tables: [{ id: 9, name: "Empty", channel: "", rows: 0, tone: null }] },'
+		. ' data_rows: { status: "success", read: { columns: {}, rows: [] } } };'
+		. 'var e = fake(answers), out = {};'
+		. 'e.openDataPicker(null, { table: { id: 9, name: "Empty" }, show: "chart" });'
+		. 'out.chart = [cls(e.confirmBox, "pgie-datacard").length, cls(e.confirmBox, "pgie-note").map(function (n) { return n.textContent; })];'
+		. 'e.closeConfirm = function () { e.confirmBox = null; }; e.confirmBox = null; e.dataReads = {}; e.dataAsked = {};'
+		. 'e.openDataPicker(null); cls(e.confirmBox, "pgie-datatable")[0].listeners.click();'
+		. 'out.pick = [cls(e.confirmBox, "pgie-datacard").length, cls(e.confirmBox, "pgie-note").map(function (n) { return n.textContent; })];'
+		. 'console.log(JSON.stringify(out));', true
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(0, array('dataNoColumns')), $r['chart'], 'Show on a canvas says the table has no column');
+	pg_assert_same(array(0, array('dataNoColumns')), $r['pick'], 'the picker says so too');
+}
+
 // The server's rows of the tables: the channel's name and its tone on each
 // board, none for a table of no channel.
 function test_image_editor_data_menu_tables_shape()

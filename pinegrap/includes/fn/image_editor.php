@@ -5312,6 +5312,7 @@ function pg_image_editor_strings_data()
         'dataBack'          => lang('Back'),
         'dataReading'       => lang('Reading the table…'),
         'dataOnlyTable'     => lang('Only a table fits: this table has no number column.'),
+        'dataNoColumns'     => lang('This table has no columns to show.'),
         'dataColumnGone'    => lang('A column this layer showed was deleted from the table: pick another.'),
         'data_kind_table'   => lang('Table'),
         'data_kind_bar'     => lang('Bar chart'),
