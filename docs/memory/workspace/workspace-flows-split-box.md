@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-split-box
-description: The Split box of flows (kind split, FE12): two to five arms with whole-percent shares adding up to 100, one arm picked at random and kept on the step, arms as named arrows, trial, try, canvas
+description: The Split box of flows (kind split, FE12, #11410): two to five arms with whole-percent shares adding up to 100, one arm picked at random and kept on the step, arms as named arrows, trial, try, canvas
 ---
 
 ## What is it?
