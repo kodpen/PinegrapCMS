@@ -1551,6 +1551,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/automation-flows-bell.md: The panel's bell with the Workspace off (#9288): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again
 - workspace/automation-flows-decisions.md: Automation flows outside the Workspace (owner #8961, M1a): on at every site behind the right only, the one gate, the boxes that need the Workspace, what stays inside it, where each part is
 - workspace/automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
+- workspace/calls-choices.md: Workspace calls remember the chosen microphone, camera and speaker and the mute and camera state in the browser (CN1): the key, the fallback, the Speaker or headphones select
+- workspace/calls-leave-page.md: Leaving the Workspace during a call (CN3): links that leave the page open in a new tab, a reload or a close asks first
 - workspace/calls-overview.md: Start here for Workspace voice and video calls (plan CL1-CL8, closed with #11156): what is built, the rules every change keeps, which file answers what
 - workspace/canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads
 - workspace/canvas-data-views.md: A Data table on a canvas as a chart or table (data layer, DV1-DV6): owner decisions, where it follows its rows or is a still, its rules, which file holds each part

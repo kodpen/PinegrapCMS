@@ -505,7 +505,8 @@
 - look-system-tools.md: The system tools in look A (S6a of panel-old-screens, #10533; Clean Up in the plan's close-out): section titles, card tables, field spans, measure, what stayed
 - look-translations-screen.md: The Translations screen (translations.php) in look A (S6c): card titles, row Save and review buttons, glossary icon buttons, dialog buttons, status pills, the style block's tokens; what stayed
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
-- look-workspace-main-script.md: WL2: the buttons of assets/js/workspace.js (channel head, panes, drawers, dialogs, the writing box's Send and Send later, My Tasks, settings parts) on look A's ranks; the nine old buttons left and why
+- look-workspace-fields.md: WL8: formRow() is the form parts' field(), the form-control and form-label lines of assets/js/workspace.js on pg-input and pg-field-label, input groups, the CSS that followed, what is left
+- look-workspace-main-script.md: WL2: the buttons of assets/js/workspace.js (channel head, panes, drawers, dialogs, the writing box's Send and Send later, My Tasks, settings parts) on look A's ranks; the old buttons left and why
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, its icon and the live dot [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look [decision: decisions-made-files.md, decisions-made-panel.md, decisions-made-workspace-6.md]
@@ -548,6 +549,7 @@
 - messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive [decision: here]
 - messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d) [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
+- min-w-0-class.md: A flex column that must shrink takes Bootstrap 6's min-w-0; min-width-0 is defined nowhere and let long row titles widen a phone screen (PR #11382)
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - name-length-refusal.md: File and Catalog Manager and Pages Find & Replace refuse a name longer than its varchar column instead of letting the non-strict session cut it
