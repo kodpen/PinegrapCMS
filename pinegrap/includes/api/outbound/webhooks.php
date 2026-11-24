@@ -730,9 +730,57 @@ function api_webhook_given_up_note($url, $attempts, $error) {
 
 }
 
+// The write a delivery's outcome makes to its subscription: 'active' with the
+// time of the success, or 'failing' after the last attempt. A subscription
+// switched off while the delivery was on its way (Stop on the Events tab, a
+// channel group taken away) keeps 'disabled': the answer of a delivery
+// already sent does not switch it back on. Pure.
+function api_webhook_status_after_delivery_sql($id, $status) {
+
+	$set = ($status === 'active')
+		? "status = 'active', last_success = UNIX_TIMESTAMP()"
+		: "status = 'failing'";
+
+	return "UPDATE api_webhooks SET " . $set . "
+		WHERE id = '" . (int)$id . "' AND status <> 'disabled'";
+
+}
+
+// The next due row for the dispatcher, leaving out the subscriptions in
+// $skipped (their delivery failed earlier in this run). Pure.
+function api_webhook_due_row_sql($skipped) {
+
+	$ids = array();
+
+	foreach ((array)$skipped as $id) {
+
+		if ((int)$id > 0) {
+
+			$ids[(int)$id] = "'" . (int)$id . "'";
+
+		}
+
+	}
+
+	return "SELECT id, webhook_id, event, payload, attempts, next_attempt_at
+		FROM api_webhook_queue
+		WHERE next_attempt_at > 0 AND next_attempt_at <= UNIX_TIMESTAMP()
+		  AND attempts < '" . api_webhook_max_attempts() . "'"
+		. (empty($ids) ? "" : "
+		  AND webhook_id NOT IN (" . implode(', ', $ids) . ")") . "
+		ORDER BY next_attempt_at ASC, id ASC
+		LIMIT 1";
+
+}
+
 // Send one queued row. Answers true when it is done with - delivered, or given
-// up on - and false when it is waiting for another attempt.
-function api_webhook_deliver($row) {
+// up on - and false when it is waiting for another attempt. $reached is set
+// to whether the receiver took the row: false after a failed attempt, given
+// up or not, so the dispatcher can leave that receiver for the rest of its
+// run.
+function api_webhook_deliver($row, &$reached = null) {
+
+	$reached = true;
 
 	// A chat notification (Slack, Teams, Telegram): its target is a sealed
 	// entry, not a subscription, and its body is sent as built, without the
@@ -777,12 +825,13 @@ function api_webhook_deliver($row) {
 
 		db("DELETE FROM api_webhook_queue WHERE id = '" . (int)$row['id'] . "'");
 
-		db("UPDATE api_webhooks SET status = 'active', last_success = UNIX_TIMESTAMP()
-			WHERE id = '" . (int)$hook['id'] . "'");
+		db(api_webhook_status_after_delivery_sql($hook['id'], 'active'));
 
 		return true;
 
 	}
+
+	$reached = false;
 
 	$error = ($outcome['error'] !== '') ? $outcome['error'] : ('HTTP ' . $outcome['status']);
 
@@ -805,7 +854,7 @@ function api_webhook_deliver($row) {
 		// The subscription is marked, not deleted: the operator has to see that
 		// their address stopped answering, and silently dropping events is how
 		// an integration is discovered to be broken a week later.
-		db("UPDATE api_webhooks SET status = 'failing' WHERE id = '" . (int)$hook['id'] . "'");
+		db(api_webhook_status_after_delivery_sql($hook['id'], 'failing'));
 
 		log_activity(api_webhook_given_up_note($hook['url'], $attempts, $error), 'SYSTEM');
 
@@ -834,14 +883,15 @@ function api_webhook_dispatch($seconds = 20) {
 
 	$failed = 0;
 
+	// Subscriptions whose delivery failed in this run. A receiver that times
+	// out costs the whole timeout on every row, so trying its other rows
+	// would spend the run on it while every other subscription waits; they
+	// stay due and go on a later run.
+	$skipped = array();
+
 	while (microtime(true) < $deadline) {
 
-		$row = db_item("SELECT id, webhook_id, event, payload, attempts, next_attempt_at
-			FROM api_webhook_queue
-			WHERE next_attempt_at > 0 AND next_attempt_at <= UNIX_TIMESTAMP()
-			  AND attempts < '" . api_webhook_max_attempts() . "'
-			ORDER BY next_attempt_at ASC, id ASC
-			LIMIT 1");
+		$row = db_item(api_webhook_due_row_sql($skipped));
 
 		if (!$row) {
 
@@ -862,13 +912,21 @@ function api_webhook_dispatch($seconds = 20) {
 
 		}
 
-		if (api_webhook_deliver($row)) {
+		$reached = true;
+
+		if (api_webhook_deliver($row, $reached)) {
 
 			$sent++;
 
 		} else {
 
 			$failed++;
+
+		}
+
+		if (!$reached && ((int)$row['webhook_id'] > 0)) {
+
+			$skipped[] = (int)$row['webhook_id'];
 
 		}
 
