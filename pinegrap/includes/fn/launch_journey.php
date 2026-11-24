@@ -982,3 +982,53 @@ function pg_launch_journey_golive_allowed($left, $request)
 {
     return !$left || !empty($request['anyway']);
 }
+
+/**
+ * What GET /launch answers: the purpose the steps follow, the card's status
+ * and count, every step of the purpose with its state, level, reason and
+ * line ("hidden" for "Not for this site"), the go-live check's blockers and
+ * warnings, and what "Go live" would change itself. The same rules as the
+ * set-up card and the go-live check: nothing is judged here again. live_at
+ * stays a timestamp; the caller writes it as a moment. Pure.
+ *
+ * @param array $stored pg_launch_journey_stored_read()
+ * @param array $facts
+ * @return array
+ */
+function pg_launch_journey_report($stored, $facts)
+{
+    $purpose = ($stored['purpose'] !== '') ? $stored['purpose'] : 'other';
+    $hidden = pg_launch_journey_hidden_clean($stored['hidden']);
+    $state = pg_launch_journey_state($purpose, $facts, $hidden);
+    $check = pg_launch_journey_golive_check($purpose, $facts, $hidden);
+    $row_out = function ($row) use ($facts, $hidden) {
+        return array(
+            'key'    => $row['key'],
+            'name'   => pg_launch_journey_step_face($row['key'])['name'],
+            'state'  => $row['state'],
+            'level'  => $row['level'],
+            'reason' => $row['reason'],
+            'line'   => pg_launch_journey_step_line($row, $facts),
+            'hidden' => in_array($row['key'], $hidden, true),
+        );
+    };
+    $steps = array();
+
+    foreach (pg_launch_journey_steps($purpose) as $key) {
+        $steps[] = $row_out(array('key' => $key) + pg_launch_journey_rule($key, $facts, $purpose));
+    }
+
+    return array(
+        'purpose'        => $purpose,
+        'purpose_chosen' => ($stored['purpose'] !== ''),
+        'status'         => $state['status'],
+        'done'           => $state['done'],
+        'total'          => $state['total'],
+        'finished'       => $state['finished'],
+        'live_at'        => (int) $stored['live_at'],
+        'steps'          => $steps,
+        'blockers'       => array_map($row_out, $check['blockers']),
+        'warnings'       => array_map($row_out, $check['warnings']),
+        'go_live_changes' => pg_launch_journey_golive_changes($facts),
+    );
+}

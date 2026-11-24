@@ -361,3 +361,38 @@ function test_launch_journey_golive_allowed()
 	pg_assert_false(pg_launch_journey_golive_allowed($left, array('anyway' => 0)));
 	pg_assert_true(pg_launch_journey_golive_allowed($left, array('anyway' => 1)));
 }
+
+// GET /launch: every step of the purpose with its line, hidden marked, the
+// go-live check beside it and what "Go live" would change itself.
+function test_launch_journey_report()
+{
+	$stored = pg_launch_journey_stored_read(json_encode(array('purpose' => 'shop', 'hidden' => array('backups', 'payment_live'), 'live_at' => 1700000000)));
+	$facts = launch_journey_test_facts(array(
+		'maintenance' => true,
+		'payments'    => array(array('driver' => 'paytr', 'settings' => array('mode' => 'test'))),
+		'backup'      => 'fail',
+	));
+	$report = pg_launch_journey_report($stored, $facts);
+
+	pg_assert_same('shop', $report['purpose']);
+	pg_assert_true($report['purpose_chosen']);
+	pg_assert_same('blocked', $report['status']);
+	pg_assert_same(1700000000, $report['live_at']);
+	pg_assert_same(pg_launch_journey_steps('shop'), launch_journey_test_keys($report['steps']), 'every step, in the purpose\'s order');
+	pg_assert_same(array('maintenance', 'payment_live'), launch_journey_test_keys($report['blockers']), 'a hidden blocker still blocks');
+	pg_assert_same(array(), $report['warnings'], 'a hidden warning is left out');
+	pg_assert_same(array('maintenance'), $report['go_live_changes']);
+
+	foreach ($report['steps'] as $row) {
+		pg_assert_true(($row['name'] !== '') && ($row['line'] !== ''), $row['key'] . ' named');
+		pg_assert_same(in_array($row['key'], array('backups', 'payment_live'), true), $row['hidden'], $row['key'] . ' hidden');
+	}
+
+	// No purpose chosen: the steps follow Other, as on the card.
+	$none = pg_launch_journey_report(pg_launch_journey_stored_read(''), launch_journey_test_facts());
+	pg_assert_same('other', $none['purpose']);
+	pg_assert_false($none['purpose_chosen']);
+	pg_assert_same('ready', $none['status']);
+	pg_assert_same(0, $none['live_at']);
+	pg_assert_same(array(), $none['blockers']);
+}

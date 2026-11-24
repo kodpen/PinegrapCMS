@@ -1198,6 +1198,8 @@ function api_openapi_objects()
         'PrivacyRequest' => 'api_privacy_request_schema',
         'PrivacyRequestDetail' => 'api_privacy_request_detail_schema',
         'SystemStatus'   => 'api_system_status_schema',
+        'LaunchJourney'  => 'api_launch_schema',
+        'LaunchStep'     => 'api_launch_step_schema',
         'ApiRefusalsReport' => 'api_refusals_report_schema',
         'SalesReport'    => 'api_sales_report_schema',
         'SalesWatchReport' => 'api_sales_watch_report_schema',
