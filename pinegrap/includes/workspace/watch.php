@@ -279,6 +279,18 @@ function ws_events_catalog()
         $catalog['feedback.detractor'] = array('label' => lang('A survey gets a low score'), 'when' => lang('When a satisfaction survey answer is a low score'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
     }
 
+    // Volunteer shifts (includes/fn/volunteer_events.php), about the
+    // volunteer's contact; a short shift has no record. Listed once the
+    // volunteer tables exist.
+    if (function_exists('pg_volunteer_ready') && pg_volunteer_ready()) {
+        $catalog['volunteer.applied'] = array('label' => lang('A volunteer applies'), 'when' => lang('When a volunteer programme\'s form brings a new application'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+        $catalog['volunteer.approved'] = array('label' => lang('A volunteer is approved'), 'when' => lang('When a volunteer\'s application is approved'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+        $catalog['shift.signed_up'] = array('label' => lang('A volunteer takes a shift'), 'when' => lang('When a volunteer signs up for a shift, moves up from the waitlist or takes an offered place'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+        $catalog['shift.unfilled'] = array('label' => lang('A shift is short of volunteers'), 'when' => lang('When a shift still short of volunteers gets its first call'), 'record' => '', 'right' => 'contacts', 'filter' => '');
+        $catalog['volunteer.checked_in'] = array('label' => lang('A volunteer checks in'), 'when' => lang('When a volunteer checks in on a shift'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+        $catalog['volunteer.hours_approved'] = array('label' => lang('A volunteer\'s hours are approved'), 'when' => lang('When a coordinator approves a volunteer\'s hours'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+    }
+
     // The ERP's: invoices, receipts and payments, incoming e-documents and
     // sales quotes, for the ERP's readers (a receipt for its cash right).
     if (defined('ERP_ENABLED') && ERP_ENABLED) {
@@ -828,6 +840,11 @@ function ws_events_record_of($event, $payload)
         case 'course.completed':
         case 'feedback.received':
         case 'feedback.detractor':
+        case 'volunteer.applied':
+        case 'volunteer.approved':
+        case 'shift.signed_up':
+        case 'volunteer.checked_in':
+        case 'volunteer.hours_approved':
             return ((int) ($payload['contact_id'] ?? 0) > 0) ? array('contact', (int) $payload['contact_id']) : array('', 0);
 
         case 'stock.low':

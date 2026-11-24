@@ -307,6 +307,10 @@ function ws_flow_event_outputs()
     $feedback = array($value('survey_name', 'text', lang('Survey')), $value('kind', 'text', lang('Kind')), $value('touchpoint', 'text', lang('Touchpoint')),
         $value('record_type', 'text', lang('Record type')), $value('record_id', 'number', lang('Record')), $value('contact_id', 'number', lang('Contact')),
         $value('score', 'number', lang('Score')), $value('band', 'text', lang('Band')), $value('comment', 'text', lang('Comment')));
+    // Volunteer shifts (pg_volunteer_event_payload()).
+    $volunteer = array($value('programme', 'text', lang('Programme')), $value('contact_id', 'number', lang('Contact')));
+    $place = array_merge($volunteer, array($value('shift_id', 'number', lang('Shift')), $value('role_name', 'text', lang('Role')), $value('place', 'text', lang('Place')),
+        $value('start_at', 'text', lang('Start'))));
     $booking = array($value('name', 'text', lang('Name')), $value('email', 'text', lang('E-mail')), $value('start_at', 'text', lang('Start')),
         $value('end_at', 'text', lang('End')), $value('status', 'text', lang('Status')), $value('service_name', 'text', lang('Service')),
         $value('staff_name', 'text', lang('Staff member')));
@@ -390,6 +394,14 @@ function ws_flow_event_outputs()
         'course.completed'       => array($value('name', 'text', lang('Course')), $value('user_id', 'number', lang('User')), $value('contact_id', 'number', lang('Contact')),
             $value('completed_at', 'text', lang('Completed on'))),
         'feedback.received'      => $feedback,
+        'volunteer.applied'      => array_merge($volunteer, array($value('skills', 'text', lang('Skills')))),
+        'volunteer.approved'     => array_merge($volunteer, array($value('approved_by', 'number', lang('Approved by')))),
+        'shift.signed_up'        => array_merge($place, array($value('end_at', 'text', lang('End')), $value('how', 'text', lang('How')))),
+        'shift.unfilled'         => array($value('programme', 'text', lang('Programme')), $value('place', 'text', lang('Place')), $value('start_at', 'text', lang('Start')),
+            $value('end_at', 'text', lang('End')), $value('needed', 'number', lang('Places still free')), $value('asked', 'number', lang('Volunteers asked'))),
+        'volunteer.checked_in'   => array_merge($place, array($value('checked_in_at', 'text', lang('Checked in at')))),
+        'volunteer.hours_approved' => array($value('programme', 'text', lang('Programme')), $value('contact_id', 'number', lang('Contact')), $value('day', 'text', lang('Day')),
+            $value('minutes', 'number', lang('Minutes')), $value('approved_by', 'number', lang('Approved by'))),
         'feedback.detractor'     => array_merge($feedback, array($value('owner_id', 'number', lang('Owner')), $value('task_id', 'number', lang('Task')))),
         'credit.issued'          => $credit,
         'credit.expired'         => $credit,

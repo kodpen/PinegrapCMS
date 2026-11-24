@@ -273,6 +273,12 @@ function pg_volunteer_shift_call_send(array $programme, array $shift, $now)
         pg_volunteer_send($programme, $shift, $people[$id], 'call', $programme['call_channels']);
     }
 
+    // The first call of a shift tells that it is short of volunteers; a
+    // later call for the same shift does not again.
+    if (!json_decode((string) $before, true)) {
+        pg_volunteer_announce_unfilled($programme, $shift, count($ids));
+    }
+
     return count($ids);
 }
 

@@ -288,6 +288,14 @@ function api_webhook_core_events() {
 		// answer the answer page writes, and once per answer a low score.
 		'feedback.received'    => 'A person answered a satisfaction survey, or changed or completed their answer within 7 days (first tells which)',
 		'feedback.detractor'   => 'A satisfaction survey answer became a low score (NPS 0-6, CSAT 1-2, effort 6-7); once per answer, with the follow-up\'s owner and task',
+		// Volunteer shifts (includes/fn/volunteer_events.php): written after
+		// the row and outside a shift's lock. A document is never sent.
+		'volunteer.applied'    => 'A volunteer programme\'s form brought a new application (one a contact and programme; a second entry announces nothing)',
+		'volunteer.approved'   => 'A volunteer programme\'s application was approved',
+		'shift.signed_up'      => 'A volunteer took a place on a shift: signed up, moved up from the waitlist or took an offered place (how tells which)',
+		'shift.unfilled'       => 'A shift still short of volunteers got its first call (the general job\'s pass or Call volunteers); once a shift, not when nobody could be asked',
+		'volunteer.checked_in' => 'A volunteer checked in on a shift, by the place\'s QR poster or by a coordinator',
+		'volunteer.hours_approved' => 'A coordinator approved a volunteer\'s hours, of a shift or worked outside one',
 		'form.submitted'       => 'A visitor submitted a form',
 		// Application programmes (pg_application_event_payload()): a
 		// reviewer's sent review (application_my_reviews.php), and each

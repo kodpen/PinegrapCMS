@@ -377,9 +377,11 @@ function pg_volunteer_self_view($volunteer_id, $now)
  * @param array  $programme
  * @param int    $shift_id
  * @param string $role
+ * @param array  $signed the sign-ups moved up are added as array(id, 'waitlist'),
+ *                       for the caller to announce after the lock
  * @return int volunteers moved up
  */
-function pg_volunteer_waitlist_write(array $programme, $shift_id, $role)
+function pg_volunteer_waitlist_write(array $programme, $shift_id, $role, &$signed = array())
 {
     $shift = pg_volunteer_shift_get((int) $programme['id'], (int) $shift_id);
 
@@ -407,6 +409,7 @@ function pg_volunteer_waitlist_write(array $programme, $shift_id, $role)
         }
 
         $moved++;
+        $signed[] = array((int) $id, 'waitlist');
 
         foreach ($rows as $row) {
             if (($row['id'] === $id) && validate_email_address((string) $row['person']['email_address'])) {
@@ -493,6 +496,8 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
     $shift = pg_volunteer_shift_get((int) $programme['id'], (int) $shift_id);
     $answer = 'refused';
     $own = null;
+    // The places taken, announced once the lock is released.
+    $signed = array();
 
     foreach (($shift !== null) ? $shift['signups'] : array() as $signup) {
         if ((int) $signup['volunteer_id'] === $volunteer['id']) {
@@ -516,8 +521,10 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
                 ? db_q("UPDATE volunteer_signups SET role = ?, state = ?, swap_from = ?, offered_at = 0, cancelled_at = 0, created_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = 'cancelled'", array($choice['role'], $state, $swap, (int) $own['id'])) && (mysqli_affected_rows(db::$con) > 0)
                 : db_q("INSERT INTO volunteer_signups (programme_id, shift_id, volunteer_id, role, state, swap_from, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())", array((int) $programme['id'], (int) $shift['id'], $volunteer['id'], $choice['role'], $state, $swap));
 
+            $row_id = ($own !== null) ? (int) $own['id'] : (int) mysqli_insert_id(db::$con);
+
             if ($written && ($action === 'take')) {
-                $taker = ($own !== null) ? (int) $own['id'] : (int) mysqli_insert_id(db::$con);
+                $taker = $row_id;
                 $answer = 'asked';
 
                 if (!$programme['swap_approval']) {
@@ -529,9 +536,11 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
 
                     $shift = pg_volunteer_shift_get((int) $programme['id'], (int) $shift_id);
                     $answer = ($offered !== null) && _pg_volunteer_swap_finish($programme, $shift, $offered, $taker) ? 'signed' : 'asked';
+                    $signed = ($answer === 'signed') ? array(array($taker, 'swap')) : array();
                 }
             } elseif ($written) {
                 $answer = $state;
+                $signed = ($state === 'signed') ? array(array($row_id, 'sign_up')) : array();
             }
 
             break;
@@ -547,7 +556,7 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
                 db_q("UPDATE volunteer_signups SET state = 'cancelled', cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE shift_id = ? AND swap_from = ? AND state = 'waiting'", array((int) $shift['id'], (int) $own['id']));
 
                 if ($own['state'] === 'signed') {
-                    pg_volunteer_waitlist_write($programme, (int) $shift['id'], (string) $own['role']);
+                    pg_volunteer_waitlist_write($programme, (int) $shift['id'], (string) $own['role'], $signed);
                 }
             } elseif (($action === 'offer') || ($action === 'keep')) {
                 db_q("UPDATE volunteer_signups SET offered_at = ?, updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = 'signed'", array(($action === 'offer') ? time() : 0, (int) $own['id']));
@@ -557,6 +566,10 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
     }
 
     db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");
+
+    foreach ($signed as $place) {
+        pg_volunteer_announce('shift.signed_up', $place[0], $place[1]);
+    }
 
     return $answer;
 }
@@ -596,6 +609,10 @@ function pg_volunteer_swap_decide(array $programme, $shift_id, $taker, $approve)
         : (db_q("UPDATE volunteer_signups SET state = 'cancelled', cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = 'waiting'", array((int) $taker)) && (mysqli_affected_rows(db::$con) > 0)));
 
     db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");
+
+    if ($done && $approve) {
+        pg_volunteer_announce('shift.signed_up', (int) $taker, 'swap');
+    }
 
     return $done;
 }
