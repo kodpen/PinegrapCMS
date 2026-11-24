@@ -15888,7 +15888,9 @@ const StyleDesigner = (function () {
         '__quick_add_label':          ['quick_add_label',          _sdT('Quick Add')],
         '__special_offer_code_label': ['special_offer_code_label', _sdT('Special Offer Code')],
         '__update_button_label':      ['update_button_label',      _sdT('Update')],
-        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')]
+        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')],
+        // The express order's purchase button (its default label).
+        '__purchase_now_button_label': ['purchase_button_label',   _sdT('Place Order')]
     };
     // What a token with no sample of its own previews as: its name, readable
     // and in angle quotes ("‹Billing city›" for __billing_city, the field's
@@ -39807,6 +39809,7 @@ const StyleDesigner = (function () {
                     eo_address_book_shipping:  _sdT('Saved Addresses (shipping)'),
                     eo_upsell_offers:          _sdT('Upsell Offers (alert strip)'),
                     eo_applied_offers:         _sdT('Applied Offers (promotions active in the cart)'),
+                    eo_payment_periods:        _sdT('Recurring Totals (one line per payment period)'),
                     eo_totals:                 _sdT('Order Totals'),
                     eo_submit_button:          _sdT('Complete the Order button'),
                     eo_update_button:          _sdT('Update button')
@@ -45681,7 +45684,27 @@ const StyleDesigner = (function () {
             // container.
             ['__item_has_low_stock',              _sdT('Low stock flag (for visibility)')],
             ['__item_stock_warning',              _sdT('Low stock message (e.g. "Only 3 left")')],
-            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')]
+            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')],
+            // The row's parts alone, for a classic layout's cells.
+            ['__item_form_data_html',             _sdT('Product form fields (HTML)')],
+            ['__item_gift_card_html',             _sdT('Gift card recipient fields (HTML)')],
+            ['__item_recurring_schedule_html',    _sdT('Payment schedule fields (HTML)')],
+            ['__item_recurring_period',           _sdT('Payment period of a recurring product')],
+            ['__item_out_of_stock_message',       _sdT('Out of stock message')],
+            ['__item_calendar_event_name',        _sdT('Reserved calendar event')],
+            ['__item_calendar_event_dates',       _sdT('Reserved event date and time')]
+        ]},
+        { label: _sdT('Classic express order page'), tokens: [
+            ['__shopping_cart_label',             _sdT('The page\'s word for the cart')],
+            ['__update_button_label',             _sdT('Update button label')],
+            ['__purchase_now_button_label',       _sdT('Purchase button label')],
+            ['__special_offer_code_label',        _sdT('Offer code label')],
+            ['__special_offer_code_message',      _sdT('Offer code message')],
+            ['__retrieve_order_url',              _sdT('Address that restores this cart later')],
+            ['__currency_code',                   _sdT('Currency code shown beside amounts (empty when the site shows none)')],
+            ['__currency_selector',               _sdT('Currency pick list (its own form)')],
+            ['__opt_in_label',                    _sdT('E-mail opt-in label')],
+            ['__tax_exempt_label',                _sdT('Tax exemption label')]
         ]}
     ];
 
@@ -49335,7 +49358,35 @@ const StyleDesigner = (function () {
             ['has_shipping_cost',    _sdT('There is a shipping cost')],
             ['has_gift_card',        _sdT('A gift card is applied')],
             ['has_surcharge',        _sdT('There is a card surcharge')],
-            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')]
+            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')],
+            // A classic express order layout's two tables, totals and
+            // payment part; the row flags are the cart's.
+            ['has_today_items',             _sdT('Something is charged today')],
+            ['has_today_non_donations',     _sdT('Something other than a donation is charged today')],
+            ['has_recurring_products',      _sdT('The cart has a recurring product, charged today or later')],
+            ['has_no_recurring_products',   _sdT('The cart has no recurring product')],
+            ['has_recurring_non_donations', _sdT('A recurring product is not a donation')],
+            ['has_special_offer_code',      _sdT('The offer code box is shown')],
+            ['has_currency_code',           _sdT('A currency code is shown beside amounts')],
+            ['has_subtotal_line',           _sdT('A discount, tax, shipping or gift card comes between subtotal and total')],
+            ['has_payment',                 _sdT('Something is to be paid')],
+            ['has_gift_card_code',          _sdT('Gift cards are accepted')],
+            ['can_update_contact',          _sdT('The buyer is signed in')],
+            ['has_referral_sources',        _sdT('The site lists referral sources')],
+            ['cart_item_today',                       _sdT('Row: charged today')],
+            ['cart_item_recurring',                   _sdT('Row: a recurring product')],
+            ['cart_item_recurring_only',              _sdT('Row: a recurring product first charged later')],
+            ['cart_item_donation',                    _sdT('Row: a donation')],
+            ['cart_item_not_donation',                _sdT('Row: not a donation')],
+            ['cart_item_added_by_offer',              _sdT('Row: added by an offer (quantity fixed)')],
+            ['cart_item_quantity_editable',           _sdT('Row: the visitor may change the quantity')],
+            ['cart_item_recurring_quantity_fixed',    _sdT('Row: among recurring charges, the quantity is not changed here')],
+            ['cart_item_recurring_quantity_editable', _sdT('Row: among recurring charges, the quantity is changed here')],
+            ['cart_item_recurring_donation',          _sdT('Row: among recurring charges, a donation whose amount is changed here')],
+            ['cart_item_recurring_amount',            _sdT('Row: among recurring charges, the amount is shown as text')],
+            ['cart_item_has_image',                   _sdT('Row: the product has an image')],
+            ['cart_item_out_of_stock',                _sdT('Row: the product is out of stock')],
+            ['cart_item_has_calendar_event',          _sdT('Row: a reservation for a calendar event')]
         ],
         shopping_cart: [
             ['has_items',            _sdT('The cart has items')],

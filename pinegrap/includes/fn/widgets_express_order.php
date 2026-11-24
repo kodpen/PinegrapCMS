@@ -425,6 +425,8 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
     // — same THREE cases the legacy _eo_render_cart_summary handles. Returned
     // as ADDITIONAL <tr> rows the loop concatenates after the main row.
     $extra_html = '';
+    // The same parts alone, for a layout that places each in its own cell.
+    $form_part = $gc_part = $sched_part = '';
     $is_gc    = !empty($item['gift_card']);
     $has_form = !empty($item['form']);
     $form_qt  = isset($item['form_quantity_type']) ? (string)$item['form_quantity_type'] : 'One Form per Product';
@@ -438,6 +440,7 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
             !empty($item['form_name']) ? (string)lang(trim((string)$item['form_name'])) : ''
         );
         if ($form_html !== '') {
+            $form_part = $form_html;
             $extra_html .= '<tr><td colspan="5" class="bg-body-tertiary border-top-0">'
                          . $form_html . '</td></tr>';
         }
@@ -481,7 +484,8 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
               .   '<div class="form-text">' . h(lang('Leave blank to send immediately.')) . '</div></div>'
               . '</fieldset>';
         }
-        $extra_html .= '<tr><td colspan="5" class="bg-body-tertiary border-top-0"><div class="pg-eo-gift-cards" data-pg-eo-gc-item="' . $iid . '">' . $rows_html . '</div></td></tr>';
+        $gc_part = '<div class="pg-eo-gift-cards" data-pg-eo-gc-item="' . $iid . '">' . $rows_html . '</div>';
+        $extra_html .= '<tr><td colspan="5" class="bg-body-tertiary border-top-0">' . $gc_part . '</td></tr>';
     }
     // Recurring schedule the customer may set: the same controls as the
     // cart row (field names are the legacy ones express_order.php checks —
@@ -498,6 +502,7 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         }
         $rec_html = _pg_render_cart_item_recurring_schedule($rec_row, $lf, ' form="' . h($form_id) . '"');
         if ($rec_html !== '') {
+            $sched_part = $rec_html;
             $extra_html .= '<tr><td colspan="5" class="bg-body-tertiary border-top-0">' . $rec_html . '</td></tr>';
         }
     }
@@ -508,6 +513,7 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         for ($qn = 1; $qn <= $gc_count; $qn++) {
             $hk = 'order_item_' . $iid . '_quantity_number_' . $qn . '_gift_card_recipient_email_address';
             $extra_html .= '<tr style="display:none"><td colspan="5"><input type="hidden" name="' . h($hk) . '" value="' . h($billing_email) . '"></td></tr>';
+            $form_part .= '<input type="hidden" name="' . h($hk) . '" value="' . h($billing_email) . '">';
         }
     }
 
@@ -542,7 +548,94 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         '^^__item_url^^'           => h($detail_url),
         '^^__item_remove_url^^'           => h($remove_url),
         '^^__item_form_html^^'            => $extra_html,
+        '^^__item_form_data_html^^'       => $form_part,
+        '^^__item_gift_card_html^^'       => $gc_part,
+        '^^__item_recurring_schedule_html^^' => $sched_part,
+    ) + pg_eo_item_layout_values($item, isset($item['calendar_event']) && is_array($item['calendar_event']) ? $item['calendar_event'] : array());
+}
+
+/**
+ * A row's values a classic layout prints that the express order's own rows
+ * do not: the payment period of a recurring product, the product's out of
+ * stock message while nothing is left and no backorder is taken, the
+ * calendar event the row reserves. Pure.
+ *
+ * @param array $item  a row of the widget's items: 'recurring',
+ *                     'recurring_payment_period', 'payment_period',
+ *                     'inventory', 'backorder', 'inventory_quantity',
+ *                     'out_of_stock_message'
+ * @param array $event the reserved event (get_calendar_event()): 'name',
+ *                     'date_and_time_range' (markup)
+ * @return array token => value, escaped
+ */
+function pg_eo_item_layout_values($item, $event = array())
+{
+    $period = trim((string)($item['recurring_payment_period'] ?? ''));
+    if ($period === '') $period = trim((string)($item['payment_period'] ?? ''));
+    if ($period === '' && !empty($item['recurring'])) $period = 'Monthly';
+    $out = (int)($item['inventory'] ?? 0) === 1 && (int)($item['backorder'] ?? 0) !== 1 && (int)($item['inventory_quantity'] ?? 0) <= 0;
+    $message = (string)($item['out_of_stock_message'] ?? '');
+    return array(
+        '^^__item_recurring_period^^'      => (!empty($item['recurring']) && $period !== '') ? h(lang($period)) : '',
+        '^^__item_out_of_stock_message^^'  => ($out && trim(strip_tags($message)) !== '') ? _pg_rich_text_to_inline($message) : '',
+        '^^__item_calendar_event_name^^'   => h((string)($event['name'] ?? '')),
+        '^^__item_calendar_event_dates^^'  => (string)($event['date_and_time_range'] ?? ''),
     );
+}
+
+/**
+ * The express order's flags around its rows that a classic layout's tables,
+ * totals and payment part are shown by: the cart's (pg_cart_layout_flags())
+ * and the lines the classic page decides itself. Pure.
+ *
+ * @param array $items  the widget's items (pg_cart_row_flags())
+ * @param array $totals cents: 'discount', 'tax', 'shipping', 'gift_card',
+ *                      'total'; 'offer_code' (whether its box is shown),
+ *                      'currency_code' (the visitor's)
+ * @return array flag => bool
+ */
+function pg_eo_layout_flags($items, $totals)
+{
+    $cents = function ($key) use ($totals) { return (int)($totals[$key] ?? 0); };
+    $cart = pg_cart_layout_flags($items, $cents('discount'), !empty($totals['offer_code']), (string)($totals['currency_code'] ?? ''));
+    $_eo_vis_ctx = array(
+        'has_no_recurring_products' => !$cart['has_recurring_products'],
+        // The subtotal repeats the total unless a line comes between them.
+        'has_subtotal_line'         => ($cents('discount') + $cents('tax') + $cents('shipping') + $cents('gift_card')) > 0,
+        'has_payment'               => $cents('total') > 0,
+    ) + $cart;
+    return $_eo_vis_ctx;
+}
+
+/**
+ * Fills an empty pick list of a classic layout (the salutation, the
+ * referral source) with its options, the visitor's value selected: the
+ * classic page filled them from its form. Pure.
+ *
+ * @param array $tree    changed in place
+ * @param array $options name => array(label => value)
+ * @param array $values  name => the value to select
+ */
+function pg_eo_fill_empty_selects(&$tree, $options, $values = array())
+{
+    if (!is_array($tree)) return;
+    if (($tree['type'] ?? '') === 'semantic' && strtolower((string)($tree['props']['tag'] ?? '')) === 'select' && empty($tree['children'])) {
+        $name = (string)($tree['props']['_bindings']['eo_field'] ?? '');
+        foreach ((array)($tree['props']['_attrs'] ?? array()) as $a) {
+            if ($name === '' && is_array($a) && ($a['name'] ?? '') === 'name') $name = (string)($a['value'] ?? '');
+        }
+        if (isset($options[$name])) {
+            foreach ((array)$options[$name] as $label => $value) {
+                $attrs = array(array('name' => 'value', 'value' => (string)$value));
+                if ((string)$value === (string)($values[$name] ?? '')) $attrs[] = array('name' => 'selected', 'value' => '');
+                $tree['children'][] = array('type' => 'semantic', 'props' => array('tag' => 'option', 'text' => (string)$label, '_attrs' => $attrs), 'children' => array());
+            }
+        }
+        return;
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $_c) pg_eo_fill_empty_selects($tree['children'][$i], $options, $values);
+    }
 }
 
 // A format after a token (^^__cart_total^^%%upper%%) is read, never
