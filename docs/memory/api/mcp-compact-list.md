@@ -6,7 +6,7 @@ description: The MCP server's compact list (mcp_compact.php, AG7): guide_read, t
 ## What is the compact list?
 - A second address of the MCP server, `mcp_compact.php` (site root via `router.php`, and the file in the software folder). `PG_MCP_COMPACT` is set by the file, which then runs `mcp.php`.
 - Its `tools/list` (`pg_mcp_compact_tools_list()`, `includes/mcp/tools.php`): `guide_read`, `tools_find`, `tools_describe`, `tools_read`, `tools_write`, then every route marked `'moves_money' => true` the caller holds, under its own name. Resources and prompts are the full address's.
-- Why: the full list is about 857 KB with every module on; the compact one 4,161 bytes without money tools (test limit 8 KB, `tests/mcp_compact_test.php`). Built in plan ai-guide step AG7 (features G13, G14).
+- Why: the full list is 766,202 bytes with every module and scope (measured 2026-11-24, `agent-guide-overview.md`); the compact one 4,225 bytes without money tools, 29,632 with the 16 money tools (test limit 8 KB, `tests/mcp_compact_test.php`). Built in plan ai-guide step AG7 (features G13, G14).
 
 ## What do the four tools do?
 - `tools_find` (words, area): at most 20 names, best match first, with the description's first sentence (200 characters); `more` true when others match. Area = the route id's first part; the enum lists the caller's areas. Ranking: words matched, then name > summary > description; a plural's s is dropped.

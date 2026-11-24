@@ -18,4 +18,4 @@ description: OAuth consent screen presets (Workspace, Design, Content, Store, Ac
 - Owner, 2026-10-24: direct record writes by AI apps stay possible, but presets leave them unticked; the person ticks one by hand. No OAuth ceiling or column against them.
 - A client asking for record writes only gets no box ticked: Allow refuses with `access_denied` until the person ticks one.
 - tests/oauth_consent_presets_test.php guards: the propose writes in every preset, no other write, known scopes, the store, design and content groups existing with a read.
-- Design and Content are the AI guide's area profiles (plan ai-guide, G15): an agent working on the designer or the site's content gets that area's reads; `design:write` (proposals) stays ticked by hand like every record write.
+- Design and Content are the AI guide's area profiles (`agent-guide-overview.md`): an agent working on the designer or the site's content gets that area's reads; `design:write` (proposals) stays ticked by hand like every record write.
