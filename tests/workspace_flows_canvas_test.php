@@ -4089,3 +4089,69 @@ JS
 	pg_assert_same(array('x' => 288, 'y' => 128), $result['after'], 'after a box: one column right, a row lower past a box there');
 	pg_assert_same(array('x' => 864, 'y' => 64), $result['afterFree'], 'a free place: the same row');
 }
+
+// Several boxes copied (FE7, board B2): clipOf() takes the boxes chosen in
+// the graph's order, deep copies, with the arrows among them only.
+// pasteClip() gives them new ids as a box added gets them, the arrows and
+// the threads among them follow the new ids; a thread from a box left out
+// stays when pasted into the same flow, else it goes with its space; a
+// start box is left out of a flow that has one, its arrows with it; the
+// copies stand dx to the right, a row lower while one would cover a box.
+function test_workspace_flows_canvas_several_boxes_copied()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$consts = '';
+
+	foreach (array('BOX_W', 'BOX_H', 'VALUE_TOKEN') as $name) {
+		preg_match('/^    var ' . $name . ' = .*?;$/ms', $source, $found);
+		pg_assert_true(!empty($found), $name . ' is declared');
+		$consts .= ($found[0] ?? '') . "\n";
+	}
+
+	preg_match('/^    var KINDS = \{.*?\n    \};$/ms', $source, $kinds);
+
+	$result = ws_flows_canvas_test_node(
+		array('clipOf', 'pasteClip', 'freeId', 'withoutToken', 'tokenGap'),
+		"var GRID = 16;\n" . $consts . ($kinds[0] ?? '') . "\n" . <<<'JS'
+var out = {};
+var nodes = [
+    { id: 's', kind: 'manual', label: 'Start', x: 0, y: 0, config: {} },
+    { id: 'a', kind: 'email', label: 'Mail', x: 288, y: 0, config: { body: 'Hi {{node.s.name}} and {{node.a.x}}' } },
+    { id: 'b', kind: 'condition', label: '', x: 576, y: 0, config: { rule: { type: 'value', ref: '{{node.a.status}}' } } },
+    { id: 'c', kind: 'task', label: 'Do', x: 576, y: 200, config: { title: 'For {{node.b.result|none}} by {{node.s.who}}' } }
+];
+var edges = [{ from: 's', to: 'a', on: 'next' }, { from: 'a', to: 'b', on: 'done' }, { from: 'b', to: 'c', on: 'yes' }, { from: 'a', to: 'c', on: 'failed' }];
+var clip = clipOf(nodes, edges, ['c', 'a', 's']);
+out.clip = [clip.nodes.map(function (node) { return node.id; }), clip.edges];
+clip.nodes[1].config.body = 'changed';
+out.deep = nodes[1].config.body;
+clip = clipOf(nodes, edges, ['c', 'a', 's']);
+var same = pasteClip(clip, nodes, { keep: true, start: true, dx: 0 });
+out.same = same;
+var other = pasteClip(clip, [], { keep: false, start: false, dx: 0 });
+out.other = other;
+var two = pasteClip(clipOf(nodes, edges, ['a', 'b']), nodes, { keep: false, start: true, dx: 516 });
+out.two = [two.nodes.map(function (node) { return [node.id, node.x, node.y]; }), two.nodes[1].config.rule.ref, two.edges];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(array('s', 'a', 'c'), array(array('from' => 's', 'to' => 'a', 'on' => 'next'), array('from' => 'a', 'to' => 'c', 'on' => 'failed'))), $result['clip'], 'the boxes in the graph\'s order, the arrows among them');
+	pg_assert_same('Hi {{node.s.name}} and {{node.a.x}}', $result['deep'], 'a copy, not the boxes themselves');
+	pg_assert_same(array(
+		array('id' => 'email_1', 'kind' => 'email', 'label' => 'Mail', 'x' => 288, 'y' => 104, 'config' => array('body' => 'Hi {{node.s.name}} and {{node.email_1.x}}')),
+		array('id' => 'task_1', 'kind' => 'task', 'label' => 'Do', 'x' => 576, 'y' => 304, 'config' => array('title' => 'For {{node.b.result|none}} by {{node.s.who}}')),
+	), $result['same']['nodes'], 'into the same flow: new ids, threads among them follow, threads from outside stay, a row lower past the boxes there');
+	pg_assert_same(array(array('from' => 'email_1', 'to' => 'task_1', 'on' => 'failed')), $result['same']['edges'], 'the start box left out with its arrow');
+	pg_assert_same(1, $result['same']['skipped'], 'one start box left out');
+	pg_assert_same(array('manual_1', 'email_1', 'task_1'), array_column($result['other']['nodes'], 'id'), 'a flow with no start takes it');
+	pg_assert_same('Hi {{node.manual_1.name}} and {{node.email_1.x}}', $result['other']['nodes'][1]['config']['body'], 'the start box taken: its threads follow it');
+	pg_assert_same('For by {{node.manual_1.who}}', $result['other']['nodes'][2]['config']['title'], 'into another flow a thread from a box left out goes with its space, its fallback too');
+	pg_assert_same(array(0, 0), array($result['other']['nodes'][0]['x'], $result['other']['nodes'][0]['y']), 'an empty flow: at the same place');
+	pg_assert_same(array(array('from' => 'manual_1', 'to' => 'email_1', 'on' => 'next'), array('from' => 'email_1', 'to' => 'task_1', 'on' => 'failed')), $result['other']['edges'], 'the arrows follow the new ids');
+	pg_assert_same(array(array(array('email_1', 804, 0), array('condition_1', 1092, 0)), '{{node.email_1.status}}', array(array('from' => 'email_1', 'to' => 'condition_1', 'on' => 'done'))), $result['two'], 'duplicated: dx to the right, a condition\'s value follows too');
+}

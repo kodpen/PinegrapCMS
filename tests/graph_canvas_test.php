@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(16, count($names), 'sixteen class names');
+	pg_assert_same(17, count($names), 'seventeen class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -1533,4 +1533,156 @@ JS
 	pg_assert_true($result['cb'], 'an arrow out of focus stays a curve');
 	pg_assert_contains('L912 440', $result['moved'], 'a moved box routes its arrow again');
 	pg_assert_true($result['unfocused'], 'hidden again: the curve');
+}
+
+// Several boxes (board B2): inRect() gives the boxes a rectangle touches,
+// drawn either way; toggle() adds a box or takes it out. With the adapter's
+// several() hook, Shift+click starts a set from the box selected and adds
+// or takes out one, a set of one falls back to that box selected, Shift+drag
+// on the empty canvas draws the rectangle and chooses what it touches, a
+// chosen box dragged moves the set together (Esc puts them back), Ctrl+A
+// chooses all, Esc and a click on the empty canvas let the set go. Without
+// the hook (the Prototype view) Shift+click selects one box as before.
+function test_graph_canvas_several_boxes()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+var sized = function (item) { return { w: item.w || 100, h: 50 }; };
+var spots = [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 200, y: 0 }, { id: 'c', x: 0, y: 200, w: 40 }];
+out.rect = G.inRect(spots, { x1: 50, y1: 20, x2: 210, y2: 30 }, sized);
+out.back = G.inRect(spots, { x1: 199, y1: 230, x2: 30, y2: 10 }, sized);
+out.edge = G.inRect(spots, { x1: 100, y1: 50, x2: 199, y2: 199 }, sized);
+out.toggle = [G.toggle(['a'], 'b'), G.toggle(['a', 'b'], 'a'), G.toggle([], 'a')];
+function setup(several) {
+    var layer = new El('div');
+    ui.layer = layer;
+    ui.boxes = layer.appendChild(new El('div'));
+    ui.svg = layer.appendChild(new El('svg'));
+    ui.temp = ui.svg.appendChild(new El('path'));
+    ui.live = new El('div');
+    ui.viewport.listeners = {};
+    ui.viewport.addEventListener = function (type, handler) { ui.viewport.listeners[type] = handler; };
+    ui.viewport.classList = { add: function () {}, remove: function () {} };
+    ui.viewport.setPointerCapture = function () {};
+    ui.viewport.focus = function () { focused = ui.viewport; };
+    var adapter = {
+        ui: ui,
+        view: function (next) { if (next) { state.view = next; } return state.view; },
+        items: function () { return state.nodes; },
+        text: function (key, n) { return key + ':' + n; },
+        item: function (id) { return state.nodes.filter(function (one) { return one.id === id; })[0] || null; },
+        editable: function () { return true; },
+        select: function (selected) { log.push('select ' + selected.id); canvas.mark(selected); },
+        placed: function () {},
+        moved: function (item, group) { log.push('moved ' + item.id + ' ' + (group || []).map(function (one) { return one.id; }).join(',')); },
+        canConnect: function () { return false; },
+        connected: function () {},
+        press: function () { return true; },
+        move: function () {},
+        release: function () {},
+        cancel: function () {},
+        key: function () { return false; }
+    };
+    if (several) {
+        adapter.several = function (ids) { log.push('several ' + ids.join(',')); };
+    }
+    var canvas = G.create(adapter);
+    canvas.bind();
+    state.nodes.forEach(function (one) { ui.boxes.appendChild(canvas.box(one, {})); });
+    return canvas;
+}
+var log = [];
+state.view = { x: 0, y: 0, k: 1 };
+state.nodes = [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 400, y: 0 }, { id: 'c', x: 0, y: 400 }];
+var canvas = setup(true);
+var box = function (id) { return ui.boxes.querySelector('[data-node="' + id + '"]'); };
+function pointer(type, id, x, y, target, shift) {
+    ui.viewport.listeners[type]({ type: type, pointerId: id, clientX: x, clientY: y, button: 0, shiftKey: !!shift, target: target, preventDefault: function () {} });
+}
+function key(name, ctrl) {
+    ui.viewport.listeners.keydown({ key: name, ctrlKey: !!ctrl, target: ui.viewport, preventDefault: function () { log.push('prevented'); } });
+}
+canvas.mark({ type: 'node', id: 'a' });
+pointer('pointerdown', 1, 410, 10, box('b'), true);
+pointer('pointerup', 1, 410, 10, box('b'), true);
+out.shift = [canvas.chosen(), log, box('a').className, box('b').className, ui.live.textContent];
+log = [];
+pointer('pointerdown', 2, 10, 410, box('c'), true);
+pointer('pointerup', 2, 10, 410, box('c'), true);
+pointer('pointerdown', 3, 410, 10, box('b'), true);
+pointer('pointerup', 3, 410, 10, box('b'), true);
+out.toggled = [canvas.chosen(), log];
+log = [];
+pointer('pointerdown', 4, 10, 10, box('a'));
+pointer('pointermove', 4, 74, 42, box('a'));
+out.together = [state.nodes[0].x, state.nodes[0].y, state.nodes[2].x, state.nodes[2].y, box('c').style.top];
+pointer('pointerup', 4, 74, 42, box('a'));
+out.togetherLog = log;
+log = [];
+pointer('pointerdown', 5, 10, 10, box('a'));
+pointer('pointermove', 5, 200, 10, box('a'));
+canvas.cancel();
+pointer('pointerup', 5, 200, 10, box('a'));
+out.cancelled = [state.nodes[0].x, state.nodes[2].x, canvas.chosen()];
+log = [];
+key('Escape');
+out.escape = [canvas.chosen(), log, box('a').className];
+log = [];
+pointer('pointerdown', 6, 10, 10, box('a'), true);
+pointer('pointerup', 6, 10, 10, box('a'), true);
+out.one = [canvas.chosen(), log];
+log = [];
+pointer('pointerdown', 7, 300, 300, ui.layer, true);
+pointer('pointermove', 7, -10, 500, ui.layer, true);
+var lasso = ui.layer.querySelector('.pgc-lasso');
+out.drawing = lasso ? [lasso.className, lasso.style.left, lasso.style.top, lasso.style.width, lasso.style.height] : null;
+pointer('pointerup', 7, -10, 500, ui.layer, true);
+out.lasso = [canvas.chosen(), log, lasso.className, state.view.x];
+log = [];
+pointer('pointerdown', 8, 300, 300, ui.layer);
+pointer('pointerup', 8, 300, 300, ui.layer);
+out.empty = [canvas.chosen(), log];
+log = [];
+key('a', true);
+out.all = [canvas.chosen(), log];
+log = [];
+canvas.choose(['a', 'zz']);
+out.chooseOne = canvas.chosen();
+canvas.choose(['b', 'c']);
+pointer('pointerdown', 9, 10, 10, box('a'));
+pointer('pointerup', 9, 10, 10, box('a'));
+out.plain = canvas.chosen();
+log = [];
+canvas = setup(false);
+canvas.mark({ type: 'node', id: 'a' });
+pointer('pointerdown', 10, 410, 10, box('b'), true);
+pointer('pointerup', 10, 410, 10, box('b'), true);
+key('a', true);
+out.without = [canvas.chosen(), log];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('a', 'b'), $result['rect'], 'the boxes the rectangle touches');
+	pg_assert_same(array('a', 'c'), $result['back'], 'drawn from right to left the same');
+	pg_assert_same(array(), $result['edge'], 'a rectangle in the gap touches none');
+	pg_assert_same(array(array('a', 'b'), array('b'), array('a')), $result['toggle'], 'toggle adds or takes out');
+	pg_assert_same(array(array('a', 'b'), array('several a,b'), 'pgc-node pgc-selected', 'pgc-node pgc-selected', 'pgc_chosen:2'), $result['shift'], 'Shift+click adds to the box selected, both marked and read out');
+	pg_assert_same(array(array('a', 'c'), array('several a,b,c', 'several a,c')), $result['toggled'], 'Shift+click adds and takes out');
+	pg_assert_same(array(64, 32, 64, 432, '432px'), $result['together'], 'a chosen box dragged moves the set together');
+	pg_assert_same(array('moved a a,c'), $result['togetherLog'], 'the adapter hears the set moved once');
+	pg_assert_same(array(64, 64, array('a', 'c')), $result['cancelled'], 'cut short, the set goes back and stays chosen');
+	pg_assert_same(array(array(), array('several ', 'prevented'), 'pgc-node'), $result['escape'], 'Esc lets the set go');
+	pg_assert_same(array(array(), array('select a')), $result['one'], 'a set of one is that box selected');
+	pg_assert_same(array('pgc-lasso', '-110px', '250px', '310px', '200px'), $result['drawing'], 'Shift+drag on the empty canvas draws the rectangle');
+	pg_assert_same(array(array('a', 'c'), array('several a,c'), 'pgc-lasso pgc-hidden', 0), $result['lasso'], 'it chooses the boxes it touches, the canvas not panned');
+	pg_assert_same(array(array(), array('several ')), $result['empty'], 'a click on the empty canvas lets the set go');
+	pg_assert_same(array(array('a', 'b', 'c'), array('several a,b,c', 'prevented')), $result['all'], 'Ctrl+A chooses all');
+	pg_assert_same(array(), $result['chooseOne'], 'choose() keeps two or more boxes that exist, else none');
+	pg_assert_same(array(), $result['plain'], 'a plain press on a box not chosen lets the set go');
+	pg_assert_same(array(array(), array('select b')), $result['without'], 'without several() Shift+click selects one box, Ctrl+A nothing');
 }

@@ -1165,6 +1165,26 @@
         return prefix + '_' + n;
     }
 
+    // The ids of the boxes a rectangle ({ x1, y1, x2, y2 }, drawn either
+    // way) touches; size(item) gives a box's { w, h }.
+    function inRect(items, rect, size) {
+        var left = Math.min(rect.x1, rect.x2);
+        var right = Math.max(rect.x1, rect.x2);
+        var top = Math.min(rect.y1, rect.y2);
+        var bottom = Math.max(rect.y1, rect.y2);
+
+        return items.filter(function (item) {
+            var box = size(item);
+
+            return (left < item.x + box.w) && (right > item.x) && (top < item.y + box.h) && (bottom > item.y);
+        }).map(function (item) { return String(item.id); });
+    }
+
+    // A list of ids with one added, or taken out when it is there.
+    function toggle(ids, id) {
+        return (ids.indexOf(id) === -1) ? ids.concat([id]) : ids.filter(function (one) { return one !== id; });
+    }
+
     function typing(target) {
         return !!(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
     }
@@ -1593,7 +1613,17 @@
     //  - cancel(drag): a drag was cut short (Esc, a second finger); drag is
     //    null when there was none; a box moved is back at its place first;
     //  - key(event): a key on the canvas, first; true when it handled it.
-    //    Arrows the adapter does not take pan, + and − zoom, 0 fits.
+    //    Arrows the adapter does not take pan, + and − zoom, 0 fits;
+    //  - several(ids) (optional): several boxes may be chosen: Shift+click
+    //    adds a box to the set (started from the box mark() was last given)
+    //    or takes it out, Shift+drag on the empty canvas draws a rectangle
+    //    (<lasso>) that adds the boxes it touches, Ctrl+A chooses every box;
+    //    a chosen box dragged moves the set (moved(item, items)); Esc, a
+    //    click on the empty canvas or a plain press on another box lets it
+    //    go. The adapter is told the ids each time the set changes ([] when
+    //    it went); a set left with one box selects that box instead. mark()
+    //    marks the set beside what is selected; chosen() and choose(ids)
+    //    read and set it. Without the hook a Shift+click is a plain one.
     // The class names create() puts on what it draws and marks.
     var CLASSES = {
         panning: 'pgc-panning',
@@ -1611,7 +1641,8 @@
         dashed: 'pgc-edge-dashed',
         dim: 'pgc-dim',
         trail: 'pgc-edge-trail',
-        group: 'pgc-group'
+        group: 'pgc-group',
+        lasso: 'pgc-lasso'
     };
 
     function merge(base, over) {
@@ -1650,6 +1681,12 @@
         var elbow = adapter.route === 'elbow';
         var routeBoxes = null;
         var settling = false;
+        // Several boxes (adapter.several): the ids chosen (two or more, else
+        // none), what mark() was last given, the rectangle being drawn.
+        var many = !!adapter.several;
+        var chosen = [];
+        var marked = null;
+        var lasso = null;
 
         function text() {
             return adapter.text.apply(null, arguments);
@@ -2295,9 +2332,24 @@
         // What is selected ({ type, id }, null for nothing) marked on the
         // canvas: its data-<type> element.
         function mark(selected) {
+            marked = selected || null;
+
             Array.prototype.forEach.call(ui.layer.querySelectorAll('.' + classes.selected), function (node) {
                 node.classList.remove(classes.selected);
                 node.removeAttribute('aria-current');
+            });
+
+            // The chosen boxes no longer there (an undo) let the set go.
+            if (chosen.length && (chosen.filter(function (id) { return !!adapter.item(id); }).length < chosen.length)) {
+                chosen = [];
+            }
+
+            chosen.forEach(function (id) {
+                var box = ui.boxes.querySelector('[data-node="' + id.replace(/"/g, '') + '"]');
+
+                if (box) {
+                    box.classList.add(classes.selected);
+                }
             });
 
             if (!selected) {
@@ -2309,6 +2361,81 @@
             if (target) {
                 target.classList.add(classes.selected);
                 target.setAttribute('aria-current', 'true');
+            }
+        }
+
+        // ── Several boxes (adapter.several) ──
+
+        // The set chosen: the ids of boxes there, two or more, else none;
+        // the adapter is told and the boxes marked. A set of one selects
+        // that box (select is true: told to the adapter as a press would).
+        function choose(ids, select) {
+            var next = [];
+
+            (ids || []).forEach(function (id) {
+                id = String(id);
+
+                if (adapter.item(id) && (next.indexOf(id) === -1)) {
+                    next.push(id);
+                }
+            });
+
+            if (next.length < 2) {
+                var had = chosen.length > 0;
+
+                chosen = [];
+
+                if (select && next.length) {
+                    adapter.select({ type: 'node', id: next[0] });
+                } else if (had) {
+                    adapter.several([]);
+                }
+
+                mark(marked);
+
+                return;
+            }
+
+            chosen = next;
+            adapter.several(chosen.slice());
+            mark(null);
+            announce(text('pgc_chosen', chosen.length));
+        }
+
+        // What a Shift+click or the rectangle adds to: the set, else the
+        // box selected.
+        function base() {
+            if (chosen.length) {
+                return chosen.slice();
+            }
+
+            return (marked && (marked.type === 'node') && adapter.item(String(marked.id))) ? [String(marked.id)] : [];
+        }
+
+        // The rectangle from the drag's start to the pointer, in canvas units.
+        function lassoRect(current, event) {
+            var at = view.point(event.clientX, event.clientY);
+
+            return { x1: current.at.x, y1: current.at.y, x2: at.x, y2: at.y };
+        }
+
+        function drawLasso(rect) {
+            if (!lasso) {
+                lasso = document.createElement('div');
+                lasso.setAttribute('aria-hidden', 'true');
+                ui.layer.appendChild(lasso);
+            }
+
+            lasso.className = classes.lasso;
+            lasso.style.left = Math.min(rect.x1, rect.x2) + 'px';
+            lasso.style.top = Math.min(rect.y1, rect.y2) + 'px';
+            lasso.style.width = Math.abs(rect.x2 - rect.x1) + 'px';
+            lasso.style.height = Math.abs(rect.y2 - rect.y1) + 'px';
+        }
+
+        function hideLasso() {
+            if (lasso) {
+                lasso.className = classes.lasso + ' ' + classes.hidden;
             }
         }
 
@@ -2349,6 +2476,41 @@
             var arrow = closest(target, '.' + classes.edge);
 
             var out = node ? closest(target, '.' + classes.port + '-out') : null;
+            var id = node ? node.getAttribute('data-node') : null;
+
+            if (many && event.shiftKey && node) {
+                // Shift+click: the box added to the set or taken out.
+                next.kind = 'none';
+                event.preventDefault();
+                choose(toggle(base(), id), true);
+                ui.viewport.focus({ preventScroll: true });
+                return;
+            }
+
+            if (many && event.shiftKey && !node && !arrow) {
+                next.kind = 'lasso';
+                next.at = view.point(event.clientX, event.clientY);
+                next.base = base();
+                event.preventDefault();
+                return;
+            }
+
+            if (chosen.length && node && (chosen.indexOf(id) !== -1) && !out) {
+                // A chosen box pressed: the set moves together.
+                next.kind = adapter.editable() ? 'move' : 'none';
+                next.item = adapter.item(id);
+                next.group = chosen.map(function (one) {
+                    var item = adapter.item(one);
+
+                    return { item: item, ix: item.x, iy: item.y, node: boxOf(item) };
+                });
+                ui.viewport.focus({ preventScroll: true });
+                return;
+            }
+
+            if (chosen.length && (node || arrow)) {
+                choose([]);
+            }
 
             if (adapter.editable() && out) {
                 next.kind = 'connect';
@@ -2379,6 +2541,27 @@
 
         function moveOwn(event, current, dx, dy) {
             var v = adapter.view();
+
+            if ((current.kind === 'move') && current.group) {
+                current.group.forEach(function (one) {
+                    one.item.x = coord(one.ix + dx / v.k);
+                    one.item.y = coord(one.iy + dy / v.k);
+                    place(one.node, one.item);
+                });
+
+                if (adapter.edges) {
+                    adapter.edges();
+                } else {
+                    reroute(current.group.map(function (one) { return one.item.id; }));
+                }
+
+                return true;
+            }
+
+            if (current.kind === 'lasso') {
+                drawLasso(lassoRect(current, event));
+                return true;
+            }
 
             if (current.kind === 'move') {
                 current.item.x = coord(current.ix + dx / v.k);
@@ -2427,13 +2610,30 @@
             }
 
             if ((done.kind === 'move') && done.moved) {
-                adapter.moved(done.item);
+                adapter.moved(done.item, done.group ? done.group.map(function (one) { return one.item; }) : undefined);
                 return true;
             }
 
-            // A click on the empty canvas (not a pan) takes the focus away.
+            if (done.kind === 'lasso') {
+                hideLasso();
+
+                if (done.moved && (event.type === 'pointerup')) {
+                    var touched = inRect(adapter.items(), lassoRect(done, event), size);
+
+                    choose(done.base.concat(touched.filter(function (id) { return done.base.indexOf(id) === -1; })), true);
+                }
+
+                return true;
+            }
+
+            // A click on the empty canvas (not a pan) takes the focus away
+            // and lets the boxes chosen go.
             if ((done.kind === 'pan') && done.empty && !done.moved && (event.type === 'pointerup')) {
                 focus(null);
+
+                if (chosen.length) {
+                    choose([]);
+                }
             }
 
             return false;
@@ -2575,7 +2775,21 @@
             ui.temp.classList.add(classes.hidden);
             clearTargets();
 
-            if (done && (done.kind === 'move') && done.moved) {
+            hideLasso();
+
+            if (done && (done.kind === 'move') && done.moved && done.group) {
+                done.group.forEach(function (one) {
+                    one.item.x = one.ix;
+                    one.item.y = one.iy;
+                    place(one.node, one.item);
+                });
+
+                if (adapter.edges) {
+                    adapter.edges();
+                } else {
+                    reroute(done.group.map(function (one) { return one.item.id; }));
+                }
+            } else if (done && (done.kind === 'move') && done.moved) {
                 done.item.x = done.ix;
                 done.item.y = done.iy;
                 place(done.node, done.item);
@@ -2597,6 +2811,12 @@
 
             if (handled) {
                 // The adapter's own key.
+            } else if (many && (event.ctrlKey || event.metaKey) && ((name === 'a') || (name === 'A'))) {
+                choose(adapter.items().map(function (item) { return item.id; }), true);
+                handled = true;
+            } else if (many && (name === 'Escape') && chosen.length) {
+                choose([]);
+                handled = true;
             } else if ((name === 'ArrowLeft') || (name === 'ArrowRight') || (name === 'ArrowUp') || (name === 'ArrowDown')) {
                 v.x -= (name === 'ArrowLeft') ? -step : (name === 'ArrowRight') ? step : 0;
                 v.y -= (name === 'ArrowUp') ? -step : (name === 'ArrowDown') ? step : 0;
@@ -2686,6 +2906,9 @@
             // place (a box pressed before it takes the focus, null to let a
             // drag go without cancel()).
             dragging: function () { return drag; },
+            // The boxes chosen together (adapter.several), and a new set.
+            chosen: function () { return chosen.slice(); },
+            choose: function (ids) { choose(ids, false); },
             hold: function (next) { drag = next; }
         };
     }
@@ -2710,6 +2933,8 @@
         path: path,
         lanes: lanes,
         freeId: freeId,
+        inRect: inRect,
+        toggle: toggle,
         typing: typing,
         bytes: bytes,
         historyOf: historyOf,

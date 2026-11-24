@@ -328,6 +328,10 @@
     var LAYOUT_STEP_X = 288;
     var LAYOUT_STEP_Y = 128;
     var INSERT_GAP = 260;
+
+    // Where the boxes copied (Ctrl+C, Copy) are kept in the browser, so they
+    // may be pasted into another flow.
+    var CLIP_KEY = 'pg_flow_clip';
     // How long the pointer rests on an arrow before its "+" shows (ms).
     var PLUS_REST = 250;
 
@@ -7642,6 +7646,106 @@
         }
 
         return { id: freeId(node.kind, nodes), kind: node.kind, label: node.label, x: x, y: y, config: JSON.parse(JSON.stringify(node.config || {})) };
+    }
+
+    // ── Several boxes (board B2) ───────────────────────────────────────
+
+    // The boxes of ids (pure), in the graph's order, as deep copies, with
+    // the arrows among them only.
+    function clipOf(nodes, edges, ids) {
+        var copy = function (value) { return JSON.parse(JSON.stringify(value)); };
+
+        return {
+            nodes: nodes.filter(function (node) { return ids.indexOf(node.id) !== -1; }).map(copy),
+            edges: edges.filter(function (edge) { return (ids.indexOf(edge.from) !== -1) && (ids.indexOf(edge.to) !== -1); }).map(copy)
+        };
+    }
+
+    // The boxes of a clip put into a graph of nodes (pure): each a new id
+    // as a box added gets one, the arrows and the threads among them on the
+    // new ids. options: keep (a thread read from a box left out stays: the
+    // same flow), start (the flow has a start box: one in the clip is left
+    // out, its arrows with it), dx (how far right of their place); a row
+    // lower while one would cover a box. Answers { nodes, edges, skipped }.
+    function pasteClip(clip, nodes, options) {
+        var ids = {};
+        var made = [];
+        var skipped = 0;
+
+        clip.nodes.forEach(function (node) {
+            if (options.start && KINDS[node.kind] && (KINDS[node.kind].group === 'start')) {
+                skipped++;
+                return;
+            }
+
+            ids[node.id] = freeId(node.kind, nodes.concat(made));
+            made.push({ id: ids[node.id], kind: node.kind, label: node.label, x: node.x + (options.dx || 0), y: node.y, config: node.config || {} });
+        });
+
+        // A thread read from a box copied reads its copy; one read from a
+        // box left out stays (keep) or goes with the space before it.
+        var tokens = function (text) {
+            var gone = [];
+
+            text = text.replace(VALUE_TOKEN, function (token, from) {
+                if (!from || ids[from]) {
+                    return from ? token.replace('{{node.' + from + '.', '{{node.' + ids[from] + '.') : token;
+                }
+
+                if (!options.keep) {
+                    gone.push(token);
+                }
+
+                return token;
+            });
+
+            gone.forEach(function (token) {
+                text = withoutToken(text, tokenBare(token));
+            });
+
+            return text;
+        };
+        var walk = function (value) {
+            if (typeof value === 'string') {
+                return tokens(value);
+            }
+
+            if (value && (typeof value === 'object')) {
+                Object.keys(value).forEach(function (key) {
+                    value[key] = walk(value[key]);
+                });
+            }
+
+            return value;
+        };
+        var covers = function (dy) {
+            return made.some(function (one) {
+                return nodes.some(function (other) { return (Math.abs(other.x - one.x) < BOX_W) && (Math.abs(other.y - one.y - dy) < BOX_H); });
+            });
+        };
+        var dy = 0;
+
+        for (var tries = 0; covers(dy) && (tries < 60); tries++) {
+            dy += BOX_H + GRID * 2;
+        }
+
+        made.forEach(function (one) {
+            one.y += dy;
+            one.config = walk(JSON.parse(JSON.stringify(one.config)));
+        });
+
+        return {
+            nodes: made,
+            edges: clip.edges.filter(function (edge) { return ids[edge.from] && ids[edge.to]; }).map(function (edge) {
+                var copy = JSON.parse(JSON.stringify(edge));
+
+                copy.from = ids[edge.from];
+                copy.to = ids[edge.to];
+
+                return copy;
+            }),
+            skipped: skipped
+        };
     }
 
     // An arrow or a thread chosen: the same head, no tabs.

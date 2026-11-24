@@ -27586,6 +27586,18 @@ html.ws-flow-layer-on body {
 .pgc-node.pgc-selected {
   box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--pgc-ring, var(--pgc-accent, var(--pg-primary))), var(--pgc-shadow-accent, none);
 }
+/* The rectangle a Shift+drag draws to choose the boxes it touches. */
+.pgc-lasso {
+  position: absolute;
+  z-index: 3;
+  border: 1px dashed var(--pgc-accent, var(--pg-primary));
+  border-radius: var(--pgc-radius-sm, var(--pg-radius-sm));
+  background: var(--pgc-soft, color-mix(in srgb, var(--pgc-accent, var(--pg-primary)) 8%, transparent));
+  pointer-events: none;
+}
+.pgc-lasso.pgc-hidden {
+  display: none;
+}
 /* The box an arrow being drawn would end on; the layer's class makes it
    win over a user's state border (a box with a problem). */
 .pgc-boxes .pgc-node.pgc-target {
