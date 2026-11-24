@@ -2844,7 +2844,20 @@ const StyleDesigner = (function () {
         var group = _cfGroupOf(node, root);
         var lead  = _cfLeadOf(node, root);
         if (group.indexOf(lead) === -1) group.push(lead);
+        var was = String(_cfControlName(lead) || '').toLowerCase();
         group.forEach(function (n) { _cfSetAttr(n, 'name', name); });
+        // Another field's "Required when" or "Shown when" names this field
+        // (the server finds it by name, pg_cf_rule_other_field()): it moves
+        // to the new name, else the rule would quietly stop holding.
+        if (was && was !== name.toLowerCase()) {
+            _cfControls(root).forEach(function (c) {
+                var rules = _cfRulesOf(c.node);
+                ['required_when', 'shown_when'].forEach(function (kind) {
+                    var rule = rules[kind];
+                    if (rule && typeof rule === 'object' && String(rule.field || '').toLowerCase() === was) rule.field = name;
+                });
+            });
+        }
         return true;
     }
 
