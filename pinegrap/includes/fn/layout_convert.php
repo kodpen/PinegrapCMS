@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view');
+    return array('form item view', 'form list view', 'order form');
 }
 
 /**
@@ -726,9 +726,25 @@ function pg_layout_convert_types()
  * drawn, 'drop_when' => array(setting => code): a setting under which it
  * holds a part the widget has not, reported with that code).
  *
- * 'else': the flag the "otherwise" branch of a condition shows under.
+ * A key 'elseif:<condition>' is read for that condition after an "else"
+ * only, before the bare key. 'flag' may list flags: each nested in the
+ * one before. 'section' (a block the widget fills with its own markup:
+ * the node bound to that section stands in its place, what the block
+ * holds is the widget's).
+ *
+ * 'else': the flag the "otherwise" branch of a condition shows under,
+ * 'keep' for one drawn as it is.
  * 'loop': a foreach: 'list' (the widget's list, its body the row's
  * wrapper).
+ *
+ * Optional: 'forms' => 'strip' (the layout's <form> tags go: the widget
+ * draws its own form around the tree), 'flag_list' => true (a flag may
+ * cover the list: the widget has no empty message in its place),
+ * 'controls' => array(name in the layout => name the widget looks for),
+ * 'submits' => array(token => control name: a link to that address
+ * becomes a submit button of that name), 'media' => array(token => flag:
+ * the wrapper an image of that address alone fills is shown under the
+ * flag).
  *
  * @param string $type
  * @return array|null
@@ -763,6 +779,9 @@ function pg_layout_piece_map($type)
                 'loop' => array('$forms as $form' => 'list'),
             );
 
+        case 'order form':
+            return _pg_lc_order_form_map($none);
+
         case 'form item view':
             return array(
                 'echo' => $none + array(
@@ -781,6 +800,71 @@ function pg_layout_piece_map($type)
             );
     }
     return null;
+}
+
+// The order form (widgets_order_form.php): the products loop is the
+// widget's list with the layout's own row, a product's values its row
+// tokens and its conditions its row flags (pg_of_row_flags()); the payment
+// schedule the widget's section; the rest under pg_of_flags().
+function _pg_lc_order_form_map($none)
+{
+    return array(
+        'echo' => $none + array(
+            '$currency_attributes' => 'none',
+            '$currency_system' => 'none',
+            // The edit button of edit mode: the designer's own.
+            "\$product['edit']" => 'none',
+            "\$product['id']" => 'token:__id',
+            "h(\$product['name'])" => 'token:__name',
+            "h(\$product['short_description'])" => 'token:__short_description',
+            // The classic page adds the out-of-stock words to the description.
+            "\$product['full_description']" => 'token:__description,__out_of_stock_message',
+            "h(\$product['image_url'])" => 'token:__image_url',
+            "\$product['price_info']" => 'token:__price_formatted',
+            '$currency_symbol' => 'token:__currency_symbol',
+            'h($currency_code)' => 'token:__currency_code',
+            'h($add_button_label)' => 'token:__add_button_label',
+            'h($skip_button_label)' => 'token:__skip_button_label',
+            'h($skip_button_url)' => 'submit:__skip_button',
+        ),
+        'if' => array(
+            '$available_products' => array('becomes' => 'flag', 'flag' => 'has_products'),
+            // No product to order: the skip button alone.
+            'elseif:$skip_button_url' => array('becomes' => 'flag', 'flag' => array('no_products', 'has_skip_button')),
+            '$skip_button_url' => array('becomes' => 'flag', 'flag' => 'has_skip_button'),
+            "\$product_layout == 'list'" => array('becomes' => 'flag', 'flag' => 'is_list_layout'),
+            '$available_donations and !$available_non_donations' => array('becomes' => 'flag', 'flag' => 'only_donations'),
+            '$checkbox_selections and $quantity_selections' => array('becomes' => 'flag', 'flag' => 'selects_by_checkbox_and_quantity'),
+            'elseif:$checkbox_selections' => array('becomes' => 'flag', 'flag' => 'selects_by_checkbox_only'),
+            'elseif:$quantity_selections' => array('becomes' => 'flag', 'flag' => 'selects_by_quantity_only'),
+            // The image and its column: the wrapper the image alone fills
+            // is shown under order_form_has_image ('media').
+            "\$product['image_url']" => array('becomes' => 'keep'),
+            "\$product['recurring_schedule']" => array('becomes' => 'section', 'section' => 'recurring_schedule'),
+            // Every control a row draws is under its selection type's
+            // flag, which holds only while the product can be ordered.
+            "\$product['available']" => array('becomes' => 'keep'),
+            "\$product['selection_type'] == 'donation'" => array('becomes' => 'flag', 'flag' => 'order_form_donation'),
+            "\$product['selection_type'] == 'checkbox'" => array('becomes' => 'flag', 'flag' => 'order_form_checkbox'),
+            "\$product['selection_type'] == 'quantity'" => array('becomes' => 'flag', 'flag' => 'order_form_quantity'),
+            '$currency_code' => array('becomes' => 'flag', 'flag' => 'has_currency_code'),
+            '$recipient' => array('becomes' => 'flag', 'flag' => 'has_recipient_choice'),
+            '$quantity' => array('becomes' => 'flag', 'flag' => 'has_quantity'),
+            '$currency' => array('becomes' => 'flag', 'flag' => 'has_currency_choice'),
+        ),
+        'else' => array(
+            "\$product_layout == 'list'" => 'is_dropdown_layout',
+            '$available_donations and !$available_non_donations' => 'not_only_donations',
+            // A donation row's price is empty: the price drawn as it is.
+            "\$product['selection_type'] == 'donation'" => 'keep',
+        ),
+        'loop' => array('$products as $product' => 'list'),
+        'forms' => 'strip',
+        'flag_list' => true,
+        'controls' => array('product_^^__id^^' => 'product', 'donation_^^__id^^' => 'donation'),
+        'submits' => array('__skip_button' => 'submit_skip'),
+        'media' => array('__image_url' => 'order_form_has_image'),
+    );
 }
 
 /**
@@ -868,8 +952,9 @@ function pg_layout_convert($type, $code, $ctx = array())
     };
     // What a condition's branch becomes: an array of the frame's mode and
     // what to write at its start and end.
-    $branch = function ($raw, $at) use ($ifs, $state, $drop, $in_tag, $norm) {
+    $branch = function ($raw, $at, $after_else = false) use ($ifs, $state, $drop, $in_tag, $norm) {
         $cond = $norm($raw);
+        if ($after_else && isset($ifs['elseif:' . $cond])) $cond = 'elseif:' . $cond;
         if (!isset($ifs[$cond])) {
             $drop($raw, $at, 'condition');
             return array('mode' => 'skip');
@@ -895,7 +980,17 @@ function pg_layout_convert($type, $code, $ctx = array())
                 return array('mode' => 'capture', 'key' => $p['key'], 'buf' => '');
             case 'flag':
                 if ($in_tag()) break;
-                return array('mode' => 'flag', 'key' => $p['key'], 'open' => '<pg-vis data-flag="' . h($p['flag']) . '">', 'close' => '</pg-vis>');
+                $open = $close = '';
+                foreach ((array)$p['flag'] as $f) {
+                    $open .= '<pg-vis data-flag="' . h($f) . '">';
+                    $close .= '</pg-vis>';
+                }
+                return array('mode' => 'flag', 'key' => $p['key'], 'open' => $open, 'close' => $close);
+            case 'section':
+                // The section's node is written whole at the start; what
+                // the block holds is the widget's, never read.
+                if ($in_tag()) break;
+                return array('mode' => 'skip', 'key' => $p['key'], 'lead' => '<pg-section data-section="' . h($p['section']) . '"></pg-section>');
         }
         $drop($raw, $at, 'condition');
         return array('mode' => 'skip', 'key' => $p['key']);
@@ -930,6 +1025,7 @@ function pg_layout_convert($type, $code, $ctx = array())
             if (!$open_kept) { $stack[] = array('mode' => 'skip'); continue; }
             $fr = $branch($m[1], $at);
             $fr['chain'] = array($fr);
+            if (isset($fr['lead'])) $write($fr['lead']);
             if (isset($fr['open'])) $write($fr['open']);
             $stack[] = $fr;
             continue;
@@ -943,7 +1039,7 @@ function pg_layout_convert($type, $code, $ctx = array())
             $chain = isset($top['chain']) ? $top['chain'] : array();
             if (!$outer || !$chain) { $stack[] = array('mode' => 'skip'); continue; }
             if (isset($m[2])) {
-                $fr = $branch($m[2], $at);
+                $fr = $branch($m[2], $at, true);
             } else {
                 $fr = _pg_lc_else($chain, $else, $in_tag());
                 if ($fr === null) {
@@ -952,6 +1048,7 @@ function pg_layout_convert($type, $code, $ctx = array())
                 }
             }
             $fr['chain'] = array_merge($chain, array($fr));
+            if (isset($fr['lead'])) $write($fr['lead']);
             if (isset($fr['open'])) $write($fr['open']);
             $stack[] = $fr;
             continue;
@@ -983,9 +1080,11 @@ function pg_layout_convert($type, $code, $ctx = array())
         if (preg_match('/(:|\{)$/', $src)) $stack[] = array('mode' => 'skip');
     }
 
+    if (($map['forms'] ?? '') === 'strip') $html = preg_replace('~<form\b[^>]*>|</form\s*>~i', '', $html);
     $nodes = _pg_lfc_parse($html);
     $row = array_values((array)($ctx['row'] ?? array()));
-    $nodes = _pg_lc_finish($nodes, $row);
+    $nodes = _pg_lc_finish($nodes, $row, $map);
+    foreach ((array)($map['media'] ?? array()) as $token => $flag) $nodes = _pg_lc_media($nodes, $token, $flag);
     if (_pg_lc_find_loop(array('children' => $nodes)) === null) {
         // A widget draws its records where its list stands: one at the end.
         $nodes[] = pg_di_mk('loop_area', array(), $row);
@@ -1016,7 +1115,8 @@ function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
         $v = (string)$echo[$key];
         if ($v === 'none') return '';
         if ($v === 'row') return '<pg-row></pg-row>';
-        if (strpos($v, 'token:') === 0) return '^^' . substr($v, 6) . '^^';
+        if (strpos($v, 'token:') === 0) return '^^' . implode('^^ ^^', explode(',', substr($v, 6))) . '^^';
+        if (strpos($v, 'submit:') === 0) return '^^' . substr($v, 7) . '^^';
         if (strpos($v, 'ctx:') === 0) return (string)($ctx[substr($v, 4)] ?? '');
     }
     // Interface words the template prints: the words themselves, which
@@ -1041,6 +1141,7 @@ function _pg_lc_else($chain, $else, $in_tag)
 {
     $last = end($chain);
     $key = isset($last['key']) ? $last['key'] : '';
+    if ($key !== '' && isset($else[$key]) && $else[$key] === 'keep') return array('mode' => 'keep', 'key' => '');
     if ($key !== '' && isset($else[$key]) && !$in_tag) {
         return array('mode' => 'flag', 'key' => '', 'open' => '<pg-vis data-flag="' . h($else[$key]) . '" data-around-list="1">', 'close' => '</pg-vis>');
     }
@@ -1052,14 +1153,16 @@ function _pg_lc_else($chain, $else, $in_tag)
 
 // The markers turned into the widget's parts: the list (pg-loop) into its
 // loop area, the record (pg-row) into the row template, a flagged branch
-// (pg-vis) into its nodes shown under the flag; an address or a text that
-// is one widget value alone is bound to it.
-function _pg_lc_finish($nodes, $row)
+// (pg-vis) into its nodes shown under the flag, a section (pg-section)
+// into the node bound to it; an address or a text that is one widget value
+// alone is bound to it, a control is given the name the widget looks for
+// and a link to a submit address becomes that button ($map).
+function _pg_lc_finish($nodes, $row, $map = array())
 {
     $out = array();
     foreach ($nodes as $n) {
         $tag = _pg_lfc_tag($n);
-        $kids = _pg_lc_finish((array)($n['children'] ?? array()), $row);
+        $kids = _pg_lc_finish((array)($n['children'] ?? array()), $row, $map);
         if ($tag === 'pg-row') {
             foreach ($row as $r) $out[] = $r;
             continue;
@@ -1068,24 +1171,35 @@ function _pg_lc_finish($nodes, $row)
             $out[] = pg_di_mk('loop_area', array(), $kids);
             continue;
         }
+        if ($tag === 'pg-section') {
+            $out[] = pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_bindings' => array('section' => (string)_pg_lfc_attr($n, 'data-section'))));
+            continue;
+        }
         if ($tag === 'pg-vis') {
             $flag = (string)_pg_lfc_attr($n, 'data-flag');
-            foreach ($kids as $k) $out[] = _pg_lc_flag($k, $flag);
+            // Words alone in the branch: a span holds them.
+            if (!$kids && trim((string)($n['props']['text'] ?? '')) !== '') {
+                $kids = array(_pg_lc_bind(pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => '', 'text' => trim((string)$n['props']['text']))), $map));
+            }
+            foreach ($kids as $k) $out[] = _pg_lc_flag($k, $flag, !empty($map['flag_list']));
             continue;
         }
         $n['children'] = $kids;
-        $out[] = _pg_lc_bind($n);
+        $out[] = _pg_lc_bind($n, $map);
     }
     return $out;
 }
 
 // A node shown only under $flag; one that holds the list is entered
 // instead, so the widget's empty message in the list's place is never cut
-// with it.
-function _pg_lc_flag($n, $flag)
+// with it, unless the widget has none there ($on_list).
+function _pg_lc_flag($n, $flag, $on_list = false)
 {
-    if (($n['type'] ?? '') === 'loop_area') return $n;
-    if (_pg_lc_find_loop($n) !== null) {
+    if (($n['type'] ?? '') === 'loop_area') {
+        if (!$on_list) return $n;
+        return pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_bindings' => array('eo_visible_if' => $flag)), array($n));
+    }
+    if (!$on_list && _pg_lc_find_loop($n) !== null) {
         foreach ($n['children'] as $i => $c) $n['children'][$i] = _pg_lc_flag($c, $flag);
         return $n;
     }
@@ -1096,13 +1210,49 @@ function _pg_lc_flag($n, $flag)
     return $n;
 }
 
-function _pg_lc_bind($n)
+function _pg_lc_bind($n, $map = array())
 {
-    foreach (array('href', 'text') as $prop) {
+    foreach (array('href', 'text', 'src') as $prop) {
         if (isset($n['props'][$prop]) && is_string($n['props'][$prop]) && preg_match('/^\s*\^\^(__[a-z0-9_]+)\^\^\s*$/', $n['props'][$prop], $m)) {
             $n['props']['_bindings'][$prop] = $m[1];
             $n['props'][$prop] = ($prop === 'href') ? '#' : '';
         }
     }
+    $href = (string)($n['props']['_bindings']['href'] ?? '');
+    $submits = (array)($map['submits'] ?? array());
+    if ($href !== '' && isset($submits[$href])) {
+        // The widget's form posts the choice; its handler goes on.
+        $b = (array)$n['props']['_bindings'];
+        unset($b['href']);
+        $props = array('tag' => 'button', 'cssClass' => (string)($n['props']['cssClass'] ?? ''), 'text' => (string)($n['props']['text'] ?? ''),
+            '_attrs' => array(array('name' => 'type', 'value' => 'submit'), array('name' => 'name', 'value' => (string)$submits[$href]), array('name' => 'formnovalidate', 'value' => '')));
+        if ($b) $props['_bindings'] = $b;
+        $n = pg_di_mk('semantic', $props, (array)($n['children'] ?? array()));
+    }
+    $controls = (array)($map['controls'] ?? array());
+    $name = (string)_pg_lfc_attr($n, 'name');
+    if ($name !== '' && isset($controls[$name])) _pg_lfc_set_attr($n, 'name', (string)$controls[$name]);
     return $n;
+}
+
+// The wrapper an image of ^^$token^^ alone fills (the image, or its
+// outermost ancestor holding nothing else) shown only under $flag.
+function _pg_lc_media($nodes, $token, $flag)
+{
+    foreach ($nodes as $i => $n) {
+        if (_pg_lc_media_only($n, $token)) {
+            $nodes[$i] = _pg_lc_flag($n, $flag);
+            continue;
+        }
+        if (!empty($n['children'])) $nodes[$i]['children'] = _pg_lc_media($n['children'], $token, $flag);
+    }
+    return $nodes;
+}
+
+function _pg_lc_media_only($n, $token)
+{
+    if (($n['props']['_bindings']['src'] ?? '') === $token) return empty($n['children']);
+    if (($n['type'] ?? '') !== 'semantic' || trim((string)($n['props']['text'] ?? '')) !== '') return false;
+    $kids = (array)($n['children'] ?? array());
+    return count($kids) === 1 && _pg_lc_media_only($kids[0], $token);
 }

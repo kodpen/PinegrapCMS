@@ -51,6 +51,23 @@ function test_order_form_widget_flags()
 	pg_assert_false($f['has_recipient_choice'] || $f['has_quantity'] || $f['has_skip_button'], 'no recipient, quantity or blank skip label');
 }
 
+function test_order_form_widget_heading_flags()
+{
+	$f = pg_of_flags('list', array(
+		array('available' => true, 'selection_type' => 'checkbox'),
+		array('available' => true, 'selection_type' => 'quantity'),
+		array('available' => false, 'selection_type' => 'donation'),
+	), false, '', array(), 'USD');
+	pg_assert_true($f['selects_by_checkbox_and_quantity'] && $f['not_only_donations'] && $f['has_currency_code'], 'both kinds, priced, a code');
+	pg_assert_false($f['selects_by_checkbox_only'] || $f['selects_by_quantity_only'] || $f['only_donations'], 'one heading each');
+	$f = pg_of_flags('list', array(array('available' => true, 'selection_type' => 'donation'), array('available' => false, 'selection_type' => 'quantity')), false, '');
+	pg_assert_true($f['only_donations'], 'what can be ordered is donations');
+	pg_assert_false($f['selects_by_quantity_only'] || $f['has_currency_code'], 'an unavailable row asks for nothing');
+	$f = pg_of_flags('drop-down selection', array(array('available' => true, 'selection_type' => 'checkbox')), false, '');
+	pg_assert_false($f['selects_by_checkbox_only'], 'the pick list has no column headings');
+	pg_assert_true(pg_of_flags('list', array(), false, '')['not_only_donations'], 'nothing to order: the price heading');
+}
+
 function test_order_form_widget_row_flags()
 {
 	$f = pg_of_row_flags(array('available' => true, 'selection_type' => 'quantity', 'recurring' => 1, 'recurring_schedule_editable_by_customer' => 1));
@@ -59,6 +76,8 @@ function test_order_form_widget_row_flags()
 	$f = pg_of_row_flags(array('available' => false, 'selection_type' => 'checkbox', 'recurring' => 1, 'recurring_schedule_editable_by_customer' => 1));
 	pg_assert_true($f['order_form_unavailable'], 'out of stock');
 	pg_assert_false($f['order_form_checkbox'] || $f['has_recurring_schedule'], 'no control and no schedule');
+	pg_assert_true(pg_of_row_flags(array('available' => false, 'image_name' => 'mug.jpg'))['order_form_has_image'], 'an image, ordered or not');
+	pg_assert_false(pg_of_row_flags(array('available' => true, 'image_name' => ''))['order_form_has_image'], 'no image');
 	$f = pg_of_row_flags(array('available' => true, 'selection_type' => 'autoselect'));
 	pg_assert_false($f['order_form_checkbox'] || $f['order_form_quantity'] || $f['order_form_donation'], 'autoselect has no control');
 }
@@ -151,7 +170,9 @@ function test_order_form_widget_tokens()
 		'__skip_button_label' => 'No &quot;thanks&quot;',
 		'__currency_symbol'   => '₺',
 		'__cart_url'          => '/cart?a=1&amp;b=2',
+		'__currency_code'     => '',
 	), $tokens);
+	pg_assert_same('US&lt;D', pg_of_tokens('', '', '', '', 'US<D')['__currency_code'], 'the code, escaped once');
 	pg_assert_same('€', pg_of_tokens('', '', '&euro;', '')['__currency_symbol'], 'a named entity');
 	pg_assert_same('$', pg_of_tokens('', '', '$', '')['__currency_symbol'], 'a plain symbol');
 	pg_assert_same('&lt;b&gt;₺&lt;/b&gt;', pg_of_tokens('', '', '<b>&#8378;</b>', '')['__currency_symbol'], 'markup stays text');

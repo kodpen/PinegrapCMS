@@ -16084,6 +16084,7 @@ const StyleDesigner = (function () {
         '__item_summary': _sdT('A sample product description — short and clear.'),
         '__cart_section_label': _sdT('Cart'),
         '__currency_symbol': _sdCurrencySymbol(),
+        '__currency_code': 'USD',
         '__order_number': 'PG-12345',
         '__order_status': _sdT('Completed'),
         '__shipping_method_name': _sdT('Standard Shipping'),
@@ -44902,7 +44903,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Labels'), tokens: [
             ['__add_button_label',  _sdT('Add button label (the page\'s setting)')],
             ['__skip_button_label', _sdT('Skip button label (the page\'s setting)')],
-            ['__currency_symbol',   _sdT('Currency symbol')]
+            ['__currency_symbol',   _sdT('Currency symbol')],
+            ['__currency_code',     _sdT('Currency code shown beside amounts (empty when the site shows none)')]
         ]},
         { label: _sdT('Product (loop_area)'), tokens: [
             ['__id',                    _sdT('Product ID')],
@@ -49520,10 +49522,17 @@ const StyleDesigner = (function () {
             ['has_quantity',           _sdT('The pick list asks for a quantity (not only donations)')],
             ['has_recipient_choice',   _sdT('The visitor picks who the products are shipped to')],
             ['has_skip_button',        _sdT('The page has a skip button')],
+            ['only_donations',         _sdT('Every product that can be ordered is a donation')],
+            ['not_only_donations',     _sdT('A product that can be ordered is not a donation')],
+            ['selects_by_checkbox_and_quantity', _sdT('The list has both check boxes and quantity boxes')],
+            ['selects_by_checkbox_only', _sdT('The list has check boxes and no quantity box')],
+            ['selects_by_quantity_only', _sdT('The list has quantity boxes and no check box')],
+            ['has_currency_code',      _sdT('The site shows a currency code beside amounts')],
             ['order_form_checkbox',    _sdT('Row: the product is chosen with a check box')],
             ['order_form_quantity',    _sdT('Row: the product is ordered by quantity')],
             ['order_form_donation',    _sdT('Row: the product is a donation of the visitor\'s amount')],
             ['order_form_unavailable', _sdT('Row: the product is out of stock')],
+            ['order_form_has_image',   _sdT('Row: the product has an image')],
             ['has_recurring_schedule', _sdT('Row: the visitor sets the payment schedule')],
             ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
