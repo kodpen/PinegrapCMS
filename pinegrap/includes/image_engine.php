@@ -551,23 +551,31 @@ function pg_image_ensure_memory($width, $height)
 
     // Source plus destination, four bytes a pixel, and half again for the
     // decoder's own working space.
-    $needed = (int) ($width * $height * 4 * 2 * 1.5) + (16 * 1024 * 1024) + memory_get_usage(true);
+    $picture = (int) ($width * $height * 4 * 2 * 1.5) + (16 * 1024 * 1024);
 
     // Above this the image is refused rather than granted whatever it asks
     // for. A photo needing more than a gigabyte to open is not a product
     // photo, and honouring it would take the site down rather than one upload.
     // Checked before the limit: where memory_limit is off (-1, php-cli
     // without a php.ini, a batch screen that turns it off) nothing else stops
-    // a 20000 px square from asking GD for gigabytes.
-    if ($needed > (1024 * 1024 * 1024)) {
+    // a 20000 px square from asking GD for gigabytes. The picture's own need,
+    // not what the request already holds, which a limit of -1 does not bound.
+    if ($picture > (1024 * 1024 * 1024)) {
         return false;
     }
+
+    $needed = $picture + memory_get_usage(true);
 
     // pg_ini_bytes() answers 0 for an unlimited or unset memory_limit.
     $bytes = pg_ini_bytes(@ini_get('memory_limit'));
 
     if (($bytes === 0) || ($bytes >= $needed)) {
         return true;
+    }
+
+    // A raised limit stays under the same ceiling.
+    if ($needed > (1024 * 1024 * 1024)) {
+        return false;
     }
 
     @ini_set('memory_limit', ((int) ceil($needed / (1024 * 1024))) . 'M');
