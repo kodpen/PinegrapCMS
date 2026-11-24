@@ -8,7 +8,8 @@ description: "Check all cases" of the Preview as drawn (boards P6, P7 of designe
 - The cases are the page's own: each case of "Case" for each visitor the page has a rule for. A page with one case has no such row.
 
 ## What shows while it runs?
-- The three choosers show the case on its way and are dimmed; the page under them is each case as it is drawn. At the bar's right a small spinner with "Checking 3 of 6…" and "Stop" (quiet small).
+- The three choosers show the case on its way and are dimmed; the page behind stays the last one drawn until the next arrives, never blank. At the bar's right a small spinner with "Checking 3 of 6…" and "Stop" (quiet small).
+- The list opens with the first finding and fills row by row. Until the run ends its head reads "1 case to look at so far" with "Checking 3 of 6…" under it, its foot "Checking at 742px wide."; a row opens its case once the run has ended or was stopped.
 - It is measured in the Preview's own frame at the width the window has.
 
 ## What is the list?

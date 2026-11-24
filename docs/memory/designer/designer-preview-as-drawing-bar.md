@@ -6,7 +6,8 @@ description: The "Preview as" bar as drawn (boards P1, P5, P7 of designer-previe
 ## What stands in the bar?
 - A 40px line at the top of the Preview window that pushes the page down and never lies over it. From the left: the eye mark with "Preview as", then the choosers "Record", "Visitor", "Case". Nothing stands at the right until a choice is made.
 - A chooser is a quiet menu button: its name in grey, the value drawn now in white, a caret. One that differs from the default is tinted blue.
-- "Record" shows only on a page with a single-record widget, "Case" only on a page with more than "Typical", "Visitor" always. A chooser the page cannot use is left out, never shown dead.
+- "Record" shows only on a page with a single-record widget, "Visitor" only on a page with an access rule or an audience condition, "Case" only on a page with more than "Typical".
+- A chooser with nothing to choose is not drawn, never shown dead. A page where none has a choice shows no bar and no first-use line: its Preview looks as it does today.
 - As it opens nothing is chosen: the record today's Preview draws (the newest submission, the first product), "Signed out", "Typical".
 - "Reset" (ghost small, the turn-back arrow) appears at the right end only while a chooser differs; it puts the three back to the default and leaves.
 - "Hotspots" stays where it is today, at the page's lower left.
@@ -19,7 +20,7 @@ description: The "Preview as" bar as drawn (boards P1, P5, P7 of designer-previe
 - After "Check all cases" with nothing found: "Every case looks right. 6 cases drawn.", teal mark, closed by its X.
 
 ## What happens while the page is drawn again?
-- The old page stays, dimmed, with a small spinner and "Drawing…" at the bar's right. The bar is never locked: a new choice replaces the one on its way.
+- A changed chooser keeps the drawn page in place, as it is, until the new drawing arrives: the frame never goes blank between two cases. Meanwhile a small spinner with "Drawing…" stands at the bar's right. The bar is never locked: a new choice replaces the one on its way.
 - The live refresh after an edit keeps the bar as it is, draws the page with the same choices and does not close an open menu.
 - The choice is kept for this page in this browser: opening the Preview again shows the same record, visitor and case. Nothing of it is saved with the design; another page starts at its own default.
 

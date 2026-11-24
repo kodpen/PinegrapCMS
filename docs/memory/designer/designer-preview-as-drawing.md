@@ -10,7 +10,7 @@ description: The drawing of the "Preview as" bar (plans/designer-preview-as.md, 
 - The bar, its one line and the narrow window: `designer-preview-as-drawing-bar.md`. The three menus: `designer-preview-as-drawing-choosers.md`. "Check all cases": `designer-preview-as-drawing-check.md`.
 
 ## Which board belongs to which step?
-- PW3: P1 the Preview window with the bar (as it opens, the first-use line, a page with "Visitor" alone), P2 the "Record" menu and its states, P3 the "Visitor" menu on three kinds of page, P4 the "Case" menu and what a case sets, P5 the bar after a choice (drawing, "Reset", a case that could not be drawn, a record that is gone).
+- PW3: P1 the Preview window with the bar (as it opens, the first-use line, a page with "Visitor" alone, a page with no bar), P2 the "Record" menu and its states, P3 the "Visitor" menu on three kinds of page, P4 the "Case" menu and what a case sets, P5 the bar after a choice (drawing, "Reset", a case that could not be drawn, a record that is gone).
 - PW4: P6 "Check all cases" (running, the list, nothing found, stopped, a case that failed, the command palette row). PW4 adds the "Check all cases" row to the menu of P4.
 - PW3 and PW4: P7 the window too narrow for the choosers (the one button, its sheet, the list as a sheet).
 - PW1 and PW2 draw nothing: the case model and the server. How a masked address, e-mail or phone reads is PW2's; the sheet only says that they are masked.

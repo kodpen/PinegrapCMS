@@ -13,6 +13,7 @@ description: The "Record", "Visitor" and "Case" menus of the "Preview as" bar as
 - Keyboard: typing goes to the search; Down and Up move, Enter chooses and closes, Escape closes; Left and Right change the widget in the segmented row.
 
 ## What is in the "Visitor" menu?
+- The chooser stands only on a page with an access rule or an audience condition; a page with neither is drawn the same signed in or out.
 - "Signed out" (today's Preview) and "Signed in" with the second line "Alex Morgan, the sample account": the canvas's sample account, in no group.
 - Under the caption "Member of a group": only the groups the page's access rules name; the sample account is drawn as a member of the chosen one. A page with no access rule has no such part.
 - Under the caption "Visit": "First visit" (as today) and "Returning", only where the page has audience conditions. It is a second choice beside the rows above, so the menu stays open after it; the chooser then reads as "Signed out, returning".
