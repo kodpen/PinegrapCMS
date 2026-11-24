@@ -148,6 +148,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-106.md: Are the screens drawn first? (owner, 2026-11-24, two choices)
 - decisions-made-product-106.md: What is the architect's reading, not his words?
 - decisions-made-product-106.md: Which ten more were listed to him? (2026-11-24, none decided)
+- decisions-made-product-107.md: Where are the rules and the earlier parts?
+- decisions-made-product-107.md: How does a site connect to Figma? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-107.md: How does a design come from Canva? (owner, 2026-11-24)
+- decisions-made-product-107.md: What did the architect answer from the census, as technical calls?
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
