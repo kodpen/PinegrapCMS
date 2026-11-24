@@ -3971,6 +3971,21 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
 }
 
 /**
+ * A main menu row's drawing where a place outside the menu stands for that
+ * row (a Notes tile, a dashboard card's head): at rest, in the size and
+ * colour of the glyph it replaces (.pg-mi-cite, backend.src.css). An icon of
+ * an action or an object keeps its Bootstrap icon.
+ *
+ * @param string $name  a menu_icon name of output_menu()
+ * @param string $class classes added to the svg (a margin)
+ * @return string the svg, '' for a name without a drawing
+ */
+function pg_menu_icon_cite($name, $class = '')
+{
+    return pg_menu_icon((string) $name, 'pg-mi-cite' . ($class !== '' ? ' ' . $class : ''), '');
+}
+
+/**
  * A main menu row's icon on its tile: the drawing (pg_menu_icon()) or the
  * fallback icon, in the colour of the row's category, on a tint of it.
  *

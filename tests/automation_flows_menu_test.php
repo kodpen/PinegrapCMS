@@ -157,7 +157,7 @@ function test_automation_flows_menu_row_lights_its_screen()
 
 	$nav = automation_flows_menu_test_file('includes/workspace/nav.php');
 
-	pg_assert_contains("array('key' => 'flows', 'label' => lang('Automation flows'), 'short' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => \$base . 'workspace_flows.php')", $nav, 'the list keeps its link to the same screen, by its name');
+	pg_assert_contains("array('key' => 'flows', 'label' => lang('Automation flows'), 'short' => lang('Flows'), 'icon' => 'bi-diagram-3', 'menu_icon' => 'flows', 'url' => \$base . 'workspace_flows.php')", $nav, 'the list keeps its link to the same screen, by its name');
 }
 
 function test_automation_flows_menu_names_the_screen()

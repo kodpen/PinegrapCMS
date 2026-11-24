@@ -1041,6 +1041,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'message_max'  => WS_MESSAGE_MAX,
         // The Design Canvas's icon on New canvas, in one colour like its neighbours.
         'canvas_icon'  => pg_design_canvas_icon_one_colour(),
+        // The drawings of the main menu rows a place of the screen stands
+        // for (the My Notes empty screen), at rest (pg_menu_icon_cite()).
+        'menu_icons'   => array(
+            'notes' => pg_menu_icon_cite('notes'),
+        ),
         // Which model rewrites a message in the composer (pg_ai_write_engine():
         // pinegrap | browser), '' for no button. The screen's gate has
         // already let only the team in (pg_ai_write_user_may()'s rule).

@@ -389,7 +389,13 @@
         var head = el("header", "pg-dash-card-head");
         var icon = el("span", "pg-dash-card-icon");
         icon.setAttribute("aria-hidden", "true");
-        icon.appendChild(el("i", "bi " + meta.icon));
+        // A card that stands for a main menu row: the row's drawing the
+        // server sent (pg_menu_icon_cite()); any other: its bi icon.
+        if (meta.svg) {
+            icon.innerHTML = meta.svg;
+        } else {
+            icon.appendChild(el("i", "bi " + meta.icon));
+        }
         head.appendChild(icon);
 
         var title = el("h2", "pg-dash-card-title", meta.title);

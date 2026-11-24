@@ -479,11 +479,21 @@ function ws_notes_quick_markup($rights, $parent_target = '')
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
+    // The button and the box's links stand for the My Notes row, so they
+    // draw its icon (pg_menu_icon_cite()).
+    $notes_icon = function_exists('pg_menu_icon_cite') ? pg_menu_icon_cite('notes') : '';
+    $notes_icon_me = function_exists('pg_menu_icon_cite') ? pg_menu_icon_cite('notes', 'me-1') : '';
+
+    if ($notes_icon === '') {
+        $notes_icon = '<span class="bi bi-journal-plus" aria-hidden="true"></span>';
+        $notes_icon_me = '<i class="bi bi-journal-text me-1" aria-hidden="true"></i>';
+    }
+
     return '
                 <ul class="navbar-nav pg-quick-note-nav">
                     <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . h(lang('Quick note')) . '">
                         <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
-                            <span class="bi bi-journal-plus" aria-hidden="true"></span>
+                            ' . $notes_icon . '
                         </button>
                         <div id="pg_quick_note" class="menu shadow p-5 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
                             <form data-pg-quick-note class="disable_shortcut" novalidate
@@ -493,8 +503,8 @@ function ws_notes_quick_markup($rights, $parent_target = '')
                                 data-open="' . h(lang('Open the note')) . '"
                                 data-failed="' . h(lang('The note could not be saved.')) . '">
                                 <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
-                                    <label for="pg_quick_note_text" class="fw-semibold small mb-0"><i class="bi bi-journal-plus me-1" aria-hidden="true"></i>' . h(lang('Quick note')) . '</label>
-                                    <a class="small pg-link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
+                                    <label for="pg_quick_note_text" class="fw-semibold small mb-0">' . $notes_icon_me . h(lang('Quick note')) . '</label>
+                                    <a class="small pg-link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '>' . $notes_icon_me . h(lang('My Notes')) . '</a>
                                 </div>
                                 <textarea id="pg_quick_note_text" name="body" class="form-control form-control-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
                                 <div class="d-flex align-items-center flex-wrap gap-3 mt-3">
