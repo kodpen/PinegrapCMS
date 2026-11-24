@@ -117,7 +117,7 @@ function test_privacy_erase_tables_are_pinned()
 			),
 			'ship_tos' => array(
 				'ship_to_name' => '', 'salutation' => '', 'first_name' => '{name}', 'last_name' => '',
-				'company' => '', 'address_1' => '', 'address_2' => '', 'city' => '', 'state' => '',
+				'company' => '', 'address_1' => '', 'address_2' => '', 'district' => '', 'city' => '', 'state' => '',
 				'zip_code' => '', 'phone_number' => '',
 			),
 			'order_documents' => array('ip' => '', 'user_agent' => ''),
