@@ -23,7 +23,7 @@ priority: 7
 - A change across pages is not this: that is a variable (`designer-variables.md`) or Find & Replace.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- SE1 (S) The matcher, pure: the four ways of alike, the three places, what is left out and why.
+- SE1 (S) The matcher, pure: the four ways of alike, the three places, what is left out and why. Done (#11530): `assets/js/pg_select_similar.js` (`window.PGSelectSimilar.find(tree, target, { by, where, cls, mayEdit, keepsChildren })`), in no bundle yet; SE2 makes it the first source of a part.
 - SE2 (M) after SE1 and DD13: the menu rows, the line with its two lists, Overview, the command palette, the key.
 - SE3 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
