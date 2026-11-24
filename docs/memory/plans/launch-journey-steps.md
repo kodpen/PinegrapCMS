@@ -18,9 +18,11 @@ description: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the sto
 
 - SJ6 (S) done, PR #11337: the read route with its types, `php tools/check_api_schema.php`; the MCP tool; the guide's `start` topic (`includes/fn/agent_guide.php`). Features: L8.
 
+- SJ3b (S) done, PR #11379: the go-live check's broken internal links warning (`seo_issue` `link_broken_internal`, or the SEO check never run with "Run the SEO check"); never a blocker. Features: L4. (`ui/launch-journey-go-live.md`)
+
 - SJ7 (S) close-out: every L number checked against the code with its PR; `ui/launch-journey.md` written; this plan's files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- SJ1a first. After SJ1a: SJ1b and SJ2; after SJ2: SJ3, and SJ5 once SJ1b landed; after SJ3: SJ4 and SJ6. SJ2 enters `includes/dashboard/v2/cards.php`, SJ5 `waf.php`: check the open PRs before claiming.
+- SJ1a first. After SJ1a: SJ1b and SJ2; after SJ2: SJ3, and SJ5 once SJ1b landed; after SJ3: SJ4, SJ6 and SJ3b; SJ7 after SJ3b. SJ2 enters `includes/dashboard/v2/cards.php`, SJ5 `waf.php`: check the open PRs before claiming.
 
 Related: docs/memory/plans/launch-journey.md, docs/memory/plans/launch-journey-features.md, docs/memory/plans/launch-journey-screens.md
