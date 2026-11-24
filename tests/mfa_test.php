@@ -361,3 +361,17 @@ function test_mfa_setup_keeps_codes_of_a_passkey_account()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/mfa.php');
 	pg_assert_contains('if ($codes === array()) {', $screen, 'mfa.php signs in when the codes were kept');
 }
+
+// The tokens a two-step change revokes go through pg_auth_token_revoke(),
+// which also ends the device notifications of their browsers.
+function test_mfa_revoke_other_sessions_ends_their_notifications()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');
+	$start = strpos($source, 'function pg_mfa_revoke_other_sessions(');
+	pg_assert_true($start !== false, 'pg_mfa_revoke_other_sessions() found');
+	$body = substr($source, (int) $start, 2500);
+	$body = substr($body, 0, (int) strpos($body, "\n}\n"));
+
+	pg_assert_contains('pg_auth_token_revoke((string) $selector)', $body, 'each other token revoked with its notifications');
+	pg_assert_true(strpos($body, 'DELETE FROM auth_tokens') === false, 'no bare DELETE that leaves push subscriptions behind');
+}

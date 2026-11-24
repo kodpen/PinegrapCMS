@@ -857,7 +857,12 @@ function pg_mfa_revoke_other_sessions($user_id)
         return;
     }
 
-    db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "' AND selector != '" . e($keep) . "'");
+    // One by one through pg_auth_token_revoke(), which also ends the device
+    // notifications of each browser signed out here.
+    foreach ((array) db_values("SELECT selector FROM auth_tokens
+        WHERE user_id = '" . (int) $user_id . "' AND selector != '" . e($keep) . "'") as $selector) {
+        pg_auth_token_revoke((string) $selector);
+    }
 
     // Same as pg_auth_token_revoke_user(): devices signed in to the external
     // API are sessions of the same person.
