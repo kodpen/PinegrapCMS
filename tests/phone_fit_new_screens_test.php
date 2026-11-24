@@ -35,3 +35,13 @@ function test_phone_fit_queue_place_row_titles_are_blocks()
 	pg_assert_same(0, substr_count($source, '<strong class="pg-list-row-title">'), 'an inline title neither wraps nor ends in an ellipsis');
 	pg_assert_same(2, substr_count($source, '<strong class="pg-list-row-title d-block">'), 'the desk and screen rows draw a block title');
 }
+
+function test_phone_fit_lobby_past_number_stays_whole()
+{
+	// A long desk name beside it broke "A-004" after its hyphen.
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/queue_lobby.php');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/queue_lobby.js');
+
+	pg_assert_true(strpos($page, '<strong class="pg-tabular flex-grow-1 text-nowrap"') !== false, 'the page draws the number on one line');
+	pg_assert_true(strpos($script, "element('strong', 'pg-tabular flex-grow-1 text-nowrap'") !== false, 'the 5-second redraw too');
+}
