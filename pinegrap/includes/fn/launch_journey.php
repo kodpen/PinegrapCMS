@@ -502,3 +502,306 @@ function pg_launch_journey_first_week($live_at, $now)
         'left'    => $ends - $now,
     );
 }
+
+/**
+ * The name of the journey's config_text row: one JSON object holding the
+ * purpose, the purpose a template suggested, the go-live time, the hidden
+ * steps and whether the set-up card was closed.
+ */
+define('PG_LAUNCH_JOURNEY_ROW', 'launch_journey');
+
+/**
+ * The stored row made whole: purpose ('' while none was chosen), suggested
+ * (a template's purpose, '' for none), live_at, hidden and closed. Anything
+ * the row does not hold, or holds wrongly, takes its empty value. Pure.
+ *
+ * @param string $json the config_text value
+ * @return array purpose, suggested, live_at, hidden, closed
+ */
+function pg_launch_journey_stored_read($json)
+{
+    $row = json_decode((string) $json, true);
+    $row = is_array($row) ? $row : array();
+    $known = function ($name) use ($row) {
+        return (isset($row[$name]) && in_array($row[$name], pg_launch_journey_purposes(), true)) ? $row[$name] : '';
+    };
+
+    return array(
+        'purpose'   => $known('purpose'),
+        'suggested' => $known('suggested'),
+        'live_at'   => isset($row['live_at']) ? max(0, (int) $row['live_at']) : 0,
+        'hidden'    => pg_launch_journey_hidden_clean(isset($row['hidden']) ? $row['hidden'] : array()),
+        'closed'    => !empty($row['closed']),
+    );
+}
+
+/**
+ * A stored row with changes made, as the JSON to keep. A purpose outside the
+ * list, a hidden step the card does not show and any key the row does not
+ * know are left out. Keys a later step adds to the row are kept as they were.
+ * Pure.
+ *
+ * @param string $json    the config_text value
+ * @param array  $changes purpose, suggested, live_at, hide (one step key),
+ *                        closed
+ * @return string
+ */
+function pg_launch_journey_stored_change($json, $changes)
+{
+    $raw = json_decode((string) $json, true);
+    $raw = is_array($raw) ? $raw : array();
+    $row = pg_launch_journey_stored_read($json);
+
+    foreach (array('purpose', 'suggested') as $name) {
+        if (isset($changes[$name]) && in_array($changes[$name], pg_launch_journey_purposes(), true)) {
+            $row[$name] = $changes[$name];
+        }
+    }
+
+    if (isset($changes['live_at'])) {
+        $row['live_at'] = max(0, (int) $changes['live_at']);
+    }
+
+    if (isset($changes['hide'])) {
+        $row['hidden'] = pg_launch_journey_hidden_clean(array_merge($row['hidden'], array($changes['hide'])));
+    }
+
+    if (isset($changes['closed'])) {
+        // Brought back, the card starts again with every step on it.
+        if ($row['closed'] && !$changes['closed']) {
+            $row['hidden'] = array();
+        }
+        $row['closed'] = (bool) $changes['closed'];
+    }
+
+    return (string) json_encode(array_merge($raw, $row));
+}
+
+/**
+ * The purpose a design template's key suggests, '' for a template the
+ * journey does not know; the purpose dialog then starts with nothing
+ * picked. Pure.
+ *
+ * @param string $template a key of pg_design_templates()
+ * @return string
+ */
+function pg_launch_journey_template_purpose($template)
+{
+    $map = array(
+        'shop'        => array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop', 'pinegrap-florist', 'pinegrap-market'),
+        'company'     => array('pinegrap-construction', 'pinegrap-law', 'pinegrap-realestate', 'pinegrap-recruitment', 'pinegrap-homeservices'),
+        'association' => array('pinegrap-charity', 'pinegrap-sportsclub'),
+        'school'      => array('pinegrap-school', 'pinegrap-courses', 'pinegrap-drivingschool'),
+        'clinic'      => array('pinegrap-clinic', 'pinegrap-veterinary', 'pinegrap-salon'),
+        'blog'        => array('pinegrap-magazine', 'pinegrap-news', 'pinegrap-podcast'),
+    );
+
+    foreach ($map as $purpose => $templates) {
+        if (in_array((string) $template, $templates, true)) {
+            return $purpose;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The purpose choices as the dialog shows them, in list order. Pure.
+ *
+ * @return array purpose => name, line, icon, tone
+ */
+function pg_launch_journey_purpose_cards()
+{
+    $card = function ($name, $line, $icon, $tone) {
+        return array('name' => $name, 'line' => $line, 'icon' => $icon, 'tone' => $tone);
+    };
+
+    return array(
+        'shop'        => $card(lang('Shop'), lang('Products sold and paid for online'), 'bi-bag', 'shop'),
+        'company'     => $card(lang('Company'), lang('A business, its services and how to reach it'), 'bi-building', 'blue'),
+        'association' => $card(lang('Association or charity'), lang('Members, donations and news'), 'bi-heart', 'rose'),
+        'school'      => $card(lang('School or courses'), lang('Courses, lessons and students'), 'bi-mortarboard', 'violet'),
+        'clinic'      => $card(lang('Clinic or bookings'), lang('Appointments and opening hours'), 'bi-calendar-check', 'teal'),
+        'agency'      => $card(lang('Agency'), lang('A site built for a customer'), 'bi-briefcase', 'amber'),
+        'blog'        => $card(lang('Blog or magazine'), lang('Articles and their readers'), 'bi-journal-richtext', 'content'),
+        'other'       => $card(lang('Other'), lang('Something else: the general steps'), 'bi-three-dots', 'gray'),
+    );
+}
+
+/**
+ * A step's face on the set-up card: its name, icon tile and the screen its
+ * "Do it" opens, at the section where the step is done. Pure.
+ *
+ * @param string $key a key of pg_launch_journey_catalogue()
+ * @return array name, icon, tone, url
+ */
+function pg_launch_journey_step_face($key)
+{
+    $face = function ($name, $icon, $tone, $url) {
+        return array('name' => $name, 'icon' => $icon, 'tone' => $tone, 'url' => $url);
+    };
+
+    switch ($key) {
+        case 'domain_ssl':
+            return $face(lang('Domain and SSL'), 'bi-shield-lock', 'teal', '#settings/general/pgset-server');
+        case 'payment_live':
+            return $face(lang('Payment live'), 'bi-credit-card', 'shop', '#settings/commerce/pgset-payments');
+        case 'booking_hours':
+            return $face(lang('Booking hours'), 'bi-calendar-check', 'teal', '#settings/bookings/pgset-booking-staff');
+        case 'mail':
+            return $face(lang('E-mail sending'), 'bi-envelope', 'blue', '#settings/email/pgset-mail-system');
+        case 'legal':
+            return $face(lang('Legal texts'), 'bi-file-earmark-text', 'violet', '#settings/privacy/pgset-legal');
+        case 'search_open':
+            return $face(lang('Search engines open'), 'bi-search', 'teal', '#settings/seo/pgset-seo');
+        case 'search_tools':
+            return $face(lang('Search Console and Analytics'), 'bi-graph-up', 'reports', 'connections.php');
+        case 'backups':
+            return $face(lang('Backups'), 'bi-hdd-stack', 'amber', '#settings/maintenance/pgset-backup');
+        case 'cron':
+            return $face(lang('Scheduled tasks'), 'bi-clock-history', 'system', '#settings/maintenance/pgset-cron');
+        case 'team':
+            return $face(lang('Team'), 'bi-people', 'team', 'add_user.php');
+        default:
+            return $face(lang('Maintenance mode'), 'bi-cone-striped', 'warning', '#settings/maintenance/pgset-maintenance');
+    }
+}
+
+/**
+ * The one line of state under a step's name: what is done, or what is
+ * missing. The mail step names each of its three records. Pure.
+ *
+ * @param array $row   a row of pg_launch_journey_state()
+ * @param array $facts
+ * @return string
+ */
+function pg_launch_journey_step_line($row, $facts)
+{
+    if ($row['state'] === 'unknown') {
+        return lang('Could not be checked');
+    }
+
+    if (($row['key'] === 'mail') && ($row['reason'] === 'dns')) {
+        $parts = array();
+
+        foreach (array('mail_spf' => 'SPF', 'mail_dkim' => 'DKIM', 'mail_dmarc' => 'DMARC') as $name => $record) {
+            $state = isset($facts[$name]) ? (string) $facts[$name] : 'unknown';
+            $words = array('ok' => '{var:1} found', 'error' => '{var:1} missing', 'warning' => '{var:1} needs a look');
+            $parts[] = lang(array('string' => isset($words[$state]) ? $words[$state] : '{var:1} not checked', 'vars' => array($record)));
+        }
+
+        return implode(', ', $parts);
+    }
+
+    $lines = array(
+        'domain_ssl:'                      => lang('The site answers over HTTPS'),
+        'domain_ssl:no_https'              => lang('The site does not answer over HTTPS'),
+        'domain_ssl:certificate_expiring'  => lang('The certificate runs out soon'),
+        'domain_ssl:certificate_expired'   => lang('The certificate has run out'),
+        'payment_live:'                    => lang('Payments take real money'),
+        'payment_live:no_online_payment'   => lang('No online payment is switched on'),
+        'payment_live:test_mode'           => lang('A payment way is in test mode'),
+        'payment_live:mode_unknown'        => lang('The payment mode could not be read'),
+        'booking_hours:'                   => lang('Bookable hours are set'),
+        'booking_hours:no_hours'           => lang('No bookable hours are set'),
+        'mail:'                            => lang('Mail is sent; SPF, DKIM and DMARC found'),
+        'mail:not_sending'                 => lang('No way to send e-mail is set'),
+        'legal:'                           => lang('The legal texts are in place'),
+        'legal:no_personal_data_text'      => lang('No personal-data text is set'),
+        'legal:no_consent'                 => lang('Cookie consent is off'),
+        'legal:no_legal_documents'         => lang('Checkout documents are off'),
+        'search_open:'                     => lang('Search engines may index the site'),
+        'search_open:robots_closed'        => lang('robots.txt closes the whole site'),
+        'search_open:home_noindex'         => lang('The home page asks search engines to stay away'),
+        'search_tools:'                    => lang('Search Console and Analytics are connected'),
+        'search_tools:no_search_console'   => lang('Search Console is not connected'),
+        'search_tools:no_analytics'        => lang('Analytics is not connected'),
+        'backups:'                         => lang('A recent backup is kept'),
+        'backups:none'                     => lang('No backup yet'),
+        'backups:old'                      => lang('The newest backup is over a month old'),
+        'cron:'                            => lang('Scheduled tasks run'),
+        'cron:stalled'                     => lang('A scheduled task stopped'),
+        'cron:never'                       => lang('Scheduled tasks have never run'),
+        'team:'                            => lang('Someone else has signed in'),
+        'team:alone'                       => lang('Nobody else has signed in yet'),
+        'maintenance:'                     => lang('Maintenance mode is off'),
+        'maintenance:on'                   => lang('Maintenance mode is on'),
+    );
+
+    $code = $row['key'] . ':' . (($row['state'] === 'done') ? '' : $row['reason']);
+
+    return isset($lines[$code]) ? $lines[$code] : lang('Could not be checked');
+}
+
+/**
+ * What the set-up card draws: the head ("5 of 9 done"), the status pill,
+ * the rows (blockers first) each with its face, line, level and whether
+ * "Not for this site" is offered (never on a blocker or a step done), and
+ * whether the journey is finished. Pure.
+ *
+ * @param string $purpose
+ * @param array  $facts
+ * @param mixed  $hidden
+ * @return array head, status (key, text, tone), rows, finished
+ */
+function pg_launch_journey_card($purpose, $facts, $hidden)
+{
+    $state = pg_launch_journey_state($purpose, $facts, $hidden);
+    $pills = array(
+        'blocked'     => array(lang('Blocked'), 'rose'),
+        'in_progress' => array(lang('In progress'), 'amber'),
+        'ready'       => array(lang('Ready'), 'teal'),
+    );
+    $rows = array();
+
+    foreach ($state['rows'] as $row) {
+        $face = pg_launch_journey_step_face($row['key']);
+
+        $rows[] = array(
+            'key'   => $row['key'],
+            'name'  => $face['name'],
+            'icon'  => $face['icon'],
+            'tone'  => $face['tone'],
+            'url'   => $face['url'],
+            'line'  => pg_launch_journey_step_line($row, $facts),
+            'done'  => ($row['state'] === 'done'),
+            'level' => $row['level'],
+            'hide'  => ($row['level'] !== 'blocker') && ($row['state'] !== 'done'),
+        );
+    }
+
+    return array(
+        'head'     => lang(array('string' => '{var:1} of {var:2} done', 'vars' => array($state['done'], $state['total']))),
+        'status'   => array('key' => $state['status'], 'text' => $pills[$state['status']][0], 'tone' => $pills[$state['status']][1]),
+        'rows'     => $rows,
+        'finished' => $state['finished'],
+    );
+}
+
+/**
+ * The changes a set-up card request asks for: a purpose from the list, one
+ * step of the card hidden ("Not for this site"), or the card closed ("Hide
+ * set-up"). Anything else asks for nothing. A hidden step that blocks stays
+ * on the card (pg_launch_journey_state()). Pure.
+ *
+ * @param array $request purpose, hide, close
+ * @return array changes for pg_launch_journey_stored_change(), empty for none
+ */
+function pg_launch_journey_request_changes($request)
+{
+    $changes = array();
+
+    if (isset($request['purpose']) && in_array($request['purpose'], pg_launch_journey_purposes(), true)) {
+        $changes['purpose'] = $request['purpose'];
+    }
+
+    if (isset($request['hide']) && (pg_launch_journey_hidden_clean(array($request['hide'])) !== array())) {
+        $changes['hide'] = $request['hide'];
+    }
+
+    if (!empty($request['close'])) {
+        $changes['closed'] = true;
+    }
+
+    return $changes;
+}

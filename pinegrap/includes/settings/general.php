@@ -28,6 +28,34 @@ require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 // end in pg_general_fold_order().
 $general_parts = array();
 
+// The site's purpose and the set-up card (includes/fn/launch_journey.php):
+// an administrator's alone, as the card is.
+$general_launch_html = '';
+
+if (defined('USER_ROLE') && ((int) USER_ROLE === 0)) {
+    $general_launch = pg_launch_journey_stored();
+    $general_launch_options = '<option value="">' . h(lang('Not chosen yet')) . '</option>';
+
+    foreach (pg_launch_journey_purpose_cards() as $general_launch_key => $general_launch_card) {
+        $general_launch_options .= '<option value="' . h($general_launch_key) . '"' . (($general_launch['purpose'] === $general_launch_key) ? ' selected' : '') . '>' . h($general_launch_card['name']) . '</option>';
+    }
+
+    $general_launch_html = '
+                    <div class="col-12"><h3 class="pg-group-label mb-0">' . lang('Set-up') . '</h3></div>
+                    <div class="pg-f-md">
+                        <label for="launch_purpose" class="form-label">' . lang('What is this site for?') . '</label>
+                        <select class="form-control" id="launch_purpose" name="launch_purpose" aria-describedby="launch_purpose_help">' . $general_launch_options . '</select>
+                        <div class="form-text" id="launch_purpose_help">' . h(lang('Picks and orders the set-up steps on the dashboard.')) . '</div>
+                    </div>
+                    <div class="col-12">
+                        <input type="hidden" name="launch_form" value="1"/>
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($general_launch['closed'] ? '' : ' checked') . ' id="launch_show" name="launch_show"/>
+                            <label class="pg-text-2" for="launch_show">' . lang('Show the set-up card on the dashboard') . '</label>
+                        </div>
+                    </div>';
+}
+
 // ── Organization ──
 // Who runs the site, in one place: the name and address the campaigns, the
 // invoices and the legal texts print, the address system mail comes from,
@@ -88,7 +116,7 @@ $general_parts['organization'] = array('html' => '
                     <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
                         <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
                         <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
-                    </div>
+                    </div>' . $general_launch_html . '
                 </div>
             </div>
         </div>

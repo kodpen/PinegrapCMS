@@ -123,6 +123,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
+    // The site's purpose and whether the set-up card shows: only from an
+    // administrator's form, which alone carries the fields.
+    if (defined('USER_ROLE') && ((int) USER_ROLE === 0) && (post_value('launch_form') === '1')) {
+        $launch_changes = array('closed' => (post_value('launch_show') !== '1'));
+        if (in_array(post_value('launch_purpose'), pg_launch_journey_purposes(), true)) {
+            $launch_changes['purpose'] = post_value('launch_purpose');
+        }
+        pg_launch_journey_store($launch_changes);
+    }
+
     // Pinegrap AI sends this key to its gateway (includes/workspace/ai.php).
     // What the gateway said about the old key is forgotten with it: a key it
     // turned down is otherwise never asked about again.

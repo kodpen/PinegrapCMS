@@ -145,6 +145,8 @@ function pg_dashboard_v2_config($user, $row = null, $look = null)
         $figures[$key] = $all[$key]['label'];
     }
 
+    $stored = pg_dashboard_v2_launch_first($stored, $visible);
+
     return array(
         'cards'      => $cards,
         'layout'     => pg_dashboard_v2_grid_layout($stored, $visible),

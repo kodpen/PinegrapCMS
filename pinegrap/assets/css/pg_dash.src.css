@@ -5585,4 +5585,37 @@
     .pg-dash-bars rect[data-active] { fill: Highlight; }
     .pg-dash-line-rule { stroke: CanvasText; }
   }
+
+  /* ── General cards: Set up your site ─────────────────────────────────── */
+
+  /* The head line (done count, status pill, the card's menu) over the
+     steps as list rows, blockers first; the row's side holds "Do it" and
+     its menu, or the check of a step done. */
+  .pg-dash-launch-top {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .5rem;
+  }
+
+  .pg-dash-launch-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-launch-side {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+  }
+
+  .pg-dash-launch-done {
+    color: var(--pgd-good);
+  }
+
+  /* The purpose choice: one card a row on a phone, two from 576 px. */
+  @media (min-width: 576px) {
+    .pg-dash-launch-purposes { grid-template-columns: 1fr 1fr; }
+  }
 }

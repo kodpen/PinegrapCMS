@@ -116,6 +116,7 @@ function pg_panel_actions()
         // backend role; the handler checks the session, the token and the
         // role's lock.
         'dashboard_personal_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_personal_save', 'exempt' => true, 'token' => true, 'write' => true),
+        'launch_journey_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_launch_journey_save', 'exempt' => false, 'token' => true, 'write' => true),
         // Site-wide, so it keeps the general gate.
         'update_dashboard_appearance' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_appearance', 'exempt' => false, 'token' => true, 'write' => true),
         // Noting that someone has watched a guided tour is theirs to do

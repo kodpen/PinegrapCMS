@@ -1376,6 +1376,7 @@
     "What is the main reason for your score?": "Puanınızın asıl nedeni nedir?",
     "What is the project built on? Bootstrap 5 projects use the editor's Bootstrap; a project on another framework (Bootstrap 6, Tailwind…) or none goes into a custom design, with its own files. This cannot be changed later.": "Proje neyle yapılmış? Bootstrap 5 projeleri editörün Bootstrap'ini kullanır; başka bir çatıyla (Bootstrap 6, Tailwind…) ya da çatısız yapılmış proje kendi dosyalarıyla özel tasarıma gelir. Bu sonradan değiştirilemez.",
     "What is the security code?": "Güvenlik kodu nedir?",
+    "What is this site for?": "Bu site ne için?",
     "What is this?": "Bu nedir?",
     "What is to be approved": "Onaylanacak olan",
     "What is to be approved, in a line.": "Neyin onaylanacağı, tek satırda.",

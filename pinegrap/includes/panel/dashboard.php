@@ -27,6 +27,8 @@
  *   dashboard_personal_save      the caller's goals or pins on the
  *                                new dashboard (includes/dashboard/v2/
  *                                personal.php)
+ *   launch_journey_save          the set-up card's purpose, a step not for
+ *                                this site, or Hide set-up (administrators)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
  *                                name
@@ -524,6 +526,28 @@ function pg_panel_dashboard_personal_save($request, $action)
     }
 
     respond(array('status' => 'success', 'value' => $saved['value']));
+}
+
+function pg_panel_launch_journey_save($request, $action)
+{
+    // Behind the general gate (signed in, role 1 or better); the set-up
+    // card and its choices are an administrator's alone.
+    validate_token();
+
+    global $user;
+    $user = validate_user();
+
+    if ((int) $user['role'] !== 0) {
+        respond(array('status' => 'error', 'message' => lang('Only an administrator can change the set-up.')));
+    }
+
+    $changes = pg_launch_journey_request_changes($request);
+
+    if (!$changes || !pg_launch_journey_store($changes)) {
+        respond(array('status' => 'error', 'message' => lang('The change could not be saved.')));
+    }
+
+    respond(array('status' => 'success'));
 }
 
 function pg_panel_update_dashboard_appearance($request, $action)

@@ -314,6 +314,12 @@ if (empty($idt_result['ok'])) {
 $idt_state['done'] = true;
 $idt_state['parked'] = array();
 
+// The template's purpose, if the set-up journey knows it, is picked when
+// the dashboard first asks what the site is for.
+if (function_exists('pg_launch_journey_template_noted')) {
+    pg_launch_journey_template_noted((string)$idt_template['id']);
+}
+
 $idt_start_page = isset($idt_result['pages']['staff']) ? (int)$idt_result['pages']['staff'] : 0;
 $idt_removed = pg_idt_remove_starter($idt_page_ids, $idt_style_ids, (int)$idt_result['style_id'], $idt_start_page);
 
