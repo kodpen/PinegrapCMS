@@ -8,15 +8,15 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 - Code: `includes/workspace/flows.php`, handlers `api_flows.php`, routes `ws_api_routes()`; tests `tests/workspace_flows_test.php`. Screen, panel actions: `workspace-flows-canvas.md`.
 
 ## What does a graph look like?
-- `{"v":1, "nodes":[{id, kind, label, x, y, config}], "edges":[{from, to, on}], "notes":[{id, text, x, y, w, h}]}`. Ids `^[a-z][a-z0-9_]{0,31}$`.
+- `{"v":1, "nodes":[{id, kind, label, x, y, config}], "edges":[{from, to, on}], "notes":[…], "frames":[…]}` (`workspace-flows-notes-frames.md`). Ids `^[a-z][a-z0-9_]{0,31}$`.
 - Kinds: `ws_flow_kinds()`; `task` (title, description, assignees or an assign rule of `ws_template_assign_valid()`, due_in, priority).
-- `ws_flow_graph_normalize()` (pure): casts, drops unknown keys, cuts texts by characters, valid UTF-8 everywhere (a byte cut once broke `json_encode()`), a missing `on` is the box's first outcome.
-- `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable, bad_reference (`workspace-flows-references.md`). Notes are not checked. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
+- `ws_flow_graph_normalize()` (pure): casts, drops unknown keys, cuts texts by characters, valid UTF-8 everywhere, a missing `on` is the box's first outcome.
+- `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable, bad_reference (`workspace-flows-references.md`). Notes and frames: counts only. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
 - bad_id, bad_config beyond the plan: an id becomes `run_steps.node_id`; a task box needs a title.
 
 ## Who may do what?
 - `ws_flow_access()`: edit = owner on the staff (`ws_can_schedule()`), or a staff colleague shared at edit; run = reader of a live flow's home (public/private), or a run share; view = view or channel share. Binned, admins by rank (as `ws_note_access()`), site members: ''. Publish, share, delete, home move: owner only (`workspace-flows-shares.md`).
-- Limits: 100 boxes, 200 notes (problems: a draft may hold them), 256 KB JSON, 200 flows per owner (refused).
+- Limits: 100 boxes, 200 notes, 30 frames (problems: a draft may hold them), 256 KB JSON, 200 flows per owner (refused).
 
 ## How do the writes work?
 - `ws_flow_save_check()` / `ws_flow_save()`: name 1-160; home public/private and readable (checked on a change only; not in the draft: changes at once, runs keep theirs); graph normalized; problems answered, not refused. UPDATE `WHERE draft_rev = ?` raises it; 0 rows → 409 `changed_meanwhile`.
@@ -24,7 +24,7 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 - `ws_flow_pause*()` live → paused (open runs go on); `ws_flow_bin*()` binned, open runs cancelled. Create, publish, pause, delete write a Site Log line (API inside `ws_api_as_owner()`); draft saves do not.
 
 ## Which routes?
-- GET/POST `/workspace/flows`, GET and POST (PATCH) `/{id}` (`draft_rev` required), POST `/{id}/publish`, `/{id}/pause`, DELETE `/{id}` and POST `/{id}/delete`. Body parts `nodes`, `edges`, `notes` (one not sent is kept). All writes `dry_run`; a draft rehearsal answers its problems.
+- GET/POST `/workspace/flows`, GET and POST (PATCH) `/{id}` (`draft_rev` required), POST `/{id}/publish`, `/{id}/pause`, DELETE `/{id}` and POST `/{id}/delete`. Body parts `nodes`, `edges`, `notes`, `frames` (one not sent kept). All writes `dry_run`; a draft rehearsal answers its problems.
 - Objects WorkspaceFlow, WorkspaceFlowVersion, WorkspaceFlowGraph, WorkspaceFlowProblem. Draft and problems to editors on a single read (readers: the draft of a flow never published).
 
 ## Why is publish own-words only? (owner, 2026-10-24)
