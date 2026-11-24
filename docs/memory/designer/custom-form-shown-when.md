@@ -5,7 +5,8 @@ module: custom_form
 ---
 
 ## What is stored?
-- `rules.shown_when = {"field": <other field's name>, "answers": [...]}` beside `required_when` in `form_fields.rules` (no schema change), cleaned by `pg_cf_rules_clean()` in the same shape (trimmed, one per line, no repeats; no field or no answer = no rule). The other field is found by name without case (`pg_cf_rule_other_field($rules, $fields, 'shown_when')`); gone or renamed, the field is always shown.
+- `rules.shown_when = {"field": <other field's name>, "answers": [...]}` beside `required_when` in `form_fields.rules` (no schema change), cleaned by `pg_cf_rules_clean()` in the same shape (trimmed, one per line, no repeats; no field or no answer = no rule).
+- The other field is found by name without case (`pg_cf_rule_other_field($rules, $fields, 'shown_when')`); gone, or named by its own field, the field is always shown, in the browser and on the server alike (#11453). Renaming the other field in the designer moves the rule to the new name (`_cfRenameField()`, `required_when` too).
 
 ## What does the server do? (owner, #5035 question 1)
 - `custom_form.php` works out `$shown_when_hidden = pg_cf_shown_when_hidden($fields, $values)` before the checks, from the values `pg_cf_rule_value()` reads (posted value, file name for an upload).

@@ -11,7 +11,7 @@ description: A form field name is unique within its form as the database compare
 - Why the database compares: `form_fields.name` is `utf8mb4_unicode_ci`, which ignores case **and diacritics** ('klasor' = 'klasör', 'sehir' = 'şehir'; 'kis' ≠ 'kış'). A PHP `mb_strtolower()` check let a diacritic twin in, and the import then wrote both columns into the first field (#4333, PR #4364).
 - `pg_field_form_name_taken()` is true when that list holds a name. Edit passes the stored name: a field saved again under its own name (case aside) is not refused, so a form that already holds two equal names keeps saving. Nothing renames existing duplicates and there is no unique index (that would be a schema step).
 - For such forms the lookups by name prefer the exact name: `pg_field_form_pick_by_name($rows, $name)` (exact, then other case, then the first row by id) in the import mapping and the pick list trigger target.
-- The designer needs no check: its server sync matches fields by name and `_cfEnsureNames()` renames a copy (`designer/custom-form-sync.md`).
+- The designer's Field name box folds diacritics too (`_cfNameFold()`, #11453): `designer/custom-form-field-name-fold.md`.
 - Tested in `tests/field_form_test.php`.
 
 ## How do the custom form pickers tell forms apart?

@@ -12,7 +12,7 @@ description: custom_form field derivation on the server, per-page ids map and it
 
 ## How does the per-page `ids` map work?
 - The widget is a shared component; it can stand in "new form" mode on two pages, each with its own rows: `_cf.ids[page_id]`. Ids not belonging to the page are ignored; matching is by name.
-- Rename keeps the id (submissions stay linked); a removed control's row is deleted with `deleted` / `lost_values`; a copied text control is renamed by `_cfEnsureNames` and drops its id.
+- Rename keeps the id (submissions stay linked) and moves the other fields' "Required when" / "Shown when" rules that name it (`_cfRenameField()`, #11453); a removed control's row is deleted with `deleted` / `lost_values`; a copied text control is renamed by `_cfEnsureNames` and drops its id.
 - **PHP round-trip trap:** `json_decode(..., true)` turns empty `{}` into an empty array, `json_encode` writes `[]`, and a key set on a JS `[]` is lost in stringify. `_cfRec()` and `_cfAdoptIds()` treat an array as empty and replace it with `{}`. Never leave `_cf` / `ids` empty.
 
 ## How are names and groups assigned (`_cfEnsureNames`)?
