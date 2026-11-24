@@ -1537,6 +1537,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
 - workspace/calls-overview.md: Start here for Workspace voice and video calls (plan CL1-CL8, closed with #11156): what is built, the rules every change keeps, which file answers what
 - workspace/canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads
+- workspace/canvas-data-views.md: A Data table on a canvas as a chart or table (data layer, DV1-DV6): owner decisions, where it follows its rows or is a still, its rules, which file holds each part
 - workspace/canvas-overview.md: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a drawing, a live page and data on one card; the decisions that bind it, how a page reaches tables, which file holds each part
 - workspace/canvas-phone.md: The canvas screens at phone width (CO8, #9361): chips under the name, Full screen at the foot, icon tabs (.pg-seg-icons), New table floating on Data, what DL5f still draws
 - workspace/channel-activity-tab.md: The Activity tab of Channel info (#10751, #10813, #10810, #10803): when it shows, what it tells, the one read behind it, how repository numbers are counted
