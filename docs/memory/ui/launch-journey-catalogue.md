@@ -5,7 +5,7 @@ module: launch_journey
 ---
 
 ## Where is it and what does it hold?
-- `includes/fn/launch_journey.php`, loaded by `functions.php`; all pure, tests in `tests/launch_journey_test.php`. The card, the go-live check and the API (SJ2, SJ3, SJ6 of `plans/launch-journey-steps.md`) read it; none of them decides a step again.
+- `includes/fn/launch_journey.php`, loaded by `functions.php`; all pure, tests in `tests/launch_journey_test.php`. The card, the go-live check and the API (`launch-journey.md`) read it; none of them decides a step again.
 - Purposes: shop, company, association, school, clinic, agency, blog, other (`pg_launch_journey_purposes()`); anything else is other (`pg_launch_journey_purpose()`).
 - Steps (`pg_launch_journey_steps()`): every path starts with domain_ssl; a shop adds payment_live, a clinic booking_hours; a blog puts search_open and search_tools before mail; then mail, legal, search_open, search_tools, backups, cron, team. maintenance is a go-live check only, never a card step.
 

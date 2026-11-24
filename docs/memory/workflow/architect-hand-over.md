@@ -24,7 +24,7 @@ description: Hand-over note of the architect session that stopped on 2026-11-22 
 
 ## What were others told?
 - The owner's lines in order, for the coordinator that starts workers again (message 12167): OL3 after OL2b with its fixes file, OS4 after OS3 with its fixes file, MI1 once the plan has landed (#11172). Coordinator 2 starts no workers until told (message 12161).
-- A step that adds a table brings its columns to the architect before it is marked ready: SJ1b of `plans/launch-journey-steps.md` and the table steps of `plans/prototype-approval-steps.md` are the open ones.
+- A step that adds a table brings its columns to the architect before it is marked ready: the table steps of `plans/prototype-approval-steps.md` are the open ones.
 - The legacy-editable steps go in the order of `plans/legacy-editable-steps.md`; nothing of it waits on the architect.
 
 ## What does a look need?
