@@ -3498,6 +3498,12 @@ function pg_sw_route_record_address($page_id, $segment)
             if ($record && !pg_sw_record_passes_filters($form_page_id, pg_sw_record_view_filters($item_view['cfg']), $record['id'], $page_id)) {
                 $record = null;
             }
+            if (!$record) {
+                // A name the record had before: sent on to its name of
+                // today, never drawn here.
+                $address = pg_sw_route_old_record_address($page_id, $item_view['cfg'], $form_page_id, $segment);
+                if ($address !== '') return $address;
+            }
             $_GET['r'] = $record ? (string)$record['reference_code'] : '';
         }
         return '';
@@ -3527,7 +3533,11 @@ function pg_sw_route_record_address($page_id, $segment)
         $detail_page_name = is_array($detail_page) ? (string)$detail_page['page_name'] : '';
         if ($detail_page_name === '') continue;
         if (!check_view_access($detail_page['page_folder'], true)) continue;
+        // A live name first, then a name a record had before.
         $record = pg_sw_record_by_address($form_page_id, $segment);
+        if (!$record && function_exists('pg_record_old_address_record')) {
+            $record = pg_record_old_address_record($form_page_id, $segment);
+        }
         if (!$record) continue;
         // A record the detail page's filters keep out gets no redirect: the
         // answer would tell which names exist.
@@ -3536,6 +3546,33 @@ function pg_sw_route_record_address($page_id, $segment)
         return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true, defined('LANGUAGE_PATH') ? LANGUAGE_PATH : null);
     }
     return '';
+}
+
+/**
+ * A record view page asked for a name its record had before
+ * (form_old_address): the record's address of today on this page, under the
+ * checks a list's redirect to it makes (a public record view, a folder the
+ * visitor may open, the view's filters), so an old name tells no more than a
+ * live one. '' when no record had the name or a check fails: the page then
+ * answers as for an unknown name.
+ *
+ * @param int    $page_id      the page asked for
+ * @param array  $cfg          its Form Item View widget's settings
+ * @param int    $form_page_id the custom form's page
+ * @param string $segment      the name asked for
+ * @return string
+ */
+function pg_sw_route_old_record_address($page_id, $cfg, $form_page_id, $segment)
+{
+    if (!function_exists('pg_record_old_address_record')) return '';
+    $record = pg_record_old_address_record($form_page_id, $segment);
+    if (!$record || trim((string)$record['address_name']) === '') return '';
+    if (!pg_sw_form_widget_public($cfg)) return '';
+    $page = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1");
+    $page_name = is_array($page) ? (string)$page['page_name'] : '';
+    if ($page_name === '' || !check_view_access($page['page_folder'], true)) return '';
+    if (!pg_sw_record_passes_filters($form_page_id, pg_sw_record_view_filters($cfg), $record['id'], $page_id)) return '';
+    return pg_sw_record_url($page_name, $record['reference_code'], $record['address_name'], true, defined('LANGUAGE_PATH') ? LANGUAGE_PATH : null);
 }
 
 // The address a list links each record to: the detail page's, resolved once
