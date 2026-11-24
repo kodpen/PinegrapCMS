@@ -21659,13 +21659,6 @@ button.ws-file-name {
 }
 
 /* The month calendar. */
-.ws-cal-toolbar .ws-cal-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin: 0 .5rem;
-  letter-spacing: -.01em;
-  text-transform: capitalize;
-}
 .ws-cal {
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius);
@@ -22018,11 +22011,6 @@ button.ws-cal-more {
 .ws-calsync-plans-text {
   flex: 1;
   min-width: 0;
-}
-.ws-mycal-steps {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 .ws-mycal-week .ws-cal-day {
   min-height: 22rem;
@@ -35427,6 +35415,37 @@ textarea.pg-campaign-text {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
 
+/* Date stepping (barSteps()): the arrows round "Today"; then the month's
+   name or the range the screen shows. */
+.ws-bar-steps {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.ws-bar .ws-cal-title,
+.ws-bar-range {
+  flex: none;
+  margin: 0 4px;
+  white-space: nowrap;
+}
+.ws-bar .ws-cal-title {
+  text-transform: capitalize;
+}
+.ws-bar-range {
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+.ws-bar-shows,
+.ws-bar > .ws-plan-switch {
+  flex: none;
+}
+/* The Decision Timeline's two days in the bar. */
+.ws-bar-filter > .ws-tl-dates {
+  flex: none;
+  width: 16rem;
+}
+
 /* An empty screen, in the content's card. */
 .ws-empty-screen {
   display: grid;
@@ -35474,6 +35493,10 @@ textarea.pg-campaign-text {
   }
   .ws-bar-search > input {
     width: 100%;
+  }
+  /* Calendars and the board: the range text yields before the line wraps. */
+  .ws-bar-range {
+    display: none;
   }
 }
 /* A phone keeps the main action, "Filter" (its icon and count) and the
