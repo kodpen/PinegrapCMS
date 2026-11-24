@@ -25,7 +25,7 @@ module: publish_weight
 - `pg_publish_weight_failed($why, $texts)`: one `failed` finding, blocks nothing. `pg_publish_weight_texts()` gives the translated sentences; English stands in without them.
 
 ## How does it join `PgPublishFindings.read()`?
-- PC1 (#11518) did not read a weight source. The findings are already in its shape, so `read()` takes `sources.weight` as that array (or `false` → the failed finding) and concatenates it before `merge()` and `sort()`; nothing of PC1 is rewritten.
+- PC1 (#11518) reads no weight source. The findings are already in its shape, so `read()` takes `sources.weight` as that array (or `false` → the failed finding) and concatenates it before `merge()` and `sort()`; nothing of PC1 is rewritten.
 
 ## How fast is it?
 - 132 KB page with 1,500 elements and 188 pictures plus a 167 KB stylesheet of 6,000 rules, PHP 8.3, 4 cores: measure, unused rules and findings 24 ms median (15 runs). The editor loads none of it: opening, drawing and editing are unchanged.

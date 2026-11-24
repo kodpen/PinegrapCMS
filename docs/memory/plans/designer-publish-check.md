@@ -23,8 +23,8 @@ priority: 7
 - "Fix" changes the tree as an edit does: one undo step, saved by the same Publish.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- PC1 (M) The finding shape and the four existing checks read into it, pure; the blocking table.
-- PC2 (M) The weight measure, pure over a rendered page and its files' sizes; the budget. Done (#11528).
+- PC1 (M) The finding shape and the four existing checks read into it, pure; the blocking table. Done in #11518.
+- PC2 (M) The weight measure, pure over a rendered page and its files' sizes; the budget. Done in #11528.
 - PC3 (S) The content check from the starters' own sample values.
 - PC4 (M) after PC1 and DD7: the sheet's results, groups, select the element.
 - PC5 (M) after PC4, PC2, PC3: Fix, Show me, Ignore with its reason kept with the page's draft.

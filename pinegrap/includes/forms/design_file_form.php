@@ -187,8 +187,9 @@ function pg_design_file_form_summary_card($top, $rows)
  * required (prepare_file_name() would turn a blank one into 'file' and
  * break every link to the stored file); a new name the server would run
  * (.php, .htaccess, ...) is refused as an upload of it is, before
- * prepare_file_name() quietly turns its dot into an underscore; the name
- * must not be ".htaccess" and no other item may hold it. Shared by the
+ * prepare_file_name() quietly turns its dot into an underscore; the mail
+ * signing key (pg_file_withheld()) keeps its name; the name must not be
+ * ".htaccess" and no other item may hold it. Shared by the
  * edit screen and the design files list's quick edit. Plain text.
  *
  * @param string        $name_posted The trimmed name as typed
@@ -207,6 +208,12 @@ function pg_design_file_form_refusal($name_posted, $stored_name, $id, $available
 
     if (($name_posted !== (string) $stored_name) && pg_upload_name_blocked($name_posted)) {
         return pg_upload_blocked_message($name_posted);
+    }
+
+    // The key that signs the site's mail is registered as a design file;
+    // under another name get_file.php would serve it.
+    if (($name_posted !== (string) $stored_name) && pg_file_withheld($stored_name)) {
+        return lang('Access denied');
     }
 
     $name = prepare_file_name($name_posted);

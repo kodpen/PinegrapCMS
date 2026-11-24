@@ -352,6 +352,7 @@
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
+- designer-canvas-guides-geometry.md: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
 - designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 - designer-canvas-open-state.md: A modal, offcanvas or dropdown menu open on the canvas is canvas state only: renderCanvas() keeps it through a redraw, the tree never holds it, preview and code view show it closed.
 - designer-canvas-overview.md: Start file for the designer-canvas-* files: the canvas, its width buttons, Dark, Animations, context bar and element toolbar, the rules that bind it, which file holds what
@@ -404,6 +405,7 @@
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
 - designer-left-panel-hide.md: The Page Design Studio toolbar's menu button (#sd-left-toggle) opens and shuts the panel's main menu as the phone drawer at every width (#9712); the old left panel hide (sd-hide-left) is gone
+- designer-library-item.md: My library item model (ML1): a subtree to an item, an item into a design (rules added or renamed, variables, references cleared and marked), the store as design files, rights
 - designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows [decision: decisions-made-product-108.md]
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
@@ -443,6 +445,7 @@
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
+- designer-preview-as-cases.md: The Preview's case model (PW1): the cases each widget kind has, the visitors a page offers, the choice read back from the browser, what a case sets per widget (record, visitor, flags)
 - designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244): its four rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
@@ -455,6 +458,7 @@
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer-links.md: how prototype.php rewrites a draft's links: link kinds from pg_proto_link_target(), a bare ?query, what pg_proto_rewrite_links() skips
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
+- designer-publish-findings.md: The Publish check's finding shape (pg_publish_findings.js): what the four checks become, one concept kept once, the blocking table, a failed check, a page's summary
 - designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
@@ -468,7 +472,20 @@
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
+- designer-sketch-drawing-ai.md: The Sketch tool's two AI actions as drawn (ai-and-picture.html, boards E1 to E3 and E6): the "Describe the page" window, the sketch being drawn, "Write the texts" and its messages
+- designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone [decision: here]
+- designer-sketch-drawing-build.md: "Build the page" as drawn (build.html, boards B1 to B5): the two actions in the sketch page's head, the "More" menu, the palette rows, the unsure boxes marked, busy and the built page
+- designer-sketch-drawing-check.md: The boxes the Sketch reader is not sure of, as drawn (build.html, board B4): the quiet mark on the chip, the chip's menu that settles one early, and the one list "Build the page" opens [decision: here]
+- designer-sketch-drawing-details.md: "Page details" as drawn (details.html, boards D1 to D4): the window's seven rows with their sentences and defaults, what each choice says, errors, saving, read-only, phone [decision: here]
+- designer-sketch-drawing-picture.md: The reference picture as drawn (ai-and-picture.html, boards E4 and E5): the picture under a sketch page, its rows in "More", and "Read the picture" with its proposal, "Keep" and "Discard"
+- designer-sketch-drawing.md: The drawing of the Sketch tool's later steps (plans/designer-sketch.md, SK4 to SK7): the three sheets, where each part is described, and which board belongs to which step
 - designer-spacing-box.md: Style › Spacing as one box (DP7): outer and inner sides typed, dragged or stepped, Shift and Alt, the screen-size chooser in the head, the part 'spacing', what it writes (today's classes) and reads
+- designer-start-import-drawing-canva.md: The Canva start as drawn (canva.html, boards C1 to C5): the upload of PNG or PDF pages, the page tiles, refused files and the colours card
+- designer-start-import-drawing-connections.md: The Figma page of Connections as drawn (connections.html, boards A1 to A6): the three cards, the personal access token field, the token's states and the "Disconnect" question
+- designer-start-import-drawing-figma-import.md: The Figma start as drawn, second half (figma.html, B7 to B9): the variables card in place of the start questions (ST5a), the running import and the report (ST5b)
+- designer-start-import-drawing-figma.md: The Figma start as drawn, first half (figma.html, boards B1 to B6 and B10): the link field, not connected, busy, the frame list and a link that cannot be read
+- designer-start-import-drawing-home-line.md: The line a Figma import puts on the design's card of the designs home, as drawn (figma.html, B11 and B12, ST5b): four states, "Continue", the dialog "Stop" opens, "Report"
+- designer-start-import-drawing.md: The drawing of the Figma and Canva starts (plans/designer-start-import.md, ST3, ST5a, ST5b and ST6): the three sheets, where each part is described, and which board belongs to which step
 - designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
 - designer-tab-anchor.md: A link or search result to an element inside a Bootstrap tab not shown opens that tab and scrolls to it: pg_bs_tips.js on load and hashchange, pg_search_highlight.js reveal() (#4823).
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout): shape, own endpoint apart from Save, twin normalisers, colours, the open group, the fitting strip, drag.
@@ -502,6 +519,7 @@
 - email-designs.md: E-mail designs (MA5c #9465): the private folder, props.pgEmail, the 600 px canvas and Phone view, mail blocks as presentation tables, their inline look map and canvas twin
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
+- figma-import-converter.md: The Figma converter (#11509): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step [decision: here]
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-feed-item-guid-enclosure.md: A form feed item's guid is unique per record (permalink with a detail page, page#code without one); a typed media address gets length 0 and a type from its extension, or no enclosure
 - form-field-errors-before-sending.md: A designed form field the browser refuses says what is wrong in text beside it, linked by aria-describedby: pg_cf_validation_script() (#9054)
@@ -677,6 +695,7 @@
 - prototype-row-drag.md: The Prototype view's links panel row dragged onto a frame or chip (PX2, #10505): which rows, the ghost and the lit target, what a drop writes (the arrow's own path), what writes nothing [decision: here]
 - prototype-search.md: The Prototype view's search (PX4, #10561): Ctrl+F or the bar's magnifier finds frames by name and links by text, Enter and the arrows zoom to each match, Esc goes back [decision: here]
 - prototype-shortest-path.md: The Prototype view's shortest click path (PX5, #10644): Shift+click, Shift+Enter or the bar's path button picks the page to go to; pathOf(), the core's trail(), "No path", Esc [decision: here]
+- prototype-sketch-tool.md: The Prototype view's Sketch tool (SK2): Sketch and New page, frames k:<n>, boxes with snapping (snapRect) and guides, chips and kinds, typed headings, keys, undo, where it is kept
 - prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes [decision: decisions-made-product-57.md]
 - prototype-thumbnails.md: The Prototype view's frame sketch (PGProtoHotspots.sketch() bands, sketchBoxes(), _sdProtoThumb()): the page picture's loading state and fallback, and the 84 floor of a shared part's height
 - prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md, decisions-made-product-63.md, decisions-made-product-72.md, decisions-made-product-78.md]

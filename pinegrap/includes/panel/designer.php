@@ -1282,6 +1282,14 @@ function pg_panel_designer($request, $action)
     }
 }
 
+// Whether the file of this stored name is a document the ERP module keeps
+// (an issued invoice's PDF, a receipt's scan): get_file.php serves it only
+// with the ERP right, and nothing outside that module writes or deletes it.
+function pg_panel_designer_file_erp_refused($name)
+{
+    return pg_files_include_erp_document(db_values("SELECT id FROM files WHERE name = '" . e((string) $name) . "'"));
+}
+
 function pg_panel_designer_file($request, $action)
 {
     // DESIGNER FILES
@@ -1430,6 +1438,9 @@ function pg_panel_designer_file($request, $action)
             if (!$df_row && $df_row !== '0') {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
             }
+            if (pg_panel_designer_file_erp_refused($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('ERP documents are read-only in the file manager.')));
+            }
             // The key that signs the site's mail never leaves the server
             // and only the SMTP settings write it.
             if (pg_file_withheld($df_name_safe)) {
@@ -1468,6 +1479,9 @@ function pg_panel_designer_file($request, $action)
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
             }
             $df_row = mysqli_fetch_assoc($df_row_q);
+            if (pg_panel_designer_file_erp_refused($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('ERP documents are read-only in the file manager.')));
+            }
             // Role-3 (contributor) needs explicit access to the file's folder.
             if ((int)$user['role'] === 3) {
                 $df_acl = get_folders_that_user_has_access_to($user['id']);
@@ -1501,6 +1515,9 @@ function pg_panel_designer_file($request, $action)
             $df_exists = db_value("SELECT COUNT(*) FROM files WHERE name = '" . e($df_name_safe) . "'");
             if (!$df_exists) {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
+            }
+            if (pg_panel_designer_file_erp_refused($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('ERP documents are read-only in the file manager.')));
             }
             // The key that signs the site's mail never leaves the server
             // and only the SMTP settings write it.

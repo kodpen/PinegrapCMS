@@ -5,7 +5,7 @@ description: The canvas bar's Prototype mode (DP24, #10507): its zones, where ea
 
 ## What does the bar show in Prototype mode?
 - The mode switch's Prototype side opens the view; `_sdProtoOpen()` calls `_sdCanvasBarMode(true)`: `#sd-bp-bar` gets `sd-bp-proto` and the View menu closes. The switch stays; the canvas zone (`.sd-bp-canvas`) and the tools (`.sd-bp-tools`, their line `.sd-bp-zsep-tools`) hide; the `.sd-bp-pv` zones show (D59).
-- `_sdProtoBuild()` adds them to the bar once, at the first opening. The map zone `.sd-bp-pmap` (group "Prototype map"): the count `.sd-bp-pcount` ("N pages · N links", role status), "N broken", "N to check", a line, − % + and Fit. Then a zone line and the tools zone `.sd-bp-ptools`: "All arrows", "Tidy up", "Suggest targets · n", "Links", "Comments", "Play", "Read the links again".
+- `_sdProtoBuild()` adds them to the bar once, at the first opening. The map zone `.sd-bp-pmap` (group "Prototype map"): the count `.sd-bp-pcount` ("N pages · N links", role status), "N broken", "N to check", a line, − % + and Fit. Then a zone line and the tools zone `.sd-bp-ptools`: the "Sketch" switch and "New page" with a line after them (designer/prototype-sketch-tool.md), "All arrows", "Tidy up", "Suggest targets · n", "Links", "Comments", "Play", "Read the links again".
 - No sizes, no View menu, no Close button: the switch's Design side or Escape closes the view; `_sdProtoClose()` calls `_sdCanvasBarMode(false)` and focuses `#sd-vb-design`.
 
 ## Where did the old bar's controls go (D60)?

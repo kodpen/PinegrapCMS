@@ -181,6 +181,7 @@
     "Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.": "Numara faturanın kesileceği cariden, sipariş henüz bir cariye bağlı değilse kişi kaydından okunur. Numarası olmayan sipariş kendi ekranında Faturayı Kes adımını bekler.",
     "Read from the group's <code>&lt;legend&gt;</code>; what you type here is written there.": "Grubun <code>&lt;legend&gt;</code> başlığından okunur; burada yazdığınız oraya yazılır.",
     "Read from the provider": "Sağlayıcıdan oku",
+    "Read from the sketch": "Eskizden okunsun",
     "Read from where you left off": "Kaldığınız yerden okuyun",
     "Read from {var:1}": "{var:1} listesini oku",
     "Read from {var:1}.": "{var:1} sağlayıcısından okundu.",

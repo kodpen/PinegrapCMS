@@ -670,6 +670,60 @@ function pg_shared_component_cycle($start_ids, $override = array())
     return array();
 }
 
+/**
+ * The shared components $ids reach: the ids themselves and every one placed
+ * inside them, through any number of levels, each once in the order met.
+ * One query a level, at most eight levels (the depth the page draws,
+ * _expand_shared_refs()); a missing row is a leaf, a loop ends.
+ *
+ * @param int[]    $ids    the components a tree places
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return int[]
+ */
+function pg_shared_component_reach_read(array $ids, $fetch)
+{
+    $seen = array();
+    $level = array();
+    foreach ($ids as $id) {
+        $id = (int)$id;
+        if ($id > 0 && !isset($seen[$id])) {
+            $seen[$id] = $id;
+            $level[$id] = $id;
+        }
+    }
+    for ($depth = 0; $depth < 8 && $level; $depth++) {
+        $rows = call_user_func($fetch, "SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', $level) . ")");
+        $level = array();
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $tree = json_decode((string)$row['tree_json'], true);
+            if (!is_array($tree)) continue;
+            $acc = array();
+            _vt_collect_shared_ids($tree, $acc);
+            foreach (array_keys($acc) as $kid) {
+                $kid = (int)$kid;
+                if ($kid > 0 && !isset($seen[$kid])) {
+                    $seen[$kid] = $kid;
+                    $level[$kid] = $kid;
+                }
+            }
+        }
+    }
+    return array_values($seen);
+}
+
+// Whether the shared component row is still there.
+function pg_shared_component_exists($sid)
+{
+    $sid = (int)$sid;
+    return ($sid > 0) && (db_value("SELECT id FROM shared_components WHERE id = '$sid' LIMIT 1") !== null);
+}
+
+// A write to a shared component deleted meanwhile, refused.
+function pg_shared_component_gone_message()
+{
+    return lang('This shared component was deleted meanwhile, so the change to it was not saved.');
+}
+
 // The loop refusal, naming the components along it ("Header → Cart → Header").
 function pg_shared_component_loop_message($loop)
 {
@@ -1336,7 +1390,29 @@ function _sc_unique_name($desired)
  */
 function pg_common_region_component_html($sid, $mode = 'preview', $email = false)
 {
-    $html = pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email);
+    return pg_common_region_component_finish(
+        pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email), $email);
+}
+
+/**
+ * The page passes a component drawn after them still needs, in the page's
+ * order: links kept by page id pointed at the page's current address, page
+ * conditions (signed in, cart, audience) decided and the record's values
+ * filled in, then custom PHP. Without them a converted common region or a
+ * designed pop-up showed every conditional element to every visitor.
+ *
+ * @param string $html  the component drawn, nested components expanded
+ * @param bool   $email drawn for an e-mail
+ * @return string
+ */
+function pg_common_region_component_finish($html, $email = false)
+{
+    if (stripos($html, 'data-pg-page-link=') !== false && function_exists('pg_page_link_expand')) {
+        $html = pg_page_link_expand($html);
+    }
+    if ((strpos($html, '<!--pg-pf:') !== false || strpos($html, '{pg-r') !== false) && function_exists('pg_page_facts_apply')) {
+        $html = pg_page_facts_apply($html, $email);
+    }
     if (strpos($html, '<!--pg-custom-php:') !== false) {
         $html = _expand_custom_php($html);
     }

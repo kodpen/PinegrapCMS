@@ -14,12 +14,12 @@ description: Gift cards on cancel and restore, REFUND ACTION REQUIRED for cards 
 - Symptom it fixed (#733, #962): restore set every card of the order with a past date to "no expiration", so cards that had expired before the cancel, and dated cards, became spendable for good.
 
 ## What about gift cards that paid the order?
-- Their amount does not go back to the card by itself. `pg_order_gift_card_refund_line($order_number, $rows)` writes a "REFUND ACTION REQUIRED" log line (`pg_log_lang()`; masked codes, shop card id, Givex marked).
+- Their amount does not go back to the card by itself. `pg_order_gift_card_refund_line($order_number, $rows, $owed)` writes a "REFUND ACTION REQUIRED" log line (`pg_log_lang()`; masked codes, shop card id, Givex marked) for what the order still owes the cards (`pg_order_gift_card_owed()`), the last cards trimmed first; none at 0. Before #11496 it named what each card paid, also the part a return had given back.
 - `refund_status` keeps what the payment step reported (a successful void stays `refunded`); the gift cards set `manual_required` only when the payment step left no outcome. `orders.total` has the gift card part taken off already (#733). Crediting the card automatically would need restore to take it again from a balance that may be spent; not done.
 
 ## How much does a cancelled order still owe?
 - `pg_order_cancel_refund_owed($row)`: `payment` = `total - refunded_amount` (min 0), but 0 when cancelled before the payment arrived (`Offline Payment` or a pending-payment method with `paid_at = 0`; no `paid_at` column counts as paid); `gift_card` = what the cards gave less gift card returns, never `gift_card_discount` (`order-gift-card-owed.md`, #10260); `total` both. `pg_order_cancel_refund_owed_sql()` is the SUM form.
-- Read by the view_order.php banner, dialog, provider sentence (only when `payment > 0` or no gift card part) and cancel notice, cancel_order.php, the orders list Refund Pending card and the dashboard lane. The cancel payment plan is unchanged. Fixed #4161 (PR #4221): an unpaid transfer showed total + gift card and the provider sentence; list and dashboard summed `total`.
+- Read by the view_order.php banner, dialog, provider sentence (only when `payment > 0` or no gift card part) and cancel notice, cancel_order.php, the orders list Refund Pending card and the dashboard lane. The cancel payment plan is unchanged. Fixed #4161 (PR #4221).
 
 ## How do order log lines name the order?
 - `pg_order_log_number()` (order number, the id only for a cart without one), `pg_order_log_status()` (panel language), `pg_order_log_money()` (plain symbol), never `prepare_amount()` (HTML entity) or `number_format()` (#4167, PR #4221).
