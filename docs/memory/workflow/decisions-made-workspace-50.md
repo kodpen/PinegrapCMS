@@ -13,4 +13,4 @@ description: Decisions made, workspace part 50 (2026-11-24 on): calls remember t
 - "görüşme penceresi büyümüyor ve kendini göster yapamıyorsun." The window grows at any time and one's own picture can be made large or hidden.
 - "bu tarz ve daha fazla seçeneği modern sesli ve görüntülü görüşme özelliklerini tespit et ve düzenlemeleri planla". The architect's choice, not his words: a speaker select, noise suppression, a pop-out window, raise hand, a weak-connection mark; left out: recording, transcripts, more than four people.
 - Added by an edit of the same message: "birde arklaplan kaldırma mümkünse onuda düşünelim." Planned as its own step with a model served from the site itself; the first plan's "no library" was the architect's reading and gives way here only.
-- Plan: `plans/calls-next.md`.
+- Built in CN1–CN7 (#11384 to #11455); what stands now: `workspace/calls-overview.md`.
