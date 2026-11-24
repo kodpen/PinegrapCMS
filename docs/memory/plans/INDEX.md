@@ -31,6 +31,10 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
+- designer-options-census.md: Plan (owner 2026-11-24, before the launch): more ways to shape an element in the designer's Options panel; DO1 counts what is missing, the owner picks, the architect writes the build steps
+- designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
+- designer-start-import.md: Plan (owner 2026-11-24, before the launch): the New design window with every start in one place, import from Figma as layers and from Canva as reference pictures and brand; steps ST1 to ST7
+- designer-variables.md: Plan (owner 2026-11-24, before the launch): a design's variables (colour, type, spacing, shape) in one pane, asked at the start, offered by every Options control; steps DV1 to DV6
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - flows-editor-next-screens-2.md: Plan flows-editor-next, in words (boards 1a, 1b, 2a to 2c): data threads only for the box in hand, and how a box panel's fields are written (help, Add value, Recipient chips)
