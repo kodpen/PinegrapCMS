@@ -207,7 +207,8 @@ function test_settings_system_tools_menu_row()
 	pg_assert_contains("\$menu_tools_groups = pg_settings_tool_groups(\$user);", $source, 'from the gated groups');
 	pg_assert_contains("\$menu_items[25]['href'] = 'system_tools.php';", $source, 'the row leads to the screen');
 	pg_assert_contains("\$menu_items[25]['title'] = 'System tools';", $source, 'titled as the screen');
-	pg_assert_contains('$menu_panels_nested .= $menu_tools[\'panels\'];', $source, 'its group panels join the nested ones');
+	pg_assert_contains("\$menu_items[25]['data-bs-content'] = \$menu_tools;", $source, 'its panel is the one list of tools');
+	pg_assert_false(strpos($source, '$menu_tools[\'panels\']') !== false, 'no second-level panels');
 
 	$tools = array('system_tools.php', 'view_log.php', 'view_audit_log.php', 'api_settings.php', 'connections.php', 'marketplace_settings.php', 'software_update.php', 'software_repair.php', 'view_performance_log.php', 'clean_up.php', 'database_engine.php', 'mail_queue.php', 'backups.php', 'cloudflare.php');
 
