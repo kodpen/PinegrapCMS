@@ -28,4 +28,4 @@ module: walk_in_queue_places
 ## Where does the QR poster lead?
 - `queue_poster.php?id=<place>`: a printable A4 page: name, address, "Scan to take a number", the QR of `pg_waiting_place_url($id, 'qr')`, the services. The link is `queue.php?place=<id>&from=qr`, the public number page (`walk-in-queue-number-page.md`).
 
-Related: docs/memory/commerce/walk-in-queue-store.md, docs/memory/commerce/walk-in-queue-rules.md, docs/memory/plans/walk-in-queue-screens.md
+Related: docs/memory/commerce/walk-in-queue-store.md, docs/memory/commerce/walk-in-queue-rules.md, docs/memory/commerce/walk-in-queue-decisions.md

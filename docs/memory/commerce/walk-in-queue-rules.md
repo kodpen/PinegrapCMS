@@ -31,4 +31,4 @@ module: walk_in_queue
 - `pg_waiting_ticket_token($id, $joined_at, $key)`: HMAC-SHA256 of `waiting-ticket:<id>:<joined_at>` under `ENCRYPTION_KEY` (`pg_booking_key()`), the booking manage link's way; only its sha256 is stored and `pg_waiting_ticket_token_valid()` compares with `hash_equals()`. No new secret. A cleared hash opens nothing.
 - A changed `ENCRYPTION_KEY` breaks the links already sent, as for a booking's manage link.
 
-Related: docs/memory/plans/walk-in-queue.md, docs/memory/commerce/bookings-model.md
+Related: docs/memory/commerce/walk-in-queue-decisions.md, docs/memory/commerce/bookings-model.md
