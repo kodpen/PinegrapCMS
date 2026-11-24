@@ -6,6 +6,7 @@ description: A bell row's short time (pg_notification_short_time(), BR2 #11134),
 ## What time does a bell row show?
 - `pg_notification_short_time($timestamp, $now, $zone, $date_format)` (`includes/notifications.php`, pure): today "5 min" or "3 h" (whole minutes and hours, at least "1 min", a time after now too); then "Yesterday"; then "9 Nov", or "Nov 9" where `DATE_FORMAT` is month_day; the year only when it is not this year.
 - It reads the same zone as `pg_notification_day()`, so the time and the heading over it never disagree: 23 hours back after midnight is "Yesterday", not "23 h".
+- That zone is the reader's own when they keep one (`pg_time_uses_user_zone()`, `USER_TIMEZONE`), the zone `time_title` is written in; '' (the site's) otherwise. Before #11438 the heading and short time read the site's zone while the title read the reader's, so a row could stand under "Yesterday" with today's date in its title.
 - `get_notifications` sends `time` (short), `time_title` (full date and time, `get_absolute_time()`) and `datetime` (UTC). `pg_bell_time()` draws them escaped as one `<time>` with the full one as its title, in a row's head and a fold's run line.
 - Keys `{var:1} min` (dk), `{var:1} h` (sa), `Yesterday` were already translated.
 

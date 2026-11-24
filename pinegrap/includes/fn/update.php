@@ -1952,6 +1952,59 @@ function pg_update_check_answered()
 }
 
 /**
+ * What an answered check does to the "Software update available" bell rows:
+ * while an update is offered the newest row stays as it is, read by whoever
+ * read it, and only the extra ones go; one is written only when none is
+ * there. An answer offering nothing takes them all.
+ *
+ * No database or network access.
+ *
+ * @param bool  $offered      the answer offers an update (or a blocked one)
+ * @param array $existing_ids the ids of the software_update rows there now
+ * @return array create (bool), delete (int[], newest first)
+ */
+function pg_update_notice_plan($offered, $existing_ids)
+{
+    $ids = array();
+
+    foreach ((array) $existing_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    krsort($ids);
+    $ids = array_values($ids);
+
+    if (!$offered) {
+        return array('create' => false, 'delete' => $ids);
+    }
+
+    return array('create' => empty($ids), 'delete' => array_slice($ids, 1));
+}
+
+/**
+ * Applies pg_update_notice_plan() to the bell. Rows go through
+ * pg_notification_delete(), which takes their read marks with them.
+ *
+ * @param bool $offered
+ */
+function pg_update_notice_set($offered)
+{
+    include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+
+    $plan = pg_update_notice_plan($offered, db_values("SELECT id FROM notifications WHERE action = 'software_update'"));
+
+    foreach ($plan['delete'] as $id) {
+        pg_notification_delete($id);
+    }
+
+    if ($plan['create']) {
+        create_notification(array('action' => 'software_update', 'type' => 'success', 'user' => '[SOFTWARE]', 'title' => 'available'));
+    }
+}
+
+/**
  * When the update server last answered a check: 0 never, or unknown before
  * the cron_runs table exists.
  *

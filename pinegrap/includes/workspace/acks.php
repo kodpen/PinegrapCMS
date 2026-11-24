@@ -190,9 +190,14 @@ function ws_ack_set($viewer, $message)
     db("INSERT IGNORE INTO ws_acks (message_id, user_id, acked_at)
         VALUES ('" . (int) $message['id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 
-    // The inbox line that reminded them has done its work.
+    // The inbox line that reminded them has done its work, in the bell as
+    // well.
     db("UPDATE ws_inbox SET read_at = '" . time() . "'
         WHERE user_id = '" . (int) $viewer['id'] . "' AND kind = 'ack_reminder' AND message_id = '" . (int) $message['id'] . "' AND read_at = 0");
+
+    if (mysqli_affected_rows(db::$con) > 0) {
+        ws_bell_sync_read((int) $viewer['id']);
+    }
 
     ws_message_touch($message['id']);
 
