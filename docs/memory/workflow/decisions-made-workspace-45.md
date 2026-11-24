@@ -16,4 +16,4 @@ description: Decisions made, workspace part 45 (2026-11-21 on): a sheet or docum
 - "Save as data": in the preview window's head for a sheet (.xlsx, .xls, .ods, .csv, .tsv), a quiet button beside "Save a copy". It starts the file import of the Data tables (`workspace/workflow-table-import.md`) on that file and the sheet shown: a new table in this channel with guessed column types, or rows added to a table the person may write, confirmed first as that import confirms. For who may post in the channel and make a table there; nobody else sees the button.
 - The file stays as it is; the table does not follow the file afterwards. No schema: the import's own writes.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/platform/office-files.md, docs/memory/workspace/workflow-table-import.md, docs/memory/plans/canvas-data-views-screens.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/platform/office-files.md, docs/memory/workspace/workflow-table-import.md

@@ -23,6 +23,7 @@ description: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a d
 ## Which file holds each part?
 - Bindings: `canvas-tables.md` (`ws_canvas_tables`). The second part: `canvas-parts.md` (`ws_canvas_parts`). The joined card and its Versions drawer: `canvas-card.md`. The phone, the icon tabs (`.pg-seg-icons`) and the floating New table: `canvas-phone.md`.
 - The API and MCP: `api/workspace-canvas-api.md` (`/workspace/canvases/{id}`, its tables, page and drawing). Channel tables: `workflow-table-channel.md`. Data as the name and its list: `workflow-tables-data-list.md`.
+- A Data table drawn as a chart or table layer: `canvas-data-views.md`.
 - The parts before they joined: the drawing (`agent-canvas-overview.md`), the page (`agent-page.md`, `agent-page-card.md`).
 
 ## How is a new part or call added?
