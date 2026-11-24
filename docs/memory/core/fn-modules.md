@@ -205,7 +205,7 @@ description: Generated from the module field of the memory files: each includes/
 - `lang`: [[lang-loader]], [[lang-placeholders]]
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
 - `language_redirect`: [[language-redirect-matching]]
-- `launch_journey`: [[api-launch-journey]], [[launch-journey-catalogue]]
+- `launch_journey`: [[api-launch-journey]], [[launch-journey]], [[launch-journey-catalogue]]
 - `launch_journey_path`: [[launch-journey-first-week-path]]
 - `launch_journey_site`: [[launch-journey-go-live]], [[launch-journey-setup-card]]
 - `launch_summary`: [[launch-summary-agency]]

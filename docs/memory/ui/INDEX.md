@@ -385,6 +385,7 @@
 - launch-journey-first-week-path.md: After the set-up (SJ4): the First week card, a new team member's Start here card, the hint lines under catalogue screens and their hint:<screen> keys in user.tours_seen
 - launch-journey-go-live.md: The go-live check: "Ready to go live?", its dialog, "Go live" turning maintenance mode off and removing the robots catch-all, the confirmation, Site Log lines, the go-live time
 - launch-journey-setup-card.md: Dashboard card "Set up your site" (cards/launch.php): the launch_journey config_text row, the facts reader, "Do it", "Not for this site", "Hide set-up", the purpose dialog, General's purpose field
+- launch-journey.md: The site set-up journey as a whole: "Set up your site" card by purpose, go-live check, First week, Start here, hint lines, agency summary, GET /launch; its decisions and which file holds each part [decision: decisions-made-product-93.md, decisions-made-schema-46.md]
 - launch-summary-agency.md: The agency summary (SJ5): the set-up card's "Agency summary" drawer, the customer's signed page launch_summary.php, text answers, the launch_answer bell line, withdraw
 - launch-summary-lines.md: The agency summary's "What we need from you" lines table launch_summary_lines (SJ1b, 2026.11.0 step 11.0.274): its columns, why no person is held, what it does not store
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
