@@ -188,21 +188,24 @@ if (isset($_GET['export'])) {
             $schedule_time = prepare_form_data_for_output($email_campaign_profile['schedule_time'], 'time');
         }
 
+        // Text cells take the formula guard (csv_cell()): a product or form
+        // name in action_item comes from outside the panel too. The import
+        // takes it off again.
         echo
-            '"' . escape_csv($email_campaign_profile['name']) . '",' .
+            '"' . csv_cell($email_campaign_profile['name']) . '",' .
             '"' . $email_campaign_profile['enabled'] . '",' .
             '"' . $email_campaign_profile['action'] . '",' .
-            '"' . escape_csv($action_item) . '",' .
+            '"' . csv_cell($action_item) . '",' .
             '"' . $email_campaign_profile['action_item_id'] . '",' .
-            '"' . escape_csv($email_campaign_profile['subject']) . '",' .
+            '"' . csv_cell($email_campaign_profile['subject']) . '",' .
             '"' . $email_campaign_profile['format'] . '",' .
-            '"' . escape_csv($email_campaign_profile['body']) . '",' .
-            '"' . escape_csv($page_name) . '",' .
+            '"' . csv_cell($email_campaign_profile['body']) . '",' .
+            '"' . csv_cell($page_name) . '",' .
             '"' . $email_campaign_profile['page_id'] . '",' .
-            '"' . escape_csv($email_campaign_profile['from_name']) . '",' .
-            '"' . escape_csv($email_campaign_profile['from_email_address']) . '",' .
-            '"' . escape_csv($email_campaign_profile['reply_email_address']) . '",' .
-            '"' . escape_csv($email_campaign_profile['bcc_email_address']) . '",' .
+            '"' . csv_cell($email_campaign_profile['from_name']) . '",' .
+            '"' . csv_cell($email_campaign_profile['from_email_address']) . '",' .
+            '"' . csv_cell($email_campaign_profile['reply_email_address']) . '",' .
+            '"' . csv_cell($email_campaign_profile['bcc_email_address']) . '",' .
             '"' . $email_campaign_profile['schedule_length'] . '",' .
             '"' . $email_campaign_profile['schedule_unit'] . '",' .
             '"' . $email_campaign_profile['schedule_period'] . '",' .
@@ -210,9 +213,9 @@ if (isset($_GET['export'])) {
             '"' . $schedule_time . '",' .
             '"' . $email_campaign_profile['purpose'] . '",' .
             '"' . pg_csv_export_time($email_campaign_profile['created_timestamp']) . '",' .
-            '"' . escape_csv($email_campaign_profile['created_username']) . '",' .
+            '"' . csv_cell($email_campaign_profile['created_username']) . '",' .
             '"' . pg_csv_export_time($email_campaign_profile['last_modified_timestamp']) . '",' .
-            '"' . escape_csv($email_campaign_profile['last_modified_username']) . '"' . "\n";
+            '"' . csv_cell($email_campaign_profile['last_modified_username']) . '"' . "\n";
     }
 
     exit;
