@@ -1582,6 +1582,7 @@
     "More than one ad is shown": "Birden fazla reklam gösteriliyor",
     "More than one address: separate them with commas.": "Birden fazla adres: virgülle ayırın.",
     "More than one canonical link": "Birden fazla canonical bağlantısı",
+    "More than one group or product is listed": "Birden çok grup ya da ürün listeleniyor",
     "More than one payment method is offered": "Birden fazla ödeme yöntemi sunuluyor",
     "More than one product matches “{var:1}”. Pick one from the list.": "“{var:1}” ile birden çok ürün eşleşiyor. Listeden birini seçin.",
     "More than one record: receivers ignore them all. Keep one.": "Birden fazla kayıt var: alıcı sunucular hepsini yok sayar. Yalnızca birini bırakın.",

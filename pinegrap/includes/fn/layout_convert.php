@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog');
 }
 
 /**
@@ -716,7 +716,9 @@ function pg_layout_convert_types()
  * form's hidden fields), 'token:<name>' (the widget's value of that name,
  * bound where an element holds it alone), 'ctx:<key>' (markup the caller
  * reads from the page's settings, the header and footer), 'row' (the
- * record: the widget's row template).
+ * record: the widget's row template), 'text:<words>' (those words, for a
+ * control's name), 'form:<action>' (the attributes of a <form>: it is
+ * bound to that action, or with 'strip' its tags go).
  *
  * 'if': a condition: array('becomes' => 'widget' (the widget draws what it
  * holds: skipped), 'flag' (shown only under the widget's flag 'flag'),
@@ -737,16 +739,21 @@ function pg_layout_convert_types()
  * 'loop': a foreach: 'list' (the widget's list, its body the row's
  * wrapper), or 'list:<row flag>' (one of the kinds of records the
  * widget's one list holds: its body is shown in the rows the flag holds
- * for; the loops of a map's kinds side by side are that one list).
+ * for; the loops of a map's kinds side by side are that one list), or
+ * 'section:<name>' (a list the widget draws as that section: the node bound
+ * to it stands in the place of the list holding the loop).
  *
  * Optional: 'forms' => 'strip' (the layout's <form> tags go: the widget
  * draws its own form around the tree), 'flag_list' => true (a flag may
  * cover the list: the widget has no empty message in its place),
- * 'controls' => array(name in the layout => name the widget looks for),
+ * 'controls' => array(name in the layout => name the widget looks for,
+ * '' for none, 'bind:<value>' for the control bound to that value),
  * 'submits' => array(token => control name: a link to that address
  * becomes a submit button of that name), 'media' => array(token => flag:
  * the wrapper an image of that address alone fills is shown under the
- * flag).
+ * flag), 'cfg_bound' => array(action => settings the widget needs while a
+ * node is bound to it), 'opposite' => array(flag => the flag of its
+ * opposite: a line of text holding words under the flag is drawn twice).
  *
  * @param string $type
  * @return array|null
@@ -786,6 +793,9 @@ function pg_layout_piece_map($type)
 
         case 'photo gallery':
             return _pg_lc_photo_gallery_map($none);
+
+        case 'catalog':
+            return _pg_lc_catalog_map($none);
 
         case 'form item view':
             return array(
@@ -913,6 +923,70 @@ function _pg_lc_photo_gallery_map($none)
             '$photos as $photo' => 'list:gallery_item_is_photo',
         ),
         'flag_list' => true,
+    );
+}
+
+// The catalog (widgets_catalog.php): the items loop is the listing's list
+// with the layout's own row, an item's values its row tokens and its
+// conditions its row flags (pg_catalog_row_flags()); the categories the
+// widget's group tree; the search form its bound search form; the rest
+// under pg_catalog_listing_flags().
+function _pg_lc_catalog_map($none)
+{
+    $count = 'token:__result_count';
+    return array(
+        'echo' => $none + array(
+            '$search_attributes' => 'form:search_form',
+            '$search_system' => 'none',
+            '$currency_attributes' => 'form:strip',
+            '$currency_system' => 'none',
+            '$page_id' => 'text:page',
+            // The edit grids of edit mode: the designer's own.
+            '$edit_start' => 'none',
+            '$edit_end' => 'none',
+            "\$item['edit_start']" => 'none',
+            "\$item['edit_end']" => 'none',
+            '$full_description' => 'token:__active_cat_description',
+            '$code' => 'token:__active_cat_code',
+            'h($query)' => 'token:__search_query',
+            'number_format($number_of_items)' => $count,
+            'pg_format_number($number_of_items, 0)' => $count,
+            "h(\$item['url'])" => 'token:__detail_url',
+            "h(\$item['image_url'])" => 'token:__image_url',
+            "h(\$item['short_description'])" => 'token:__short_description',
+            "\$item['price_info']" => 'token:__price_formatted',
+        ),
+        'if' => array(
+            '$items' => array('becomes' => 'flag', 'flag' => 'has_items'),
+            "\$mode == 'search'" => array('becomes' => 'flag', 'flag' => 'has_query'),
+            "\$mode == 'browse'" => array('becomes' => 'flag', 'flag' => 'no_query'),
+            "\$query != ''" => array('becomes' => 'flag', 'flag' => 'has_query'),
+            '$number_of_items > 1' => array('becomes' => 'flag', 'flag' => 'many_results'),
+            '$currency' => array('becomes' => 'flag', 'flag' => 'has_currency_choice'),
+            '!$currency' => array('becomes' => 'flag', 'flag' => 'no_currency_choice'),
+            // A link around the picture and the words, opened and closed in
+            // two blocks: every row has its address.
+            "\$item['url']" => array('becomes' => 'keep'),
+            "\$item['image_url']" => array('becomes' => 'flag', 'flag' => 'catalog_item_has_image'),
+            "\$item['short_description']" => array('becomes' => 'flag', 'flag' => 'catalog_item_has_short_description'),
+            "\$item['price_info']" => array('becomes' => 'flag', 'flag' => 'catalog_item_has_price'),
+        ),
+        'else' => array(
+            '$items' => 'no_items',
+            "\$mode == 'browse'" => 'has_query',
+            '!$currency' => 'has_currency_choice',
+        ),
+        'loop' => array(
+            '$items as $item' => 'list',
+            '$product_groups as $product_group' => 'section:group_tree',
+        ),
+        'flag_list' => true,
+        // "product<s>" in a line of text: the line once for each.
+        'opposite' => array('many_results' => 'one_result'),
+        // The search box, its button and the clear button (a second, empty
+        // search text, which the address reads last).
+        'controls' => array('page_query' => 'bind:search_query', 'page_submit' => '', 'page_clear' => 'query'),
+        'cfg_bound' => array('search_form' => array('search_enabled' => true)),
     );
 }
 
@@ -1108,7 +1182,11 @@ function pg_layout_convert($type, $code, $ctx = array())
             $key = $norm($m[1]);
             $lv = (string)($loops[$key] ?? '');
             $kind = (strpos($lv, 'list:') === 0) ? substr($lv, 5) : '';
-            if ((($lv === 'list' && !$loop_seen) || $kind !== '') && !$in_tag()) {
+            if (strpos($lv, 'section:') === 0 && !$in_tag()) {
+                // The widget's own list: its node in the loop's place.
+                $write('<pg-section data-section="' . h(substr($lv, 8)) . '" data-list="1"></pg-section>');
+                $stack[] = array('mode' => 'skip');
+            } elseif ((($lv === 'list' && !$loop_seen) || $kind !== '') && !$in_tag()) {
                 $loop_seen = true;
                 $lists[] = array('piece' => trim($m[1]), 'line' => $at);
                 $write($kind !== '' ? '<pg-loop data-row-flag="' . h($kind) . '">' : '<pg-loop>');
@@ -1151,6 +1229,9 @@ function pg_layout_convert($type, $code, $ctx = array())
         $nodes[] = pg_di_mk('loop_area', array(), $row);
     }
     if (isset($out['cfg']['empty_message']) && $out['cfg']['empty_message'] === '') unset($out['cfg']['empty_message']);
+    foreach ((array)($map['cfg_bound'] ?? array()) as $action => $set) {
+        if (_pg_lc_bound(array('children' => $nodes), 'action', $action)) $out['cfg'] = (array)$set + $out['cfg'];
+    }
     $out['ok'] = true;
     $out['tree'] = pg_di_root($nodes);
     return $out;
@@ -1230,6 +1311,8 @@ function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
         if (strpos($v, 'token:') === 0) return '^^' . implode('^^ ^^', explode(',', substr($v, 6))) . '^^';
         if (strpos($v, 'submit:') === 0) return '^^' . substr($v, 7) . '^^';
         if (strpos($v, 'ctx:') === 0) return (string)($ctx[substr($v, 4)] ?? '');
+        if (strpos($v, 'text:') === 0) return h(substr($v, 5));
+        if (strpos($v, 'form:') === 0) return ' data-pg-form="' . h(substr($v, 5)) . '"';
     }
     // Interface words the template prints: the words themselves, which
     // the page's translation reads like any text.
@@ -1287,8 +1370,25 @@ function _pg_lc_finish($nodes, $row, $map = array())
             continue;
         }
         if ($tag === 'pg-section') {
-            $out[] = pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_bindings' => array('section' => (string)_pg_lfc_attr($n, 'data-section'))));
+            $props = array('tag' => 'div', 'cssClass' => '', '_bindings' => array('section' => (string)_pg_lfc_attr($n, 'data-section')));
+            if (_pg_lfc_attr($n, 'data-list') !== null) $props['_list'] = true;
+            $out[] = pg_di_mk('semantic', $props);
             continue;
+        }
+        if (in_array($tag, array('ul', 'ol'), true) && count($kids) === 1 && !empty($kids[0]['props']['_list'])) {
+            // The list the loop filled is the widget's: its node instead.
+            unset($kids[0]['props']['_list']);
+            $out[] = $kids[0];
+            continue;
+        }
+        $form = ($tag === 'form') ? _pg_lfc_attr($n, 'data-pg-form') : null;
+        if ($form !== null) {
+            _pg_lfc_set_attr($n, 'data-pg-form', null);
+            if ($form === 'strip') {
+                foreach ($kids as $k) $out[] = $k;
+                continue;
+            }
+            $n['props']['_bindings']['action'] = $form;
         }
         if ($tag === 'pg-vis') {
             $flag = (string)_pg_lfc_attr($n, 'data-flag');
@@ -1300,9 +1400,41 @@ function _pg_lc_finish($nodes, $row, $map = array())
             continue;
         }
         $n['children'] = $kids;
+        if (!$kids && strpos((string)($n['props']['text'] ?? ''), '<pg-vis') !== false) {
+            foreach (_pg_lc_text_flags($n, $map) as $t) $out[] = $t;
+            continue;
+        }
         $out[] = _pg_lc_bind($n, $map);
     }
     return $out;
+}
+
+// Words under a flag inside a line of text ("product<pg-vis>s</pg-vis>
+// containing <strong>…</strong>"): the element twice, with the words under
+// the flag and without them under its opposite ($map 'opposite'); with no
+// opposite, the line in spans, the flagged words' span under the flag.
+function _pg_lc_text_flags($n, $map)
+{
+    $text = (string)$n['props']['text'];
+    $re = '~<pg-vis data-flag="([a-z0-9_]+)">(.*?)</pg-vis>~s';
+    preg_match_all($re, $text, $m);
+    $flags = array_values(array_unique($m[1]));
+    $opposite = (string)($map['opposite'][$flags[0]] ?? '');
+    if (count($flags) === 1 && $opposite !== '') {
+        $with = $without = $n;
+        $with['props']['text'] = preg_replace($re, '$2', $text);
+        $without['props']['text'] = preg_replace($re, '', $text);
+        return array(_pg_lc_flag(_pg_lc_bind($with, $map), $flags[0]), _pg_lc_flag(_pg_lc_bind($without, $map), $opposite));
+    }
+    $kids = array();
+    foreach (preg_split('~(<pg-vis data-flag="[a-z0-9_]+">.*?</pg-vis>)~s', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) as $b) {
+        $flag = preg_match('~^<pg-vis data-flag="([a-z0-9_]+)">(.*)</pg-vis>$~s', $b, $x) ? $x[1] : '';
+        $span = pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => '', 'text' => ($flag !== '') ? $x[2] : $b));
+        $kids[] = ($flag !== '') ? _pg_lc_flag($span, $flag) : _pg_lc_bind($span, $map);
+    }
+    $n['props']['text'] = '';
+    $n['children'] = $kids;
+    return array($n);
 }
 
 // A node shown only under $flag; one that holds the list is entered
@@ -1346,8 +1478,22 @@ function _pg_lc_bind($n, $map = array())
     }
     $controls = (array)($map['controls'] ?? array());
     $name = (string)_pg_lfc_attr($n, 'name');
-    if ($name !== '' && isset($controls[$name])) _pg_lfc_set_attr($n, 'name', (string)$controls[$name]);
+    if ($name !== '' && isset($controls[$name])) {
+        $to = (string)$controls[$name];
+        if (strpos($to, 'bind:') === 0) $n['props']['_bindings']['value'] = substr($to, 5);
+        _pg_lfc_set_attr($n, 'name', ($to === '' || strpos($to, 'bind:') === 0) ? null : $to);
+    }
     return $n;
+}
+
+// Whether a node of $node's tree is bound to $value as $prop.
+function _pg_lc_bound($node, $prop, $value)
+{
+    foreach ((array)($node['children'] ?? array()) as $c) {
+        if (!is_array($c)) continue;
+        if ((string)($c['props']['_bindings'][$prop] ?? '') === $value || _pg_lc_bound($c, $prop, $value)) return true;
+    }
+    return false;
 }
 
 // The wrapper an image of ^^$token^^ alone fills (the image, or its
