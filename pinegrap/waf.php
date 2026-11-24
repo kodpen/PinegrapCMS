@@ -2941,7 +2941,9 @@ function waf_beacon_bucket_answer($hits, $limit)
  * were refused. The read finds one row by its primary key and compares the
  * token's hash, writes nothing and starts no session (queue.php), so it is
  * held to waf_handle_rate_queue_status() instead. Opening the page, taking
- * a number and every POST ("Leave the queue") stay sensitive.
+ * a number and every POST ("Leave the queue") stay sensitive. The lobby
+ * screen's read, queue_lobby.php?place=<id>&k=<token>&read=1, is the same
+ * kind of read (one place's calls, every few seconds) and shares the bucket.
  *
  * @param string $method the request method
  * @param string $script the running script's file name (waf_script_name())
@@ -2950,11 +2952,15 @@ function waf_beacon_bucket_answer($hits, $limit)
  */
 function waf_queue_status_read($method, $script, array $query)
 {
-    if ($script !== 'queue.php' || !in_array(strtoupper((string) $method), array('GET', 'HEAD'), true)) {
+    $names = array('queue.php' => 'n', 'queue_lobby.php' => 'place');
+
+    if (!isset($names[$script]) || !in_array(strtoupper((string) $method), array('GET', 'HEAD'), true)) {
         return false;
     }
 
-    return isset($query['n'], $query['read']) && is_scalar($query['n']) && is_scalar($query['read'])
+    $id = $names[$script];
+
+    return isset($query[$id], $query['read']) && is_scalar($query[$id]) && is_scalar($query['read'])
         && ((string) $query['read'] !== '') && ((string) $query['read'] !== '0');
 }
 

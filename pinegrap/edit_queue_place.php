@@ -6,7 +6,8 @@
  * name, the state and the button that opens or closes the queue; the Set-up
  * tab as six folded rows (services, hours, taking a number, notices, order,
  * keep personal data) with one Save; the Desks tab, a desk a row with Add
- * desk and Remove, and the staff who may open a desk; the Today tab is the
+ * desk and Remove, the staff who may open a desk and the signed links of
+ * the lobby screen and the kiosk; the Today tab is the
  * desk screen (queue_desk.php); and "Add a number" for a person at the counter. It also takes the list's add drawer (a name and the
  * first service: a new closed place) and its row menu's Delete. Roles 0-2.
  *
@@ -385,11 +386,38 @@ $qp_staff_html = '<section class="pg-card p-5 mb-5" aria-labelledby="qp_staff_ti
     . '<select class="pg-input" id="qp_staff_user" name="staff_user_id" form="qp_desks_form" data-pg-combobox data-pg-source="user_search_action.php" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a user')) . '"><option value=""></option></select></div>'
     . '<button type="submit" form="qp_desks_form" name="submit_staff_add" value="1" class="pg-button pg-button-quiet"><i class="bi bi-person-plus" aria-hidden="true"></i>' . h(lang('Add staff')) . '</button></div></section>';
 
+// Screens: the signed links of the lobby screen and the kiosk, opened on
+// the place's own TV and tablet with no sign-in.
+$qp_screen_rows = '';
+
+foreach (array(
+    'lobby' => array('bi-display', lang('Lobby screen'), lang('The numbers now served and their desks, for a TV in the waiting room. Numbers only, never a name.')),
+    'kiosk' => array('bi-tablet', lang('Kiosk'), empty($qp_place['settings']['ways']['kiosk']) ? lang('Turn on "From a kiosk tablet" under Taking a number to give numbers here.') : lang('People take a number on a tablet at the entrance.')),
+) as $kind => $screen) {
+    $url = pg_waiting_screen_url($qp_id, $kind);
+
+    if ($url === '') {
+        continue;
+    }
+
+    $qp_screen_rows .= '<div class="pg-card-inner-row flex-wrap">'
+        . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi ' . $screen[0] . '"></span></span>'
+        . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($screen[1]) . '</strong><div class="pg-text-meta">' . h($screen[2]) . '</div>'
+        . '<div class="pg-text-meta text-break" id="qp_screen_' . $kind . '">' . h($url) . '</div></div>'
+        . pg_copy_button($url, lang(array('string' => 'Copy the link of {var:1}', 'vars' => array($screen[1]))), 'qp_screen_' . $kind)
+        . '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '" target="_blank" rel="noopener">' . h(lang('Open')) . '</a></div>';
+}
+
+$qp_screens_html = ($qp_screen_rows === '') ? '' : '<section class="pg-card p-5 mb-5" aria-labelledby="qp_screens_title"><h2 class="pg-title-section mb-0" id="qp_screens_title">' . h(lang('Screens')) . '</h2>'
+    . '<p class="pg-card-sub mb-5">' . h(lang('Open these links on the place\'s own TV and tablet; they need no sign-in. Anyone with a link sees that screen, so keep it on your devices.')) . '</p>'
+    . '<div class="pg-card-inner">' . $qp_screen_rows . '</div></section>';
+
 $qp_desks_html = '<form id="qp_desks_form" action="edit_queue_place.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="desks"></form>'
     . '<section class="pg-card p-5 mb-5" aria-labelledby="qp_desks_title"><h2 class="pg-title-section mb-0" id="qp_desks_title">' . h(lang('Desks')) . '</h2>'
     . '<p class="pg-card-sub mb-5">' . h($qp_desks ? lang('Staff open a desk for their shift; only an open desk is called to.') : lang('No desks yet. Add the desks people are called to.')) . '</p>'
     . ($qp_desks ? '<div class="pg-card-inner">' . $qp_desk_rows . '</div>' : '') . '</section>'
     . $qp_staff_html
+    . $qp_screens_html
     . '<dialog class="drawer drawer-end" id="qp_desk_add" aria-labelledby="qp_desk_add_title" style="width:min(480px,100%);--pg-drawer-height:70vh"' . (isset($_GET['add']) ? ' data-open="1"' : '') . '>
         <form method="post" action="edit_queue_place.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="desks">
