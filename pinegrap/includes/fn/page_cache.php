@@ -1813,7 +1813,7 @@ function pg_page_cache_panel_sub_actions()
         'layout_code' => array(
             'key' => 'sub_action',
             'dirty' => array('save'),
-            'clean' => array('read', 'regenerate', 'convert'),
+            'clean' => array('read', 'regenerate', 'convert', 'convert_type'),
         ),
         'shared_component' => array(
             'key' => 'sub_action',

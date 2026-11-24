@@ -1559,6 +1559,35 @@ function pg_panel_dynamic_region_code($request, $action)
         respond(array('status' => 'success', 'id' => (int) $region['id'], 'name' => $region['name'], 'content' => (string) $region['code']));
     }
 
+    // A page's own layout file of a type the converter maps as its
+    // widget's design elements (pg_layout_type_file_convert()), the row
+    // template from the starter the editor sends; nothing is written, the
+    // editor puts the widget in the region's place.
+    if ($sub === 'convert_type') {
+        $facts = pg_classic_type_facts(array((int) $page_id));
+        $f = isset($facts[(int) $page_id]) ? $facts[(int) $page_id] : null;
+        $code = ($f && !empty($f['modified']) && !pg_hosted()) ? pg_layout_type_file_code((int) $page_id, $f['type']) : null;
+
+        if ($code === null) {
+            respond(array('status' => 'error', 'message' => lang('This page\'s layout cannot be converted.')));
+        }
+
+        $starter = (isset($request['starter']) && is_array($request['starter'])) ? $request['starter'] : array();
+        $result = pg_layout_type_file_convert($f, $code, $starter);
+
+        if (!$result['ok']) {
+            respond(array('status' => 'error', 'message' => lang('The layout could not be read.')));
+        }
+
+        respond(array(
+            'status' => 'success',
+            'kind' => (string) $f['kind'],
+            'tree' => $result['tree'],
+            'cfg' => (object) $result['cfg'],
+            'dropped' => pg_layout_dropped_rows($result['dropped']),
+        ));
+    }
+
     if ($sub === 'save') {
         if (!isset($request['content']) || !is_string($request['content'])) {
             respond(array('status' => 'error', 'message' => lang('Invalid request.')));
@@ -1665,6 +1694,35 @@ function pg_panel_layout_code($request, $action)
             'tree' => $result['tree'],
             'dropped' => $result['dropped'],
             'missing' => count($result['missing']),
+        ));
+    }
+
+    // A page's own layout file of a type the converter maps as its
+    // widget's design elements (pg_layout_type_file_convert()), the row
+    // template from the starter the editor sends; nothing is written, the
+    // editor puts the widget in the region's place.
+    if ($sub === 'convert_type') {
+        $facts = pg_classic_type_facts(array((int) $page_id));
+        $f = isset($facts[(int) $page_id]) ? $facts[(int) $page_id] : null;
+        $code = ($f && !empty($f['modified']) && !pg_hosted()) ? pg_layout_type_file_code((int) $page_id, $f['type']) : null;
+
+        if ($code === null) {
+            respond(array('status' => 'error', 'message' => lang('This page\'s layout cannot be converted.')));
+        }
+
+        $starter = (isset($request['starter']) && is_array($request['starter'])) ? $request['starter'] : array();
+        $result = pg_layout_type_file_convert($f, $code, $starter);
+
+        if (!$result['ok']) {
+            respond(array('status' => 'error', 'message' => lang('The layout could not be read.')));
+        }
+
+        respond(array(
+            'status' => 'success',
+            'kind' => (string) $f['kind'],
+            'tree' => $result['tree'],
+            'cfg' => (object) $result['cfg'],
+            'dropped' => pg_layout_dropped_rows($result['dropped']),
         ));
     }
 

@@ -1161,12 +1161,7 @@ function pg_ltd_type_file_dropped($page_id, $facts)
  */
 function pg_ltd_type_file_code($page_id, $facts)
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
-    if (!in_array((string)($facts['type'] ?? ''), pg_layout_convert_types(), true)) return null;
-    $file = pg_layout_file_name((int)$page_id);
-    if ($file === '' || !is_file(LAYOUT_DIRECTORY_PATH . '/' . $file)) return null;
-    $code = @file_get_contents(LAYOUT_DIRECTORY_PATH . '/' . $file);
-    return is_string($code) ? $code : null;
+    return pg_layout_type_file_code($page_id, (string)($facts['type'] ?? ''));
 }
 
 /**

@@ -996,6 +996,57 @@ function pg_layout_convert($type, $code, $ctx = array())
     return $out;
 }
 
+/**
+ * A page's own layout file as its widget's design elements, with the row
+ * template taken from the widget's starter layout and the page's layout
+ * settings put in (pg_layout_widget_tree_apply()): what the move's run and
+ * the visual designer's "Convert to design elements" build. Pure.
+ *
+ * @param array  $facts    the page's pg_classic_type_facts() entry ('type',
+ *                         'state', 'tree')
+ * @param string $code     the layout file's text
+ * @param array  $starter  the widget kind's starter tree
+ * @return array  pg_layout_convert()'s answer
+ */
+function pg_layout_type_file_convert($facts, $code, $starter)
+{
+    return pg_layout_convert((string)($facts['type'] ?? ''), (string)$code, array(
+        'state' => (array)($facts['state'] ?? array()),
+        'row'   => pg_layout_convert_row(pg_layout_widget_tree_apply(is_array($starter) ? $starter : array(), (array)($facts['tree'] ?? array()))),
+    ));
+}
+
+/**
+ * The dropped pieces of pg_layout_convert() as the Region panel's and the
+ * toast's lines: "line 42 · a condition on $watcher_option · dropped". A
+ * piece longer than 60 characters is cut with an ellipsis. Pure apart from
+ * lang().
+ *
+ * @param array $dropped  pg_layout_convert()'s 'dropped'
+ * @return array  list of array('line' => int, 'text' => string)
+ */
+function pg_layout_dropped_rows($dropped)
+{
+    $rows = array();
+    foreach ((array)$dropped as $d) {
+        $piece = preg_replace('/\s+/', ' ', trim((string)($d['piece'] ?? '')));
+        if (function_exists('mb_strlen') ? mb_strlen($piece, 'UTF-8') > 60 : strlen($piece) > 60) {
+            $piece = rtrim(function_exists('mb_substr') ? mb_substr($piece, 0, 59, 'UTF-8') : substr($piece, 0, 59)) . '…';
+        }
+        switch ((string)($d['code'] ?? '')) {
+            case 'condition': $what = lang(array('string' => 'a condition on {var:1}', 'vars' => array($piece))); break;
+            case 'value':     $what = lang(array('string' => 'the value {var:1}', 'vars' => array($piece))); break;
+            case 'loop':      $what = lang(array('string' => 'a loop over {var:1}', 'vars' => array($piece))); break;
+            case 'code':      $what = lang(array('string' => 'PHP code {var:1}', 'vars' => array($piece))); break;
+            case 'browse':    $what = lang('the browse form'); break;
+            default:          $what = $piece;
+        }
+        $line = (int)($d['line'] ?? 0);
+        $rows[] = array('line' => $line, 'text' => lang(array('string' => 'line {var:1} · {var:2} · dropped', 'vars' => array($line, $what))));
+    }
+    return $rows;
+}
+
 // One PHP part's code, comments out and white space kept to one space; a
 // closing semicolon dropped.
 function _pg_lc_source($tokens)
