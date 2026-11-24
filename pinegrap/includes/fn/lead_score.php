@@ -462,6 +462,41 @@ function pg_lead_score_settings_text(array $settings)
 }
 
 /**
+ * Whether new settings change the scores already worked out: the threshold
+ * (the hot flag the Hot Contacts view and the events read), an act's
+ * points, the pricing or contact pages, the half-life. The keep period
+ * changes no score. Pure.
+ *
+ * @param mixed $before the stored settings (text or array)
+ * @param mixed $after  the new settings (text or array)
+ * @return bool
+ */
+function pg_lead_score_settings_rework($before, $after)
+{
+    $before = pg_lead_score_settings($before);
+    $after = pg_lead_score_settings($after);
+
+    foreach (array('threshold', 'weights', 'pricing_pages', 'contact_pages', 'half_life') as $key) {
+        if ($before[$key] !== $after[$key]) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Marks every score row for the next scoring pass (scored_at 0), after
+ * settings that change the scores (pg_lead_score_settings_rework()).
+ */
+function pg_lead_score_rework_all()
+{
+    if (pg_schema_has('contact_scores', 'scored_at')) {
+        db("UPDATE contact_scores SET scored_at = 0");
+    }
+}
+
+/**
  * The site's interest score settings, read once per request.
  *
  * @return array pg_lead_score_settings()

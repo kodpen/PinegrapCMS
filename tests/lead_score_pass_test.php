@@ -54,3 +54,19 @@ function test_lead_score_candidates_take_a_row_past_the_keep_period()
 
 	pg_assert_contains("last_visit_at < '500'", $sql, 'a row whose visits are past the keep period is worked out (and goes), whatever its interest');
 }
+
+function test_lead_score_settings_change_reworks_the_scores()
+{
+	$defaults = pg_lead_score_settings(array());
+
+	pg_assert_false(pg_lead_score_settings_rework($defaults, $defaults), 'nothing changed, nothing to rework');
+	pg_assert_false(pg_lead_score_settings_rework($defaults, array('keep_months' => 6) + $defaults), 'the keep period changes no score');
+	pg_assert_true(pg_lead_score_settings_rework($defaults, array('threshold' => 40) + $defaults), 'a new threshold: the hot flags the view reads change');
+	pg_assert_true(pg_lead_score_settings_rework($defaults, array('half_life' => 7) + $defaults), 'a new half-life');
+	pg_assert_true(pg_lead_score_settings_rework($defaults, array('pricing_pages' => array(4)) + $defaults), 'other pricing pages');
+
+	$weights = $defaults;
+	$weights['weights']['form'] = 50;
+	pg_assert_true(pg_lead_score_settings_rework($defaults, $weights), 'an act\'s points');
+	pg_assert_true(pg_lead_score_settings_rework('', json_encode($weights)), 'stored texts are read');
+}
