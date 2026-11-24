@@ -197,8 +197,10 @@
 
     // A held script is re-created as a live one in the same place. External
     // scripts keep their relative order (async off unless the original asked
-    // for it), the way they would have run had they not been held.
-    function start(choices) {
+    // for it), the way they would have run had they not been held. Without
+    // announce no pg:consent event goes out: the notice still waits for an
+    // answer, and the pop-ups open only after one.
+    function start(choices, announce) {
         var held = document.querySelectorAll('script[type="text/plain"][data-pg-consent]');
 
         Array.prototype.forEach.call(held, function (node) {
@@ -233,6 +235,10 @@
 
             node.parentNode.replaceChild(live, node);
         });
+
+        if (announce === false) {
+            return;
+        }
 
         var event;
 
@@ -341,6 +347,18 @@
 
         start(merged);
         hide();
+    }
+
+    // The stored answers for this page's categories, the unanswered ones
+    // refused.
+    function kept(stored) {
+        var choices = {};
+
+        categories.forEach(function (c) {
+            choices[c] = stored.hasOwnProperty(c) ? stored[c] : false;
+        });
+
+        return choices;
     }
 
     function all(value) {
@@ -468,12 +486,16 @@
                 break;
 
             case 'close':
-                // Closing before answering keeps the necessary cookies only;
-                // after an answer it just closes.
-                if (answered(read())) {
+                // Closing before answering refuses what the page asks
+                // about for the first time and keeps every answer already
+                // given (a page that adds a category to a visitor who
+                // answered the others); after an answer it just closes.
+                var stored_now = read();
+
+                if (answered(stored_now)) {
                     hide();
                 } else {
-                    decide(all(false));
+                    decide(kept(stored_now || {}));
                 }
                 break;
         }
@@ -516,6 +538,11 @@
     if (ready) {
         signal(stored);
         start(stored);
+    } else if (stored) {
+        // The page asks about a category the visitor has not answered yet:
+        // what was allowed before keeps working while the question waits.
+        signal(stored);
+        start(stored, false);
     }
 
     if (ready && location.hash !== '#cookie-settings') {
