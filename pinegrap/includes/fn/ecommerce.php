@@ -2262,6 +2262,29 @@ function pg_product_stock_threshold()
 
 
 /**
+ * Whether a stock write crossed the low-stock line: the stock left is at or
+ * under it and the stock before was above it, or there was no level before
+ * (tracking switched on by this write). One rule for every writer, so a
+ * product is announced low once, whichever writer moved it. Pure.
+ *
+ * @param int      $threshold the low-stock line, 0 for none
+ * @param int|null $before    stock before the write; null when it was not tracked
+ * @param int      $after     stock left after the write
+ * @return bool
+ */
+function pg_product_stock_low_crossed($threshold, $before, $after)
+{
+    $threshold = (int) $threshold;
+
+    if (($threshold <= 0) || ((int) $after > $threshold)) {
+        return false;
+    }
+
+    return ($before === null) || ((int) $before > $threshold);
+}
+
+
+/**
  * What one change of a product's stock announces: the events, in order, with
  * their payloads. Pure, so the writers and the tests read the same rule.
  *
@@ -2309,9 +2332,7 @@ function pg_product_stock_events($product_id, $name, $tracked, $before, $after, 
         ) + pg_stock_event_location_fields($location)),
     );
 
-    $was_above = ($before === null) || ((int) $before > $threshold);
-
-    if (($threshold > 0) && ($after <= $threshold) && $was_above) {
+    if (pg_product_stock_low_crossed($threshold, $before, $after)) {
         $events[] = array('stock.low', array(
             'product_id' => $product_id,
             'name'       => (string) $name,
@@ -9307,6 +9328,34 @@ function pg_cart_line_stock_allowance($wanted, $left, $starting, $minimum)
         'remove' => ($left === 0) || (($allowed === 0) && ($wanted > 0)),
         'unavailable' => ((int) $starting < max(1, min($wanted, $minimum))),
     );
+}
+
+/**
+ * Why a shopper's add of a product is refused for its stock: 'unavailable'
+ * when it tracks stock, has none left and takes no back orders; 'short' when
+ * the quantity asked is more than the stock; '' when the stock does not stop
+ * the add (not tracked, back orders on, a donation, or enough left). The
+ * rule of the catalogue's add (catalog_detail.php). Pure.
+ *
+ * @param array $product  inventory, inventory_quantity, backorder, selection_type
+ * @param int   $quantity units asked for
+ * @return string '', 'unavailable' or 'short'
+ */
+function pg_cart_add_stock_refusal($product, $quantity)
+{
+    if (((string) ($product['selection_type'] ?? '') === 'donation')
+        || ((int) ($product['inventory'] ?? 0) !== 1)
+        || ((int) ($product['backorder'] ?? 0) === 1)) {
+        return '';
+    }
+
+    $stock = (int) ($product['inventory_quantity'] ?? 0);
+
+    if ($stock <= 0) {
+        return 'unavailable';
+    }
+
+    return ((int) $quantity > $stock) ? 'short' : '';
 }
 
 // create function for checking if order items are still valid based on inventory levels

@@ -52,6 +52,29 @@ function add_to_cart($request) {
     $form_name = is_string($request['form'] ?? null) ? $request['form'] : '';
     $notice = is_string($request['notice'] ?? null) ? $request['notice'] : '';
 
+    // The stock rule of the catalogue's add (catalog_detail.php): a product
+    // that tracks stock with none left and no back orders, or a quantity past
+    // its stock, is refused here rather than written as a line the cart then
+    // takes out again.
+    $stock_row = ($product_id !== '') ? db_item(
+        "SELECT name, short_description, selection_type, inventory, inventory_quantity, backorder
+        FROM products
+        WHERE (id = '" . e($product_id) . "') AND (enabled = '1')") : null;
+
+    if ($stock_row) {
+        $stock_refusal = pg_cart_add_stock_refusal($stock_row, $quantity);
+
+        if ($stock_refusal === 'unavailable') {
+            $product_description = trim($stock_row['name'] . ((($stock_row['name'] !== '') && ($stock_row['short_description'] !== '')) ? ' - ' : '') . $stock_row['short_description']);
+
+            return error_response(lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => array(h($product_description)))));
+        }
+
+        if ($stock_refusal === 'short') {
+            return error_response(lang(array('string' => 'Not enough stock. Available: {var:1}', 'vars' => array((int) $stock_row['inventory_quantity']))));
+        }
+    }
+
     initialize_order();
 
     $item = array();
