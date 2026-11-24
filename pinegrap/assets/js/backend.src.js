@@ -1222,6 +1222,7 @@ $(document).ready(function () {
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuPanels();                 // Rows that open their entries inside the menu
     initMenuDay();                    // The Calendars icon's day moves on at the site's midnight
+    initMenuMotion();                 // The icons keep still while the rail widens or narrows
 
     function isMenuDrawerMode() {
         return MENU_DRAWER_ONLY || (window.innerWidth < MENU_DRAWER_BREAKPOINT);
@@ -1370,8 +1371,16 @@ $(document).ready(function () {
         return document.querySelector(MENU_TOGGLES);
     }
 
+    // How wide each wide-screen state's grid column is, in order.
+    var MENU_STATE_RANK = { hidden: 0, collapsed: 1, expanded: 2 };
+
     // Draws a wide-screen state on the container, the menu and the button.
+    // The grid column is never animated: animating it lays the whole page
+    // out again on every frame. A column that grows waits for the rail's
+    // slide to end (.pg-menu-grows, the rail slides over the content); one
+    // that shrinks follows at once, under the rail that is still narrowing.
     function paintMenuState(state) {
+        $('.software-container').toggleClass('pg-menu-grows', MENU_STATE_RANK[state] > MENU_STATE_RANK[shownMenuState()]);
         $('#menu, .software-container').toggleClass('expanded', state === 'expanded');
         $('.software-container').toggleClass('menu-hidden', (state === 'hidden') && ($('#menu').length > 0));
 
@@ -2116,6 +2125,36 @@ $(document).ready(function () {
         }
 
         autoMenuPanel(menu);
+    }
+
+    // While the rail changes width (the menu view button, a panel opened from
+    // the rail) the container carries .pg-menu-moving, and the icons' hover
+    // moves do not start: a move starting under a widening rail is what
+    // made the widening stutter.
+    function initMenuMotion() {
+        var sidebar = document.querySelector('.software-container .software-sidebar');
+        var container = sidebar ? sidebar.closest('.software-container') : null;
+
+        if (!container) {
+            return;
+        }
+
+        function isSlide(e) {
+            return (e.target === sidebar) && ((e.propertyName === 'width') || (e.propertyName === 'transform'));
+        }
+
+        sidebar.addEventListener('transitionrun', function (e) {
+            if (isSlide(e)) {
+                container.classList.add('pg-menu-moving');
+            }
+        });
+        ['transitionend', 'transitioncancel'].forEach(function (type) {
+            sidebar.addEventListener(type, function (e) {
+                if (isSlide(e)) {
+                    container.classList.remove('pg-menu-moving');
+                }
+            });
+        });
     }
 
     // The Calendars entry's icon shows the day of the month (pg_menu_icon()).

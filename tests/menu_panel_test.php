@@ -199,10 +199,11 @@ function test_menu_row_icon_sits_on_its_category_tile()
 	pg_assert_contains("\$menu_row_tone = pg_menu_category_tone(\$key);", $menu, 'the colour of its category');
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
-	pg_assert_contains("  width: 1.625rem;\n  height: 1.625rem;\n  border-radius: 0.5rem;", $css, 'a 26 px tile');
+	pg_assert_contains("  --pg-menu-tile: 2rem;\n  --pg-menu-icon: 1.2rem;", $css, 'a 32 px tile and an icon of at least 1.2rem');
+	pg_assert_contains("  width: var(--pg-menu-tile);\n  height: var(--pg-menu-tile);\n  border-radius: 0.625rem;", $css, 'the tile');
 	pg_assert_contains("  --pg-mi-tint: 13%;\n  --pg-mi-line: 16%;", $css, 'a tint and an inner line');
 	pg_assert_contains("#menu .list-group-item.active .pg-mi-tile {\n  --pg-mi-tint: 26%;\n  --pg-mi-line: 34%;", $css, 'stronger on the current row');
-	pg_assert_contains(":is(#menu, .pg-look-mi) .pg-mi-tile > svg {\n  width: 0.9375rem;", $css, 'a 15 px icon');
+	pg_assert_contains(":is(#menu, .pg-look-mi) .pg-mi-tile > svg {\n  width: var(--pg-menu-icon);", $css, 'the icon on it');
 }
 
 function test_menu_site_settings_row_is_retired()
