@@ -144,3 +144,11 @@ function test_volunteer_document_notice_skips_a_replaced_document()
 	pg_assert_contains('newer.kind = volunteer_documents.kind', $source);
 	pg_assert_contains('newer.valid_until > volunteer_documents.valid_until', $source);
 }
+
+function test_volunteer_reminder_goes_while_the_programme_is_paused()
+{
+	$source = pg_test_function_source('pg_volunteer_reminders_run');
+
+	pg_assert_false(strpos($source, "volunteer_programmes.state = 'open'") !== false, 'a paused programme takes no new sign-ups, but its shifts still run: the volunteers signed up are reminded');
+	pg_assert_contains("volunteer_programmes.state = 'open'", pg_test_function_source('pg_volunteer_calls_run'), 'calls for more volunteers stay with open programmes');
+}

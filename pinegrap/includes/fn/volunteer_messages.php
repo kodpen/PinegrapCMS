@@ -321,9 +321,11 @@ function pg_volunteer_calls_run($now)
 }
 
 /**
- * The general job's day-before reminders: each shift of an open programme
- * due (pg_volunteer_reminder_due()) is claimed by setting reminded_at, then
- * everyone signed up on it is told, whether their calls are on or off.
+ * The general job's day-before reminders: each shift due
+ * (pg_volunteer_reminder_due()) is claimed by setting reminded_at, then
+ * everyone signed up on it is told, whether their calls are on or off. A
+ * paused programme takes no new sign-ups, but its shifts still run, so its
+ * volunteers are reminded too.
  *
  * @param string $now 'YYYY-MM-DD HH:MM:SS'
  * @return int volunteers reminded
@@ -339,7 +341,7 @@ function pg_volunteer_reminders_run($now)
 
     foreach ((array) db_items("SELECT volunteer_shifts.* FROM volunteer_shifts
         INNER JOIN volunteer_programmes ON volunteer_programmes.id = volunteer_shifts.programme_id
-        WHERE volunteer_programmes.state = 'open' AND volunteer_shifts.reminded_at = 0
+        WHERE volunteer_shifts.reminded_at = 0
             AND volunteer_shifts.start_time > '" . escape($now) . "' AND volunteer_shifts.start_time < '" . escape(pg_volunteer_add_days(substr($now, 0, 10), 2)) . "'
         ORDER BY volunteer_shifts.start_time, volunteer_shifts.id LIMIT " . (int) PG_VOLUNTEER_PASS_ROWS) as $row) {
         $shift = pg_volunteer_shift_decode($row);
