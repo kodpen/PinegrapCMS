@@ -12,7 +12,7 @@ description: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the sto
 
 - SJ3 (M) done, PR #11312: the card's foot "Ready to go live?" (not drawn by SJ2; `ui/launch-journey-setup-card.md`), the go-live check and its "Go live" turning maintenance mode off and removing the robots catch-all itself (poll 209; never a payment mode), the confirmation naming each blocker and each of the two changes, a Site Log line for each, the go-live time. Features: L4.
 
-- SJ4 (M) after SJ3: the First week card; a team member's path card; first-visit hint lines, marked as `hint:<screen>` keys in `user.tours_seen` (`pg_tour_mark()`), only for screens in the catalogue. Features: L5, L6.
+- SJ4 (M) done, PR #11344: the First week card; a team member's path card; first-visit hint lines, marked as `hint:<screen>` keys in `user.tours_seen` (`pg_tour_mark()`), only for screens in the catalogue. Features: L5, L6.  (`ui/launch-journey-first-week-path.md`)
 
 - SJ5 (M) done, PR #11314. After SJ2 and SJ1b: the agency summary drawer, the signed page (a new root file, in `waf_sensitive_scripts()`), the customer's text answers, the bell line, withdraw. Features: L7.
 
