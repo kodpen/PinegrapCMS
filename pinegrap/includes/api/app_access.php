@@ -329,6 +329,7 @@ function api_app_event_area($name, $module_label = '') {
 		'offer'           => 'Offers',
 		'file'            => 'Files',
 		'form'            => 'Forms',
+		'application'     => 'Forms',
 		'calendar_event'  => 'Calendars',
 		'ticket'          => 'Calendars',
 		'campaign'        => 'Campaigns',

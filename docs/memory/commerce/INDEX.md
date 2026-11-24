@@ -309,6 +309,7 @@
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
+- pick-pack-pack.md: Orders › Pack (pack.php): access, the order code and the address list, a scan's verdict and its words, the checked pack's label, marketplace accept, audit line and order.packed
 - pick-pack-rules.md: Pick and pack's pure rules (includes/fn/pick_pack.php): shelf address sort, wave rule filter and ship-by day, cancelled order leaving a wave, pick list totals, scan verdict codes, pack state
 - pick-pack-shelf-address.md: Shelf address (product_bins): the "Shelf" box on the stock card, Modify Selected's "Shelf address", shelf import columns, shelf in POST /products/{id}/inventory
 - pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing [decision: here]

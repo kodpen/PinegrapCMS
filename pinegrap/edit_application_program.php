@@ -13,7 +13,9 @@
  * and moving the shortlist into the next round; and the Decisions tab:
  * accepted, rejected or waitlisted one by one or for the ticked rows, a
  * declined place given to the next on the waitlist, and the decision e-mails
- * previewed with their counts and sent on a press. Gated by validate_forms_access() and the folder
+ * previewed with their counts and sent on a press; and the Report tab:
+ * reviewer progress, the scores' spread by criterion and reviewer, the
+ * entries by state, and the same as an Excel workbook. Gated by validate_forms_access() and the folder
  * rule on the programme's form. It also takes the list drawer's add (a name
  * and a form: a new draft) and the row menu's Delete.
  *
@@ -28,6 +30,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_ranking.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_decisions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_jurors.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_report.php');
 
 $user = validate_user();
 validate_forms_access($user);
@@ -43,7 +46,7 @@ $ap_id = (int) ($_POST['id'] ?? $_POST['submit_delete'] ?? $_GET['id'] ?? 0);
 $ap_program = ($ap_id > 0) ? pg_application_program_get($ap_id) : null;
 $ap_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_application_program.php';
 $ap_view = $_POST['view'] ?? $_GET['view'] ?? '';
-$ap_view = (in_array($ap_view, array('reviewers', 'entries', 'decisions'), true) && ($ap_program !== null)) ? $ap_view : 'setup';
+$ap_view = (in_array($ap_view, array('reviewers', 'entries', 'decisions', 'report'), true) && ($ap_program !== null)) ? $ap_view : 'setup';
 $ap_category = is_string($_POST['category'] ?? $_GET['category'] ?? null) ? mb_substr($_POST['category'] ?? $_GET['category'], 0, 100) : null;
 $ap_list = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php';
 $ap_filter = $_POST['filter'] ?? $_GET['filter'] ?? '';
@@ -57,6 +60,33 @@ if (($ap_id > 0) && ($ap_program === null)) {
 if (($ap_program !== null) && !isset($ap_forms[$ap_program['page_id']])) {
     log_activity('access denied to application programme ' . $ap_id, $_SESSION['sessionusername']);
     output_error(lang('Access denied') . '.', 403);
+}
+
+// The report's round: the programme's current one unless another is asked.
+$ap_report_round = (int) ($_GET['round'] ?? 0);
+$ap_report_round = ($ap_program !== null) ? ((($ap_report_round >= 1) && ($ap_report_round <= max(1, $ap_program['round']))) ? $ap_report_round : max(1, $ap_program['round'])) : 1;
+
+// The report as an Excel workbook: Reviewers, Scores and Entries.
+if (($ap_view === 'report') && (($_GET['export'] ?? '') === 'xlsx')) {
+    $ap_sheets = pg_application_report_sheets(pg_application_report($ap_program, $ap_report_round), pg_application_category_choices($ap_program));
+    $ap_path = tempnam(sys_get_temp_dir(), 'pga');
+
+    if (($ap_path === false) || !pg_xlsx_write_book($ap_sheets, function ($index) use ($ap_sheets) {
+        return $ap_sheets[$index]['rows'];
+    }, $ap_path)) {
+        if ($ap_path !== false) {
+            @unlink($ap_path);
+        }
+        output_error(lang('The workbook could not be written.'));
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="application_programme_' . $ap_id . '_round_' . $ap_report_round . '.xlsx"');
+    header('Content-Length: ' . filesize($ap_path));
+    header('Cache-Control: private, no-store');
+    readfile($ap_path);
+    @unlink($ap_path);
+    exit();
 }
 
 $ap_fields = ($ap_program !== null) ? pg_application_program_fields($ap_program['page_id']) : array();
@@ -636,7 +666,7 @@ $ap_toolbar = array(
     'primary' => ($ap_view === 'reviewers')
         ? array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-drawer="aprog_reviewer_add"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add reviewer')) . '</button>', $ap_state_button)
         : $ap_state_button,
-    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . $ap_tab('decisions', lang('Decisions')) . '</span>',
+    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . $ap_tab('decisions', lang('Decisions')) . $ap_tab('report', lang('Report')) . '</span>',
 );
 
 if ($ap_view === 'reviewers') {
@@ -929,6 +959,104 @@ if ($ap_view === 'decisions') {
     $ap_toolbar['primary'] = array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-open="aprog_send"><i class="bi bi-envelope" aria-hidden="true"></i>' . h(lang('Send the decision e-mails')) . '</button>', $ap_state_button);
 }
 
+// The Report tab: a round's reviewer progress and the spread of its scores,
+// every round's entries by state, and the Excel button for the same.
+$ap_report_html = '';
+
+if ($ap_view === 'report') {
+    $ap_report = pg_application_report($ap_program, $ap_report_round);
+    $ap_figure = function ($value) {
+        return ($value === null) ? '<span class="pg-text-meta">—</span>' : h(number_format((float) $value, 2));
+    };
+    $ap_table = function ($label, array $head, $rows, $empty) {
+        $cells = '';
+
+        foreach ($head as $i => $title) {
+            $cells .= '<th scope="col"' . (($i > 0) ? ' class="text-end"' : '') . '>' . h($title) . '</th>';
+        }
+
+        return '<div class="table-responsive"><table class="table align-middle mb-0" aria-label="' . h($label) . '"><thead><tr>' . $cells . '</tr></thead><tbody>'
+            . (($rows !== '') ? $rows : '<tr><td colspan="' . count($head) . '" class="text-center pg-text-meta py-7">' . h($empty) . '</td></tr>') . '</tbody></table></div>';
+    };
+    $ap_card = function ($id, $title, $line, $body) {
+        return '<section class="pg-card p-0 mb-5" aria-labelledby="' . $id . '"><div class="p-5 pb-3"><h2 class="pg-title-section mb-0" id="' . $id . '">' . h($title) . '</h2><p class="pg-card-sub mb-0">' . h($line) . '</p></div>' . $body . '</section>';
+    };
+
+    $ap_rows = '';
+
+    foreach ($ap_report['reviewers'] as $ap_line) {
+        $ap_percent = ($ap_line['given'] > 0) ? (int) round(100 * $ap_line['sent'] / $ap_line['given']) : 0;
+        $ap_progress = lang(array('string' => '{var:1} of {var:2} sent', 'vars' => array($ap_line['sent'], $ap_line['given'])));
+        $ap_rows .= '<tr><td>' . h($ap_line['name']) . '</td>'
+            . '<td class="text-end"><span class="d-flex align-items-center justify-content-end gap-3"><span class="pg-tabular text-nowrap">' . h($ap_progress) . '</span><span class="progress flex-grow-1" role="progressbar" aria-label="' . h($ap_progress) . '" aria-valuenow="' . $ap_percent . '" aria-valuemin="0" aria-valuemax="100" style="height:0.5rem;min-width:4rem;max-width:8rem"><span class="progress-bar" style="width:' . $ap_percent . '%"></span></span></span></td>'
+            . '<td class="pg-tabular text-end">' . $ap_line['started'] . '</td>'
+            . '<td class="pg-tabular text-end">' . $ap_line['conflicts'] . '</td>'
+            . '<td class="pg-tabular text-end">' . $ap_figure($ap_line['mean']) . '</td>'
+            . '<td class="pg-tabular text-end text-nowrap">' . (($ap_line['lowest'] === null) ? $ap_figure(null) : $ap_figure($ap_line['lowest']) . ' – ' . $ap_figure($ap_line['highest'])) . '</td></tr>';
+    }
+
+    $ap_report_html .= $ap_card('aprog_report_reviewers', lang('Reviewer progress'), lang('Reviews given to each reviewer in this round and how far they are; the mean and range of the weighted totals they sent.'),
+        $ap_table(lang('Reviewer progress'), array(lang('Reviewer'), lang('Sent'), lang('Started'), lang('Conflicts'), lang('Mean'), lang('Range')), $ap_rows, lang('No reviewers yet.')));
+
+    $ap_rows = '';
+
+    foreach ($ap_report['spread']['criteria'] as $ap_line) {
+        $ap_rows .= '<tr><td>' . h($ap_line['name']) . '</td><td class="pg-tabular text-end">' . $ap_line['weight'] . '%</td><td class="pg-tabular text-end">' . $ap_line['count'] . '</td>'
+            . '<td class="pg-tabular text-end">' . $ap_figure($ap_line['mean']) . '</td><td class="pg-tabular text-end">' . $ap_figure($ap_line['lowest']) . '</td><td class="pg-tabular text-end">' . $ap_figure($ap_line['highest']) . '</td><td class="pg-tabular text-end">' . $ap_figure($ap_line['deviation']) . '</td></tr>';
+    }
+
+    $ap_matrix_head = array(lang('Reviewer'));
+
+    foreach ($ap_report['spread']['criteria'] as $ap_line) {
+        $ap_matrix_head[] = $ap_line['name'];
+    }
+
+    $ap_matrix = '';
+
+    foreach ($ap_report['spread']['reviewers'] as $ap_line) {
+        $ap_matrix .= '<tr><td>' . h($ap_line['name']) . '</td>';
+
+        foreach ($ap_line['means'] as $ap_mean) {
+            $ap_matrix .= '<td class="pg-tabular text-end">' . $ap_figure($ap_mean) . '</td>';
+        }
+
+        $ap_matrix .= '</tr>';
+    }
+
+    $ap_report_html .= $ap_card('aprog_report_spread', lang('Scores by criterion'), lang('Every sent score of this round, 1 to 10: a wide deviation shows a criterion reviewers read differently.'),
+        $ap_table(lang('Scores by criterion'), array(lang('Criterion'), lang('Weight'), lang('Scores'), lang('Mean'), lang('Lowest'), lang('Highest'), lang('Deviation')), $ap_rows, lang('This round has no criteria.'))
+        . (($ap_matrix !== '') ? '<div class="p-5 pb-3 border-top"><h3 class="pg-title-section mb-0">' . h(lang('Each reviewer\'s mean')) . '</h3><p class="pg-card-sub mb-0">' . h(lang('A reviewer far above or below the others on a criterion scores it more generously or strictly.')) . '</p></div>' . $ap_table(lang('Each reviewer\'s mean'), $ap_matrix_head, $ap_matrix, '') : ''));
+
+    $ap_rows = '';
+
+    foreach ($ap_report['states'] as $ap_line) {
+        $ap_rows .= '<tr><td class="pg-tabular">' . $ap_line['round'] . '</td><td>' . h($ap_choices[$ap_line['category']] ?? (($ap_line['category'] !== '') ? $ap_line['category'] : lang('No category'))) . '</td>';
+
+        foreach (array('entries', 'not_eligible', 'let_in', 'reviewed', 'shortlisted', 'accepted', 'rejected', 'waitlisted', 'declined') as $ap_key) {
+            $ap_rows .= '<td class="pg-tabular text-end">' . $ap_line[$ap_key] . '</td>';
+        }
+
+        $ap_rows .= '</tr>';
+    }
+
+    $ap_report_html .= $ap_card('aprog_report_states', lang('Entries by state'), lang('Every round, each category: where its entries stand. An entry moved to the next round is counted there.'),
+        $ap_table(lang('Entries by state'), array(lang('Round'), lang('Category'), lang('Entries'), lang('Not eligible'), lang('Let in'), lang('Reviewed'), lang('Shortlisted'), lang('Accepted'), lang('Rejected'), lang('Waitlisted'), lang('Declined the place')), $ap_rows, lang('No entries yet.')));
+
+    $ap_rounds_links = '';
+
+    for ($ap_r = 1; $ap_r <= max(1, $ap_program['round']); $ap_r++) {
+        $ap_rounds_links .= '<a class="pg-seg-item' . (($ap_r === $ap_report_round) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . '&amp;view=report&amp;round=' . $ap_r . '">' . h(lang(array('string' => 'Round {var:1}', 'vars' => array($ap_r)))) . '</a>';
+    }
+
+    if ($ap_program['round'] > 1) {
+        $ap_report_html = '<span class="pg-seg mb-5" role="group" aria-label="' . h(lang('Round')) . '">' . $ap_rounds_links . '</span>' . $ap_report_html;
+    }
+
+    $ap_toolbar['secondary'] = array(
+        '<a class="pg-button pg-button-quiet" href="edit_application_program.php?id=' . $ap_id . '&amp;view=report&amp;round=' . $ap_report_round . '&amp;export=xlsx"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . h(lang('Excel')) . '</a>',
+    );
+}
+
 echo pg_page_shell(array(
     'title' => $ap_program['name'],
     'extra classes' => 'form pg-measure-edit',
@@ -946,7 +1074,7 @@ echo pg_page_shell(array(
     ' . $liveform->get_messages() . '
     ' . pg_screen_toolbar($ap_toolbar) . '
     <form id="aprog_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="' . $ap_view . '"></form>
-    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : (($ap_view === 'entries') ? $ap_entries_html : (($ap_view === 'decisions') ? $ap_decisions_html : $ap_setup_html))) . '
+    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : (($ap_view === 'entries') ? $ap_entries_html : (($ap_view === 'decisions') ? $ap_decisions_html : (($ap_view === 'report') ? $ap_report_html : $ap_setup_html)))) . '
 </main>
 ' . get_date_time_picker_format() . pg_fields_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/application_program.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/application_program.js') . '"></script>

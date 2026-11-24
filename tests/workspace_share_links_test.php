@@ -173,3 +173,57 @@ function test_share_link_routes_redact_the_address_and_dry_run_their_writes()
 		pg_assert_true(!isset($route['mcp']) || ($route['mcp'] !== false), $route['id']);
 	}
 }
+
+function test_share_link_open_is_counted_once_a_minute()
+{
+	pg_assert_true(ws_share_link_open_counts(share_links_test_link(), 2000), 'never opened');
+	pg_assert_same(false, ws_share_link_open_counts(share_links_test_link(array('opened_at' => 1950)), 2000), 'within the minute');
+	pg_assert_true(ws_share_link_open_counts(share_links_test_link(array('opened_at' => 1940)), 2000), 'a minute later');
+}
+
+function test_share_link_file_shows_a_picture_and_downloads_what_a_browser_could_run()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/files.php');
+
+	$picture = ws_share_link_file_headers('plan.png');
+
+	pg_assert_same('image/png', $picture['mime']);
+	pg_assert_same(0, strpos($picture['disposition'], 'inline;'), 'a picture inline');
+
+	foreach (array('page.html', 'logo.svg', 'notes.txt', 'run.js') as $name) {
+		$headers = ws_share_link_file_headers($name);
+
+		pg_assert_same('application/octet-stream', $headers['mime'], $name);
+		pg_assert_same(0, strpos($headers['disposition'], 'attachment;'), $name);
+	}
+
+	pg_assert_contains("filename*=UTF-8''%C3%A7izim.pdf", ws_share_link_file_headers('çizim.pdf')['disposition'], 'a name in UTF-8');
+}
+
+function test_share_link_address_page_keeps_its_headers_404_and_limit()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_share.php');
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+	$start = strpos($waf, 'function waf_sensitive_scripts()');
+
+	pg_assert_true(strpos(substr($waf, $start, strpos($waf, "\n}\n", $start) - $start), "'workspace_share.php'") !== false, 'counted on the sensitive allowance');
+	pg_assert_contains('Pinegrap - Enterprise Website Platform', $page);
+	pg_assert_contains("define('PG_NO_SESSION', true)", $page, 'no session, no cookie');
+	pg_assert_contains("header('X-Robots-Tag: noindex, nofollow')", $page);
+	pg_assert_contains("header('Referrer-Policy: no-referrer')", $page);
+	pg_assert_contains("header('Cache-Control: private, no-store')", $page);
+	pg_assert_contains('http_response_code(404)', $page, 'one 404 for every fault');
+	pg_assert_contains('ws_share_link_count_open(', $page, 'an open is counted');
+	pg_assert_contains('pg_send_nosniff()', $page);
+}
+
+function test_share_link_answer_counts_an_unknown_token_against_the_address()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/share_links.php');
+	$start = strpos($source, 'function ws_share_link_answer(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains('ws_guest_offence()', $body, 'a wrong token is a failed try');
+	pg_assert_contains("!== 'open'", $body, 'only an open link answers');
+	pg_assert_contains('pg_file_withheld(', $body, 'a withheld file never leaves');
+}

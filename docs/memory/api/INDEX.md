@@ -107,6 +107,7 @@
 - api-privacy-routes.md: The read-only privacy API (KV6, #10897): GET /privacy/inventory, /privacy/requests and /privacy/requests/{id}, the privacy:read scope, views, cursor, steps [decision: here]
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
 - api-product-question-answer.md: POST /comments/{id}/answer writes, changes or removes the staff answer to a product question through the comment screen's save (comments:write, dry_run); refusals, the asker's mail
+- api-refusals-report.md: Refused calls report: the Refused calls card of Application Access and GET /reports/api-refusals, read from api_request_log by route, error code and application with each code's guide section
 - api-response-json-encoding.md: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8 bytes, keys too, become U+FFFD on every PHP version; INF or NAN becomes a 500 or -32603, never an empty body
 - api-returns.md: GET /returns, GET /returns/{id}, POST /returns/{id} (approve, reject, ship, receive, close, refund) through the return screen's write functions, the action check, codes, events [decision: decisions-made-schema-9.md]
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created

@@ -146,6 +146,7 @@ function ws_events_catalog()
             'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.approved' => array('label' => lang('A return is approved'), 'when' => lang('When a return is approved'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.packed'         => array('label' => lang('An order is packed'), 'when' => lang('When an order\'s parcel is packed and checked'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.received' => array('label' => lang('A return arrives back'), 'when' => lang('When the goods of a return arrive back'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.refunded' => array('label' => lang('A return is refunded'), 'when' => lang('When a return is refunded'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'marketplace.order.imported' => array('label' => lang('A marketplace order is imported'), 'when' => lang('When a marketplace order is imported'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
@@ -217,6 +218,15 @@ function ws_events_catalog()
         // submission.
         if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
             $catalog['form.paid'] = array('label' => lang('A form\'s fee is paid'), 'when' => lang('When a form\'s fee is paid'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page');
+        }
+
+        // Application programmes, about the entry's submission, narrowed to
+        // one form like a submission.
+        if (function_exists('pg_application_program_ready') && pg_application_program_ready()) {
+            $catalog += array(
+                'application.scored'  => array('label' => lang('An application is scored'), 'when' => lang('When a reviewer sends their scores on an application'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
+                'application.decided' => array('label' => lang('An application is decided'), 'when' => lang('When an application is accepted, rejected, waitlisted or declined'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
+            );
         }
     }
 
@@ -794,6 +804,8 @@ function ws_events_record_of($event, $payload)
 
         case 'form.submitted':
         case 'form.paid':
+        case 'application.scored':
+        case 'application.decided':
             return array('form', (int) ($payload['id'] ?? 0));
     }
 

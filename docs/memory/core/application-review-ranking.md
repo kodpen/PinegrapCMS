@@ -30,4 +30,4 @@ module: application_ranking
 ## How does the next round start?
 - The head's button "Start round N" shows on a closed programme with a next round set up, disabled with no shortlist (`pg_application_next_round_ready()`). It moves the shortlisted entries to the next round with scores, flags and `shortlisted` cleared, raises the programme's `round`, and writes `next_round` on the programme. The others stay in the round they ended in; reviews keep their round. Then "Give out entries" on Reviewers gives them to the round's pools.
 
-Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-my-reviews.md, docs/memory/plans/application-review-screens-review.md
+Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-my-reviews.md, docs/memory/core/application-review.md

@@ -23,6 +23,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/forms.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/application_programs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 
@@ -112,16 +113,17 @@ function test_api_forms_every_route_applies_the_folder_rule()
 		$source = api_forms_test_function_source($route['handler']);
 
 		pg_assert_true(
-			(strpos($source, 'api_form_owner_filter(') !== false) || (strpos($source, 'api_form_submission_owned(') !== false),
+			(strpos($source, 'api_form_owner_filter(') !== false) || (strpos($source, 'api_form_submission_owned(') !== false) || (strpos($source, 'api_application_program_reached(') !== false),
 			$route['id'] . ': ' . $route['handler'] . '() applies the folder rule'
 		);
 
 		pg_assert_same(($route['method'] === 'GET') ? 'forms:read' : 'forms:write', $route['scope'], $route['id'] . ' scope');
 	}
 
-	pg_assert_same(12, $found, 'list, get, fields, submissions, one submission, its create, update, both deletes, revisions, one revision and its restore');
+	pg_assert_same(14, $found, 'list, get, fields, submissions, one submission, its create, update, both deletes, revisions, one revision and its restore; application programmes and their entries');
 
 	pg_assert_contains('api_form_owner_filter(', api_forms_test_function_source('api_form_submission_owned'), 'the submission loader');
+	pg_assert_contains('api_form_owner_filter(', api_forms_test_function_source('api_application_program_reached'), 'the application programme loader');
 }
 
 // A record with a fee says whether it is paid and the order's number; one

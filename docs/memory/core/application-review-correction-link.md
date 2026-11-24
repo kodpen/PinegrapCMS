@@ -10,7 +10,7 @@ module: application_jurors
 
 ## What does the page show?
 - `application_fix.php?t=<token>`, in `waf_sensitive_scripts()`, no sign-in, a secure card titled with the form's name: the reasons, then only the named fields open (text, a pick list or radio as a select, a check box group as ticks, a file upload). "Only these answers can be changed".
-- Not the form's own page as the plan's screens file says: drawing the site form with all but some fields locked is a change to the custom form's renderer, left out of AR4.
+- Not the form's own page, as the desk was first described (`application-review.md`): drawing the site form with all but some fields locked is a change to the custom form's renderer, left out of AR4.
 - States (`pg_application_fix_link_state()`): `invalid` (404), `expired` (410: programme not open, or its `closes_at` passed), `done` (the entry is eligible or let in), `open`.
 
 ## What does saving do?

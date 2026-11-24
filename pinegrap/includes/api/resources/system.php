@@ -109,6 +109,95 @@ function api_system_status($params) {
 
 }
 
+// GET /reports/api-refusals: the refused calls report (includes/fn/api_refusals.php),
+// read against every route this site serves, modules included.
+function api_reports_api_refusals($params) {
+
+	if (!function_exists('pg_api_refusals_report')) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/api_refusals.php');
+
+	}
+
+	$days = isset($params['days']) ? (int)$params['days'] : pg_api_refusals_days_max();
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$now = time();
+
+	$rows = pg_api_refusals_report(api_all_routes(), $days, $now);
+
+	api_ok(api_refusals_answer($rows, $days, $limit, $now));
+
+}
+
+// The report's rows as the answer: the window, the totals and the first
+// $limit rows. Apart from the handler so a test reaches it without a database.
+function api_refusals_answer($rows, $days, $limit, $now) {
+
+	$total = 0;
+
+	foreach ($rows as $row) {
+
+		$total += (int)$row['refusals'];
+
+	}
+
+	$data = array();
+
+	foreach (array_slice($rows, 0, max(1, (int)$limit)) as $row) {
+
+		$data[] = array(
+			'route'       => ($row['route'] === '') ? null : $row['route'],
+			'method'      => $row['method'],
+			'path'        => $row['path'],
+			'error_code'  => ($row['error_code'] === '') ? null : $row['error_code'],
+			'status'      => (int)$row['status'],
+			'application_id'   => ($row['app_id'] > 0) ? (int)$row['app_id'] : null,
+			'application_name' => ($row['app_id'] > 0 && $row['app_name'] !== '') ? $row['app_name'] : null,
+			'refusals'    => (int)$row['refusals'],
+			'last_at'     => api_time($row['last_at']),
+			'guide'       => ($row['guide'] === '') ? null : $row['guide']
+		);
+
+	}
+
+	return array(
+		'from'  => api_time((int)$now - (int)$days * 86400),
+		'to'    => api_time($now),
+		'days'  => (int)$days,
+		'total' => $total,
+		'rows'  => count($rows),
+		'data'  => $data
+	);
+
+}
+
+// What api_reports_api_refusals() answers with, declared for the OpenAPI document.
+function api_refusals_report_schema() {
+
+	return array(
+		'from'  => 'datetime',
+		'to'    => 'datetime',
+		'days'  => 'integer',
+		'total' => 'integer',
+		'rows'  => 'integer',
+		'data'  => array(array(
+			'route'       => 'string?',
+			'method'      => 'string',
+			'path'        => 'string',
+			'error_code'  => 'string?',
+			'status'      => 'integer',
+			'application_id'   => 'integer?',
+			'application_name' => 'string?',
+			'refusals'    => 'integer',
+			'last_at'     => 'datetime',
+			'guide'       => 'string?'
+		))
+	);
+
+}
+
 // What api_system_status() answers with, declared for the OpenAPI document.
 function api_system_status_schema() {
 

@@ -362,12 +362,17 @@ function pg_ltd_widget_config($target)
  *                      has_tree, holder ('' when free), own_regions (page
  *                      region nodes of an existing tree)), 'warnings',
  *                      'theme_after' (the theme the design loads when the
- *                      classic head loaded CSS after it, else '')
+ *                      classic head loaded CSS after it, else ''),
+ *                      'stays' (pg_ltd_stay_targets()), 'custom_layouts'
+ *                      (int), 'designer_php' (designer region names
+ *                      holding PHP)
  * @return array  'skip' ('' or a reason code), 'components' (list of
  *                array('kind' => 'common'|'designer', 'name', 'exists')),
  *                'frame' ('make'|'update'), 'frame_split', 'frame_parts',
  *                'pages' (rows with 'action': 'tree', 'keep', 'regions' or
- *                'held'), 'widgets', 'warnings', 'writes' (int)
+ *                'held'), 'widgets', 'warnings', 'writes' (int),
+ *                'stays', 'custom_layouts', 'designer_php' (the facts'
+ *                own, empty for a refused style)
  */
 function pg_ltd_plan_style($facts)
 {
@@ -379,11 +384,16 @@ function pg_ltd_plan_style($facts)
                  'frame_split' => $split, 'frame_parts' => $split ? (int)($f['frame_parts'] ?? 0) : 0,
                  'pages' => array(), 'widgets' => $frame['widgets'],
                  'parts' => (isset($f['parts']) && is_array($f['parts'])) ? array_merge($none, $f['parts']) : $none,
-                 'warnings' => array_values((array)($f['warnings'] ?? array())), 'writes' => 0);
+                 'warnings' => array_values((array)($f['warnings'] ?? array())), 'writes' => 0,
+                 'stays' => array_values((array)($f['stays'] ?? array())), 'custom_layouts' => (int)($f['custom_layouts'] ?? 0),
+                 'designer_php' => array_values(array_map('strval', (array)($f['designer_php'] ?? array()))));
     if ((string)($f['refusal'] ?? '') !== '') {
         $out['skip'] = 'refusal';
         $out['widgets'] = array();
         $out['parts'] = $none;
+        $out['stays'] = array();
+        $out['custom_layouts'] = 0;
+        $out['designer_php'] = array();
         return $out;
     }
     // The design prints its theme after all of its stylesheets; CSS the
@@ -705,6 +715,20 @@ function pg_ltd_plan_facts($s, $converted)
     }
     // A region the frame turns into a widget shares that widget.
     $facts['parts'] = pg_ltd_part_targets(pg_di_root($part_nodes), isset($facts['frame']) ? pg_ltd_part_keys($facts['frame']) : array());
+    // What stays code: the regions left as they are, in the frame and in
+    // the pages, the pages a custom layout draws and the designer regions
+    // whose PHP blocks become Custom PHP elements.
+    $facts['stays'] = array();
+    $facts['custom_layouts'] = (int)($s['custom_layouts'] ?? 0);
+    $facts['designer_php'] = array();
+    if ($s['refusal'] === '') {
+        $facts['stays'] = pg_ltd_stay_targets(pg_di_root(array_merge(array($shared), $part_nodes)));
+        $designer = array_values(array_unique(array_merge(array_map('strval', $facts['frame']['designer']), $facts['parts']['designer'])));
+        if ($designer) {
+            $facts['designer_php'] = array_map('strval', db_values("SELECT cregion_name FROM cregion WHERE cregion_designer_type = 'yes'
+                AND cregion_name IN ('" . implode("','", array_map('e', $designer)) . "') AND cregion_content LIKE '%<?%' ORDER BY cregion_name"));
+        }
+    }
     return $facts;
 }
 
@@ -913,12 +937,23 @@ function pg_ltd_setting_label($setting, $value)
  */
 function pg_ltd_plan_html($p)
 {
-    if (($p['kind'] ?? '') === 'set') return pg_ltd_plan_set_html($p);
-    return '
+    $groups = pg_ltd_plan_groups_html(pg_ltd_plan_groups($p));
+    if (($p['kind'] ?? '') === 'set') {
+        $detail = pg_ltd_plan_set_html($p);
+    } else {
+        $detail = '
         <div class="mb-5">
             <h3 class="h6 mb-1">' . h($p['name']) . ($p['skip'] === '' ? ' <span class="small fg-secondary fw-normal">' . h(lang(array('string' => '{var:1} writes', 'vars' => array(pg_format_number($p['writes'], 0))))) . '</span>' : '') . '</h3>
             <ul class="small mb-0 ps-12">' . pg_ltd_plan_items($p) . '</ul>
         </div>';
+    }
+    // The three groups first; every line of what is written stays folded
+    // under them.
+    return '
+        <section class="ltd-plan mb-7" aria-label="' . h($p['name']) . '">
+            <h3 class="h6 mb-3">' . h($p['name']) . '</h3>' . $groups . '
+            <details class="small mt-3"><summary>' . h(lang('What is written, line by line')) . '</summary>' . $detail . '</details>
+        </section>';
 }
 
 /**
@@ -991,3 +1026,185 @@ function pg_ltd_plan_set_html($p)
         </div>';
 }
 
+
+/**
+ * The region nodes a run leaves as they are: Dynamic, System, Mobile Switch
+ * and PDF regions, each type and name once, in document order. Nested
+ * shared components are not entered, as pg_ltd_part_targets() does not.
+ *
+ * Pure: no query.
+ *
+ * @param array $tree
+ * @return array  list of array('type', 'name')
+ */
+function pg_ltd_stay_targets($tree)
+{
+    $kinds = array('dynamic' => true, 'system' => true, 'mobile_switch' => true, 'pdf' => true);
+    $out = array();
+    $seen = array();
+    $walk = function ($node) use (&$walk, &$out, &$seen, $kinds) {
+        if (!is_array($node)) return;
+        $type = isset($node['type']) ? (string)$node['type'] : '';
+        if ($type === 'shared_ref') return;
+        if ($type === 'region') {
+            $rtype = (string)($node['props']['regionType'] ?? '');
+            $name = (string)($node['props']['regionName'] ?? '');
+            if (isset($kinds[$rtype]) && !isset($seen[$rtype . "\n" . $name])) {
+                $seen[$rtype . "\n" . $name] = true;
+                $out[] = array('type' => $rtype, 'name' => $name);
+            }
+        }
+        foreach ((array)($node['children'] ?? array()) as $child) $walk($child);
+    };
+    $walk($tree);
+    return $out;
+}
+
+/**
+ * A dry run entry in three groups: what becomes editable (page content,
+ * common regions, designer regions, menus and widgets, each with the names
+ * behind its count), what stays code and is drawn as on the site (each
+ * thing with its reason) and what is skipped (held pages, refused styles,
+ * a set with nothing to move). A set gathers its styles' groups.
+ *
+ * Pure: no query.
+ *
+ * @param array $p  a pg_ltd_plan() entry
+ * @return array  'editable' (list of array('key', 'label', 'names')),
+ *                'code' (list of array('label', 'count', 'names',
+ *                'reason'), a row a kind), 'skipped'
+ *                (list of array('label', 'reason')), 'common' (bool: a
+ *                common region becomes a component)
+ */
+function pg_ltd_plan_groups($p)
+{
+    $out = array('editable' => array(), 'code' => array(), 'skipped' => array(), 'common' => false);
+    $editable = array('content' => array(), 'common' => array(), 'designer' => array(), 'widgets' => array());
+    $code = array();
+    $layouts = 0;
+    $add = function ($s) use (&$out, &$editable, &$code, &$layouts) {
+        if ($s['skip'] === 'refusal') {
+            $out['skipped'][] = array('label' => (string)$s['name'], 'reason' => lang('The Page Design Studio does not open this style.'));
+            return;
+        }
+        foreach ((array)$s['pages'] as $page) {
+            if ($page['action'] === 'tree' || $page['action'] === 'regions') {
+                $editable['content'][] = (string)$page['page_name'];
+            } elseif ($page['action'] === 'held') {
+                $out['skipped'][] = array('label' => (string)$page['page_name'],
+                    'reason' => lang(array('string' => 'Being edited by {var:1}: it is left as it is.', 'vars' => array((string)$page['holder']))));
+            }
+        }
+        foreach ((array)$s['components'] as $c) {
+            if (!$c['exists']) $editable[$c['kind'] === 'common' ? 'common' : 'designer'][] = (string)$c['name'];
+        }
+        $parts = (array)($s['parts'] ?? array());
+        foreach ((array)($parts['common'] ?? array()) as $name) $editable['common'][] = (string)$name;
+        foreach ((array)($parts['designer'] ?? array()) as $name) $editable['designer'][] = (string)$name;
+        foreach (array_merge((array)$s['widgets'], (array)($parts['widgets'] ?? array())) as $w) {
+            $editable['widgets'][] = pg_ltd_widget_target_label($w);
+        }
+        foreach ((array)($s['stays'] ?? array()) as $r) $code[$r['type'] . "\n" . $r['name']] = $r;
+        foreach ((array)($s['designer_php'] ?? array()) as $name) $code["designer_php\n" . $name] = array('type' => 'designer_php', 'name' => (string)$name);
+        $layouts += (int)($s['custom_layouts'] ?? 0);
+    };
+    if (($p['kind'] ?? '') === 'set') {
+        if ($p['skip'] === 'empty') {
+            $out['skipped'][] = array('label' => (string)$p['name'], 'reason' => lang('No style of this set can be moved.'));
+        } elseif ($p['skip'] === 'no_pages') {
+            $out['skipped'][] = array('label' => (string)$p['name'], 'reason' => lang('No page uses a style of this set any more.'));
+            return $out;
+        }
+        foreach ((array)$p['styles'] as $s) $add($s);
+    } else {
+        $add($p);
+    }
+
+    $labels = array('content' => lang('Page content'), 'common' => lang('Common regions'),
+                    'designer' => lang('Designer regions'), 'widgets' => lang('Menus and widgets'));
+    foreach ($editable as $key => $names) {
+        $names = array_values(array_unique($names));
+        if ($names) $out['editable'][] = array('key' => $key, 'label' => $labels[$key], 'names' => $names);
+    }
+    $out['common'] = !empty($editable['common']);
+
+    $kinds = array(
+        'dynamic'       => array(lang('Dynamic regions'), lang('PHP code: it stays code and runs on the site as written.')),
+        'system'        => array(lang('System regions'), lang('The page type draws it: it stays as on the site.')),
+        'mobile_switch' => array(lang('Mobile switches'), lang('Drawn as on the site; it has no design element.')),
+        'pdf'           => array(lang('PDF regions'), lang('Drawn as on the site; it has no design element.')),
+        'designer_php'  => array(lang('Designer regions with PHP'), lang('Its PHP blocks stay code as Custom PHP elements.')),
+    );
+    // One row a kind: its regions share the reason.
+    $by_kind = array();
+    foreach ($code as $r) {
+        if (!isset($by_kind[$r['type']])) $by_kind[$r['type']] = array('count' => 0, 'names' => array());
+        ++$by_kind[$r['type']]['count'];
+        if ($r['name'] !== '' && !in_array($r['name'], $by_kind[$r['type']]['names'], true)) $by_kind[$r['type']]['names'][] = $r['name'];
+    }
+    foreach ($kinds as $type => $kind) {
+        if (!isset($by_kind[$type])) continue;
+        $out['code'][] = array('label' => $kind[0], 'count' => $by_kind[$type]['count'], 'names' => $by_kind[$type]['names'], 'reason' => $kind[1]);
+    }
+    if ($layouts > 0) {
+        $out['code'][] = array('label' => lang('Pages with a custom layout'), 'count' => $layouts, 'names' => array(),
+                               'reason' => lang('Its layout has pieces that have no design element.'));
+    }
+    return $out;
+}
+
+/**
+ * The three groups of pg_ltd_plan_groups() as list rows under their labels:
+ * a row a kind or a thing, five names on the row and the rest behind
+ * "Show all N".
+ *
+ * @param array $groups  pg_ltd_plan_groups()
+ * @return string
+ */
+function pg_ltd_plan_groups_html($groups)
+{
+    $row = function ($tone, $icon, $title, $count, $text) {
+        return '<div class="pg-list-row"><span class="pg-icon-tile ' . $tone . '" aria-hidden="true"><span class="bi ' . $icon . '"></span></span>'
+            . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($title)
+            . ($count !== '' ? '<span class="pg-count">' . h($count) . '</span>' : '') . '</span></div>' . $text . '</div></div>';
+    };
+    $names = function ($names) {
+        if (count($names) <= 5) return '<div class="pg-list-row-text">' . h(implode(', ', $names)) . '</div>';
+        return '<div class="pg-list-row-text">' . h(implode(', ', array_slice($names, 0, 5))) . ' …</div>'
+            . '<details class="pg-list-row-text"><summary>' . h(lang(array('string' => 'Show all {var:1}', 'vars' => array(pg_format_number(count($names), 0))))) . '</summary>'
+            . h(implode(', ', $names)) . '</details>';
+    };
+    $label = function ($text, $n) {
+        return '<div class="pg-group-label">' . h($text) . ' <span class="pg-group-label-count">' . h(pg_format_number($n, 0)) . '</span></div>';
+    };
+    $icons = array('content' => 'bi-file-earmark-richtext', 'common' => 'bi-layers', 'designer' => 'bi-bounding-box', 'widgets' => 'bi-grid-1x2');
+
+    $out = '';
+    if ($groups['editable']) {
+        $total = 0;
+        $rows = '';
+        foreach ($groups['editable'] as $r) {
+            $total += count($r['names']);
+            $rows .= $row('pg-tone-teal', $icons[$r['key']], $r['label'], pg_format_number(count($r['names']), 0), $names($r['names']));
+        }
+        $out .= $label(lang('Becomes editable'), $total) . '<div class="ltd-plan-rows">' . $rows . '</div>';
+    }
+    if ($groups['code']) {
+        $rows = '';
+        $total = 0;
+        foreach ($groups['code'] as $r) {
+            $total += (int)$r['count'];
+            $rows .= $row('pg-tone-amber', 'bi-code-slash', $r['label'], pg_format_number((int)$r['count'], 0),
+                '<div class="pg-list-row-text">' . h($r['reason']) . '</div>' . ($r['names'] ? $names($r['names']) : ''));
+        }
+        $out .= $label(lang('Stays code, drawn as on the site'), $total) . '<div class="ltd-plan-rows">' . $rows . '</div>';
+    }
+    if ($groups['skipped']) {
+        $rows = '';
+        foreach ($groups['skipped'] as $r) {
+            $rows .= $row('pg-tone-gray', 'bi-skip-forward', $r['label'], '', '<div class="pg-list-row-text">' . h($r['reason']) . '</div>');
+        }
+        $out .= $label(lang('Skipped'), count($groups['skipped'])) . '<div class="ltd-plan-rows">' . $rows . '</div>';
+    }
+    return $out;
+}

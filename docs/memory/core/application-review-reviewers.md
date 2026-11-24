@@ -27,4 +27,4 @@ module: application_reviewers
 ## Where are conflicts shown?
 - Under the list as one row of gathered lines (Design examples › Rows and gathered rows): reviewer, the submission's reference code linked to its screen, the reason, the round. Declared on the scoring screen of "My reviews" (`application-review-my-reviews.md`).
 
-Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-programme.md, docs/memory/plans/application-review-screens.md
+Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-programme.md, docs/memory/core/application-review.md

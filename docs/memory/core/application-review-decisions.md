@@ -12,6 +12,7 @@ module: application_decisions
 - A row's select (No decision, Accepted, Rejected, Waitlisted; "Declined the place" only on an accepted entry) and "Save the chosen decisions", or the ticked rows with Accept, Reject, Waitlist.
 - `pg_application_decision_allowed()`: any change to none or the three; declined (4) only from accepted (1); a declined entry never changes again, its select is disabled.
 - A change writes `decision`, `decided_at`, `decided_by`, sets `mailed_at` 0 (declined keeps it) and an `audit_log` line `decision` on the entry, conditional on the decision read, so two managers never both change it.
+- Each change, and the waitlist call's acceptance, is announced as `application.decided` (`application-review-report.md`).
 
 ## How does the waitlist call work?
 - Set-up › Decision e-mails has the switch "When an accepted applicant declines, accept the next on the waitlist by itself" (`waitlist_auto`).
@@ -20,7 +21,7 @@ module: application_decisions
 - Once per declined entry: the call is the `audit_log` line `waitlist_call` (after `called`) on the declined entry, and `pg_application_waitlist_called()` reads it; the called entry gets a `decision` line with `called_for`.
 
 ## How do the decision e-mails go?
-- Only on a press (plan rule): the fill "Send the decision e-mails" opens a drawer: 1. counts per decision (e-mails, those with no address, "No text written"), 2. a preview per decision rendered with its first recipient's answers, 3. Send with the number that goes.
+- Only on a press (`application-review.md`): the fill "Send the decision e-mails" opens a drawer: 1. counts per decision (e-mails, those with no address, "No text written"), 2. a preview per decision rendered with its first recipient's answers, 3. Send with the number that goes.
 - Texts are the programme's `texts.accepted|rejected|waitlisted` `{subject, body}`, plain text, `^^field^^` filled by `get_variable_submitted_form_data_for_content()`. A decision whose subject or text is empty sends nothing.
 - Address: `get_submitter_email_address()` (the contact e-mail field, else the submitting user's), checked with `validate_email_address()`.
 - `pg_application_mail_send()` claims each entry by `UPDATE … SET mailed_at WHERE mailed_at = 0 AND decision = ?` before `email()` (queued), and writes an `audit_log` line `mail`.
@@ -30,4 +31,4 @@ module: application_decisions
 - Only once mailed (`pg_application_result_visible()`, `mailed_at` > 0) and only to the submitter: this session's reference codes, the submitting account, or the account whose address matches (`pg_email_address_matches()`). Watchers and managers see nothing there.
 - The submitter cannot decline from the site; a manager records it.
 
-Related: docs/memory/core/application-review-ranking.md, docs/memory/core/application-review-programme.md, docs/memory/plans/application-review-screens-review.md
+Related: docs/memory/core/application-review-ranking.md, docs/memory/core/application-review-programme.md, docs/memory/core/application-review.md

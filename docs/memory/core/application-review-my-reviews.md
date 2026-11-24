@@ -26,7 +26,7 @@ module: application_my_reviews
 
 ## How are scores saved?
 - `my_reviews.js` posts the form with `autosave=1` on each change (notes after 1.2 s); the answer is JSON and a session or token refusal is JSON too. A save sets status 1 and `scores` (criterion id => {score, note}).
-- Send needs every criterion scored: status 2, `total` = weighted sum × 100, `submitted_at`, an `audit_log` line `score` on `application_entry`, the round's scores recombined (`application-review-ranking.md`); then the next open entry opens.
+- Send needs every criterion scored: status 2, `total` = weighted sum × 100, `submitted_at`, an `audit_log` line `score` on `application_entry`, the round's scores recombined (`application-review-ranking.md`), `application.scored` announced (`application-review-report.md`); then the next open entry opens.
 
 ## What does "I know this applicant" do?
 - A reason is required (500 chars): status 3, `conflict_reason`, scores cleared, `audit_log` line `conflict`. Then only that entry is given out again from the round's plan (`pg_application_assignment_read()`), so the fewest-loaded pool member without it gets it; nobody free leaves it short for the managers' Reviewers tab.
@@ -35,4 +35,4 @@ module: application_my_reviews
 - The general job (`pg_application_reminders_run()`): for open and closed programmes, from 3 days before the current round's `ends_at` and again from 1 day before, each reviewer with open reviews (0, 1) gets one plain e-mail with the count and the link. Stage rule: `pg_application_reminder_stage()` on the latest `reminded_at` of their open rows; the last day's comes even when the 3 days' was missed.
 - Claimed by one conditional `UPDATE … SET reminded_at` per reviewer before the mail, so two runs never both send. Jurors get their own link.
 
-Related: docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-programme.md, docs/memory/plans/application-review-screens-review.md
+Related: docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-programme.md, docs/memory/core/application-review.md

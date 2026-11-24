@@ -22,11 +22,6 @@
 - ai-guide-steps-2.md: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the Design and Content presets, the size budget, the description diet by area, hints on refusals, the refused calls report, close-out
 - ai-guide-steps.md: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine with the API and MCP doors, the designer topic, the other topics, the panel's door, the compact tool list, presets
 - ai-guide.md: Plan (owner 2026-11-20, agent channel poll 170): the site explains itself to AI agents cheaply: a guide generated from code, read over MCP, API and the panel; a compact tool list; AG1 to AG14
-- application-review-features.md: Plan application-review, features V1 to V16: programme, eligibility, correction link, criteria, assignment, conflicts, blind review, reviewers, jurors, combining, rounds, decisions
-- application-review-screens-review.md: Plan application-review, how reviewing and deciding are put together (AR3 to AR6): "My reviews" and the scoring screen, the outside juror's page, the ranking list, the decisions and their e-mails
-- application-review-screens.md: Plan application-review, how the programme's screens are put together (AR2, AR3): the programmes list, a programme's screen in tabs, Set-up as folded rows, the Reviewers tab
-- application-review-steps.md: Plan application-review, steps AR1a to AR8: pure rules, store, programme settings, reviewers and assignment, juror and correction links, combining, decisions, report and API, close-out
-- application-review.md: Plan (owner 2026-11-20, poll 196): a form as an application programme: period, eligibility, weighted criteria, reviewers and jurors, blind review, combined scores, rounds, decisions; AR1a to AR8
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
@@ -95,6 +90,7 @@
 - legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
 - legacy-editable-steps.md: Plan legacy-editable, steps LE1 to LE12 with size and order: the measure, page_parts, one door, the true canvas, stock layouts, the layout converter by families, earlier designs, close-out
 - legacy-editable.md: Plan (owner 2026-11-21): a classic page arrives in the visual designer as editable elements, not name boxes: regions as HTML, a true canvas for code, layouts by a piece map; LE1 to LE12
+- main-menu-icon-size.md: Plan (owner 2026-11-24): main menu row icons grow to at least 1.2rem so each can be told apart, and the menu widens without stuttering; one step MZ1 after MI3
 - main-menu-icons-redraw-rows.md: Plan main-menu-icons-redraw, the rows: which drawing of ui/main-menu-icons-drawing/icons.js each menu_icon name takes, its idea and hover move, the timing and the live parts
 - main-menu-icons-redraw.md: Plan (owner 2026-11-22): main menu row icons redrawn as one line family on category-coloured tiles with one hover move each; the System tools row's panel as one list; steps MI1 to MI3
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
@@ -121,10 +117,6 @@
 - prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out
 - prototype-approval.md: Plan (owner 2026-11-20, poll 205): what prototype sharing lacks for a customer's sign-off: Approve or Request changes per page sealed to the draft, round two, publish rule, mails, events; PA1a to PA7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- security-settings-tidy-screens-accounts.md: Plan security-settings-tidy, its second screen: the Accounts and sign-in pane as folded rows, Sign-in attempts and Deleting many at once on rows of their own, the providers as connect rows
-- security-settings-tidy-screens.md: Plan security-settings-tidy, its first screen: the Firewall and HTTPS pane as folded rows, HTTPS first, Limits, Addresses with the bans drawer, Logs; the words and what must be true
-- security-settings-tidy-steps.md: Plan security-settings-tidy, steps SE1 to SE5: Firewall and HTTPS as folded rows in two steps, Accounts and sign-in as folded rows, the Limits row's overview, close-out
-- security-settings-tidy.md: Plan (owner 2026-11-21): Firewall and HTTPS and Accounts and sign-in as folded rows, no popover or plain radio, both logs in one row, every limit on one address shown in one Limits row
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line

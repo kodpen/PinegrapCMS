@@ -1115,3 +1115,27 @@ function pg_ltd_run_set_pages($state, $row, $user, $set)
     $state = pg_ltd_run_page_regions($state, $design_id, $user, $folder);
     return pg_ltd_state_line($state, 'made', lang(array('string' => 'The style\'s pages now use the design "{var:1}"; the style itself stays as it was.', 'vars' => array($set['name']))), 'styles');
 }
+
+/**
+ * The designs a kept run made: each set's design, then each style that
+ * moved alone (it becomes the design itself). Whether each is a design now
+ * is the caller's to read.
+ *
+ * Pure: no query.
+ *
+ * @param array $run  a pg_ltd_reports() entry
+ * @return array  style ids, each once
+ */
+function pg_ltd_run_designs($run)
+{
+    $out = array();
+    $in_set = array();
+    foreach ((array)($run['sets'] ?? array()) as $set) {
+        if ((int)($set['design'] ?? 0) > 0) $out[] = (int)$set['design'];
+        foreach ((array)($set['styles'] ?? array()) as $id) $in_set[(int)$id] = true;
+    }
+    foreach ((array)($run['styles'] ?? array()) as $id) {
+        if ((int)$id > 0 && !isset($in_set[(int)$id])) $out[] = (int)$id;
+    }
+    return array_values(array_unique($out));
+}

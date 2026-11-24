@@ -235,7 +235,7 @@ function pg_application_decision_rows(array $program, $filter)
  * allowed (pg_application_decision_allowed()). A new decision waits for its
  * e-mail (mailed_at 0); declined keeps the mailed acceptance and, when the
  * programme calls the waitlist by itself, calls the next. Each change is an
- * audit_log line on the entry.
+ * audit_log line on the entry and is announced as application.decided.
  *
  * @param array $program  decoded
  * @param array $entry_ids
@@ -266,6 +266,11 @@ function pg_application_decide(array $program, array $entry_ids, $decision, $use
 
         $result['changed']++;
         pg_audit('decision', 'application_entry', (int) $entry_id, array('decision' => $from), array('decision' => $decision));
+        $row = pg_application_event_row((int) $entry_id);
+
+        if ($row !== null) {
+            pg_announce('application.decided', pg_application_event_payload($row, $program) + array('previous_decision' => (pg_application_decision_key($from) !== '') ? pg_application_decision_key($from) : 'none'));
+        }
 
         if (($decision === 4) && ((int) ($program['waitlist_auto'] ?? 0) === 1)) {
             $called = pg_application_waitlist_call($program, (int) $entry_id, $user_id);
@@ -294,7 +299,8 @@ function pg_application_waitlist_called($entry_id)
 /**
  * Gives a declined entry's place to the next on the waitlist of its
  * category (pg_application_waitlist_next()): accepted, its e-mail waiting
- * for the press. Once per declined entry; an audit_log line on both.
+ * for the press. Once per declined entry; an audit_log line on both, and
+ * application.decided for the called one.
  *
  * @param array $program  decoded
  * @param int   $declined_id
@@ -331,6 +337,11 @@ function pg_application_waitlist_call(array $program, $declined_id, $user_id)
 
     pg_audit('waitlist_call', 'application_entry', (int) $declined_id, array(), array('called' => $next));
     pg_audit('decision', 'application_entry', $next, array('decision' => 3), array('decision' => 1, 'called_for' => (int) $declined_id));
+    $row = pg_application_event_row($next);
+
+    if ($row !== null) {
+        pg_announce('application.decided', pg_application_event_payload($row, $program) + array('previous_decision' => 'waitlisted'));
+    }
 
     return $next;
 }

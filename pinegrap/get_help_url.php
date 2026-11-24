@@ -286,6 +286,7 @@ function get_help_url($properties = array())
         'view_pick_waves'                    => 'commerce#pick-waves',
         'pick_wave'                          => 'commerce#pick-waves',
         'print_pick_list'                    => 'commerce#pick-waves',
+        'pack'                               => 'commerce#pick-waves',
         'view_cart_quotes'                   => 'commerce#cart-quotes',
         'view_subscriptions'                 => 'commerce#subscriptions',
         'add_cart_quote'                     => 'commerce#cart-quotes',

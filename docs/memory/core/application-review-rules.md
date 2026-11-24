@@ -5,7 +5,7 @@ module: application_review
 ---
 
 ## Where are the rules?
-- `includes/fn/application_review.php`, no database, tested in `tests/application_review_test.php` (#10809). The store, screens and API of plan `application-review` call it.
+- `includes/fn/application_review.php`, no database, tested in `tests/application_review_test.php` (#10809). The store, screens and API of the desk call it (`application-review-overview.md`).
 
 ## How is eligibility checked?
 - `pg_application_eligibility($rules, $answers)`: rule types `file` (a non-empty answer), `range` (`min`/`max`, both ends included), `choice` (`values`; a multi-choice answer passes when one value is listed). An unknown type is skipped.
@@ -31,4 +31,4 @@ module: application_review
 - `pg_application_rank()`: highest first, equal scores by entry id, unscored entries left out; `pg_application_rank_by_category()` per category.
 - `pg_application_shortlist($scores, 'cutoff'|'top', $value)`: a cut-off takes every entry at or above it; a top N takes every entry tied with the Nth place too, so a tie at the cut-off is never split by entry order.
 
-Related: docs/memory/plans/application-review.md
+Related: docs/memory/core/application-review.md

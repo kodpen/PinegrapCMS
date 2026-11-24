@@ -546,6 +546,7 @@
 - legacy-layouts-output-pass.md: Where a Bootstrap 5.3.8 design's page prints its page type's 5.3.8 names (LL3, #9143): the gate, the part mapped, the code tab's line, the sandbox pictures
 - legacy-layouts-shapes.md: The names a page type's markup took from its tag or parent in Bootstrap 3 and the layout pass writes on a bootstrap5 design (LL4, #9170): rules, what stays by hand
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
+- legacy-one-door.md: One door for a classic style (LE3): "Open in the Page Design Studio" lands on the move screen ticked, dry run in three groups, Convert, "Open the design"
 - legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
 - legacy-page-parts.md: The move run's page_parts step (LE2, #11159): region nodes in moved pages and in the components the run made become components and widgets; Login, Cart, Comments Block in frame and page_parts
 - legacy-region-preview.md: The canvas's true picture of every region node (LE4): markers around each region tag, designer/legacy_region_preview, the band and pill, the match, who may ask

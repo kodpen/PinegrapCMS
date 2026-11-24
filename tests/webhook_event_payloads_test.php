@@ -68,6 +68,9 @@ function webhook_payloads_test_builders()
 				'reason' => 'damaged', 'items' => array(array('order_item_id' => 9, 'quantity' => 1)),
 			), '1001');
 		},
+		'pg_application_event_payload' => function () {
+			return pg_application_event_payload(array('id' => 8, 'form_id' => 22, 'page_id' => 14, 'reference_code' => 'K4M9QZ', 'category' => '', 'round' => 1, 'score_raw' => 0, 'decision' => 0), array('id' => 3, 'name' => 'A'));
+		},
 		'pg_cart_quote_event_payload' => function () {
 			return pg_cart_quote_event_payload(array('id' => 5, 'status' => 'open', 'contact_id' => 2, 'order_id' => 0, 'valid_until' => 0), array(array('product_id' => 3, 'quantity' => 2)), 1000);
 		},
@@ -166,6 +169,11 @@ function webhook_payloads_test_builders()
 		},
 		'pg_customer_rhythm_reorder_payload' => function () {
 			return pg_customer_rhythm_reorder_payload(array('contact_id' => 4, 'stage' => 1, 'stage_before' => 0, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001', array(array('product_id' => 7, 'quantity' => 2, 'due' => 5000)), array(7 => array('P', 'Product')), 'https://example.com/p/reorder.php?p=7-2');
+		},
+		'pg_pack_event_payload' => function () {
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/pick_pack.php');
+
+			return pg_pack_event_payload(array('order_id' => 3, 'ship_to_id' => 4, 'wave_id' => 2, 'packer_id' => 5, 'units' => 3, 'scanned' => 3, 'missing' => array()), '1001');
 		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());

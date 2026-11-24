@@ -4,7 +4,8 @@ description: AI section of robots.txt (Content-Signal, Disallow groups in step w
 ---
 
 ## Where is it set and stored?
-- Site Settings › SEO › AI Crawlers (`pgset-ai`, `includes/settings/seo.php`), the one place for AI bots: the firewall's two AI switches and the "Update Bot IP Lists" button are on this card and written by `seo.save.php`; the Firewall card only shows their state and links here (#3908). Columns from step 11.0.21: `config.robots_ai_rules`, `robots_ai_training`, `llms_txt` (TINYINT, default 0) and `additional_llms_content` (TEXT). All off after the upgrade: robots.txt stays byte-identical and `/llms.txt` answers as before.
+- Site Settings › SEO › AI Crawlers (`pgset-ai`, `includes/settings/seo.php`), the one place for AI bots: the firewall's two AI switches and the "Update Bot IP Lists" button are on this card and written by `seo.save.php`; the Firewall row only shows their state and links here (#3908).
+- Columns from step 11.0.21: `config.robots_ai_rules`, `robots_ai_training`, `llms_txt` (TINYINT, default 0) and `additional_llms_content` (TEXT). All off after the upgrade: robots.txt stays byte-identical and `/llms.txt` answers as before.
 - Code: `includes/fn/ai_crawlers.php`; `get_robots.txt.php` calls `pg_robots_txt_content()`, `get_llms.txt.php` serves llms.txt.
 
 ## Who decides which AI crawler is turned away?

@@ -1,6 +1,6 @@
 ---
 name: waf-settings-save-and-release
-description: Settings › Firewall acts at once: the save rewrites the ban mirror from the saved row, IP Lists shows active automatic bans with Release, Sensitivity says it moves only the signature threshold
+description: Firewall save acts at once: rewrites the ban mirror; Addresses › "See the bans" drawer lists automatic bans with Release; Sensitivity moves only the signature threshold
 module: waf_rescue
 ---
 
@@ -10,8 +10,8 @@ module: waf_rescue
 - A refused save returns before it and writes nothing, the mirror included.
 
 ## Where are automatic bans released?
-- On the firewall log screen and on Settings › Firewall › IP Lists, both through `pg_waf_release_auto_ban()`: deletes the `auto` row only (hand-written entries belong to Banned IP Addresses), rewrites the mirror, clears the offences (`waf_offence_clear()`); false when no row was found.
-- IP Lists shows Active Automatic Bans: address linked to the filtered log, reason, end (relative, clock time on hover), Release; at most 25, built in `prep.php`.
+- On the firewall log screen and in Site Settings › Firewall and HTTPS › Addresses, both through `pg_waf_release_auto_ban()`: deletes the `auto` row only (hand-written entries belong to Banned IP Addresses), rewrites the mirror, clears the offences (`waf_offence_clear()`); false when no row was found.
+- Addresses says how many are banned now; "See the bans" opens the drawer `waf_bans_drawer` with the table: address linked to the filtered log, reason, end (relative, clock time on hover), Release; at most 25, built in `prep.php`.
 - Each Release button submits the hidden form `pgset_waf_release` by its form attribute (forms cannot be nested); it posts to `view_waf_log.php` with `release_return=settings`, and `pg_waf_release_return()` sends it back to `settings_firewall.php#pgset-iplists` with the message in the `settings` liveform. Any other value goes back to the log.
 
 ## What does the Sensitivity field say?

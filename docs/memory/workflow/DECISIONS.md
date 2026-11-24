@@ -61,6 +61,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-18.md: What does the Artifact Canvas's question mark open? (owner, 2026-11-24, agent channel message 12353)
 - decisions-made-panel-18.md: Do places that cite a menu row follow the menu's new icons? (owner, 2026-11-24, agent channel message 12353)
 - decisions-made-panel-18.md: Where is the plan?
+- decisions-made-panel-19.md: Where are the rules and the earlier parts?
+- decisions-made-panel-19.md: How big is a main menu row's icon? (owner, 2026-11-24, agent channel message 12426)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -120,6 +122,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-10.md: What does Pinegrap AI do with a new e-mail conversation? (#3744)
 - decisions-made-product-10.md: Do channel and note attachments take the import's upload steps? (#3745)
 - decisions-made-product-10.md: Do collection items get schedule columns? (#3746)
+- decisions-made-product-100.md: Where are the rules and the earlier parts?
+- decisions-made-product-100.md: Do Claude's routine address and the MCP servers move to Connections? (owner, 2026-11-24, agent channel poll 222, message 12409)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -1076,6 +1080,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge
 - commerce/wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch
 - core/application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end
+- core/application-review.md: Application review desk, the binding rules and what it covers (owner 2026-11-20, poll 196): V1 to V16 with the PR of each, what is left out, the words on screen
 - core/audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - core/audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - core/audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect

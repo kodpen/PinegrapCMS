@@ -34,4 +34,4 @@ module: application_programs
 - "Add programme" opens a drawer on the list (name and form; a refused add reopens it with `?add=1`); the programme starts as a draft.
 - "Close" sets status 2. Delete is in the list row's "more" menu, last and danger with a confirm, only for a draft with no entries. Each create, save, status change and delete is an `audit_log` line on `application_program`.
 
-Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-store.md, docs/memory/plans/application-review-screens.md
+Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-store.md, docs/memory/core/application-review.md

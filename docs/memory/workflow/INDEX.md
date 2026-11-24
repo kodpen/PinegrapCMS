@@ -84,6 +84,7 @@
 - decisions-made-panel-16.md: Decisions list, panel part 16 (2026-11-22 on): the bell's drawer redrawn as drawn in ui/bell-redraw-drawing (poll 218): icon-button head, one selector, chips on one line, search in the head
 - decisions-made-panel-17.md: Decisions list, panel part 17 (2026-11-22 on): main menu row icons redrawn on category-coloured tiles, the menu's structure stays, System tools lists every tool in one panel
 - decisions-made-panel-18.md: Decisions made, panel part 18 (2026-11-24 on): Artifact Canvas buttons say "Edit in Artifact Canvas"; its "?" is the help link; a place citing a menu row draws the row's new icon
+- decisions-made-panel-19.md: Decisions list, panel part 19 (2026-11-24 on): main menu row icons at least 1.2rem so each is told apart; the menu widens without stuttering
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
@@ -94,6 +95,7 @@
 - decisions-made-panel-9.md: Decisions list, panel part 9 (2026-11-14 on): assistant chat after a reload; a link that opens reads "Aç"; kept screens' two buttons and widths; Site Settings keeps its place after a save
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
+- decisions-made-product-100.md: Decisions list, product part 100 (2026-11-24 on): Claude's routine address and token and the MCP servers move from the Assistants and agents tab to Connections, a leading line stays
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
