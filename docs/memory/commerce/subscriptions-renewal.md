@@ -20,7 +20,7 @@ module: subscription_renewal
 - confirm (Stripe `authentication_required`): past_due, held (`next_charge_at` 0, no ladder charge while the customer may still confirm), event `confirm_needed` with the link ('' over 255).
 - pending / unclear: held, status unchanged, event `renewal_pending` / `renewal_unclear`.
 - A held row is settled by Stripe's `payment_intent.succeeded` with metadata `subscription_id` (`raw.subscription_id`): `pg_payment_callback_renewal()` → `pg_subscription_renewal_confirmed()`: same lock (10 s; busy → 503, Stripe resends), only a held row of that driver with the same amount, then the paid path; event `renewed` with the pi id as `remote_event_id`. A row not held is left alone.
-- A held row has no time limit and `payment_intent.payment_failed` is not read: unconfirmed, it stays held until cancelled (#11427, decision asked).
+- A held row's failure report or 7 days without an outcome: `subscriptions-held-renewal.md`.
 - First order or its line gone: not charged, a ladder step as for a refusal.
 
 ## What is the renewal order?
@@ -34,4 +34,4 @@ module: subscription_renewal
 - `tests/subscriptions_renewal_test.php` (pure rules, stand-in io), `tests/subscription_series_dst_test.php`. No DB or live run.
 - `tests/payment_stripe_webhook_test.php`: Stripe's paid report.
 
-Related: commerce/subscriptions.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md
+Related: commerce/subscriptions-held-renewal.md, commerce/subscriptions.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md

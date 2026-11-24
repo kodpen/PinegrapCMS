@@ -5807,6 +5807,7 @@
     "Stripe renewal of subscription #{var:1} was not made: the customer has no card left on Stripe.": "#{var:1} numaralı aboneliğin Stripe yenilemesi yapılmadı: müşterinin Stripe'ta kayıtlı kartı kalmadı.",
     "Stripe renewal of subscription #{var:1} was paid ({var:2}).": "#{var:1} numaralı aboneliğin Stripe yenilemesi ödendi ({var:2}).",
     "Stripe reports a dispute of {var:1} on payment {var:2} (reason: {var:3})": "Stripe, {var:2} ödemesinde {var:1} tutarında bir itiraz bildiriyor (neden: {var:3})",
+    "Stripe reports that payment {var:1} for subscription {var:2} failed ({var:3})": "Stripe, {var:2} numaralı aboneliğin {var:1} ödemesinin başarısız olduğunu bildiriyor ({var:3})",
     "Stripe reports that payment {var:1} of {var:2} for subscription {var:3} succeeded": "Stripe, {var:3} aboneliği için {var:2} tutarındaki {var:1} ödemesinin başarılı olduğunu bildiriyor",
     "Stripe reports that payment {var:1} of {var:2} succeeded": "Stripe, {var:2} tutarındaki {var:1} ödemesinin başarılı olduğunu bildiriyor",
     "Stripe reports that {var:1} of payment {var:2} was refunded on Stripe": "Stripe, {var:2} ödemesinin {var:1} tutarının Stripe'ta iade edildiğini bildiriyor",
