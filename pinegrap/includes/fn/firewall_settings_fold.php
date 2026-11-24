@@ -310,3 +310,71 @@ function pg_firewall_fold_proxies($count, $unlisted)
 
     return array('line' => $line, 'pill' => null, 'attention' => (bool) $unlisted);
 }
+
+/**
+ * The Limits row's value rows for the limits on one address that Accounts and
+ * sign-in keeps: Sign-in attempts and Form submissions, what each does today
+ * and the row Change opens. Each is saved in its own pane; Limits only shows
+ * it and leads there. Pure but for lang().
+ *
+ * @param array $throttle ready (the columns exist), on, attempts, minutes, lockout
+ * @param array $forms    ready (the columns exist), ip_hour, recipient_day, domain_hour (0 is off)
+ * @return array[] name, line, icon, tone, href ('' when the row is not drawn yet)
+ */
+function pg_settings_limits_overview(array $throttle, array $forms)
+{
+    $waiting = lang('Waits for the database upgrade.');
+
+    if (empty($throttle['ready'])) {
+        $throttle_line = $waiting;
+        $throttle_on = false;
+    } elseif (!empty($throttle['on'])) {
+        $throttle_line = lang(array('string' => '{var:1} failed sign-ins in {var:2} minutes lock the address and the account out for {var:3} minutes.',
+            'vars' => array((int) $throttle['attempts'], (int) $throttle['minutes'], (int) $throttle['lockout'])));
+        $throttle_on = true;
+    } else {
+        $throttle_line = lang('Failed sign-ins are not limited.');
+        $throttle_on = false;
+    }
+
+    $form_parts = array();
+
+    if (!empty($forms['ready'])) {
+        if ((int) $forms['ip_hour'] > 0) {
+            $form_parts[] = lang(array('string' => '{var:1} an hour from one visitor address', 'vars' => (int) $forms['ip_hour']));
+        }
+
+        if ((int) $forms['recipient_day'] > 0) {
+            $form_parts[] = lang(array('string' => '{var:1} a day for one e-mail address', 'vars' => (int) $forms['recipient_day']));
+        }
+
+        if ((int) $forms['domain_hour'] > 0) {
+            $form_parts[] = lang(array('string' => '{var:1} an hour for one e-mail domain', 'vars' => (int) $forms['domain_hour']));
+        }
+    }
+
+    if (empty($forms['ready'])) {
+        $form_line = $waiting;
+    } elseif ($form_parts) {
+        $form_line = implode(' · ', $form_parts);
+    } else {
+        $form_line = lang('Form submissions are not limited.');
+    }
+
+    return array(
+        array(
+            'name' => lang('Sign-in attempts'),
+            'line' => $throttle_line,
+            'icon' => 'bi-person-lock',
+            'tone' => $throttle_on ? 'blue' : 'amber',
+            'href' => empty($throttle['ready']) ? '' : '#settings/security/pgset-throttle',
+        ),
+        array(
+            'name' => lang('Form submissions'),
+            'line' => $form_line,
+            'icon' => 'bi-ui-checks',
+            'tone' => $form_parts ? 'violet' : 'amber',
+            'href' => empty($forms['ready']) ? '' : '#settings/security/pgset-captcha',
+        ),
+    );
+}
