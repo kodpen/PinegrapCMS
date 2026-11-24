@@ -106,9 +106,49 @@ function pg_tour_seen($tour_key, $user = null)
     return in_array((string) $tour_key, pg_tour_list($user), true);
 }
 
-// Writes the key down.  An older version of the same tour is dropped rather
-// than kept beside the new one, so the list stays as long as the number of
-// tours and no longer.
+// May this key be written into the list: a tour's key with its version
+// ('explorer_files.1'), or a hint line's key for a screen of the launch
+// journey's catalogue ('hint:view_pages', pg_launch_journey_hint_key()), so
+// the hint keys stay as many as those screens.  Pure.
+function pg_tour_key_allowed($tour_key)
+{
+    $tour_key = (string) $tour_key;
+
+    if (strpos($tour_key, 'hint:') === 0) {
+        return function_exists('pg_launch_journey_hint_key')
+            && (pg_launch_journey_hint_key(substr($tour_key, 5)) === $tour_key);
+    }
+
+    return (bool) preg_match('/^[a-z0-9_]{1,60}\.[0-9]{1,3}$/', $tour_key);
+}
+
+// The list with the key written down.  An older version of the same tour is
+// dropped rather than kept beside the new one, so the list stays as long as
+// the number of tours and no longer; a hint key has no version and is kept
+// once.  Pure.
+function pg_tour_list_marked($current, $tour_key)
+{
+    $tour_key = (string) $tour_key;
+    $dot = strrpos($tour_key, '.');
+    $name = (strpos($tour_key, 'hint:') === 0) || ($dot === false) ? '' : substr($tour_key, 0, $dot);
+
+    $keep = array();
+
+    foreach ($current as $key) {
+
+        if (($key === $tour_key) || (($name !== '') && (strpos($key, $name . '.') === 0))) {
+            continue;
+        }
+
+        $keep[] = $key;
+    }
+
+    $keep[] = $tour_key;
+
+    return $keep;
+}
+
+// Writes the key down (pg_tour_list_marked()).
 function pg_tour_mark($user_id, $tour_key)
 {
     $user_id = (int) $user_id;
@@ -119,28 +159,13 @@ function pg_tour_mark($user_id, $tour_key)
     }
 
     // The key is written into a row, so it may only be what a key can be.
-    if (!preg_match('/^[a-z0-9_]{1,60}\.[0-9]{1,3}$/', $tour_key)) {
+    if (!pg_tour_key_allowed($tour_key)) {
         return false;
     }
 
-    $name = substr($tour_key, 0, strrpos($tour_key, '.'));
-
     $current = pg_tour_list(array('tours_seen' => (string) db_value("SELECT tours_seen FROM user WHERE user_id = '" . e($user_id) . "'")));
 
-    $keep = array();
-
-    foreach ($current as $key) {
-
-        if (strpos($key, $name . '.') === 0) {
-            continue;
-        }
-
-        $keep[] = $key;
-    }
-
-    $keep[] = $tour_key;
-
-    db("UPDATE user SET tours_seen = '" . e(implode(',', $keep)) . "' WHERE user_id = '" . e($user_id) . "'");
+    db("UPDATE user SET tours_seen = '" . e(implode(',', pg_tour_list_marked($current, $tour_key))) . "' WHERE user_id = '" . e($user_id) . "'");
 
     return true;
 }

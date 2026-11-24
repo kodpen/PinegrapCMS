@@ -43,6 +43,8 @@ function pg_dashboard_v2_gallery_cards()
 
     return array(
         'launch'     => $g(lang('The steps before going live, marked from the settings'), 1, 'rows'),
+        'firstweek'  => $g(lang('The seven days after going live: first order or entry, visitors, mail, alerts'), 1, 'rows'),
+        'starthere'  => $g(lang('A new team member\'s first screens for their role'), 1, 'rows'),
         'ai'         => $g(lang('A daily summary, proposals and jobs from the connected Claude'), 1, 'chat'),
         'goals'      => $g(lang('Goals you set yourself, progress ring by ring'), 1, 'rings'),
         'pipeline'   => $g(lang('From visit to result step by step; named after the kind of site'), 1, 'funnel'),
