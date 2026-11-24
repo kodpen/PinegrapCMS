@@ -263,3 +263,23 @@ function test_walk_in_queue_tickets_a_second_press_gets_the_number_just_taken()
 	pg_assert_contains('pg_waiting_take_repeated(', $page);
 	pg_assert_contains('pg_waiting_take_repeated(', $kiosk);
 }
+
+function test_walk_in_queue_tickets_people_ahead_of_a_new_number_follow_the_calling_order()
+{
+	// A booking that came early stands at its booked time, after a walk-in
+	// taking a number now: counting every waiting number of the service told
+	// the walk-in one more ahead, and the closing check refused numbers too
+	// early.
+	$now = 1764000000;
+	$waiting = array(
+		array('id' => 1, 'service' => 's1', 'joined_at' => $now - 600, 'priority' => '', 'booking_at' => 0),
+		array('id' => 2, 'service' => 's1', 'joined_at' => $now - 300, 'priority' => '', 'booking_at' => $now + 1800),
+		array('id' => 3, 'service' => 's2', 'joined_at' => $now - 900, 'priority' => '', 'booking_at' => 0),
+	);
+
+	pg_assert_same(1, pg_waiting_join_ahead($waiting, 's1', '', 0, $now, 600), 'the early booking stands behind');
+	pg_assert_same(0, pg_waiting_join_ahead($waiting, 's1', 'elderly', 0, $now, 600), 'priority stands first');
+	pg_assert_same(2, pg_waiting_join_ahead($waiting, 's1', '', $now + 3600, $now, 600), 'a booking of its own stands at its time');
+	pg_assert_same(1, pg_waiting_join_ahead($waiting, 's2', '', 0, $now, 600));
+	pg_assert_same(0, pg_waiting_join_ahead(array(), 's1', '', 0, $now, 600));
+}
