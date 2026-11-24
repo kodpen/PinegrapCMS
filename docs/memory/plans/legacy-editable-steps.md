@@ -13,7 +13,7 @@ description: Plan legacy-editable, steps LE1 to LE12 with size and order: the me
 - LE4 (M) done (#11158) the true canvas: markers around every region pass in `get_page_content.php` while marking is on, `legacy_region_preview` answering every region node, the band and the Region panel's line and action. `includes/fn/layouts.php`, `style_designer.src.js` (`node --check`).
 - LE5 (M) done (#11270) the seed's missing settings, the dry run's reasons (`designer/legacy-stock-types.md`).
 - LE5b (M) done (#11290) the run's `types` step, a "Page types" row (`designer/legacy-types-step.md`).
-- LE6 (M) done (#PR) `pg_layout_convert()`, `pg_layout_piece_map()`, a file page dropping nothing converts in the run; form list and item view.
+- LE6 (M) done (#11308) `pg_layout_convert()`, `pg_layout_piece_map()`, a file page dropping nothing converts in the run; form list and item view.
 - LE6b (M) the Region panel's dropped list and confirm, its Convert on a file page.
 - LE7 (M) order form. LE8 (M) photo gallery, catalog, catalog detail. LE9 (M, a and b if past the size) shopping cart, express order, the checkout steps, view order. LE10 (M) the account pages and search results.
 - LE11 (S) the "Designs moved earlier" card, its dry run drawer and run.
