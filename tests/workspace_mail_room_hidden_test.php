@@ -102,6 +102,7 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/workspace/scheduled.php::ws_scheduled_fill'              => array('id'),
 		'includes/workspace/scheduled.php::ws_scheduled_lead'              => array('key:contact_id'),
 		'includes/workspace/scheduled_draft.php::ws_scheduled_draft_lists' => array('kinds'),
+		'includes/workspace/share_links.php::ws_share_links_sweep'         => array('id'),
 		'includes/workspace/steps.php::ws_step_trigger_values_for'         => array('id'),
 		// The agent channels a task can sit in.
 		'includes/workspace/tasks.php::ws_tasks_agent_channels'            => array('kinds'),

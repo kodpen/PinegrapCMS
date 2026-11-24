@@ -27,7 +27,7 @@ priority: 6
 - An open sets `opened_at` and adds one to `opens`, once a minute a link at most.
 
 ## Which steps?
-- SL1 (M): the table, `includes/workspace/share_links.php` (make, find, state, take back, a sweep of rows ended 30 days ago in the recurring job), the routes and tools, tests.
+- SL1 (M), done (#11201): the table, `includes/workspace/share_links.php` (make, find, state, take back, a sweep of rows ended 30 days ago in the recurring job), the routes and tools, tests.
 - SL2 (M): `workspace_share.php` for pictures and files, the headers, the limit, the 404, the count.
 - SL3 (M): the item's mark and menu, the dialog, the system line.
 - SL4 (M): the head's share mark and menu, Channel info's Sharing part.

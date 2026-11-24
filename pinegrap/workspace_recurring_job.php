@@ -126,6 +126,12 @@ if (ws_enabled() && function_exists('ws_memory_sweep')) {
     ws_memory_sweep();
 }
 
+// Share links that ended (expired or taken back) more than 30 days ago
+// (includes/workspace/share_links.php).
+if (ws_enabled() && function_exists('ws_share_links_sweep')) {
+    ws_share_links_sweep();
+}
+
 // The HTML of mail that came in before it was kept, read again from its
 // .eml while that is still there: before the sweep below deletes it
 // (includes/workspace/mail.php).
