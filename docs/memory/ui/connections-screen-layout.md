@@ -28,7 +28,7 @@ module: connections_screen
 - The attention block on top lists every account in `reauth`: the site's with Connect again, a person's with who reconnects it.
 
 ## What does a change to the screen keep?
-- Today a service row shows no field and leads to its setting's place. Owner (2026-11-17, poll 146, message 9372; narrowed by poll 148, message 9374): Connections becomes the one management place, connection fields in each service's own panel here (e-mail sending stays a Site Settings category), feature cards holding no key; nothing moves before his yes to the drawing (`plans/connections-merges.md`).
+- A row leads to its service's page, where the connection fields are (owner 2026-11-17, poll 146; narrowed by poll 148: e-mail sending stays a Site Settings category). The rule and the build: `connections-one-place.md`.
 - No table and no column for a state, a history of states or an error; no outside call while the list is drawn. A key is never shown.
 - No catalogue of add-ons to install (`plans/addon-hook-system.md`), no copy of Application Access, no one-click broker (`plans/reverse-oauth-leftovers.md`).
 

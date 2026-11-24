@@ -5,7 +5,7 @@ module: address_autocomplete, merchant_center, connections_screen
 ---
 
 ## Where are an address provider's key and Merchant Center's account set?
-- On their pages (CX11g4 #11007, plan `plans/connections-merges-build.md`): `connections.php?service=google_places`, `mapbox`, `photon` (`pg_connections_screen_address_pages()`) and `merchant_center`. This closed the Ecommerce group; payment and shipping: `connections-payment-gateways-page.md`, `connections-shipping-services-page.md`.
+- On their pages (CX11g4 #11007, `connections-one-place.md`): `connections.php?service=google_places`, `mapbox`, `photon` (`pg_connections_screen_address_pages()`) and `merchant_center`. This closed the Ecommerce group; payment and shipping: `connections-payment-gateways-page.md`, `connections-shipping-services-page.md`.
 
 ## What does an address provider's page do?
 - "Connection details": the key (password box, never drawn back, an empty box keeps it) or Photon's "Server Address", "Test Address", "Save" and "Save and try" (suggestions through this provider even while another is on, `pg_addr_suggest(…, $through)`). Posts `addr_save`.

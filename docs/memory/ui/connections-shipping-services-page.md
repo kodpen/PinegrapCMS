@@ -5,7 +5,7 @@ module: carrier_labels, carrier_api, connections_screen
 ---
 
 ## Where are a shipping service's keys typed?
-- On its page (CX11g3 #10988, plan `plans/connections-merges-build.md`): `connections.php?service=geliver`, `basitkargo`, `kargonomi`, `aras`, `shippo`, `sendcloud` (`pg_connections_screen_label_pages()`) and `ups`, `fedex`, `usps` (`pg_connections_screen_carrier_pages()`).
+- On its page (CX11g3 #10988, `connections-one-place.md`): `connections.php?service=geliver`, `basitkargo`, `kargonomi`, `aras`, `shippo`, `sendcloud` (`pg_connections_screen_label_pages()`) and `ups`, `fedex`, `usps` (`pg_connections_screen_carrier_pages()`).
 - The payment services moved in CX11g1 and g2: `connections-payment-gateways-page.md`, `connections-payment-services-page.md`.
 
 ## Which fields of a label service are keys?

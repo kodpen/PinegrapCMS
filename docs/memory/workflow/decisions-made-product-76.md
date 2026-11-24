@@ -10,7 +10,7 @@ description: Decisions list, product part 76 (2026-11-17): connectors managed in
 - Asked how GitHub's four screens merge (CX1), with "nothing moves, the screens point at each other" recommended, he chose no option and typed: "bu bağdaştırıcıları bir düzene sokmazsak ileride çorba olacak lansman sonrasına kalmamalı. bağdaştırıcıları tek yerde yönetilir modern bir yönetim ekranı yapmalıyız. bu ve diğerleri"
 - So piece-by-piece merges are not what he wants: one modern screen manages the connectors in one place, GitHub's and the others', and it is not left until after the launch.
 - The architect's reading, told to him under the poll (messages 9372, 9374), not his words: the screen is Connections (`connections.php`); what is typed to connect to an outside service sits in that service's own panel there (connect, test, disconnect, where it is used); a feature card holds no key and names the connection it uses.
-- It turns the 2026-10-30 reading that a Connections row shows no field and only leads to the setting's place (`decisions-made-product-14.md`). The plan `plans/connections-merges.md` carries priority 10 with his limit, before the launch.
+- It turns the 2026-10-30 reading that a Connections row shows no field and only leads to the setting's place (`decisions-made-product-14.md`). The plan `ui/connections-one-place.md` carries priority 10 with his limit, before the launch.
 - The integration packages themselves still wait until after 2026.11.0 (`decisions-made-product-69.md`): this orders what exists.
 - Still his: the screen's look. A mock comes first (the list, the GitHub, Google and OpenAI panels, one feature card, the entry); nothing moves before his yes to its sheet.
 

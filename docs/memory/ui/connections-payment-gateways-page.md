@@ -5,7 +5,7 @@ module: payments, connections_screen
 ---
 
 ## Where are a card gateway's keys typed?
-- On its own page (CX11g1 #10919, plan `plans/connections-merges-build.md`): `connections.php?service=iyzico`, `stripe_classic`, `payflow_pro`, `payments_pro`, `authorize_net`, `clearcommerce`, `first_data`, `sage`. The list is `pg_payment_gateway_connections()` (`includes/fn/payments.php`): gateway value, name, each key's column, label, kind and width.
+- On its own page (CX11g1 #10919, `connections-one-place.md`): `connections.php?service=iyzico`, `stripe_classic`, `payflow_pro`, `payments_pro`, `authorize_net`, `clearcommerce`, `first_data`, `sage`. The list is `pg_payment_gateway_connections()` (`includes/fn/payments.php`): gateway value, name, each key's column, label, kind and width.
 - "Connection details": the keys and "Save" (no "Save and try": the old gateways have no test call). A secret box is always drawn empty ("Stored. Leave empty to keep it."); First Data's "PEM File" is a select of the uploaded PEM files and moved with the Store Number.
 - Status has "Disconnect" (`gateway_remove`) while any key is stored: it empties that gateway's columns.
 

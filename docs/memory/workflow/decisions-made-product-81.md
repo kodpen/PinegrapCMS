@@ -21,4 +21,4 @@ description: Decisions list, product part 81 (2026-11-20 on): the Google Cloud T
 - Not chosen: "Evet, önce yalnız yazılan oranlarla" (typed rates only at first, real deductions later), "Hayır, gerek yok" (the period profit and loss report is enough).
 - Built in 2026.11.0 (#10626 to #10792): `erp/order-profit.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-76.md, docs/memory/plans/connections-merges-build.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-76.md, docs/memory/ui/connections-one-place.md

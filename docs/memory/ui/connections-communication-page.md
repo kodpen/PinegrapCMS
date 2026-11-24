@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## Where are the WhatsApp and İYS accounts typed?
-- On `connections.php?service=whatsapp` and `?service=iys` (CX11d, the Communication group of plan `plans/connections-merges-build.md`), no longer on Site Settings › Communication.
+- On `connections.php?service=whatsapp` and `?service=iys` (CX11d, the Communication group of `connections-one-place.md`), no longer on Site Settings › Communication.
 - "Connection details" draws the card's old fields in the page's look: WhatsApp `pg_whatsapp_settings_html()` (switch, the five steps, Test Number, "Save" and "Save and send a test message"); İYS `pg_iys_settings_fields()` (switch, API User, Password, İYS Code, Brand, Environment, Mode, "E-mail and SMS", "Save").
 - The writes `whatsapp_save` / `iys_save` run the cards' own `pg_whatsapp_settings_check()` / `pg_iys_settings_check()`, then `..._save()` only when nothing was marked: a changed account is asked about at Meta or İYS first, as before.
 - Status has "Disconnect" (`whatsapp_remove` / `iys_remove`, the `forget` action) while an account is stored. Secrets are never drawn back.

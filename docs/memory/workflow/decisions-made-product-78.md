@@ -23,7 +23,7 @@ description: Decisions list, product part 78 (2026-11-19 on): Prototype view edi
 - The architect's reading, not his words: step MG1, given to K1 in the channel with CX10.
 
 ## Do the settings guide a Google connection's set-up, and are the settings pages redrawn? (owner, 2026-11-19, in the architect's window, channel message 9750)
-- Guidance (the two return addresses, the APIs to enable, the unverified-app screen): "evet ekleyelim kullanıcılar zorlanmasın". The parts: `plans/connections-merges-cx10-google.md`.
+- Guidance (the two return addresses, the APIs to enable, the unverified-app screen): "evet ekleyelim kullanıcılar zorlanmasın". The parts: `ui/connections-provider-page.md`.
 - "bir sonraki turda ayar sayfalarını düzenletsek çok iyi olacak artık, eposta kurulum ayarları en son ekelen ayar sayfaları ancak görünüm olarak hala eski demode tasarım kullanılıyor".
 - The architect's reading, not his words: the Site Settings categories move to look A, the e-mail set-up pages first (K1, channel message 9694).
 

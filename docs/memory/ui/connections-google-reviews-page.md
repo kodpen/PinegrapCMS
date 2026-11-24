@@ -5,7 +5,7 @@ module: google_reviews, connections_screen
 ---
 
 ## Where are Google reviews' key and Place ID typed?
-- On `connections.php?service=google_reviews` (CX11i #11117, the Integrations group of plan `plans/connections-merges-build.md`), no longer on Site Settings › Integrations › Google Reviews.
+- On `connections.php?service=google_reviews` (CX11i #11117, the Integrations group of `connections-one-place.md`), no longer on Site Settings › Integrations › Google Reviews.
 - "Connection details": "Places API Key" (password box, never drawn back; "Stored. Leave empty to keep it."), "Place ID" with the Place ID Finder link, "Save" filled, "Save and try" quiet. Posts `grev_save`.
 - `pg_grev_page_decide()` (pure): a key is needed while none is stored, the Place ID is always needed (the card allowed saving one without the other); a changed key or place empties the cache. `pg_grev_page_save()` seals it; try reads the place and names it with its rating, or shows Google's error.
 - Status has "Disconnect" (`grev_remove`, `pg_grev_page_remove()`) while a key or Place ID is kept: the sealed entry is deleted.
