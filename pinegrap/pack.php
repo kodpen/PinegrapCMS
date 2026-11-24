@@ -224,7 +224,7 @@ function pack_short_drawer(array $pack)
     <dialog class="drawer drawer-end" id="pack_short" aria-labelledby="pack_short_title" style="width:min(480px,100%);--pg-drawer-height:80vh">
         <form class="d-flex flex-column h-100" data-pg-pack-short>
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="pack_short_title">' . h(lang('Units missing')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('The pack closes with these units missing and the address waits until it is finished.')) . '</p>
                 </div>

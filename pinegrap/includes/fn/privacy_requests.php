@@ -1071,7 +1071,7 @@ function _pg_privacy_request_drawer_frame($id, $title, $head, $tabs, $body, $foo
         <form method="post" action="privacy_centre.php?view=requests" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="view" value="requests">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="' . h($id) . '_title">' . h($title) . '</h5>
                     <p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . $head . '</p>
                 </div>

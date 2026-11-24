@@ -584,7 +584,7 @@ foreach ($ap_reviewers as $i => $reviewer) {
     }, $reviewer['categories']));
     $ap_reviewer_rows .= '<div class="pg-card-inner-row" data-pg-ap-reviewer>'
         . '<span class="pg-initials' . (($i % 3) ? ' pg-initials-' . (($i % 3) + 1) : '') . '" aria-hidden="true">' . h($ap_initials($reviewer['display'])) . '</span>'
-        . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($reviewer['display']) . '</strong>'
+        . '<div class="flex-grow-1 min-w-0"><strong class="pg-list-row-title">' . h($reviewer['display']) . '</strong>'
         . '<div class="pg-text-meta">' . h(((int) $reviewer['user_id'] > 0) ? lang('Panel user') : lang('Outside juror') . ' · ' . $reviewer['email']) . ($ap_choices ? ' · ' . h($pool) : '') . '</div></div>'
         . '<span class="pg-text-2 pg-tabular text-nowrap">' . h(lang(array('string' => '{var:1} of {var:2} sent', 'vars' => array((int) $reviewer['done'], (int) $reviewer['assigned'])))) . '</span>'
         . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" data-bs-container="body" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
@@ -633,7 +633,7 @@ $ap_reviewers_html = '<form id="aprog_reviewers_form" action="edit_application_p
         <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="reviewers"><input type="hidden" name="reviewer_kind" value="user" data-pg-ap-kind>
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="aprog_reviewer_add_title">' . h(lang('Add reviewer')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('A panel user signs in to score; an outside juror needs no sign-in.')) . '</p>
                 </div>
@@ -770,7 +770,7 @@ if ($ap_view === 'entries') {
         <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="entries"><input type="hidden" name="category" value="' . h($ap_category) . '"><input type="hidden" name="entry_id" value="" data-pg-ap-note-entry>
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="' . $id . '_title">' . h($title) . ' <span data-pg-ap-note-name></span></h5>
                     <p class="small fg-2 mb-0 mt-1">' . h($line) . '</p>
                 </div>
@@ -936,7 +936,7 @@ if ($ap_view === 'decisions') {
         <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="decisions"><input type="hidden" name="filter" value="' . $ap_filter . '">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="aprog_send_title">' . h(lang('Send the decision e-mails')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('Each person gets the text of their decision once; the result then shows on their entry.')) . '</p>
                 </div>

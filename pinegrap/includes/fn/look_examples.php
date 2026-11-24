@@ -202,7 +202,7 @@ function pg_look_examples($prefix = 'light')
         'title'   => lang('Drawer'),
         'classes' => array('drawer-header', 'drawer-title', 'btn-close', 'role="tablist"', 'role="tab"', 'aria-selected', 'drawer-body', 'drawer-footer', '.pg-seg', '.pg-seg-item', '.pg-pill', '.pg-button-danger', '.pg-button-quiet', '.pg-button-fill'),
         'html'    => '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:480px">'
-            . '<div class="drawer-header p-5"><div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
+            . '<div class="drawer-header p-5"><div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
             . '<p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . h(lang('Erasure')) . ' <span class="pg-pill pg-tone-amber">' . h(lang(array('string' => '{var:1} days left', 'vars' => array(5)))) . '</span></p></div>'
             . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div>'
             . '<div class="px-5 pt-3 pb-3 border-bottom"><span class="pg-seg" role="tablist" aria-label="' . h(lang('Request')) . '">'
@@ -353,7 +353,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $sheet = function ($current, $tile, $title, $line, $body, $foot) use ($sheet_steps) {
         return '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px">'
             . '<div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">' . $tile
-            . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">' . h($title) . '</h5>' . $line . '</div>'
+            . '<div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0">' . h($title) . '</h5>' . $line . '</div>'
             . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div></div>'
             . '<div class="px-5 pt-3 pb-5 border-bottom">' . $sheet_steps($current) . '</div>'
             . '<div class="drawer-body p-5">' . $body . '</div>'
@@ -454,7 +454,7 @@ function pg_look_examples_patterns($prefix = 'light')
         'html'    => '<div class="pg-look-line"><button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Set up on claude.ai')) . '</button></div>'
             . '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:34rem">'
             . '<div class="drawer-header border-bottom gap-3 p-5"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-violet" aria-hidden="true"><i class="bi bi-stars"></i></span>'
-            . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><p class="small fg-2 mb-0 mt-1">' . h(lang('Five steps; every value has Copy beside it.')) . '</p></div>'
+            . '<div class="flex-grow-1 min-w-0"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><p class="small fg-2 mb-0 mt-1">' . h(lang('Five steps; every value has Copy beside it.')) . '</p></div>'
             . '<button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div>'
             . '<div class="drawer-body p-5"><ol class="stepper pg-stepper-cards ws-claude-setup-steps">' . $guide . '</ol></div>'
             . '<div class="drawer-footer border-top p-5 d-flex"><button type="button" class="pg-button pg-button-quiet ms-auto">' . h(lang('Close')) . '</button></div>'
@@ -505,7 +505,7 @@ function pg_look_examples_form_drawer_pattern($p)
             . h($label) . (($count !== '') ? ' <span class="pg-seg-count">' . h($count) . '</span>' : '') . '</button>';
     };
 
-    $delete_text = '<div class="flex-grow-1 min-width-0"><div class="pg-list-row-title">' . h(lang('Delete the application')) . '</div>'
+    $delete_text = '<div class="flex-grow-1 min-w-0"><div class="pg-list-row-title">' . h(lang('Delete the application')) . '</div>'
         . '<div class="pg-text-meta">' . h(lang('Any integration using this key stops working immediately. This cannot be undone.')) . '</div></div>';
 
     $advanced = '<div class="form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_rate">' . h(lang('Requests per minute')) . '</label>'
@@ -515,7 +515,7 @@ function pg_look_examples_form_drawer_pattern($p)
     $drawer = '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px">'
         . '<div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">'
         . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-key"></i></span>'
-        . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Trendyol sync</h5>'
+        . '<div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0">Trendyol sync</h5>'
         . '<p class="small fg-2 mb-0 mt-1">' . h(lang('Integration')) . ' &middot; ' . h(lang('key and secret')) . ' &middot; ' . h(lang('Acts as:')) . ' <b>' . h(lang('the application itself')) . '</b></p></div>'
         . '<span class="pg-pill pg-tone-teal">' . h(lang('Active')) . '</span>'
         . '<button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div></div>'
@@ -530,14 +530,14 @@ function pg_look_examples_form_drawer_pattern($p)
         . '<div class="col-12 sm:col-6 form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_description">' . h(lang('Description')) . ' <span class="fg-2 fw-normal">' . h(lang('optional')) . '</span></label>'
         . '<input type="text" class="form-control form-control-sm" id="' . $p . '_look_form_description"></div>'
         . '</div>'
-        . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row"><div class="flex-grow-1 min-width-0">'
+        . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row"><div class="flex-grow-1 min-w-0">'
         . '<label class="pg-list-row-title d-block" for="' . $p . '_look_form_status">' . h(lang('Active')) . '</label>'
         . '<div class="pg-text-meta">' . h(lang('Turning it off refuses the key at once; the settings stay.')) . '</div></div>'
         . '<input type="checkbox" class="pg-switch" id="' . $p . '_look_form_status" checked></div></div>'
         . '<div class="pg-text-meta mb-2">' . h(lang('Summary')) . '</div>'
         . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row">'
         . '<span class="pg-icon-tile pg-tone-blue" aria-hidden="true"><i class="bi bi-shield-check"></i></span>'
-        . '<div class="flex-grow-1 min-width-0"><div class="pg-list-row-title">' . h(lang('Permissions')) . '</div>'
+        . '<div class="flex-grow-1 min-w-0"><div class="pg-list-row-title">' . h(lang('Permissions')) . '</div>'
         . '<div class="pg-text-meta">' . h(lang(array('string' => '{var:1} of {var:2} chosen', 'vars' => array(12, 31)))) . '</div></div>'
         . '<button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Go to permissions')) . '<i class="bi bi-chevron-right" aria-hidden="true"></i></button></div>'
         . pg_settings_fold_row(array(
@@ -745,7 +745,7 @@ function pg_look_examples_mail_patterns($p)
         'classes' => array('role="dialog"', '.pg-card-sheet', '.pg-icon-tile-lg', '.pg-tone-rose', '.pg-card-sub', '.pg-card-inner', '.pg-effects', '.pg-effect', '.pg-effect-keep', '.pg-effect-go', '.pg-effect-info', '.pg-effect-line', '.pg-button-quiet', '.pg-button-danger'),
         'html'    => '<div class="pg-card pg-card-sheet overflow-hidden" role="dialog" aria-labelledby="' . $p . '_look_confirm_title" style="max-width:470px">'
             . '<div class="d-flex align-items-start gap-3 p-5 pb-0"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-rose" aria-hidden="true"><i class="bi bi-trash3"></i></span>'
-            . '<div class="min-width-0"><div class="pg-title-section" id="' . $p . '_look_confirm_title">' . h(lang(array('string' => 'Remove the {var:1} mailbox?', 'vars' => array(lang('Support'))))) . '</div>'
+            . '<div class="min-w-0"><div class="pg-title-section" id="' . $p . '_look_confirm_title">' . h(lang(array('string' => 'Remove the {var:1} mailbox?', 'vars' => array(lang('Support'))))) . '</div>'
             . '<p class="pg-card-sub">info@example.com</p></div></div>'
             . '<div class="p-5"><ul class="pg-card-inner pg-effects">'
             . $effect('keep', 'bi-check-circle-fill', lang('The conversations stay'), lang(array('string' => 'The {var:1} conversations of the #{var:2} channel are not deleted.', 'vars' => array(214, 'support'))))

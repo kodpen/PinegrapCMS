@@ -82,7 +82,7 @@ function pg_volunteer_board_html(array $programme, array $shifts, $monday, $plac
 
             $waiting = array_sum($shift['waiting']);
             $rows .= '<div class="pg-card-inner-row flex-wrap">'
-                . '<div class="flex-grow-1 min-width-0"><a class="pg-list-row-title d-block" href="' . $base . '&amp;shift=' . $shift['id'] . '"><span class="pg-tabular">' . h(date('H:i', strtotime($shift['start'])) . '–' . date('H:i', strtotime($shift['end']))) . '</span> · ' . h($shift['place']) . '</a>'
+                . '<div class="flex-grow-1 min-w-0"><a class="pg-list-row-title d-block" href="' . $base . '&amp;shift=' . $shift['id'] . '"><span class="pg-tabular">' . h(date('H:i', strtotime($shift['start'])) . '–' . date('H:i', strtotime($shift['end']))) . '</span> · ' . h($shift['place']) . '</a>'
                 . (($shift['note'] !== '' || $waiting > 0 || $shift['series_id'] > 0) ? '<div class="pg-text-meta">' . h(implode(' · ', array_filter(array(($shift['series_id'] > 0) ? lang('Weekly') : '', ($waiting > 0) ? lang(array('string' => '{var:1} waiting', 'vars' => array($waiting))) : '', $shift['note'])))) . '</div>' : '')
                 . '</div><span class="d-flex flex-wrap gap-2">' . $pills . '</span></div>';
         }
@@ -159,7 +159,7 @@ function pg_volunteer_shift_add_html(array $programme, $monday, array $post, $op
     $roles = '';
 
     foreach ($programme['roles'] as $key => $role) {
-        $roles .= '<div class="pg-card-inner-row"><label class="flex-grow-1 min-width-0 pg-text-2" for="vs_count_' . h($key) . '">' . h($role['name']) . '</label>'
+        $roles .= '<div class="pg-card-inner-row"><label class="flex-grow-1 min-w-0 pg-text-2" for="vs_count_' . h($key) . '">' . h($role['name']) . '</label>'
             . '<span class="d-inline-block" style="width:6rem"><input type="number" class="pg-input" id="vs_count_' . h($key) . '" name="count[' . h($key) . ']" min="0" max="' . PG_VOLUNTEER_ROLE_MAX . '" step="1" value="' . (int) ($post['count'][$key] ?? 0) . '"></span></div>';
     }
 
@@ -175,7 +175,7 @@ function pg_volunteer_shift_add_html(array $programme, $monday, array $post, $op
         <form method="post" action="edit_volunteer_programme.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $programme['id'] . '"><input type="hidden" name="view" value="shifts"><input type="hidden" name="week" value="' . $monday . '">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="vs_add_title">' . h(lang('Add shift')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('Volunteers whose skills and documents fit a role can sign up for it.')) . '</p>
                 </div>
@@ -258,7 +258,7 @@ function pg_volunteer_shift_drawer_html(array $programme, array $shift, $to_call
                 . '<button type="submit" name="submit_swap_approve" value="' . (int) $signup['id'] . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Approve')) . '</button>'
                 : (($signup['state'] === 'waiting') ? '<span class="pg-pill pg-tone-gray">' . h(lang('Waitlisted')) . '</span>'
                 : (((int) ($signup['offered_at'] ?? 0) > 0) ? '<span class="pg-pill pg-tone-amber">' . h(lang('Place offered')) . '</span>' : ''));
-            $lines .= '<div class="pg-card-inner-row gap-2"><span class="pg-text-2 flex-grow-1 min-width-0">' . h($signup['name']) . '</span>' . $pill . '</div>';
+            $lines .= '<div class="pg-card-inner-row gap-2"><span class="pg-text-2 flex-grow-1 min-w-0">' . h($signup['name']) . '</span>' . $pill . '</div>';
         }
 
         $roles .= '<h6 class="pg-field-label d-flex align-items-center gap-2">' . h(pg_volunteer_role_name($programme, $key)) . ' ' . pg_volunteer_role_pill(lang('Places'), $filled, $count, pg_volunteer_role_tone($filled, $count, $shift, $now, $programme['call_days'])) . '</h6>'
@@ -280,7 +280,7 @@ function pg_volunteer_shift_drawer_html(array $programme, array $shift, $to_call
         <form method="post" action="edit_volunteer_programme.php?' . $back . '" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="shift" value="' . $shift['id'] . '">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="vs_shift_title">' . h(pg_volunteer_shift_when($shift)) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(implode(' · ', array_filter(array(($shift['series_id'] > 0) ? lang('Weekly') : '', $shift['note'])))) . '</p>
                 </div>

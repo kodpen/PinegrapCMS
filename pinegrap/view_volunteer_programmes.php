@@ -91,7 +91,7 @@ if ($vp_staff) {
         <form method="post" action="edit_volunteer_programme.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="vp_add_title">' . h(lang('Add programme')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('People apply on its form; you set up its roles next.')) . '</p>
                 </div>

@@ -348,7 +348,7 @@ function pg_lte_drawer_html($row, $entry, $busy)
         <div class="d-flex flex-column h-100">
             <div class="drawer-header"><div class="d-flex align-items-start gap-3 w-100">
                 <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-brush"></i></span>
-                <div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0" id="ltd_earlier_title">' . h($row['name']) . '</h5>
+                <div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0" id="ltd_earlier_title">' . h($row['name']) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang(array('string' => '{var:1} of {var:2} pages fully editable', 'vars' => array(pg_format_number($row['editable'], 0), pg_format_number($row['pages'], 0))))) . '</p></div>
                 ' . $pill . '
                 <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>

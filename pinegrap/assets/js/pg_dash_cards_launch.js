@@ -354,7 +354,7 @@
         root.setAttribute("aria-labelledby", "pg_dash_launch_summary_title");
 
         var header = el("div", "drawer-header");
-        var heading = el("div", "flex-grow-1 min-width-0");
+        var heading = el("div", "flex-grow-1 min-w-0");
         var title = el("h5", "drawer-title mb-0", labels.summary);
         title.id = "pg_dash_launch_summary_title";
         heading.appendChild(title);

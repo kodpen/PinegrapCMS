@@ -106,7 +106,7 @@ $start_drawer = '
         <form method="get" action="edit_feedback_survey.php" class="d-flex flex-column h-100">
             <div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">
                 <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-emoji-smile"></i></span>
-                <div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0" id="survey_add_title">' . h(lang('Add survey')) . '</h5>
+                <div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0" id="survey_add_title">' . h(lang('Add survey')) . '</h5>
                 <p class="small fg-2 mb-0 mt-1">' . h(lang('What should it follow? Pick one and the rest is prepared for it.')) . '</p></div>
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button></div></div>
             <div class="drawer-body p-5 flex-grow-1 overflow-auto"><fieldset><legend class="visually-hidden">' . h(lang('What should it follow?')) . '</legend><div class="pg-start">' . $start_cards . '</div></fieldset></div>
