@@ -14,11 +14,11 @@ description: Decisions list, product part 89 (2026-11-20 on): plans from the own
 ## Should the site ask for a score after a booking, ticket, course, form, delivery or mail conversation and follow up low scores? (owner, 2026-11-20, agent channel poll 187, channel message 10725)
 - "Evet, plana girsin": NPS, CSAT and effort surveys, the touchpoint triggers, the one-click answer, the fatigue limits, the follow-up of a low score, the review invitation, the report and the API.
 - Not chosen: "Evet, önce yalnız tek tıkla puan ve kapalı döngü" (the survey, triggers, one-click answer and low-score alert first), "Hayır, gerek yok".
-- The review invitation is never filtered by the score (Google's rule against review gating). The plan: `plans/feedback-loop.md`.
+- The review invitation is never filtered by the score (Google's rule against review gating). Built: `platform/feedback-loop.md`.
 
 ## Should a form become an application programme with reviewers, weighted criteria, combined scores, rounds and decisions? (owner, 2026-11-20, agent channel poll 196, channel message 10821)
 - "Evet, plana girsin": programme and eligibility, criteria, assignment and conflicts, blind review, the reviewer screen and external jurors, combining with the leniency correction, rounds and decision e-mails, report and API.
 - Not chosen: "Evet, önce jüri puanlaması ve kısa liste" (criteria, assignment, the reviewer screen, combining and the shortlist first), "Hayır, gerek yok".
 - Built as the application review desk: `core/application-review.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/marketplace-repricer.md, docs/memory/plans/feedback-loop.md, docs/memory/core/application-review.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/marketplace-repricer.md, docs/memory/platform/feedback-loop.md, docs/memory/core/application-review.md

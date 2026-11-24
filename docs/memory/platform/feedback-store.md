@@ -31,4 +31,4 @@ description: Satisfaction survey tables feedback_surveys and feedback_responses 
 ## Inventory?
 - `pg_privacy_inventory()` line `feedback_responses`: contact and messages, customers, legitimate interest, until erased, person column `contact_id`.
 
-Related: docs/memory/platform/feedback-rules.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/personal-data-export.md, docs/memory/core/privacy-inventory.md, docs/memory/plans/feedback-loop.md
+Related: docs/memory/platform/feedback-rules.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/personal-data-export.md, docs/memory/core/privacy-inventory.md, docs/memory/platform/feedback-loop.md
