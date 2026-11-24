@@ -5,7 +5,7 @@ module: walk_in_queue_desk
 ---
 
 ## Where is the desk?
-- `queue_desk.php?place=<id>`: a place's Today tab for roles 0-2 (tabs Set-up, Desks, Today), and "My desk" in the Calendars menu for a role-3 user on the place's staff list ("My desk · <place>" when several; drawn alone when the user has no calendar).
+- `queue_desk.php?place=<id>`: a place's Today tab for roles 0-2 (tabs Set-up, Desks, Today, Report), and "My desk" in the Calendars menu for a role-3 user on the place's staff list ("My desk · <place>" when several; drawn alone when the user has no calendar).
 - Code: `includes/fn/walk_in_queue_desk.php`; pure parts in `tests/walk_in_queue_desk_test.php`. Step WQ4 of the walk-in-queue plan.
 
 ## Who reaches which place?
