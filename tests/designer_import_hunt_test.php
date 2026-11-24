@@ -156,3 +156,21 @@ function test_designer_import_hunt_folder_segment_cut_before_lookup()
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_import.php');
 	pg_assert_contains('$seg = pg_di_folder_segment($seg);', $src);
 }
+
+function test_designer_import_hunt_second_same_name_checks_library()
+{
+	// img/logo.png and icons/logo.png: the second took logo[1].png without
+	// asking the library, and overwrote a logo[1].png already there.
+	$library = array('logo[1].png' => true);
+	$free = function ($name) use ($library) {
+		return !isset($library[$name]);
+	};
+	$reserved = array();
+	$first = pg_di_free_file_name('logo.png', $reserved, $free);
+	$reserved[$first] = true;
+	$second = pg_di_free_file_name('logo.png', $reserved, $free);
+
+	pg_assert_same('logo.png', $first);
+	pg_assert_same('logo[2].png', $second);
+	pg_assert_same('readme[1]', pg_di_free_file_name('readme', array('readme' => true), $free));
+}

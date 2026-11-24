@@ -1820,19 +1820,34 @@ function pg_di_folder_segment($seg)
 function pg_di_reserve_file_name($basename, $ctx)
 {
     static $reserved = array();
-    $name = prepare_file_name($basename);
-    $name = get_unique_name(array('name' => $name, 'type' => 'file'));
-    // get_unique_name only checks the database; two archive entries with the
-    // same basename in different directories would otherwise collide here.
-    $i = 1; $base = $name;
-    while (isset($reserved[$name])) {
-        $ext = pathinfo($base, PATHINFO_EXTENSION);
-        $stem = $ext !== '' ? substr($base, 0, -strlen($ext) - 1) : $base;
-        $name = $stem . '[' . $i . ']' . ($ext !== '' ? '.' . $ext : '');
-        $i++;
-    }
+    $name = pg_di_free_file_name(prepare_file_name($basename), $reserved, function ($candidate) {
+        return (bool)check_name_availability(array('name' => $candidate));
+    });
     $reserved[$name] = true;
     return $name;
+}
+
+/**
+ * The first of name, name[1], name[2] ... that this import has not reserved
+ * and the library has free. Two archive entries with one basename in
+ * different directories ask for the same name; the second's name[n] has to
+ * be free in the library too, or its file overwrites the one stored there.
+ *
+ * @param string   $name      prepared file name
+ * @param array    $reserved  names this import took (name => true)
+ * @param callable $free      name => whether no file or page has it
+ * @return string
+ */
+function pg_di_free_file_name($name, $reserved, $free)
+{
+    $ext  = pathinfo($name, PATHINFO_EXTENSION);
+    $stem = $ext !== '' ? substr($name, 0, -strlen($ext) - 1) : $name;
+    $candidate = $name;
+    for ($i = 1; $i < 10000; $i++) {
+        if (!isset($reserved[$candidate]) && $free($candidate)) return $candidate;
+        $candidate = $stem . '[' . $i . ']' . ($ext !== '' ? '.' . $ext : '');
+    }
+    return $stem . '-' . uniqid() . ($ext !== '' ? '.' . $ext : '');
 }
 
 function pg_di_store_file($path, $content, $ctx)
