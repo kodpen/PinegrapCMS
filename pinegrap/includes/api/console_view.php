@@ -43,6 +43,7 @@ function api_console_group_labels() {
 		'supplier_feeds' => lang('Supplier feeds'),
 		'orders'         => lang('Orders'),
 		'shipments'      => lang('Shipments'),
+		'feedback'       => lang('Satisfaction surveys'),
 		'customers'      => lang('Customers'),
 		'pages'          => lang('Pages'),
 		'folders'        => lang('Folders'),

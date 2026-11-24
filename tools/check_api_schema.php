@@ -75,6 +75,7 @@ $presenters = array(
 	'api_product_group_schema' => 'api_product_group_present',
 	'api_order_schema'         => 'api_order_present',
 	'api_shipment_problem_schema' => 'api_shipment_problem_present',
+	'api_feedback_response_schema' => 'api_feedback_response_present',
 	'api_customer_rhythm_customer_schema' => 'api_customer_rhythm_customer_present',
 	'api_order_document_schema' => 'api_order_document_present',
 	'api_cart_quote_schema'    => 'api_cart_quote_present',
