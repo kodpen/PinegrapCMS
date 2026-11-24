@@ -5,7 +5,7 @@ module: volunteer_programmes, volunteer_programme_setup
 ---
 
 ## Where is it?
-- `view_volunteer_programmes.php` (list, "Add programme" drawer) and `edit_volunteer_programme.php` (head with Open/Pause the programme, tabs Shifts (the default, `core/volunteer-board.md`), Applications, Volunteers, Hours (`core/volunteer-hours.md`), Report (`core/volunteer-report.md`), Set-up; the profile drawer by `?volunteer=`). Script `assets/js/volunteer_programme.js`, plain, no twin. Built in #11136, step VS2 of plan `volunteer-shifts`.
+- `view_volunteer_programmes.php` (list, "Add programme" drawer) and `edit_volunteer_programme.php` (head with Open/Pause the programme, tabs Shifts (the default, `core/volunteer-board.md`), Applications, Volunteers, Hours (`core/volunteer-hours.md`), Report (`core/volunteer-report.md`), Set-up; the profile drawer by `?volunteer=`). Script `assets/js/volunteer_programme.js`, plain, no twin. Built in #11136, step VS2 (`volunteer-shifts.md`).
 - Pure rules and the store reads/writes: `includes/fn/volunteer_programmes.php` (in `functions.php`), tested in `tests/volunteer_programmes_test.php`. The Set-up form: `includes/fn/volunteer_programme_setup.php`, loaded by the screen only.
 - Menu: Contacts › Volunteers, inside the Contacts menu, so a role 3 coordinator needs contact access to see the link; the screens themselves open by membership alone.
 
@@ -32,4 +32,4 @@ module: volunteer_programmes, volunteer_programme_setup
 - Applications: name, applied, skills, documents pill (Valid, Missing, Running out within 30 days; "None needed" when no role needs a document), Approve per row and "Approve selected" (the fill) for ticked rows.
 - Volunteers: state pill, roles whose skills they have, approved hours this year, show-up rate.
 
-Related: docs/memory/core/volunteer-signup.md, docs/memory/core/volunteer-store.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md
+Related: docs/memory/core/volunteer-signup.md, docs/memory/core/volunteer-store.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/volunteer-shifts-decisions.md

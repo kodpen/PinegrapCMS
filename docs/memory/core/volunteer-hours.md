@@ -5,7 +5,7 @@ module: volunteer_hours, volunteer_hours_view, widgets_volunteer_hours
 ---
 
 ## Where is it?
-- Rules and store: `includes/fn/volunteer_hours.php`; panel markup and the poster page: `includes/fn/volunteer_hours_view.php`. Pure parts tested in `tests/volunteer_hours_test.php`. Built in step VS6 of plan `volunteer-shifts`.
+- Rules and store: `includes/fn/volunteer_hours.php`; panel markup and the poster page: `includes/fn/volunteer_hours_view.php`. Pure parts tested in `tests/volunteer_hours_test.php`. Built in step VS6 (`volunteer-shifts.md`).
 - Panel: the "Hours" tab of `edit_volunteer_programme.php` (`view=hours`), for everyone who sees the programme (roles 0-2, its coordinators). `view=poster&place=` prints one place's poster.
 - Phone: root `volunteer_check_in.php`, in `waf_sensitive_scripts()`, no-store, noindex, no referrer, no frame, the volunteer page's throttle (`pg_volunteer_page_throttled()`).
 
@@ -29,4 +29,4 @@ module: volunteer_hours, volunteer_hours_view, widgets_volunteer_hours
 ## How are hours outside a shift entered?
 - On the volunteer's page (signed link and My Account), active volunteers: "Add hours outside a shift" with a day in the last 90 days, hours 0.25-24 (comma or point), a note (`pg_volunteer_outside_input()`), drawn by `includes/fn/widgets_volunteer_hours.php` (a site file, so its native date field is allowed). Posts `action=hours` to `volunteer.php`, which `pg_volunteer_self_act()` hands to `pg_volunteer_outside_add()`; a row with `shift_id` NULL waits for approval.
 
-Related: docs/memory/core/volunteer-signup.md, docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md
+Related: docs/memory/core/volunteer-signup.md, docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/volunteer-shifts-decisions.md
