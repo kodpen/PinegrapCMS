@@ -1872,14 +1872,16 @@ function get_valid_zones_for_destination($country_code, $state_code)
     $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
     // if recipient's state was found in database and it belongs to recipient's country, find what zones contain recipient's state
     if (mysqli_num_rows($result) > 0) {
+        // The state found above, by its id: a state code is unique only within
+        // its country (WA is Washington and Western Australia), so a zone that
+        // lists another country's state with the same code does not match.
+        $state_row = mysqli_fetch_assoc($result);
         $query = "SELECT zone_id
 
                  FROM zones_states_xref
 
-                 LEFT JOIN states ON states.id = zones_states_xref.state_id
-
-                 WHERE states.code = ?";
-        $result = db_q($query, array((string) $state_code)) or output_error(lang('Query failed.'));
+                 WHERE state_id = ?";
+        $result = db_q($query, array((string) $state_row['id'])) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             $zones_for_state[] = $row['zone_id'];
         }
@@ -1946,13 +1948,13 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
             $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
             // if recipient's state was found in database and it belongs to recipient's country, check to see if this product can be shipped to recipient's state
             if (mysqli_num_rows($result) > 0) {
-                // determine if recipient's state is in this zone
+                // determine if recipient's state is in this zone, by the id of
+                // the state found above (a state code is unique only per country)
+                $state_row = mysqli_fetch_assoc($result);
                 $query = "SELECT zone_id FROM zones_states_xref
 
-                         LEFT JOIN states ON zones_states_xref.state_id = states.id
-
-                         WHERE (zone_id = ?) AND (states.code = ?)";
-                $result = db_q($query, array((string) $zone_id, (string) $state_code)) or output_error(lang('Query failed.'));
+                         WHERE (zone_id = ?) AND (state_id = ?)";
+                $result = db_q($query, array((string) $zone_id, (string) $state_row['id'])) or output_error(lang('Query failed.'));
                 // if result was found, then product can be shipped to recipient's state
                 if (mysqli_num_rows($result) > 0) {
                     $valid_product = true;
