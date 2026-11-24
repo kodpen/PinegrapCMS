@@ -1101,10 +1101,12 @@ function pg_proto_comments_list_of_style($style_id)
 
     $rows = db_items("SELECT * FROM prototype_comments WHERE style_id = '" . (int) $style_id . "' ORDER BY id LIMIT 2000");
     $rows = is_array($rows) ? $rows : array();
+    // A link asking approval adds its verdicts to the page groups.
+    $verdicts = pg_proto_verdicts_of_style($style_id);
     $ids = array();
     $link_ids = array();
 
-    foreach ($rows as $row) {
+    foreach (array_merge($rows, $verdicts) as $row) {
         $ids[(int) $row['page_id']] = (int) $row['page_id'];
         $link_ids[(int) $row['link_id']] = (int) $row['link_id'];
     }
@@ -1129,7 +1131,19 @@ function pg_proto_comments_list_of_style($style_id)
         }
     }
 
-    return pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages, $hints);
+    $groups = pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages, $hints);
+
+    if (!$verdicts) {
+        return $groups;
+    }
+
+    $verdict_pages = array();
+
+    foreach ($verdicts as $row) {
+        $verdict_pages[(int) $row['page_id']] = (int) $row['page_id'];
+    }
+
+    return pg_proto_comment_list_verdicts($groups, $verdicts, $pages, $hints, pg_proto_draft_fingerprints(array_values($verdict_pages)));
 }
 
 /**
@@ -1160,7 +1174,8 @@ function pg_proto_comments_style_stamp($style_id)
         return 0;
     }
 
-    return (int) db_value($sql);
+    // Both ids only grow, so their sum moves with a new comment or verdict.
+    return (int) db_value($sql) + pg_proto_verdicts_style_stamp($style_id);
 }
 
 /**

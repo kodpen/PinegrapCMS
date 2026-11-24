@@ -797,6 +797,11 @@ if ($pg_proto_comment_view !== null) {
     $pg_proto_comment_view['review'] = pg_proto_viewer_review($pg_proto_link, $pg_proto_start['id'], $pg_proto_page_label);
 }
 
+// The page list marks each page with this link's review of it.
+$pg_proto_review_states = (($pg_proto_comment_view !== null) && !empty($pg_proto_comment_view['review']))
+    ? pg_proto_link_review_states($pg_proto_link, array_map(function ($page) { return (int) $page['id']; }, $pg_proto_pages))
+    : array();
+
 header('Content-Type: text/html; charset=utf-8');
 
 echo pg_proto_shell_html(array(
@@ -819,4 +824,5 @@ echo pg_proto_shell_html(array(
     // A link with "Allow comments": the comment mode, with this page's
     // comments of this link.
     'comments' => $pg_proto_comment_view,
+    'review_states' => $pg_proto_review_states,
 ));

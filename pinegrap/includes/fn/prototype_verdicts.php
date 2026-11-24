@@ -360,15 +360,17 @@ function pg_proto_verdict_standing($link_id, $page_id)
  * The review box's settings for the viewer of a link asking approval: the
  * page's name, the verdict that stands (pg_proto_verdict_public()) or null,
  * the limits and the words. Null for a link asking nothing. Pure but for
- * lang().
+ * lang(). `changes` is what "Show what changed" draws for a verdict given to
+ * an older version (pg_proto_viewer_changes()), null otherwise.
  *
  * @param array      $link        prototype_links row
  * @param string     $page_name
  * @param array|null $standing    the standing verdict row
  * @param string     $fingerprint the draft's fingerprint now
+ * @param array|null $changes     marks, removed
  * @return array|null
  */
-function pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint)
+function pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint, $changes = null)
 {
     $approval = pg_proto_link_approval($link);
 
@@ -381,6 +383,7 @@ function pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint)
     return array(
         'page' => (string) $page_name,
         'verdict' => is_array($standing) ? pg_proto_verdict_public($standing, $fingerprint) : null,
+        'changes' => is_array($changes) ? $changes : null,
         'nameMax' => (int) $limits['name'],
         'noteMax' => (int) $limits['text'],
         'strings' => array(
@@ -394,6 +397,10 @@ function pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint)
             'approved' => lang('You approved this page on {date}'),
             'requested' => lang('You asked for changes on {date}'),
             'changed' => lang('Changed since your last review'),
+            'show' => lang('Show what changed'),
+            'hide' => lang('Hide what changed'),
+            'removed' => lang('Not on the page any more'),
+            'changesHint' => lang('Outlined: changed since your last review.'),
         ),
     );
 }
@@ -413,8 +420,186 @@ function pg_proto_viewer_review($link, $page_id, $page_name)
         return null;
     }
 
-    return pg_proto_viewer_review_data($link, $page_name, pg_proto_verdict_standing((int) $link['id'], (int) $page_id),
-        pg_proto_draft_fingerprint_of_row(pg_proto_verdict_draft_row($page_id)));
+    $standing = pg_proto_verdict_standing((int) $link['id'], (int) $page_id);
+    $draft = pg_proto_verdict_draft_row($page_id);
+    $fingerprint = pg_proto_draft_fingerprint_of_row($draft);
+    $changes = null;
+
+    // Round two: the nodes changed since the verdict, from the node marks
+    // kept with it and the draft's tree now.
+    if (is_array($standing) && is_array($draft)) {
+        $state = pg_proto_verdict_state($standing, $fingerprint);
+        $changes = pg_proto_viewer_changes(pg_proto_verdict_nodes($standing),
+            pg_proto_node_fingerprints(isset($draft['page_tree_json']) ? (string) $draft['page_tree_json'] : ''), $state['older']);
+    }
+
+    return pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint, $changes);
+}
+
+/**
+ * The draft fingerprints of the given pages, read from their rows: page id
+ * => fingerprint. A page with no row is left out.
+ *
+ * @param int[] $page_ids
+ * @return array
+ */
+function pg_proto_draft_fingerprints($page_ids)
+{
+    $ids = array();
+
+    foreach ((array) $page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM page WHERE page_id IN (" . implode(',', $ids) . ")");
+    $out = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $out[(int) $row['page_id']] = pg_proto_draft_fingerprint_of_row($row);
+    }
+
+    return $out;
+}
+
+/**
+ * Each draft page's mark for one link asking approval
+ * (pg_proto_review_page_states()), for the given draft pages; empty for a
+ * link asking nothing.
+ *
+ * @param array $link     prototype_links row
+ * @param int[] $page_ids the design's draft pages
+ * @return array page id => state
+ */
+function pg_proto_link_review_states($link, $page_ids)
+{
+    if (!is_array($link) || !pg_proto_link_asks_approval($link) || !$page_ids) {
+        return array();
+    }
+
+    $fingerprints = array();
+    $found = pg_proto_draft_fingerprints($page_ids);
+
+    // Pages keep the order given; one whose row is gone has no fingerprint.
+    foreach ((array) $page_ids as $id) {
+        $fingerprints[(int) $id] = isset($found[(int) $id]) ? $found[(int) $id] : '';
+    }
+
+    return pg_proto_review_page_states(pg_proto_verdicts_of_link((int) $link['id']), $fingerprints);
+}
+
+/**
+ * Every verdict of a design (idx_style), oldest first.
+ *
+ * @param int $style_id
+ * @return array[]
+ */
+function pg_proto_verdicts_of_style($style_id)
+{
+    if (((int) $style_id <= 0) || !pg_proto_approval_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_verdicts WHERE style_id = '" . (int) $style_id . "' ORDER BY id LIMIT 5000");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * The newest verdict id of a design, 0 for none: added to the comments'
+ * stamp, so the designer's list is fetched again when a verdict comes.
+ *
+ * @param int $style_id
+ * @return int
+ */
+function pg_proto_verdicts_style_stamp($style_id)
+{
+    if (((int) $style_id <= 0) || !pg_proto_approval_ready()) {
+        return 0;
+    }
+
+    return (int) db_value('SELECT MAX(id) FROM prototype_verdicts WHERE style_id = ' . (int) $style_id);
+}
+
+/**
+ * The designer's Comments list with the verdicts: each page group gets
+ * `verdicts`, the standing one of each link (pg_proto_verdict_public() with
+ * link_id and link_hint), in link order. A page with verdicts and no
+ * comment gets a group of its own. Groups are ordered as $names (the page
+ * names in their order); a page without a name (deleted) comes last. Pure.
+ *
+ * @param array[] $groups       pg_proto_comment_list_pages()
+ * @param array[] $rows         prototype_verdicts rows of the design
+ * @param array   $names        page id => name, in the list's order
+ * @param array   $hints        link id => token hint
+ * @param array   $fingerprints page id => the draft's fingerprint now
+ * @return array[]
+ */
+function pg_proto_comment_list_verdicts($groups, $rows, $names, $hints, $fingerprints)
+{
+    $by_link = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && isset($row['link_id'])) {
+            $by_link[(int) $row['link_id']][] = $row;
+        }
+    }
+
+    ksort($by_link);
+    $verdicts = array();
+
+    foreach ($by_link as $link_id => $link_rows) {
+        foreach (pg_proto_verdicts_newest($link_rows) as $page_id => $row) {
+            $item = pg_proto_verdict_public($row, isset($fingerprints[$page_id]) ? (string) $fingerprints[$page_id] : '');
+            $item['link_id'] = (int) $link_id;
+            $item['link_hint'] = isset($hints[$link_id]) ? (string) $hints[$link_id] : '';
+            $verdicts[(int) $page_id][] = $item;
+        }
+    }
+
+    $by_page = array();
+
+    foreach ((array) $groups as $group) {
+        $group['verdicts'] = array();
+        $by_page[(int) $group['page_id']] = $group;
+    }
+
+    foreach ($verdicts as $page_id => $list) {
+        if (!isset($by_page[$page_id])) {
+            $by_page[$page_id] = array(
+                'page_id' => $page_id,
+                'name' => isset($names[$page_id]) ? (string) $names[$page_id] : '',
+                'open' => 0,
+                'resolved' => 0,
+                'links' => 0,
+                'threads' => array(),
+            );
+        }
+
+        $by_page[$page_id]['verdicts'] = $list;
+    }
+
+    $out = array();
+
+    foreach ((array) $names as $page_id => $name) {
+        if (isset($by_page[(int) $page_id])) {
+            $out[] = $by_page[(int) $page_id];
+            unset($by_page[(int) $page_id]);
+        }
+    }
+
+    ksort($by_page);
+
+    foreach ($by_page as $group) {
+        $out[] = $group;
+    }
+
+    return $out;
 }
 
 /**

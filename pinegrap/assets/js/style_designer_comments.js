@@ -7,7 +7,9 @@
  * comment names inside its node, and the Comments list by page with its open
  * and resolved threads: Answer, Resolve and Reopen, Make a task (with the
  * Workspace on), Delete. A thread whose node is no longer on its page stays
- * in the list and says so. The list is the Comments tab of the Prototype
+ * in the list and says so. A link asking approval adds its verdict to each
+ * page group's head, and a Request changes note as the page's first thread,
+ * without a pin. The list is the Comments tab of the Prototype
  * view's side panel; its button sits in the canvas bar's Prototype mode
  * (the core draws both, _sdProtoCommentsMark()).
  *
@@ -75,6 +77,15 @@ StyleDesigner.definePart('comments', function (K) {
             return new Date(unix * 1000).toLocaleString(document.documentElement.lang || undefined, { dateStyle: 'medium', timeStyle: 'short' });
         } catch (e) {
             return new Date(unix * 1000).toLocaleString();
+        }
+    }
+
+    function whenDay(unix) {
+        if (!(unix > 0)) return '';
+        try {
+            return new Date(unix * 1000).toLocaleDateString(document.documentElement.lang || undefined, { dateStyle: 'medium' });
+        } catch (e) {
+            return new Date(unix * 1000).toLocaleDateString();
         }
     }
 
@@ -327,6 +338,34 @@ StyleDesigner.definePart('comments', function (K) {
             '</div></li>';
     }
 
+    // A link asking approval: its standing verdict on the page, in the
+    // page group's head (the link's hint, the verdict, the day, and
+    // "older version" when the draft moved since).
+    function verdictChip(v) {
+        var approved = v.verdict === 'approved';
+        var label = approved ? _sdT('Approved') : _sdT('Changes requested');
+        var bits = [label, whenDay(v.created_at)];
+        if (v.older) bits.push(_sdT('older version'));
+        return '<span class="sd-pc-verdict ' + (approved ? 'is-approved' : 'is-changes') + (v.older ? ' is-older' : '') + '" title="' + esc(v.name) + '">' +
+            '<span class="bi ' + (approved ? 'bi-patch-check' : 'bi-pencil') + '" aria-hidden="true"></span>' +
+            (v.link_hint ? '<code>' + esc(v.link_hint) + '…</code>' : '') + esc(bits.join(' · ')) + '</span>';
+    }
+
+    // A Request changes note is the page's first thread, without a pin: it
+    // is not tied to a spot on the page.
+    function requestHtml(v) {
+        return '<li class="sd-pc-thread sd-pc-request">' +
+            '<span class="sd-pc-num" aria-hidden="true"><span class="bi bi-pencil"></span></span>' +
+            '<div class="sd-pc-body">' +
+                '<div class="sd-pc-meta"><span class="sd-pc-name">' + esc(v.name) + '</span>' +
+                    '<span class="badge theme-warning">' + esc(_sdT('Changes requested')) + '</span>' +
+                    (v.link_hint ? '<span class="sd-pc-link">' + esc(v.link_hint) + '…</span>' : '') +
+                    (v.older ? '<span class="sd-pc-link">' + esc(_sdT('older version')) + '</span>' : '') +
+                    '<time class="sd-pc-time">' + esc(when(v.created_at)) + '</time></div>' +
+                '<p class="sd-pc-text">' + esc(v.note) + '</p>' +
+            '</div></li>';
+    }
+
     function drawPanel() {
         if (!S.panel || !S.seen_tab) return;
         var open = 0, resolved = 0;
@@ -334,12 +373,16 @@ StyleDesigner.definePart('comments', function (K) {
         var wantResolved = S.filter === 'resolved';
         var groups = S.pages.map(function (p) {
             var list = p.threads.filter(function (t) { return (t.resolved_at > 0) === wantResolved; });
-            if (!list.length) return '';
+            var verdicts = Array.isArray(p.verdicts) ? p.verdicts : [];
+            var requests = wantResolved ? [] : verdicts.filter(function (v) { return v.verdict === 'changes_requested' && v.note; });
+            if (!list.length && !verdicts.length) return '';
             var tab = pageById(p.page_id);
+            var items = requests.map(requestHtml).join('') + list.map(function (t) { return threadHtml(t, p); }).join('');
             return '<section class="sd-pc-page">' +
                 '<h3 class="sd-pc-page-name">' + (p.name !== '' ? esc(p.name) : esc(_sdT('A deleted page'))) +
                     (tab ? '' : '<span class="sd-pc-page-note">' + esc(_sdT('not open as a tab')) + '</span>') + '</h3>' +
-                '<ol class="sd-pc-threads">' + list.map(function (t) { return threadHtml(t, p); }).join('') + '</ol>' +
+                (verdicts.length ? '<div class="sd-pc-verdicts">' + verdicts.map(verdictChip).join('') + '</div>' : '') +
+                (items ? '<ol class="sd-pc-threads">' + items + '</ol>' : '') +
             '</section>';
         }).join('');
         var scroll = S.panel.querySelector('.sd-pc-list');

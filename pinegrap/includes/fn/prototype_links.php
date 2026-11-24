@@ -2004,8 +2004,25 @@ function pg_proto_links_panel($sub, $request, $user)
 
     $links = pg_proto_links_panel_rows($rows, $pages, $now);
 
+    $fingerprints = null;
+
     foreach ($links as $i => $link) {
         $links[$i]['comment_count'] = isset($counts[$link['id']]) ? $counts[$link['id']] : 0;
+
+        // A link asking approval: "Approved n of m pages" over the design's
+        // drafts as they are now.
+        if (!empty($link['approval']) && pg_proto_approval_ready()) {
+            if ($fingerprints === null) {
+                $found = pg_proto_draft_fingerprints(array_map(function ($page) { return (int) $page['id']; }, $pages));
+                $fingerprints = array();
+
+                foreach ($pages as $page) {
+                    $fingerprints[(int) $page['id']] = isset($found[(int) $page['id']]) ? $found[(int) $page['id']] : '';
+                }
+            }
+
+            $links[$i]['review'] = pg_proto_review_tally(pg_proto_review_page_states(pg_proto_verdicts_of_link((int) $link['id']), $fingerprints));
+        }
     }
 
     return array(
