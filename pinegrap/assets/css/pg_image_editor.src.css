@@ -5120,6 +5120,13 @@ button.pgie-sndfile:hover {
   cursor: pointer;
 }
 
+/* A name with no space in it (a table or channel named q3_revenue_by_region)
+   breaks inside the row rather than widening it past a phone's screen. */
+.pgie .pgie-datatable .pgie-ptext {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .pgie .pgie-datatable:hover {
   background: var(--pgie-hover);
 }

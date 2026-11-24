@@ -479,15 +479,44 @@ function ws_canvas_tables_js_strings()
 }
 
 /**
+ * A cell as a data layer draws it: what the table's screen shows rather
+ * than what the row stores. A money cell is its figure (1250 minor units
+ * with two decimals is 12.5), a status its choice's label, a person or a
+ * row link its name, a checkbox Yes or No, a lookup or rollup as the column
+ * it shows; a text, number, formula, date or list cell stays as stored, so
+ * a list keeps its items and a date sorts. Pure but for lang().
+ *
+ * @param array $column ws_wtable_columns() item
+ * @param mixed $value  the stored cell
+ * @param array $people user id => brief (name), for person and link cells
+ * @return mixed
+ */
+function ws_canvas_data_cell($column, $value, $people = array())
+{
+    $type = (string) ($column['type'] ?? '');
+
+    if (in_array($type, array('', 'text', 'number', 'formula', 'date', 'list'), true) || !function_exists('ws_wtable_export_cell')) {
+        return $value;
+    }
+
+    $out = ws_wtable_export_cell($column, $value, $people);
+
+    // A lookup of a date column comes back as the workbook's date.
+    return is_array($out) ? (string) ($out['date'] ?? '') : $out;
+}
+
+/**
  * A table's rows as a data layer of the Design Canvas reads them: each
- * column by its name, each row's cells by column id, in the table's order,
- * 5000 rows at most (pg_image_draw_data_max()). Pure.
+ * column by its name, each row's cells by column id as the table's screen
+ * shows them (ws_canvas_data_cell()), in the table's order, 5000 rows at
+ * most (pg_image_draw_data_max()). Pure but for lang().
  *
  * @param array $columns ws_wtable_columns()
  * @param array $rows    ws_wtable_rows(), lookups filled for the reader
+ * @param array $people  user id => brief (name), for person and link cells
  * @return array columns {id: {name}}, rows [{cells}]
  */
-function ws_canvas_data_rows_shape($columns, $rows)
+function ws_canvas_data_rows_shape($columns, $rows, $people = array())
 {
     $out = array('columns' => array(), 'rows' => array());
 
@@ -496,7 +525,15 @@ function ws_canvas_data_rows_shape($columns, $rows)
     }
 
     foreach (array_slice(array_values((array) $rows), 0, 5000) as $row) {
-        $out['rows'][] = array('cells' => (is_array($row) && is_array($row['cells'] ?? null)) ? $row['cells'] : array());
+        $cells = (is_array($row) && is_array($row['cells'] ?? null)) ? $row['cells'] : array();
+
+        foreach ($cells as $id => $value) {
+            if (isset($columns[$id]) && is_array($columns[$id])) {
+                $cells[$id] = ws_canvas_data_cell($columns[$id], $value, $people);
+            }
+        }
+
+        $out['rows'][] = array('cells' => $cells);
     }
 
     return $out;
@@ -523,9 +560,34 @@ function ws_canvas_data_rows($viewer, $table_id)
     }
 
     $columns = ws_wtable_columns((int) $table['id']);
-    $rows = array_slice(ws_wtable_rows((int) $table['id'], $columns), 0, 5000);
+    $rows = ws_wtable_joined_fill($viewer, $columns, array_slice(ws_wtable_rows((int) $table['id'], $columns), 0, 5000));
 
-    return ws_canvas_data_rows_shape($columns, ws_wtable_joined_fill($viewer, $columns, $rows));
+    return ws_canvas_data_rows_shape($columns, $rows, ws_canvas_data_people($viewer, $columns, $rows));
+}
+
+/**
+ * The names a data layer's person, row link and lookup cells are written
+ * with, as the table's Excel download gathers them.
+ *
+ * @param array $viewer
+ * @param array $columns ws_wtable_columns()
+ * @param array $rows    ws_wtable_rows(), lookups filled for the reader
+ * @return array user id => brief (name)
+ */
+function ws_canvas_data_people($viewer, $columns, $rows)
+{
+    $targets = ws_wtable_joined_targets($viewer, $columns);
+    $ids = ws_wtable_lookup_person_ids($targets, $rows);
+
+    foreach ($rows as $row) {
+        foreach ($columns as $id => $column) {
+            if ((($column['type'] ?? '') === 'person') && !empty($row['cells'][$id])) {
+                $ids[] = (int) $row['cells'][$id];
+            }
+        }
+    }
+
+    return ws_wtable_people_with_lookups(ws_wtable_people_with_links(empty($ids) ? array() : ws_people(array_unique($ids)), ws_wtable_link_texts($viewer, $columns, $rows)), $targets);
 }
 
 /**

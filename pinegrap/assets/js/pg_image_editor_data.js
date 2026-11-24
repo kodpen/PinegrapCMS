@@ -419,6 +419,13 @@
 
             kinds = self.dataPick.show ? M.dataShowKinds(self.dataPick.show, read.columns, read.rows) : M.dataFits(read.columns, read.rows);
 
+            // A table whose every column was deleted fits no kind, not even
+            // a plain table.
+            if (!M.dataColumns(read.columns, read.rows).length) {
+                cards.appendChild(el('p', { class: 'pgie-note', text: t('dataNoColumns') }));
+                return;
+            }
+
             if ((self.dataPick.show !== 'table') && (M.dataFits(read.columns, read.rows).length === 1)) {
                 box.insertBefore(el('p', { class: 'pgie-note', text: t('dataOnlyTable') }), cards);
             }
@@ -551,7 +558,7 @@
     }
 
     Editor.prototype.dataGroup_data = function (body, l, d, read, set) {
-        var self = this, x = this.dataTableOf(d.table), cols, nums, cap, kinds;
+        var self = this, x = this.dataTableOf(d.table), cols, nums, cap, kinds, has, live;
 
         body.appendChild(section(t('dataTable'), el('div', { class: 'pgie-datatablerow' }, [
             el('span', { text: x ? String(x.name) : '…' }),
@@ -565,24 +572,39 @@
 
         cols = M.dataColumns(read.columns, read.rows);
         nums = cols.filter(function (o) { return (d.kind === 'table') || o.number; });
-        body.appendChild(choose(t('dataLabel'), cols.map(function (o) { return [o.id, o.name]; }), d.label, function (v) {
-            set({ label: v, values: d.values.filter(function (id) { return id !== v; }) });
+        // A column deleted from the table since the layer was made: the
+        // panel says so, a blank stands for a gone label (so picking any
+        // column is a change), and a gone value column is dropped by the
+        // next change instead of hiding behind the checkboxes.
+        has = function (id) { return cols.some(function (o) { return o.id === id; }); };
+        live = d.values.filter(has);
+
+        if (!has(d.label) || (live.length < d.values.length)) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('dataColumnGone') }));
+        }
+
+        body.appendChild(choose(t('dataLabel'), (has(d.label) ? [] : [['', '']]).concat(cols.map(function (o) { return [o.id, o.name]; })), has(d.label) ? d.label : '', function (v) {
+            if (v !== '') {
+                set({ label: v, values: live.filter(function (id) { return id !== v; }) });
+            }
         }));
 
         if (d.group !== 'count') {
             if (d.kind === 'donut') {
-                body.appendChild(choose(t('dataValues'), nums.filter(function (o) { return o.id !== d.label; }).map(function (o) { return [o.id, o.name]; }), d.values[0], function (v) {
-                    set({ values: [v] });
+                body.appendChild(choose(t('dataValues'), (live.length ? [] : [['', '']]).concat(nums.filter(function (o) { return o.id !== d.label; }).map(function (o) { return [o.id, o.name]; })), live.length ? live[0] : '', function (v) {
+                    if (v !== '') {
+                        set({ values: [v] });
+                    }
                 }));
             } else {
                 body.appendChild(section(t('dataValues'), el('div', { class: 'pgie-datavalues' }, nums.filter(function (o) { return o.id !== d.label; }).map(function (o) {
-                    var on = d.values.indexOf(o.id) >= 0, box = el('input', { type: 'checkbox' });
+                    var on = live.indexOf(o.id) >= 0, box = el('input', { type: 'checkbox' });
 
                     box.checked = on;
                     // Five at most; a chart keeps one.
-                    box.disabled = (!on && (d.values.length >= M.DATA_MAX.values)) || (on && (d.kind !== 'table') && (d.values.length === 1));
+                    box.disabled = (!on && (live.length >= M.DATA_MAX.values)) || (on && (d.kind !== 'table') && (live.length === 1));
                     box.addEventListener('change', function () {
-                        set({ values: box.checked ? d.values.concat([o.id]) : d.values.filter(function (id) { return id !== o.id; }) });
+                        set({ values: box.checked ? live.concat([o.id]) : live.filter(function (id) { return id !== o.id; }) });
                     });
 
                     return el('label', { class: 'pgie-check' }, [box, el('span', { text: o.name })]);
