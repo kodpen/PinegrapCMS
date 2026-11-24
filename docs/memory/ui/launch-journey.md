@@ -6,7 +6,7 @@ module: launch_journey
 
 ## What is it?
 - A new site's path on the new dashboard: "What is this site for?" picks and orders the steps, each step's state is read from the setting that decides it, "Do it" opens its screen, "Ready to go live?" runs the go-live check, then a First week card. A new team member gets Start here and hint lines; the agency gets a signed summary page for its customer; agents read it all through `GET /launch`.
-- Built 2026.11.0: SJ1a #11160, SJ1b #11200, SJ2 #11292, SJ3 #11312, SJ4 #11344, SJ5 #11314, SJ6 #11337.
+- Built 2026.11.0: SJ1a #11160, SJ1b #11200, SJ2 #11292, SJ3 #11312, SJ3b #11379 (the go-live check's broken internal links warning), SJ4 #11344, SJ5 #11314, SJ6 #11337.
 
 ## What binds it?
 - Owner (2026-11-20): a set-up path by purpose, steps marked by themselves, one click, the go-live check, first week, team path, agency summary, API and MCP (poll 204, `workflow/decisions-made-product-93.md`).
@@ -19,13 +19,12 @@ module: launch_journey
 ## Which file holds which part?
 - Purposes, steps, rules, blocker or warning, payment live per driver, the first week: `launch-journey-catalogue.md`.
 - "Set up your site" card, stored row, facts reader, purpose dialog, Site Settings › General field: `launch-journey-setup-card.md`.
-- "Ready to go live?", the Go-live check dialog, "Go live", Site Log lines, `live_at`: `launch-journey-go-live.md`.
+- "Ready to go live?", the Go-live check dialog and its broken internal links warning, "Go live", Site Log lines, `live_at`: `launch-journey-go-live.md`.
 - First week, Start here, hint lines: `launch-journey-first-week-path.md`.
 - "Agency summary" drawer and `launch_summary.php`: `launch-summary-agency.md`; its table: `launch-summary-lines.md`.
 - `GET /launch`, MCP `launch_read`, the guide's start topic: `api/api-launch-journey.md`.
 
 ## What is not built?
-- The go-live check's warning "internal broken links" (`seo_issue` `link_broken_internal`) was asked but has no fact or rule; asked of the architect in the close-out PR.
 - Left out on purpose, each a later yes: a domain or DNS ownership check, an external link checker, a real invitation flow (accept, expire), uploads by the customer on the summary page, AI-written set-up advice.
 
 ## How is a step added?
