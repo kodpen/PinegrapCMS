@@ -21546,6 +21546,11 @@ button.ws-file-name {
   border-bottom: 1px solid var(--pg-border-color-translucent);
   background: var(--pg-bg-1);
 }
+/* The paragraph style choice in a document's format bar. */
+.office-format .office-kind {
+  width: auto;
+  max-width: 12rem;
+}
 /* The tools over a workbook's grid: find in the workbook, the sheet's sort
    and filter with Clear, Download as CSV at the end. Wraps on a phone. */
 .office-tools {
@@ -21714,6 +21719,21 @@ button.ws-file-name {
 .office-doc .office-lvl-2 { margin-left: 2.4rem; }
 .office-doc .office-lvl-3 { margin-left: 3.6rem; }
 .office-doc .office-lvl-4, .office-doc .office-lvl-5, .office-doc .office-lvl-6, .office-doc .office-lvl-7, .office-doc .office-lvl-8 { margin-left: 4.8rem; }
+/* A paragraph given another kind, shown so until the save draws it again:
+   the heading sizes above, a list's mark before it, a list item's own
+   mark taken off. */
+.office-doc [data-kind] {
+  font-size: 1em;
+  font-weight: 400;
+}
+.office-doc li[data-kind] {
+  list-style: none;
+}
+.office-doc [data-kind="heading1"] { font-size: 1.5em; font-weight: 650; }
+.office-doc [data-kind="heading2"] { font-size: 1.25em; font-weight: 650; }
+.office-doc [data-kind="heading3"] { font-size: 1.1em; font-weight: 650; }
+.office-doc [data-kind="bullet"]::before { content: "\2022\00a0\00a0"; }
+.office-doc [data-kind="number"]::before { content: "1.\00a0"; }
 .office-doc .office-table {
   border-collapse: collapse;
   margin: .6rem 0;
