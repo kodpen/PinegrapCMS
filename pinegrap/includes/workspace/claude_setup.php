@@ -310,3 +310,21 @@ function ws_claude_routine_input($source, $config)
         'summary_channel' => 0,
     );
 }
+
+/**
+ * What a Save on Claude's page does: the input ws_claude_settings_save()
+ * takes, and whether it is written at all. A Save that changes neither the
+ * address nor the token writes nothing, as a write clears the routine's
+ * last error and the wait it was given (the row's save keeps the same
+ * rule). Pure.
+ *
+ * @param array $source $_POST
+ * @param array $config ws_claude_config()
+ * @return array input (ws_claude_routine_input()), write (bool)
+ */
+function ws_claude_routine_decision($source, $config)
+{
+    $input = ws_claude_routine_input($source, $config);
+
+    return array('input' => $input, 'write' => ws_claude_settings_changed($input, (array) $config + array('enabled' => false, 'app_id' => 0, 'routine_url' => ''), null));
+}

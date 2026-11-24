@@ -34,3 +34,24 @@ function test_connections_merges_claude_page_keeps_application_unchecked()
 	$none = ws_claude_settings_input(array('ws_claude_app_id' => '0'), 'ws_');
 	pg_assert_false(ws_claude_settings_app_checked($none), 'no application: nothing to check');
 }
+
+// A Save on Claude's page that changes nothing writes nothing: a write
+// clears the routine's last error and the wait it was given.
+function test_connections_merges_claude_page_unchanged_save_writes_nothing()
+{
+	$url = 'https://api.anthropic.com/v1/claude_code/routines/trig_1/fire';
+	$config = array('enabled' => true, 'app_id' => 41, 'routine_url' => $url, 'token_set' => true);
+
+	$same = ws_claude_routine_decision(array('claude_routine_url' => ' ' . $url . ' ', 'claude_token' => ''), $config);
+	pg_assert_false($same['write'], 'the same address and no token: nothing written');
+	pg_assert_same($url, $same['input']['routine_url'], 'the input still carries the address');
+
+	$other = ws_claude_routine_decision(array('claude_routine_url' => 'https://api.anthropic.com/v1/claude_code/routines/trig_2/fire'), $config);
+	pg_assert_true($other['write'], 'a new address is written');
+
+	$token = ws_claude_routine_decision(array('claude_routine_url' => $url, 'claude_token' => 'tok'), $config);
+	pg_assert_true($token['write'], 'a new token is written');
+
+	$clear = ws_claude_routine_decision(array('claude_routine_url' => $url, 'claude_token_clear' => '1'), $config);
+	pg_assert_true($clear['write'], 'removing the token is written');
+}

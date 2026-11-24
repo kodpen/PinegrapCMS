@@ -811,10 +811,12 @@ if ($_POST) {
 	// Claude's routine address and token, saved on its page under the gate
 	// of the Assistants and agents row they came from. The token is sealed
 	// and never drawn back; "Save and try" then starts the routine once,
-	// as the row's Try does.
+	// as the row's Try does. A Save that changes nothing writes nothing, as
+	// a write clears the routine's last error and its wait.
 	if (($action === 'claude_save') && connections_claude_may_manage($user)) {
 
-		$claude_saved = ws_claude_settings_save(ws_claude_routine_input($_POST, ws_claude_config(true)));
+		$claude_decision = ws_claude_routine_decision($_POST, ws_claude_config(true));
+		$claude_saved = $claude_decision['write'] ? ws_claude_settings_save($claude_decision['input']) : array('refused' => array());
 
 		foreach ($claude_saved['refused'] as $claude_field => $claude_sentence) {
 			$liveform->mark_error('claude_' . $claude_field, h($claude_sentence));
@@ -822,8 +824,10 @@ if ($_POST) {
 
 		if (!$liveform->check_form_errors()) {
 
-			$liveform->add_notice(lang('The Claude settings were saved.'));
-			log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Claude')), $_SESSION['sessionusername']);
+			if ($claude_decision['write']) {
+				$liveform->add_notice(lang('The Claude settings were saved.'));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Claude')), $_SESSION['sessionusername']);
+			}
 
 			if (!empty($_POST['submit_try'])) {
 
