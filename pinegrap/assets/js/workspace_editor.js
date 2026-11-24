@@ -93,7 +93,9 @@
         node.type = 'button';
 
         if (iconName) {
-            node.appendChild(icon(iconName, label ? 'me-1' : ''));
+            // A button of the look's recipes (.pg-button, .pg-icon-button) spaces
+            // its icon with its own gap; an older one with a margin.
+            node.appendChild(icon(iconName, (label && !/(^| )pg-/.test(className)) ? 'me-1' : ''));
         }
 
         if (label) {
@@ -3396,12 +3398,12 @@
         line.appendChild(input);
         form.appendChild(line);
 
-        var save = button('btn btn-sm btn-solid theme-primary', '', 'bi-check2', t('link_save'));
+        var save = button('pg-button pg-button-fill pg-button-sm', '', 'bi-check2', t('link_save'));
         save.type = 'submit';
         line.appendChild(save);
 
         if (anchor) {
-            var open = button('btn btn-sm btn-text theme-secondary', '', 'bi-box-arrow-up-right', t('link_open'));
+            var open = button('pg-icon-button pg-icon-button-sm', '', 'bi-box-arrow-up-right', t('link_open'));
             open.addEventListener('click', function () {
                 var url = cleanUrl(anchor.getAttribute('href'));
 
@@ -3411,7 +3413,7 @@
             });
             line.appendChild(open);
 
-            var unlink = button('btn btn-sm btn-text theme-secondary', '', 'bi-link', t('link_remove'));
+            var unlink = button('pg-icon-button pg-icon-button-sm', '', 'bi-link', t('link_remove'));
             unlink.addEventListener('click', function () {
                 changed(surface, function () {
                     if (!anchor.parentNode) {
@@ -3640,7 +3642,7 @@
         };
 
         var head = el('div', 'd-flex align-items-center justify-content-between gap-3 mb-1');
-        var close = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('keys_close'));
+        var close = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('keys_close'));
 
         head.appendChild(el('strong', 'small', t('keys_title')));
         close.addEventListener('click', back);
@@ -3881,13 +3883,13 @@
         var line = el('div', 'd-flex align-items-center gap-1');
         var query = el('input', tipFieldClass(touchScreen()));
         var count = el('span', 'small fg-3 text-nowrap ws-find-count');
-        var prev = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-up', t('find_prev'));
-        var next = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-down', t('find_next'));
-        var close = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('find_close'));
+        var prev = button('pg-icon-button pg-icon-button-sm', '', 'bi-chevron-up', t('find_prev'));
+        var next = button('pg-icon-button pg-icon-button-sm', '', 'bi-chevron-down', t('find_next'));
+        var close = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('find_close'));
         var swap = el('div', 'd-flex align-items-center gap-1');
         var replace = el('input', tipFieldClass(touchScreen()));
-        var one = button('btn btn-sm btn-outline theme-secondary', t('find_replace'), '', '');
-        var all = button('btn btn-sm btn-outline theme-secondary', t('find_replace_all'), '', '');
+        var one = button('pg-button pg-button-quiet pg-button-sm', t('find_replace'), '', '');
+        var all = button('pg-button pg-button-quiet pg-button-sm', t('find_replace_all'), '', '');
         var caseField = el('div', 'form-field small mb-0');
         var caseBox = el('input', 'check');
         var caseLabel = el('label', '', t('find_case'));
@@ -6120,8 +6122,8 @@
 
     /**
      * A row of tools for a writing box (an Editor), in the markup the rows
-     * had when each screen drew its own: btn btn-sm btn-text theme-secondary icon buttons in
-     * a row of the caller's class.
+     * had when each screen drew its own: small icon buttons of the look
+     * (.pg-icon-button) in a row of the caller's class.
      *
      * items, in order, each one of:
      *   - the name of one of the box's own tools: undo, redo, bold, italic,
@@ -6176,7 +6178,7 @@
             }
 
             var label = t(spec.label);
-            var node = button('btn btn-sm btn-text theme-secondary', spec.text || '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
+            var node = button('pg-icon-button pg-icon-button-sm', spec.text || '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
 
             node.setAttribute('data-ws-tool', name);
 
@@ -6436,11 +6438,11 @@
     }, true);
 
     function footerButtons(win, isNew, onSave, insertLabel) {
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'dialog');
         win.footer.appendChild(cancel);
 
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', isNew ? (insertLabel || t('insert_to_message')) : t('update_block'), 'bi-check2');
+        var save = button('pg-button pg-button-fill pg-button-sm', isNew ? (insertLabel || t('insert_to_message')) : t('update_block'), 'bi-check2');
         save.addEventListener('click', onSave);
         win.footer.appendChild(save);
     }
@@ -7043,13 +7045,13 @@
         function drawTools() {
             tools.innerHTML = '';
 
-            var addRowButton = button('btn btn-sm btn-text theme-secondary', t('add_row'), 'bi-plus-lg');
+            var addRowButton = button('pg-button pg-button-ghost pg-button-sm', t('add_row'), 'bi-plus-lg');
             addRowButton.addEventListener('mousedown', function (event) { event.preventDefault(); });
             addRowButton.addEventListener('click', function () { addRow(current.row + 1 > 0 ? current.row + 1 : model.rows.length); });
             addRowButton.disabled = model.rows.length >= MAX_ROWS;
             tools.appendChild(addRowButton);
 
-            var addColumnButton = button('btn btn-sm btn-text theme-secondary', t('add_column'), 'bi-plus-lg');
+            var addColumnButton = button('pg-button pg-button-ghost pg-button-sm', t('add_column'), 'bi-plus-lg');
             addColumnButton.addEventListener('mousedown', function (event) { event.preventDefault(); });
             addColumnButton.addEventListener('click', function () { addColumn(current.column + 1); });
             addColumnButton.disabled = model.head.length >= MAX_COLUMNS;
@@ -7058,7 +7060,7 @@
             tools.appendChild(el('span', 'ws-table-tools-gap'));
 
             [['left', 'bi-text-left', t('align_left')], ['center', 'bi-text-center', t('align_center')], ['right', 'bi-text-right', t('align_right')]].forEach(function (entry) {
-                var align = button('btn btn-sm btn-text theme-secondary' + (model.align[current.column] === entry[0] ? ' active' : ''), '', entry[1], entry[2]);
+                var align = button('pg-icon-button pg-icon-button-sm' + (model.align[current.column] === entry[0] ? ' is-active' : ''), '', entry[1], entry[2]);
                 align.addEventListener('mousedown', function (event) { event.preventDefault(); });
                 align.addEventListener('click', function () { setAlign(current.column, (model.align[current.column] === entry[0]) ? '' : entry[0]); });
                 tools.appendChild(align);
@@ -7069,7 +7071,7 @@
             tools.appendChild(el('span', 'ws-table-tools-gap'));
 
             // Formulas ready to use for the cell the caret is in.
-            var formulas = button('btn btn-sm btn-text theme-secondary', t('table_fx'), 'bi-plus-slash-minus');
+            var formulas = button('pg-button pg-button-ghost pg-button-sm', t('table_fx'), 'bi-plus-slash-minus');
             formulas.addEventListener('mousedown', function (event) { event.preventDefault(); });
             formulas.addEventListener('click', function () {
                 var box = formulas.getBoundingClientRect();
@@ -7078,13 +7080,13 @@
             });
             tools.appendChild(formulas);
 
-            var totalRow = button('btn btn-sm btn-text theme-secondary', '', 'bi-calculator', t('table_total_row'));
+            var totalRow = button('pg-icon-button pg-icon-button-sm', '', 'bi-calculator', t('table_total_row'));
             totalRow.addEventListener('mousedown', function (event) { event.preventDefault(); });
             totalRow.addEventListener('click', addTotalRow);
             totalRow.disabled = model.rows.length >= MAX_ROWS;
             tools.appendChild(totalRow);
 
-            var fill = button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-down-square', t('table_fill_down'));
+            var fill = button('pg-icon-button pg-icon-button-sm', '', 'bi-arrow-down-square', t('table_fill_down'));
             fill.addEventListener('mousedown', function (event) { event.preventDefault(); });
             fill.addEventListener('click', fillDown);
             fill.disabled = current.row < 0 || current.row >= model.rows.length - 1;
@@ -7092,13 +7094,13 @@
 
             tools.appendChild(el('span', 'ws-table-tools-gap'));
 
-            var dropRow = button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-dash-square', t('delete_row'));
+            var dropRow = button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-dash-square', t('delete_row'));
             dropRow.addEventListener('mousedown', function (event) { event.preventDefault(); });
             dropRow.addEventListener('click', function () { removeRow(current.row); });
             dropRow.disabled = current.row < 0 || model.rows.length <= 1;
             tools.appendChild(dropRow);
 
-            var dropColumn = button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-layout-sidebar-inset-reverse', t('delete_column'));
+            var dropColumn = button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-layout-sidebar-inset-reverse', t('delete_column'));
             dropColumn.addEventListener('mousedown', function (event) { event.preventDefault(); });
             dropColumn.addEventListener('click', function () { removeColumn(current.column); });
             dropColumn.disabled = model.head.length <= 1;
@@ -7157,7 +7159,7 @@
 
         win.body.appendChild(list);
 
-        var add = button('btn btn-sm btn-text theme-secondary mt-1', t('add_item'), 'bi-plus-lg');
+        var add = button('pg-button pg-button-ghost pg-button-sm mt-1', t('add_item'), 'bi-plus-lg');
         win.body.appendChild(add);
         win.body.appendChild(el('div', 'form-text', t('checklist_hint')));
 
@@ -7199,7 +7201,7 @@
             });
             row.appendChild(text);
 
-            var up = button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-up', t('move_up'));
+            var up = button('pg-icon-button pg-icon-button-sm', '', 'bi-arrow-up', t('move_up'));
             up.addEventListener('click', function () {
                 if (row.previousElementSibling) {
                     list.insertBefore(row, row.previousElementSibling);
@@ -7207,7 +7209,7 @@
             });
             row.appendChild(up);
 
-            var down = button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-down', t('move_down'));
+            var down = button('pg-icon-button pg-icon-button-sm', '', 'bi-arrow-down', t('move_down'));
             down.addEventListener('click', function () {
                 if (row.nextElementSibling) {
                     list.insertBefore(row.nextElementSibling, row);
@@ -7215,7 +7217,7 @@
             });
             row.appendChild(down);
 
-            var remove = button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-x-lg', t('remove'));
+            var remove = button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-x-lg', t('remove'));
             remove.addEventListener('click', function () {
                 if (rows().length > 1) {
                     var previous = row.previousElementSibling || row.nextElementSibling;
@@ -7549,7 +7551,7 @@
         }
 
         function tool(iconName, label, title, action, extra) {
-            var node = button('btn btn-sm btn-text theme-secondary' + (extra ? ' ' + extra : ''), label, iconName, title);
+            var node = button((label ? 'pg-button pg-button-ghost pg-button-sm' : 'pg-icon-button pg-icon-button-sm') + (extra ? ' ' + extra : ''), label, iconName, title);
 
             node.addEventListener('mousedown', function (event) { event.preventDefault(); });
             node.addEventListener('click', function (event) { action(node, event); });
@@ -7733,7 +7735,7 @@
             namesRow.appendChild(el('span', 'ws-calc-names-label', t('calc_names')));
 
             names.slice(0, 40).forEach(function (name) {
-                var chip = button('btn btn-sm ws-calc-name', name);
+                var chip = button('pg-button pg-button-quiet pg-button-sm ws-calc-name', name);
 
                 chip.addEventListener('mousedown', function (event) { event.preventDefault(); });
                 chip.addEventListener('click', function () { put(name); });
@@ -7944,7 +7946,7 @@
                     fresh.classList.toggle('ws-calc-tried', tried);
 
                     if (tried) {
-                        var reset = button('btn btn-sm btn-link ws-calc-reset', t('calc_live_reset'), 'bi-arrow-counterclockwise', t('calc_live_note'));
+                        var reset = button('pg-button pg-button-ghost pg-button-sm ws-calc-reset', t('calc_live_reset'), 'bi-arrow-counterclockwise', t('calc_live_note'));
                         reset.setAttribute('data-ws-calc-reset', '1');
                         fresh.querySelector('.ws-calc-block-head').appendChild(reset);
                     }
