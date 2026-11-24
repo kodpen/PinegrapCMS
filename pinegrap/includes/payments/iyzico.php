@@ -301,13 +301,22 @@ function pg_payment_iyzico_buyer($order, $payment)
  * The basket iyzico is shown: one item per order line with a price, the
  * line's total in the currency the payment is made in.
  *
- * @param array $lines order lines as submit_order.php reads them
- * @param float $rate  the protected currency's rate, 0 for none
+ * iyzico refuses a basket whose items do not add up to the request's price.
+ * In the protected currency the price is the subtotal converted as a whole,
+ * so the lines share that amount by their base totals, largest remainder
+ * first, instead of each unit being converted and rounded on its own.
+ *
+ * @param array $lines     order lines as submit_order.php reads them
+ * @param float $rate      the protected currency's rate, 0 for none
+ * @param int   $converted the converted subtotal (minor units) the lines
+ *                         share under a rate; -1 converts the lines' own sum
  * @return array \Iyzipay\Model\BasketItem
  */
-function pg_payment_iyzico_basket($lines, $rate)
+function pg_payment_iyzico_basket($lines, $rate, $converted = -1)
 {
     $items = array();
+    $kept = array();
+    $totals = array();
 
     foreach ((is_array($lines) ? $lines : array()) as $line) {
         $price_cents = (isset($line['price']) && is_numeric($line['price'])) ? (int) $line['price'] : 0;
@@ -317,11 +326,20 @@ function pg_payment_iyzico_basket($lines, $rate)
             continue;
         }
 
-        if ($rate > 0) {
-            $price_cents = (int) round(($price_cents / 100.0) * $rate * 100);
-        }
+        $kept[] = array($line, $quantity);
+        $totals[] = $price_cents * $quantity;
+    }
 
-        $line_cents = $price_cents * $quantity;
+    if (($rate > 0) && !empty($totals)) {
+        $converted = ((int) $converted >= 0)
+            ? (int) $converted
+            : (int) round((array_sum($totals) / 100.0) * $rate * 100);
+        $totals = pg_tax_spread($converted, $totals);
+    }
+
+    foreach ($kept as $index => $pair) {
+        list($line, $quantity) = $pair;
+        $line_cents = $totals[$index];
         $description = isset($line['short_description']) ? $line['short_description'] : '';
 
         $item = new \Iyzipay\Model\BasketItem();
@@ -746,7 +764,7 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
     $request->setShippingAddress($shipping);
 
     $request->setBillingAddress($buyer['billing']);
-    $request->setBasketItems(pg_payment_iyzico_basket(isset($payment['lines']) ? $payment['lines'] : array(), $rate));
+    $request->setBasketItems(pg_payment_iyzico_basket(isset($payment['lines']) ? $payment['lines'] : array(), $rate, ($rate > 0) ? $charged_subtotal : -1));
 
     $billing_name = array(
         pg_payment_iyzico_order_value($order, 'billing_first_name'),

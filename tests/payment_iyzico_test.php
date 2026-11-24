@@ -692,11 +692,50 @@ function test_payment_iyzico_protected_currency_converts_every_amount()
 
 	payment_iyzico_test_authorize(payment_iyzico_test_settings(array('protected_currency' => 'USD', 'protected_rate' => 0.0297)), payment_iyzico_test_payment());
 
-	pg_assert_same(
-		legacy_iyzico_payment_request(payment_iyzico_test_order(), payment_iyzico_test_lines(), 9490, 10714, 1, false, '', null, 'USD', 0.0297, 0, '1023', 7),
-		payment_iyzico_test_without_conversation($http->posts[0]['body']));
-	pg_assert_same('USD', $http->posts[0]['body']['currency']);
-	pg_assert_same('3.18', $http->posts[0]['body']['paidPrice']);
+	$body = $http->posts[0]['body'];
+	$legacy = legacy_iyzico_payment_request(payment_iyzico_test_order(), payment_iyzico_test_lines(), 9490, 10714, 1, false, '', null, 'USD', 0.0297, 0, '1023', 7);
+
+	pg_assert_same('USD', $body['currency']);
+	pg_assert_same('2.82', $body['price']);
+	pg_assert_same('3.18', $body['paidPrice']);
+
+	// iyzico refuses a basket whose items do not add up to the price. Each
+	// unit converted on its own gave 1.19 x 2 + 0.45 = 2.83 against 2.82; the
+	// lines now share the converted subtotal by their weight.
+	pg_assert_same(array('2.37', '0.45'), array_column($body['basketItems'], 'price'));
+
+	unset($body['basketItems'], $legacy['basketItems']);
+	pg_assert_same($legacy, payment_iyzico_test_without_conversation($body));
+}
+
+// The basket's items add up to the price in the protected currency, whatever
+// the units and rates.
+function test_payment_iyzico_protected_currency_basket_adds_up_to_the_price()
+{
+	$cases = array(
+		array(array(array('price' => '5', 'quantity' => '3')), 3.33),
+		array(array(array('price' => '3995', 'quantity' => '2'), array('price' => '1500', 'quantity' => '1')), 0.0297),
+		array(array(array('price' => '1', 'quantity' => '7'), array('price' => '2', 'quantity' => '5'), array('price' => '9999', 'quantity' => '3')), 41.5),
+	);
+
+	foreach ($cases as $case) {
+		list($lines, $rate) = $case;
+		$subtotal = 0;
+
+		foreach ($lines as $index => $line) {
+			$lines[$index] += array('id' => (string) $index, 'short_description' => 'Line ' . $index);
+			$subtotal += (int) $line['price'] * (int) $line['quantity'];
+		}
+
+		$charged = (int) round(($subtotal / 100.0) * $rate * 100);
+		$sum = 0;
+
+		foreach (pg_payment_iyzico_basket($lines, $rate, $charged) as $item) {
+			$sum += (int) round((float) $item->getPrice() * 100);
+		}
+
+		pg_assert_same($charged, $sum, 'basket at rate ' . $rate);
+	}
 }
 
 function test_payment_iyzico_threeds_start_keeps_the_row_the_return_reads()

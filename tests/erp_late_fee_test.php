@@ -127,6 +127,31 @@ function test_erp_late_fee_fractional_rate()
 }
 
 // The period a fee starts from by default: the first day of the as-of year.
+// The fee is the exact product rounded half away from zero on every PHP
+// version: a float round($kurus_days * $rate / 100 / 30) gave 42.43 for
+// 1035.00 owed thirty days at 4.1% on PHP 8.4 and later, where round() no
+// longer pre-rounds 4243.4999...
+function test_erp_late_fee_exact_on_every_php_version()
+{
+	pg_assert_same(4244, erp_late_fee_for_invoice(103500, '2026-01-01', array(), '', '2026-01-31', 4.1)['fee'], '4.1% of 1035.00 a month');
+	pg_assert_same(8306, erp_late_fee_for_invoice(367500, '2026-01-01', array(), '', '2026-01-31', 2.26)['fee'], '2.26% of 3675.00 a month');
+
+	for ($i = 0; $i < 3000; $i++) {
+		$owed = mt_rand(1, 2000000);
+		$days = mt_rand(1, 90);
+		$hundredths = mt_rand(1, 500);
+		$product = $owed * $days * $hundredths * 10;
+		$expected = intdiv($product, 3000000) + ((($product % 3000000) * 2 >= 3000000) ? 1 : 0);
+		$as_of = date('Y-m-d', strtotime('2026-01-01 +' . $days . ' days'));
+
+		pg_assert_same($expected, erp_late_fee_for_invoice($owed, '2026-01-01', array(), '', $as_of, $hundredths / 100)['fee'], $owed . ' for ' . $days . ' days at ' . ($hundredths / 100) . '%');
+	}
+
+	$function = new ReflectionFunction('erp_late_fee_for_invoice');
+	$lines = array_slice(file($function->getFileName()), $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1);
+	pg_assert_true(strpos(implode('', $lines), 'erp_multiply_units(') !== false, 'the fee goes through erp_multiply_units()');
+}
+
 function test_erp_late_fee_default_from()
 {
 	pg_assert_same('2026-01-01', erp_late_fee_default_from('2026-10-13'));
