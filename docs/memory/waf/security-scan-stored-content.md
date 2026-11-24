@@ -25,6 +25,6 @@ module: security_scan_content
 - `pg_security_content_pass($cursor, $deadline, $now)`: reads batches of 50 per source until the `microtime(true)` deadline, writes each sighting through `pg_security_finding_merge()`, returns `cursor`, `done`, `found`, `read`. The runner stores the cursor and gives it back next tick; null starts a new pass, a broken cursor too (`pg_security_content_cursor()`).
 - When the last source is read the pass is done and `pg_security_content_close($started)` moves this pass's kinds not seen since it started: open and ignored to gone, quarantined and gone stay.
 - Reasons and "What to do" for the section: `pg_security_content_rule_text($kind)`.
-- Built as its own seam beside the file scan (SC2, #11451); the scheduled job, the cursor's `config_text` row and the section's screen belong to the runner.
+- The joined run `pg_security_scan_run()` calls it after the files and keeps its cursor in the `security_scan` row (`security-scan-section.md`).
 
 Tests: `tests/security_content_test.php`.
