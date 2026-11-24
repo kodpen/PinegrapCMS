@@ -1,6 +1,7 @@
 ---
 name: addon-hook-system
 description: Plan (approved 2026-10-19; started 2026-11-15 with the census, addon-hook-system-steps.md): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
+priority: 5
 ---
 
 ## What did the owner decide?
