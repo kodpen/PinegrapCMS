@@ -365,6 +365,7 @@ description: Generated from the module field of the memory files: each includes/
 - `security_scan_accounts`: [[security-scan-accounts-settings]]
 - `security_scan_content`: [[security-scan-stored-content]]
 - `security_scan_files`: [[security-scan-file-scan]]
+- `security_scan_section`: [[security-scan-section]]
 - `security_settings_fold`: [[settings-accounts]]
 - `seo`: [[bug-hunt-areas-seo-meta-output]], [[connections-indexnow-page]], [[indexnow-ping-result]], [[jsonld-script-escaping]], [[list-row-names]], [[main-host-redirect]], [[panel-preview-not-a-visit]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[recycle-bin-offline]], [[robots-large-image-preview]], [[seo-default-share-image-warning]], [[seo-impact-window-days]], [[sitemap-cache]], [[sitemap-listed-pages]]
 - `seo_draft`: [[seo-check-draft-render]]

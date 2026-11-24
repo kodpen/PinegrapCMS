@@ -8,6 +8,7 @@
 - security-scan-accounts-settings.md: Security Scan rules on accounts and settings: new staff account, new application key, world-writable core folder, risky PHP settings, PHP security fixes; places, severities, detail
 - security-scan-file-scan.md: Security Scan file scan - the five file rules, what each reads, the release reference it judges by, the resumable walk, the server-config baseline, the job and its state row.
 - security-scan-findings.md: Security Scan findings - the security_finding table (11.0.277), the pure finding model, fingerprint, severities, states and which moves a scan or a person may make.
+- security-scan-section.md: Security Scan row of Site Settings › Firewall and HTTPS: the joined run and its state row, the findings list, Quarantine and Restore (data/quarantine), Ignore with a note, Scan now through api.php
 - security-scan-stored-content.md: Security Scan stored content: script, hidden frame or redirect from an unknown host in pages, regions, styles, settings; known hosts; the resumable pass
 - waf-ai-bots-ranges.md: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() verification by published IP ranges (waf_bot_ranges), verdict ladder, refresh path (2026.4.4). [decision: decisions-made-product-97.md]
 - waf-ai-training-crawlers.md: SEO's "Allow AI training" in the firewall: on, the training crawlers leave the bad-bot match only (class training, no good-bot privilege); off, refused (#11023, poll 216) [decision: decisions-made-product-97.md]
