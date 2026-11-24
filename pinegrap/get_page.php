@@ -1284,6 +1284,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             $sql_join
                             WHERE
                                 (forms.page_id = '" . escape($custom_form_page_id) . "')
+                                " . pg_form_list_view_complete_sql(false) . "
                                 $sql_where
                                 $sql_viewer_filter
                             ORDER BY forms.submitted_timestamp DESC
@@ -1518,6 +1519,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             WHERE
 
                                 forms.page_id = '" . escape($custom_form_page_id) . "'
+                                " . pg_form_list_view_complete_sql(false) . "
 
                                 $sql_filters
 

@@ -4094,6 +4094,17 @@ function pg_form_list_view_order_sql($order_by)
     return $order_by . ', forms.id ASC';
 }
 
+// The condition that keeps a classic form list view, its RSS feed and its
+// sitemap entries to complete records: a record saved for later (or waiting
+// for its payment) is not on the site, as the designed list widget and the
+// search index treat it. A list filtered to the viewer's own records
+// ($viewer_filtered) still shows them, so a submitter can open one and
+// finish it. Pure.
+function pg_form_list_view_complete_sql($viewer_filtered)
+{
+    return $viewer_filtered ? '' : ' AND (forms.complete = 1)';
+}
+
 // Whether a field picked on the form list view screen (an order-by or a
 // filter field) is one the view can store: '' (none), a value of
 // get_standard_fields_for_view(), 'random' where $allow_random (only the first
