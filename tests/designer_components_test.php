@@ -124,3 +124,43 @@ function test_designer_components_home_sends_no_cap()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_home.js');
 	pg_assert_true(strpos($js, "sub_action: 'delete_many', ids: ids") !== false, 'the home sends every ticked id in one request');
 }
+
+// Every component a page reaches through the ones it places, read a level at
+// a time: a form widget inside a shared section still counts as on the page.
+function test_designer_components_reach_follows_nesting()
+{
+	$trees = array(
+		3 => array('type' => 'root', 'children' => array(
+			array('type' => 'shared_ref', 'props' => array('sharedId' => 8), 'children' => array()),
+		)),
+		8 => array('type' => 'root', 'children' => array(
+			array('type' => 'semantic', 'props' => array(), 'children' => array(
+				array('type' => 'shared_ref', 'props' => array('sharedId' => 12), 'children' => array()),
+				array('type' => 'shared_ref', 'props' => array('sharedId' => 3), 'children' => array()),
+			)),
+		)),
+		12 => array('type' => 'root', 'children' => array()),
+	);
+	$queries = 0;
+	$fetch = function ($sql) use ($trees, &$queries) {
+		$queries++;
+		pg_assert_true((bool) preg_match('/WHERE id IN \(([\d,]+)\)/', $sql, $m), 'one IN list: ' . $sql);
+		$rows = array();
+		foreach (explode(',', $m[1]) as $id) {
+			if (isset($trees[(int) $id])) $rows[] = array('id' => $id, 'tree_json' => json_encode($trees[(int) $id]));
+		}
+		return $rows;
+	};
+	pg_assert_same(array(3, 8, 12), pg_shared_component_reach_read(array(3), $fetch), 'nested ids, each once, a loop ends');
+	pg_assert_same(3, $queries, 'one query a level');
+	pg_assert_same(array(), pg_shared_component_reach_read(array(0, -2), $fetch), 'nothing for no id');
+	pg_assert_same(array(40), pg_shared_component_reach_read(array(40), $fetch), 'a missing row is a leaf');
+}
+
+function test_designer_components_custom_form_page_reads_nested_widgets()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	pg_assert_contains('$pg_cf_sids = pg_shared_component_reach_read($pg_cf_sids, \'db_items\');', $src,
+		'a form widget inside a placed shared component keeps the classic form from drawing a second time');
+}
+

@@ -3386,6 +3386,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             };
                             $pg_cf_find($pg_cf_tree);
                         }
+                        // A widget inside a shared component the page places
+                        // (a contact section holding the form) counts too.
+                        if (!empty($pg_cf_sids)) {
+                            $pg_cf_sids = pg_shared_component_reach_read($pg_cf_sids, 'db_items');
+                        }
                         if (!empty($pg_cf_sids)) {
                             $pg_custom_form_widget_active = (int) db_value(
                                 "SELECT COUNT(*) FROM shared_components

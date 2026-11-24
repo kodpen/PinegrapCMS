@@ -670,6 +670,47 @@ function pg_shared_component_cycle($start_ids, $override = array())
     return array();
 }
 
+/**
+ * The shared components $ids reach: the ids themselves and every one placed
+ * inside them, through any number of levels, each once in the order met.
+ * One query a level, at most eight levels (the depth the page draws,
+ * _expand_shared_refs()); a missing row is a leaf, a loop ends.
+ *
+ * @param int[]    $ids    the components a tree places
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return int[]
+ */
+function pg_shared_component_reach_read(array $ids, $fetch)
+{
+    $seen = array();
+    $level = array();
+    foreach ($ids as $id) {
+        $id = (int)$id;
+        if ($id > 0 && !isset($seen[$id])) {
+            $seen[$id] = $id;
+            $level[$id] = $id;
+        }
+    }
+    for ($depth = 0; $depth < 8 && $level; $depth++) {
+        $rows = call_user_func($fetch, "SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', $level) . ")");
+        $level = array();
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $tree = json_decode((string)$row['tree_json'], true);
+            if (!is_array($tree)) continue;
+            $acc = array();
+            _vt_collect_shared_ids($tree, $acc);
+            foreach (array_keys($acc) as $kid) {
+                $kid = (int)$kid;
+                if ($kid > 0 && !isset($seen[$kid])) {
+                    $seen[$kid] = $kid;
+                    $level[$kid] = $kid;
+                }
+            }
+        }
+    }
+    return array_values($seen);
+}
+
 // The loop refusal, naming the components along it ("Header → Cart → Header").
 function pg_shared_component_loop_message($loop)
 {
