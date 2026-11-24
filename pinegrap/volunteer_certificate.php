@@ -25,6 +25,7 @@ include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_certificate.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_volunteer_hours.php');
 
 // A code in the address is not passed on as the referrer, kept by a proxy
 // or indexed.
@@ -63,13 +64,7 @@ if ($vf_throttled) {
     } else {
         $vf_period = pg_volunteer_certificate_period($_GET, date('Y-m-d'));
         $vf_minutes = ($vf_period['error'] === '') ? pg_volunteer_approved_minutes($vf_person['id'], $vf_period['from'], $vf_period['to']) : 0;
-        $vf_form = '<form method="get" action="' . h($vf_self) . '" class="d-flex flex-wrap align-items-end justify-content-end gap-2">'
-            . '<input type="hidden" name="p" value="' . $vf_person['id'] . '">'
-            . '<span><label class="form-label mb-1" for="vf_from">' . h(lang('From')) . '</label><input type="date" class="form-control" id="vf_from" name="from" value="' . h($vf_period['from']) . '" max="' . date('Y-m-d') . '" required></span>'
-            . '<span><label class="form-label mb-1" for="vf_to">' . h(lang('To')) . '</label><input type="date" class="form-control" id="vf_to" name="to" value="' . h($vf_period['to']) . '" max="' . date('Y-m-d') . '" required></span>'
-            . '<button type="submit" class="pg-certificate-button">' . h(lang('Show')) . '</button>'
-            . (($vf_minutes > 0) ? '<button type="button" class="pg-certificate-button" onclick="window.print()"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h(lang('Print or save as PDF')) . '</button>' : '')
-            . '</form>';
+        $vf_form = pg_volunteer_certificate_period_form_html($vf_self, $vf_person['id'], $vf_period, $vf_minutes > 0);
 
         if ($vf_period['error'] !== '') {
             $vf_status = 400;

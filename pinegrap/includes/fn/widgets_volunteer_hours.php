@@ -6,7 +6,9 @@
  * drawn for the visitor in the site's look and in look A: the link to the
  * check-in page that reads a place's QR poster, the approved hours of this
  * year with "Get my certificate", and "Add hours outside a shift" with the
- * browser's own date field, sent for approval.
+ * browser's own date field, sent for approval; the certificate page's
+ * period form (volunteer_certificate.php), also with the browser's date
+ * fields.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -68,4 +70,25 @@ function pg_volunteer_hours_answer_text($answer)
     );
 
     return $texts[$answer] ?? null;
+}
+
+/**
+ * The certificate page's period form: from, to, Show, and "Print or save
+ * as PDF" once the period has approved hours.
+ *
+ * @param string $action       the page's address
+ * @param int    $volunteer_id
+ * @param array  $period       from, to
+ * @param bool   $printable
+ * @return string HTML
+ */
+function pg_volunteer_certificate_period_form_html($action, $volunteer_id, array $period, $printable)
+{
+    return '<form method="get" action="' . h($action) . '" class="d-flex flex-wrap align-items-end justify-content-end gap-2">'
+        . '<input type="hidden" name="p" value="' . (int) $volunteer_id . '">'
+        . '<span><label class="form-label mb-1" for="vf_from">' . h(lang('From')) . '</label><input type="date" class="form-control" id="vf_from" name="from" value="' . h($period['from']) . '" max="' . date('Y-m-d') . '" required></span>'
+        . '<span><label class="form-label mb-1" for="vf_to">' . h(lang('To')) . '</label><input type="date" class="form-control" id="vf_to" name="to" value="' . h($period['to']) . '" max="' . date('Y-m-d') . '" required></span>'
+        . '<button type="submit" class="pg-certificate-button">' . h(lang('Show')) . '</button>'
+        . ($printable ? '<button type="button" class="pg-certificate-button" onclick="window.print()"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h(lang('Print or save as PDF')) . '</button>' : '')
+        . '</form>';
 }
