@@ -4385,6 +4385,37 @@
         line.setAttribute('role', 'status');
     }
 
+    // Where the channel's "New" line stands: over the first message of
+    // someone else after the read mark the screen opened with, counting
+    // such messages up to the last one loaded at the opening (a message
+    // that comes later is not "new" to this line). System lines, deleted
+    // messages and the reader's own are passed over. Null when there is no
+    // mark (not a member, an earlier version), nothing new, or the loaded
+    // messages begin after the mark (complete false) so the line's place is
+    // not on the screen. Pure (tests/workspace_new_line_test.php).
+    function newLineAt(messages, mark, upto, complete) {
+        var first = null;
+        var count = 0;
+
+        if (!(mark > 0) || !messages.length || (!complete && (messages[0].id > mark))) {
+            return null;
+        }
+
+        messages.forEach(function (message) {
+            if ((message.id <= mark) || (message.id > upto) || message.deleted || message.mine || (message.kind === 'system')) {
+                return;
+            }
+
+            if (first === null) {
+                first = message.id;
+            }
+
+            count++;
+        });
+
+        return (first === null) ? null : { id: first, count: count };
+    }
+
     // Does a scroll close the open card? Only the reader's own scroll (a
     // wheel, a touch, a scroll key or a held pointer on the scrollbar,
     // inputAt its time) of the list holding the anchor; a scroll the
@@ -11932,6 +11963,15 @@
                     self.appLinesOpen = {};
                 }
 
+                // The read mark the visit began with, and the last message
+                // then loaded: the "New" line stands by them until the
+                // channel is left. A jump to a message reopens the same
+                // channel after the server moved the mark, so it keeps them.
+                if (!messageId || !self.channel || (self.channel.id !== data.channel.id)) {
+                    self.readMark = data.read_mark || 0;
+                    self.readMarkUpto = data.last_id || 0;
+                }
+
                 self.channel = data.channel;
                 self.era = data.era || null;
                 // Whether Add › Start a flow has a flow to offer here, and
@@ -13613,6 +13653,7 @@
             }
 
             var previous = null;
+            var fresh = self.era ? null : newLineAt(self.messages, self.readMark, self.readMarkUpto, !self.hasMore);
 
             // A message deleted leaves no trace in the conversation.
             self.messages.forEach(function (message) {
@@ -13620,7 +13661,15 @@
                     return;
                 }
 
-                self.appendMessage(message, previous, pane);
+                // The "New" line goes over the first new message, under its
+                // day; that message starts a run of its own.
+                if (fresh && (message.id === fresh.id)) {
+                    self.appendMessage(message, null, pane);
+                    pane.insertBefore(el('div', 'ws-new-line', (fresh.count === 1) ? t('new_line_one') : t('new_line', fresh.count)), pane.lastChild);
+                } else {
+                    self.appendMessage(message, previous, pane);
+                }
+
                 previous = message;
             });
 
@@ -14702,7 +14751,15 @@
 
             if (line.go) {
                 action(t(line.mention ? 'catchup_mention' : 'catchup_go'), line.mention ? 'bi-at' : 'bi-arrow-down-circle', function () {
-                    self.jumpTo(line.go, true);
+                    var fresh = (!line.mention && self.pane) ? self.pane.querySelector('.ws-new-line') : null;
+
+                    // Go to new messages: to the "New" line when it is drawn.
+                    if (fresh) {
+                        self.leaveEnd();
+                        fresh.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    } else {
+                        self.jumpTo(line.go, true);
+                    }
                 });
             }
 

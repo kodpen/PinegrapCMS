@@ -646,6 +646,8 @@ function ws_js_strings()
         'work_calendar'          => lang('Work Calendar'),
         'brief_recap'            => lang('Sum up what I missed'),
         'catchup_go'             => lang('Go to new messages'),
+        'new_line_one'           => lang('New · 1 message'),
+        'new_line'               => ws_js_template('New · {var:1} messages', 1),
         'catchup_mention'        => lang('Go to where you were mentioned'),
         'catchup_tasks'          => lang('Overdue tasks'),
         'brief_recap_wait'       => lang('Pinegrap AI is reading…'),
