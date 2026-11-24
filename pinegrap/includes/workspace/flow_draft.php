@@ -1935,13 +1935,16 @@ function ws_flow_patch_apply($graph, $ops, $keys)
  * Places on the canvas for the boxes not placed yet (pure): each one a
  * column after the box it follows, else after the boxes placed, one row
  * lower while that spot is taken. A graph with none placed is laid out in
- * columns from its start.
+ * columns from its start; with $columns each box stands in the column of
+ * its longest way in from a box with none (Tidy), else after the first box
+ * it follows.
  *
- * @param array    $graph  ws_flow_graph_normalize()
- * @param string[] $placed ids of the boxes that keep their places
+ * @param array    $graph   ws_flow_graph_normalize()
+ * @param string[] $placed  ids of the boxes that keep their places
+ * @param bool     $columns with none placed, a column per step of the longest way in
  * @return array the graph
  */
-function ws_flow_auto_layout($graph, $placed)
+function ws_flow_auto_layout($graph, $placed, $columns = false)
 {
     $placed = array_flip(array_map('strval', (array) $placed));
     $nodes = $graph['nodes'];
@@ -2025,7 +2028,7 @@ function ws_flow_auto_layout($graph, $placed)
             }
         }
 
-        if ($x === null) {
+        if (($x === null) || ($columns && ($right === null))) {
             $x = ($right === null) ? WS_FLOW_LAYOUT_ORIGIN + $layer[$id] * WS_FLOW_LAYOUT_STEP_X : $right + WS_FLOW_LAYOUT_STEP_X;
         }
 
@@ -2043,6 +2046,36 @@ function ws_flow_auto_layout($graph, $placed)
     $graph['nodes'] = $nodes;
 
     return $graph;
+}
+
+/**
+ * Tidy on the Flows canvas (pure): the boxes placed again by
+ * ws_flow_auto_layout(), every one in the column of its longest way in, or,
+ * with two boxes or more chosen, only those, the others kept. Notes and
+ * frames are the editor's: it draws the frames again round their boxes.
+ *
+ * @param mixed $graph  the draft as the editor holds it
+ * @param mixed $chosen ids of the boxes chosen
+ * @return array id => array(x, y) of every box whose place changed
+ */
+function ws_flow_tidy($graph, $chosen)
+{
+    $graph = ws_flow_graph_normalize($graph);
+    $ids = array_column($graph['nodes'], 'id');
+    $chosen = array_values(array_intersect($ids, array_map('strval', array_filter((array) $chosen, 'is_scalar'))));
+    $kept = (count($chosen) >= 2) ? array_values(array_diff($ids, $chosen)) : array();
+    $laid = ws_flow_auto_layout($graph, $kept, true);
+    $places = array();
+
+    foreach ($laid['nodes'] as $index => $node) {
+        $was = $graph['nodes'][$index];
+
+        if (($node['x'] !== $was['x']) || ($node['y'] !== $was['y'])) {
+            $places[$node['id']] = array($node['x'], $node['y']);
+        }
+    }
+
+    return $places;
 }
 
 /**

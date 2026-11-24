@@ -383,7 +383,7 @@ function ws_flow_actions_without_workspace()
         'ws_flow_template_setup', 'ws_flow_quick_setup', 'ws_flow_ai_sketch',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get',
-        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_web_address',
+        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_tidy', 'ws_flow_web_address',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
     );
 }
@@ -1212,6 +1212,18 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('counts' => array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'partial' => $counts['partial'])));
+
+        // Tidy on the canvas (flow_draft.php): the places of the boxes of the
+        // draft as the editor holds it, laid out again; nothing is saved here,
+        // the editor's autosave keeps the new places.
+        case 'ws_flow_tidy':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            return ws_action_ok(array('places' => (object) ws_flow_tidy($request['graph'] ?? null, $request['chosen'] ?? array())));
 
         // The web address of a flow started by one (flow_web_start.php):
         // shown to and renewed by those who may edit the flow; a renewed

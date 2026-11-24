@@ -428,6 +428,51 @@ function test_ws_flow_ai_graph_layout()
 	pg_assert_false(ws_flow_ai_graph(array('boxes' => array(array('id' => 'a', 'kind' => 'nope'))), workspace_flow_draft_keys())['ok'], 'invented kind');
 }
 
+// Tidy (FE9): every box in the column of its longest way in, rows kept
+// from the box before; with two or more chosen, only those move; only the
+// boxes whose place changed are answered.
+function test_ws_flow_tidy()
+{
+	$node = function ($id, $x, $y) {
+		return array('id' => $id, 'kind' => 'task', 'label' => '', 'x' => $x, 'y' => $y, 'config' => array('title' => $id));
+	};
+	$graph = array(
+		'nodes' => array($node('s', 900, 40), $node('a', 0, 700), $node('b', 50, 50), $node('c', 3000, 3000)),
+		'edges' => array(
+			array('from' => 's', 'to' => 'a', 'on' => 'done'),
+			array('from' => 'a', 'to' => 'b', 'on' => 'done'),
+			array('from' => 's', 'to' => 'c', 'on' => 'done'),
+			array('from' => 'b', 'to' => 'c', 'on' => 'done'),
+		),
+	);
+	$o = WS_FLOW_LAYOUT_ORIGIN;
+	$sx = WS_FLOW_LAYOUT_STEP_X;
+	$all = ws_flow_tidy($graph, array());
+
+	pg_assert_same(array(
+		's' => array($o, $o),
+		'a' => array($o + $sx, $o),
+		'b' => array($o + 2 * $sx, $o),
+		'c' => array($o + 3 * $sx, $o),
+	), $all, 'a column per step of the longest way in: c after b, not after s');
+	pg_assert_same($all, ws_flow_tidy(json_encode($graph), array('a')), 'one box chosen tidies the whole flow; the graph may come as JSON');
+
+	$tidy = $graph;
+
+	foreach ($tidy['nodes'] as $index => $box) {
+		$tidy['nodes'][$index]['x'] = $all[$box['id']][0];
+		$tidy['nodes'][$index]['y'] = $all[$box['id']][1];
+	}
+
+	pg_assert_same(array(), ws_flow_tidy($tidy, array()), 'a tidy flow: nothing moves');
+
+	$some = ws_flow_tidy($graph, array('b', 'c', 'gone', array('x')));
+
+	pg_assert_same(array('b', 'c'), array_keys($some), 'only the chosen boxes move');
+	pg_assert_same(array(0 + $sx, 700), $some['b'], 'b after a, which kept its place');
+	pg_assert_same(array(), ws_flow_tidy(null, array()), 'no graph: nothing');
+}
+
 // A patch is made in order on the flow; the boxes there keep their places,
 // a box added goes after the one it follows, and the changes kept make the
 // same flow again.
