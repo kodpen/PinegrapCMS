@@ -1,10 +1,10 @@
 ---
 name: bug-hunt-areas-private-content-access
-description: The bug hunt in private content access (area 26, #PRNUM): pages, folders and files for members or groups; the faults fixed and what was read clean
+description: The bug hunt in private content access (area 26, #11408): pages, folders and files for members or groups; the faults fixed and what was read clean
 ---
 
 ## Which area was it?
-- Area 26, "private-content-access": pages, folders and files limited to members or groups, never reachable by direct address, `get_file.php`, a feed, the sitemap, a share preview, an API read or a cached copy; the sign-in return address; access taken away at the next request. PR #PRNUM.
+- Area 26, "private-content-access": pages, folders and files limited to members or groups, never reachable by direct address, `get_file.php`, a feed, the sitemap, a share preview, an API read or a cached copy; the sign-in return address; access taken away at the next request. PR #11408.
 - Left alone, held by open PRs at the time: `router.php`, `includes/fn/widgets.php` (#11400), `includes/fn/auth.php` (#11396), site search (`get_search_results.php`, #11397).
 
 ## What was fixed?

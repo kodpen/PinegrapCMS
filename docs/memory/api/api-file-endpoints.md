@@ -20,4 +20,4 @@ description: External API routes that send or take a file: api_send_file() and b
 
 ## Which files does `GET /files` list?
 - Only what any visitor may open: `api_files_public_clause()` (over `pg_files_public_sql()`, `includes/fn/files.php`) keeps files in a folder whose resolved access is public and leaves out `attachment = 1` (submitted form and comment uploads, drawn signatures), which `get_file.php` serves only to people who may see the record. The list, its count and `GET /files/{id}` all use it. Before this an application with files read listed those uploads' names and sizes.
-- Resolved access means its own type or a parent's, outside the Recycle Bin, as `get_access_control_type()` answers (#PRNUM). Before, the folder's own column was read: an inheriting folder ('') was left out and a public folder in the bin was listed.
+- Resolved access means its own type or a parent's, outside the Recycle Bin, as `get_access_control_type()` answers (#11408). Before, the folder's own column was read: an inheriting folder ('') was left out and a public folder in the bin was listed.
