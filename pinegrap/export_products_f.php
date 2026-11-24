@@ -276,16 +276,24 @@ function pg_products_export_table($where = '', $order = 'name ASC')
 
     $headings = array();
 
+    // Which cells of a row the CSV's formula guard covers: the text columns
+    // and the submit form fields' values. Money, numbers, yes/no and stock
+    // stay as they are, so a negative quantity is still a number.
+    $guard = array();
+
     foreach ($columns as $column) {
         $headings[] = $column['heading'];
+        $guard[] = ($column['kind'] == 'text');
     }
 
     foreach ($create_fields as $field) {
         $headings[] = 'sfc_' . $field;
+        $guard[] = true;
     }
 
     foreach ($update_fields as $field) {
         $headings[] = 'sfu_' . $field;
+        $guard[] = true;
     }
 
     // One stock:<location name> column per location on a site that keeps
@@ -296,6 +304,7 @@ function pg_products_export_table($where = '', $order = 'name ASC')
 
     foreach (pg_stock_export_headings($stock_locations) as $heading) {
         $headings[] = $heading;
+        $guard[] = false;
     }
 
     $select = array('id');
@@ -341,7 +350,7 @@ function pg_products_export_table($where = '', $order = 'name ASC')
         $rows[] = $row;
     }
 
-    return array('headings' => $headings, 'rows' => $rows);
+    return array('headings' => $headings, 'rows' => $rows, 'guard' => $guard);
 }
 
 // The header that names the downloaded file.
@@ -391,16 +400,26 @@ function pg_products_export_csv($table, $file_name = 'products.csv')
 
     echo implode(',', $out) . "\n";
 
+    $guard = isset($table['guard']) ? $table['guard'] : array();
+
     foreach ($table['rows'] as $row) {
-
-        $out = array();
-
-        foreach ($row as $value) {
-            $out[] = '"' . escape_csv($value) . '"';
-        }
-
-        echo implode(',', $out) . "\n";
+        echo pg_products_export_csv_line($row, $guard);
     }
+}
+
+// One row of the CSV. A cell flagged in $guard gets the formula guard
+// (csv_cell()): product text also comes from supplier feeds, marketplaces and
+// the API, and a name like =HYPERLINK(...) ran when the file was opened in a
+// spreadsheet. The import takes the guard off (pg_products_import_unguard_row()).
+function pg_products_export_csv_line($row, $guard)
+{
+    $out = array();
+
+    foreach (array_values($row) as $index => $value) {
+        $out[] = '"' . (!empty($guard[$index]) ? csv_cell($value) : escape_csv($value)) . '"';
+    }
+
+    return implode(',', $out) . "\n";
 }
 
 // The same table as a workbook.
