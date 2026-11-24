@@ -685,7 +685,7 @@ function ws_mail_list_more_html($filters, $next)
         return '';
     }
 
-    return '<div class="ws-mail-more"><a class="btn btn-sm btn-outline theme-secondary" data-ws-mail-more href="messages_mail.php?'
+    return '<div class="ws-mail-more"><a class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-more href="messages_mail.php?'
         . h(ws_mail_list_query($filters, array('before' => $next))) . '">' . h(lang('Load more')) . '</a></div>';
 }
 
@@ -779,27 +779,27 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         // A view starts with its own default status.
         $query = ws_mail_list_query(array_merge($filters, array('view' => $view, 'status' => ($view === 'incoming') ? 'open' : 'all')), array('overdue' => ''));
         $active = ($filters['view'] === $view);
-        $views .= '<a class="btn btn-sm btn-text theme-secondary' . ($active ? ' active' : '') . '"' . ($active ? ' aria-current="page"' : '')
-            . ' href="messages_mail.php' . (($query !== '') ? '?' . h($query) : '') . '"><i class="bi bi-' . $label[1] . ' me-1" aria-hidden="true"></i>' . h($label[0]) . '</a>';
+        $views .= '<a class="pg-seg-item' . ($active ? ' is-active' : '') . '"' . ($active ? ' aria-current="page"' : '')
+            . ' href="messages_mail.php' . (($query !== '') ? '?' . h($query) : '') . '"><i class="bi bi-' . $label[1] . '" aria-hidden="true"></i>' . h($label[0]) . '</a>';
     }
 
     // Check e-mail reads now the boxes the person reads, or the one box the
     // list is narrowed to (mail_check.php); without such a box it is not
     // drawn.
-    $check = $can_check ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-check="' . (int) $filters['box'] . '">'
-        . '<i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>' . h(lang('Check e-mail')) . '</button>' : '';
+    $check = $can_check ? '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-check="' . (int) $filters['box'] . '">'
+        . '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>' . h(lang('Check e-mail')) . '</button>' : '';
 
     // New e-mail opens its form in a drawer (workspace_mail.js); without a
     // mailbox to send from it is not drawn. The views wrap onto a second
-    // line (flex-wrap): the Workspace toolbar keeps a group on one line that
+    // line (pg-seg-wrap): the Workspace toolbar keeps a group on one line that
     // scrolls sideways with no scrollbar, so on a phone Blocked e-mail and
     // Drafts lay past the screen's edge with nothing showing they were there.
     return pg_screen_toolbar(array(
-        'primary'   => $can_send ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
-        'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
+        'primary'   => $can_send ? '<button type="button" class="pg-button pg-button-fill pg-button-sm" data-ws-mail-new><i class="bi bi-pencil-square" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
+        'secondary' => $check . '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-read-all><i class="bi bi-check2-all" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
             . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send) . ws_mail_menu_pin_html($pin),
         'search'    => $search,
-        'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
+        'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><span class="pg-seg pg-seg-wrap" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</span>',
     ));
 }
 
