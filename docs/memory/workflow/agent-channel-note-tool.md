@@ -9,7 +9,8 @@ description: tools/ws_note.php new|read|update: a session keeps a plan or a long
 - Settings: `PG_WS_SITE`, `PG_WS_KEY`, `PG_WS_SECRET`, and `PG_WS_CHANNEL` (or `--channel`) for `new` (`tools/ws_client.php`). Nothing secret is printed.
 
 ## What do the commands do?
-- `new --file=PATH [--title=T] [--channel-edit]`: `POST /workspace/channels/{id}/notes`, the note and its card in one move; `--channel-edit` lets whoever may post in the channel change it. Prints `note=<id> revision=<n> message=<id>`.
+- `new --file=PATH [--title=T] [--channel-edit]`: `POST /workspace/channels/{id}/notes`, the note and its card in one move. The note is the channel's (`workspace/channel-note-owned.md`): whoever may post there changes it, so `--channel-edit` no longer changes anything. Prints `note=<id> revision=<n> message=<id>`.
+- A plan kept before as the key owner's own note is moved into its channel with `POST /workspace/notes/{id}/move` and `channel_id`; the tool has no command for it.
 - `read <id> [--file=PATH]`: `GET /workspace/notes/{id}`; the body on stdout (the `note=… revision=…` line on stderr), or into PATH, which is overwritten.
 - `update [<id>] --file=PATH [--title=T] [--revision=N]`: `POST /workspace/notes/{id}` with the whole body and `revision`. Prints `note=<id> revision=<n>`.
 - A file of `-` is stdin (`new`, `update`). Every write sends an Idempotency-Key (`ws-note-<24 hex>` or `--idempotency-key`) and is repeated once with it after no answer (0, 502, 504).

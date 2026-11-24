@@ -5656,6 +5656,7 @@
     "The note": "Not",
     "The note as it was written: what left, to whom and how.": "Belge yazıldığı hâliyle: ne çıktı, kime, nasıl.",
     "The note becomes the first message of the new channel.": "Not, yeni kanalın ilk mesajı olur.",
+    "The note belongs to this channel now.": "Not artık bu kanalın.",
     "The note could not be found.": "Not bulunamadı.",
     "The note could not be saved.": "Not kaydedilemedi.",
     "The note for the design template could not be written to data/temp. The site is installed as the starter site.": "Tasarım şablonunun notu data/temp klasörüne yazılamadı. Site, başlangıç sitesi olarak kuruldu.",

@@ -2502,6 +2502,206 @@ function ws_note_channel_write($viewer, $channel, $data)
 }
 
 /**
+ * What moving a person's note into a channel does to its share rows. Pure.
+ *
+ * The note keeps one card, in the channel it moves to: the channel share of
+ * its own there (not a note group's), or a card posted for it when there is
+ * none. Every other share goes: a channel's note is not shared elsewhere.
+ * The note leaves its owner's list and the lists of the people it was
+ * shared with, so each of them gets a ws_note_deletions row for the apps
+ * that keep notes in sync, as other channels it leaves do (user_id 0).
+ *
+ * @param array   $note       id, user_id
+ * @param array[] $shares     the note's ws_note_shares rows: id, user_id,
+ *                            channel_id, via_group, message_id
+ * @param int     $channel_id the channel it moves to
+ * @param int     $by         who moves it
+ * @param int     $now
+ * @return array card (the share row kept, null when a card is to be
+ *               posted), drop (the share rows that go), deletions
+ */
+function ws_note_move_plan($note, $shares, $channel_id, $by, $now)
+{
+    $card = null;
+    $drop = array();
+
+    foreach ((array) $shares as $share) {
+        if (($card === null) && ((int) ($share['channel_id'] ?? 0) === (int) $channel_id) && empty($share['via_group'])) {
+            $card = $share;
+            continue;
+        }
+
+        $drop[] = $share;
+    }
+
+    // The channel it moves to keeps the note: no deletion row for it.
+    $leaving = array_values(array_filter($drop, function ($share) use ($channel_id) {
+        return (int) ($share['channel_id'] ?? 0) !== (int) $channel_id;
+    }));
+
+    return array(
+        'card'      => $card,
+        'drop'      => $drop,
+        'deletions' => ws_note_deletion_rows($note, $leaving, (int) $by, (int) $now),
+    );
+}
+
+/**
+ * Whether a person may move a note of theirs into a channel: the checks of
+ * ws_note_move(), shared by the card's "Move to this channel" and
+ * POST /workspace/notes/{id}/move (and its dry run).
+ *
+ * @param array      $viewer
+ * @param array|null $note
+ * @param array|null $channel
+ * @return array ok, error, field (note_id | channel_id), card (the channel
+ *               share kept as its card, null when one is to be posted)
+ */
+function ws_note_move_check($viewer, $note, $channel)
+{
+    $fail = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'card' => null);
+    };
+
+    if (!ws_notes_ready() || !ws_note_channel_owner_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), '');
+    }
+
+    if (!is_array($note) || (ws_note_channel_of($note) > 0) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
+        return $fail(lang('Only the one who wrote a note can move it to a channel.'), 'note_id');
+    }
+
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return $fail($locked, 'note_id');
+    }
+
+    if (!is_array($channel) || !ws_can_post_channel($viewer, $channel)) {
+        return $fail(lang('You cannot post in that channel.'), 'channel_id');
+    }
+
+    if (ws_note_channel_count((int) $channel['id']) >= WS_NOTE_CHANNEL_LIMIT) {
+        return $fail(lang(array('string' => 'A channel can keep at most {var:1} notes.', 'vars' => WS_NOTE_CHANNEL_LIMIT)), 'channel_id');
+    }
+
+    $shares = (array) db_items("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
+    $plan = ws_note_move_plan($note, $shares, (int) $channel['id'], (int) $viewer['id'], time());
+
+    // Without a card there, one is posted: the channel must take it.
+    if ($plan['card'] === null) {
+        $sendable = ws_message_send_check($viewer, $channel, ws_note_card_words($viewer, $note), array());
+
+        if (!$sendable['ok']) {
+            return $fail($sendable['error'], 'channel_id');
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'card' => $plan['card']);
+}
+
+/**
+ * Moves a person's own note into a channel: the note becomes the channel's
+ * (owner_channel_id), leaves its owner's notes, their limit, groups and
+ * pin, and every share but its card in that channel; a card is posted
+ * when the channel has none. Who may post in the channel changes it from
+ * then on. "Copy to my notes" is the way back (ws_note_copy_mine()).
+ *
+ * @param array $viewer
+ * @param array $note
+ * @param array $channel
+ * @param array $options app_id, via_client_id: who a card posted for it is
+ *                       written as (ws_note_card_send_options())
+ * @return array ok, error, field, message_id (its card)
+ */
+function ws_note_move($viewer, $note, $channel, $options = array())
+{
+    $check = ws_note_move_check($viewer, $note, $channel);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'message_id' => 0);
+    }
+
+    $id = (int) $note['id'];
+    $channel_id = (int) $channel['id'];
+
+    if ($check['card'] === null) {
+        $shared = ws_note_share_channel($viewer, $note, $channel, array(
+            'can_edit'      => false,
+            'app_id'        => (int) ($options['app_id'] ?? 0),
+            'via_client_id' => (int) ($options['via_client_id'] ?? 0),
+        ));
+
+        if (!$shared['ok']) {
+            return array('ok' => false, 'error' => $shared['error'], 'field' => 'channel_id', 'message_id' => 0);
+        }
+    }
+
+    $now = time();
+    $shares = (array) db_items("SELECT * FROM ws_note_shares WHERE note_id = '" . $id . "'");
+    $plan = ws_note_move_plan($note, $shares, $channel_id, (int) $viewer['id'], $now);
+
+    if (ws_note_deletions_ready()) {
+        foreach ($plan['deletions'] as $row) {
+            db("INSERT INTO ws_note_deletions (note_id, user_id, channel_id, deleted_by, deleted_at)
+                VALUES ('" . $row['note_id'] . "', '" . $row['user_id'] . "', '" . $row['channel_id'] . "', '" . $row['deleted_by'] . "', '" . $row['deleted_at'] . "')");
+        }
+    }
+
+    foreach ($plan['drop'] as $share) {
+        db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
+
+        if ((int) $share['message_id'] > 0) {
+            ws_note_card_retire($share['message_id']);
+        }
+    }
+
+    // The card gives no access to a channel's note: its can_edit is off.
+    $card_message = (int) $plan['card']['message_id'];
+
+    db("UPDATE ws_note_shares SET can_edit = '0' WHERE id = '" . (int) $plan['card']['id'] . "'");
+    db("UPDATE ws_notes SET owner_channel_id = '" . $channel_id . "', pinned = '0'" . ws_note_revision_sql() . " WHERE id = '" . $id . "'");
+
+    // Groups and inbox lines are a person's: none stays with it.
+    ws_note_places_forget_note($id);
+
+    if (ws_notes_inbox_ready()) {
+        ws_inbox_delete("note_id = '" . $id . "'");
+    }
+
+    ws_note_folder_sync(ws_note($id));
+
+    if ($card_message > 0) {
+        ws_message_touch($card_message);
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => $card_message);
+}
+
+/**
+ * Copies a channel's note into the person's own notes: a new note of
+ * theirs with its title and text, counted in their WS_NOTE_LIMIT. The
+ * channel's note stays as it is. The files it shows stay in the channel
+ * note's folder.
+ *
+ * @param array $viewer
+ * @param array $note a channel's note they may read (ws_note_for() view)
+ * @return array ok, error, note_id (the copy)
+ */
+function ws_note_copy_mine($viewer, $note)
+{
+    if (!is_array($note) || (ws_note_channel_of($note) <= 0)) {
+        return array('ok' => false, 'error' => lang('Only a channel\'s note is copied to your notes.'), 'note_id' => 0);
+    }
+
+    $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => (string) $note['title'], 'body' => (string) $note['body']));
+
+    return $saved['ok']
+        ? array('ok' => true, 'error' => '', 'note_id' => (int) $saved['note_id'])
+        : array('ok' => false, 'error' => $saved['error'], 'note_id' => 0);
+}
+
+/**
  * The note cards of a set of messages: for each message that shares a note
  * in its channel, the note as it is now, or that it is no longer shared.
  *
@@ -3462,5 +3662,11 @@ function ws_notes_js_strings()
         'cn_none_found'         => lang('No note has that in its title.'),
         'cn_older'              => lang('Older notes'),
         'cn_delete_confirm'     => lang('Delete this note? It disappears for everybody in the channel.'),
+        // Moving a person's note into a channel, and the way back.
+        'cn_move'               => lang('Move to this channel'),
+        'cn_move_confirm'       => lang('Move this note to the channel? It leaves your notes and belongs to the channel: whoever may post here can change it, and it is no longer shared anywhere else.'),
+        'cn_moved'              => lang('The note belongs to this channel now.'),
+        'cn_copy_mine'          => lang('Copy to my notes'),
+        'cn_copied'             => lang('A copy is in your notes now.'),
     );
 }

@@ -1712,6 +1712,30 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
+        // A person's own note shared in a channel becomes the channel's.
+        case 'ws_note_move':
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'owner');
+
+            if (!$note) {
+                return ws_action_error(lang('Only the one who wrote a note can move it to a channel.'));
+            }
+
+            $result = ws_note_move($viewer, $note, ws_channel((int) ($request['channel_id'] ?? 0)));
+
+            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
+
+        // A channel's note copied into the reader's own notes.
+        case 'ws_note_copy_mine':
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'view');
+
+            if (!$note) {
+                return ws_action_error(lang('That note could not be found.'));
+            }
+
+            $result = ws_note_copy_mine($viewer, $note);
+
+            return $result['ok'] ? ws_action_ok(array('note_id' => $result['note_id'])) : ws_action_error($result['error']);
+
         // A file attached to a note, kept for those who may read it.
         case 'ws_note_file':
             $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'edit');

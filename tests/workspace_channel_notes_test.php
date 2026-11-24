@@ -249,3 +249,63 @@ function test_ws_channel_notes_list()
 	pg_assert_same('ws_api_channel_notes_list', $routes[array_search('workspace.channels.notes.list', $ids, true)]['handler'], 'with its handler');
 	pg_assert_true(function_exists('ws_api_channel_notes_list'), 'which exists');
 }
+
+// Moving a person's note into channel 10: the channel's own share stays as
+// its card; every other share goes, with a deletion row for the owner, each
+// person and each other channel, none for channel 10.
+function test_ws_note_move_plan_keeps_the_card()
+{
+	$note = array('id' => 5, 'user_id' => 7);
+	$shares = array(
+		array('id' => 1, 'user_id' => 8, 'channel_id' => 0, 'via_group' => 0, 'message_id' => 0),
+		array('id' => 2, 'user_id' => 0, 'channel_id' => 10, 'via_group' => 4, 'message_id' => 70),
+		array('id' => 3, 'user_id' => 0, 'channel_id' => 10, 'via_group' => 0, 'message_id' => 71),
+		array('id' => 4, 'user_id' => 0, 'channel_id' => 20, 'via_group' => 0, 'message_id' => 72),
+	);
+	$plan = ws_note_move_plan($note, $shares, 10, 7, 1000);
+
+	pg_assert_same(3, (int) $plan['card']['id'], 'the channel\'s own share is the card, not a group\'s');
+	pg_assert_same(array(1, 2, 4), array_map(function ($share) { return (int) $share['id']; }, $plan['drop']), 'every other share goes');
+
+	$who = array_map(function ($row) { return $row['user_id'] . '/' . $row['channel_id']; }, $plan['deletions']);
+
+	pg_assert_same(array('7/0', '8/0', '0/20'), $who, 'the owner, the person and the other channel are told it left; channel 10 keeps it');
+
+	foreach ($plan['deletions'] as $row) {
+		pg_assert_same(array(5, 7, 1000), array((int) $row['note_id'], (int) $row['deleted_by'], (int) $row['deleted_at']), 'the note, who moved it, when');
+	}
+}
+
+// Not shared in the channel yet: no card, one is to be posted.
+function test_ws_note_move_plan_without_card()
+{
+	$plan = ws_note_move_plan(array('id' => 5, 'user_id' => 7), array(
+		array('id' => 2, 'user_id' => 0, 'channel_id' => 10, 'via_group' => 4, 'message_id' => 70),
+	), 10, 7, 1000);
+
+	pg_assert_same(null, $plan['card'], 'a group\'s card is not the note\'s own');
+	pg_assert_same(1, count($plan['drop']), 'the group\'s share goes');
+	pg_assert_same(array(array('note_id' => 5, 'user_id' => 7, 'channel_id' => 0, 'deleted_by' => 7, 'deleted_at' => 1000)), $plan['deletions'], 'only the owner\'s list loses it');
+}
+
+// The move and the copy run their checks: who owns it, the lock, the
+// channel, its limit; the copy takes only a channel's note.
+function test_ws_note_move_checks()
+{
+	$check = ws_channel_notes_test_source('ws_note_move_check');
+
+	foreach (array("(int) \$note['user_id'] !== (int) \$viewer['id']", 'ws_note_lock_share_refusal(', 'ws_can_post_channel(', 'WS_NOTE_CHANNEL_LIMIT', 'ws_message_send_check(') as $part) {
+		pg_assert_contains(stripslashes($part), $check, 'the move checks ' . stripslashes($part));
+	}
+
+	$move = ws_channel_notes_test_source('ws_note_move');
+
+	foreach (array('ws_note_move_check(', 'ws_note_share_channel(', "owner_channel_id = '", "pinned = '0'", 'ws_note_places_forget_note(', 'ws_note_card_retire(', 'ws_note_folder_sync(') as $part) {
+		pg_assert_contains($part, $move, 'the move does ' . $part);
+	}
+
+	$copy = ws_channel_notes_test_source('ws_note_copy_mine');
+
+	pg_assert_contains('ws_note_channel_of($note) <= 0', $copy, 'the copy takes a channel\'s note only');
+	pg_assert_contains("ws_note_save(\$viewer, array('note_id' => 0,", $copy, 'and writes a new note of the reader\'s, in their limit');
+}
