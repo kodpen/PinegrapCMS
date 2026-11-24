@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## Why did the routine's address and token move?
-- Owner (2026-11-24, poll 222, `workflow/decisions-made-product-100.md`): Connections is the one place an outside service is set up; the row keeps a line leading there. Step CX11k2 of `plans/connections-merges-build.md`, #PRNUM. The MCP servers are CX11k3.
+- Owner (2026-11-24, poll 222, `workflow/decisions-made-product-100.md`): Connections is the one place an outside service is set up; the row keeps a line leading there. Step CX11k2 of `plans/connections-merges-build.md`, #11265. The MCP servers are CX11k3.
 
 ## What does Claude's page show?
 - `connections.php?service=claude`: Status, "Connection details" (`ws_claude_connection_card_html()` in `includes/workspace/claude_setup.php`), Where it is used (one row: "Claude in the channels, through a routine", Site Settings › Assistants and agents › Claude, Connected while `ws_claude_ready()`).

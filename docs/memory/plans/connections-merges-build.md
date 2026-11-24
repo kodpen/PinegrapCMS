@@ -22,7 +22,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - CX11i Integrations (Google reviews): done (#11117). CX11j Updates and maintenance: j1 the backup accounts (Drive, OneDrive, Dropbox), done (#11193). Cron Jobs: nothing to move; S3, FTP, object storage: no service.
 - CX11j2 the Chat notifications targets moved to Slack's, Teams' and Telegram's pages (architect 2026-11-23, message 12293; `ui/connections-chat-notify-page.md`). Done (#11215).
 - CX11k the Workspace's categories, done (#11244): nothing else to move (calendars are each person's; Calls' addresses are typed; Pinegrap AI is the licence key; agents, Voice in CX9). Owner (2026-11-24, poll 222): Claude and the MCP servers move, each row keeps a line to Connections (`decisions-made-product-100.md`).
-- CX11k2 Claude, own PR: the routine address and token on `connections.php?service=claude` (Connection details); the row and Set up's step 4 lead there. Done (#PRNUM).
+- CX11k2 Claude, own PR: the routine address and token on `connections.php?service=claude` (Connection details); the row and Set up's step 4 lead there. Done (#11265).
 - CX11k3 MCP, own PR: the servers (address, token) and the 12 connectors to their pages; the row leads there.
 
 ## Where are CX9's binding decisions?
