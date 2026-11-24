@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Visitors and privacy screen writes: visitor tracking, cookie consent and the checkout's legal documents.
+ * Site Settings - what the Visitors and privacy screen writes: visitor tracking, cookie consent, the interest score and the checkout's legal documents.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -36,6 +36,23 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if ($tracking_code_duration_input === null) {
         $liveform->mark_error('tracking_code_duration', lang('Remember a tracking code for 1 to 365 days.'));
+    }
+
+    // The interest score's settings (includes/fn/lead_score.php): only when
+    // the card was posted, so a pane drawn before the journey's tables
+    // existed leaves them alone. Written after the config update.
+    $lead_score_text = null;
+
+    if (array_key_exists('lead_score_card', $_POST) && pg_schema_has('config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_score.php');
+
+        $lead_score_input = pg_lead_score_settings_input($_POST);
+
+        foreach ($lead_score_input['errors'] as $lead_score_field => $lead_score_error) {
+            $liveform->mark_error($lead_score_field, $lead_score_error);
+        }
+
+        $lead_score_text = pg_lead_score_settings_text($lead_score_input['settings']);
     }
 
     if ($liveform->check_form_errors()) {
@@ -170,6 +187,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             pay_per_click_flag = '" . escape(post_value('pay_per_click_flag')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if ($lead_score_text !== null) {
+        pg_config_text_save('lead_score', $lead_score_text);
+    }
 
     if ($legal_kvkk_text !== null) {
         pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);

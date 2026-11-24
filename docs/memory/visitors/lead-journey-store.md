@@ -15,7 +15,8 @@ module: lead_journey_store
 
 ## How is a visit recorded?
 - The key is synced once per request at the end of `init_tracking()` (`pg_lead_request_browser()`), before the page prints: `update_visitor_page_data()` runs in `get_page.php` after output has started, so a cookie written there was never sent (found on the sandbox before #10882 was ready).
-- `update_visitor_page_data()` calls `pg_lead_page_view()`: so only with `VISITOR_TRACKING` and a `visitors` row. The first page of a visit inserts a `lead_visits` row (channel by `pg_visitor_channel()`, campaign = UTM campaign else tracking code, referrer host, landing page); later pages update `pages` JSON `[page, seconds, at]`, at most 50 (`pg_lead_pages_add()`). A tied browser's new visits carry its contact at once.
+- `update_visitor_page_data()` calls `pg_lead_page_view()`: so only with `VISITOR_TRACKING` and a `visitors` row. The first page of a visit inserts a `lead_visits` row (channel by `pg_visitor_channel()`, campaign = UTM campaign else tracking code, referrer host, landing page);
+- Later pages update `pages` JSON `[page, seconds, at]`, at most 50 (`pg_lead_pages_add()`); a catalogue page adds `pg_track_content()`'s item: `[page, seconds, at, type, id]` (#11245). A tied browser's new visits carry its contact at once.
 
 ## Which acts tie a browser? (`pg_lead_tie($act, $contact_id, $ref_id)`)
 - `sign_in`: `pg_session_sign_in()` (`includes/authentication.php`) via `pg_lead_sign_in()`, the account's `user_contact`; skipped when the request was already signed in as another user (`login_as_user.php`).

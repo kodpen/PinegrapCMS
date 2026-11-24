@@ -25,7 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_privacy_fold_order()
 {
-    return array('analytics', 'retention', 'cookies', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre');
+    return array('analytics', 'retention', 'cookies', 'interest-score', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre');
 }
 
 /**
@@ -43,6 +43,8 @@ function pg_privacy_fold_face($key)
             return array('name' => lang('How long we keep data'), 'icon' => 'bi-hourglass-split', 'tone' => 'pg-tone-violet');
         case 'cookies':
             return array('name' => lang('Cookie consent'), 'icon' => 'bi-cookie', 'tone' => 'pg-tone-amber');
+        case 'interest-score':
+            return array('name' => lang('Interest score'), 'icon' => 'bi-fire', 'tone' => 'pg-tone-rose');
         case 'legal':
             return array('name' => lang('Legal documents'), 'icon' => 'bi-file-earmark-text', 'tone' => 'pg-tone-shop');
         case 'kvkk':
@@ -125,6 +127,27 @@ function pg_privacy_fold_cookies($on)
 {
     return array(
         'line'      => $on ? lang('Visitors choose which cookies are set') : lang('Every cookie is set without asking'),
+        'pill'      => pg_privacy_fold_switch_pill($on),
+        'attention' => false,
+    );
+}
+
+/**
+ * Interest score's line: from which score a contact is hot while the
+ * journey is recorded, which needs visitor tracking and the cookie notice
+ * (a browser is followed only after its marketing yes).
+ *
+ * @param bool $tracking  visitor tracking on
+ * @param bool $consent   the cookie notice on
+ * @param int  $threshold the hot threshold
+ * @return array line, pill, attention
+ */
+function pg_privacy_fold_interest($tracking, $consent, $threshold)
+{
+    $on = $tracking && $consent;
+
+    return array(
+        'line'      => $on ? lang(array('string' => 'Hot from a score of {var:1}', 'vars' => array((int) $threshold))) : lang('Needs visitor tracking and the cookie notice'),
         'pill'      => pg_privacy_fold_switch_pill($on),
         'attention' => false,
     );

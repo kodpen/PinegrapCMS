@@ -52,7 +52,7 @@ function settings_privacy_fold_test_card($id)
 
 function test_settings_privacy_fold_order_and_names()
 {
-	pg_assert_same(array('analytics', 'retention', 'cookies', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre'), pg_privacy_fold_order(), 'the rows in the description\'s order');
+	pg_assert_same(array('analytics', 'retention', 'cookies', 'interest-score', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre'), pg_privacy_fold_order(), 'the rows in the description\'s order');
 
 	$names = array();
 
@@ -63,7 +63,7 @@ function test_settings_privacy_fold_order_and_names()
 		pg_assert_false(stripos($face['name'], 'Enable') === 0, $key . ': a name never starts with Enable');
 	}
 
-	pg_assert_same(array(lang('Visitor tracking'), lang('How long we keep data'), lang('Cookie consent'), lang('Legal documents'), lang('KVKK notice'), lang('Accessibility statement'), lang('Privacy centre')), $names, 'the rows\' names');
+	pg_assert_same(array(lang('Visitor tracking'), lang('How long we keep data'), lang('Cookie consent'), lang('Interest score'), lang('Legal documents'), lang('KVKK notice'), lang('Accessibility statement'), lang('Privacy centre')), $names, 'the rows\' names');
 }
 
 function test_settings_privacy_fold_lines()
@@ -223,4 +223,13 @@ function test_settings_privacy_fold_registry_and_search()
 	pg_assert_same(array('KVKK Notice Page'), $labels['pgset-kvkk'], 'the KVKK row\'s label');
 	pg_assert_contains('id="pg-fold-legal"', $html, 'the first row arrives open');
 	pg_assert_contains('aria-expanded="true" aria-controls="pg-fold-legal-body"', $html, 'open');
+}
+
+function test_settings_privacy_fold_interest_line()
+{
+	$on = pg_privacy_fold_interest(true, true, 70);
+	pg_assert_same(lang(array('string' => 'Hot from a score of {var:1}', 'vars' => array(70))), $on['line'], 'the threshold while the journey is recorded');
+	pg_assert_same(lang('On'), $on['pill'][0]);
+	pg_assert_same(lang('Off'), pg_privacy_fold_interest(true, false, 70)['pill'][0], 'off without the cookie notice');
+	pg_assert_same(lang('Needs visitor tracking and the cookie notice'), pg_privacy_fold_interest(false, true, 70)['line'], 'off without visitor tracking');
 }

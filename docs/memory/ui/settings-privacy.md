@@ -1,17 +1,18 @@
 ---
 name: settings-privacy
-description: Site Settings › Visitors and privacy as seven folded rows (Visitor tracking, How long we keep data, KVKK notice…): what each holds, its line, ids and anchors kept
+description: Site Settings › Visitors and privacy as eight folded rows (Visitor tracking, How long we keep data, Interest score, KVKK notice…): what each holds, its line, ids and anchors kept
 module: privacy_settings_fold
 ---
 
 ## How is the pane drawn?
-- Folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), first row open: Visitor tracking, How long we keep data, Cookie consent, Legal documents, KVKK notice, Accessibility statement, Privacy centre. Order, names, icons, lines: `includes/fn/privacy_settings_fold.php` (`pg_privacy_fold_order()`, `_face()`, `pg_privacy_fold_<part>()`, pure but for `lang()`). Test: `tests/settings_privacy_fold_test.php`.
+- Folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), first row open: Visitor tracking, How long we keep data, Cookie consent, Interest score (once the journey's tables exist), Legal documents, KVKK notice, Accessibility statement, Privacy centre. Order, names, icons, lines: `includes/fn/privacy_settings_fold.php` (`pg_privacy_fold_order()`, `_face()`, `pg_privacy_fold_<part>()`, pure but for `lang()`). Test: `tests/settings_privacy_fold_test.php`.
 - No popover, no `div.switch`: every switch is `pg-switch`, its fields drawn under it whatever its state. One Save for the pane. Built in #10964 (rows), #10998 (retention row), #11096 (KVKK switch, Site chats rule).
 
 ## What does each row hold?
 - Visitor tracking (`pgset-analytics`): line "Visits are recorded" / "not recorded", "· Google Analytics connected"; pill On/Off. "Record visits" (`visitor_tracking`), "Remember a tracking code for" (`tracking_code_duration`), "Paid tracking code mark" (`pay_per_click_flag`), Google Analytics as a connect row (`ui/connections-google-analytics-page.md`).
 - How long we keep data (`pgset-retention`): "Keep visitor records for" (`visitor_retention_days`), "Remove IP addresses after" (`visitor_ip_days`), "Keep a daily summary of every day" (`visitor_summary`) with the Database Engine link; then the overview of every other period (`ui/settings-privacy-retention.md`). Line `pg_privacy_fold_retention()`: the visitor records' days and when IP addresses go; no pill.
 - Cookie consent (`pgset-cookies`): the switch, Cookie Policy Address, the `#cookie-settings` line; held scripts and Google tags under a `details` "Your own scripts".
+- Interest score (`pgset-interest-score`): line "Hot from a score of N", pill On only with visitor tracking and the cookie notice on; fields in `visitors/lead-score-settings.md`.
 - Legal documents (`pgset-legal`): the switch and its help, the two templates, "Fields you can use in a template" under a `details`; drawn while off.
 - KVKK notice (`pgset-kvkk`): "Show the KVKK notice" (`ecommerce_kvkk_enabled`, its own switch: `commerce/kvkk-notice-switch.md`), KVKK Notice Page, Explicit Consent Sentence. Line names what is filled; pill Off, "In use" or "Not used".
 - Accessibility statement (`pgset-a11y-statement`): the fields, "Print the statement" quiet; line "Dated …" or "Not filled".

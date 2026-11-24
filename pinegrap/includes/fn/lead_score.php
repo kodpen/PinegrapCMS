@@ -226,21 +226,36 @@ function pg_lead_fit_score(array $facts)
 }
 
 /**
- * A contact's interests: the folders of the pages its visits saw, each
- * weighted by the seconds spent there (at least PG_LEAD_TOPIC_MIN_SECONDS a
- * page) and faded by the half-life from the visit's start; the top five,
- * heaviest first (ties by name). Pages in no folder but the site's root
- * count for nothing. Pure.
+ * A contact's interests: the folders of the pages its visits saw and, on a
+ * catalogue page, the product's categories (its product groups) or the
+ * product group shown instead of the page's folder. Each is weighted by the
+ * seconds spent there (at least PG_LEAD_TOPIC_MIN_SECONDS a page; a product
+ * in several groups shares them out evenly) and faded by the half-life from
+ * the visit's start; the top five, heaviest first (ties by name). Pages in
+ * no folder but the site's root, and items no longer in the catalogue
+ * shown on such a page, count for nothing. Pure.
  *
- * @param array[]   $rows    pg_lead_journey_read()'s rows; only visits count
- * @param array     $folders page name => array(id, name)
+ * @param array[]   $rows       pg_lead_journey_read()'s rows; only visits count
+ * @param array     $folders    page name => array(id, name)
  * @param int       $now
  * @param int|float $half_life_days
- * @return array[] id, name, weight
+ * @param array     $categories 'type:id' (pg_lead_page_item_types()) =>
+ *                              list of array(group id, group name)
+ * @return array[] id, kind ('folder' or 'category'), name, weight
  */
-function pg_lead_interest_topics(array $rows, array $folders, $now, $half_life_days = PG_LEAD_HALF_LIFE_DAYS)
+function pg_lead_interest_topics(array $rows, array $folders, $now, $half_life_days = PG_LEAD_HALF_LIFE_DAYS, array $categories = array())
 {
     $topics = array();
+
+    $add = function ($kind, $id, $name, $weight) use (&$topics) {
+        $key = $kind . ':' . (int) $id;
+
+        if (!isset($topics[$key])) {
+            $topics[$key] = array('id' => (int) $id, 'kind' => $kind, 'name' => (string) $name, 'weight' => 0.0);
+        }
+
+        $topics[$key]['weight'] += $weight;
+    };
 
     foreach ($rows as $row) {
         if ((string) ($row['kind'] ?? '') !== 'visit') {
@@ -249,20 +264,24 @@ function pg_lead_interest_topics(array $rows, array $folders, $now, $half_life_d
 
         foreach ((array) ($row['pages'] ?? array()) as $page) {
             $name = is_array($page) ? (string) ($page[0] ?? '') : (string) $page;
+            $item = (is_array($page) && isset($page[2], $page[3])) ? (string) $page[2] . ':' . (int) $page[3] : '';
+            $groups = (($item !== '') && !empty($categories[$item])) ? $categories[$item] : array();
 
-            if (!isset($folders[$name])) {
+            if (!$groups && !isset($folders[$name])) {
                 continue;
             }
 
-            list($id, $folder) = $folders[$name];
             $seconds = max(PG_LEAD_TOPIC_MIN_SECONDS, is_array($page) ? (int) ($page[1] ?? 0) : 0);
             $weight = pg_lead_score_decay($seconds, (int) $now - (int) ($row['at'] ?? 0), $half_life_days);
 
-            if (!isset($topics[$id])) {
-                $topics[$id] = array('id' => (int) $id, 'name' => (string) $folder, 'weight' => 0.0);
+            if (!$groups) {
+                $add('folder', $folders[$name][0], $folders[$name][1], $weight);
+                continue;
             }
 
-            $topics[$id]['weight'] += $weight;
+            foreach ($groups as $group) {
+                $add('category', $group[0], $group[1], $weight / count($groups));
+            }
         }
     }
 
@@ -280,6 +299,63 @@ function pg_lead_interest_topics(array $rows, array $folders, $now, $half_life_d
     }
 
     return array_slice($topics, 0, PG_LEAD_TOPICS_MAX);
+}
+
+/**
+ * The 'type:id' keys of the catalogue items a journey's visits showed, as
+ * pg_lead_interest_topics() looks them up. Pure.
+ *
+ * @param array[] $rows pg_lead_journey_read()'s rows
+ * @return array type => list of ids
+ */
+function pg_lead_interest_items(array $rows)
+{
+    $items = array();
+
+    foreach ($rows as $row) {
+        if ((string) ($row['kind'] ?? '') !== 'visit') {
+            continue;
+        }
+
+        foreach ((array) ($row['pages'] ?? array()) as $page) {
+            if (is_array($page) && isset($page[2], $page[3]) && in_array((string) $page[2], pg_lead_page_item_types(), true) && ((int) $page[3] > 0)) {
+                $items[(string) $page[2]][(int) $page[3]] = (int) $page[3];
+            }
+        }
+    }
+
+    return array_map('array_values', $items);
+}
+
+/**
+ * The product groups of the products and the product groups a journey
+ * showed, keyed as pg_lead_interest_topics() takes them. Only groups still
+ * in the catalogue count, and never the catalogue's top group (it holds
+ * everything, as the site's root folder does).
+ *
+ * @param array $items pg_lead_interest_items()'s answer
+ * @return array 'type:id' => list of array(group id, group name)
+ */
+function pg_lead_interest_categories(array $items)
+{
+    $categories = array();
+
+    if (!empty($items['product'])) {
+        foreach ((array) db_items("SELECT x.product, g.id, g.name FROM products_groups_xref x
+            INNER JOIN product_groups g ON g.id = x.product_group AND g.parent_id <> 0
+            WHERE x.product IN (" . implode(',', array_map('intval', $items['product'])) . ")
+            ORDER BY g.name, g.id") as $group) {
+            $categories['product:' . (int) $group['product']][] = array((int) $group['id'], (string) $group['name']);
+        }
+    }
+
+    if (!empty($items['product_group'])) {
+        foreach ((array) db_items("SELECT id, name FROM product_groups WHERE parent_id <> 0 AND id IN (" . implode(',', array_map('intval', $items['product_group'])) . ")") as $group) {
+            $categories['product_group:' . (int) $group['id']][] = array((int) $group['id'], (string) $group['name']);
+        }
+    }
+
+    return $categories;
 }
 
 /**
@@ -305,6 +381,84 @@ function pg_lead_score_reason_text($kind)
     );
 
     return isset($texts[$kind]) ? $texts[$kind] : '';
+}
+
+/**
+ * The contacts list's Score cell: the interest score, with a "Hot" pill
+ * from the site's threshold on; empty for a contact not scored. Pure but
+ * for lang().
+ *
+ * @param mixed $interest contact_scores.interest, null without a row
+ * @param int   $threshold
+ * @return string HTML
+ */
+function pg_lead_score_list_cell($interest, $threshold)
+{
+    if (($interest === null) || ($interest === '')) {
+        return '';
+    }
+
+    $interest = (int) $interest;
+
+    return (($interest >= (int) $threshold) ? '<span class="pg-pill pg-tone-rose me-2">' . h(lang('Hot')) . '</span>' : '')
+        . $interest;
+}
+
+/**
+ * The interest score settings as Site Settings posted them (the
+ * "Interest score" row): each value checked against its bounds, a field out
+ * of them named with its message. Pure but for lang().
+ *
+ * @param array $post the posted fields: lead_score_threshold,
+ *                    lead_score_weight_<kind>, lead_score_pricing_pages,
+ *                    lead_score_contact_pages, lead_score_half_life,
+ *                    lead_score_keep_months
+ * @return array settings (pg_lead_score_settings()'s shape), errors (field => message)
+ */
+function pg_lead_score_settings_input(array $post)
+{
+    $errors = array();
+    $number = function ($field, $min, $max, $message) use ($post, &$errors) {
+        $value = trim((string) ($post[$field] ?? ''));
+
+        if (!preg_match('/^\d{1,4}$/', $value) || ((int) $value < $min) || ((int) $value > $max)) {
+            $errors[$field] = $message;
+            return $min;
+        }
+
+        return (int) $value;
+    };
+
+    $weights = array();
+
+    foreach (array_keys(pg_lead_score_weights()) as $kind) {
+        $weights[$kind] = $number('lead_score_weight_' . $kind, 0, 100, lang('Give each act 0 to 100 points.'));
+    }
+
+    $data = array(
+        'threshold' => $number('lead_score_threshold', 1, 100, lang('Hot from a score of 1 to 100.')),
+        'weights' => $weights,
+        'pricing_pages' => (isset($post['lead_score_pricing_pages']) && is_array($post['lead_score_pricing_pages'])) ? $post['lead_score_pricing_pages'] : array(),
+        'contact_pages' => (isset($post['lead_score_contact_pages']) && is_array($post['lead_score_contact_pages'])) ? $post['lead_score_contact_pages'] : array(),
+        'half_life' => $number('lead_score_half_life', 1, 365, lang('Points halve in 1 to 365 days.')),
+        'keep_months' => $number('lead_score_keep_months', 1, 36, lang('Keep the journey 1 to 36 months.')),
+    );
+
+    return array('settings' => pg_lead_score_settings($data), 'errors' => $errors);
+}
+
+/**
+ * The text config_text 'lead_score' keeps for the settings: '' when they
+ * are the defaults, so a later change of a default reaches the site. Pure.
+ *
+ * @param array $settings pg_lead_score_settings()'s shape
+ * @return string
+ */
+function pg_lead_score_settings_text(array $settings)
+{
+    $settings = pg_lead_score_settings($settings);
+
+    return ($settings === pg_lead_score_settings(array())) ? '' : (string) json_encode($settings);
 }
 
 /**
@@ -408,7 +562,7 @@ function pg_lead_score_contact($contact_id, array $settings, $now)
         'title' => $contact['title'],
         'groups' => (int) db_value("SELECT COUNT(*) FROM contacts_contact_groups_xref WHERE contact_id = '" . $contact_id . "'"),
     ));
-    $topics = pg_lead_interest_topics($rows, $folders, $now, $settings['half_life']);
+    $topics = pg_lead_interest_topics($rows, $folders, $now, $settings['half_life'], pg_lead_interest_categories(pg_lead_interest_items($rows)));
     $hot = ($interest['score'] >= $settings['threshold']) ? 1 : 0;
 
     // hot_at is assigned before hot, so it still reads the row's old flag.

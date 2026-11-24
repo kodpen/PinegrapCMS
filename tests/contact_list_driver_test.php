@@ -46,6 +46,19 @@ function test_contact_list_groups_column_follows_its_toggle()
 	pg_assert_false(isset(pg_contact_list_columns('my_subscribers', false)['groups']), 'no groups column while they are hidden');
 }
 
+function test_contact_list_score_column_hidden_until_shown()
+{
+	$columns = pg_list_table_columns(pg_contact_list_columns('all_my_contacts', false, true));
+
+	pg_assert_same('opt_in', array_keys($columns)[array_search('score', array_keys($columns), true) - 1], 'the score follows Opt-In');
+	pg_assert_true($columns['score']['hidden'], 'off by default in the columns menu');
+	pg_assert_same('contact_scores.interest', $columns['score']['sort']);
+	pg_assert_false(isset(pg_contact_list_columns('all_my_contacts', false)['score']), 'no column without the scores');
+	pg_assert_false(isset(pg_contact_list_columns('my_contacts_by_home_address', false, true)['score']), 'not in an address view');
+	pg_assert_true(strpos(pg_contact_list_select('all_my_contacts', true), 'contact_scores.interest as lead_interest') !== false, 'the score is read with the row');
+	pg_assert_false(strpos(pg_contact_list_select('all_my_contacts'), 'contact_scores') !== false, 'nothing joined without it');
+}
+
 function test_contact_list_address_view_columns()
 {
 	$columns = pg_list_table_columns(pg_contact_list_columns('my_contacts_by_home_address', false));
