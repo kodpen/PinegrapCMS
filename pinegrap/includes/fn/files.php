@@ -1556,14 +1556,16 @@ function pg_file_store_upload($source_path, $file_name, $file_size, $options)
             '" . escape($file_size) . "',
             " . $sql_image_2 . "
             " . $sql_design_2 . "
-            '" . USER_ID . "',
+            '" . (defined('USER_ID') ? (int) USER_ID : 0) . "',
             UNIX_TIMESTAMP())");
 
     $new_file_id = (int) mysqli_insert_id(db::$con);
 
     pg_audit_record('create', 'files', $new_file_id);
 
-    log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $file_name)), $_SESSION['sessionusername']);
+    // The agency summary's customer page stores files with no one signed in
+    // (includes/fn/launch_summary.php).
+    log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $file_name)), (string) ($_SESSION['sessionusername'] ?? ''));
 
     // A file uploaded from the panel is as new to an integration as one
     // posted to the API, so it is announced the same way.

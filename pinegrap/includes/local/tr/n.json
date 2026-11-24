@@ -1726,6 +1726,7 @@
     "No file matches that.": "Bununla eşleşen dosya yok.",
     "No file named \"{var:1}\" was found, so nothing was attached to the {var:2} field.": "\"{var:1}\" adlı dosya bulunamadı, bu yüzden {var:2} alanına bir şey eklenmedi.",
     "No file was found.": "Dosya bulunamadı.",
+    "No file was sent.": "Hiçbir dosya gönderilmedi.",
     "No file was uploaded.": "Dosya yüklenmedi.",
     "No files found.": "Dosya bulunamadı.",
     "No files have been posted here yet.": "Buraya henüz dosya gönderilmedi.",

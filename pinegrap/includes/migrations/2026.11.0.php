@@ -267,6 +267,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_share_links();          // 11.0.275
 	upgrade_2026_11_0_prototype_approval();      // 11.0.276
 	upgrade_2026_11_0_security_finding();        // 11.0.277
+	upgrade_2026_11_0_launch_summary_answer_kind(); // 11.0.278
 
 }
 
@@ -9453,5 +9454,19 @@ function upgrade_2026_11_0_security_finding() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Security: a table for the findings of the Security Scan.');
+
+}
+
+// 11.0.278 - What a line of the agency summary asks for (owner, 2026-11-24:
+// a line can ask the customer for files instead of text). answer_kind is 0
+// for a text answer, 1 for one file, 2 for several files; every existing line
+// stays a text line. A file line keeps the ids of the files the customer sent
+// as a JSON list in answer, so no second table is made: the files are rows of
+// the files table in the private "From the customer" folder.
+function upgrade_2026_11_0_launch_summary_answer_kind() {
+
+	install_add_column('launch_summary_lines', 'answer_kind', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER line_text");
+
+	install_note('Set-up journey: a line of the agency summary can ask the customer for one file or several files instead of a text answer.');
 
 }

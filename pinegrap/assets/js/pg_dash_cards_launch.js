@@ -317,7 +317,8 @@
     }
 
     // The agency summary: "What we need from you" lines with the customer's
-    // answers, "Add a line", each with its remove; the customer's link with
+    // answers or the files they sent, "Add a line", each with its remove and
+    // its "Answer" select (Text, One file, Several files); the customer's link with
     // Copy and "Withdraw link", or the expiry and "Make a new link". Every
     // answer of launch_summary is the drawer's data after the change.
     function summaryCall(request, done, failed) {
@@ -406,7 +407,8 @@
             body.appendChild(el("h6", "pg-field-label mb-2", labels.need));
             var list = el("ul", "list-unstyled mb-3");
             summary.lines.forEach(function (line) {
-                var item = el("li", "pg-list-row" + (line.answer ? "" : " is-read"));
+                var files = line.files || [];
+                var item = el("li", "pg-list-row" + ((line.answer || files.length) ? "" : " is-read"));
                 var main = el("div", "pg-list-row-main");
                 var head = el("div", "pg-list-row-head");
                 head.appendChild(el("span", "pg-list-row-title", line.text));
@@ -419,6 +421,57 @@
                     answer.style.whiteSpace = "pre-wrap";
                     gather.appendChild(answer);
                     main.appendChild(gather);
+                }
+                if (files.length) {
+                    // The files the customer sent, each opened through
+                    // get_file.php, which serves the private folder only
+                    // to a signed-in panel user.
+                    var sent = el("div", "pg-gather");
+                    files.forEach(function (file) {
+                        var fileLine = el("div", "pg-gather-line");
+                        var link = el("a", "text-truncate min-w-0", file.name);
+                        link.href = file.url;
+                        link.target = "_blank";
+                        link.rel = "noopener";
+                        fileLine.appendChild(link);
+                        fileLine.appendChild(el("span", "pg-gather-line-end", file.size));
+                        sent.appendChild(fileLine);
+                    });
+                    main.appendChild(sent);
+                }
+                if (summary.kinds) {
+                    var kindField = el("div", "form-field mt-2 mb-0");
+                    var kindId = "pg_dash_launch_summary_kind_" + line.id;
+                    var kindLabel = el("label", "form-label pg-field-label", labels.answer_kind);
+                    kindLabel.setAttribute("for", kindId);
+                    kindField.appendChild(kindLabel);
+                    var kind = el("select", "pg-input");
+                    kind.id = kindId;
+                    [[0, labels.kind_text], [1, labels.kind_one], [2, labels.kind_several]].forEach(function (pair) {
+                        var option = el("option", "", pair[1]);
+                        option.value = pair[0];
+                        option.selected = (pair[0] === line.kind);
+                        kind.appendChild(option);
+                    });
+                    kind.addEventListener("change", function () {
+                        var chosen = parseInt(kind.value, 10);
+                        // A changed kind clears what was sent for the line.
+                        var ask = !(line.answer || files.length) ? Promise.resolve(true) : (window.pgConfirm ? window.pgConfirm({
+                            title: labels.answer_kind,
+                            message: labels.kind_ask,
+                            confirmText: labels.kind_change,
+                            cancelText: labels.cancel
+                        }) : Promise.resolve(window.confirm(labels.kind_ask)));
+                        ask.then(function (yes) {
+                            if (yes) {
+                                call({op: "kind", id: line.id, kind: chosen}, kind);
+                            } else {
+                                kind.value = line.kind;
+                            }
+                        });
+                    });
+                    kindField.appendChild(kind);
+                    main.appendChild(kindField);
                 }
                 item.appendChild(main);
 

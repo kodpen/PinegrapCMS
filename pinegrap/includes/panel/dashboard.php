@@ -31,7 +31,8 @@
  *                                this site, Hide set-up, or Go live
  *                                (administrators)
  *   launch_summary               the agency summary's lines and signed link:
- *                                read, add, remove, a new link, withdraw
+ *                                read, add, remove, a line's answer kind,
+ *                                a new link, withdraw
  *                                (administrators)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
@@ -614,6 +615,8 @@ function pg_panel_launch_summary($request, $action)
         $ok = pg_launch_summary_line_add($request['text'] ?? '', (int) $user['id']);
     } elseif ($op === 'remove') {
         $ok = pg_launch_summary_line_remove((int) ($request['id'] ?? 0));
+    } elseif ($op === 'kind') {
+        $ok = pg_launch_summary_line_kind((int) ($request['id'] ?? 0), $request['kind'] ?? 0);
     } elseif ($op === 'link') {
         $link = pg_launch_summary_link_new(time(), (int) ($request['days'] ?? 0), pg_booking_key());
         $ok = ($link['hash'] !== '') && pg_launch_summary_link_store($link);
