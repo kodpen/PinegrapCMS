@@ -34,7 +34,7 @@ foreach (pg_pick_wave_lines($wave['id']) as $line) {
     $rows .= '
         <tr>
             <td class="tick"><span class="box"></span></td>
-            <td class="bin">' . h($line['bin']) . '</td>
+            <td class="bin">' . h($line['bin']) . (($line['location'] !== '') ? '<div class="options">' . h($line['location']) . '</div>' : '') . '</td>
             <td>' . h($line['code']) . '</td>
             <td>' . h($line['name']) . (($line['options']) ? '<div class="options">' . h(implode(' · ', $line['options'])) . '</div>' : '') . '</td>
             <td class="units">' . h(pg_format_number($line['units'], 0)) . '</td>

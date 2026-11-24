@@ -457,6 +457,8 @@ function pg_pick_wave_addresses($wave_id)
  *
  * @param int $wave_id
  * @return array pg_pick_list_totals() lines, each with 'image' ('' none)
+ *               and 'location' (its name when the list spans more than
+ *               one location, else '')
  */
 function pg_pick_wave_lines($wave_id)
 {
@@ -524,7 +526,15 @@ function pg_pick_wave_lines($wave_id)
         $images[$product_id] = (string) $item['image_name'];
     }
 
-    $lines = pg_pick_list_totals($rows);
+    $names = array();
+
+    if (pg_stock_has_locations()) {
+        foreach (pg_stock_locations() as $location) {
+            $names[(int) $location['id']] = (string) $location['name'];
+        }
+    }
+
+    $lines = pg_pick_list_location_names(pg_pick_list_totals($rows), $names);
 
     foreach ($lines as $i => $line) {
         $lines[$i]['image'] = isset($images[$line['product_id']]) ? $images[$line['product_id']] : '';

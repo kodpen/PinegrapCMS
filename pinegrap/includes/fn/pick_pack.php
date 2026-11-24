@@ -443,6 +443,27 @@ function pg_pick_line_bin(array $bins, $location_id, $default_location_id)
 }
 
 /**
+ * Names each pick list line's location when the list spans more than one,
+ * so two lines of one product at two locations are told apart.
+ *
+ * @param array $lines pg_pick_list_totals() lines
+ * @param array $names location_id => name
+ * @return array the lines, each with 'location' ('' on a list of one
+ *               location)
+ */
+function pg_pick_list_location_names(array $lines, array $names)
+{
+    $several = count(array_unique(array_map('intval', array_column($lines, 'location_id')))) > 1;
+
+    foreach ($lines as $i => $line) {
+        $id = (int) (isset($line['location_id']) ? $line['location_id'] : 0);
+        $lines[$i]['location'] = ($several && isset($names[$id])) ? (string) $names[$id] : '';
+    }
+
+    return $lines;
+}
+
+/**
  * The key of a pick list line, as the wave's picked list keeps it.
  *
  * @param int $product_id

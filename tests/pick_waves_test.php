@@ -138,3 +138,23 @@ function test_pick_waves_line_shelf_by_location()
 	pg_assert_same('A-3', pg_pick_line_bin(array(0 => 'A-3'), 0, 0), 'without locations');
 	pg_assert_same('', pg_pick_line_bin(array(), 5, 5), 'no address at all');
 }
+
+// One product at two locations is two lines; each names its location so
+// the picker goes to the right one. A list of one location names none.
+function test_pick_waves_lines_name_their_location_when_two()
+{
+	$names = array(5 => 'Main store', 7 => 'Depot');
+	$two = pg_pick_list_location_names(array(
+		array('product_id' => 4, 'location_id' => 5),
+		array('product_id' => 4, 'location_id' => 7),
+		array('product_id' => 9, 'location_id' => 8),
+	), $names);
+
+	pg_assert_same('Main store', $two[0]['location'], 'the first location named');
+	pg_assert_same('Depot', $two[1]['location'], 'the second location named');
+	pg_assert_same('', $two[2]['location'], 'a location without a name stays blank');
+
+	$one = pg_pick_list_location_names(array(array('product_id' => 4, 'location_id' => 5), array('product_id' => 9, 'location_id' => 5)), $names);
+
+	pg_assert_same(array('', ''), array_column($one, 'location'), 'one location: no name');
+}
