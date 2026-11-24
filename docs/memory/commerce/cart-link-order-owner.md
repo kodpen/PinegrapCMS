@@ -1,17 +1,20 @@
 ---
 name: cart-link-order-owner
-description: Whose account an order belongs to when another person opens a saved-cart link (?r=) and completes it; today it stays with the builder (#11435, open decision)
+description: Whose account an order belongs to when a saved-cart link (?r=) is opened by someone else: whoever completes it (pg_cart_link_take_over(), PR #11463, #11435)
+module: cart_link_owner
 ---
 
-## Whose order is a cart completed through its link?
-- Today: still the account that built the cart. `retrieve_order()` (`retrieve_order.php`) puts the order in the opener's session and clears its billing fields, but keeps `orders.user_id` and `contact_id`.
-- `connect_user_to_order()` refuses an order that already has an account, so a signed-in opener does not take it over.
-- Every owner check reads `orders.user_id`: `pg_order_view_owner_matches()`, the order_view widget, My Account order history.
+## Whose order is a cart opened through its link?
+- Whoever completes it. Owner (2026-11-24): a signed-in opener takes it over, a guest opener leaves it with no account; the builder no longer lists it or sees the buyer's billing details. Recorded in decisions part 109.
+- `pg_cart_link_take_over()` (`includes/fn/cart_link_owner.php`) writes `orders.user_id` / `contact_id`; `pg_cart_link_owner()` is the pure rule. It runs in `retrieve_order()` (`retrieve_order.php`, cart / quote / express order pages) and in `_eo_restore_cart_from_reference_code()` (designer cart and express order widgets), only when the order was not already in the session.
 
-## What does the builder see?
-- The order in their order history, and on View Order the opener's billing name, address, phone, e-mail and card type with last digits. The opener's own order history does not list it (#11435).
+## What stays unchanged?
+- The same account opening the link on another device: nothing is written.
+- A ghosting staff member: the order is not moved, as `initialize_order()` does not rebind it either.
+- A builder who completes their own cart after someone else opened the link: the checkout's `initialize_order()` rebinds a session order to the signed-in visitor, so it lands on the builder's account.
+- A guest order is bound at a later sign-in by `connect_user_to_order()` as before.
 
-## Is the behaviour decided?
-- Not yet: whether the order moves to the opener (their account when signed in, none for a guest) or stays with the builder (an assistant preparing an order for someone else to pay) is product behaviour, asked in the PR fixing #11435.
+## What was wrong before?
+- `retrieve_order()` cleared the billing fields but kept `user_id` / `contact_id`, and `connect_user_to_order()` refuses an order that has an account. The order stayed in the builder's order history, and their View Order showed the opener's billing name, address, phone, e-mail and card type with last digits (#11435). The designer widgets left a guest opener's order on the builder too.
 
-Related: commerce/order-reference-code-link.md, commerce/cart-order-creation.md, plans/storefront-api-cart-token.md
+Test: `tests/cart_link_owner_test.php`. Related: commerce/order-reference-code-link.md, commerce/cart-order-creation.md, plans/storefront-api-cart-token.md

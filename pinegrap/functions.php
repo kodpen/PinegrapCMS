@@ -317,6 +317,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_pass.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_tell.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_link.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_link_owner.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_messages.php');

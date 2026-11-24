@@ -72,6 +72,9 @@ function retrieve_order($request) {
 
     $_SESSION['ecommerce']['order_id'] = $order['id'];
 
+    // The order belongs to whoever completes it: the signed-in opener, or no account for a guest.
+    pg_cart_link_take_over($order['id']);
+
     // If this visitor has a tracking code, then update tracking code in order.  If this visitor
     // does not have a tracking code, then we don't update the tracking code for the order, because
     // we don't want to lose a previous tracking code.
