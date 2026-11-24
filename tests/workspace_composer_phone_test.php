@@ -114,3 +114,22 @@ function test_workspace_composer_phone_keyboard_rules_stay()
 	pg_assert_contains("body.classList.toggle('ws-keyboard'", $js, 'the box still rides on the keyboard');
 	pg_assert_contains('ctxFollow(attach);', $js, 'the menus of the box still follow their button');
 }
+
+// #11320: the channel view's full window height (100dvh, which the
+// on-screen keyboard does not shorten) is a more specific selector than the
+// phone's .ws-app rule, so the phone block sizes that selector by the visual
+// viewport too; otherwise the box stayed under the keyboard.
+function test_workspace_composer_phone_channel_view_fits_the_visual_viewport()
+{
+	$phone = workspace_composer_phone_test_phone_css();
+	$fit = 'height: var(--ws-fit-h, calc(100vh - 3.125rem));';
+
+	$app = workspace_composer_phone_test_rule($phone, '.ws-app');
+	pg_assert_true($app !== null && strpos($app, $fit) !== false, 'the phone channel screen takes the visual viewport height');
+
+	$channel = workspace_composer_phone_test_rule($phone, '.ws-app:not(:has(.ws-home))');
+	pg_assert_true($channel !== null && strpos($channel, $fit) !== false, 'the channel view on a phone takes the visual viewport height, not 100dvh');
+
+	$css = workspace_composer_phone_test_css();
+	pg_assert_true(strpos($css, '.ws-app:not(:has(.ws-home))') < strpos($css, '@media (max-width: 767.98px) {', strpos($css, '.ws-app:not(:has(.ws-home))')), 'the phone rule comes after the wide one');
+}
