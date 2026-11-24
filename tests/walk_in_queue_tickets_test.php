@@ -242,3 +242,24 @@ function test_walk_in_queue_tickets_page_offers_leave_again_when_the_number_wait
 	pg_assert_true($page['leave'], 'a waiting number may leave');
 	pg_assert_true($page['on_way'], 'I\'m on my way is shown while offered');
 }
+
+function test_walk_in_queue_tickets_a_second_press_gets_the_number_just_taken()
+{
+	// Two presses of Take a number (or a resent form) each took a number:
+	// the page showed the second, and the first waited until a desk called
+	// it as not here. The browser's number of the same service, taken a
+	// moment ago and still waiting, is given again.
+	$now = 1764000000;
+	$kept = array('id' => 8, 'service' => 's1', 'state' => 'waiting', 'day' => pg_waiting_today($now), 'joined_at' => $now - 5);
+
+	pg_assert_true(pg_waiting_take_repeated($kept, 's1', $now));
+	pg_assert_false(pg_waiting_take_repeated($kept, 's2', $now), 'another service is a new number');
+	pg_assert_false(pg_waiting_take_repeated(array('state' => 'left') + $kept, 's1', $now), 'it left the queue');
+	pg_assert_false(pg_waiting_take_repeated($kept, 's1', $now + PG_WAITING_REPEAT_SECONDS + 10), 'taken a while ago: a new number on purpose');
+	pg_assert_false(pg_waiting_take_repeated(null, 's1', $now));
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/queue.php');
+	$kiosk = (string) file_get_contents(PG_FUNCTIONS_DIR . '/queue_kiosk.php');
+	pg_assert_contains('pg_waiting_take_repeated(', $page);
+	pg_assert_contains('pg_waiting_take_repeated(', $kiosk);
+}

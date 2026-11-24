@@ -148,6 +148,14 @@ if ($qu_action === 'take') {
         $qu_values[$qu_key] = is_scalar($_POST[$qu_key] ?? null) ? (string) $_POST[$qu_key] : '';
     }
 
+    // A second press, or the form sent again, gets the number just taken.
+    $qu_again = $_SESSION['software']['queue_numbers'][$qu_place['id']] ?? null;
+    $qu_again = (is_array($qu_again) && (count($qu_again) === 2)) ? array_values($qu_again) : array(0, '');
+
+    if (($qu_join['error'] === '') && pg_waiting_take_repeated(pg_waiting_ticket_find($qu_again[0], $qu_again[1]), $qu_join['values']['service'], time())) {
+        go(pg_waiting_ticket_link($qu_page, (int) $qu_again[0], (string) $qu_again[1]));
+    }
+
     if (pg_waiting_throttled()) {
         $qu_error = lang('Too many requests from your address. Please wait a moment and try again.');
     } elseif ($qu_join['error'] !== '') {

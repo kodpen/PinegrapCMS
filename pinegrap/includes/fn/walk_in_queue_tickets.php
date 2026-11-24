@@ -31,6 +31,9 @@ const PG_WAITING_HANDLED_DAYS = 14;
 /** Seconds a notice may wait in its queue before it is no longer worth sending. */
 const PG_WAITING_NOTICE_EXPIRES = 7200;
 
+/** Seconds in which a second press of Take a number gets the number just taken. */
+const PG_WAITING_REPEAT_SECONDS = 60;
+
 /**
  * The join form read back: the service (the only one when the place has
  * one), and the optional name, phone, e-mail and party size. A priority
@@ -76,6 +79,26 @@ function pg_waiting_join_input($post, $place, $ask_priority = false, $takes_book
         'values' => array('service' => $service, 'name' => pg_waiting_text($post['name'] ?? '', 100), 'phone' => $phone, 'email' => $email, 'party_size' => $party, 'priority' => $priority, 'booking' => $booking),
         'error'  => $error,
     );
+}
+
+/**
+ * Whether a press of Take a number repeats the one before: the number this
+ * browser (or kiosk) took a moment ago for the same service still waits
+ * today. Then that number is given again instead of a second one: two
+ * presses, or a form sent again, never take two. Pure but for the zone.
+ *
+ * @param array|null $kept    the number held in the session, as its row
+ * @param string     $service the service asked for now
+ * @param int        $now
+ * @return bool
+ */
+function pg_waiting_take_repeated($kept, $service, $now)
+{
+    if (!is_array($kept) || (($kept['state'] ?? '') !== 'waiting') || ((string) ($kept['service'] ?? '') !== (string) $service)) {
+        return false;
+    }
+
+    return ((int) $kept['day'] === pg_waiting_today($now)) && ((int) $now - (int) $kept['joined_at'] <= PG_WAITING_REPEAT_SECONDS);
 }
 
 /**
