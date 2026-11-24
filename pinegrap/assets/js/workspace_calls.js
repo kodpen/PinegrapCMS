@@ -320,6 +320,38 @@
         };
     }
 
+    // Whether a click on a link would take this page elsewhere and so end
+    // the call: a link to another address of the site or outside it, in
+    // this tab. A hash on the same address, a script or mail link, a
+    // download and a link already aimed at another tab or window stay.
+    // link: { raw (the attribute), href (resolved), target, download };
+    // here: { origin, pathname, search }.
+    function leavesPage(link, here) {
+        var raw = String((link && link.raw) || '').trim();
+        var target = String((link && link.target) || '').toLowerCase();
+        var url;
+
+        if (!raw || (raw.charAt(0) === '#') || /^(javascript|mailto|tel|sms|data|blob):/i.test(raw)) {
+            return false;
+        }
+
+        if (link.download || (target && (target !== '_self') && (target !== '_top') && (target !== '_parent'))) {
+            return false;
+        }
+
+        try {
+            url = new URL(String(link.href || ''));
+        } catch (error) {
+            return false;
+        }
+
+        if ((url.protocol !== 'http:') && (url.protocol !== 'https:')) {
+            return false;
+        }
+
+        return !((url.origin === here.origin) && (url.pathname === here.pathname) && (url.search === here.search));
+    }
+
     // ── The ring ──
 
     function h() {
@@ -600,6 +632,9 @@
 
         // Held at once, so a second click does not start a second call.
         call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: {}, muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
+        // Added only for the call's length: a beforeunload listener keeps
+        // some browsers from holding the page in their back-forward cache.
+        window.addEventListener('beforeunload', askBeforeLeaving);
 
         var mine = call;
 
@@ -1519,6 +1554,7 @@
     function finish(mine, reason) {
         if (call === mine) {
             call = null;
+            window.removeEventListener('beforeunload', askBeforeLeaving);
         }
 
         clearTimeout(mine.timer);
@@ -1557,6 +1593,40 @@
             h().toast(t(reason));
         }
     }
+
+    // A reload or a close during a call asks first; the browser writes the
+    // question itself.
+    function askBeforeLeaving(event) {
+        if (call) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    }
+
+    // During a call a link that leaves the page (an order, a customer, a
+    // page, the panel's menu) opens in a new tab, so the call's page and
+    // its connections stay. Heard on the window, after the Workspace's own
+    // handlers: a link they handle in the page (defaultPrevented) is left
+    // alone, and a click with a modifier key keeps the browser's own way.
+    window.addEventListener('click', function (event) {
+        if (!call || event.defaultPrevented || (event.button !== 0) || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+            return;
+        }
+
+        var link = (event.target && event.target.closest) ? event.target.closest('a[href]') : null;
+
+        if (!link || !leavesPage({ raw: link.getAttribute('href'), href: link.href, target: link.getAttribute('target'), download: link.hasAttribute('download') }, window.location)) {
+            return;
+        }
+
+        event.preventDefault();
+        window.open(link.href, '_blank', 'noopener');
+
+        if (!call.toldNewTab) {
+            call.toldNewTab = true;
+            h().toast(t('call_new_tab'));
+        }
+    });
 
     // A tab closed or reloaded leaves its call: the leave is sent as the
     // page goes (keepalive). Where it never arrives (a phone that dropped
@@ -1610,6 +1680,7 @@
         mediaAsk: mediaAsk,
         screenSlot: screenSlot,
         shareState: shareState,
-        stageState: stageState
+        stageState: stageState,
+        leavesPage: leavesPage
     };
 })();

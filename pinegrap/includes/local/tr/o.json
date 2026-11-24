@@ -1868,6 +1868,7 @@
     "Opened from a post, this holds its address. To report a comment, paste the link its Share button copies instead.": "Bir gönderiden açıldığında burada onun adresi yer alır. Bir yorumu şikâyet etmek için bunun yerine yorumun Paylaş düğmesinin kopyaladığı bağlantıyı yapıştırın.",
     "Opened from a topic, this holds the topic's address. To report a reply, paste the link its Share button copies instead.": "Bir konudan açıldığında burada konunun adresi bulunur. Bir yanıtı şikâyet etmek için bunun yerine yanıtın Paylaş düğmesinin kopyaladığı bağlantıyı yapıştırın.",
     "Opened from incoming e-invoice {var:1}.": "{var:1} numaralı gelen e-faturadan açıldı.",
+    "Opened in a new tab, so the call goes on.": "Görüşme sürsün diye yeni sekmede açıldı.",
     "Opened on a Thursday evening with the artist": "Bir perşembe akşamı sanatçıyla birlikte açıldı",
     "Opened on {var:1}; no longer works": "{var:1} tarihinde açıldı; artık çalışmıyor",
     "Opened the campaign e-mail {var:1}": "{var:1} kampanya e-postasını açtı",
