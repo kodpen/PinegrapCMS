@@ -306,15 +306,29 @@ function pg_pick_waves_sync_leavers($wave_id = 0)
 
 /**
  * The waves for the Pick waves list, newest first: each with its addresses
- * still in it, their units and how many are packed.
+ * still in it, their units and how many are packed. The external API pages
+ * the same list by status and wave id.
  *
+ * @param int|null $status    PG_WAVE_*, null for every status
+ * @param int      $before_id only waves with a lower id, 0 for no bound
+ * @param int      $limit     most rows
  * @return array rows: id, name, location_id, status, single_item, created_by,
  *               created_at, created_by_name, addresses, units, packed,
  *               has_closed_pack (a packed or short pack: no delete)
  */
-function pg_pick_wave_list()
+function pg_pick_wave_list($status = null, $before_id = 0, $limit = 500)
 {
     pg_pick_waves_sync_leavers();
+
+    $where = array();
+
+    if ($status !== null) {
+        $where[] = "pick_waves.status = '" . (int) $status . "'";
+    }
+
+    if ((int) $before_id > 0) {
+        $where[] = "pick_waves.id < '" . (int) $before_id . "'";
+    }
 
     return db_items(
         "SELECT
@@ -333,8 +347,9 @@ function pg_pick_wave_list()
                 WHERE wave_row.wave_id = pick_waves.id) AS has_closed_pack
         FROM pick_waves
         LEFT JOIN user ON user.user_id = pick_waves.created_by
+        " . ($where ? "WHERE " . implode(' AND ', $where) : "") . "
         ORDER BY pick_waves.created_at DESC, pick_waves.id DESC
-        LIMIT 500");
+        LIMIT " . max(1, (int) $limit));
 }
 
 /**
