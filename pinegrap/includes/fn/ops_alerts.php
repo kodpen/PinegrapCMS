@@ -460,10 +460,23 @@ function pg_ops_alert_visible($code, $role, $commerce_on)
         return false;
     }
 
+    return $commerce_on || !pg_ops_alert_about_shop($code);
+}
+
+/**
+ * Whether an alert is about the shop's orders and parcels (the catalogue's
+ * sales and shipping groups) rather than the software. Pure but for the
+ * catalogue.
+ *
+ * @param string $code
+ * @return bool
+ */
+function pg_ops_alert_about_shop($code)
+{
     $codes = pg_ops_alert_codes();
     $group = $codes[(string) $code]['group'] ?? '';
 
-    return $commerce_on || (($group !== 'sales') && ($group !== 'shipping'));
+    return ($group === 'sales') || ($group === 'shipping');
 }
 
 /**

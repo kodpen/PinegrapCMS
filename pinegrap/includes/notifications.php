@@ -250,9 +250,17 @@ function pg_notification_visible($notification, $rights)
 	// An operations alert (includes/fn/ops_alerts.php) is for whoever sees
 	// System Status and may open the screens it points at: backups, the
 	// scheduled jobs, the software update - manager and above; one about the
-	// shop only while commerce is on (pg_ops_alert_visible()).
+	// shop only while commerce is on (pg_ops_alert_visible()). One about the
+	// shop names orders, so an API caller needs orders:read for it, as for
+	// the order lines.
 	if ($action == 'ops') {
-		return pg_ops_alert_visible((string) ($notification['order_total'] ?? ''), $rights['role'], (defined('ECOMMERCE') && (ECOMMERCE === true)));
+		$code = (string) ($notification['order_total'] ?? '');
+
+		if (isset($rights['orders_read']) && !$rights['orders_read'] && pg_ops_alert_about_shop($code)) {
+			return false;
+		}
+
+		return pg_ops_alert_visible($code, $rights['role'], (defined('ECOMMERCE') && (ECOMMERCE === true)));
 	}
 
 	// An e-mail the mail queue gave up on (includes/fn/mail_queue.php): for
