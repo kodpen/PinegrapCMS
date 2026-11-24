@@ -61,6 +61,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-18.md: What does the Artifact Canvas's question mark open? (owner, 2026-11-24, agent channel message 12353)
 - decisions-made-panel-18.md: Do places that cite a menu row follow the menu's new icons? (owner, 2026-11-24, agent channel message 12353)
 - decisions-made-panel-18.md: Where is the plan?
+- decisions-made-panel-19.md: Where are the rules and the earlier parts?
+- decisions-made-panel-19.md: How big is a main menu row's icon? (owner, 2026-11-24, agent channel message 12426)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
