@@ -50,9 +50,10 @@ $ws_admin = ((int) $ws_viewer['role'] === 0);
 
 // Claude's connection: written only when the card's fields came and differ
 // from what is stored, as a write clears the routine's last error and wait.
+// The routine's address and token are typed on Connections, not posted here.
 $ws_claude = null;
 
-if ($ws_admin && ws_claude_schema_ready() && isset($_POST['ws_claude_routine_url'])) {
+if ($ws_admin && ws_claude_schema_ready() && isset($_POST['ws_claude_app_id'])) {
     $ws_claude = ws_claude_settings_input($_POST, 'ws_');
 
     if (!ws_claude_settings_changed($ws_claude, ws_claude_config(true), ws_claude_summary_ready() ? ws_claude_summary_config(true) : null)) {

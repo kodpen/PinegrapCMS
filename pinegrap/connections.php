@@ -276,6 +276,28 @@ function connections_integrations_may_manage($user) {
 
 }
 
+// May the user change Claude's routine address and token? They came from
+// Claude's row in Site Settings › Assistants and agents, so they keep its
+// gate: that category and the Workspace's administrator, who alone connects
+// Claude.
+function connections_claude_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	if (!pg_settings_may_open('workspace_assistants', $user)) {
+		return false;
+	}
+
+	$viewer = connections_workspace_viewer($user);
+
+	return is_array($viewer) && ((int) $viewer['role'] === 0) && function_exists('ws_claude_schema_ready') && ws_claude_schema_ready();
+
+}
+
 // May the user change Slack's, Teams' and Telegram's targets? They came
 // from the Chat notifications card of Site Settings › Updates and
 // maintenance, so they keep that category's gate.
@@ -737,6 +759,40 @@ if ($_POST) {
 			if (!$liveform->check_form_errors() && pg_grev_page_save($grev_decision, $liveform) && $grev_decision['changed']) {
 				$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h(lang('Google reviews')))));
 				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google reviews')), $_SESSION['sessionusername']);
+			}
+
+		}
+
+	}
+
+	// Claude's routine address and token, saved on its page under the gate
+	// of the Assistants and agents row they came from. The token is sealed
+	// and never drawn back; "Save and try" then starts the routine once,
+	// as the row's Try does.
+	if (($action === 'claude_save') && connections_claude_may_manage($user)) {
+
+		$claude_saved = ws_claude_settings_save(ws_claude_routine_input($_POST, ws_claude_config(true)));
+
+		foreach ($claude_saved['refused'] as $claude_field => $claude_sentence) {
+			$liveform->mark_error('claude_' . $claude_field, h($claude_sentence));
+		}
+
+		if (!$liveform->check_form_errors()) {
+
+			$liveform->add_notice(lang('The Claude settings were saved.'));
+			log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Claude')), $_SESSION['sessionusername']);
+
+			if (!empty($_POST['submit_try'])) {
+
+				$claude_missing = ws_claude_missing();
+				$claude_fired = empty($claude_missing) ? ws_claude_fire(true) : array('ok' => false, 'error' => (string) reset($claude_missing));
+
+				if ($claude_fired['ok']) {
+					$liveform->add_notice(lang('claude.ai started the routine. It finds nothing to do in the queue and stops; the run shows among the routine\'s runs on claude.ai.'));
+				} else {
+					$liveform->add_error(h($claude_fired['error']));
+				}
+
 			}
 
 		}
@@ -3234,6 +3290,42 @@ function connections_grev_page($page, $may_manage, $can_seal) {
 
 }
 
+/* Claude's page: "Connection details" holds the routine's address and
+   token, typed as step 4 of "Set up on claude.ai" says, for the Workspace's
+   administrator who may open Site Settings › Assistants and agents. "Where
+   it is used" leads to Claude's row there, where the switch, the
+   application, the key and Try stay. */
+
+function connections_claude_page($page, $may_manage) {
+
+	$config = function_exists('ws_claude_config') ? ws_claude_config(true) : array('routine_url' => '', 'token_set' => false);
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+		$page['details'] = ws_claude_connection_card_html(array(
+			'routine_url' => (string) $config['routine_url'],
+			'token_set'   => !empty($config['token_set']),
+			'token_field' => get_token_field(),
+			'can_seal'    => pg_connect_can_seal(),
+			'https'       => (URL_SCHEME === 'https://'),
+		)) . ws_claude_fold_script();
+	}
+
+	$ready = function_exists('ws_claude_ready') && ws_claude_ready();
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('workspace_assistants', 'pgset-ws-claude')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Claude in the channels, through a routine')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Assistants and agents')) . ' › Claude</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($ready ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* Slack's, Microsoft Teams' and Telegram's pages: "Connection details"
    lists that service's targets, each with its name, alert codes, Workspace
    events, Save, "Save and send a test" and Delete, then Add a target, for
@@ -4614,6 +4706,7 @@ if ($provider_page !== '') {
 			'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
 			'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
 			'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
+			'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
@@ -4622,7 +4715,7 @@ if ($provider_page !== '') {
 		'status_extra' => '',
 		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
 			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews')
-			|| in_array($page_id, array('slack', 'teams', 'telegram'), true),
+			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || ($page_id === 'claude'),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
@@ -4673,6 +4766,12 @@ if ($provider_page !== '') {
 	// Google reviews' page: its key and Place ID, and what reads them.
 	if ($page_id === 'google_reviews') {
 		$page = connections_grev_page($page, connections_integrations_may_manage($user), $can_seal);
+	}
+
+	// Claude's page: the routine's address and token, and the row that uses
+	// them.
+	if ($page_id === 'claude') {
+		$page = connections_claude_page($page, connections_claude_may_manage($user));
 	}
 
 	// Slack's, Teams' and Telegram's pages: their targets and the cards

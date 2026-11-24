@@ -2431,14 +2431,16 @@ function ws_claude_settings_post($viewer, $action, $liveform, $user, $after_save
 
 /**
  * The connection fields of the card, read from a request: the Workspace
- * Settings form posts them as claude_*, the Site Settings dialog as
- * ws_claude_* (names unique in its pane). Every value is kept as a scalar;
- * a summary hour not posted stays null, which leaves the summary alone.
+ * Settings form and Claude's page on Connections post them as claude_*,
+ * the Site Settings dialog as ws_claude_* (names unique in its pane). Every
+ * value is kept as a scalar; a summary hour not posted stays null, which
+ * leaves the summary alone, and so does a routine address not posted: the
+ * address and the token are typed on Connections, not in the row.
  *
  * @param array  $source $_POST
  * @param string $prefix '' on Workspace Settings, 'ws_' in the dialog
- * @return array enabled, app_id, routine_url, token, token_clear,
- *               summary_hour (string|null), summary_channel
+ * @return array enabled, app_id, routine_url (string|null), token,
+ *               token_clear, summary_hour (string|null), summary_channel
  */
 function ws_claude_settings_input($source, $prefix = '')
 {
@@ -2451,7 +2453,7 @@ function ws_claude_settings_input($source, $prefix = '')
     return array(
         'enabled'         => ($read('enabled') !== null) && ($read('enabled') !== '') && ($read('enabled') !== '0'),
         'app_id'          => (int) $read('app_id'),
-        'routine_url'     => trim((string) $read('routine_url')),
+        'routine_url'     => ($read('routine_url') === null) ? null : trim($read('routine_url')),
         'token'           => trim((string) $read('token')),
         'token_clear'     => ($read('token_clear') !== null) && ($read('token_clear') !== '') && ($read('token_clear') !== '0'),
         'summary_hour'    => $read('summary_hour'),
@@ -2475,7 +2477,8 @@ function ws_claude_settings_changed($input, $config, $summary = null)
         return true;
     }
 
-    if (($input['enabled'] !== (bool) $config['enabled']) || ($input['app_id'] !== (int) $config['app_id']) || ($input['routine_url'] !== (string) $config['routine_url'])) {
+    if (($input['enabled'] !== (bool) $config['enabled']) || ($input['app_id'] !== (int) $config['app_id'])
+        || (($input['routine_url'] !== null) && ($input['routine_url'] !== (string) $config['routine_url']))) {
         return true;
     }
 
@@ -2505,7 +2508,7 @@ function ws_claude_settings_save($input)
         $refused['app_id'] = lang('That application could not be found.');
     }
 
-    if (($input['routine_url'] !== '') && !ws_claude_url_valid($input['routine_url'])) {
+    if (($input['routine_url'] !== null) && ($input['routine_url'] !== '') && !ws_claude_url_valid($input['routine_url'])) {
         $refused['routine_url'] = lang('The routine\'s address is the URL claude.ai shows for its API trigger: https://api.anthropic.com/v1/claude_code/routines/…/fire');
     }
 
@@ -2544,10 +2547,10 @@ function ws_claude_settings_save($input)
     );
 
     // The routine is Claude's door in the agent registry; before the upgrade
-    // made the registry it stays in config.
-    if (ws_agents_ready()) {
+    // made the registry it stays in config. Not posted, it is left alone.
+    if (($input['routine_url'] !== null) && ws_agents_ready()) {
         ws_agent_claude_save($input['routine_url'], $sealed);
-    } else {
+    } elseif ($input['routine_url'] !== null) {
         $sets[] = "ws_claude_routine_url = '" . e($input['routine_url']) . "'";
 
         if ($sealed !== null) {
@@ -2869,7 +2872,8 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
  * Claude's opened row, drawn from the values ws_claude_settings_card()
  * reads, in this order: the notices (one line each, only when true), the
  * switch with its sentence and "How does this work?", a two-column grid
- * (application | summary channel and hour; routine address | token), the
+ * (application | summary channel and hour), the line that leads to the
+ * routine address and the token on Claude's page of Connections, the
  * buttons Try and Set up on claude.ai with the last request as a grey line,
  * and last the fold "Key and secret" with the key, the secret's hint, Reset
  * secret and what the key may read. Pure but for lang().
@@ -2981,25 +2985,16 @@ function ws_claude_row_html($v)
                         <div class="ws-claude-cell" aria-hidden="true"></div>';
     }
 
-    // Routine address and token. The token is never shown: a stored one is
-    // dots in the field, the eye shows what is typed, the bin removes the
-    // stored one at the Save (the checkbox the save reads).
-    $stored = !empty($config['token_set']);
-    $clear = ($stored && $admin)
-        ? '<button type="button" class="pg-icon-button pg-icon-button-sm no-popover" data-ws-claude-clear="ws_claude_token_clear" aria-pressed="false" data-stored="' . h('••••••••••••••••') . '" data-cleared="' . h(lang('The stored token is removed when you save.')) . '" title="' . h(lang('Remove the stored token')) . '" aria-label="' . h(lang('Remove the stored token')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
-            . '<input class="d-none" type="checkbox" name="' . $field_name('token_clear') . '" value="1" id="ws_claude_token_clear" tabindex="-1" aria-hidden="true">'
-        : '';
-
-    $cells .= '
-                        <div class="ws-claude-cell">
-                            <label class="pg-field-label" for="ws_claude_routine_url">' . h(lang('Routine address')) . '</label>
-                            <input class="pg-input pg-input-sm" type="url" name="' . $field_name('routine_url') . '" id="ws_claude_routine_url" value="' . h($config['routine_url']) . '" placeholder="https://api.anthropic.com/v1/claude_code/routines/trig_…/fire" autocomplete="off"' . $disabled . '>
-                        </div>
-                        <div class="ws-claude-cell">
-                            <label class="pg-field-label" for="ws_claude_token">' . h(lang('Token')) . '</label>
-                            <span class="pg-input pg-input-sm ws-claude-token"><input type="password" name="' . $field_name('token') . '" id="ws_claude_token" value="" autocomplete="new-password" placeholder="' . h($stored ? '••••••••••••••••' : 'sk-ant-oat01-…') . '"' . $disabled . '>'
-                            . '<button type="button" class="pg-icon-button pg-icon-button-sm no-popover" data-ws-claude-eye="ws_claude_token" aria-pressed="false" title="' . h(lang('Show the token')) . '" aria-label="' . h(lang('Show the token')) . '"><i class="bi bi-eye" aria-hidden="true"></i></button>' . $clear . '</span>
-                        </div>';
+    // The routine address and the token are typed on Claude's page on
+    // Connections; the row says whether both are stored and leads there.
+    $routine_set = ((string) $config['routine_url'] !== '') && !empty($config['token_set']);
+    $routine = '
+                    <div class="ws-claude-routine d-flex flex-column align-items-start gap-2 mt-4">
+                        <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang('Routine address and token')) . '</span>'
+                        . ($routine_set ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>' : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                        <div class="pg-field-help mt-0">' . h(lang('The routine\'s address and token are kept on Claude\'s page of Connections.')) . '</div>
+                        <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_claude_connections_url()) . '">' . h($routine_set ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                    </div>';
 
     // The key and the secret of the chosen application, and the
     // permissions the routine needs: under the buttons, shut while a
@@ -3090,7 +3085,7 @@ function ws_claude_row_html($v)
                         <p class="pg-text-2 m-0" id="ws_claude_enabled-help">' . h(lang('When @claude is written in a channel, your routine on claude.ai answers.')) . ' <button type="button" class="ws-claude-how-link" data-ws-claude-how data-bs-toggle="drawer" data-bs-target="#pgset-ws-claude-setup" aria-controls="pgset-ws-claude-setup">' . h(lang('How does this work?')) . '</button></p>
                     </div>
                     <div class="ws-claude-grid">' . $cells . '
-                    </div>
+                    </div>' . $routine . '
                     ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
                 ' . ($dialog ? '</div>' : '</form>') . '
                     <div class="ws-claude-acts">
