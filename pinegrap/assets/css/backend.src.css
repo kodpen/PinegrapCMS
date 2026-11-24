@@ -29190,7 +29190,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wsf-run-view .pgc-node {
+.wsf-run-view .pgc-node,
+.wsf-trial .pgc-node {
   border-color: var(--wsf-run-line, var(--pg-border-color));
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
@@ -29201,7 +29202,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .wsf-run-view .pgc-node.wsf-run-none .wsf-node-title {
   color: var(--pg-fg-2);
 }
-.wsf-run-view .pgc-node.pgc-selected {
+.wsf-run-view .pgc-node.pgc-selected,
+.wsf-trial .pgc-node.pgc-selected {
   box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--pgc-ring);
 }
 .wsf-run-task {
@@ -29210,10 +29212,14 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   font-weight: 600;
   cursor: pointer;
 }
-.wsf-run-view .pgc-edge-line {
+/* A trial marks its boxes and arrows as a run shown does: the arrows
+   walked green, the others faint. */
+.wsf-run-view .pgc-edge-line,
+.wsf-trial .pgc-edge-line {
   opacity: .45;
 }
-.wsf-run-view .pgc-edge.wsf-edge-taken .pgc-edge-line {
+.wsf-run-view .pgc-edge.wsf-edge-taken .pgc-edge-line,
+.wsf-trial .pgc-edge.wsf-edge-taken .pgc-edge-line {
   stroke: var(--pg-success);
   opacity: 1;
   marker-end: url(#wsf-arrow-taken);
