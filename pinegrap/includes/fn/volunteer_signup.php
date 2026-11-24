@@ -271,7 +271,9 @@ function pg_volunteer_self_load($volunteer_id)
     $row['programme'] = $programme;
     $row['skills'] = pg_volunteer_list_text((array) json_decode((string) $row['skills'], true));
     $row['hours'] = pg_booking_hours_clean($row['hours']);
-    $row['documents'] = (array) db_items("SELECT kind, valid_until FROM volunteer_documents WHERE volunteer_id = '" . $row['id'] . "' ORDER BY valid_until DESC");
+    $row['documents'] = (array) db_items("SELECT volunteer_documents.kind, volunteer_documents.valid_until, files.name AS file_name FROM volunteer_documents
+        LEFT JOIN files ON (files.id = volunteer_documents.file_id) AND (volunteer_documents.file_id > 0)
+        WHERE volunteer_documents.volunteer_id = '" . $row['id'] . "' ORDER BY volunteer_documents.valid_until DESC");
     $row['trainings'] = array();
     $row['shifts'] = array();
 

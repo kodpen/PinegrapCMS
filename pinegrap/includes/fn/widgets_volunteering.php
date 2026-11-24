@@ -41,6 +41,9 @@ function pg_volunteer_page_site_classes()
         'switch' => 'form-check-input',
         'label'  => 'form-check-label',
         'select' => 'form-select form-select-sm w-auto',
+        'input'  => 'form-control form-control-sm',
+        'field_label' => 'form-label small',
+        'link'   => 'small ms-2',
     );
 }
 

@@ -318,6 +318,28 @@ function pg_upload_name_blocked($name)
     return false;
 }
 
+// A volunteer's document file (includes/fn/volunteer_documents.php) is
+// stored under this prefix with attachment = 1 and folder = 0, so it sits in
+// no File Manager folder; the panel search and the file pickers that may
+// reach files outside a folder leave these names out with
+// pg_volunteer_doc_files_sql(), and get_file.php opens one only after the
+// document's own check.
+if (!defined('PG_VOLUNTEER_DOC_PREFIX')) {
+    define('PG_VOLUNTEER_DOC_PREFIX', 'volunteer-doc-');
+}
+
+/**
+ * The condition that leaves volunteer document files out of a files query,
+ * starting with " AND ". Pure.
+ *
+ * @param string $column the name column, qualified when the query joins
+ * @return string
+ */
+function pg_volunteer_doc_files_sql($column = 'name')
+{
+    return ' AND (' . $column . " NOT LIKE '" . PG_VOLUNTEER_DOC_PREFIX . "%')";
+}
+
 // The one file the panel never hands out: dkim.key, the private key that
 // signs the site's mail. get_file.php never serves it, whatever folder its
 // record sits in (older installations registered it in a public folder), so

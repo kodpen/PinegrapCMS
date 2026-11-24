@@ -6,7 +6,8 @@
  * (?v=<volunteer id>&t=<token>) without an account: that volunteer's
  * programme, their next shifts with Cancel, Offer my place or Keep my place,
  * the shifts they fit with Sign up, Join the waitlist or Take this place,
- * their documents' dates and their "Shift calls" choice. It also takes the
+ * their documents' dates with "Upload a new one" and their "Shift calls"
+ * choice. It also takes the
  * buttons of the my_account widget's "volunteering" section for a signed-in
  * member (?p= one of the member's own profiles) and sends them back with a
  * notice (includes/fn/volunteer_signup.php).
@@ -18,6 +19,13 @@
  */
 
 include('init.php');
+
+// A document upload over post_max_size arrives with no body at all: say so
+// instead of the token's refusal.
+if (pg_post_body_discarded()) {
+    $vo_limits = pg_upload_limits();
+    output_error(h(pg_upload_body_discarded_message($vo_limits['post_max'])), 413);
+}
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_page_view.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_messages.php');
@@ -39,14 +47,18 @@ if ($vo_throttled) {
 
 if ($vo_post) {
     validate_token_field();
-    pg_request_single_values(array('v', 't', 'p', 'shift', 'action', 'role', 'target', 'send_to', 'calls', 'channel'));
+    pg_request_single_values(array('v', 't', 'p', 'shift', 'action', 'role', 'target', 'send_to', 'calls', 'channel', 'kind', 'number', 'valid_until'));
 }
 
 $vo_input = $vo_post ? $_POST : $_GET;
 
-// One posted button of the page: the "Shift calls" choice, or an action on a
-// shift.
+// One posted button of the page: the "Shift calls" choice, a document
+// upload, or an action on a shift.
 $vo_act = function ($volunteer_id) {
+    if ((string) ($_POST['action'] ?? '') === 'document') {
+        return pg_volunteer_doc_save($volunteer_id, $_POST, $_FILES['file'] ?? null);
+    }
+
     if ((string) ($_POST['action'] ?? '') === 'calls') {
         return pg_volunteer_calls_save($volunteer_id, !empty($_POST['calls']), (string) ($_POST['channel'] ?? ''));
     }

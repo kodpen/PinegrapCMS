@@ -693,7 +693,9 @@ function pg_volunteer_people(array $programme, array $states, $volunteer_id = 0)
 
     $ids = implode(', ', array_keys($people));
 
-    foreach ((array) db_items("SELECT id, volunteer_id, kind, valid_until, seen_at FROM volunteer_documents WHERE volunteer_id IN (" . $ids . ") ORDER BY valid_until DESC") as $row) {
+    foreach ((array) db_items("SELECT volunteer_documents.id, volunteer_documents.volunteer_id, volunteer_documents.kind, volunteer_documents.valid_until, volunteer_documents.seen_at, files.name AS file_name FROM volunteer_documents
+        LEFT JOIN files ON (files.id = volunteer_documents.file_id) AND (volunteer_documents.file_id > 0)
+        WHERE volunteer_documents.volunteer_id IN (" . $ids . ") ORDER BY volunteer_documents.valid_until DESC") as $row) {
         $people[(int) $row['volunteer_id']]['documents'][] = $row;
     }
 

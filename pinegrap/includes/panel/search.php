@@ -193,6 +193,8 @@ function pg_panel_backend_search($request, $action)
     if (waf_table_has_column('files', 'erp_doc_type')) {
         $file_where .= " AND erp_doc_type = ''";
     }
+    // Nor a volunteer's document, which opens for its programme's people only.
+    $file_where .= pg_volunteer_doc_files_sql();
     $rows = db_items(
         "SELECT id, name, folder AS folder_id, design
          FROM files

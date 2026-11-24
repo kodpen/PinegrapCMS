@@ -398,13 +398,17 @@ if ($vp_person !== null) {
         return '<div class="pg-card-inner-row"><span class="pg-text-meta flex-shrink-0" style="width:8rem">' . h($label) . '</span><span class="pg-text-2 min-width-0">' . $value . '</span></div>';
     };
     $days = array(1 => lang('Monday'), 2 => lang('Tuesday'), 3 => lang('Wednesday'), 4 => lang('Thursday'), 5 => lang('Friday'), 6 => lang('Saturday'), 7 => lang('Sunday'));
-    // A document shows its kind and dates; its number and file are not
+    // A document shows its kind, dates and its file, which get_file.php opens
+    // for roles 0-2 and the programme's coordinators only; its number is not
     // listed here.
     $documents = '';
 
     foreach ($vp_person['documents'] as $document) {
         $ended = ((string) $document['valid_until'] !== '') && ((string) $document['valid_until'] < $vp_today);
-        $documents .= $line($document['kind'], h(($document['valid_until'] !== null) ? lang(array('string' => 'Valid until {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($document['valid_until']), 'type' => 'date', 'format' => 'plain_text'))))) : lang('No end date')) . ($ended ? ' ' . pg_volunteer_pill('missing') : ''));
+        $open = ((string) ($document['file_name'] ?? '') !== '')
+            ? ' <a class="pg-text-meta ms-2" href="' . h(OUTPUT_PATH . encode_url_path($document['file_name'])) . '" target="_blank" rel="noopener">' . h(lang('Open file')) . '</a>'
+            : '';
+        $documents .= $line($document['kind'], h(($document['valid_until'] !== null) ? lang(array('string' => 'Valid until {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($document['valid_until']), 'type' => 'date', 'format' => 'plain_text'))))) : lang('No end date')) . ($ended ? ' ' . pg_volunteer_pill('missing') : '') . $open);
     }
 
     $shifts = '';
