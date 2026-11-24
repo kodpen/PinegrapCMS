@@ -94,7 +94,7 @@ function ws_mail_draft_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceMailDraft',
             'summary'      => 'Change an e-mail draft',
-            'description'  => 'Changes only the fields sent: an answer\'s by whoever may write in its conversation\'s channel, a new mail\'s by its writer (404 for a draft the owner does not read, 403 for one they may only read). A change that would leave it empty is refused with 422; delete it instead.' . $never,
+            'description'  => 'Changes only the fields sent: an answer\'s by whoever may write in its conversation\'s channel, a new mail\'s by its writer (404 for a draft the owner does not read, 403 for one they may only read). A change that would leave it empty is refused with 422; delete it instead. New words in text without html drop the kept HTML, which would still say the old ones.' . $never,
             'params'       => array_merge(array($id), $fields),
         ),
 
@@ -337,6 +337,7 @@ function ws_api_mail_drafts_update($params)
         api_fail_validation(ws_mail_draft_error_text($input['error']), $input['field']);
     }
 
+    $input['fields'] = ws_api_mail_draft_update_fields($draft, $input['fields']);
     $merged = ws_mail_draft_merge($draft, $input['fields']);
     // The HTML and the files it keeps, as they are after the change.
     $body = array_merge(array('html' => (string) ($draft['body_html'] ?? ''), 'file_ids' => ws_mail_draft_file_ids($draft)),
@@ -360,6 +361,26 @@ function ws_api_mail_drafts_update($params)
     ws_mail_draft_keep_body((int) $draft['id'], array_intersect_key($input['fields'], array('html' => 1, 'file_ids' => 1)));
 
     api_ok(ws_api_mail_draft_present(ws_mail_draft((int) $draft['id']) ?: $draft));
+}
+
+/**
+ * The fields a change keeps: new words sent without html drop the kept
+ * HTML, as the Drafts view's Save draft does (ws_mail_draft_save_request()),
+ * since Send carries the draft's HTML and it would still say the old words.
+ * Pure.
+ *
+ * @param array $draft  ws_mail_items row
+ * @param array $fields ws_mail_draft_input()'s fields
+ * @return array
+ */
+function ws_api_mail_draft_update_fields($draft, $fields)
+{
+    if (array_key_exists('text', $fields) && !array_key_exists('html', $fields)
+        && ((string) ($draft['body_html'] ?? '') !== '') && ws_mail_draft_text_changed($draft, $fields['text'])) {
+        $fields['html'] = '';
+    }
+
+    return $fields;
 }
 
 function ws_api_mail_drafts_delete($params)

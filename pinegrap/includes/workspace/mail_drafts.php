@@ -386,15 +386,7 @@ function ws_mail_draft_create_check($viewer, $draft, $reached = null)
             return array_merge($out, array('error' => 'no_access'));
         }
 
-        // An answer goes to the conversation's customer under its subject,
-        // as the reply drawer sends it.
-        if (!array_key_exists('to', $input['fields'])) {
-            $fields['to'] = (string) $conversation['customer_email'];
-        }
-
-        if (!array_key_exists('subject', $input['fields'])) {
-            $fields['subject'] = (string) $conversation['subject'];
-        }
+        $fields = ws_mail_draft_reply_fields($fields, $conversation);
 
         $box = ws_mail_box((int) $conversation['box_id']);
         $out = array_merge($out, array('kind' => 'reply', 'conversation' => $conversation, 'box' => $box ?: array('id' => (int) $conversation['box_id'], 'address' => '')));
@@ -429,6 +421,23 @@ function ws_mail_draft_create_check($viewer, $draft, $reached = null)
     }
 
     return array_merge($out, array('ok' => true, 'fields' => $fields));
+}
+
+/**
+ * A reply draft's fields: an answer goes to the conversation's customer
+ * under its subject, as the reply drawer sends it, so a To or subject sent
+ * with it is not kept (ws_mail_draft_merge() keeps them on a change). Pure.
+ *
+ * @param array $fields       to, cc, bcc, subject, text
+ * @param array $conversation ws_mail_conversations row
+ * @return array
+ */
+function ws_mail_draft_reply_fields($fields, $conversation)
+{
+    $fields['to'] = (string) $conversation['customer_email'];
+    $fields['subject'] = (string) $conversation['subject'];
+
+    return $fields;
 }
 
 /**
@@ -509,7 +518,66 @@ function ws_mail_draft_update($draft, $merged, $now)
  */
 function ws_mail_draft_delete($id)
 {
-    return (bool) db("DELETE FROM ws_mail_items WHERE id = '" . (int) $id . "' AND direction = 'out' AND send_state = '" . WS_MAIL_DRAFT_STATE . "'");
+    // A mail held at its time kept its files on the deleted lines of its
+    // card (ws_mail_later_to_draft()); once the draft is gone nothing
+    // reaches them, so they leave with it. A sent draft's mail stored its
+    // own copies before this runs.
+    $lines = (array) db_items("SELECT id, file_id FROM ws_messages
+        WHERE sender_kind = 'mail' AND sender_id = '" . (int) $id . "' AND deleted_at > 0 AND file_id > 0");
+
+    db("DELETE FROM ws_mail_items WHERE id = '" . (int) $id . "' AND direction = 'out' AND send_state = '" . WS_MAIL_DRAFT_STATE . "'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    $file_ids = array_values(array_unique(array_map('intval', array_column($lines, 'file_id'))));
+    $used = array();
+
+    if ($file_ids) {
+        $list = implode(',', $file_ids);
+        $used = array_map('intval', (array) db_values("SELECT DISTINCT file_id FROM ws_messages WHERE file_id IN (" . $list . ")
+            AND (deleted_at = 0 OR sender_kind <> 'mail' OR sender_id <> '" . (int) $id . "')"));
+
+        if (ws_mail_draft_files_ready()) {
+            foreach ($file_ids as $file_id) {
+                if (db_value("SELECT id FROM ws_mail_items WHERE send_state = '" . WS_MAIL_DRAFT_STATE . "' AND FIND_IN_SET('" . $file_id . "', draft_files) LIMIT 1")) {
+                    $used[] = $file_id;
+                }
+            }
+        }
+    }
+
+    foreach (ws_mail_draft_held_files_unused($lines, $used) as $file_id) {
+        db("UPDATE ws_messages SET file_id = 0, file_name = '' WHERE file_id = '" . $file_id . "' AND sender_kind = 'mail' AND sender_id = '" . (int) $id . "' AND deleted_at > 0");
+        ws_upload_discard($file_id);
+    }
+
+    return true;
+}
+
+/**
+ * The files of a held draft's deleted lines that nothing else holds: no
+ * other message line, nor another draft's draft_files. Pure.
+ *
+ * @param array[] $lines ws_messages rows (id, file_id)
+ * @param int[]   $used  file ids still held elsewhere
+ * @return int[] each once
+ */
+function ws_mail_draft_held_files_unused($lines, $used)
+{
+    $used = array_flip(array_map('intval', (array) $used));
+    $out = array();
+
+    foreach ((array) $lines as $line) {
+        $file_id = (int) ($line['file_id'] ?? 0);
+
+        if (($file_id > 0) && !isset($used[$file_id]) && !in_array($file_id, $out, true)) {
+            $out[] = $file_id;
+        }
+    }
+
+    return $out;
 }
 
 /**
