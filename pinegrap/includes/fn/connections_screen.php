@@ -591,6 +591,29 @@ function pg_connections_screen_page_url($id)
 }
 
 /**
+ * The ready-made MCP connector a page is of: the catalogue key its
+ * registry row covers (ws_mcp_catalogue()), '' for any other page. Pure.
+ *
+ * @param mixed $id a page key as it came
+ * @return string
+ */
+function pg_connections_screen_mcp_connector($id)
+{
+    if (!is_string($id) || ($id === '')) {
+        return '';
+    }
+
+    $registry = pg_connections_registry();
+    $row = isset($registry[$id]) ? $registry[$id] : null;
+
+    if (!is_array($row) || ($row['group'] !== 'mcp') || empty($row['covers']['mcp'][0])) {
+        return '';
+    }
+
+    return (string) $row['covers']['mcp'][0];
+}
+
+/**
  * The service a page address asks for: its registry key when it is one of
  * the rows the user may see and a service of the registry (an account
  * provider keeps its drawer), else ''. Pure.
@@ -811,7 +834,9 @@ function pg_connections_screen_carrier_pages()
  *                    open Updates and maintenance, Slack's, Teams' and
  *                    Telegram's targets), 'claude' (bool: may open
  *                    Assistants and agents as the Workspace's
- *                    administrator, Claude's routine address and token)
+ *                    administrator, Claude's routine address and token),
+ *                    'mcp' (bool: the same, a ready-made MCP connector's
+ *                    server: its address and sign-in)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -860,6 +885,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (in_array($id, array('slack', 'teams', 'telegram'), true) && !empty($can['chat_notify'])) {
         $cards[] = 'details';
     } elseif (($id === 'claude') && !empty($can['claude'])) {
+        $cards[] = 'details';
+    } elseif ((pg_connections_screen_mcp_connector($id) !== '') && !empty($can['mcp'])) {
         $cards[] = 'details';
     }
 

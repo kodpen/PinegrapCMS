@@ -1691,6 +1691,7 @@
     "Its Legacy tree could not be kept in data/legacy_to_bootstrap: the page was not moved.": "Legacy ağacı data/legacy_to_bootstrap içinde saklanamadı: sayfa taşınmadı.",
     "Its PHP blocks stay code as Custom PHP elements.": "PHP blokları Özel PHP öğeleri olarak kod kalır.",
     "Its PHP could not be cut into separate blocks, so the region is one PHP block that prints it as before.": "PHP kodu ayrı bloklara bölünemediği için bölge, içeriği eskisi gibi yazdıran tek bir PHP bloğu oldu.",
+    "Its address and sign-in are on its page in Connections.": "Adresi ve girişi Bağlantılar'daki sayfasındadır.",
     "Its body classes \"{var:1}\" go on its pages.": "Gövde sınıfları \"{var:1}\" sayfalarına geçer.",
     "Its busiest hour made {var:1} campaigns; a flow starts at most {var:2} runs an hour.": "En yoğun saatinde {var:1} kampanya oluşturdu; bir akış saatte en çok {var:2} çalıştırma başlatır.",
     "Its carrier label service is not switched on or cannot cancel a label. Cancel it at the service.": "Kargo etiketi servisi açık değil ya da etiket iptal edemiyor. Etiketi servisin kendisinde iptal edin.",

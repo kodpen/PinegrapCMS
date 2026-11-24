@@ -4,7 +4,7 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 ---
 
 ## What does the card offer an administrator (role 0)?
-- Added servers; "Ready-made connectors" (`ws_mcp_catalogue()`, bundled, no registry fetch: owner 2026-10-24); "Add a custom connector"; the whole form under More settings (`#ws-mcp-new`). GET /workspace/mcp-servers/catalogue lists the same (403 below role 0, `'mcp' => false`).
+- Added servers; "Ready-made connectors" (`ws_mcp_catalogue()`, bundled: owner 2026-10-24; Site Settings: `ui/connections-mcp-connector-page.md`); "Add a custom connector"; the whole form under More settings. GET /workspace/mcp-servers/catalogue lists them (role 0 only, `'mcp' => false`).
 - A tile's Add (`mcp_catalogue_add`): none: saved, tools read; oauth: saved, then straight to Connect (as for every new OAuth server); bearer: the form opens filled, focused on the token, with the token page link (`mcp_kept_catalogue`). A taken alias gets 2..9 (`ws_mcp_alias_free()`); an entry whose address a server has (`ws_mcp_url_key()`) shows Already added.
 - Check the address (`mcp_probe`, `ws_mcp_probe()`): initialize and tools/list with no credential; on a 401 `pg_mcp_client_discover_auth()`: oauth when the site can register (`ws_mcp_oauth_registration()`), else bearer; else the client's error. The short form (alias from `ws_mcp_alias_from_host()`, a token for bearer) posts `mcp_save`. A probe registers nothing.
 
@@ -29,4 +29,4 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 
 ## How is it checked?
 - tests/workspace_mcp_test.php: catalogue rows and icons, alias from a host, Already added, the probe with a stand-in fetch, first read, declare, kept fields, link due; workspace_api_test.php: the route. The API of the added servers: `workspace-mcp-servers-api.md`.
-- CLI harness, 2026-10-24: adds and probes against live servers; OAuth sign-in (CIMD, DCR) never run live.
+- CLI harness, 2026-10-24: live adds and probes; OAuth sign-in (CIMD, DCR) never run live.

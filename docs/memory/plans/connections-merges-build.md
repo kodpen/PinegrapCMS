@@ -20,10 +20,10 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576, CX11d Communication #10621 (WhatsApp, İYS), CX11d2 the SMS providers #10686 (`ui/connections-sms-providers-page.md`), CX11e Mailboxes #10720 (`ui/connections-mailboxes-accounts.md`), CX11f Accounts and sign-in #10785 (`ui/connections-accounts-signin-page.md`: Apple's application, the Turnstile and hCaptcha keys).
 - CX11g Ecommerce, done: g1 the card gateways #10919, g2 Stripe, PayPal, PayTR, Givex #10973, g3 shipping #10988, g4 address autocomplete, Merchant Center #11007 (`ui/connections-payment-*`, `-shipping-*`, `-address-merchant-*`). CX11h Accounting (Paraşüt, Logo İşbaşı): done (#11030).
 - CX11i Integrations (Google reviews): done (#11117). CX11j Updates and maintenance: j1 the backup accounts (Drive, OneDrive, Dropbox), done (#11193). Cron Jobs: nothing to move; S3, FTP, object storage: no service.
-- CX11j2 the Chat notifications targets moved to Slack's, Teams' and Telegram's pages (architect 2026-11-23, message 12293; `ui/connections-chat-notify-page.md`). Done (#11215).
-- CX11k the Workspace's categories, done (#11244): nothing else to move (calendars are each person's; Calls' addresses are typed; Pinegrap AI is the licence key; agents, Voice in CX9). Owner (2026-11-24, poll 222): Claude and the MCP servers move, each row keeps a line to Connections (`decisions-made-product-100.md`).
-- CX11k2 Claude, own PR: the routine address and token on `connections.php?service=claude` (Connection details); the row and Set up's step 4 lead there. Done (#11265).
-- CX11k3 MCP, own PR: the servers (address, token) and the 12 connectors to their pages; the row leads there.
+- CX11j2 the Chat notifications targets moved to Slack's, Teams' and Telegram's pages (architect 2026-11-23, message 12293). Done (#11215).
+- CX11k the Workspace's categories, done (#11244): nothing else to move. Owner (2026-11-24, poll 222): Claude and the MCP servers move, each row keeps a line to Connections (`decisions-made-product-100.md`).
+- CX11k2 Claude: the routine address and token on Claude's page; the row and Set up's step 4 lead there. Done (#11265).
+- CX11k3 MCP, own PR: the servers (address, token) and the 12 connectors to their pages; the row leads there. Done (#PRNUM, `ui/connections-mcp-connector-page.md`); a server by address keeps its settings in the drawer.
 
 ## Where are CX9's binding decisions?
 - In `api/ai-connections.md` (architect 2026-11-17, message 9391) and `api/ai-connections-feature-cards.md`.

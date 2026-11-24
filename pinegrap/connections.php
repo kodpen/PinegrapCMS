@@ -298,6 +298,28 @@ function connections_claude_may_manage($user) {
 
 }
 
+// May the user change a ready-made MCP connector's server, its address and
+// sign-in? They came from the MCP servers row of Site Settings › Assistants
+// and agents, so they keep its gate: that category and the Workspace's
+// administrator, who alone adds and changes the servers.
+function connections_mcp_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	if (!pg_settings_may_open('workspace_assistants', $user)) {
+		return false;
+	}
+
+	$viewer = connections_workspace_viewer($user);
+
+	return is_array($viewer) && ((int) $viewer['role'] === 0) && function_exists('ws_mcp_ready') && ws_mcp_ready();
+
+}
+
 // May the user change Slack's, Teams' and Telegram's targets? They came
 // from the Chat notifications card of Site Settings › Updates and
 // maintenance, so they keep that category's gate.
@@ -340,6 +362,27 @@ if ($_POST) {
 		}
 
 		header('Location: ' . $screen_url . '?service=github#connections-repositories');
+		exit();
+
+	}
+
+	// A ready-made MCP connector's server added, its address and sign-in
+	// saved, or the site's sign-in to it started or ended on the
+	// connector's page, whose address (the form's action) names it. The
+	// server's tools stay on the MCP servers row of Site Settings.
+	if (in_array($ws_action, array('mcp_save', 'mcp_catalogue_add', 'mcp_connect', 'mcp_disconnect'), true)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+		$mcp_page = (isset($_GET['service']) && (pg_connections_screen_mcp_connector($_GET['service']) !== '')) ? (string) $_GET['service'] : '';
+
+		if (($mcp_page !== '') && connections_mcp_may_manage($user)) {
+			// A sign-in leaves for the service at once and comes back here.
+			ws_mcp_settings_place(array('return' => pg_connections_screen_page_url($mcp_page), 'anchor' => '#connections-details', 'hold' => false));
+			ws_mcp_settings_post(connections_workspace_viewer($user), $ws_action, $liveform);
+		}
+
+		header('Location: ' . $screen_url . (($mcp_page !== '') ? '?service=' . $mcp_page . '#connections-details' : ''));
 		exit();
 
 	}
@@ -3326,6 +3369,41 @@ function connections_claude_page($page, $may_manage) {
 
 }
 
+/* A ready-made MCP connector's page: "Connection details" holds the server
+   added from it, its address and sign-in, for the Workspace's administrator
+   who may open Site Settings › Assistants and agents. "Where it is used"
+   leads to the MCP servers row there, where its tools are turned on. */
+
+function connections_mcp_page($page, $page_id, $may_manage, $kept) {
+
+	$key = pg_connections_screen_mcp_connector($page_id);
+	$server = null;
+
+	if (function_exists('ws_mcp_ready') && ws_mcp_ready()) {
+		$added = ws_mcp_catalogue_added(ws_mcp_servers());
+		$server = isset($added[$key]) ? $added[$key] : null;
+	}
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+		$page['details'] = ws_mcp_connection_card_html($key, $server, is_array($kept) ? $kept : ws_mcp_settings_kept(null), pg_connections_screen_page_url($page_id));
+	}
+
+	$state = $server ? ws_mcp_settings_state_badge(ws_mcp_server_state($server)['state']) : null;
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('workspace_assistants', 'pgset-ws-mcp')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Tools for the Workspace\'s assistants')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Assistants and agents')) . ' › ' . h(lang('MCP servers')) . '</span>
+					</span>
+					<span class="connections-row-side">' . ($state ? '<span class="pg-pill ' . h($state[0]) . '">' . h($state[1]) . '</span>' : connections_state_pill('not_connected')) . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* Slack's, Microsoft Teams' and Telegram's pages: "Connection details"
    lists that service's targets, each with its name, alert codes, Workspace
    events, Save, "Save and send a test" and Delete, then Add a target, for
@@ -4572,6 +4650,23 @@ $search_form = '
    The screen
    --------------------------------------------------------------------------- */
 
+// A ready-made MCP connector's page: back from the service's sign-in (its
+// message, and the server's tools read), and what a refused form or Add
+// kept, both read before the messages are printed and the form emptied.
+$mcp_kept = null;
+
+if (($page_id !== '') && (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user)) {
+
+	$mcp_viewer = connections_workspace_viewer($user);
+
+	if (isset($_GET['mcp_connected'])) {
+		ws_mcp_settings_returned($mcp_viewer, $liveform);
+	}
+
+	$mcp_kept = ws_mcp_settings_kept($liveform);
+
+}
+
 $liveform_messages = $liveform->output_errors() . $liveform->output_notices();
 
 $liveform->remove_form();
@@ -4707,6 +4802,7 @@ if ($provider_page !== '') {
 			'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
 			'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
 			'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
+			'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
@@ -4715,7 +4811,8 @@ if ($provider_page !== '') {
 		'status_extra' => '',
 		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
 			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews')
-			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || ($page_id === 'claude'),
+			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || ($page_id === 'claude')
+			|| (pg_connections_screen_mcp_connector($page_id) !== ''),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
@@ -4772,6 +4869,12 @@ if ($provider_page !== '') {
 	// them.
 	if ($page_id === 'claude') {
 		$page = connections_claude_page($page, connections_claude_may_manage($user));
+	}
+
+	// A ready-made MCP connector's page: its server's address and sign-in,
+	// and the row whose tools use it.
+	if (pg_connections_screen_mcp_connector($page_id) !== '') {
+		$page = connections_mcp_page($page, $page_id, connections_mcp_may_manage($user), $mcp_kept);
 	}
 
 	// Slack's, Teams' and Telegram's pages: their targets and the cards

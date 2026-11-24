@@ -869,3 +869,113 @@ function ws_mcp_settings_custom($self_url, $kept, $full_form, $form = null)
             <div class="collapse mt-3' . ($open ? ' show' : '') . '" id="ws-mcp-new">' . $full_form . '</div>
         </section>';
 }
+
+/* ---------------------------------------------------------------------------
+   A connector's page on Connections
+   --------------------------------------------------------------------------- */
+
+/**
+ * "Connection details" of a ready-made connector's page on Connections
+ * (connections.php?service=mcp_<key>), for the Workspace's administrator:
+ * the server added from it with its state, Connect or Disconnect for a
+ * sign-in, and its address and sign-in in the server's form; with none
+ * added, Add (mcp_catalogue_add), or the form filled from the connector
+ * after Add asked for a token or a check refused what was typed. The forms
+ * post ws_action to $self_url, which carries the page's service.
+ *
+ * @param string     $key      the catalogue key
+ * @param array|null $server   the server added from it (ws_mcp_catalogue_added())
+ * @param array      $kept     ws_mcp_settings_kept()
+ * @param string     $self_url the page's address
+ * @return string HTML, '' for an unknown connector
+ */
+function ws_mcp_connection_card_html($key, $server, $kept, $self_url)
+{
+    $entry = ws_mcp_catalogue_entry($key);
+
+    if (!$entry) {
+        return '';
+    }
+
+    $body = '';
+
+    if ($server) {
+        $id = (int) $server['id'];
+        $badge = ws_mcp_settings_state_badge(ws_mcp_server_state($server)['state']);
+        $account = ($server['auth_kind'] === 'oauth') ? ws_mcp_site_account($server) : null;
+        $connected = $account && ($account['status'] === 'active');
+        $sign_in = '';
+
+        if (($server['auth_kind'] === 'oauth') && !$connected) {
+            $sign_in = ws_mcp_settings_button($self_url, null, 'mcp_connect', $id, 'pg-button pg-button-quiet pg-button-sm',
+                '<i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>' . h($account ? lang('Connect again') : lang('Connect')));
+        } elseif ($account) {
+            $sign_in = ws_mcp_settings_button($self_url, null, 'mcp_disconnect', $id, 'pg-button pg-button-ghost pg-button-sm',
+                '<i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Disconnect')), '',
+                lang('End the site\'s connection to this server? Its tools cannot be used until it is connected again.'));
+        }
+
+        $typed = ($kept['for'] === (string) $id) ? $kept['values'] : array();
+        $body = '
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <strong class="pg-list-row-title">@' . h($server['alias']) . '</strong>
+                <span class="pg-text-meta ws-grow">' . h(ws_mcp_host($server['url'])) . '</span>
+                <span class="pg-pill ' . h($badge[0]) . '">' . h($badge[1]) . '</span>
+                ' . $sign_in . '
+            </div>
+            ' . (($server['last_error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($server['last_error']) . '</div>' : '') . '
+            ' . ws_mcp_settings_form($self_url, $server, true, $typed, $typed ? $kept['problem'] : '');
+    } elseif (($kept['for'] === 'new') && ($kept['catalogue'] === $key)) {
+        $body = ws_mcp_settings_form($self_url, null, true, $kept['values'], $kept['problem'], $key);
+    } else {
+        $labels = ws_mcp_catalogue_auth_labels();
+        $body = '
+            <p class="pg-text-2 mb-1">' . h(lang('Not added yet.')) . ' ' . h($labels[$entry['auth']] ?? '') . '</p>
+            <p class="pg-text-meta mb-4">' . h($entry['url']) . '</p>
+            <form method="post" action="' . h($self_url) . '">
+                ' . get_token_field() . '
+                <input type="hidden" name="ws_action" value="mcp_catalogue_add">
+                <input type="hidden" name="mcp_catalogue" value="' . h($key) . '">
+                <button type="submit" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
+            </form>';
+    }
+
+    return '
+        <section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+            <h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+            <p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The address of {var:1}\'s MCP server and how the site signs in to it. Its tools are turned on under Site Settings › Assistants and agents › MCP servers.', 'vars' => $entry['name']))) . '</p>
+            ' . $body . '
+        </section>' . ws_mcp_settings_script(false);
+}
+
+/**
+ * Where a ready-made connector is set up on Connections: its own page
+ * (registry row mcp_<key>), or the list's MCP connectors for ''. Pure.
+ *
+ * @param string $key a catalogue key, '' for the list
+ * @return string a panel path
+ */
+function ws_mcp_connections_url($key)
+{
+    $key = (string) $key;
+
+    return ($key !== '') ? 'connections.php?service=mcp_' . rawurlencode($key) : 'connections.php#connections-group-mcp';
+}
+
+/**
+ * The line of Site Settings' MCP servers row that leads to Connections,
+ * where the ready-made connectors are added and their address and sign-in
+ * kept: one sentence and the link.
+ *
+ * @param string $key      a catalogue key for one connector's page, '' for the list
+ * @param string $sentence what is found there
+ * @return string HTML
+ */
+function ws_mcp_connections_line_html($key, $sentence)
+{
+    return '
+        <p class="pg-text-meta d-flex flex-wrap align-items-center gap-2 mb-4" data-ws-mcp-connections>
+            <span>' . h($sentence) . '</span>
+            <a class="pg-button pg-button-ghost pg-button-sm" href="' . h(ws_mcp_connections_url($key)) . '" target="_blank" rel="noopener">' . h(($key !== '') ? lang('Manage in Connections') : lang('Open in Connections')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+        </p>';
+}
