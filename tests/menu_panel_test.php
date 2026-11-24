@@ -270,7 +270,10 @@ function test_menu_tools_markup_is_one_list_under_group_headings()
 	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu, 'a tool that opens apart keeps its target');
 	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu, 'a job keeps its question');
 	pg_assert_contains('purge_cache.php?token=a&amp;b', $menu, 'addresses are escaped');
-	pg_assert_contains('bi-trash3 bi-me-2\'>Purge Cache</a>', $menu, 'a tool keeps its icon');
+	pg_assert_contains('bi-trash3 bi-me-2\'><span class=\'pg-menu-entry-label\'>Purge Cache</span></a>', $menu, 'a tool keeps its icon, its name in a box that ends in an ellipsis');
+	pg_assert_contains('title=\'Purge Cache\'', $menu, 'the whole name as the title');
+	pg_assert_same(1, substr_count($menu, 'bi-box-arrow-up-right pg-menu-entry-ext'), 'only the tool that opens a new tab carries the mark');
+	pg_assert_contains('System Informations</span><i class=\'bi bi-box-arrow-up-right pg-menu-entry-ext\' aria-hidden=\'true\'></i><span class=\'visually-hidden\'>', $menu, 'the mark at the end, said in words');
 
 	pg_assert_same('', pg_menu_tools_markup(array(), '/pinegrap/', ''), 'no group, nothing');
 	pg_assert_same('', pg_menu_tools_markup(array(array('label' => 'Empty', 'icon' => 'bi-x', 'items' => array())), '/pinegrap/', ''), 'no tool, nothing');

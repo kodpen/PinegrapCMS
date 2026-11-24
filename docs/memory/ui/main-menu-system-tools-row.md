@@ -10,6 +10,7 @@ module: output
 - Owner (2026-11-22, poll 220, `workflow/decisions-made-panel-17.md`): every tool directly under the row, the groups' names as headings; the screen stays, opened from Site Settings' "System tools" row, the search and the row's own address (a middle click). A group with no tool for the person prints no heading.
 - `output_menu()` defines `PG_SETTINGS_MENU` and includes `registry.php` itself before the call: the registry is not a function module, and without it every panel screen but the settings ones died with an undefined-function 500 for roles <= 2 (#5158, `tests/menu_settings_registry_test.php`).
 - `system_tools.php` and every tool screen mark row 25 (`output_menu()`'s switch); Store Lists screens mark it for role <= 2, the shipping row for role 3.
+- Each tool's name sits in `.pg-menu-entry-label` and ends in an ellipsis inside the panel, the whole name as the entry's `title`: with the 32 px tile "Tüm Yönlendirme Kaynakları" no longer fits the open menu (#11271). A tool that opens a new tab (System Informations) ends in `bi-box-arrow-up-right` (`.pg-menu-entry-ext`, `aria-hidden`) and the hidden "(opens in a new tab)".
 
 ## How is it tested?
 - `tests/menu_panel_test.php`: the one list (a heading per group with tools, no screen entry, no second level, targets, confirms, escaping). `tests/settings_system_tools_test.php`: the row's gate, its list and the screens that mark it.

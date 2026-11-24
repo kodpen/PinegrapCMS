@@ -2678,6 +2678,25 @@ body:not(.toolbar) .software-content > #footer {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-menu-tone) 16%, transparent);
 }
 
+/* A System tools entry (pg_menu_tools_markup()): the name ends in an
+   ellipsis inside the panel, and the mark of a tool that opens in a new tab
+   stands at the row's right end. */
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-entry-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-entry-ext {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--pg-fg-2);
+}
+
 /* A jump point inside the screen of the entry above it (the Visitors
    overview's sections): smaller and quieter than an entry, its text lined
    up with the entry's label, on a thin line that runs down from the entry's
