@@ -80,6 +80,7 @@
 - legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
 - legacy-editable-steps.md: Plan legacy-editable, steps LE1 to LE12 with size and order: the measure, page_parts, one door, the true canvas, stock layouts, the layout converter by families, earlier designs, close-out
 - legacy-editable.md: Plan (owner 2026-11-21): a classic page arrives in the visual designer as editable elements, not name boxes: regions as HTML, a true canvas for code, layouts by a piece map; LE1 to LE12
+- main-menu-icon-size-fixes.md: Two differences the designer's look found on the landed System tools panel (MI3 #11247), taken by step MZ1: System Information lacks its new-tab mark, the longest tool name ends at the panel's edge
 - main-menu-icon-size.md: Plan (owner 2026-11-24): main menu row icons grow to at least 1.2rem so each can be told apart, and the menu widens without stuttering; one step MZ1 after MI3
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
