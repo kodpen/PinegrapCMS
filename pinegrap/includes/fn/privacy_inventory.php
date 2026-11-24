@@ -245,6 +245,10 @@ function pg_privacy_inventory()
             'purpose' => 'Comments on the site\'s pages', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => array('created_user_id', 'int')),
         'prototype_comments' => array('categories' => array('identity', 'messages'), 'subjects' => array('customer', 'staff'),
             'purpose' => 'Comments on design prototypes', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => $user),
+        'prototype_verdicts' => array('categories' => array('identity', 'messages'), 'subjects' => array('customer'),
+            'purpose' => 'Approvals and change requests on design prototypes', 'ground' => 'contract', 'retention' => 'until_erased'),
+        'prototype_links' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer'),
+            'purpose' => 'Approvers of design prototypes and their review mails', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => array('approver_email', 'text')),
 
         // Mail, messages and chats.
         'email_recipients' => array('categories' => array('contact'), 'subjects' => array('customer', 'visitor'),

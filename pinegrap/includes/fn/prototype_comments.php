@@ -693,14 +693,21 @@ function pg_proto_comment_delete($comment_id)
 
 /**
  * Deletes every comment of a link (the links list's "Delete this link's
- * comments").
+ * comments"), and the link's verdicts with them
+ * (pg_proto_verdicts_delete_link()).
  *
  * @param int $link_id
- * @return int how many rows were deleted
+ * @return int how many comments were deleted
  */
 function pg_proto_comments_delete_link($link_id)
 {
-    if (((int) $link_id <= 0) || !pg_proto_comments_ready()) {
+    if ((int) $link_id <= 0) {
+        return 0;
+    }
+
+    pg_proto_verdicts_delete_link($link_id);
+
+    if (!pg_proto_comments_ready()) {
         return 0;
     }
 
@@ -832,15 +839,18 @@ function pg_proto_comments_delete_design_sql($style_ids)
 }
 
 /**
- * Deletes the comments of designs whose style rows are being deleted. Called
- * beside pg_proto_links_revoke_design() on every such path: a later design
- * can be given the same id.
+ * Deletes the comments of designs whose style rows are being deleted, and
+ * their verdicts (pg_proto_verdicts_delete_design()). Called beside
+ * pg_proto_links_revoke_design() on every such path: a later design can be
+ * given the same id.
  *
  * @param int|int[] $style_ids
- * @return int how many rows were deleted
+ * @return int how many comments were deleted
  */
 function pg_proto_comments_delete_design($style_ids)
 {
+    pg_proto_verdicts_delete_design($style_ids);
+
     $sql = pg_proto_comments_delete_design_sql($style_ids);
 
     if (($sql === '') || !pg_proto_comments_ready()) {
