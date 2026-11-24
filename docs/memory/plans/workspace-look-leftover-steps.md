@@ -12,7 +12,7 @@ priority: 2
 - S under 400 product lines, M about 1,000.
 
 ## Which steps are there?
-- WL1 (S) The field count. `pg_look_markup_counts()` gets a kind `field` for Workspace files (a path holding `workspace`): each `formRow(` call and each `form-control`, `form-label` or `form-text` class. The baseline takes the first counts; they may only fall. Tests in `tests/` beside the look check's. Topic file `ui/look-check.md`.
+- WL1 (S) Done (#11339). The field count. `pg_look_markup_counts()` gets a kind `field` for Workspace files (a path holding `workspace`): each `formRow(` call and each `form-control`, `form-label` or `form-text` class. The baseline takes the first counts; they may only fall. Tests in `tests/` beside the look check's. Topic file `ui/look-check.md`.
 - WL2 (M) `assets/js/workspace.js`: its 232 old buttons. The channel's head, tabs' panes, drawers and dialogs, the writing box's row, the lists of My Tasks and the settings parts it draws.
 - WL3 (S) The flow screens: `workspace_flow.js` (56), `workspace_flow_flag.js` (3).
 - WL4 (S) The writing box and what hangs on it: `workspace_editor.js` (28), `workspace_highlights.js` (7), `workspace_replies.js` (6), `workspace_voice.js` (6), `workspace_translate.js` (1). The toolbar's pressed state keeps its accent tint (`workspace/workspace-editor-toolbar.md`).
