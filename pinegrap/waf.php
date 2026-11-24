@@ -2758,7 +2758,7 @@ function waf_sensitive_scripts()
         'privacy_request.php', 'privacy_download.php', 'reorder.php',
         'feedback.php', 'queue.php', 'application_juror.php', 'application_fix.php',
         'volunteer.php', 'volunteer_check_in.php', 'volunteer_certificate.php',
-        'workspace_share.php',
+        'workspace_share.php', 'launch_summary.php',
     );
 }
 

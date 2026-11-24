@@ -44,6 +44,24 @@ function pg_dashboard_v2_launch_labels()
         'close'    => lang('Close'),
         'failed'   => lang('The change could not be saved.'),
         'blocker'  => lang('Must be fixed'),
+        // The agency summary's drawer.
+        'summary'      => lang('Agency summary'),
+        'summary_line' => lang('What the customer sees on their link, and what they answered.'),
+        'need'         => lang('What we need from you'),
+        'no_lines'     => lang('No lines yet. Add what the customer should send: a logo, texts, domain access.'),
+        'add'          => lang('Add a line'),
+        'add_hint'     => lang('For example: your logo as SVG or PNG'),
+        'remove'       => lang('Remove'),
+        'link'         => lang('Link for the customer'),
+        'copy'         => lang('Copy'),
+        'withdraw'     => lang('Withdraw link'),
+        'withdraw_ask' => lang('The customer\'s link stops working at once. Their answers are kept.'),
+        'cancel'       => lang('Cancel'),
+        'expiry'       => lang('The link works for'),
+        'days'         => lang('{var:1} days'),
+        'make'         => lang('Make a new link'),
+        'loading'      => lang('Loading…'),
+        'no_key'       => lang('The agency summary needs the site\'s encryption key and the latest upgrade.'),
     );
 }
 
