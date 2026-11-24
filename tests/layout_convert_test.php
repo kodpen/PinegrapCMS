@@ -93,9 +93,9 @@ function test_lc_piece_map_names_the_first_family()
 		$map = pg_layout_piece_map($type);
 		pg_assert_true(is_array($map) && isset($map['echo'], $map['if'], $map['loop']), $type . ' has a piece map');
 	}
-	pg_assert_same(null, pg_layout_piece_map('catalog detail'), 'a type of a later family has none yet');
+	pg_assert_same(null, pg_layout_piece_map('shopping cart'), 'a type of a later family has none yet');
 	pg_assert_same(null, pg_layout_piece_map('custom form'), 'the custom form keeps its own converter');
-	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog'), pg_layout_convert_types());
+	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail'), pg_layout_convert_types());
 }
 
 function test_lc_row_template_from_the_starter()
@@ -164,7 +164,7 @@ function test_lc_unknown_code_and_values_are_dropped()
 
 function test_lc_unknown_type()
 {
-	$r = pg_layout_convert('catalog detail', '<p>x</p>', array());
+	$r = pg_layout_convert('shopping cart', '<p>x</p>', array());
 	pg_assert_same(false, $r['ok']);
 }
 
@@ -394,7 +394,7 @@ function test_lc_type_file_convert_keeps_the_dropped_list()
 	pg_assert_same(array('browse'), _test_lc_codes($r['dropped']), 'the Region panel gets what the run refuses');
 	pg_assert_same('theme', $r['tree']['children'][0]['props']['cssClass'], 'the theme\'s wrapper stays');
 	pg_assert_same(1, count(_test_lc_of_type($r['tree'], 'loop_area')));
-	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'catalog detail'), $code, array())['ok'], 'a type with no map');
+	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'shopping cart'), $code, array())['ok'], 'a type with no map');
 }
 
 function test_lc_dropped_rows()
@@ -560,4 +560,66 @@ function test_lc_catalog_template()
 	$r = pg_layout_convert('catalog', _test_lc_template('catalog'), array());
 	pg_assert_same(true, $r['ok']);
 	pg_assert_same(array('value', 'condition', 'value', 'condition'), _test_lc_codes($r['dropped']));
+}
+
+// -- catalog detail -----------------------------------------------------------
+
+// The catalog detail's starting-site texts: 6 pages, 6 texts.
+function _test_lc_catalog_detail_texts()
+{
+	$out = array();
+	foreach (array('english_default', 'turkish_default') as $site) {
+		foreach (array(986, 998, 1002) as $id) $out[$site . '/' . $id] = _test_lc_site($site, $id);
+	}
+	return $out;
+}
+
+// Every starting-site text of the catalog detail: nothing dropped, the
+// tree the product (no list), the product row's controls bound, the
+// sidebar's search form, categories and keywords the widget's, the classic
+// cross-sell container its cross-sell part.
+function test_lc_catalog_detail_starting_site_texts()
+{
+	pg_assert_same(6, count(array_unique(_test_lc_catalog_detail_texts())), 'six distinct texts');
+	foreach (_test_lc_catalog_detail_texts() as $label => $code) {
+		$r = pg_layout_convert('catalog detail', $code, array());
+		$sidebar = substr($label, -4) !== '1002';
+		pg_assert_same(true, $r['ok'], $label);
+		pg_assert_same(array(), $r['dropped'], $label . ': nothing dropped');
+		$json = json_encode($r['tree']);
+		pg_assert_same(false, strpos($json, '<?'), $label . ': no PHP');
+		pg_assert_same(false, (bool)preg_match('/pg-(vis|loop|row|section|form)|"_list"/', $json), $label . ': no marker left');
+		pg_assert_same(0, count(_test_lc_of_type($r['tree'], 'loop_area')), $label . ': the tree is the product, no list');
+		pg_assert_same(array('__image_url'), _test_lc_bound($r['tree'], 'src'), $label . ': the picture');
+		pg_assert_same($sidebar ? array('product_lines', 'group_tree', 'keywords') : array('product_lines'), _test_lc_bound($r['tree'], 'section'), $label . ': the widget\'s lists');
+		pg_assert_same($sidebar ? array('search_query', 'product_choice', 'recipient_select', 'quantity') : array('product_choice', 'recipient_select', 'quantity'), _test_lc_bound($r['tree'], 'value'), $label . ': the controls the widget fills');
+		$text = _test_lc_bound($r['tree'], 'text');
+		foreach (array('__variant_picker', '__add_button_label', '__cross_sell_html', '__details') as $want) pg_assert_contains($want, $text, $label . ': ' . $want);
+		$item = (strpos($label, 'turkish') === 0) ? 'Ürün' : 'Item';
+		pg_assert_true(strpos(json_encode($r['tree'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), '<strong>' . $item . ':</strong> ^^__product_line^^') !== false, $label . ': the product row');
+		pg_assert_false(strpos($json, 'item-grid') !== false, $label . ': the classic cross-sell template is gone');
+		$forms = array_values(array_filter(_test_lc_nodes($r['tree']['children']), function ($n) { return _pg_lfc_tag($n) === 'form'; }));
+		pg_assert_same($sidebar ? 1 : 0, count($forms), $label . ': the search form alone, the add-to-cart and currency forms the widget\'s');
+		if ($sidebar) pg_assert_same('search_form', $forms[0]['props']['_bindings']['action'], $label . ': bound');
+		$names = array_values(array_filter(array_map(function ($n) { return _pg_lfc_attr($n, 'name'); }, _test_lc_nodes($r['tree']['children']))));
+		// One Turkish sidebar text has the page's anchor at its top.
+		$own = ($label === 'turkish_default/986') ? array('catalog-top', 'add_name', 'currency_id') : ($sidebar ? array('add_name', 'currency_id') : array('add_name'));
+		pg_assert_same($own, $names, $label . ': the controls left with their own names');
+		$flags = _test_lc_flags($r['tree']);
+		$want_flags = array('has_products', 'no_products', 'no_variant_choice', 'has_product_choice', 'no_product_choice', 'one_product', 'many_products', 'has_recipient_choice', 'has_back_button');
+		if ($sidebar) $want_flags = array_merge($want_flags, array('has_keywords', 'has_currency_choice'));
+		foreach ($want_flags as $want_flag) pg_assert_contains($want_flag, $flags, $label . ': flag ' . $want_flag);
+	}
+	$r = pg_layout_convert('catalog detail', _test_lc_site('english_default', 1002), array());
+	pg_assert_same(array('has_back_button'), array_slice(_test_lc_flags($r['tree']), 0, 1), 'the full-width text starts with its back link');
+	pg_assert_same(array('__back_url', '__back_url'), _test_lc_bound($r['tree'], 'href'), 'the back links');
+}
+
+// The stock template converts whole too.
+function test_lc_catalog_detail_template()
+{
+	$r = pg_layout_convert('catalog detail', _test_lc_template('catalog detail'), array());
+	pg_assert_same(true, $r['ok']);
+	pg_assert_same(array(), $r['dropped']);
+	pg_assert_same(array('keywords', 'product_lines', 'group_tree'), _test_lc_bound($r['tree'], 'section'));
 }
