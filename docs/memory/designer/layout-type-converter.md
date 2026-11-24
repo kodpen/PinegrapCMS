@@ -1,6 +1,6 @@
 ---
 name: layout-type-converter
-description: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; the order form in its own file
+description: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
 module: layout_convert
 ---
 
@@ -11,8 +11,8 @@ module: layout_convert
 
 ## What is the piece map?
 - `pg_layout_piece_map($type)`: `echo` (a printed value: `none`, `token:<name>[,<name>]`, `submit:<token>`, `ctx:<key>`, `row`), `if` (a condition: `widget` skipped, `flag` (one or nested flags) shown under the widget's flag, `empty` the widget's empty message, `section`, `keep`, `drop`; `state` = settings without which it is never drawn, `drop_when`; a key `elseif:<cond>` read only after an "else").
-- `else` (the flag of an "otherwise", or `keep`), `loop` (`list`).
-- Options `forms`, `flag_list`, `controls`, `submits`, `media`: [[layout-type-converter-order-form]]. Types: `pg_layout_convert_types()`; LE8 to LE10 add theirs.
+- `else` (the flag of an "otherwise", or `keep`), `loop` (`list`, or `list:<row flag>` for one kind of records of the widget's one list: [[layout-type-converter-photo-gallery]]).
+- Options `forms`, `flag_list`, `controls`, `submits`, `media`: [[layout-type-converter-order-form]]. Types: `pg_layout_convert_types()`; LE8b to LE10 add theirs.
 - A condition whose settings are off is left out unreported: the visitor never sees it. Anything the map does not name is dropped with what it holds.
 - A flag never goes on a node holding the list (the widget's empty message sits in the list's place), unless the map says `flag_list`.
 - An address, text or image source that is one widget value alone is bound (`_bindings.href` / `text` / `src`), never typed.
