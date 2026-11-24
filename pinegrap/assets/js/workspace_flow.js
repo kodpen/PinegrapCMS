@@ -11834,7 +11834,7 @@
                 arm.name = value;
                 refreshNode(node);
             });
-            var share = el('input', 'form-control form-control-sm wsf-number');
+            var share = el('input', 'pg-input pg-input-sm wsf-number');
             var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_split_arm_remove', arm.name || splitLetter(index)));
 
             name.setAttribute('aria-label', t('fl_split_arm_n', splitLetter(index)));
@@ -11865,7 +11865,7 @@
             list.appendChild(line);
         });
 
-        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_split_arms')));
+        box.appendChild(el('div', 'pg-field-label', t('fl_split_arms')));
         box.appendChild(list);
         showTotal();
         box.appendChild(total);
