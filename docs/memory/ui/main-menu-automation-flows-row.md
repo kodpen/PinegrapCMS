@@ -1,6 +1,6 @@
 ---
 name: main-menu-automation-flows-row
-description: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
+description: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, its icon and the live dot
 ---
 
 ## Where does the row sit?
@@ -20,9 +20,9 @@ description: Main menu row 26, Automation flows (#9169): its place at the top, i
 - `workspace_flows.php` marks row 26 (23 where the row is not built). There the Workspace list does not open by itself and the screen is no navigator screen (`$ws_side_screen` cleared while the row exists); a panel kept from the list's own Flows link still reopens.
 - The screen's title and heading, the list's label (`fl_nav`) and the Workspace tour's step say Automation flows; sentences keep "flow". The Dashboard's card is titled Automation flows and asks the screen's gate (`dashboard-v2-flows-card.md`).
 
-## How does icon A move?
-- `pg_menu_icon('flows')`: start circle, step box (`.pg-mi-step`) and end circle in `workspace-color`; the path and the dot (`.pg-mi-dot`) in the sky accent. The dot rests in the end by its `transform` attribute.
-- `backend.src.css`: hover plays `pg-mi-flow` (0.9 s: the dot runs the path, the step bounces); `[data-pg-flows-running]` on the row plays `pg-mi-flow-round` (4.8 s: three quarters travelling, a rest in the end), both inside the no-preference block. The keyframes are points of the path at their share of its length (translate, not `offset-path`, which SVG elements do not take everywhere); `tests/automation_flows_menu_test.php` checks them.
+## What is its icon?
+- `pg_menu_icon('flows')`: two boxes and the elbow connector between them, in the untitled block's blue on its tile (#11202). Hover lights the second box (`data-m="pulse"`) once.
+- Live: the dot (`data-l="run"`, hidden at rest) runs the connector in a 1.5 s loop while the row carries `data-pg-flows-running`, by translate keyframes (`pg-mi-run`), only where motion is welcome (#11233, `main-menu-icon-motion.md`).
 
 ## How was it checked?
 - `tests/automation_flows_menu_test.php`; the sandbox with the Workspace off and on: the row's place, a waiting run counted (1, as the list's Waiting), the row lit on the screen with the list shut, the rail's dot, the phone drawer, both themes, no movement under reduced motion.

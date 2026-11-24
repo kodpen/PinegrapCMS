@@ -17,9 +17,9 @@ priority: 6
 - The shortcuts list keeps a button of its own with the keyboard icon (`bi-keyboard`), label "Keyboard shortcuts"; the `?` key still opens it. No second question mark is left in the canvas.
 - If #11195 already left it so, the step is the check on a sandbox and a line in the canvas's memory file.
 
-## CL3 (S, after MI2 of `plans/main-menu-icons-redraw.md` lands): which icons follow the menu?
+## CL3 (S, after MI2 of the main menu icon redraw, #11233, landed): which icons follow the menu?
 - A place outside the menu that stands for a menu row draws that row's icon from `pg_menu_icon()`: at rest, in the place's own size and colour, no tile unless the place has one, no move.
-- Known: the Workspace's Notes part and the header's new note button. The worker lists the rest by searching each redrawn row's old glyph (`plans/main-menu-icons-redraw-rows.md`) in the Workspace's tools dock, the header's quick buttons, the dashboard cards' heads, the command palette and the empty states.
+- Known: the Workspace's Notes part and the header's new note button. The worker lists the rest by searching each redrawn row's old glyph (the rows: `ui/main-menu-icon-rows.md`) in the Workspace's tools dock, the header's quick buttons, the dashboard cards' heads, the command palette and the empty states.
 - An icon that stands for an action or an object and not for the module (a note's own icon in a list, a file type) stays.
 - The PR lists each place before and after; the designer agent looks at it when it lands.
 
@@ -27,4 +27,4 @@ priority: 6
 - CL1 and CL2 both enter the canvas's script: one worker, CL1 then CL2. CL3 apart, after MI2.
 - The last to land writes the label and the "?" into the canvas's file in `ui/`, CL3's rule into `ui/main-menu-icons.md`, and deletes this file.
 
-Related: docs/memory/plans/main-menu-icons-redraw.md, docs/memory/workflow/decisions-made-panel-18.md
+Related: docs/memory/ui/main-menu-icons.md, docs/memory/workflow/decisions-made-panel-18.md

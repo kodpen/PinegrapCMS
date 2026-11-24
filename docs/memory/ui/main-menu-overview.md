@@ -4,7 +4,7 @@ description: The panel's main menu as a whole: rows in categories, panels and se
 ---
 
 ## What is it?
-- The left menu of every panel screen, built by `output_menu()` (`includes/fn/output.php`) as rows (`$menu_items[<slot>]`), each under its gate, drawn under category headings (Content, Design, Ecommerce, Accounting, Marketing, System). A row is a link, or opens a panel of entries in place of the rows; an entry may open a second-level panel (System tools' groups, the Page Design Studio's Other).
+- The left menu of every panel screen, built by `output_menu()` (`includes/fn/output.php`) as rows (`$menu_items[<slot>]`), each under its gate, drawn under category headings (Content, Design, Ecommerce, Accounting, Marketing, System). A row is a link, or opens a panel of entries in place of the rows; an entry may open a second-level panel (the Page Design Studio's Other); a panel may hold headings over its entries (System tools' groups).
 - `backend.src.js` drives it: panels, the kept panel, the current entry, the three wide states, the phone drawer. Tests: `tests/menu_category_test.php`, `menu_panel_test.php`, `menu_state_test.php`.
 
 ## Which decisions bind it?
@@ -25,6 +25,6 @@ description: The panel's main menu as a whole: rows in categories, panels and se
 ## How is a new part added?
 - A new screen: its entry goes into its row's `data-bs-content` under the screen's own gate, and its file name into `output_menu()`'s switch for the active row.
 - A new row: the next free slot, a place in `pg_menu_categories()`, a drawing in `pg_menu_icon()`, a `[data-pg-menu-tone]` line for a new colour class.
-- A second-level panel: an entry with a chevron and `data-pg-menu-panel` naming a panel drawn into `$menu_panels_nested` (`pg_menu_tools_markup()`, `pg_menu_other_markup()`); no script change is needed.
+- A second-level panel: an entry with a chevron and `data-pg-menu-panel` naming a panel drawn into `$menu_panels_nested` (`pg_menu_other_markup()`); no script change is needed.
 
 Related: docs/memory/ui/main-menu-categories.md, docs/memory/ui/main-menu-panels.md

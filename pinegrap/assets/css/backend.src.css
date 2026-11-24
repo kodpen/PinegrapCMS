@@ -2662,11 +2662,27 @@ body:not(.toolbar) .software-content > #footer {
   --bs-link-opacity: 1;
 }
 
-/* An entry that opens a second-level panel (System tools): its arrow sits
-   in its right padding, as on the rows. */
+/* An entry that opens a second-level panel (the Page Design Studio's
+   Other): its arrow sits in its right padding, as on the rows. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {
   position: relative;
   padding-right: 1.25rem;
+}
+/* A group's name over its entries (the System tools row,
+   pg_menu_tools_markup()): a small quiet title, not a link, lined up with
+   the entries' tiles. */
+#menu .pg-menu-panel-body > .pg-menu-panel-heading {
+  margin: 0.75rem 0.5rem 0.1875rem;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--pg-fg-3);
+  user-select: none;
+}
+#menu .pg-menu-panel-body > .pg-menu-panel-heading:first-child {
+  margin-top: 0.25rem;
 }
 #menu .pg-menu-panel-body > hr {
   height: 0;

@@ -1,17 +1,19 @@
 ---
 name: main-menu-communication-icon
-description: The Communication row's own drawing (row 9): a speech bubble with an arrow out and an arrow in, its colours and hover movement; the megaphone it replaced
+description: The Communication row's drawing (row 9): a speech bubble with an arrow out and an arrow in, in the Marketing violet, its hover move; the megaphone it replaced
 module: output
 ---
 
 ## What does the Communication row draw?
-- `pg_menu_icon('communication', 'campaigns-color')` (`includes/fn/output.php`), named by row 9 in `output_menu()`: a speech bubble (module tint and outline) with two arrows in the accent, stroke 1.9: `.pg-mi-out` pointing right above, `.pg-mi-in` pointing left below.
-- Colours: the row's `campaigns-color`; the accent `--pg-mi-sky` (`#menu .pg-mi-communication`, "Main menu icons" in `backend.src.css`).
-- The Workspace row also draws a bubble, with a tick and no arrows.
+- `pg_menu_icon('communication')` (`includes/fn/output.php`), named by row 9 in `output_menu()`: a speech bubble with an arrow pointing right above (`data-m="send"`) and one pointing left below (`data-m="recv"`), in the one line family of the menu (#11202).
+- Colour: the Marketing category's violet on its tile (`pg_menu_category_tone(9)`), like every row; no second colour.
+- The Workspace row draws the channel mark "#", so the bubble is the Communication row's alone.
 
 ## How does it move?
-- On hover or focus, inside the reduced-motion section: the outgoing arrow slides about 2 units to the right (`pg-mi-send`), the incoming one 0.12 s later about 2 units to the left (`pg-mi-receive`); both overshoot a little and settle in 0.6 s.
+- On the row's hover or keyboard focus, inside `prefers-reduced-motion: no-preference`: the outgoing arrow slides 1.8 units to the right and back (`pg-mi-send`), the incoming one 1.8 units to the left (`pg-mi-recv`), once, 0.5 s (#11233, `main-menu-icon-motion.md`).
 
-## Why not the megaphone?
-- Owner (2026-11-14): the megaphone reads as campaigns; the row needs a sign of communication. Of the drafts he chose "6b: speech bubble and arrows"; an envelope, a paper plane, an @ sign, a handshake and arrows in a circle were not chosen.
-- The megaphone's drawing (`campaigns`) and its movement (`pg-mi-jolt`, `pg-mi-emit`) were removed; nothing else drew them. `tests/menu_panel_test.php` checks the row.
+## Why the bubble and not the megaphone?
+- Owner (2026-11-14): the megaphone reads as campaigns; the row needs a sign of communication. Of the drafts he chose "speech bubble and arrows"; an envelope, a paper plane, an @ sign, a handshake and arrows in a circle were not chosen. The redraw of 2026-11-22 kept his choice (`workflow/decisions-made-panel-17.md`).
+- The megaphone (`campaigns`) and its moves are gone; `tests/menu_panel_test.php` checks the row.
+
+Related: docs/memory/ui/main-menu-icons.md, docs/memory/ui/main-menu-icon-rows.md
