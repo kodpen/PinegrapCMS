@@ -309,6 +309,26 @@
         ['values', 'constants']
     ];
 
+    // The add list at an arrow (board B1): the three kinds offered first by
+    // the box before, a fixed table (no use is counted). Each row lists one
+    // more kind, taken when one of the three is not offered to the person.
+    var OFTEN_NEXT = {
+        message: ['delay', 'condition', 'task', 'email'],
+        delay: ['condition', 'post', 'task', 'email'],
+        other: ['delay', 'condition', 'email', 'task']
+    };
+
+    // The outcomes a box takes when it fails or runs out: a box whose other
+    // outcomes all have an arrow shows no "+" for these.
+    var SIDE_OUTCOMES = ['failed', 'cancelled', 'timeout', 'expired', 'withdrawn'];
+
+    // A column of the flow's layout (WS_FLOW_LAYOUT_STEP_X and _Y of
+    // ws_flow_auto_layout()); a box added at an arrow whose ends stand
+    // closer than INSERT_GAP moves the boxes after it one column right.
+    var LAYOUT_STEP_X = 288;
+    var LAYOUT_STEP_Y = 128;
+    var INSERT_GAP = 260;
+
     // The box whose line icon stands for a way to start in the flow list.
     var START_BOXES = { time: 'schedule', manual: 'manual', event: 'event', join: 'join' };
 
@@ -12149,6 +12169,127 @@
         }
 
         return config;
+    }
+
+    // ── Adding where a box goes (board B1) ─────────────────────────────
+
+    // The kinds offered first after a box of this kind ('' for none): the
+    // table's row of a message, of a Wait or else the other one, its first
+    // three kinds among those offered.
+    function oftenNext(before, offered) {
+        var row = (before === 'delay') ? OFTEN_NEXT.delay : ((KINDS[before] && (KINDS[before].group === 'message')) ? OFTEN_NEXT.message : OFTEN_NEXT.other);
+
+        return row.filter(function (kind) { return offered.indexOf(kind) !== -1; }).slice(0, 3);
+    }
+
+    // The first outcome of a box that leads on and has no arrow, '' when
+    // each has one: outs its outcomes in order (kindOf().out).
+    function freeOutcome(outs, id, edges) {
+        return (outs || []).filter(function (on) {
+            return (SIDE_OUTCOMES.indexOf(on) === -1) && !edges.some(function (edge) { return (edge.from === id) && (edge.on === on); });
+        })[0] || '';
+    }
+
+    // The kinds the add list offers at a place: a box an arrow may lead
+    // into; on an arrow, one that also leads on, so the arrow goes on past
+    // it. items are the palette's ([kind, name]).
+    function addKinds(items, onArrow) {
+        return items.filter(function (item) {
+            var kind = KINDS[item[0]];
+
+            return kind && kind.into && (!onArrow || (kind.out.length > 0));
+        });
+    }
+
+    // The ids an arrow leads to from a box, that box among them, never
+    // through stop (the box the new one comes after).
+    function downstream(edges, id, stop) {
+        var seen = {};
+        var queue = [id];
+
+        seen[id] = true;
+
+        while (queue.length) {
+            var at = queue.shift();
+
+            edges.forEach(function (edge) {
+                if ((edge.from === at) && (edge.to !== stop) && !seen[edge.to]) {
+                    seen[edge.to] = true;
+                    queue.push(edge.to);
+                }
+            });
+        }
+
+        return Object.keys(seen);
+    }
+
+    // A box added on the arrow at index (pure): the arrow cut in two, its
+    // first half into the new box on the arrow's outcome, the second from
+    // the new box on out (its first outcome; none for a box that ends the
+    // flow) to the arrow's end. When the gap between the two ends is under
+    // INSERT_GAP, the arrow's end and every box after it move one column
+    // right. Answers the new box's place, the arrows and how far each
+    // moved box goes (by id); null for no such arrow.
+    function insertOnEdge(nodes, edges, index, id, out) {
+        var edge = edges[index];
+        var find = function (key) { return nodes.filter(function (node) { return node.id === key; })[0] || null; };
+        var from = edge ? find(edge.from) : null;
+        var to = edge ? find(edge.to) : null;
+
+        if (!from || !to) {
+            return null;
+        }
+
+        var shift = ((to.x - (from.x + BOX_W)) < INSERT_GAP) ? LAYOUT_STEP_X : 0;
+        var moved = {};
+
+        if (shift) {
+            downstream(edges, to.id, from.id).forEach(function (key) {
+                moved[key] = shift;
+            });
+        }
+
+        var cut = edges.map(function (item, at) {
+            if (at !== index) {
+                return item;
+            }
+
+            var first = {};
+
+            Object.keys(item).forEach(function (key) { first[key] = item[key]; });
+            first.to = id;
+
+            return first;
+        });
+
+        if (out) {
+            cut.push({ from: id, to: to.id, on: out });
+        }
+
+        return {
+            x: Math.round(((from.x + BOX_W + to.x + shift) / 2 - BOX_W / 2) / GRID) * GRID,
+            y: Math.round(((from.y + to.y) / 2) / GRID) * GRID,
+            edges: cut,
+            moved: moved
+        };
+    }
+
+    // Where a box added after another goes: one column right of it, a row
+    // lower for each box standing there.
+    function placeAfter(nodes, from) {
+        var x = from.x + LAYOUT_STEP_X;
+        var y = from.y;
+        var taken = function () {
+            return nodes.some(function (node) {
+                return (node !== from) && (Math.abs(node.x - x) < BOX_W) && (Math.abs(node.y - y) < BOX_H);
+            });
+        };
+
+        for (var tries = 0; taken() && (tries < 60); tries++) {
+            y += LAYOUT_STEP_Y;
+        }
+
+        return { x: x, y: y };
     }
 
     function addItem(kind, at) {
