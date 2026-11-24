@@ -319,6 +319,12 @@ function pg_designer_import_undo(&$res)
 function pg_designer_import_single_html($html, $file_name, $user, $opts = array())
 {
     $res = pg_designer_import_result();
+    // The ceiling a page in an archive has (PG_DI_MAX_HTML): libxml's memory
+    // for the DOM is several times the page and escapes memory_limit.
+    if (strlen((string)$html) > PG_DI_MAX_HTML) {
+        $res['errors'][] = lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array(pg_basename((string)$file_name), PG_DI_MAX_HTML / 1048576)));
+        return $res;
+    }
     $ctx = new stdClass();
     $ctx->user_id  = (int)$user['id'];
     $ctx->files    = array();

@@ -174,3 +174,16 @@ function test_designer_import_hunt_second_same_name_checks_library()
 	pg_assert_same('logo[2].png', $second);
 	pg_assert_same('readme[1]', pg_di_free_file_name('readme', array('readme' => true), $free));
 }
+
+function test_designer_import_hunt_single_page_size_ceiling()
+{
+	// A page in an archive is read to 8 MB at most, as libxml's memory for
+	// its DOM is not counted against memory_limit; a page uploaded on its
+	// own was parsed at any size.
+	$html = '<html><body><p>' . str_repeat('x', PG_DI_MAX_HTML) . '</p></body></html>';
+	$res = pg_designer_import_single_html($html, 'big.html', array('id' => 1));
+
+	pg_assert_same(array(), $res['pages']);
+	pg_assert_same(1, count($res['errors']));
+	pg_assert_contains('8', $res['errors'][0]);
+}
