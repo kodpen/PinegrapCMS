@@ -21,7 +21,8 @@
  * @license     Proprietary, see license-editors.txt
  */
 
-.sdh {
+.sdh,
+.sd-ns {
   /* The accent as a fill and as text or an icon (the -fg-emphasis ink keeps
      4.5:1 on the card in both themes), and its quiet surface. */
   --sdh-accent: var(--pg-primary);
@@ -720,8 +721,75 @@ button.sdh-page:hover {
   height: auto;
 }
 
-#sdTemplateModal.sd-tpl-dialog {
+/* ── The New design window ─────────────────────────────────────────────── */
+
+/* Wide, for the template start's gallery beside the list of starts. */
+#sdStartModal.sd-ns-dialog {
   --bs-dialog-width: min(96vw, 1600px);
+}
+
+/* The starts on the left (the settings rail's rows), the chosen start's
+   pane on the right; the list stays in view while a long pane scrolls. */
+.sd-ns {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.sd-ns-list {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sd-ns-item {
+  align-items: flex-start;
+}
+
+.sd-ns-item[aria-disabled="true"] {
+  cursor: default;
+  opacity: .6;
+}
+
+/* A small drawing before the words, from the home's start cards. */
+.sd-ns-item .sdh-ill {
+  flex: 0 0 72px;
+  width: 72px;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 6px;
+}
+
+.sd-ns-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sd-ns-title .bi {
+  margin-right: .375rem;
+}
+
+.sd-ns-pane:focus-visible {
+  outline: none;
+}
+
+/* Phones: the list over the pane, words only. */
+@media (max-width: 767.98px) {
+  .sd-ns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sd-ns-list {
+    position: static;
+  }
+
+  .sd-ns-item .sdh-ill {
+    display: none;
+  }
 }
 
 .sd-tpl-thumb {

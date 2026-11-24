@@ -137,6 +137,7 @@ description: Generated from the module field of the memory files: each includes/
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
 - `design_themes`: [[design-theme-dark-lines]], [[design-theme-look-drawing]], [[design-theme-pale-colours]], [[design-theme-product-looks]]
+- `design_variables`: [[design-variables-model]]
 - `designer`: [[bound-media-src]], [[design-asset-path-placeholders]]
 - `designer_fx`: [[designer-interactions]], [[designer-interactions-chapter]], [[designer-interactions-count]], [[designer-video-autoplay]]
 - `designer_messages`: [[messages-node-settings]]

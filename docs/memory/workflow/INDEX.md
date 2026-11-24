@@ -38,7 +38,7 @@
 - bug-hunt-areas-backend-sweep-4.md: Fourth whole-backend sweep (2026-11-22): SQL error log while crawling, static scans, array and unknown-id probes, root files; fixed checkout recipient id, Visitors grouping, System Informations
 - bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean [decision: here]
 - bug-hunt-areas-backup-restore.md: Bug hunt 24, making, listing, downloading and restoring a backup: two faults fixed (newer-version restore, unfinished folder listed as good), what was read clean
-- bug-hunt-areas-blog-feeds.md: Bug hunt of posts, categories, tags and RSS feeds (area 39, 2026-11-24): two faults fixed in the hunt's PR, two issues, what was read clean
+- bug-hunt-areas-blog-feeds.md: Bug hunt of posts, categories, tags and RSS feeds (area 39, 2026-11-24): two faults fixed in the hunt's PR, two issues, what was read clean [decision: decisions-made-product-109.md, decisions-made-schema-52.md]
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-calendar-events.md: Bug hunt 29 of calendar events, repeats and the calendar feeds (.ics, Workspace subscription): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
@@ -49,7 +49,7 @@
 - bug-hunt-areas-cookie-consent.md: The bug hunt of the cookie notice (area 46, 2026-11-24): the four faults fixed, what was read clean, what is no fault, the embedded-video question left for the architect
 - bug-hunt-areas-coupons-discounts.md: The bug hunt of coupons and discounts (area 31, 2026-11-24): offer dates, usage limits under two checkouts, a gift of a deleted product; what it fixed, what was read clean
 - bug-hunt-areas-csv-import-export.md: The bug hunt of the panel's CSV imports and exports (area 27, 2026-11-24): the four faults fixed, what was read clean, what was not run
-- bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean
+- bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
@@ -108,7 +108,7 @@
 - bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean [decision: here]
 - bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean [decision: decisions-made-schema-26.md]
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
-- bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
+- bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
 - coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken [decision: here]
@@ -153,6 +153,9 @@
 - decisions-made-product-104.md: Decisions made, product part 104 (2026-11-24 on): launch aimed at 1 January 2027; the addons table with AH4 to AH8 and the Claude plugin bundle wait until after the launch; mobile API goes on
 - decisions-made-product-105.md: Decisions made, product part 105 (2026-11-24 on): the visual designer before the launch: design variables, the Prototype as a drawing board, Figma and Canva import, quick starts, more shaping options
 - decisions-made-product-106.md: Decisions made, product part 106 (2026-11-24 on): seven more designer features before the launch, their screens drawn first by the design session with nobody approving a sheet
+- decisions-made-product-107.md: Decisions made, product part 107 (2026-11-24 on): Figma is connected by a personal access token pasted on Connections; Canva is an upload of exported pictures, with no Canva connection
+- decisions-made-product-108.md: Decisions made, product part 108 (2026-11-24 on): ten more designer features in three levels, and the rule that every designer feature keeps the designer simple and quick
+- decisions-made-product-109.md: Decisions made, product part 109 (2026-11-24 on): a form list's feed sends a teaser for a record whose detail page is not public; a saved-cart link's order belongs to whoever completes it
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
@@ -297,6 +300,7 @@
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-50.md: Decisions list, schema part 50 (2026-11-24 on): one column answer_kind on launch_summary_lines for a line that asks for files; no new table
 - decisions-made-schema-51.md: Decisions list, schema part 51 (2026-11-24 on): the table security_finding of the Security Scan; the owner left the schema to the architect
+- decisions-made-schema-52.md: Decisions list, schema part 52 (2026-11-24 on): the table form_old_address keeps a record's earlier address names, so a renamed post or category answers its old address with a 301
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)

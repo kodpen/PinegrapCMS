@@ -148,6 +148,18 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-106.md: Are the screens drawn first? (owner, 2026-11-24, two choices)
 - decisions-made-product-106.md: What is the architect's reading, not his words?
 - decisions-made-product-106.md: Which ten more were listed to him? (2026-11-24, none decided)
+- decisions-made-product-107.md: Where are the rules and the earlier parts?
+- decisions-made-product-107.md: How does a site connect to Figma? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-107.md: How does a design come from Canva? (owner, 2026-11-24)
+- decisions-made-product-107.md: What did the architect answer from the census, as technical calls?
+- decisions-made-product-108.md: Where are the rules and the earlier parts?
+- decisions-made-product-108.md: Which ten features come in levels? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-108.md: What keeps the designer simple and quick?
+- decisions-made-product-108.md: What is the architect's reading, not his words?
+- decisions-made-product-109.md: Where are the rules and the earlier parts?
+- decisions-made-product-109.md: What does a form list's feed send for a record whose detail page is not public? (owner, 2026-11-24, in the architect's window, bug #11440)
+- decisions-made-product-109.md: Whose order is a cart opened by its saved-cart link and completed by another person? (owner, 2026-11-24, in the architect's window, bug #11435)
+- decisions-made-product-109.md: Does a shared component that draws a converted common region count as used? (architect, 2026-11-24, bug #11502)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -754,6 +766,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-50.md: Does launch_summary_lines get a column for the answer's kind? (owner, 2026-11-24, in the architect's window)
 - decisions-made-schema-51.md: Where are the rules and the earlier parts?
 - decisions-made-schema-51.md: Does the Security Scan get a table? (owner, 2026-11-24, agent channel message 12847)
+- decisions-made-schema-52.md: Where are the rules and the earlier parts?
+- decisions-made-schema-52.md: Does a renamed record keep its old address by a table? (owner, 2026-11-24, in the architect's window, bug #11439)
+- decisions-made-schema-52.md: Which columns does form_old_address have? (architect, 2026-11-24)
+- decisions-made-schema-52.md: When is a row written and removed? (architect, 2026-11-24)
+- decisions-made-schema-52.md: What does an old name answer? (architect, 2026-11-24)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
@@ -1195,6 +1212,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-chrome-measures.md: The Page Design Studio chrome's sizes beside its colour tokens: type, heights, gaps, corners, shadows, focus ring, changed dot, the Options panel's parts in order and each control's states
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows
 - designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
 - designer/designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
@@ -1207,6 +1225,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
 - designer/designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway
 - designer/designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state
+- designer/designer-variables-drawing-computed-rows.md: The computed rows a bound control's list offers in Options (boards B6 and B7 of the variables drawing, DV3): the type scale's steps and the base unit's multiples, their names, the chip, the order
 - designer/editor-turkish-terms.md: The names Page Design Studio, Artifact Canvas (was Design Canvas), Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
@@ -1513,7 +1532,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), both fixed in #10838, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
-- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
+- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
