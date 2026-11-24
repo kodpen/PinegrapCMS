@@ -44,6 +44,7 @@ function cache_control_shared_test_public_files()
 		'get_share_card.php',
 		'get_site_icon.php',
 		'get_sitemap.xml.php',
+		'includes/workspace/calls_background.php',
 		'manifest_icon.php',
 	);
 }

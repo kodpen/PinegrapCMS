@@ -9,7 +9,8 @@
  * marked; mute, the camera, sharing one's screen (several members at once,
  * one share each), the microphone, camera and speaker in use (remembered
  * in this browser for the next call, with whether the person was muted or
- * had the camera off), raising a hand, hang up. A tile shows a raised hand
+ * had the camera off), blurring or removing one's own background
+ * (assets/js/workspace_call_background.js), raising a hand, hang up. A tile shows a raised hand
  * and a weak connection; the person speaking while muted is told so.
  * Another member's shared screen is shown large in the same window (the
  * stage), the tiles beside it, or under it on a narrow screen, the other
@@ -374,7 +375,7 @@
     // broken or of the wrong type reads as no choice.
     function choicesRead(text) {
         var read = null;
-        var out = { audio: '', video: '', speaker: '', muted: false, cameraOff: false };
+        var out = { audio: '', video: '', speaker: '', muted: false, cameraOff: false, background: '' };
 
         try {
             read = JSON.parse(text || 'null');
@@ -393,6 +394,7 @@
         });
         out.muted = read.muted === true;
         out.cameraOff = read.cameraOff === true;
+        out.background = ((read.background === 'blur') || (read.background === 'remove')) ? read.background : '';
 
         return out;
     }
@@ -409,7 +411,8 @@
             out[name] = (typeof out[name] === 'boolean') ? (change[name] === true) : String(change[name] || '');
         });
 
-        return out;
+        // Read again, so a changed value is checked as a stored one is.
+        return choicesRead(JSON.stringify(out));
     }
 
     // The speaker to show as chosen among the outputs: the remembered one
@@ -806,7 +809,7 @@
         var chosen = choicesLoad();
 
         // Held at once, so a second click does not start a second call.
-        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: { audio: chosen.audio, video: chosen.video }, speaker: chosen.speaker, muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
+        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: { audio: chosen.audio, video: chosen.video }, speaker: chosen.speaker, background: '', muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
         // Added only for the call's length: a beforeunload listener keeps
         // some browsers from holding the page in their back-forward cache.
         window.addEventListener('beforeunload', askBeforeLeaving);
@@ -845,6 +848,11 @@
 
             if (chosen.cameraOff && (mine.kind === 'video')) {
                 camera(true);
+            }
+
+            // The background effect of the last call, where it can run here.
+            if (chosen.background && (mine.kind === 'video')) {
+                backgroundSet(mine, chosen.background, true);
             }
 
             look();
@@ -1859,6 +1867,11 @@
 
         mine.cameraOff = off;
         mine.stream.getVideoTracks().forEach(function (track) { track.enabled = !off; });
+
+        // The camera behind a background effect goes dark too.
+        if (mine.rawVideo) {
+            mine.rawVideo.enabled = !off;
+        }
         mine.cameraButton.setAttribute('aria-pressed', off ? 'true' : 'false');
         iconSwap(mine.cameraButton, off ? 'bi-camera-video-off' : 'bi-camera-video', t(off ? 'call_camera_on' : 'call_camera_off'));
         mine.node.classList.toggle('is-camera-off', off);
@@ -1919,7 +1932,119 @@
                 panel.appendChild(label);
                 panel.appendChild(select);
             });
+            backgroundDraw(mine, panel);
         }).catch(function () {});
+    }
+
+    // "Blur background" and "Remove background" under the camera, each
+    // pressed while it is on; drawn only where it can run
+    // (workspace_call_background.js).
+    function backgroundDraw(mine, panel) {
+        var effects = window.PGWsCallBackground;
+        var raw = mine.rawVideo || mine.stream.getVideoTracks()[0];
+
+        if ((mine.kind !== 'video') || !effects || !raw) {
+            return;
+        }
+
+        var shown = effects.offer(effects.can(raw, hooks.background));
+        var row = h().el('div', 'ws-call-background d-flex flex-wrap gap-2');
+
+        [['blur', 'bi-person-bounding-box', 'call_background_blur'], ['remove', 'bi-person-square', 'call_background_remove']].forEach(function (one) {
+            if (!shown[one[0]]) {
+                return;
+            }
+
+            var on = mine.background === one[0];
+            var button = makeButton('pg-button pg-button-quiet pg-button-sm' + (on ? ' is-active' : ''), t(one[2]), one[1]);
+
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
+            button.addEventListener('click', function () {
+                var mode = (mine.background === one[0]) ? '' : one[0];
+
+                button.disabled = true;
+                backgroundSet(mine, mode, false).then(function () {
+                    if (call === mine) {
+                        h().clear(panel);
+                        drawDevices(panel);
+                    }
+                });
+            });
+            row.appendChild(button);
+        });
+
+        if (row.childNodes.length) {
+            panel.appendChild(h().el('span', 'pg-field-label', t('call_background')));
+            panel.appendChild(row);
+        }
+    }
+
+    // Puts a video track in place of the one the call sends: in the
+    // stream (one's own tile, connections made later) and on every
+    // connection but the screen's line. The track left is not stopped.
+    function videoSwap(mine, track) {
+        var current = mine.stream.getVideoTracks()[0];
+
+        if (!current || (current === track)) {
+            return;
+        }
+
+        track.enabled = !mine.cameraOff;
+        Object.keys(mine.peers).forEach(function (id) {
+            var slot = mine.peers[id].slot;
+
+            mine.peers[id].pc.getSenders().forEach(function (sender) {
+                if ((sender.track === current) && !(slot && (slot.sender === sender))) {
+                    sender.replaceTrack(track).catch(function () {});
+                }
+            });
+        });
+        mine.stream.removeTrack(current);
+        mine.stream.addTrack(track);
+
+        if (mine.selfTile) {
+            mine.selfTile.video.srcObject = mine.stream;
+        }
+    }
+
+    // Switches the background effect ('' for none) and remembers it. A
+    // remembered effect that cannot run here is left off without a word.
+    function backgroundSet(mine, mode, quiet) {
+        var effects = window.PGWsCallBackground;
+        var raw = mine.rawVideo || mine.stream.getVideoTracks()[0];
+        var before = mine.effect;
+
+        if (!effects || !raw) {
+            return Promise.resolve();
+        }
+
+        return (mode ? effects.apply(raw, mode, hooks.background) : Promise.resolve(null)).then(function (effect) {
+            if (call !== mine) {
+                if (effect && (effect.track !== raw)) {
+                    effect.stop();
+                }
+
+                return;
+            }
+
+            videoSwap(mine, effect ? effect.track : raw);
+
+            if (before) {
+                before.stop();
+            }
+
+            mine.effect = effect;
+            mine.rawVideo = effect ? raw : null;
+            mine.background = effect ? mode : '';
+
+            if (!quiet) {
+                choicesSave({ background: mine.background });
+            }
+        }, function () {
+            if (!quiet && (call === mine)) {
+                h().toast(t('call_background_failed'), 'warning');
+            }
+        });
     }
 
     function useDevice(kind, deviceId) {
@@ -1938,6 +2063,21 @@
             }
 
             var old = (kind === 'audio') ? mine.stream.getAudioTracks()[0] : mine.stream.getVideoTracks()[0];
+            var effectMode = '';
+
+            // A background effect is stopped with the old camera and
+            // started again on the new one.
+            if ((kind === 'video') && mine.effect) {
+                effectMode = mine.background;
+                mine.effect.stop();
+
+                if (mine.rawVideo && (mine.rawVideo !== old)) {
+                    mine.rawVideo.stop();
+                }
+
+                mine.effect = null;
+                mine.rawVideo = null;
+            }
 
             fresh.enabled = (kind === 'audio') ? !mine.muted : !mine.cameraOff;
 
@@ -1959,6 +2099,10 @@
 
             mine.stream.addTrack(fresh);
             choicesSave(kind === 'audio' ? { audio: deviceId } : { video: deviceId });
+
+            if (effectMode) {
+                backgroundSet(mine, effectMode, true);
+            }
 
             // The speaking mark hears the new microphone.
             if (kind === 'audio') {
@@ -2008,6 +2152,16 @@
         clearInterval(mine.meter);
         clearInterval(mine.stats);
         Object.keys(mine.peers).forEach(function (id) { peerClose(mine, Number(id)); });
+
+        if (mine.effect) {
+            mine.effect.stop();
+            mine.effect = null;
+        }
+
+        if (mine.rawVideo) {
+            mine.rawVideo.stop();
+            mine.rawVideo = null;
+        }
 
         if (mine.stream) {
             mine.stream.getTracks().forEach(function (track) { track.stop(); });

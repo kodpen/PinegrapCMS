@@ -206,6 +206,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/voice.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calls.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/call_lines.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calls_settings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calls_background.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');

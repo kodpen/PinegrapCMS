@@ -1393,5 +1393,9 @@ function ws_call_js_strings()
         'call_hand_up'    => lang('Hand raised'),
         'call_weak'       => lang('Weak connection'),
         'call_muted_talk' => lang('You are muted'),
+        'call_background' => lang('Background'),
+        'call_background_blur' => lang('Blur background'),
+        'call_background_remove' => lang('Remove background'),
+        'call_background_failed' => lang('The background effect could not be started.'),
     );
 }
