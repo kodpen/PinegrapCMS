@@ -2141,13 +2141,7 @@ function ws_flow_run_contact_check($viewer, $contact_id)
         return ws_flow_refusal(lang('That customer could not be found.'), 422, 'contact_id');
     }
 
-    $name = pg_contact_display_name($row['first_name'], $row['last_name']);
-
-    foreach (array('company', 'email_address') as $column) {
-        $name = ($name !== '') ? $name : trim((string) $row[$column]);
-    }
-
-    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'subject' => array('type' => 'contact', 'id' => $contact_id, 'name' => $name));
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'subject' => array('type' => 'contact', 'id' => $contact_id, 'name' => ws_flow_contact_name($row)));
 }
 
 /**

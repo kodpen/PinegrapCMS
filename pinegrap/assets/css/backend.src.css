@@ -29232,6 +29232,30 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   marker-end: url(#wsf-arrow-taken);
 }
 .wsf-arrowhead-taken { fill: var(--pg-success); }
+/* A live flow's counts: the pills (look A's .pg-pill) stand in a row
+   above their box, each a button listing its runs; the one listed is
+   ringed in its tone. */
+.pgc-node .wsf-counts {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 4px;
+  display: flex;
+  gap: 5px;
+  max-width: 260px;
+  pointer-events: none;
+}
+.wsf-counts .wsf-count {
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.wsf-counts .wsf-count[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--pg-tone), 0 0 0 3px color-mix(in srgb, var(--pg-tone) 26%, transparent);
+}
+.wsf-counts .wsf-count:focus-visible {
+  outline: 2px solid var(--pg-focus-ring-color, var(--pg-primary));
+  outline-offset: 2px;
+}
 .wsf-run-bar {
   display: flex;
   flex-wrap: wrap;

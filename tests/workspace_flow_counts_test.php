@@ -166,3 +166,45 @@ function test_workspace_flow_counts_reached()
 	pg_assert_true(strpos($api, 'ws_api_flow_or_404(') !== false, 'a flow the application reaches');
 	pg_assert_true(strpos($api, 'ws_api_flow_run_reachable(') !== false, 'runs as the runs list reaches them');
 }
+
+// The runs behind a count, each with the box's pass it is listed for: the
+// last pass in the count's state (a loop passes a box more than once), its
+// times as the API writes them; a run with no such pass has no line.
+function test_workspace_flow_counts_at_fold()
+{
+	$rows = array(
+		array('run_id' => 4, 'pass' => 0, 'status' => 'done', 'ready_at' => 100, 'wake_at' => 0, 'finished_at' => 160),
+		array('run_id' => 4, 'pass' => 1, 'status' => 'done', 'ready_at' => 200, 'wake_at' => 0, 'finished_at' => 260),
+		array('run_id' => 4, 'pass' => 2, 'status' => 'waiting', 'ready_at' => 300, 'wake_at' => 900, 'finished_at' => 0),
+		array('run_id' => 7, 'pass' => 0, 'status' => 'failed', 'ready_at' => 50, 'wake_at' => 0, 'finished_at' => 70),
+	);
+
+	pg_assert_same(array(4 => array('status' => 'done', 'since' => ws_flow_time(200), 'wake_at' => null, 'finished_at' => ws_flow_time(260))), ws_flow_counts_at_fold($rows, 'passed'), 'the last pass done');
+	pg_assert_same(array(4 => array('status' => 'waiting', 'since' => ws_flow_time(300), 'wake_at' => ws_flow_time(900), 'finished_at' => null)), ws_flow_counts_at_fold($rows, 'waiting'), 'the pass waiting now');
+	pg_assert_same(array(7), array_keys(ws_flow_counts_at_fold($rows, 'failed')), 'only the run that failed there');
+	pg_assert_same(array(), ws_flow_counts_at_fold($rows, 'other'), 'another state: none');
+	pg_assert_same(array(), ws_flow_counts_at_fold(null, 'passed'));
+}
+
+// A contact's name as a run about them is listed: the name, else the
+// company, else the e-mail address.
+function test_workspace_flow_counts_contact_name()
+{
+	pg_assert_same('Ayşe Demir', ws_flow_contact_name(array('first_name' => 'Ayşe', 'last_name' => 'Demir', 'company' => 'Kodpen', 'email_address' => 'a@example.com')));
+	pg_assert_same('Kodpen', ws_flow_contact_name(array('first_name' => '', 'last_name' => '', 'company' => ' Kodpen ', 'email_address' => 'a@example.com')));
+	pg_assert_same('a@example.com', ws_flow_contact_name(array('first_name' => '', 'last_name' => '', 'company' => '', 'email_address' => 'a@example.com')));
+	pg_assert_same('', ws_flow_contact_name(array()));
+}
+
+// The runs list of a count carries, per run, the box's pass and the name
+// of the contact it is about, read only for the contacts the person reads.
+function test_workspace_flow_counts_runs_list_lines()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	pg_assert_true(strpos($actions, 'ws_flow_runs_at_node(') !== false, 'the box\'s pass of each run listed');
+	pg_assert_true(strpos($actions, 'ws_flow_runs_about(') !== false, 'the record\'s name of each run listed');
+
+	$about = workspace_flow_counts_test_source('ws_flow_runs_about');
+	pg_assert_true(strpos($about, 'ws_viewer_contacts_open(') !== false, 'only the contacts the person may open');
+	pg_assert_true(strpos($about, 'ws_flow_run_contact_readable(') !== false, 'and the contacts right');
+}
