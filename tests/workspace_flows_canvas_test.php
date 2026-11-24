@@ -635,6 +635,44 @@ JS
 	pg_assert_same(array(false, true, false, true, true, true, true, false), $result, 'named where the box has several outcomes and on always, each, other, cancelled, failed');
 }
 
+// A Split box leaves on each of its arms, named on the arrow by the arm's
+// name (its letter when unnamed); taking an arm away takes its arrow and
+// moves the later arms' arrows up; the box's line lists the shares.
+function test_workspace_flows_canvas_split_arms()
+{
+	$result = ws_flows_canvas_test_node(
+		array('edgeNamed', 'kindOf', 'aiClasses', 'outcomeText', 'splitArms', 'splitLetter', 'splitMeta', 'splitTotal', 'splitEdgesWithout'),
+		<<<'JS'
+KINDS = { split: { name: 'fl_kind_split', group: 'logic', into: true, out: ['arm_1', 'arm_2'] } };
+var split = { id: 's1', kind: 'split', config: { arms: [{ name: 'Short', share: 20 }, { name: '', share: 30 }, { name: 'Long', share: 50 }] } };
+var edges = [{ from: 's1', to: 'a', on: 'arm_1' }, { from: 's1', to: 'b', on: 'arm_2' }, { from: 's1', to: 'c', on: 'arm_3' }, { from: 'x', to: 'y', on: 'arm_3' }];
+console.log(JSON.stringify({
+	out: kindOf(split).out,
+	named: [edgeNamed(split, 'arm_1'), edgeNamed({ kind: 'split', config: { arms: [{ name: 'A', share: 100 }] } }, 'arm_1')],
+	words: [outcomeText(split, 'arm_1'), outcomeText(split, 'arm_2'), outcomeText(split, 'arm_4')],
+	total: splitTotal(split.config.arms),
+	meta: splitMeta(split),
+	edges: splitEdgesWithout(edges, 's1', 1)
+}));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('arm_1', 'arm_2', 'arm_3'), $result['out'], 'one outcome per arm');
+	pg_assert_same(array(true, true), $result['named'], 'an arm is always named on its arrow');
+	pg_assert_same(array('Short', 'B', 'D'), $result['words'], 'the arm by its name, else its letter');
+	pg_assert_same(100, $result['total']);
+	pg_assert_true(strpos($result['meta'], 'fl_split_arm_share') !== false, 'the line lists each arm with its share');
+	pg_assert_same(array(
+		array('from' => 's1', 'to' => 'a', 'on' => 'arm_1'),
+		array('from' => 's1', 'to' => 'c', 'on' => 'arm_2'),
+		array('from' => 'x', 'to' => 'y', 'on' => 'arm_3'),
+	), $result['edges'], 'the arm taken away loses its arrow; later arms move up; other boxes keep theirs');
+}
+
 // The flow list says how each flow starts in a short sentence: a time box
 // by its time alone ("Every day 09:00", no "from" date), any other start in
 // the words the API's start_text gives; no start box, nothing.
@@ -2391,7 +2429,7 @@ function ws_flows_canvas_test_groups()
 	return array(
 		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order', 'web', 'mention')),
 		'values' => array('#e58fd0', array('constants', 'value')),
-		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
+		'logic' => array('#e9b44c', array('condition', 'split', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'sms', 'whatsapp', 'notify', 'report')),
 		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'list_records', 'contact_group', 'ai', 'agent'))
@@ -2498,9 +2536,15 @@ JS
 	// A Pinegrap AI box's arrows follow its settings: the canvas holds a
 	// writing box's, kindOf() a classifying box's (ws_step_ai_arrow_outcomes()).
 	foreach (array_intersect_key($server, $result) as $kind => $info) {
-		$outcomes = ($kind === 'ai')
-			? array_values(array_diff(ws_step_ai_arrow_outcomes(ws_step_ai_normalize(array())), array('always')))
-			: array_values((array) $info['outcomes']);
+		// A Split box's follow its arms: the canvas holds a new box's two,
+		// kindOf() the rest (ws_flow_split_arrow_outcomes()).
+		if ($kind === 'ai') {
+			$outcomes = array_values(array_diff(ws_step_ai_arrow_outcomes(ws_step_ai_normalize(array())), array('always')));
+		} elseif ($kind === 'split') {
+			$outcomes = array_values(array_diff(ws_flow_split_arrow_outcomes(ws_flow_split_normalize(array('arms' => array(array('share' => 50), array('share' => 50))))), array('always')));
+		} else {
+			$outcomes = array_values((array) $info['outcomes']);
+		}
 
 		pg_assert_same($outcomes, $result[$kind], $kind . "'s outcomes");
 	}

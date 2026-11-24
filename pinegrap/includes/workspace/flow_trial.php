@@ -14,9 +14,10 @@
  * what they read is handed on. A box that sends, writes or calls does
  * nothing and hands on only what it would know without the send, so the
  * values only a real send knows stay empty. A Wait is passed at once, its
- * moment handed on. A box whose outcome a person or an answer decides (a
- * task, an approval, Pinegrap AI, an agent) takes the outcome the person
- * chose for it in the trial so far, else its first, and names the others.
+ * moment handed on. A box whose outcome a person, an answer or chance
+ * decides (a task, an approval, Pinegrap AI, an agent, a split) takes the
+ * outcome the person chose for it in the trial so far, else its first, and
+ * names the others.
  * A loop's boxes are walked once, with its first item.
  *
  * Nothing is stored: the screen sends the record and the outcomes chosen so
@@ -34,14 +35,14 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The kinds of box whose outcome a person or an answer decides, so a trial
- * lets the person choose it. Pure.
+ * The kinds of box whose outcome a person, an answer or chance decides (a
+ * Split box's arm), so a trial lets the person choose it. Pure.
  *
  * @return string[]
  */
 function ws_flow_trial_person_kinds()
 {
-    return array('task', 'approval', 'ai', 'agent');
+    return array('task', 'approval', 'ai', 'agent', 'split');
 }
 
 /**
@@ -209,6 +210,11 @@ function ws_flow_trial_walk($graph, $start, $values, $outcomes, $answer)
             $settled = ws_flow_trial_settle($graph, $node, $tried, $outcomes[(string) $node['id']] ?? null);
             $said = empty($tried['ok']) ? (string) ($tried['error'] ?? '') : ((((string) ($tried['refusal'] ?? '')) !== '') ? (string) $tried['refusal'] : (string) ($tried['said'] ?? ''));
             $data = (array) ($tried['data'] ?? array());
+
+            // A split hands on the name of the arm taken, chosen or first.
+            if (((string) $node['kind'] === 'split') && ($settled['status'] === 'done')) {
+                $data['arm'] = ws_flow_split_arm_name(ws_flow_split_normalize((array) $node['config']), $settled['outcome']);
+            }
 
             $state[(string) $node['id']] = array('status' => $settled['status'], 'outcome' => $settled['outcome']);
             $steps[] = $settled + array('node_id' => (string) $node['id'], 'tried' => $tried, 'data' => $data);

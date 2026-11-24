@@ -2632,6 +2632,18 @@ function ws_flow_box_try($viewer, $flow, $data)
         ) + $answer;
     }
 
+    // A split takes one arm by its shares; a try takes the first.
+    if ($kind === 'split') {
+        $split = ws_flow_split_normalize($node['config']);
+        $problems = ws_flow_split_problems($split, ws_flow_box_name($node));
+
+        if (!empty($problems)) {
+            return array('refusal' => (string) $problems[0]) + $answer;
+        }
+
+        return array('outcome' => 'arm_1', 'said' => ws_flow_split_text($split)) + $answer;
+    }
+
     if (isset(ws_flow_anchor_kinds()[$kind])) {
         $check = ws_flow_anchor_check($owner, $kind, $node['config']);
 

@@ -2970,6 +2970,11 @@ function ws_flow_step_run($step)
             ws_flow_chain_start($run, $step, $node, $owner);
             return;
 
+        // A split reads nothing: it takes one arm by the shares.
+        case 'split':
+            ws_flow_split_run($step, $node);
+            return;
+
         // A condition, looked at with the owner's rights now.
         case 'condition':
             $owner = ws_change_viewer_for_id($run['actor_id']);
