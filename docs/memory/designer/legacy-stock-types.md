@@ -1,6 +1,6 @@
 ---
 name: legacy-stock-types
-description: Stock-layout page types in the move to the designer (LE5, #11270): type settings into the widget's layout, the settings no widget holds, the dry run naming them; the run's types step is LE5b
+description: Stock-layout page types in the move to the designer (LE5, #11270): type settings into the widget's layout, the settings no widget holds, the dry run naming them
 module: layouts
 ---
 
@@ -20,7 +20,4 @@ module: layouts
 
 ## What does the dry run show?
 - Under "Stays code, drawn as on the site": a row per held setting, its pages behind the count, reason "The page type's widget has no setting for it: these pages stay System regions."
-- `convert` pages are not listed yet: the run cannot make them until LE5b.
-
-## Why is the run's types step not here?
-- A widget row needs its starter layout, and starters live only in `_buildStarterTree()` (JS; the installer gets them from the browser, `StyleDesigner.starterTree()`, `platform/design-template-install-at-setup.md`). PHP twins exist only for login, cart link and comments (`pg_ltd_widget_tree()`). How the run gets them went to the architect (LE5b in the plan).
+- `convert` pages: the "Page types" row under Becomes editable; the run's `types` step makes them ([[legacy-types-step]]).

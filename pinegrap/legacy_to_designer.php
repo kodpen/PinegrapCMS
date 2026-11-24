@@ -47,8 +47,14 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST') && (($_POST['ajax'] ?? '') === '1'))
     }
     $ltd_token = (string)($_SESSION['software']['token'] ?? '');
     $ltd_post = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
-    if ($ltd_token === '' || !hash_equals($ltd_token, $ltd_post) || ($_POST['step'] ?? '') !== 'run') {
+    $ltd_step = (string)($_POST['step'] ?? '');
+    if ($ltd_token === '' || !hash_equals($ltd_token, $ltd_post) || !in_array($ltd_step, array('run', 'i18n'), true)) {
         $ltd_json(403, array('ok' => false, 'text' => lang('Your session expired. Reload the page and try again.')));
+    }
+    // The editor's texts, for the starter layouts Convert builds in the
+    // browser (StyleDesigner.starterTree()).
+    if ($ltd_step === 'i18n') {
+        $ltd_json(200, array('ok' => true, 'i18n' => (object)pg_designer_i18n_map()));
     }
     // Other panel tabs do not wait behind a step.
     session_write_close();
@@ -164,7 +170,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $chosen_sets[$key] = true;
     }
     if (!empty($_POST['convert'])) {
-        $run_error = pg_ltd_run_start(array_keys($chosen), $user, array_keys($chosen_sets));
+        // The page types' starter layouts the browser built at Convert, kept
+        // for the kinds this dry run converts.
+        $starters = pg_ltd_starters_clean($_POST['starters'] ?? '', pg_ltd_plan_type_kinds(pg_ltd_plan(array_keys($chosen), array_keys($chosen_sets))));
+        unset($_POST['starters'], $_REQUEST['starters']);
+        $run_error = pg_ltd_run_start(array_keys($chosen), $user, array_keys($chosen_sets), $starters);
         if ($run_error === '') {
             $started = pg_ltd_state_read();
             log_activity(lang(array('string' => 'the move of {var:1} styles to the Page Design Studio was started', 'vars' => array(count((array)($started['styles'] ?? array()))))), $_SESSION['sessionusername']);
@@ -452,12 +462,17 @@ if ($plan !== null) {
             if ($p['kind'] === 'set') $hidden .= '<input type="hidden" name="sets[]" value="' . h($p['key']) . '">';
         }
         if ($hidden !== '') {
+            // The page types' widgets start from the editor's own starter
+            // layouts: built here at Convert and posted with it.
+            $convert_kinds = pg_ltd_plan_type_kinds($plan);
             $output_convert .= '
-        <form method="post" action="legacy_to_designer.php" class="card-footer d-flex flex-wrap align-items-center gap-3">' . get_token_field() . $hidden . '
-            <button type="submit" name="convert" value="1" class="pg-button pg-button-fill"><i class="bi bi-magic" aria-hidden="true"></i>' . h(lang('Convert')) . '</button>
+        <form method="post" action="legacy_to_designer.php" id="ltd_convert" class="card-footer d-flex flex-wrap align-items-center gap-3" data-kinds="' . h(json_encode($convert_kinds)) . '">' . get_token_field() . $hidden . '
+            <input type="hidden" name="convert" value="1"><input type="hidden" name="starters" value="">
+            <button type="submit" class="pg-button pg-button-fill"><i class="bi bi-magic" aria-hidden="true"></i>' . h(lang('Convert')) . '</button>
             <a class="pg-button pg-button-quiet" href="legacy_to_designer.php">' . h(lang('Cancel')) . '</a>
-            <span class="small fg-secondary">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
+            <span class="small fg-secondary" id="ltd_convert_note" aria-live="polite">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
         </form>';
+            if ($convert_kinds) $output_convert .= pg_ltd_convert_script();
         }
     }
     $output_plan = '

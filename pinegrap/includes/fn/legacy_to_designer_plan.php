@@ -312,7 +312,8 @@ function pg_ltd_widget_name($style_name, $kind)
     $owner = pg_ltd_slug($style_name);
     if ($owner === '') $owner = pg_ltd_slug(lang('design'));
     if ($owner === '') $owner = 'design';
-    $info = isset($slugs[$kind]) ? pg_ltd_slug(lang($slugs[$kind])) : '';
+    // A page type's widget (the types step) is named by its kind.
+    $info = isset($slugs[$kind]) ? pg_ltd_slug(lang($slugs[$kind])) : pg_ltd_slug(str_replace('_', '-', (string)$kind));
     return $owner . ($info !== '' ? '-' . $info : '') . '-widget';
 }
 
@@ -1143,7 +1144,7 @@ function pg_ltd_type_target($page_name, $facts, $hosted)
 function pg_ltd_plan_groups($p)
 {
     $out = array('editable' => array(), 'code' => array(), 'skipped' => array(), 'common' => false);
-    $editable = array('content' => array(), 'common' => array(), 'designer' => array(), 'widgets' => array());
+    $editable = array('content' => array(), 'common' => array(), 'designer' => array(), 'widgets' => array(), 'types' => array());
     $code = array();
     $layouts = 0;
     // Page name lists by the type setting that keeps a page a System region.
@@ -1174,6 +1175,7 @@ function pg_ltd_plan_groups($p)
         foreach ((array)($s['designer_php'] ?? array()) as $name) $code["designer_php\n" . $name] = array('type' => 'designer_php', 'name' => (string)$name);
         $layouts += (int)($s['custom_layouts'] ?? 0);
         foreach ((array)($s['types'] ?? array()) as $t) {
+            if (($t['state'] ?? '') === 'convert') $editable['types'][] = (string)$t['page_name'];
             if (($t['state'] ?? '') !== 'held') continue;
             foreach ((array)$t['held'] as $c) $held[(string)$c][] = (string)$t['page_name'];
         }
@@ -1191,7 +1193,7 @@ function pg_ltd_plan_groups($p)
     }
 
     $labels = array('content' => lang('Page content'), 'common' => lang('Common regions'),
-                    'designer' => lang('Designer regions'), 'widgets' => lang('Menus and widgets'));
+                    'designer' => lang('Designer regions'), 'widgets' => lang('Menus and widgets'), 'types' => lang('Page types'));
     foreach ($editable as $key => $names) {
         $names = array_values(array_unique($names));
         if ($names) $out['editable'][] = array('key' => $key, 'label' => $labels[$key], 'names' => $names);
@@ -1252,7 +1254,7 @@ function pg_ltd_plan_groups_html($groups)
     $label = function ($text, $n) {
         return '<div class="pg-group-label">' . h($text) . ' <span class="pg-group-label-count">' . h(pg_format_number($n, 0)) . '</span></div>';
     };
-    $icons = array('content' => 'bi-file-earmark-richtext', 'common' => 'bi-layers', 'designer' => 'bi-bounding-box', 'widgets' => 'bi-grid-1x2');
+    $icons = array('content' => 'bi-file-earmark-richtext', 'common' => 'bi-layers', 'designer' => 'bi-bounding-box', 'widgets' => 'bi-grid-1x2', 'types' => 'bi-window-stack');
 
     $out = '';
     if ($groups['editable']) {
@@ -1283,3 +1285,64 @@ function pg_ltd_plan_groups_html($groups)
     }
     return $out;
 }
+
+/**
+ * The widget kinds whose starter layout the run's types step needs: the
+ * kinds of the pages the dry run will convert ('convert' type targets) in
+ * the styles and sets it does not skip. The move screen builds these
+ * starters in the browser at Convert (StyleDesigner.starterTree()).
+ *
+ * Pure: no query.
+ *
+ * @param array $plan  pg_ltd_plan() entries
+ * @return array  kinds, sorted, each once
+ */
+function pg_ltd_plan_type_kinds($plan)
+{
+    $kinds = array();
+    foreach ((array)$plan as $p) {
+        if ((string)($p['skip'] ?? '') !== '') continue;
+        $styles = (($p['kind'] ?? '') === 'set') ? (array)($p['styles'] ?? array()) : array($p);
+        foreach ($styles as $s) {
+            if ((string)($s['skip'] ?? '') !== '') continue;
+            foreach ((array)($s['types'] ?? array()) as $t) {
+                $kind = (string)($t['kind'] ?? '');
+                if (($t['state'] ?? '') === 'convert' && $kind !== '') $kinds[$kind] = true;
+            }
+        }
+    }
+    $kinds = array_keys($kinds);
+    sort($kinds);
+    return $kinds;
+}
+
+/**
+ * The page's own System region (pg_ltd_tree_has_own_system()) replaced by
+ * $node, the first one only; a shared component is not entered.
+ *
+ * Pure: no query.
+ *
+ * @param array $tree
+ * @param array $node  the shared_ref of the page type's widget
+ * @param int   &$count  1 when it was replaced
+ * @return array
+ */
+function pg_ltd_type_splice($tree, $node, &$count)
+{
+    if (!is_array($tree) || $count > 0 || (string)($tree['type'] ?? '') === 'shared_ref') return $tree;
+    if (!isset($tree['children']) || !is_array($tree['children'])) return $tree;
+    foreach ($tree['children'] as $i => $child) {
+        if ($count > 0) break;
+        if (is_array($child) && (string)($child['type'] ?? '') === 'region'
+            && (string)($child['props']['regionType'] ?? '') === 'system'
+            && (string)($child['props']['regionName'] ?? '') === '') {
+            if (!empty($child['_id'])) $node['_id'] = $child['_id'];
+            $tree['children'][$i] = $node;
+            $count = 1;
+            break;
+        }
+        $tree['children'][$i] = pg_ltd_type_splice($child, $node, $count);
+    }
+    return $tree;
+}
+
