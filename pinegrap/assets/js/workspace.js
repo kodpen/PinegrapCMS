@@ -1139,10 +1139,40 @@
         return emptyScreen({ tone: 'gray', icon: 'bi-funnel', title: t('bar_found_none'), text: text, action: { label: t('bar_clear'), icon: 'bi-x-lg', onClick: onClear } });
     }
 
+    // One renewal of the page's form token at a time, shared by every
+    // request refused for it (assets/js/workspace_token_retry.js).
+    var renewToken = null;
+
     // options.keepalive: the request is finished even when the page is left
     // meanwhile (a save as the page closes); browsers refuse such a body over
-    // 64 KiB.
+    // 64 KiB. A request refused for a stale token (the person signed in again
+    // by the remember-me cookie since the page was drawn) is sent once more
+    // with the session's current token; a refusal of the session itself
+    // reaches the caller, which keeps what was typed.
     function api(action, data, options) {
+        var retry = window.PGWsTokenRetry;
+
+        if (!retry) {
+            return apiOnce(action, data, options);
+        }
+
+        if (!renewToken) {
+            renewToken = retry.renewer(function () {
+                return apiOnce('session_token').then(function (answer) {
+                    return answer.token;
+                });
+            }, function (token) {
+                CFG.token = token;
+            });
+        }
+
+        return retry.send(function () {
+            return apiOnce(action, data, options);
+        }, renewToken);
+    }
+
+    // One request with the token the page holds now.
+    function apiOnce(action, data, options) {
         var payload = { action: action, token: CFG.token };
 
         Object.keys(data || {}).forEach(function (key) {
@@ -20632,6 +20662,22 @@
             }, 400);
         },
 
+        // A refused send. The box keeps what was typed: it is emptied only
+        // after the server took the message. A stale page token was already
+        // renewed and the message sent again (api()); a refusal that still
+        // names the session means the sign-in ended, so the notice says the
+        // words are kept and the draft is written now, for the reload after
+        // signing in again.
+        sendFailed: function (error) {
+            if (error && (error.code === 'session')) {
+                this.flushDraft();
+                toast(t('send_signed_out'), 'danger');
+                return;
+            }
+
+            fail(error);
+        },
+
         flushDraft: function () {
             clearTimeout(this.draftTimer);
 
@@ -20994,7 +21040,7 @@
                     toast(t('sm_saved', data.item ? data.item.when : waiting.when), 'success');
                 }).catch(function (error) {
                     self.busy = false;
-                    fail(error);
+                    self.sendFailed(error);
                 });
                 return;
             }
@@ -21013,7 +21059,7 @@
                     self.mentionNotice(data.notice);
                 }).catch(function (error) {
                     self.busy = false;
-                    fail(error);
+                    self.sendFailed(error);
                 });
                 return;
             }
@@ -21254,7 +21300,7 @@
                 }
             }).catch(function (error) {
                 self.busy = false;
-                fail(error);
+                self.sendFailed(error);
             });
         },
 

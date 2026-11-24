@@ -168,6 +168,7 @@ function ws_js_strings()
         'end_date'               => lang('Last day'),
         'end_time'               => lang('End time'),
         'error_generic'          => lang('Something went wrong. Please try again.'),
+        'send_signed_out'        => lang('You are signed out, so the message was not sent. What you wrote stays in the box: sign in again, then send it.'),
         'estimate'               => lang('Estimate'),
         'estimate_help'          => ws_js_template('Left empty, {var:1} is counted.', 1),
         'estimate_hours'         => lang('Estimate (hours)'),

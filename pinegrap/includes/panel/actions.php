@@ -86,6 +86,11 @@ function pg_panel_actions()
         // away anyone above role 1; the handlers check the session and the
         // token for themselves.
         'user_online_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_user_online_check', 'exempt' => true, 'token' => true, 'write' => true),
+        // The session's current form token, for a page whose own token went
+        // stale while the person stayed signed in (a remember-me sign-in
+        // renewed it after the server dropped the session). Every signed-in
+        // role; it reads, so it needs no token of its own.
+        'session_token' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_session_token', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'sitemap_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_sitemap_check', 'exempt' => true, 'token' => true, 'write' => true),
         'get_widget_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widget_data', 'exempt' => true, 'token' => false, 'write' => false),
         'get_widgets_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widgets_data', 'exempt' => true, 'token' => false, 'write' => false),
