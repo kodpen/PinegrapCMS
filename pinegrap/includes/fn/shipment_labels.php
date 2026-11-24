@@ -724,7 +724,8 @@ function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $ret
  * @param bool   $return
  * @param string $chosen the driver chosen in the Create Label chooser
  *                       (pg_shipment_label_chosen_driver()), '' for none
- * @return array ok, code, error (pg_shipment_label_create_refusal()),
+ * @return array ok, code, error (pg_shipment_label_create_refusal(), or
+ *               not_packed from pg_shipment_label_pack_refusal()),
  *               ship_to (with method_carrier), order, driver
  */
 function pg_shipment_label_create_check($ship_to_id, $return = false, $chosen = '')
@@ -780,6 +781,11 @@ function pg_shipment_label_create_check($ship_to_id, $return = false, $chosen = 
 
     $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name, $carried_name);
 
+    // Asked last, so an address no service would label is still told so.
+    if (($refusal['code'] === '') && !$return && pg_shipment_label_pack_required()) {
+        $refusal = pg_shipment_label_pack_refusal(true, pg_shipment_label_pack_status((int) $ship_to['id']));
+    }
+
     $out['code'] = $refusal['code'];
     $out['error'] = $refusal['error'];
     $out['ok'] = ($refusal['code'] === '');
@@ -791,6 +797,54 @@ function pg_shipment_label_create_check($ship_to_id, $return = false, $chosen = 
     }
 
     return $out;
+}
+
+/**
+ * Whether the site wants a checked pack before an address's outbound label
+ * (Site Settings > Shipping, "Create a label only after the pack is
+ * checked"): the config_text row pack_before_label, '1' on. Off when the row
+ * is missing or the pick and pack tables are not there yet.
+ *
+ * @return bool
+ */
+function pg_shipment_label_pack_required()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+
+    return (pg_config_text('pack_before_label') === '1') && pg_schema_has('order_packs');
+}
+
+/**
+ * The order_packs status of an address, null when it has no pack row.
+ *
+ * @param int $ship_to_id
+ * @return int|null
+ */
+function pg_shipment_label_pack_status($ship_to_id)
+{
+    $row = db_item("SELECT status FROM order_packs WHERE ship_to_id = '" . (int) $ship_to_id . "'");
+
+    return $row ? (int) $row['status'] : null;
+}
+
+/**
+ * The refusal of an outbound label while the site wants a checked pack
+ * first and the address's pack is not closed as packed: not begun, still
+ * open, or short. Pure.
+ *
+ * @param bool     $required pg_shipment_label_pack_required()
+ * @param int|null $status   pg_shipment_label_pack_status()
+ * @return array code (not_packed, '' when nothing refuses), error
+ */
+function pg_shipment_label_pack_refusal($required, $status)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/pick_pack.php');
+
+    if (!$required || (($status !== null) && ((int) $status === PG_PACK_PACKED))) {
+        return array('code' => '', 'error' => '');
+    }
+
+    return array('code' => 'not_packed', 'error' => lang('This store creates a label only after the pack is checked. Check this address on the Pack screen first.'));
 }
 
 /**

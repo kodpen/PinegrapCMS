@@ -2055,7 +2055,8 @@ function api_order_label_refusal($result) {
 		'not_completed' => array(409, 'order_not_completed'),
 		'label_exists'  => array(409, 'label_exists'),
 		'busy'          => array(409, 'label_busy'),
-		'no_driver'     => array(409, 'no_label_service')
+		'no_driver'     => array(409, 'no_label_service'),
+		'not_packed'    => array(409, 'pack_not_checked')
 	);
 
 	if (isset($map[$code])) {

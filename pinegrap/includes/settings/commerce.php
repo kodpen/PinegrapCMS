@@ -134,6 +134,25 @@ $pg_settings_cards[] = '
     </div>';
 
 // ── Shipping ──
+// The checked pack before a label (includes/fn/shipment_labels.php), a
+// config_text row; drawn once the pick and pack tables exist, and saved only
+// when drawn (pack_before_label_card).
+$pack_before_label_row = '';
+
+if (pg_schema_has('order_packs') && pg_schema_has('config_text')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_labels.php');
+
+    $pack_before_label_row = '
+                                                                        <div class="col-12">
+                                                                            <input type="hidden" name="pack_before_label_card" value="1"/>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . (pg_shipment_label_pack_required() ? ' checked="checked"' : '') . ' type="checkbox" id="pack_before_label" name="pack_before_label"/></div>
+                                                                                <label class="" for="pack_before_label">' . lang('Create a label only after the pack is checked') . '</label>
+                                                                                <div class="form-text">' . lang('Create Label, Create Labels, the automatic label and the API wait until every unit of the address is scanned on the Pack screen.') . '</div>
+                                                                            </div>
+                                                                        </div>';
+}
+
 $pg_settings_cards[] = '
     <div id="pgset-shipping" class="pg-set-card">
         <div class="card">
@@ -232,6 +251,7 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                         </div>
                                                                         ' . pg_label_settings_rows() . '
+                                                                        ' . $pack_before_label_row . '
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
                                                                             <textarea name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_product_restriction_message) . '</textarea>
