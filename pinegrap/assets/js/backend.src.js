@@ -1175,6 +1175,8 @@ $(document).ready(function () {
      */
     var MENU_DRAWER_BREAKPOINT = 1024;
     var MENU_STATES = ['expanded', 'collapsed', 'hidden'];
+    // How wide each wide-screen state's grid column is, in order.
+    var MENU_STATE_RANK = { hidden: 0, collapsed: 1, expanded: 2 };
     // The panel this tab keeps open (initMenuPanels()). Assigned up here: the
     // init calls below run before the rest of this section is reached.
     var MENU_PANEL_KEY = 'pgMenuPanel';
@@ -1222,6 +1224,7 @@ $(document).ready(function () {
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuPanels();                 // Rows that open their entries inside the menu
     initMenuDay();                    // The Calendars icon's day moves on at the site's midnight
+    initMenuMotion();                 // The icons keep still while the rail widens or narrows
 
     function isMenuDrawerMode() {
         return MENU_DRAWER_ONLY || (window.innerWidth < MENU_DRAWER_BREAKPOINT);
@@ -1371,7 +1374,12 @@ $(document).ready(function () {
     }
 
     // Draws a wide-screen state on the container, the menu and the button.
+    // The grid column is never animated: animating it lays the whole page
+    // out again on every frame. A column that grows waits for the rail's
+    // slide to end (.pg-menu-grows, the rail slides over the content); one
+    // that shrinks follows at once, under the rail that is still narrowing.
     function paintMenuState(state) {
+        $('.software-container').toggleClass('pg-menu-grows', MENU_STATE_RANK[state] > MENU_STATE_RANK[shownMenuState()]);
         $('#menu, .software-container').toggleClass('expanded', state === 'expanded');
         $('.software-container').toggleClass('menu-hidden', (state === 'hidden') && ($('#menu').length > 0));
 
@@ -2116,6 +2124,37 @@ $(document).ready(function () {
         }
 
         autoMenuPanel(menu);
+    }
+
+    // While the rail changes width (the menu view button, a panel opened from
+    // the rail) the menu carries .pg-menu-moving, and the icons' hover moves
+    // do not start under a rail that is still moving. The class goes on the
+    // menu, not the container: a class change on the container restyles the
+    // whole page.
+    function initMenuMotion() {
+        var sidebar = document.querySelector('.software-container .software-sidebar');
+        var menu = sidebar ? sidebar.querySelector('#menu') : null;
+
+        if (!menu) {
+            return;
+        }
+
+        function isSlide(e) {
+            return (e.target === sidebar) && ((e.propertyName === 'width') || (e.propertyName === 'transform'));
+        }
+
+        sidebar.addEventListener('transitionrun', function (e) {
+            if (isSlide(e)) {
+                menu.classList.add('pg-menu-moving');
+            }
+        });
+        ['transitionend', 'transitioncancel'].forEach(function (type) {
+            sidebar.addEventListener(type, function (e) {
+                if (isSlide(e)) {
+                    menu.classList.remove('pg-menu-moving');
+                }
+            });
+        });
     }
 
     // The Calendars entry's icon shows the day of the month (pg_menu_icon()).

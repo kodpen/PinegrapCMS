@@ -5692,7 +5692,15 @@ function pg_menu_tools_markup($groups, $base, $parent_target)
             $target = isset($item['target']) ? ' target=\'' . h($item['target']) . '\' rel=\'noopener\'' : $parent_target;
             $confirm = isset($item['confirm']) ? ' data-confirm-content=\'' . h($item['confirm']) . '\'' : '';
 
-            $entries .= '<a href=\'' . h($base . $item['url']) . '\'' . $target . $confirm . ' class=\'' . $class . h($item['icon']) . ' bi-me-2\'>' . h($item['label']) . '</a>';
+            // The name in a box of its own, so a name longer than the panel
+            // ends in an ellipsis inside the entry (the entry is a flex row),
+            // with the whole name as its title. A tool that opens outside the
+            // panel says so with the mark at the row's end.
+            $external = isset($item['target']) && ($item['target'] === '_blank');
+            $entries .= '<a href=\'' . h($base . $item['url']) . '\'' . $target . $confirm . ' title=\'' . h($item['label']) . '\' class=\'' . $class . h($item['icon']) . ' bi-me-2\'>'
+                . '<span class=\'pg-menu-entry-label\'>' . h($item['label']) . '</span>'
+                . ($external ? '<i class=\'bi bi-box-arrow-up-right pg-menu-entry-ext\' aria-hidden=\'true\'></i><span class=\'visually-hidden\'>' . lang('(opens in a new tab)') . '</span>' : '')
+                . '</a>';
         }
     }
 
