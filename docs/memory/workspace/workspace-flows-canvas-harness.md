@@ -21,8 +21,8 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 ## What does it give?
 - 2026-11-13: 38 of 38 (#9196); zoom checks allow 1e-5, the matrix keeps six digits.
 - 2026-11-22: 40 of 40 (FE2): the palette scenarios open the card with "+" first.
-- 2026-11-24: 41 of 41 (FE5): the box panel's fields (`workspace-flows-panel-fields.md`).
 - 2026-11-24: 42 of 42 (FE6): the add list (`workspace-flows-add-here.md`).
+- 2026-11-24: 43 of 43 (FE7): several boxes (`workspace-flows-several-boxes.md`).
 
 ## Why does a scenario switch touch emulation itself?
 - Touch emulation turns `(pointer: coarse)` on: the panel's tap targets grow to `--pg-tap` (44px) and the canvas moves a few px. `page.touches()` on a page that is not a touch screen turns it on only for the gesture, so a measure taken before and after it is in another layout. A scenario that compares positions around a gesture calls `h.touchScreen(true)` before its first measure and `h.touchScreen(false)` after its last (pinch, #4418: on Windows the pinch point moved 3 px).

@@ -5,10 +5,10 @@ module: graph_canvas
 ---
 
 ## What is it?
-- `assets/js/pg_graph_canvas.js`, bundle `pg_graph_canvas.min.js`, printed before its user (the flows screen: `ws_screen_assets()`).
+- `assets/js/pg_graph_canvas.js`, bundle `.min.js`, printed before its user (the flows screen: `ws_screen_assets()`).
 - It owns what a box-and-arrow canvas needs whatever its boxes mean: geometry helpers, undo history, `viewport(host)`, and `create(adapter)` (pointer, pinch, Space, zoom keys, `destroy()`).
 - Sizes per box, named ports, other targets, stable arrow ids, partial redraw, thumbnails (slice 4): `ui/graph-canvas-core-sizes-ports.md`.
-- Focus, faint arrows, headings: `ui/graph-canvas-core-focus.md`; `-logic.md`, `-routing.md`; `dashed()`: designer/prototype-suggest.md.
+- Focus, faint arrows, headings: `ui/graph-canvas-core-focus.md`; `-logic.md`, `-routing.md`; several boxes: `-several.md`; `dashed()`: designer/prototype-suggest.md.
 
 ## Why a core with adapters?
 - Owner, 2026-10-24 (#2445): the Flows canvas serves other features too, so the generic part is one core named `pg_graph_canvas` / `pgc-` and each user brings an adapter; the second user is the designer's Prototype view (`designer/prototype-view.md`).
@@ -16,7 +16,7 @@ module: graph_canvas
 
 ## Where are its texts?
 - `pg_graph_canvas_js_strings()` (`includes/fn/graph_canvas.php`), keys `pgc_*`, merged into the Workspace config next to `ws_flow_js_strings()`. The core reads them through `adapter.text(key, ...)`; an adapter may name its own (Flows gives its box role `fl_box` through `boxRole()`).
-- `tests/graph_canvas_test.php` checks every `pgc_` key the core reads is handed over, every handed key is read, and each text has its Turkish key.
+- `tests/graph_canvas_test.php` checks each `pgc_` key the core reads is handed over, read, and has its Turkish key.
 
 ## What does create() draw and drag since 2c (#4518)?
 - `box(item, {className, into, out, fill})`: focus, role, `data-node`, `data-refocus`, in port, the adapter's content, out port (titled while `editable()`); `place()` calls `adapter.placed()`; `edge(index, from, to)` adds the arrow's group to `ui.svg`; `mark(selected)`; `announce(text)` on `ui.live`.

@@ -328,6 +328,10 @@
     var LAYOUT_STEP_X = 288;
     var LAYOUT_STEP_Y = 128;
     var INSERT_GAP = 260;
+
+    // Where the boxes copied (Ctrl+C, Copy) are kept in the browser, so they
+    // may be pasted into another flow.
+    var CLIP_KEY = 'pg_flow_clip';
     // How long the pointer rests on an arrow before its "+" shows (ms).
     var PLUS_REST = 250;
 
@@ -1391,6 +1395,11 @@
         ui.outPluses = el('div', 'wsf-out-pluses');
         ui.layer.appendChild(ui.outPluses);
         ui.layer.appendChild(ui.edgePlus);
+        // The tools of several boxes chosen, under them (drawSeveral()).
+        ui.several = el('div', 'pg-floatbar wsf-several d-none');
+        ui.several.setAttribute('role', 'toolbar');
+        ui.several.setAttribute('aria-label', t('fl_several_tools'));
+        ui.layer.appendChild(ui.several);
         ui.viewport.appendChild(ui.layer);
 
         ui.empty = el('div', 'wsf-empty d-none', t('fl_empty_canvas'));
@@ -5639,6 +5648,7 @@
     function markSelected() {
         drawData();
         canvas.mark(state.selected);
+        drawSeveral();
     }
 
     // The draft's problems on its boxes; a run's boxes are those of its
@@ -7295,7 +7305,7 @@
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'areas', 'windows', 'rail', 'add', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'areas', 'windows', 'rail', 'add', 'arrows', 'several', 'copy', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
@@ -7642,6 +7652,310 @@
         }
 
         return { id: freeId(node.kind, nodes), kind: node.kind, label: node.label, x: x, y: y, config: JSON.parse(JSON.stringify(node.config || {})) };
+    }
+
+    // ── Several boxes (board B2) ───────────────────────────────────────
+
+    // The boxes of ids (pure), in the graph's order, as deep copies, with
+    // the arrows among them only.
+    function clipOf(nodes, edges, ids) {
+        var copy = function (value) { return JSON.parse(JSON.stringify(value)); };
+
+        return {
+            nodes: nodes.filter(function (node) { return ids.indexOf(node.id) !== -1; }).map(copy),
+            edges: edges.filter(function (edge) { return (ids.indexOf(edge.from) !== -1) && (ids.indexOf(edge.to) !== -1); }).map(copy)
+        };
+    }
+
+    // The boxes of a clip put into a graph of nodes (pure): each a new id
+    // as a box added gets one, the arrows and the threads among them on the
+    // new ids. options: keep (a thread read from a box left out stays: the
+    // same flow), start (the flow has a start box: one in the clip is left
+    // out, its arrows with it), dx (how far right of their place); a row
+    // lower while one would cover a box. Answers { nodes, edges, skipped }.
+    function pasteClip(clip, nodes, options) {
+        var ids = {};
+        var made = [];
+        var skipped = 0;
+
+        clip.nodes.forEach(function (node) {
+            if (options.start && KINDS[node.kind] && (KINDS[node.kind].group === 'start')) {
+                skipped++;
+                return;
+            }
+
+            ids[node.id] = freeId(node.kind, nodes.concat(made));
+            made.push({ id: ids[node.id], kind: node.kind, label: node.label, x: node.x + (options.dx || 0), y: node.y, config: node.config || {} });
+        });
+
+        // A thread read from a box copied reads its copy; one read from a
+        // box left out stays (keep) or goes with the space before it.
+        var tokens = function (text) {
+            var gone = [];
+
+            text = text.replace(VALUE_TOKEN, function (token, from) {
+                if (!from || ids[from]) {
+                    return from ? token.replace('{{node.' + from + '.', '{{node.' + ids[from] + '.') : token;
+                }
+
+                if (!options.keep) {
+                    gone.push(token);
+                }
+
+                return token;
+            });
+
+            gone.forEach(function (token) {
+                text = withoutToken(text, tokenBare(token));
+            });
+
+            return text;
+        };
+        var walk = function (value) {
+            if (typeof value === 'string') {
+                return tokens(value);
+            }
+
+            if (value && (typeof value === 'object')) {
+                Object.keys(value).forEach(function (key) {
+                    value[key] = walk(value[key]);
+                });
+            }
+
+            return value;
+        };
+        var covers = function (dy) {
+            return made.some(function (one) {
+                return nodes.some(function (other) { return (Math.abs(other.x - one.x) < BOX_W) && (Math.abs(other.y - one.y - dy) < BOX_H); });
+            });
+        };
+        var dy = 0;
+
+        for (var tries = 0; covers(dy) && (tries < 60); tries++) {
+            dy += BOX_H + GRID * 2;
+        }
+
+        made.forEach(function (one) {
+            one.y += dy;
+            one.config = walk(JSON.parse(JSON.stringify(one.config)));
+        });
+
+        return {
+            nodes: made,
+            edges: clip.edges.filter(function (edge) { return ids[edge.from] && ids[edge.to]; }).map(function (edge) {
+                var copy = JSON.parse(JSON.stringify(edge));
+
+                copy.from = ids[edge.from];
+                copy.to = ids[edge.to];
+
+                return copy;
+            }),
+            skipped: skipped
+        };
+    }
+
+    // The core chose several boxes (several() of the core; [] when they
+    // went): the panel closes while they are chosen, their tools show.
+    function severalChosen(ids) {
+        if (ids.length) {
+            state.selected = null;
+            state.tap = null;
+        }
+
+        drawSettings();
+        drawSeveral();
+    }
+
+    // The ids the copy keys act on: the boxes chosen, else the box selected.
+    function chosenIds() {
+        var ids = canvas.chosen();
+
+        if (ids.length) {
+            return ids;
+        }
+
+        return (state.selected && (state.selected.type === 'node') && nodeById(state.selected.id)) ? [state.selected.id] : [];
+    }
+
+    // The tools under several boxes chosen: how many, Duplicate, Copy and
+    // Delete; Copy alone while the draft cannot change.
+    function drawSeveral() {
+        if (!ui.several) {
+            return;
+        }
+
+        var nodes = canvas.chosen().map(nodeById).filter(Boolean);
+
+        K.clear(ui.several);
+        ui.several.classList.toggle('d-none', (nodes.length < 2) || !!state.embed || !!state.outline);
+
+        if (nodes.length < 2) {
+            return;
+        }
+
+        var tool = function (key, icon, action) {
+            var button = K.lookButton('pg-button pg-button-ghost pg-button-sm', t(key), icon);
+
+            button.addEventListener('click', action);
+            ui.several.appendChild(button);
+        };
+
+        ui.several.appendChild(el('span', 'pg-text-meta wsf-several-count', t('fl_boxes_count', nodes.length)));
+
+        if (addable()) {
+            tool('fl_duplicate', 'bi-copy', duplicateBoxes);
+        }
+
+        tool('fl_copy', 'bi-clipboard', copyBoxes);
+
+        if (addable()) {
+            tool('fl_delete_boxes', 'bi-trash', removeSeveral);
+        }
+
+        ui.several.style.left = Math.min.apply(null, nodes.map(function (node) { return node.x; })) + 'px';
+        ui.several.style.top = (Math.max.apply(null, nodes.map(function (node) { return node.y; })) + BOX_H + 12) + 'px';
+    }
+
+    // Boxes added from a clip (Duplicate, Paste): new ids, their arrows and
+    // threads among them, chosen; one undo step. A start box is left out of
+    // a flow that has one; a kind not offered here (another version, a
+    // member's flow) is left out too.
+    function addClip(clip, dx, keep, done) {
+        clip.nodes = clip.nodes.filter(function (node) { return KINDS[node.kind] && memberKind(node.kind); });
+
+        var made = pasteClip(clip, state.graph.nodes, { keep: keep, start: !!startNode(), dx: dx });
+        var limits = FL.limits || {};
+
+        if (made.skipped) {
+            K.toast(t('fl_paste_no_start'), 'secondary');
+        }
+
+        if (!made.nodes.length) {
+            return;
+        }
+
+        if (state.graph.nodes.length + made.nodes.length > (limits.nodes || 100)) {
+            K.toast(t('fl_too_many_boxes', limits.nodes || 100), 'warning');
+            return;
+        }
+
+        state.graph.nodes = state.graph.nodes.concat(made.nodes);
+        state.graph.edges = state.graph.edges.concat(made.edges);
+
+        if (made.nodes.length > 1) {
+            state.selected = null;
+            canvas.choose(made.nodes.map(function (node) { return node.id; }));
+            drawSettings();
+        } else {
+            state.selected = { type: 'node', id: made.nodes[0].id };
+        }
+
+        changed(true);
+        focusSelected();
+
+        if (made.nodes.length > 1) {
+            ui.viewport.focus({ preventScroll: true });
+        }
+
+        announce(t(done, made.nodes.length));
+    }
+
+    // Duplicate (Ctrl+D): the boxes chosen with the arrows and threads
+    // among them, right of them; one box as ⋯ › Duplicate makes it.
+    function duplicateBoxes() {
+        var ids = chosenIds();
+
+        if (!addable() || !ids.length) {
+            return;
+        }
+
+        if (ids.length === 1) {
+            duplicateNode(nodeById(ids[0]));
+            return;
+        }
+
+        var clip = clipOf(state.graph.nodes, state.graph.edges, ids);
+        var xs = clip.nodes.map(function (node) { return node.x; });
+
+        addClip(clip, Math.max.apply(null, xs) + BOX_W + GRID * 2 - Math.min.apply(null, xs), true, 'fl_duplicated_boxes');
+    }
+
+    // Copy (Ctrl+C): the boxes chosen kept in the browser, with the flow
+    // they came from, so they may be pasted here or into another flow.
+    function copyBoxes() {
+        var ids = chosenIds();
+
+        if (!ids.length || !state.flow) {
+            return false;
+        }
+
+        var clip = clipOf(state.graph.nodes, state.graph.edges, ids);
+
+        clip.flow = state.flow.id;
+
+        try {
+            window.localStorage.setItem(CLIP_KEY, JSON.stringify(clip));
+        } catch (error) {
+            K.toast(t('fl_copy_failed'), 'warning');
+            return true;
+        }
+
+        K.toast(t('fl_copied', ids.length), 'secondary');
+        announce(t('fl_copied', ids.length));
+
+        return true;
+    }
+
+    // Paste (Ctrl+V): the boxes copied, at their place or a row lower; a
+    // thread read from a box not copied stays only in the flow it came from.
+    function pasteBoxes() {
+        var clip = null;
+
+        try {
+            clip = JSON.parse(window.localStorage.getItem(CLIP_KEY) || 'null');
+        } catch (error) {
+            clip = null;
+        }
+
+        if (!addable() || !clip || !Array.isArray(clip.nodes) || !Array.isArray(clip.edges)) {
+            return false;
+        }
+
+        addClip(clip, 0, clip.flow === state.flow.id, 'fl_pasted');
+
+        return true;
+    }
+
+    // Delete with several boxes chosen: they go with their arrows, and the
+    // values the other boxes read from them; one undo step.
+    function removeSeveral() {
+        var ids = canvas.chosen();
+
+        if (!addable() || !ids.length) {
+            return;
+        }
+
+        state.graph.nodes = state.graph.nodes.filter(function (node) { return ids.indexOf(node.id) === -1; });
+        state.graph.edges = state.graph.edges.filter(function (edge) { return (ids.indexOf(edge.from) === -1) && (ids.indexOf(edge.to) === -1); });
+        ids.forEach(dropValuesOf);
+        state.problems = state.problems.filter(function (problem) { return (problem.edge === null) || (problem.edge === undefined); });
+        state.selected = null;
+        canvas.choose([]);
+        changed(true);
+        announce(t('fl_removed_boxes', ids.length));
+        ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The arrow keys with several boxes chosen: they move together.
+    function moveSeveral(dx, dy) {
+        canvas.chosen().map(nodeById).filter(Boolean).forEach(function (item) {
+            item.x = coord(item.x + dx);
+            item.y = coord(item.y + dy);
+            place(ui.boxes.querySelector('[data-node="' + item.id + '"]'), item);
+        });
+        drawEdges();
+        drawSeveral();
+        changed(false);
     }
 
     // An arrow or a thread chosen: the same head, no tabs.
@@ -15058,6 +15372,11 @@
             state.tap = null;
         }
 
+        // A box chosen alone (Tab, the panel) lets several chosen go.
+        if (selected && canvas.chosen().length) {
+            canvas.choose([]);
+        }
+
         state.selected = selected;
         markSelected();
         drawSettings();
@@ -15162,7 +15481,7 @@
     // fit(), a pinch and the run view put a new view in; its boxes, arrows,
     // box moves and arrows drawn from a port; the pointer and the keys, with
     // the flow's own drag (a data thread) and keys in the hooks below.
-    var canvas = G.create({
+    var canvasAdapter = {
         ui: ui,
         // The kit's t() is lent when the screen starts, after this runs.
         text: function () {
@@ -15193,7 +15512,10 @@
         },
         moved: function () {
             changed(false, true);
+            drawSeveral();
         },
+        // Several boxes chosen together; none in an embedded drawing (embed()).
+        several: severalChosen,
         canConnect: canConnect,
         connected: arrowDrawn,
         dropped: arrowDropped,
@@ -15210,13 +15532,14 @@
         // A link on a box (the task of a waiting box) and the last run's
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
-        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus',
+        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus, .wsf-several',
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,
         cancel: dropDrag,
         key: canvasKey
-    });
+    };
+    var canvas = G.create(canvasAdapter);
     var canvasView = canvas.view;
     var applyView = canvasView.apply;
     var zoomAt = canvasView.zoomAt;
@@ -15511,7 +15834,20 @@
             return false;
         }
 
-        if (((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown'))
+        var several = canvas.chosen().length > 1;
+        var copyKey = (event.ctrlKey || event.metaKey) && !event.shiftKey ? key.toLowerCase() : '';
+
+        if (copyKey === 'c') {
+            handled = copyBoxes();
+        } else if (copyKey === 'v') {
+            handled = pasteBoxes();
+        } else if (copyKey === 'd') {
+            duplicateBoxes();
+        } else if (several && ((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown')) && addable()) {
+            moveSeveral((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
+        } else if (several && ((key === 'Delete') || (key === 'Backspace'))) {
+            removeSeveral();
+        } else if (((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown'))
             && selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
             moveSelected((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
         } else if ((key === 'Delete') || (key === 'Backspace')) {
@@ -15678,6 +16014,7 @@
                     host.appendChild(node);
                 });
                 state.embed = null;
+                canvasAdapter.several = severalChosen;
                 state.graph = null;
                 state.tries = null;
                 state.marks = null;
@@ -15717,6 +16054,7 @@
         state.threads = false;
         state.view = { x: 40, y: 40, k: 1 };
         state.embed = instance;
+        canvasAdapter.several = null;
 
         Object.keys(ui).forEach(function (key) {
             delete ui[key];

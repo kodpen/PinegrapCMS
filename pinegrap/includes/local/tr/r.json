@@ -1235,6 +1235,7 @@
     "Removed the tables of the old site": "Eski sitenin tabloları kaldırıldı",
     "Removed {var:1} ({var:2}).": "{var:1} kaldırıldı ({var:2}).",
     "Removed: {var:1}": "Kaldırıldı: {var:1}",
+    "Removed: {var:1} boxes": "Kaldırıldı: {var:1} kutu",
     "Removed: {var:1}; its value was removed from {var:2} field": "Kaldırıldı: {var:1}; {var:2} alandaki değeri de kaldırıldı",
     "Removed: {var:1}; its values were removed from {var:2} fields": "Kaldırıldı: {var:1}; {var:2} alandaki değeri de kaldırıldı",
     "Removes": "Kaldırır",
