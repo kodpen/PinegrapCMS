@@ -23,7 +23,7 @@ function test_phone_fit_volunteer_poster_button_shortens_a_long_place()
 	$place = 'Barınak ana bina, arka bahçe girişi (Moda Cad. 112)';
 	$html = pg_volunteer_posters_html(array('id' => 4), array($place));
 
-	pg_assert_true(strpos($html, 'class="pg-button pg-button-quiet pg-button-sm mw-100"') !== false, 'the button is no wider than its card');
+	pg_assert_true(strpos($html, 'class="pg-button pg-button-quiet pg-button-sm max-w-100"') !== false, 'the button is no wider than its card');
 	pg_assert_true(strpos($html, '<span class="text-truncate">' . h($place) . '</span>') !== false, 'the name ends in an ellipsis');
 	pg_assert_true(strpos($html, 'title="' . h($place) . '"') !== false, 'the whole name stays in the tooltip');
 }
