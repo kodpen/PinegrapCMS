@@ -863,6 +863,7 @@
     "Refuse new sign-ins when the limit is full": "Sınır doluyken yeni girişi reddet",
     "Refuse the listed countries": "Listedeki ülkeleri reddet",
     "Refused": "Reddedildi",
+    "Refused calls": "Reddedilen çağrılar",
     "Refused: {var:1}.": "Reddedildi: {var:1}.",
     "Refuses 1 country": "1 ülkeyi reddeder",
     "Refuses forms from known spam addresses": "Bilinen spam adreslerinden gelen formları reddeder",

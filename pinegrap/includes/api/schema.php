@@ -4229,6 +4229,22 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'reports.api_refusals',
+			'method'  => 'GET',
+			'path'    => '/reports/api-refusals',
+			'scope'   => 'system:read',
+			'handler' => 'api_reports_api_refusals',
+			'returns' => 'ApiRefusalsReport',
+			'summary' => 'API calls refused in the last days, by route, error code and application',
+			'description' => 'The calls this API answered 400 or above, from its request log, added up by route (ids folded out of the path), error code and application, most refused first. guide names the agent guide section (topic#section) that explains the code, null when none does: the sections to mend. Defaults to the last thirty days, at most thirty.',
+			'details' => 'route is the route id the path reached, null for an address or method no route takes; path is the route\'s pattern, or the address with its numbers as {id}. status is the highest status seen in the row. application_id is null for a call refused before its key was known; application_name is null too when the application was removed since. Requests older than the log retention of API Settings are gone. total counts every refusal in the window, also those past limit; rows counts the rows before limit.',
+			'params'  => array(
+				array('name' => 'days',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 30, 'default' => 30, 'description' => 'How many days back from now.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 50, 'description' => 'How many rows, most refused first.')
+			)
+		),
+
 		/* ----- SEO ---------------------------------------------------------- */
 
 		array(

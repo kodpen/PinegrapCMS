@@ -1710,6 +1710,65 @@ if ((int)$user['role'] <= 1) {
 
 }
 
+// Refused calls: the last 30 days of the request log by route, error code and
+// application (includes/fn/api_refusals.php), the busiest twenty, each code
+// with the agent guide section that explains it. GET /reports/api-refusals
+// answers the same rows.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/api_refusals.php');
+
+$refusal_rows = pg_api_refusals_report(api_schema(), pg_api_refusals_days_max());
+
+$refusal_lines = '';
+
+foreach (array_slice($refusal_rows, 0, 20) as $refusal) {
+
+	if ($refusal['app_id'] === 0) {
+
+		$refusal_app = '<span class="fg-2">' . h(lang('Before the key was known')) . '</span>';
+
+	} else {
+
+		$refusal_app = h(($refusal['app_name'] !== '') ? $refusal['app_name'] : lang('A removed application'));
+
+	}
+
+	$refusal_guide = '<span class="fg-2">&ndash;</span>';
+
+	if ($refusal['guide'] !== '') {
+
+		$refusal_topic = strtok($refusal['guide'], '#');
+
+		$refusal_guide = '<a href="agent_guide.php?topic=' . rawurlencode($refusal_topic) . '" target="_blank" rel="noopener"><code>' . h($refusal['guide']) . '</code></a>';
+
+	}
+
+	$refusal_lines .= '
+				<tr>
+					<td><code>' . h($refusal['method'] . ' ' . $refusal['path']) . '</code></td>
+					<td><code>' . h(($refusal['error_code'] !== '') ? $refusal['error_code'] : (string)$refusal['status']) . '</code></td>
+					<td>' . $refusal_app . '</td>
+					<td class="text-end">' . pg_format_number($refusal['refusals'], 0) . '</td>
+					<td>' . h(api_settings_ago($refusal['last_at'])) . '</td>
+					<td>' . $refusal_guide . '</td>
+				</tr>';
+
+}
+
+$refusals_card = '
+	<div class="card mt-5" id="api_refusals">
+		<div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+			<h2 class="pg-title-section mb-0">' . h(lang('Refused calls')) . '</h2>
+			<span class="small fg-2">'
+				. h(lang('Calls answered with an error in the last 30 days, by address, error code and application. The guide section says what an AI agent reads to call right.')) . '</span>
+		</div>'
+		. (($refusal_lines === '')
+			? '<div class="card-body px-5 py-3"><p class="small fg-2 py-5 mb-0">' . h(lang('No call was refused in the last 30 days.')) . '</p></div>'
+			: '<div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0 pg-card-table">
+				<thead><tr><th>' . h(lang('Address')) . '</th><th>' . h(lang('Error code')) . '</th><th>' . h(lang('Application')) . '</th>
+					<th class="text-end">' . h(lang('Refused')) . '</th><th>' . h(lang('Last')) . '</th><th>' . h(lang('Guide section')) . '</th></tr></thead>
+				<tbody>' . $refusal_lines . '</tbody></table></div></div>') . '
+	</div>';
+
 $oauth_clients_card = '';
 
 $oauth_in_use = false;
@@ -2037,6 +2096,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 		</div>
 	</div>
+
+	' . $refusals_card . '
 
 	' . $oauth_clients_card . '
 

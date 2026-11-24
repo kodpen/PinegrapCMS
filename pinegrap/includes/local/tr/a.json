@@ -2892,6 +2892,7 @@
     "A reminder text message was queued for {var:1} customer(s).": "{var:1} müşteri için hatırlatma SMS'i kuyruğa alındı.",
     "A reminder that comes a few minutes late on a phone is often held back by the phone's battery saver. Let the app run in the background to get it on time.": "Telefonda birkaç dakika geç gelen bir hatırlatıcıyı çoğu zaman telefonun pil tasarrufu bekletir. Zamanında almak için uygulamanın arka planda çalışmasına izin verin.",
     "A reminder when a vaccination is due": "Aşı zamanı geldiğinde bir hatırlatma",
+    "A removed application": "Kaldırılmış bir uygulama",
     "A rental car on a coast road by the sea": "Deniz kenarında sahil yolunda bir kiralık araç",
     "A repair or a service is asked for, not bought: send a service request and the workshop writes back with a date and a quote.": "Onarım ya da bakım satın alınmaz, talep edilir: servis talebi gönderin, atölye size bir tarih ve fiyat teklifiyle döner.",
     "A repeat counts from the due date, so it was set to {var:1}.": "Tekrar bitiş tarihinden sayılır; bu yüzden bitiş {var:1} olarak yazıldı.",
