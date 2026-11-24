@@ -6,7 +6,11 @@ module: image_editor
 
 ## Where does the canvas's help link come from?
 - `pg_image_editor_config()` has a `help` entry: `pg_help_url(array('topic' => 'artifact-canvas'))`, so the panel language's prefix (`/tr/`) and the private-label rule are kept. A private-labelled site gets `''`, and the top bar then draws no Help button (issue #11185).
-- The button (label `help` = `lang('Help')`, a question-circle icon of the editor's own `ICONS`) sits before Full screen, on every host: File Manager, Page Design Studio, Workspace canvas, the mini bar too.
+- The button (label `help` = `lang('Help')`, a question-circle icon of the editor's own `ICONS`) sits before Full screen, on every host: File Manager, Page Design Studio, Workspace canvas, the mini bar too. It is the canvas's only question mark (owner 2026-11-24, `workflow/decisions-made-panel-18.md`).
+
+## Where did the keyboard shortcuts go?
+- Their sheet keeps its own button, the keyboard icon at the footer's end ("Keyboard shortcuts"), and the `?` key: `Editor.prototype.openKeys()` / `closeKeys()` in the access part (`image-editor-access.md`).
+- Until #PRNUM the access part also named its sheet `openHelp()`, bundled after the core, so the top bar's question mark opened the shortcuts instead of the page. `test_image_editor_access_help_is_not_the_keys_sheet` keeps `openHelp()` to the core.
 
 ## Which section does it open?
 - `Editor.prototype.openHelp()` adds `#anchor` from `M.helpAnchor(tool, state)` (model) and opens a new tab with `noopener`.

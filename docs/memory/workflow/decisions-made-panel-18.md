@@ -17,7 +17,7 @@ description: Decisions made, panel part 18 (2026-11-24 on): Artifact Canvas butt
 - Yes. His words: "menüde ikonları değişen ancak çalışma alanı ve çeşitli yerlerde o öğeye atıf yapan ikonlar var onlar değişmemiş. benim bulduğum notlar kısmı ve headerda yer alan yeni not ekleme düğmesi."
 - The architect's cut: only an icon that stands for the module follows; an action's or an object's icon stays.
 
-## Where is the plan?
-- `plans/canvas-label-menu-cites.md`.
+## Where is each one built?
+- The label: `ui/image-editor-edit-label.md`. The question mark: `ui/image-editor-help.md`. The menu icons cited: `ui/main-menu-icon-cite.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-panel-17.md

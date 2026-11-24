@@ -288,7 +288,7 @@ $explorer_lang = array(
     'deselect_all' => lang('Deselect All'),
     'access_permissions' => lang('Access Permissions'),
     'optimize_image' => lang('Optimize this image'),
-    'image_editor' => lang('Artifact Canvas'),
+    'image_editor' => lang('Edit in Artifact Canvas'),
     // The Artifact Canvas's icon (SVG) before its name in the menu and the tools.
     'image_editor_icon' => pg_design_canvas_icon_one_colour(),
     'image_export' => lang('Export settings…'),
