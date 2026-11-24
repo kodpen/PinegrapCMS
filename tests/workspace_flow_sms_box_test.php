@@ -25,7 +25,7 @@ function test_workspace_flow_sms_box_settings()
 {
 	$sms = ws_step_config_normalize('sms', array('recipient' => 'record_person', 'purpose' => 'marketing', 'text' => " Hello\n", 'extra' => 1));
 
-	pg_assert_same(array('to', 'recipient', 'purpose', 'text'), array_keys($sms), 'only its own keys');
+	pg_assert_same(array('to', 'recipient', 'purpose', 'text', 'hours'), array_keys($sms), 'only its own keys and the sending hours');
 	pg_assert_same(array('record_person', 'marketing', 'Hello'), array($sms['recipient'], $sms['purpose'], $sms['text']));
 
 	$odd = ws_step_config_normalize('sms', array('recipient' => 'anyone', 'purpose' => 'spam', 'text' => str_repeat('a', 2000)));

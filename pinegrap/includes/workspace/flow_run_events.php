@@ -229,10 +229,10 @@ function ws_flow_run_step_later($a, $b)
 /**
  * What a waiting box waits for, read from the key it waits on: a task, an
  * approval request, a moment (a delay box) or its next try (a step box that
- * failed and has tries left).
+ * failed and has tries left) or its sending hours (flow_send_hours.php).
  *
  * @param array $step ws_flow_run_steps row, waiting
- * @return array for (task | approval | delay | retry | ''), task_id, approval_id, until
+ * @return array for (task | approval | delay | retry | hours | ''), task_id, approval_id, until
  */
 function ws_flow_run_waiting_for($step)
 {
@@ -251,6 +251,9 @@ function ws_flow_run_waiting_for($step)
     } elseif (ws_flow_retry_key_until($key) > 0) {
         $out['for'] = 'retry';
         $out['until'] = ws_flow_time(ws_flow_retry_key_until($key));
+    } elseif (ws_flow_hours_key_until($key) > 0) {
+        $out['for'] = 'hours';
+        $out['until'] = ws_flow_time(ws_flow_hours_key_until($key));
     }
 
     return $out;

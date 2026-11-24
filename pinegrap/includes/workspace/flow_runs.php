@@ -3229,6 +3229,11 @@ function ws_flow_step_recheck($step)
         return ws_flow_retry_recheck($step);
     }
 
+    // A sending box waiting for its sending hours is ready when they open.
+    if (ws_flow_hours_key_until($step['wait_key']) > 0) {
+        return ws_flow_retry_recheck($step, ws_flow_hours_key_until($step['wait_key']));
+    }
+
     if (ws_flow_delay_key_until($step['wait_key']) > 0) {
         return ws_flow_delay_recheck($step);
     }
@@ -3491,12 +3496,14 @@ function ws_flow_retry_wait($step, $node, $text, $data = array())
  * A step box waiting to try again looks at its moment: come, it is ready
  * again (its next claim counts the next attempt), from waiting only, so two
  * looks do not both make it ready; not yet, its next look goes back to the
- * moment. A run that ended meanwhile lets it go.
+ * moment. A run that ended meanwhile lets it go. A sending box waiting for
+ * its sending hours is made ready the same way, at the moment it names.
  *
- * @param array $step ws_flow_run_steps row, waiting
+ * @param array $step  ws_flow_run_steps row, waiting
+ * @param int   $until the moment, 0 to read it from a retry key
  * @return bool whether the box changed
  */
-function ws_flow_retry_recheck($step)
+function ws_flow_retry_recheck($step, $until = 0)
 {
     $run = ws_flow_run($step['run_id']);
 
@@ -3509,7 +3516,7 @@ function ws_flow_retry_recheck($step)
     }
 
     $now = time();
-    $until = ws_flow_retry_key_until($step['wait_key']);
+    $until = ((int) $until > 0) ? (int) $until : ws_flow_retry_key_until($step['wait_key']);
 
     if ($now < $until) {
         db("UPDATE ws_flow_run_steps SET wake_at = '" . $until . "'

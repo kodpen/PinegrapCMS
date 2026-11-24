@@ -1377,7 +1377,7 @@ function ws_flow_graph_check($graph)
         }
 
         if ($kinds[$node['kind']]['step']) {
-            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name)) as $text) {
+            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name), ws_flow_hours_problems($node['config'], $name)) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
