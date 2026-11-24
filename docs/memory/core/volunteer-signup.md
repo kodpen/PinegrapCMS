@@ -6,7 +6,7 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 
 ## Where is it?
 - `volunteer.php` (root, in `waf_sensitive_scripts()`): `?v=<volunteer id>&t=<token>` opens that volunteer's page in look A (`output_header_secure()`); no-store, noindex, no referrer, no frame; 120 opens in five minutes an address (`pg_volunteer_page_throttled()`). A wrong, withdrawn or left link is one 404 card.
-- My Account: section `volunteering` and flag `has_volunteering` in `_pg_my_account_extras()` for a signed-in member whose contact has a profile not left (`pg_volunteer_account_ids()`); drawn in the site's look by `includes/fn/widgets_volunteering.php`. The list `account.volunteering` and the designer's section twin are VS4b.
+- My Account: section `volunteering` and flag `has_volunteering` in `_pg_my_account_extras()` for a signed-in member whose contact has a profile not left (`pg_volunteer_account_ids()`); drawn in the site's look by `includes/fn/widgets_volunteering.php`. Its list `account.volunteering` and designer twins: `core/volunteer-account-list.md`.
 - Rules and store: `includes/fn/volunteer_signup.php`; markup: `includes/fn/volunteer_page_view.php`. Pure parts tested in `tests/volunteer_signup_test.php`. Built in step VS4 of plan `volunteer-shifts`.
 
 ## How is the link made?
