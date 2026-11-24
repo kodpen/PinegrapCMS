@@ -21,6 +21,7 @@ module: pack
 
 ## What follows a checked pack?
 - All units scanned: status packed, `packer_id` (who scanned the last unit), `packed_at`. Then `pg_pack_after_packed()`: one `pg_audit('pack', 'order_pack', …)` line; the label through `pg_shipment_label_create()` when the address has no tracking number and the check passes (no service, an existing label: nothing said), opened in a new tab; each Created, not accepted marketplace package of the order accepted (Picking) with `approve_lines`, as the label and invoiced paths do; then `order.packed`.
+- The label opens in `shipment_label.php?id=N`. A "Packing only" user may GET only an active outbound label whose address has a packed `order_packs` row they checked (`pg_pack_label_user_can()`, `includes/fn/pick_pack.php`); a missing label answers "Access denied" too; every POST there keeps the orders gate. Before #11347 the packer got "Access denied" and could not print.
 - `mp_sync_approve()` was not used: it acts only while the account accepts by itself, which the job already does; a pack is a staff action, as Create Label is.
 
 ## What does order.packed carry?
