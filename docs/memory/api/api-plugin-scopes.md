@@ -5,7 +5,7 @@ description: The 'moves_money' route mark and api_plugin_scopes(), the scopes an
 
 ## What does `'moves_money' => true` mean?
 - A route row that moves money or makes a cost: a refund, a carrier label, a counter sale with its payment, a gift card or store credit, a till/bank/cheque movement, a commission marked paid, a subscription charged again.
-- Nothing reads it at run time. `tests/api_plugin_scopes_test.php` reads it; a new route of that kind gets the mark (comment at the top of `includes/api/schema.php`).
+- Read at run time by the compact MCP list (`pg_mcp_route_moves_money()`): a marked route is listed there under its own name and refused through `tools_write` with `tool_moves_money` (`mcp-compact-list.md`). `tests/api_plugin_scopes_test.php` reads it too; a new route of that kind gets the mark (comment at the top of `includes/api/schema.php`).
 - Marked: `returns.update`, `orders.labels.create`, `orders.create`, `gift_cards.create/update/delete`, `customers.credit.issue/void`, `customers.subscriptions.resume`, `commissions.update`, `erp.cash_transfers.create`, `erp.cheques.create/step`, `erp.expenses.pay`, `erp.receipts.create/cancel`. The test pins this list, so a mark cannot be dropped in silence.
 
 ## What is `api_plugin_scopes()`?

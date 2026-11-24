@@ -9,7 +9,7 @@ description: Decisions list, product part 85 (2026-11-20 on): the site explains 
 ## Does the site explain itself to AI agents, and who shapes it? (owner, 2026-11-20, agent channel poll 170, message 10442)
 - Yes, and the architect develops, widens and starts it. Owner: "Bu konuyu mimara devret bu özelliği mimar geliştirsin ve genişletsin planıda mimar devreye sokar."
 - Why (owner, message 10376): agents use Pinegrap from the browser and over MCP; reading the documentation costs time and tokens, so they act on guesses in the designer and elsewhere, and the cost can be high.
-- The research he answered: message 10440. The plan: `plans/ai-guide.md`.
+- The research he answered: message 10440. What was built: `api/agent-guide-overview.md`.
 
 ## How is the guide written and read? (architect, 2026-11-20, plan ai-guide)
 - One guide, built from the code's own registries, so it cannot fall behind the code; in English, as tool descriptions are: its reader is a model. It is not translated.
