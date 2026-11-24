@@ -523,6 +523,216 @@ function pg_cf_adopt_form($from_page_id, $to_page_id, $user)
 }
 
 /**
+ * A row of a form table (form_fields, form_field_options, target_options)
+ * as its copy for another page: every column of $row but its id, with
+ * $over written on top, so a column a later upgrade adds is copied too.
+ * Pure.
+ *
+ * @param array $row  a SELECT * row
+ * @param array $over column => value
+ * @return array
+ */
+function pg_cf_copy_row($row, $over)
+{
+    $row = (array)$row;
+    unset($row['id']);
+    foreach ((array)$over as $column => $value) $row[$column] = $value;
+    return $row;
+}
+
+/**
+ * Insert a pg_cf_copy_row() row and return its new id (0 on failure). A
+ * NULL stays NULL (form_fields.rules).
+ */
+function pg_cf_insert_copied_row($table, $row)
+{
+    if (empty($row)) return 0;
+    $cols = array();
+    $vals = array();
+    foreach ($row as $column => $value) {
+        $cols[] = '`' . str_replace('`', '', (string)$column) . '`';
+        $vals[] = ($value === null) ? 'NULL' : "'" . e((string)$value) . "'";
+    }
+    db("INSERT INTO `" . $table . "` (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ")");
+    return (int)mysqli_insert_id(db::$con);
+}
+
+/**
+ * Copy a page's form fields to its duplicate (duplicate_page_f.php), with
+ * every column: options with their administrator addresses, upload folders
+ * and pick list targets, the targets' choices, quiz answers, RSS roles,
+ * patterns and rules. A field whose name the copy already has is not copied
+ * again: a designed form widget on the copied page wrote it
+ * (pg_cf_reconcile_page_form()), and a W22b page keeps its classic layout
+ * beside the widget, so only the rows the widget does not draw
+ * (information, signature) come from here. A pick list target is the
+ * copy's field of the same name. Returns how many fields were copied.
+ *
+ * @param int $from_page_id
+ * @param int $to_page_id
+ * @param int $user_id
+ * @return int
+ */
+function pg_cf_copy_page_fields($from_page_id, $to_page_id, $user_id)
+{
+    $from = (int)$from_page_id;
+    $to   = (int)$to_page_id;
+    if ($from <= 0 || $to <= 0 || $from === $to) return 0;
+
+    $have = array();
+    foreach ((array)db_items("SELECT id, name FROM form_fields WHERE page_id = '$to'") as $row) {
+        $have[mb_strtolower((string)$row['name'], 'UTF-8')] = (int)$row['id'];
+    }
+
+    // Original field id => the copy's field id, for every field of the
+    // original (those the widget wrote included, for the pick list targets).
+    $field_map = array();
+    $copied    = array();
+    foreach ((array)db_items("SELECT * FROM form_fields WHERE page_id = '$from' ORDER BY sort_order, id") as $row) {
+        $key = mb_strtolower((string)$row['name'], 'UTF-8');
+        if (isset($have[$key])) {
+            $field_map[(int)$row['id']] = $have[$key];
+            continue;
+        }
+        $id = pg_cf_insert_copied_row('form_fields', pg_cf_copy_row($row,
+            array('page_id' => $to, 'user' => (int)$user_id, 'timestamp' => time())));
+        if ($id <= 0) continue;
+        $have[$key] = $id;
+        $field_map[(int)$row['id']] = $id;
+        $copied[] = (int)$row['id'];
+    }
+
+    $option_map = array();
+    foreach ($copied as $old_id) {
+        foreach ((array)db_items("SELECT * FROM form_field_options WHERE form_field_id = '$old_id' ORDER BY sort_order, id") as $option) {
+            $over = array('page_id' => $to, 'form_field_id' => $field_map[$old_id]);
+            if (array_key_exists('target_form_field_id', $option)) {
+                $target = (int)$option['target_form_field_id'];
+                $over['target_form_field_id'] = isset($field_map[$target]) ? $field_map[$target] : 0;
+            }
+            $id = pg_cf_insert_copied_row('form_field_options', pg_cf_copy_row($option, $over));
+            if ($id > 0) $option_map[(int)$option['id']] = $id;
+        }
+    }
+
+    if ($copied) {
+        foreach ((array)db_items("SELECT * FROM target_options
+                                  WHERE trigger_form_field_id IN (" . implode(',', $copied) . ")") as $target) {
+            $option_id = (int)$target['trigger_option_id'];
+            if (!isset($option_map[$option_id])) continue;
+            pg_cf_insert_copied_row('target_options', pg_cf_copy_row($target, array(
+                'page_id'               => $to,
+                'trigger_form_field_id' => $field_map[(int)$target['trigger_form_field_id']],
+                'trigger_option_id'     => $option_map[$option_id])));
+        }
+    }
+
+    return count($copied);
+}
+
+/**
+ * The settings that name a field by id (schema_author 'field:<id>',
+ * share_image_field_id) moved from the original form's fields to its
+ * copy's: the copy's field of the same name, else the contact's author and
+ * no share image field. Pure.
+ *
+ * @param array $settings  'schema_author' and/or 'share_image_field_id'
+ * @param array $old_names original field id => field name
+ * @param array $new_ids   lower-cased field name => the copy's field id
+ * @return array the same keys, moved
+ */
+function pg_cf_copied_field_settings($settings, $old_names, $new_ids)
+{
+    $moved = function ($old_id) use ($old_names, $new_ids) {
+        $old_id = (int)$old_id;
+        if ($old_id <= 0 || !isset($old_names[$old_id])) return 0;
+        $key = mb_strtolower((string)$old_names[$old_id], 'UTF-8');
+        return isset($new_ids[$key]) ? (int)$new_ids[$key] : 0;
+    };
+
+    $out = array();
+    if (array_key_exists('schema_author', $settings)) {
+        $stored = trim((string)$settings['schema_author']);
+        $out['schema_author'] = preg_match('/^field:([1-9][0-9]*)$/', $stored, $m)
+            ? pg_blogposting_author_setting_value('field', $moved($m[1]))
+            : $settings['schema_author'];
+    }
+    if (array_key_exists('share_image_field_id', $settings)) {
+        $out['share_image_field_id'] = $moved($settings['share_image_field_id']);
+    }
+    return $out;
+}
+
+/**
+ * Give a duplicated page's designed form the original form's settings
+ * (notification and auto-reply e-mails, confirmation, fee, record pages...)
+ * under the form name the caller made unique, before the page's first form
+ * sync writes the fields (pg_cf_reconcile_page_form(), which then keeps
+ * them). A classic custom form page copies its settings with the page type
+ * properties instead. Returns the original's field names by id for
+ * pg_cf_copy_form_field_settings(), or false when nothing was copied (no
+ * original settings, or the copy already has a form).
+ *
+ * @param int    $from_page_id
+ * @param int    $to_page_id
+ * @param string $form_name
+ * @return array|false
+ */
+function pg_cf_copy_form_settings($from_page_id, $to_page_id, $form_name)
+{
+    $from = (int)$from_page_id;
+    $to   = (int)$to_page_id;
+    if ($from <= 0 || $to <= 0 || $from === $to || !pg_cf_page_form_ready()) return false;
+    if (db_value("SELECT COUNT(*) FROM custom_form_pages WHERE page_id = '$to'") > 0) return false;
+
+    $row = db_item("SELECT * FROM custom_form_pages WHERE page_id = '$from' LIMIT 1");
+    if (!is_array($row) || empty($row)) return false;
+
+    pg_cf_insert_copied_row('custom_form_pages', pg_cf_copy_row($row, array(
+        'page_id'   => $to,
+        'form_name' => mb_substr((string)$form_name, 0, 100))));
+
+    $names = array();
+    foreach ((array)db_items("SELECT id, name FROM form_fields WHERE page_id = '$from' AND form_type = 'custom'") as $field) {
+        $names[(int)$field['id']] = (string)$field['name'];
+    }
+    return $names;
+}
+
+/**
+ * After the copy's fields are written, point its settings that name a field
+ * by id at the copy's own fields (pg_cf_copied_field_settings()).
+ *
+ * @param int   $to_page_id
+ * @param array $old_names pg_cf_copy_form_settings()'s answer
+ * @return void
+ */
+function pg_cf_copy_form_field_settings($to_page_id, $old_names)
+{
+    $to = (int)$to_page_id;
+    if ($to <= 0 || !is_array($old_names)) return;
+
+    $columns = array();
+    if (pg_schema_has('custom_form_pages', 'schema_author'))        $columns[] = 'schema_author';
+    if (pg_schema_has('custom_form_pages', 'share_image_field_id')) $columns[] = 'share_image_field_id';
+    if (!$columns) return;
+
+    $row = db_item("SELECT " . implode(', ', $columns) . " FROM custom_form_pages WHERE page_id = '$to' LIMIT 1");
+    if (!is_array($row)) return;
+
+    $new_ids = array();
+    foreach ((array)db_items("SELECT id, name FROM form_fields WHERE page_id = '$to' AND form_type = 'custom'") as $field) {
+        $new_ids[mb_strtolower((string)$field['name'], 'UTF-8')] = (int)$field['id'];
+    }
+
+    $pairs = array();
+    foreach (pg_cf_copied_field_settings($row, $old_names, $new_ids) as $column => $value) {
+        $pairs[] = $column . " = '" . e((string)$value) . "'";
+    }
+    if ($pairs) db("UPDATE custom_form_pages SET " . implode(', ', $pairs) . " WHERE page_id = '$to' LIMIT 1");
+}
+
+/**
  * The form-level settings of a page, for the editor.
  *
  * Read from `custom_form_pages` rather than kept on the widget: the form
@@ -2851,7 +3061,9 @@ function pg_cf_shown_when_hidden($fields, $values)
             $id = (string)$fields[$i]['id'];
             if (isset($hidden[$id])) continue;
             $other = pg_cf_rule_other_field($r, $fields, 'shown_when');
-            if ($other === null) continue;
+            // A rule that names its own field is not drawn in the browser
+            // (pg_cf_apply_field_bindings()), so the field is always shown.
+            if ($other === null || (string)$other['id'] === $id) continue;
             $oid   = (string)$other['id'];
             $shown = (isset($hidden[$oid]) || !isset($values[$oid])) ? '' : $values[$oid];
             if (pg_cf_rule_verdict($r, '', null, '', false, $shown) === 'hidden') {

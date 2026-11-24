@@ -1729,6 +1729,14 @@ const StyleDesigner = (function () {
             .slice(0, 100);
     }
 
+    // A field name as utf8mb4_unicode_ci compares it: lower case, marks
+    // dropped ('ş' = 's', 'İ' = 'i'), a dotless 'ı' kept apart.
+    function _cfNameFold(name) {
+        var s = String(name == null ? '' : name);
+        if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s.toLowerCase();
+    }
+
     function _cfNodeAttr(node, name) {
         if (!node || !node.props) return null;
         if (name === 'id' && node.props.id) return String(node.props.id);
@@ -2844,7 +2852,20 @@ const StyleDesigner = (function () {
         var group = _cfGroupOf(node, root);
         var lead  = _cfLeadOf(node, root);
         if (group.indexOf(lead) === -1) group.push(lead);
+        var was = String(_cfControlName(lead) || '').toLowerCase();
         group.forEach(function (n) { _cfSetAttr(n, 'name', name); });
+        // Another field's "Required when" or "Shown when" names this field
+        // (the server finds it by name, pg_cf_rule_other_field()): it moves
+        // to the new name, else the rule would quietly stop holding.
+        if (was && was !== name.toLowerCase()) {
+            _cfControls(root).forEach(function (c) {
+                var rules = _cfRulesOf(c.node);
+                ['required_when', 'shown_when'].forEach(function (kind) {
+                    var rule = rules[kind];
+                    if (rule && typeof rule === 'object' && String(rule.field || '').toLowerCase() === was) rule.field = name;
+                });
+            });
+        }
         return true;
     }
 
@@ -2960,8 +2981,11 @@ const StyleDesigner = (function () {
             if (!v) { el.value = _cfControlName(lead); return; }
             // Two fields with one name would be one field. Say so instead
             // of silently merging them.
+            // Compared as the database compares form_fields.name (no case,
+            // no diacritics: 'sehir' = 'şehir'), where the export, the
+            // import and the API find a field by its name.
             var clash = _cfFieldsOf(w.tree).some(function (f) {
-                return f.key === v.toLowerCase() && f.lead !== lead && f.members.indexOf(node) === -1;
+                return _cfNameFold(f.key) === _cfNameFold(v) && f.lead !== lead && f.members.indexOf(node) === -1;
             });
             if (clash) {
                 sdToast(_sdT('Another field already has this name: <code>{var}</code>. Give it a different one.', esc(v)), 'warning', 5000);

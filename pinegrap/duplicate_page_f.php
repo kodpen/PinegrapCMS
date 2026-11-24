@@ -414,7 +414,26 @@ function duplicate_page($request) {
     // off the new page's tree, creates what they ask for, and stamps the ids
     // back. Returns without touching anything when the page has no form.
     if ($page_tree_json !== '') {
+        // A designed form copies the original form's settings first, under
+        // a numbered name as a classic form page does (the page type
+        // properties below carry a classic page's), and its settings that
+        // name a field then point at the copy's own field.
+        $copied_form_fields = false;
+
+        if (($page_type != 'custom form') && _pg_cf_page_form_widgets($new_page['id'])) {
+            $original_form_name = (string) db_value("SELECT form_name FROM custom_form_pages WHERE page_id = '" . (int) $page_id . "' LIMIT 1");
+
+            if ($original_form_name !== '') {
+                $copied_form_fields = pg_cf_copy_form_settings($page_id, $new_page['id'],
+                    $original_form_name . '[' . get_duplicate_form_name_number($original_form_name) . ']');
+            }
+        }
+
         pg_cf_reconcile_page_form($new_page['id'], $user['id']);
+
+        if ($copied_form_fields !== false) {
+            pg_cf_copy_form_field_settings($new_page['id'], $copied_form_fields);
+        }
     }
 
     // call the function that updates the tag cloud table
@@ -443,141 +462,9 @@ function duplicate_page($request) {
         || ($page_type == 'billing information')
         || ($page_type == 'express order')
     ) {
-        $query = "SELECT * FROM form_fields WHERE page_id = ?";
-        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
-        
-        $form_fields = array();
-        
-        while ($row = mysqli_fetch_assoc($result)) {
-            $form_fields[] = $row;
-        }
-        
-        foreach ($form_fields as $form_field) {
-            // SELECT * returns translate_values only once the upgrade has added
-            // the column, so the copy keeps the field's translation switch then.
-            $translate_column = '';
-            $translate_value = '';
-
-            if (array_key_exists('translate_values', $form_field)) {
-                $translate_column = 'translate_values,';
-                $translate_value = "'" . ((int) $form_field['translate_values'] ? 1 : 0) . "',";
-            }
-
-            // create form field
-            $query = "INSERT INTO form_fields (
-                        " . $translate_column . "
-                        form_type,
-                        page_id,
-                        name,
-                        label,
-                        type,
-                        sort_order,
-                        required,
-                        information,
-                        default_value,
-                        use_folder_name_for_default_value,
-                        size,
-                        maxlength,
-                        wysiwyg,
-                        `rows`, # Backticks for reserved word.
-                        cols,
-                        multiple,
-                        spacing_above,
-                        spacing_below,
-                        contact_field,
-                        office_use_only,
-                        upload_folder_id,
-                        user,
-                        timestamp)
-                     VALUES (
-                        " . $translate_value . "
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        UNIX_TIMESTAMP())";
-            $result = db_q($query, array(
-                (string) $form_field['form_type'],
-                (string) $new_page['id'],
-                (string) $form_field['name'],
-                (string) $form_field['label'],
-                (string) $form_field['type'],
-                (string) $form_field['sort_order'],
-                (string) $form_field['required'],
-                (string) $form_field['information'],
-                (string) $form_field['default_value'],
-                (string) $form_field['use_folder_name_for_default_value'],
-                (string) $form_field['size'],
-                (string) $form_field['maxlength'],
-                (string) $form_field['wysiwyg'],
-                (string) $form_field['rows'],
-                (string) $form_field['cols'],
-                (string) $form_field['multiple'],
-                (string) $form_field['spacing_above'],
-                (string) $form_field['spacing_below'],
-                (string) $form_field['contact_field'],
-                (string) $form_field['office_use_only'],
-                (string) $form_field['upload_folder_id'],
-                (string) $user['id'])) or output_error('Query failed.');
-            
-            $new_form_field_id = mysqli_insert_id(db::$con);
-            
-            // get form field options
-            $query = "SELECT * FROM form_field_options WHERE form_field_id = ?";
-            $result = db_q($query, array((string) $form_field['id'])) or output_error('Query failed.');
-            
-            $form_field_options = array();
-            
-            while ($row = mysqli_fetch_assoc($result)) {
-                $form_field_options[] = $row;
-            }
-            
-            foreach ($form_field_options as $form_field_option) {
-                // create form field option
-                $query = "INSERT INTO form_field_options (
-                            page_id,
-                            form_field_id,
-                            label,
-                            value,
-                            default_selected,
-                            sort_order,
-                            upload_folder_id)
-                         VALUES (
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?)";
-                $result = db_q($query, array(
-                    (string) $new_page['id'],
-                    (string) $new_form_field_id,
-                    (string) $form_field_option['label'],
-                    (string) $form_field_option['value'],
-                    (string) $form_field_option['default_selected'],
-                    (string) $form_field_option['sort_order'],
-                    (string) $form_field_option['upload_folder_id'])) or output_error('Query failed.');
-            }
-        }
+        // Every column of the fields, their choices and pick list targets;
+        // fields a designed form widget on the copy already wrote are kept.
+        pg_cf_copy_page_fields($page_id, $new_page['id'], $user['id']);
     }
 
     // if page type is form list view, duplicate filters and browse fields

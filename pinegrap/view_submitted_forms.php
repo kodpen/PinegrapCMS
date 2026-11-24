@@ -213,16 +213,15 @@ if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
         print ',"quiz_score"';
     }
 
-    // get fields for custom form
-    $query = "SELECT name
-             FROM form_fields
-             WHERE (page_id = ?) AND (type != 'information') AND (type != 'file upload')
-             ORDER BY sort_order";
-    $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
+    // The form's field columns, read once: every row below prints its values
+    // in this order, so a value can never land under another field's heading
+    // (fields of equal sort order, such as a signature row a designer save
+    // keeps beside the renumbered fields, came back in another order).
+    $export_fields = pg_submitted_form_export_fields($custom_form_page_id);
 
-    while ($row = mysqli_fetch_assoc($result)) {
+    foreach ($export_fields as $export_field) {
         // replace quotation mark with two quotation marks
-        $column_name = str_replace('"', '""', $row['name']);
+        $column_name = str_replace('"', '""', $export_field['name']);
 
         print ',"' . $column_name . '"';
     }
@@ -293,33 +292,17 @@ if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
             print ',"' . $quiz_score . '"';
         }
 
-        // get data for all fields for this form
-        $query = "SELECT
-                    form_fields.id,
-                    form_data.data
-                 FROM form_fields
-                 LEFT JOIN form_data ON ((form_fields.id = form_data.form_field_id) AND (form_data.form_id = ?))
-                 WHERE (form_fields.page_id = ?) AND (form_fields.type != 'information') AND (form_fields.type != 'file upload')
-                 ORDER BY form_fields.sort_order";
-        $result = db_q($query, array((string) $form['id'], (string) $custom_form_page_id)) or output_error('Query failed.');
-
-        $fields = array();
+        // The stored values of this form, by field; a check box group keeps
+        // one row per ticked box, joined with commas.
+        $values = array();
+        $result = db_q("SELECT form_field_id, data FROM form_data WHERE form_id = ? ORDER BY id", array((string) $form['id'])) or output_error('Query failed.');
 
         while ($row = mysqli_fetch_assoc($result)) {
-            // if this field id has already been used then that means that this field has multiple values, so add values separated by commas
-            if (isset($fields[$row['id']]) == true) {
-                $fields[$row['id']] .= ', ' . $row['data'];
-
-            // else this field id has not been used, so just add data normally
-            } else {
-                $fields[$row['id']] = $row['data'];
-            }
+            $values[(string) $row['form_field_id']][] = (string) $row['data'];
         }
 
-        // loop through all fields so we can output data to csv file
-        foreach ($fields as $data) {
-            $data = csv_cell($data);
-            print ',"' . $data . '"';
+        foreach (pg_submitted_form_export_row($export_fields, $values) as $data) {
+            print ',"' . csv_cell($data) . '"';
         }
 
         print "\n";

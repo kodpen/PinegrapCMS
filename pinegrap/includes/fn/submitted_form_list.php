@@ -1020,6 +1020,55 @@ function pg_submitted_form_export_columns()
 }
 
 /**
+ * The field columns of a form's export, in the form's order: every field
+ * but information blocks and uploads. Equal sort orders are settled by the
+ * id, and the rows are printed against this one list
+ * (pg_submitted_form_export_row()), so a heading and its values always
+ * match.
+ *
+ * @param int|string $page_id the custom form's page
+ * @return array list of array('id' => string, 'name' => string)
+ */
+function pg_submitted_form_export_fields($page_id)
+{
+    $fields = array();
+    $result = db_q(
+        "SELECT id, name
+        FROM form_fields
+        WHERE (page_id = ?) AND (type != 'information') AND (type != 'file upload')
+        ORDER BY sort_order, id",
+        array((string) $page_id));
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $fields[] = array('id' => (string) $row['id'], 'name' => (string) $row['name']);
+    }
+
+    return $fields;
+}
+
+/**
+ * One record's field cells for the export, one per column of $fields: the
+ * field's stored values joined with ', ' (a check box group keeps a row per
+ * ticked box), '' for a field the record has no value for. Values of a
+ * field that is not a column are left out. Pure.
+ *
+ * @param array $fields pg_submitted_form_export_fields()'s answer
+ * @param array $values field id => list of stored values
+ * @return array list of strings, not CSV-escaped
+ */
+function pg_submitted_form_export_row($fields, $values)
+{
+    $cells = array();
+
+    foreach ($fields as $field) {
+        $id = (string) $field['id'];
+        $cells[] = isset($values[$id]) ? implode(', ', array_map('strval', (array) $values[$id])) : '';
+    }
+
+    return $cells;
+}
+
+/**
  * How many leading headings of an imported file are the export's fixed
  * columns: all of them (and 'quiz_score' after them) when the file starts
  * with them in the export's order, else 0. Those columns describe the record,
