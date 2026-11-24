@@ -135,6 +135,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_period.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/dashboard.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/system_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_focus.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor_data.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/picture_translation.php');

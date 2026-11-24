@@ -5739,7 +5739,10 @@ const StyleDesigner = (function () {
                     if (p.fluid) inner.classList.add('img-fluid');
                     if (p.rounded) inner.classList.add('rounded');
                     if (p.cssClass) inner.className += ' ' + p.cssClass;
-                    if (p.objectPosition) inner.style.objectPosition = p.objectPosition;
+                    // The focus point (_sdFocusImageStyle()): one value, or the
+                    // values per screen size and the pg-focus class.
+                    if (_sdFocusImageClass(p)) inner.classList.add(_sdFocusImageClass(p));
+                    _sdFocusStyleSplit(_sdFocusImageStyle(p)).forEach(function (d) { inner.style.setProperty(d[0], d[1]); });
                 } else {
                     // Empty placeholder — takes full column width, min-height keeps it
                     // clickable/double-clickable for image selection even before a src is set.
@@ -5772,14 +5775,14 @@ const StyleDesigner = (function () {
                 return inner;
             },
             toHTML: function (p, pad) {
-                var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '');
+                var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '') + (_sdFocusImageClass(p) ? ' ' + _sdFocusImageClass(p) : '');
                 // A whole number is the width / height attribute (_sdImgDim());
                 // a value with a unit comes with the node's sizing style
                 // (getNodeExtraStyle()), which addGlobalAttrs() writes.
                 var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
                 var w = _dw.attr ? ' width="' + esc(_dw.attr) + '"' : '';
                 var h = _dh.attr ? ' height="' + esc(_dh.attr) + '"' : '';
-                var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
+                var style = _sdFocusImageStyle(p) ? ' style="' + esc(_sdFocusImageStyle(p)) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
                 if (_sdImgInRatio(p)) {
                     // The box as _render_content_html() writes it: the
@@ -14443,9 +14446,9 @@ const StyleDesigner = (function () {
                 _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
             }
         }
-        if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
+        if (node.type === 'content' && node.props.contentType === 'image' && _sdFocusImageStyle(node.props)) {
             if (!getAttrStyleProp(node, 'object-position')) {
-                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _sdFocusImageStyle(node.props);
             }
         }
         // Custom _attrs: data-*, aria-*, etc.
@@ -30754,6 +30757,151 @@ const StyleDesigner = (function () {
         if (s === '') return { attr: '', css: '' };
         if (/^\d+$/.test(s)) return { attr: s, css: '' };
         return { attr: '', css: _sdCssLen(s) };
+    }
+    // A picture's focus point: the part that stays in view when its frame
+    // cuts it, kept as the object position (Image) or the background
+    // position. Twins of includes/fn/image_focus.php (pg_focus_*()); both
+    // write the same text. A pair of words typed before is read, and kept
+    // as typed until it is moved.
+    // _sdFocusParse('center top') -> [50, 0]; null for a length or junk.
+    function _sdFocusParse(value) {
+        var parts = String(value === undefined || value === null ? '' : value).trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (parts.length < 1 || parts.length > 2) return null;
+        var words = { left: ['x', 0], right: ['x', 100], top: ['y', 0], bottom: ['y', 100], center: ['', 50] };
+        var read = [];
+        for (var i = 0; i < parts.length; i++) {
+            var p = parts[i], m;
+            if (Object.prototype.hasOwnProperty.call(words, p)) read.push(words[p]);
+            else if ((m = /^(-?(?:\d+\.?\d*|\.\d+))%$/.exec(p)) || (m = /^(0)$/.exec(p))) read.push(['n', Math.max(0, Math.min(100, parseFloat(m[1])))]);
+            else return null;
+        }
+        if (read.length === 1) return read[0][0] === 'y' ? [50, read[0][1]] : [read[0][1], 50];
+        var a = read[0], b = read[1];
+        // Words may come in either order; a number keeps its place (x first).
+        if (a[0] === 'y' || b[0] === 'x') {
+            if (a[0] === 'n' || b[0] === 'n') return null;
+            var t = a; a = b; b = t;
+        }
+        if (a[0] === 'y' || b[0] === 'x') return null;
+        return [a[1], b[1]];
+    }
+    // The pair as the designer writes it: whole percentages, 0..100.
+    function _sdFocusFormat(x, y) {
+        var c = function (v) { return Math.round(Math.max(0, Math.min(100, parseFloat(v) || 0))); };
+        return c(x) + '% ' + c(y) + '%';
+    }
+    // The screen a canvas width belongs to: a phone below 768, a tablet
+    // below 992, a desktop from there and for the full width (0).
+    function _sdFocusScreen(width) {
+        var w = parseInt(width, 10) || 0;
+        if (w <= 0 || w >= 992) return 'desktop';
+        return w < 768 ? 'phone' : 'tablet';
+    }
+    var _SD_FOCUS_IMAGE_KEYS = { desktop: 'objectPosition', tablet: 'objectPositionTablet', phone: 'objectPositionPhone' };
+    // An Image element's values per screen from its props.
+    function _sdFocusValues(p) {
+        var out = {};
+        ['desktop', 'tablet', 'phone'].forEach(function (s) {
+            var v = p ? p[_SD_FOCUS_IMAGE_KEYS[s]] : '';
+            out[s] = (typeof v === 'string' || typeof v === 'number') ? String(v).trim() : '';
+        });
+        return out;
+    }
+    // A copy of the props with the values written; an empty one removes its
+    // prop. Removed first, so the three props always come in this order.
+    function _sdFocusImageProps(p, values) {
+        var out = Object.assign({}, p || {});
+        ['desktop', 'tablet', 'phone'].forEach(function (s) {
+            var v = values && values[s] ? String(values[s]) : '';
+            delete out[_SD_FOCUS_IMAGE_KEYS[s]];
+            if (v !== '') out[_SD_FOCUS_IMAGE_KEYS[s]] = v;
+        });
+        return out;
+    }
+    // The value a screen shows: its own, else the next larger screen's.
+    function _sdFocusForScreen(values, screen) {
+        var order = ['phone', 'tablet', 'desktop'], from = order.indexOf(screen);
+        if (from < 0) from = 2;
+        for (var i = from; i < 3; i++) {
+            if (values && values[order[i]]) return String(values[order[i]]);
+        }
+        return '';
+    }
+    function _sdFocusSet(values, screen, value) {
+        var out = Object.assign({}, values);
+        if (['desktop', 'tablet', 'phone'].indexOf(screen) < 0) screen = 'desktop';
+        out[screen] = String(value === undefined || value === null ? '' : value).trim();
+        return out;
+    }
+    // "Same on every screen": the desktop's value, the others removed.
+    function _sdFocusSameEverywhere(values) {
+        return { desktop: values && values.desktop ? String(values.desktop) : '', tablet: '', phone: '' };
+    }
+    function _sdFocusHasScreens(values) {
+        return !!values && (_sdFocusParse(values.tablet) !== null || _sdFocusParse(values.phone) !== null);
+    }
+    // The declarations for the values (pg_focus_decls()): one value as it
+    // was always written; with a smaller screen's own value the three custom
+    // properties, read through --pg-focus, which the pg-focus rule
+    // (_SD_BLOCK_CSS) sets per media query.
+    function _sdFocusDecls(values, cssProp) {
+        var d = values && values.desktop ? String(values.desktop).trim() : '';
+        if (!_sdFocusHasScreens(values)) return d !== '' ? cssProp + ':' + d : '';
+        var t = _sdFocusParse(values.tablet) !== null ? String(values.tablet).trim() : '';
+        var p = _sdFocusParse(values.phone) !== null ? String(values.phone).trim() : '';
+        d = d || '50% 50%'; t = t || d; p = p || t;
+        return cssProp + ':var(--pg-focus,' + d + ');--pg-focus-d:' + d + ';--pg-focus-t:' + t + ';--pg-focus-p:' + p;
+    }
+    function _sdFocusImageStyle(p) { return _sdFocusDecls(_sdFocusValues(p), 'object-position'); }
+    function _sdFocusImageClass(p) { return _sdFocusHasScreens(_sdFocusValues(p)) ? 'pg-focus' : ''; }
+    // A style attribute's declarations as [name, value] pairs; a ';' inside
+    // parentheses or quotes (a data: address) stays in its value.
+    function _sdFocusStyleSplit(style) {
+        var s = String(style || ''), out = [], cur = '', depth = 0, quote = '';
+        for (var i = 0; i <= s.length; i++) {
+            var c = i < s.length ? s.charAt(i) : ';';
+            if (quote) { if (c === quote) quote = ''; }
+            else if (c === '"' || c === "'") quote = c;
+            else if (c === '(') depth++;
+            else if (c === ')') depth = Math.max(0, depth - 1);
+            else if (c === ';' && depth === 0) {
+                var colon = cur.indexOf(':');
+                if (colon > -1 && cur.slice(0, colon).trim() !== '') out.push([cur.slice(0, colon).trim().toLowerCase(), cur.slice(colon + 1).trim()]);
+                cur = '';
+                continue;
+            }
+            cur += c;
+        }
+        return out;
+    }
+    // A background picture's values from its node's style attribute.
+    function _sdFocusStyleRead(style) {
+        var decl = {};
+        _sdFocusStyleSplit(style).forEach(function (pair) { decl[pair[0]] = pair[1]; });
+        if (Object.prototype.hasOwnProperty.call(decl, '--pg-focus-d')) {
+            var d = decl['--pg-focus-d'];
+            var t = Object.prototype.hasOwnProperty.call(decl, '--pg-focus-t') ? decl['--pg-focus-t'] : d;
+            var p = Object.prototype.hasOwnProperty.call(decl, '--pg-focus-p') ? decl['--pg-focus-p'] : t;
+            return { desktop: d, tablet: t !== d ? t : '', phone: p !== t ? p : '' };
+        }
+        return { desktop: Object.prototype.hasOwnProperty.call(decl, 'background-position') ? decl['background-position'] : '', tablet: '', phone: '' };
+    }
+    // The style attribute with the values written as the background's focus,
+    // where its background-position stood. The node takes the pg-focus class
+    // while _sdFocusHasScreens(values).
+    function _sdFocusStyleWrite(style, values) {
+        var mine = ['background-position', '--pg-focus-d', '--pg-focus-t', '--pg-focus-p'];
+        var decls = _sdFocusDecls(values, 'background-position'), parts = [], placed = false;
+        _sdFocusStyleSplit(style).forEach(function (pair) {
+            if (mine.indexOf(pair[0]) > -1) {
+                if (!placed && decls) parts.push(decls);
+                placed = true;
+                return;
+            }
+            parts.push(pair[0] + ':' + pair[1]);
+        });
+        if (!placed && decls) parts.push(decls);
+        return parts.join(';');
     }
     // The page's "no image" picture (assets/images/no-image.svg), the one
     // _render_content_html() swaps in when a picture fails to load.
@@ -88115,6 +88263,11 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_MARK = '/* Pinegrap block styles */';
     var _SD_BLOCK_CSS = {
         'pg-hero-tall':    '.pg-hero-tall { min-height: 60vh; }',
+        // A picture's focus point per screen size (_sdFocusDecls()): the
+        // element holds the three values, this rule picks the screen's.
+        'pg-focus':        '.pg-focus { --pg-focus: var(--pg-focus-d); }\n' +
+                           '@media (max-width: 991.98px) { .pg-focus { --pg-focus: var(--pg-focus-t); } }\n' +
+                           '@media (max-width: 767.98px) { .pg-focus { --pg-focus: var(--pg-focus-p); } }',
         // One screen tall: svh leaves room for a phone's address bar, and
         // 100vh stays for a browser that does not know svh.
         'pg-screen':       '.pg-screen { min-height: 100vh; min-height: 100svh; }',
