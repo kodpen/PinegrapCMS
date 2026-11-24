@@ -9,11 +9,15 @@ module: look_examples
 - "Form drawer" (DX3 #11105, `pg_look_examples_form_drawer_pattern()`), after the numbered steps drawer: Application Access' `#api_drawer` at 760 px, head with tile, kind line and state pill, the tabs as `.pg-seg.pg-list-seg`, the Overview tab's groups Details, Summary (Advanced as a closed fold row) and Danger last, the foot with Cancel quiet and Save; under it the danger row in its confirm state (Cancel, Yes, delete).
 - After the form drawer: "Screen bar with filters" and "Empty screen" (#11104, `pg_look_examples_ws_screen_patterns()`, `workspace-screen-bar.md`).
 - Then, before the e-mail parts: the conversation timeline (#11047, `pg_look_examples_timeline_pattern()`), "Workspace list row" (#11079, `pg_look_examples_ws_list_row_pattern()`, live rows in a `.ws-menu-side` box), "Record head" and "Copy button" (#11098, `pg_look_examples_record_patterns()`), "Tools dock" (#11101, `pg_look_examples_tools_dock_pattern()`) and "Flow box" (#11083, `pg_look_examples_flow_box_pattern()`, `workspace/workspace-flows-box-look.md`).
-- "Address block" (#11139, `pg_look_examples_address_pattern()`, `commerce/order-screen-side-panel.md`) follows "Copy button".
+- Between "Copy button" and "Tools dock": "Figure grid" (#11138, `pg_look_examples_figure_grid_pattern()`, `commerce/product-insights-card.md`), "Address block" (#11139, `pg_look_examples_address_pattern()`, `commerce/order-screen-side-panel.md`), "Line row" (`pg_look_examples_line_row_pattern()`, `commerce/order-screen-shipment-card.md`). After "Flow box": "Canvas tools" (`pg_look_examples_canvas_tools_pattern()`, `workspace/workspace-flows-canvas-tools.md`).
 - The e-mail settings drawing's seven parts close the group (DX2b #10930, `pg_look_examples_mail_patterns()`): `look-mail-patterns.md`.
 
 ## Which patterns does the phone pane draw?
-- Those whose entry has `'phone' => true`, in the group's order: Settings pane, Form drawer, Choice cards, Step line (DX4). A new pattern whose screen changes on a phone sets the flag; `test_look_examples_phone_pane()` names the list.
+- Those whose entry has `'phone' => true`, in the group's order: Settings pane, Form drawer, Choice cards, Step line (DX4 #11205). A new pattern whose screen changes on a phone sets the flag; `test_look_examples_phone_pane()` names the list.
+
+## What binds a new pattern?
+- A pattern copies the markup of the screen that built it and adds no look of its own; a rule it misses is asked of the architect. No drawing and no approval round: the patterns are the drawings the owner said yes to (`workflow/decisions-made-panel-12.md`), built.
+- It carries the test the parts have (`tests/look_examples_test.php`), and a part it draws leaves the top card's "Not drawn yet" list in the same PR.
 
 ## How is a drawer pattern framed?
 - The patterns' frame is no `.drawer`, which sets `--bs-drawer-padding-*`: its head and body take `p-5` (16 px, measured on the real `#api_new`; the sheet's head `p-5 pb-1`), as the Drawer section does since DX2. The sheet's cards use the recipe "Look A: starting-point cards" (`.pg-start*`); the steps drawer draws Claude's own guide (`ws_claude_setup_guide()`) with its tile, line and Close, as the real drawer.

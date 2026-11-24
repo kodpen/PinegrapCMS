@@ -7,7 +7,7 @@ description: Step DX2b of the Design examples plan: the parts of the approved e-
 - Owner (2026-11-21, agent channel message 11316), on the e-mail settings drawing: "bu tasarımlar modern ve kaliteli olmuş buradaki bileşen öğeleri ve kart tipi design_examples.php ye girsin" (`workflow/decisions-made-panel-14.md`).
 
 ## Which step is it and when does it run?
-- DX2b (M) of `plans/design-examples-patterns.md`: after DX2 (#10885) has landed and before DX3, the one step open on `includes/fn/look_examples.php` and `design_examples.php` at that time.
+- DX2b (M) of the Design examples patterns plan (closed; `ui/look-design-examples-patterns.md`): after DX2 (#10885) has landed and before DX3, the one step open on `includes/fn/look_examples.php` and `design_examples.php` at that time.
 - EM1 of the one e-mail settings plan waits for DX2b: the EM steps copy these patterns and write no recipe of their own.
 - The source is the drawing `ui/email-settings-drawing/email-settings.html` (boards A to E), in words `ui/settings-mail.md`.
 
@@ -27,4 +27,4 @@ description: Step DX2b of the Design examples plan: the parts of the approved e-
 - Rendered at 1440 and 390 px beside the drawing before ready; the PR's "Screen check" names each pattern.
 - The two buttons' brand rules are read on the providers' pages by this step; a difference from the box note is asked of the architect.
 
-Related: docs/memory/plans/design-examples-patterns.md, docs/memory/ui/settings-mail.md, docs/memory/ui/look-mail-patterns.md
+Related: docs/memory/ui/look-design-examples-patterns.md, docs/memory/ui/settings-mail.md, docs/memory/ui/look-mail-patterns.md

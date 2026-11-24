@@ -18,7 +18,7 @@ description: A plan describes each screen it adds in words, by the composition r
 - Owner: "tasarım bileşenleri oradan alınacağı planlarda yazılı olursa sorun çözülür. eğer bu sayfada olmayan bir bileşen için talep varsa o zaman mimara bileşen için tasarım örneği kaydı açılsın. mimar hem ajana hemde design examples a o bileşeni koyar biter".
 - From the Design examples screen (`design_examples.php`): a plan's screen description names, for each part, the section it is copied from.
 - A part the screen needs and the Design examples screen lacks: the session asks the architect in the agent channel for a design example (the screen, what the part must do, its states) and builds nothing of its own. The architect answers with the part (its name, markup from the look's tokens and recipes, its states); it joins the Design examples screen in the asking step's PR, as the architect writes no product code.
-- The screen itself is finished alongside (`plans/design-examples-patterns.md`).
+- Its patterns, and which composition rule each draws: `ui/look-design-examples-patterns.md`, `ui/screen-composition-rules.md`.
 
 ## What was found that day?
 - Look A bound a screen's parts, nothing bound how a whole screen is put together, and none of the thirteen plans written from 2026-11-18 to 2026-11-20 said it either.

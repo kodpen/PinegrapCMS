@@ -22,7 +22,7 @@ description: Plan lead-journey, how its screens are put together (LJ2 to LJ5): t
 - The contacts list gains a "Score" column, off by default in its columns menu.
 
 ## How are the settings laid out? (LJ3)
-- Site Settings › Contacts gains a folded row "Interest score" (the settings pane of `plans/design-examples-patterns.md` DX1; before it lands, a card [cards]): one line on what it does and that it follows the cookie notice's marketing yes.
+- Site Settings › Contacts gains a folded row "Interest score" [Settings pane]: one line on what it does and that it follows the cookie notice's marketing yes.
 - Open: "Hot from" (the threshold), then "What counts" as rows, a row an act with its points field (pricing or contact page, a return within 7 days, a form, a booking, a campaign click, a download); the pages that count as pricing and contact as two page pickers. Folded under "Advanced": the half-life in days, the keep period in months.
 - Foot: Save fill, Cancel quiet, "Back to the defaults" quiet.
 
