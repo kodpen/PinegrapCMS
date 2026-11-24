@@ -31,7 +31,15 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
+- designer-canvas-guides.md: Plan (owner 2026-11-24): on the designer's canvas, distances measured with a key, spacing dragged by its bands, columns dragged over the grid, equal gaps marked; client only; steps CG1 to CG6
+- designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
+- designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first by the design session, DD1 to DD11; a screen step waits for its drawing's merge, never for a yes
+- designer-image-focus.md: Plan (owner 2026-11-24): a picture's focus point set by dragging, per screen size, for an Image and a background picture, with the three screen frames shown; steps IF1 to IF4
+- designer-my-library.md: Plan (owner 2026-11-24): a section saved to the site's own library, inserted as a copy in any design, exported and imported as a file; kept as files; steps ML1 to ML5
 - designer-options-census.md: Plan (owner 2026-11-24, before the launch): more ways to shape an element in the designer's Options panel; DO1 counts what is missing, the owner picks, the architect writes the build steps
+- designer-phone-preview.md: Plan (owner 2026-11-24): "Preview on a phone" in the designer: a QR code of a short-lived share link, the phone redrawing after each save; steps PP1 to PP4
+- designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
+- designer-publish-check.md: Plan (owner 2026-11-24): one check in the Publish sheet over links, accessibility, search engines, page weight and left sample content, with Fix and Ignore; steps PC1 to PC6
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - designer-start-import.md: Plan (owner 2026-11-24, before the launch): the New design window with every start in one place, import from Figma as layers and from Canva as reference pictures and brand; steps ST1 to ST7
 - designer-variables.md: Plan (owner 2026-11-24, before the launch): a design's variables (colour, type, spacing, shape) in one pane, asked at the start, offered by every Options control; steps DV1 to DV6
