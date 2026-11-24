@@ -18,9 +18,10 @@
  * WS_CALL_SILENCE seconds, ends; its signals are deleted then, and any
  * signal after WS_CALL_SIGNAL_LIFE seconds.
  *
- * One member at a time shares a screen: its share and unshare signals,
- * addressed to nobody, say who; the sharer renews its share with the
- * keep-alive, and a member's signals go when it leaves, so its share ends.
+ * Every member may share a screen, several at once, one share each: its
+ * share and unshare signals, addressed to nobody, say who; a sharer renews
+ * its share with the keep-alive, and a member's signals go when it leaves,
+ * so its share ends.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -302,51 +303,53 @@ function ws_call_signal_check($from, $to, $kind, $body)
 }
 
 /**
- * Who shares a screen in a call now? Pure. The newest share or unshare mark
- * of the call decides: a share by a member still in it, renewed within
- * WS_CALL_SHARE_LIFE seconds. A member's marks go when it leaves.
+ * Who shares a screen in a call now? Pure. Each member's newest share or
+ * unshare mark decides for that member: a share by a member still in the
+ * call, renewed within WS_CALL_SHARE_LIFE seconds. A member's marks go when
+ * it leaves.
  *
- * @param array|null $mark     the newest share/unshare signal: from_member_id, kind, created_at
- * @param int[]      $live_ids the member ids in the call now
- * @param int        $now
- * @return int the sharer's member id, 0 for none
+ * @param array[] $marks    share/unshare signals, oldest first: from_member_id, kind, created_at
+ * @param int[]   $live_ids the member ids in the call now
+ * @param int     $now
+ * @return int[] the sharers' member ids, ascending
  */
-function ws_call_sharer_from($mark, $live_ids, $now)
+function ws_call_sharers_from($marks, $live_ids, $now)
 {
-    if (!is_array($mark) || ((string) $mark['kind'] !== 'share')) {
-        return 0;
+    $newest = array();
+
+    foreach ((array) $marks as $mark) {
+        $newest[(int) $mark['from_member_id']] = $mark;
     }
 
-    if ((int) $mark['created_at'] <= ((int) $now - WS_CALL_SHARE_LIFE)) {
-        return 0;
+    $live = array_map('intval', (array) $live_ids);
+    $sharers = array();
+
+    foreach ($newest as $member_id => $mark) {
+        if (((string) $mark['kind'] === 'share') && ((int) $mark['created_at'] > ((int) $now - WS_CALL_SHARE_LIFE))
+            && in_array((int) $member_id, $live, true)) {
+            $sharers[] = (int) $member_id;
+        }
     }
 
-    $member_id = (int) $mark['from_member_id'];
+    sort($sharers);
 
-    return in_array($member_id, array_map('intval', (array) $live_ids), true) ? $member_id : 0;
+    return $sharers;
 }
 
 /**
- * May this member start or renew a share, or stop one? Pure. One share at a
- * time: only while nobody else shares. Stopping is the sharer's own; from
- * anyone else it changes nothing (null: write nothing).
+ * May this member start or renew a share, or stop one? Pure. A member may
+ * share whoever else shares (one share each); stopping is the sharer's own,
+ * and from a member not sharing it changes nothing (null: write nothing).
  *
- * @param array  $from   the sender's live ws_call_members row
- * @param int    $sharer ws_call_sharer_from()
- * @param string $kind   share | unshare
- * @return string|null '' to write the mark, null to write nothing, else the refusal
+ * @param array  $from    the sender's live ws_call_members row
+ * @param int[]  $sharers ws_call_sharers_from()
+ * @param string $kind    share | unshare
+ * @return string|null '' to write the mark, null to write nothing
  */
-function ws_call_share_check($from, $sharer, $kind)
+function ws_call_share_check($from, $sharers, $kind)
 {
-    $sharer = (int) $sharer;
-    $mine = (int) $from['id'];
-
     if ((string) $kind === 'unshare') {
-        return ($sharer === $mine) ? '' : null;
-    }
-
-    if ($sharer && ($sharer !== $mine)) {
-        return lang('Someone else is sharing their screen.');
+        return in_array((int) $from['id'], array_map('intval', (array) $sharers), true) ? '' : null;
     }
 
     return '';
@@ -459,10 +462,10 @@ function ws_call_may_end($party, $call, $manages)
  * @param array    $call    the ws_calls row
  * @param array[]  $members its live ws_call_members rows
  * @param string[] $names   'user:<id>' / 'guest:<id>' => name
- * @param int      $sharer  the member id sharing a screen, 0 for none
+ * @param int[]    $sharers the member ids sharing a screen
  * @return array
  */
-function ws_call_present($call, $members, $names, $sharer = 0)
+function ws_call_present($call, $members, $names, $sharers = array())
 {
     $people = array();
 
@@ -486,7 +489,7 @@ function ws_call_present($call, $members, $names, $sharer = 0)
         'started_by' => (int) $call['started_by'],
         'started_at' => (int) $call['started_at'],
         'members'    => $people,
-        'sharer'     => (int) $sharer,
+        'sharers'    => array_values(array_map('intval', (array) $sharers)),
     );
 }
 
@@ -545,24 +548,28 @@ function ws_call_member_of($party, $call_id)
 }
 
 /**
- * Who shares a screen in a call now (ws_call_sharer_from()).
+ * Who shares a screen in a call now (ws_call_sharers_from()). Only the marks
+ * young enough to hold a share are read: an older one is overruled by a
+ * newer mark or has lapsed.
  *
  * @param int     $call_id
  * @param array[] $members its live ws_call_members rows
- * @return int the sharer's member id, 0 for none
+ * @return int[] the sharers' member ids
  */
-function ws_call_sharer($call_id, $members)
+function ws_call_sharers($call_id, $members)
 {
-    $mark = db_item("SELECT from_member_id, kind, created_at FROM ws_call_signals
+    $now = time();
+    $marks = db_items("SELECT from_member_id, kind, created_at FROM ws_call_signals
         WHERE call_id = '" . (int) $call_id . "' AND to_member_id = 0 AND kind IN ('share', 'unshare')
-        ORDER BY id DESC LIMIT 1");
+        AND created_at > '" . ($now - WS_CALL_SHARE_LIFE) . "'
+        ORDER BY id LIMIT 500");
     $live_ids = array();
 
     foreach ((array) $members as $member) {
         $live_ids[] = (int) $member['id'];
     }
 
-    return ws_call_sharer_from(is_array($mark) ? $mark : null, $live_ids, time());
+    return ws_call_sharers_from(is_array($marks) ? $marks : array(), $live_ids, $now);
 }
 
 /**
@@ -939,8 +946,8 @@ function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body, $mem
 }
 
 /**
- * A share or unshare mark, written while the channel's calls are held, so
- * two members starting a share at once cannot both have it.
+ * A share or unshare mark. Each member's marks decide only its own share,
+ * so two members sharing at once both have theirs.
  *
  * @param array  $call
  * @param array  $from the sender's live row
@@ -950,23 +957,12 @@ function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body, $mem
  */
 function ws_call_share_send($call, $from, $kind, $now)
 {
-    if (!ws_call_lock($call['channel_id'])) {
-        return array('ok' => false, 'error' => lang('Please try again in a moment.'));
-    }
-
-    $error = ws_call_share_check($from, ws_call_sharer((int) $call['id'], ws_call_members_live($call['id'])), $kind);
     $signal_id = 0;
 
-    if ($error === '') {
+    if (ws_call_share_check($from, ws_call_sharers((int) $call['id'], ws_call_members_live($call['id'])), $kind) === '') {
         db_q("INSERT INTO ws_call_signals (call_id, from_member_id, to_member_id, kind, body, created_at) VALUES (?, ?, 0, ?, '', ?)",
             array((int) $call['id'], (int) $from['id'], $kind, (int) $now));
         $signal_id = (int) mysqli_insert_id(db::$con);
-    }
-
-    ws_call_unlock($call['channel_id']);
-
-    if (($error !== '') && ($error !== null)) {
-        return array('ok' => false, 'error' => $error);
     }
 
     return array('ok' => true, 'error' => '', 'signal_id' => $signal_id);
@@ -1099,7 +1095,7 @@ function ws_call_live_part($party, $channel_id, $signal_after)
     $mine = ws_call_member_of($party, $call['id']);
 
     return array(
-        'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharer((int) $call['id'], $members)),
+        'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharers((int) $call['id'], $members)),
         'member_id' => $mine ? (int) $mine['id'] : 0,
         'signals'   => $mine ? ws_call_signals_for((int) $mine['id'], (int) $signal_after) : array(),
     );
@@ -1307,8 +1303,8 @@ function ws_call_js_strings()
         'call_you'        => lang('You'),
         'call_share'      => lang('Share screen'),
         'call_share_stop' => lang('Stop sharing'),
-        'call_share_busy' => lang('Someone else is sharing their screen.'),
         'call_sharing'    => ws_js_template('{var:1} is sharing', 1),
+        'call_share_show' => ws_js_template('Show the screen of {var:1}', 1),
         'call_self_sharing' => lang('You are sharing your screen'),
         'call_smaller'    => lang('Make smaller'),
         'call_larger'     => lang('Make larger'),

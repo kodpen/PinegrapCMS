@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for screen sharing in a Workspace call (includes/workspace/calls.php
- * and assets/js/workspace_calls.js): one share at a time, who may share and
- * stop, the share ending when its sharer leaves or stops renewing it, and
- * the browser's share button and screen connection.
+ * and assets/js/workspace_calls.js): several shares at once, one a member,
+ * who may share and stop, a share ending when its sharer leaves or stops
+ * renewing it, and the browser's share button and screen connection.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -46,25 +46,31 @@ function test_workspace_calls_share_who_shares_now()
 {
 	$now = 1700000000;
 	$live = array(10, 11, 12);
+	$mark = function ($member_id, $kind, $ago) use ($now) {
+		return array('from_member_id' => $member_id, 'kind' => $kind, 'created_at' => $now - $ago);
+	};
 
-	pg_assert_same(0, ws_call_sharer_from(null, $live, $now), 'no mark: nobody shares');
-	pg_assert_same(11, ws_call_sharer_from(array('from_member_id' => 11, 'kind' => 'share', 'created_at' => $now - 20), $live, $now), 'the newest mark is a share: its sender shares');
-	pg_assert_same(0, ws_call_sharer_from(array('from_member_id' => 11, 'kind' => 'unshare', 'created_at' => $now - 5), $live, $now), 'the newest mark is an unshare: nobody shares');
-	pg_assert_same(0, ws_call_sharer_from(array('from_member_id' => 13, 'kind' => 'share', 'created_at' => $now - 5), $live, $now), 'a share of one no longer in the call is over');
-	pg_assert_same(0, ws_call_sharer_from(array('from_member_id' => 11, 'kind' => 'share', 'created_at' => $now - WS_CALL_SHARE_LIFE), $live, $now), 'a share not renewed in time is over (a closed tab)');
+	pg_assert_same(array(), ws_call_sharers_from(array(), $live, $now), 'no mark: nobody shares');
+	pg_assert_same(array(11), ws_call_sharers_from(array($mark(11, 'share', 20)), $live, $now), 'a member\'s newest mark is a share: it shares');
+	pg_assert_same(array(), ws_call_sharers_from(array($mark(11, 'share', 20), $mark(11, 'unshare', 5)), $live, $now), 'its newest mark is an unshare: it no longer shares');
+	pg_assert_same(array(11), ws_call_sharers_from(array($mark(11, 'unshare', 40), $mark(11, 'share', 5)), $live, $now), 'a share after its unshare: it shares again');
+	pg_assert_same(array(), ws_call_sharers_from(array($mark(13, 'share', 5)), $live, $now), 'a share of one no longer in the call is over');
+	pg_assert_same(array(), ws_call_sharers_from(array($mark(11, 'share', WS_CALL_SHARE_LIFE)), $live, $now), 'a share not renewed in time is over (a closed tab)');
+	pg_assert_same(array(10, 12), ws_call_sharers_from(array($mark(12, 'share', 30), $mark(10, 'share', 20), $mark(12, 'share', 2)), $live, $now), 'several members share at once, each once, by member id');
+	pg_assert_same(array(12), ws_call_sharers_from(array($mark(10, 'share', 20), $mark(12, 'share', 10), $mark(10, 'unshare', 5)), $live, $now), 'one stopping leaves the others\' shares');
 	pg_assert_true(WS_CALL_SHARE_LIFE > 2 * 30, 'the browser renews its share every 30 seconds: two renewals may be late before it lapses');
 }
 
-function test_workspace_calls_share_one_at_a_time()
+function test_workspace_calls_share_several_at_once()
 {
 	$me = array('id' => 10, 'call_id' => 1, 'left_at' => 0);
 
-	pg_assert_same('', ws_call_share_check($me, 0, 'share'), 'nobody shares: a member may');
-	pg_assert_same('', ws_call_share_check($me, 10, 'share'), 'the sharer renews its own share');
-	pg_assert_same(lang('Someone else is sharing their screen.'), ws_call_share_check($me, 11, 'share'), 'another member\'s share holds the screen');
-	pg_assert_same('', ws_call_share_check($me, 10, 'unshare'), 'the sharer stops its share');
-	pg_assert_same(null, ws_call_share_check($me, 11, 'unshare'), 'an unshare from anyone else writes nothing, so it cannot end another\'s share');
-	pg_assert_same(null, ws_call_share_check($me, 0, 'unshare'), 'nor while nobody shares');
+	pg_assert_same('', ws_call_share_check($me, array(), 'share'), 'nobody shares: a member may');
+	pg_assert_same('', ws_call_share_check($me, array(10), 'share'), 'the sharer renews its own share');
+	pg_assert_same('', ws_call_share_check($me, array(11, 12), 'share'), 'others\' shares do not hold a member back');
+	pg_assert_same('', ws_call_share_check($me, array(10, 11), 'unshare'), 'the sharer stops its share');
+	pg_assert_same(null, ws_call_share_check($me, array(11), 'unshare'), 'an unshare of one not sharing writes nothing');
+	pg_assert_same(null, ws_call_share_check($me, array(), 'unshare'), 'nor while nobody shares');
 }
 
 function test_workspace_calls_share_the_server_keeps_the_rules()
@@ -73,25 +79,26 @@ function test_workspace_calls_share_the_server_keeps_the_rules()
 	$share = workspace_calls_share_test_function('ws_call_share_send');
 	$leave = workspace_calls_share_test_function('ws_call_leave') . workspace_calls_share_test_function('ws_call_member_out');
 	$part = workspace_calls_share_test_function('ws_call_live_part');
-	$sharer = workspace_calls_share_test_function('ws_call_sharer');
+	$sharer = workspace_calls_share_test_function('ws_call_sharers');
 
 	pg_assert_true(strpos($send, 'ws_call_member_of($party, $call_id)') !== false && strpos($send, "if (!ws_call_member_matches(\$from, \$member_id)) {") !== false, 'only a member in the live call sends a mark');
 	pg_assert_true(strpos($send, 'return ws_call_share_send($call, $from, $kind, $now);') !== false, 'a share or unshare goes through its own writer');
 	pg_assert_true(strpos($send, 'ws_call_over_limit($sent, WS_CALL_SIGNALS_A_MINUTE)') < strpos($send, 'ws_call_share_send('), 'marks count in the member\'s signals a minute');
-	pg_assert_true(strpos($share, 'ws_call_lock($call[\'channel_id\'])') !== false && strpos($share, 'ws_call_unlock($call[\'channel_id\']);') !== false, 'the check and the write are held together: two shares at once cannot both win');
-	pg_assert_true(strpos($share, 'ws_call_share_check($from, ws_call_sharer(') !== false, 'the check reads who shares now');
+	pg_assert_true(strpos($share, 'ws_call_share_check($from, ws_call_sharers(') !== false, 'the check reads who shares now');
+	pg_assert_true(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/calls.php'), 'Someone else is sharing their screen.') === false, 'no share is refused for another member\'s');
 	pg_assert_true(strpos($leave, 'ws_call_member_out((int) $mine[\'id\'], time());') !== false && strpos($leave, "DELETE FROM ws_call_signals WHERE to_member_id = '\" . (int) \$member_id . \"' OR from_member_id = '\" . (int) \$member_id . \"'") !== false, 'a member\'s marks go when it leaves: its share ends');
-	pg_assert_true(strpos($part, 'ws_call_sharer((int) $call[\'id\'], $members)') !== false, 'the live read says who shares');
-	pg_assert_true(strpos($sharer, "to_member_id = 0 AND kind IN ('share', 'unshare')") !== false && strpos($sharer, 'body') === false, 'the sharer is read from the marks, never from a body');
+	pg_assert_true(strpos($part, 'ws_call_sharers((int) $call[\'id\'], $members)') !== false, 'the live read says who shares');
+	pg_assert_true(strpos($sharer, "to_member_id = 0 AND kind IN ('share', 'unshare')") !== false && strpos($sharer, 'ORDER BY id') !== false && strpos($sharer, 'body') === false, 'the sharers are read from the marks, never from a body');
 }
 
-function test_workspace_calls_share_present_names_the_sharer()
+function test_workspace_calls_share_present_names_the_sharers()
 {
 	$call = array('id' => 5, 'channel_id' => 7, 'kind' => 'voice', 'started_by' => 3, 'started_at' => 1700000000, 'state' => 'live');
 	$members = array(array('id' => 10, 'user_id' => 3, 'guest_id' => 0, 'joined_at' => 1700000000));
 
-	pg_assert_same(10, ws_call_present($call, $members, array(), 10)['sharer'], 'the sharer\'s member id');
-	pg_assert_same(0, ws_call_present($call, $members, array())['sharer'], 'nobody: 0');
+	pg_assert_same(array(10, 11), ws_call_present($call, $members, array(), array('10', 11))['sharers'], 'the sharers\' member ids');
+	pg_assert_same(array(), ws_call_present($call, $members, array())['sharers'], 'nobody: an empty list');
+	pg_assert_false(isset(ws_call_present($call, $members, array())['sharer']), 'no single sharer any more');
 }
 
 // Runs one script under node with the browser part loaded; '' without node.
@@ -122,7 +129,7 @@ function test_workspace_calls_share_the_screen_slot()
 		"  C.screenSlot(['1'], 'voice'),",
 		"  C.screenSlot(['1'], 'video'),",
 		"  C.screenSlot([], 'voice'),",
-		"  C.shareState(0, 10, true), C.shareState(10, 10, true), C.shareState(11, 10, true), C.shareState(0, 10, false)",
+		"  C.shareState([], 10, true), C.shareState([10], 10, true), C.shareState([11], 10, true), C.shareState([10, 11], 10, true), C.shareState([], 10, false)",
 		"]));",
 	)));
 
@@ -132,9 +139,9 @@ function test_workspace_calls_share_the_screen_slot()
 	}
 
 	pg_assert_same(
-		'[2,2,1,-1,-1,{"show":true,"on":false,"busy":false},{"show":true,"on":true,"busy":false},{"show":true,"on":false,"busy":true},{"show":false,"on":false,"busy":false}]',
+		'[2,2,1,-1,-1,{"show":true,"on":false},{"show":true,"on":true},{"show":true,"on":false},{"show":true,"on":true},{"show":false,"on":false}]',
 		$out,
-		'the screen rides the call\'s screen line (a video call\'s second video line, a voice call\'s only one); the button is pressed while one shares, held while another does, and absent without getDisplayMedia'
+		'the screen rides the call\'s screen line (a video call\'s second video line, a voice call\'s only one); the button is pressed while this member shares, free while others do, and absent without getDisplayMedia'
 	);
 }
 
