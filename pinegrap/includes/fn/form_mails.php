@@ -252,6 +252,13 @@ function pg_cf_form_mails_send($page_id, $form_id, array $settings, array $mail)
 
     $submitter_email_from_email_address = (string) $settings['submitter_email_from_email_address'];
     $submitter_email_subject = (string) $settings['submitter_email_subject'];
+
+    // The sender's copy reads in the language the form was sent in, its
+    // subject too: pg_tr_extract_forms() offers the subject for translation
+    // as it is stored, before any field value is filled in.
+    if (function_exists('pg_tr_text')) {
+        $submitter_email_subject = (string) pg_tr_text($submitter_email_subject);
+    }
     $submitter_email_format = (string) $settings['submitter_email_format'];
     $submitter_email_body = (string) $settings['submitter_email_body'];
     $submitter_email_page_id = (int) $settings['submitter_email_page_id'];

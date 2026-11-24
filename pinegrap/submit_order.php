@@ -1972,8 +1972,11 @@ function submit_order($type) {
                 'customer_id'              => $user_id,
                 'ip'                       => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
                 'basket_id'                => (string) $page_id,
+                // In the language the order was placed in (pg_lang): the
+                // return completes the order, sends its receipt and leads to
+                // the receipt page.
                 'return_url'               => ($payment_return_mode !== '')
-                    ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
+                    ? URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id)
                     : '',
                 // The payment service's token for a card typed into its own fields.
                 'token'                    => (isset($_POST['payment_token']) && is_string($_POST['payment_token'])) ? $_POST['payment_token'] : '',
@@ -3258,8 +3261,10 @@ function submit_order($type) {
                 
                 // if mode is not paypal_express_checkout_return, then prepare to send SetExpressCheckout request to PayPal
                 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
-                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
-                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id);
+                    // Back in the language the order was placed in, as the
+                    // other payment services' return.
+                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id);
+                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . (defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH) . get_page_name($page_id);
                     
                     $post_data =
                         'METHOD=SetExpressCheckout&' .

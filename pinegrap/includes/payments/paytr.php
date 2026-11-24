@@ -154,7 +154,8 @@ function pg_payment_paytr_max_installment($value)
 /**
  * Where PayTR sends the visitor after the frame: the checkout page's next
  * page after a payment, the checkout page itself after a refusal, so the
- * visitor can choose again. Neither address confirms anything.
+ * visitor can choose again, in the language the page was drawn in. Neither
+ * address confirms anything.
  *
  * @param array $payment the checkout's values (basket_id: the checkout page)
  * @return array ok_url, fail_url ('' when the page is not known)
@@ -168,7 +169,9 @@ function pg_payment_paytr_return_urls($payment)
         return array('ok_url' => '', 'fail_url' => '');
     }
 
-    $base = URL_SCHEME . HOSTNAME . PATH;
+    // The pages in the language the order was placed in (pg_lang made it
+    // LANGUAGE_PATH): their names are the same under its directory.
+    $base = URL_SCHEME . HOSTNAME . (defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH);
     $row = function_exists('pg_order_checkout_page_row') ? pg_order_checkout_page_row($page_id) : null;
     $next_name = (is_array($row) && !empty($row['next_page_id'])) ? (string) get_page_name((int) $row['next_page_id']) : '';
 
