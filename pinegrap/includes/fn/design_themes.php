@@ -786,6 +786,21 @@ function pg_design_look_tokens($key)
     return $out;
 }
 
+// The shadow presets of the look builder: for each, the small, normal and
+// large shadow, the card's shadow at rest and under the pointer, the card's
+// lift, and the button's shadow at rest and under the pointer.
+function _pg_design_look_shadows()
+{
+    return array(
+        'none'  => array('none', '0 6px 18px rgba(0, 0, 0, 0.08)', '0 16px 40px rgba(0, 0, 0, 0.12)', 'none', 'none', 'none', 'none', 'none'),
+        'soft'  => array('0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07)', '0 4px 10px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05)', '0 20px 36px -10px rgba(16, 24, 40, 0.16), 0 8px 14px -6px rgba(16, 24, 40, 0.06)', 'var(--pg-shadow-sm)', 'var(--pg-shadow-lg)', 'translateY(-3px)', '0 1px 2px rgba(16, 24, 40, 0.08)', '0 6px 14px -4px rgba(16, 24, 40, 0.2)'),
+        'crisp' => array('0 1px 2px rgba(0, 0, 0, 0.06)', '0 3px 8px rgba(0, 0, 0, 0.1)', '0 10px 26px rgba(0, 0, 0, 0.14)', '0 1px 2px rgba(0, 0, 0, 0.05)', 'var(--pg-shadow)', 'none', 'none', 'none'),
+        'deep'  => array('0 2px 6px rgba(0, 0, 0, 0.1)', '0 12px 28px -8px rgba(0, 0, 0, 0.25)', '0 30px 60px -18px rgba(0, 0, 0, 0.35)', 'var(--pg-shadow)', 'var(--pg-shadow-lg)', 'translateY(-4px)', '0 4px 10px -4px rgba(0, 0, 0, 0.3)', '0 10px 20px -6px rgba(0, 0, 0, 0.35)'),
+        'glow'  => array('0 2px 8px -2px color-mix(in srgb, var(--pg-primary) 18%, transparent)', '0 10px 26px -10px color-mix(in srgb, var(--pg-primary) 30%, transparent)', '0 24px 48px -16px color-mix(in srgb, var(--pg-primary) 38%, transparent)', '0 8px 24px -10px color-mix(in srgb, var(--pg-primary) 28%, transparent)', '0 20px 40px -14px color-mix(in srgb, var(--pg-primary) 40%, transparent)', 'translateY(-5px)', '0 4px 12px -6px color-mix(in srgb, var(--pg-primary) 50%, transparent)', '0 10px 20px -8px color-mix(in srgb, var(--pg-primary) 55%, transparent)'),
+        'hard'  => array('3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', 'translate(-3px, -3px)', '3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)'),
+    );
+}
+
 // The stylesheet of a custom look: the base look's tokens with the builder's
 // choices laid over them. False when the base is not a built-in look.
 function pg_design_custom_look_css($base, $controls, $name)
@@ -841,14 +856,7 @@ function pg_design_custom_look_css($base, $controls, $name)
         $t['--pg-card-border-width'] = $b . 'px';
     }
     if (isset($pick['shadow'])) {
-        $shadows = array(
-            'none'  => array('none', '0 6px 18px rgba(0, 0, 0, 0.08)', '0 16px 40px rgba(0, 0, 0, 0.12)', 'none', 'none', 'none', 'none', 'none'),
-            'soft'  => array('0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07)', '0 4px 10px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05)', '0 20px 36px -10px rgba(16, 24, 40, 0.16), 0 8px 14px -6px rgba(16, 24, 40, 0.06)', 'var(--pg-shadow-sm)', 'var(--pg-shadow-lg)', 'translateY(-3px)', '0 1px 2px rgba(16, 24, 40, 0.08)', '0 6px 14px -4px rgba(16, 24, 40, 0.2)'),
-            'crisp' => array('0 1px 2px rgba(0, 0, 0, 0.06)', '0 3px 8px rgba(0, 0, 0, 0.1)', '0 10px 26px rgba(0, 0, 0, 0.14)', '0 1px 2px rgba(0, 0, 0, 0.05)', 'var(--pg-shadow)', 'none', 'none', 'none'),
-            'deep'  => array('0 2px 6px rgba(0, 0, 0, 0.1)', '0 12px 28px -8px rgba(0, 0, 0, 0.25)', '0 30px 60px -18px rgba(0, 0, 0, 0.35)', 'var(--pg-shadow)', 'var(--pg-shadow-lg)', 'translateY(-4px)', '0 4px 10px -4px rgba(0, 0, 0, 0.3)', '0 10px 20px -6px rgba(0, 0, 0, 0.35)'),
-            'glow'  => array('0 2px 8px -2px color-mix(in srgb, var(--pg-primary) 18%, transparent)', '0 10px 26px -10px color-mix(in srgb, var(--pg-primary) 30%, transparent)', '0 24px 48px -16px color-mix(in srgb, var(--pg-primary) 38%, transparent)', '0 8px 24px -10px color-mix(in srgb, var(--pg-primary) 28%, transparent)', '0 20px 40px -14px color-mix(in srgb, var(--pg-primary) 40%, transparent)', 'translateY(-5px)', '0 4px 12px -6px color-mix(in srgb, var(--pg-primary) 50%, transparent)', '0 10px 20px -8px color-mix(in srgb, var(--pg-primary) 55%, transparent)'),
-            'hard'  => array('3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', 'translate(-3px, -3px)', '3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)'),
-        );
+        $shadows = _pg_design_look_shadows();
         list($s_sm, $s_md, $s_lg, $card, $card_h, $card_t, $btn, $btn_h) = $shadows[$pick['shadow']];
         $t['--pg-shadow-sm']          = $s_sm;
         $t['--pg-shadow']             = $s_md;

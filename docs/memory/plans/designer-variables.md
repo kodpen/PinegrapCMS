@@ -19,7 +19,7 @@ priority: 7
 - "Export" and "Import" of the tab: a JSON file in the Design Tokens community format; the Figma import fills the same model.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- DV1 (M) The model, pure: the list, defaults from a look and palette, the stylesheet writer and reader, contrast check of text on surface; tests.
+- DV1 (M) The model, pure: the list, defaults from a look and palette, the stylesheet writer and reader, contrast check of text on surface; tests. Done: PR #PRNUM (`designer/design-variables-model.md`).
 - DV2 (M) after DV1: the Variables tab, canvas, preview and site loading the file.
 - DV3 (M) after DV2: the Options controls offering variables, the chip, "Used in n places".
 - DV4 (S) after DV2: the start questions as a part the New design window and the tab call.
