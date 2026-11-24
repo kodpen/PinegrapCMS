@@ -243,6 +243,7 @@ $query =
         use_folder_name_for_default_value,
         wysiwyg,
         multiple,
+        maxlength,
         contact_field,
         office_use_only,
         upload_folder_id,
@@ -341,6 +342,13 @@ foreach ($fields as $field) {
     if ($liveform->field_in_session('rows_' . $field['id'])) {
         $liveform->assign_field_value('rows_' . $field['id'], '');
     }
+}
+
+// An upload field the form did not draw for this visitor takes no file: the
+// checks below skip such a field, so a file posted for it anyway would be
+// placed unchecked (its name, its size, PHP's error code).
+foreach (pg_cf_undrawn_upload_ids($fields, $office_use_only, $sms_question_dropped) as $undrawn_upload_id) {
+    $_FILES[$undrawn_upload_id] = array('name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0);
 }
 
 // A collection's rows fields (includes/fn/collection_rows.php): the posted
@@ -447,6 +455,18 @@ foreach ($fields as $field_key => $field) {
         // if field has time type and there is not already an error for this field and user entered value for field and submitted time is invalid, prepare error
         if (($field['type'] == 'time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_time($liveform->get_field_value($field['id'])) == false)) {
             $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+        }
+
+        // The field's maximum length, which the browser holds the visitor to
+        // with maxlength; anything can POST to this script. A rich text area
+        // is left out: its value is HTML, not the text that was counted.
+        if (
+            in_array($field['type'], array('text box', 'text area', 'email address'), true)
+            && !(($field['type'] == 'text area') && ($field['wysiwyg'] == 1))
+            && ($liveform->check_field_error($field['id']) == false)
+            && pg_cf_value_too_long($liveform->get_field_value($field['id']), $field['maxlength'] ?? 0)
+        ) {
+            $liveform->mark_error($field['id'], lang(array('string'=>'{var:1} can be at most {var:2} characters long.','vars'=>array(h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']), (int) $field['maxlength']))));
         }
 
         // Pattern validation, when the field carries one.
@@ -994,21 +1014,15 @@ if ($liveform->check_form_errors() == false) {
             $query = "SELECT email_address FROM form_field_options WHERE (form_field_id = '" . escape($field['id']) . "') AND (email_address != '') AND ($where)";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
-            // loop through results and add them to array
+            // An option may hold several addresses, separated by commas; each
+            // is added once (pg_cf_option_admin_addresses()).
+            $option_email_addresses = $administrator_email_addresses;
+
             while ($row = mysqli_fetch_assoc($result)) {
-                // We support multiple conditional admin email addresses, separated by comma,
-                // (e.g. ^^example1@example.com,example2@example.com^^), so deal with that.
-                $conditional_email_addresses = explode(',', $row['email_address']);
-
-                foreach ($conditional_email_addresses as $conditional_email_address) {
-                    $conditional_email_address = trim($conditional_email_address);
-
-                    // if this e-mail address has not already been added to the array, then add it
-                    if (in_array($conditional_email_address, $administrator_email_addresses) == false) {
-                        $administrator_email_addresses[] = $conditional_email_address;
-                    }
-                }
+                $option_email_addresses[] = $row['email_address'];
             }
+
+            $administrator_email_addresses = pg_cf_option_admin_addresses($option_email_addresses);
         }
     }
 
