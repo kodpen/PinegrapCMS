@@ -11,7 +11,7 @@ description: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses,
 - PP3 (M) (done, #11131, `commerce/pick-pack-waves.md`) after PP1b: Orders › "Pick waves": make by hand or rule, the pick list on paper and phone, the order code on the packing slip. Features: K3, K5, K6, K7. Not built: a wave made by hand from the orders list ("Add to a wave"); `pg_pick_wave_make()` already takes the chosen addresses.
 - PP4 (M) (done, #11218, `commerce/pick-pack-pack.md`) after PP1b: the pack screen (scanner, typed code, camera), the checked pack with its label and the marketplace accept, `order.packed`. Features: K8, K11, K12, K15 (packed).
 - PP4b (S) after PP4: the site switch, off by default, that makes a checked pack a must before a label (K12): where it is kept and every label path that reads it (Create Label, Create Labels, the automatic label, the API).
-- PP5 (S) after PP4: short picks with the count fix, the `pack_short` alert in `includes/fn/ops_alerts.php` (shared with sales-watch SW1: check the open PRs) and event, the Packing card. Features: K13, K14, K15 (short).
+- PP5 (S) (in progress) after PP4: short picks with the count fix, the `pack_short` alert in `includes/fn/ops_alerts.php` (shared with sales-watch SW1: check the open PRs) and event, the Packing card. Features: K13, K14, K15 (short).
 - PP6 (S) after PP3 and PP4: the API routes and types (`php tools/check_api_schema.php`), the MCP read tool. Feature: K16.
 - PP7 (S) close-out: every K number checked against the code with its PR; `commerce/pick-pack.md` written, `commerce/stock-locations-model.md` and `commerce/shipment-labels.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
