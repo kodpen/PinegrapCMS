@@ -35,4 +35,4 @@ module: pick_waves
 ## What was not checked?
 - The functions ran on a MariaDB with sample orders (make, ticks, a leaver, close, delete); the screens were not opened in a browser.
 
-Related: docs/memory/commerce/pick-pack-rules.md, docs/memory/commerce/pick-pack-tables.md, docs/memory/plans/pick-pack-steps.md
+Related: docs/memory/commerce/pick-pack-rules.md, docs/memory/commerce/pick-pack-tables.md, docs/memory/commerce/pick-pack.md

@@ -26,4 +26,4 @@ module: product_bins
 ## What guards it?
 - `tests/product_bins_test.php`: the cleaner, screen values, posted boxes, the stock card's rows (one box a location, beside its count), import columns and rows, Modify Selected's one entry, the API param and its order. No browser run.
 
-Related: docs/memory/commerce/pick-pack-tables.md, docs/memory/commerce/stock-locations-screens.md, docs/memory/plans/pick-pack-steps.md
+Related: docs/memory/commerce/pick-pack-tables.md, docs/memory/commerce/stock-locations-screens.md, docs/memory/commerce/pick-pack.md

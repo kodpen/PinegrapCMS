@@ -7,6 +7,7 @@ module: stock_locations
 ## Which tables hold it?
 - `stock_locations` (name, address, enabled, is_default, sort_order), `product_stock` (one row per product and location, `quantity` INT UNSIGNED, primary key on the pair), `stock_moves` (signed `delta`, `quantity_after` at the location, `reason`, `ref`, `note`, `user_id`, `created_at`). `shipping_methods.stock_location_id` and `orders.stock_location_id` (0 = the default) name where an order ships from. Step `upgrade_2026_11_0_stock_locations()` (11.0.162) creates them and moves no data.
 - Read only after `pg_stock_ready()`; whether the site uses locations is `pg_stock_has_locations()`, one cached COUNT per request (pass `true` to read again).
+- A shelf address per product and location is not here: `product_bins`, written by pick and pack (`pick-pack.md`). A short pick's count fix goes through `pg_stock_set()` with reason `count`.
 
 ## What is the sum rule?
 - Once a product has rows, `products.inventory_quantity` is the sum of them and is written only by `pg_stock_change()` / `pg_stock_set()`. Every reader of the total (catalogue, cart, completion, marketplaces, ERP, API) is unchanged.
