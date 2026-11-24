@@ -349,25 +349,19 @@ function pg_waiting_estimate($place, $service, $ahead, $now)
 }
 
 /**
- * A new number at a place, when the way is open and the hours, the daily
- * cap and the closing time allow it. The day's count is the service's last
- * plus one; two numbers taken at once meet on the unique key and the later
- * one takes the next count. Its "taken" notice is sent. With "I have a
- * booking" the day's booking made with the phone or e-mail is named on
- * the number, which then stands at the booked time within the grace
- * window; a person with a booking is held back only by the hours, never
- * by the daily cap or the closing estimate.
+ * What pg_waiting_take() checks before it writes: the way, the hours, the
+ * daily cap, the closing time and the booking named. The API's rehearsal
+ * runs it too, so a rehearsal meets the same refusals as the real take.
  *
- * @param array    $place  pg_waiting_place_get()
- * @param array    $values pg_waiting_join_input() values
- * @param string   $way    qr, site, kiosk or staff
- * @param int|null $now
- * @return array ok, error (pg_waiting_join_refusal() code or 'way', 'booking', 'write'), id, token, number
+ * @param array  $place  pg_waiting_place_get()
+ * @param array  $values pg_waiting_join_input() values
+ * @param string $way    qr, site, kiosk or staff
+ * @param int    $now
+ * @return array error ('' when allowed, else as pg_waiting_take()), day, letter, ahead, booking
  */
-function pg_waiting_take($place, $values, $way, $now = null)
+function pg_waiting_take_check($place, $values, $way, $now)
 {
-    $now = ($now === null) ? time() : (int) $now;
-    $result = array('ok' => false, 'error' => 'way', 'id' => 0, 'token' => '', 'number' => '');
+    $result = array('error' => 'way', 'day' => 0, 'letter' => '', 'ahead' => 0, 'booking' => null);
 
     if (!pg_waiting_way_open($place, $way)) {
         return $result;
@@ -387,22 +381,53 @@ function pg_waiting_take($place, $values, $way, $now = null)
     $ahead = pg_waiting_join_ahead($waiting, $values['service'], (string) ($values['priority'] ?? ''), 0, $now, $grace);
     $taken = (int) db_value("SELECT COUNT(*) FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND day = '" . $day . "'");
     $closes = pg_waiting_closes_at($place['hours'], $place['exceptions'], $now, new DateTimeZone(date_default_timezone_get()));
-    $result['error'] = pg_waiting_join_refusal($taken, $place['settings']['cap'], pg_waiting_estimate($place, $values['service'], $ahead + 1, $now), $now, $closes);
+    $error = pg_waiting_join_refusal($taken, $place['settings']['cap'], pg_waiting_estimate($place, $values['service'], $ahead + 1, $now), $now, $closes);
     $booking = null;
 
-    if (!empty($values['booking']) && ($result['error'] !== 'closed')) {
+    if (!empty($values['booking']) && ($error !== 'closed')) {
         $booking = pg_waiting_booking_find($place, $values['phone'], $values['email'], $now);
-        $result['error'] = $booking ? '' : 'booking';
-    }
-
-    if ($result['error'] !== '') {
-        return $result;
+        $error = $booking ? '' : 'booking';
     }
 
     // A booking stands at its booked time: the people ahead are counted again.
-    if ($booking !== null) {
+    if (($error === '') && ($booking !== null)) {
         $ahead = pg_waiting_join_ahead($waiting, $values['service'], (string) ($values['priority'] ?? ''), (int) $booking['start_at'], $now, $grace);
     }
+
+    return array('error' => $error, 'day' => $day, 'letter' => $letter, 'ahead' => $ahead, 'booking' => $booking);
+}
+
+/**
+ * A new number at a place, when the way is open and the hours, the daily
+ * cap and the closing time allow it. The day's count is the service's last
+ * plus one; two numbers taken at once meet on the unique key and the later
+ * one takes the next count. Its "taken" notice is sent. With "I have a
+ * booking" the day's booking made with the phone or e-mail is named on
+ * the number, which then stands at the booked time within the grace
+ * window; a person with a booking is held back only by the hours, never
+ * by the daily cap or the closing estimate.
+ *
+ * @param array    $place  pg_waiting_place_get()
+ * @param array    $values pg_waiting_join_input() values
+ * @param string   $way    qr, site, kiosk or staff
+ * @param int|null $now
+ * @return array ok, error (pg_waiting_join_refusal() code or 'way', 'booking', 'write'), id, token, number
+ */
+function pg_waiting_take($place, $values, $way, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $result = array('ok' => false, 'error' => 'way', 'id' => 0, 'token' => '', 'number' => '');
+    $check = pg_waiting_take_check($place, $values, $way, $now);
+
+    if ($check['error'] !== '') {
+        $result['error'] = $check['error'];
+        return $result;
+    }
+
+    $day = $check['day'];
+    $letter = $check['letter'];
+    $booking = $check['booking'];
+    $ahead = $check['ahead'];
 
     // Few ahead already: the "taken" notice says so, no second one.
     $notices = pg_waiting_ahead_due($ahead, $place['settings']['notices']['ahead'], 0) ? pg_waiting_notice_bit('ahead') : 0;

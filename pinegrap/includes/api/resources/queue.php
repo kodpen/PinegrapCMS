@@ -382,9 +382,13 @@ function api_queue_tickets_create($params) {
 
 	}
 
-	if (!pg_waiting_way_open($place, $way)) {
+	// The hours, the cap and the closing time, as the take itself checks
+	// them: a rehearsal meets the same 409.
+	$check = pg_waiting_take_check($place, $read['values'], $way, time());
 
-		api_fail(409, 'queue_closed', pg_waiting_refusal_text('way', $place));
+	if ($check['error'] !== '') {
+
+		api_fail(409, ($check['error'] === 'way') ? 'queue_closed' : 'join_refused', pg_waiting_refusal_text($check['error'], $place));
 
 	}
 
