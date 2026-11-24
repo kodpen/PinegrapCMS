@@ -108,7 +108,7 @@
 - bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean [decision: here]
 - bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean [decision: decisions-made-schema-26.md]
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
-- bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
+- bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
 - coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken [decision: here]

@@ -1522,7 +1522,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), both fixed in #10838, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
-- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
+- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
