@@ -300,8 +300,38 @@ function pg_pick_waves_sync_leavers($wave_id = 0)
         if ($leavers) {
             db("UPDATE pick_wave_orders SET removed_at = '" . time() . "'
                 WHERE wave_id = '" . (int) $id . "' AND removed_at = 0 AND ship_to_id IN (" . implode(',', array_map('intval', $leavers)) . ")");
+            pg_pick_wave_status_sync($id);
         }
     }
+}
+
+/**
+ * Works a wave's status out again from the lines left on its list, after
+ * an order left it: the rest all ticked is All picked, nothing left is Open.
+ * Under the lock a tick takes.
+ *
+ * @param int $wave_id
+ * @return void
+ */
+function pg_pick_wave_status_sync($wave_id)
+{
+    $lock = pg_pick_waves_lock_name() . '_' . (int) $wave_id;
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+        return;
+    }
+
+    $wave = pg_pick_wave($wave_id);
+
+    if ($wave) {
+        $status = pg_pick_wave_status_now($wave['status'], pg_pick_wave_lines($wave_id), $wave['picked']);
+
+        if ($status !== $wave['status']) {
+            db("UPDATE pick_waves SET status = '" . (int) $status . "' WHERE id = '" . (int) $wave_id . "' AND status <> '" . PG_WAVE_CLOSED . "'");
+        }
+    }
+
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 }
 
 /**
@@ -457,6 +487,8 @@ function pg_pick_wave_addresses($wave_id)
  *
  * @param int $wave_id
  * @return array pg_pick_list_totals() lines, each with 'image' ('' none)
+ *               and 'location' (its name when the list spans more than
+ *               one location, else '')
  */
 function pg_pick_wave_lines($wave_id)
 {
@@ -503,13 +535,12 @@ function pg_pick_wave_lines($wave_id)
 
     $images = array();
     $rows = array();
+    $default_location_id = pg_pick_location_of(0);
 
     foreach ($items as $item) {
         $product_id = (int) $item['product_id'];
         $location_id = pg_pick_location_of($item['stock_location_id']);
-
-        // An address typed before the first location was added stays at 0.
-        $bin = isset($bins[$product_id][$location_id]) ? $bins[$product_id][$location_id] : (isset($bins[$product_id][0]) ? $bins[$product_id][0] : '');
+        $bin = pg_pick_line_bin(isset($bins[$product_id]) ? $bins[$product_id] : array(), $location_id, $default_location_id);
         $name = trim(strip_tags((string) $item['short_description']));
 
         $rows[] = array(
@@ -525,7 +556,15 @@ function pg_pick_wave_lines($wave_id)
         $images[$product_id] = (string) $item['image_name'];
     }
 
-    $lines = pg_pick_list_totals($rows);
+    $names = array();
+
+    if (pg_stock_has_locations()) {
+        foreach (pg_stock_locations() as $location) {
+            $names[(int) $location['id']] = (string) $location['name'];
+        }
+    }
+
+    $lines = pg_pick_list_location_names(pg_pick_list_totals($rows), $names);
 
     foreach ($lines as $i => $line) {
         $lines[$i]['image'] = isset($images[$line['product_id']]) ? $images[$line['product_id']] : '';

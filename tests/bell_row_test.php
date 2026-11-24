@@ -72,12 +72,14 @@ function test_bell_row_module_of_every_known_action()
 		'content_dismissed' => 'content',
 		'content_stale'     => 'content',
 		'prototype_comment' => 'content',
+		'prototype_verdict' => 'content',
 		'workspace'        => 'team',
 		'software_update'  => 'system',
 		'mail_failed'      => 'system',
 		'ops'              => 'system',
 		'profile_flows'    => 'system',
 		'privacy_request'  => 'system',
+		'launch_answer'    => 'system',
 		'bundle_held'      => 'content',
 	);
 	$known = bell_row_known_actions();

@@ -86,6 +86,11 @@ function pg_panel_actions()
         // away anyone above role 1; the handlers check the session and the
         // token for themselves.
         'user_online_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_user_online_check', 'exempt' => true, 'token' => true, 'write' => true),
+        // The session's current form token, for a page whose own token went
+        // stale while the person stayed signed in (a remember-me sign-in
+        // renewed it after the server dropped the session). Every signed-in
+        // role; it reads, so it needs no token of its own.
+        'session_token' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_session_token', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'sitemap_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_sitemap_check', 'exempt' => true, 'token' => true, 'write' => true),
         'get_widget_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widget_data', 'exempt' => true, 'token' => false, 'write' => false),
         'get_widgets_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widgets_data', 'exempt' => true, 'token' => false, 'write' => false),
@@ -117,6 +122,9 @@ function pg_panel_actions()
         // role's lock.
         'dashboard_personal_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_personal_save', 'exempt' => true, 'token' => true, 'write' => true),
         'launch_journey_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_launch_journey_save', 'exempt' => false, 'token' => true, 'write' => true),
+        // The agency summary's lines and link: administrators, as the set-up
+        // card; the handler checks the role.
+        'launch_summary' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_launch_summary', 'exempt' => false, 'token' => true, 'write' => true),
         // Site-wide, so it keeps the general gate.
         'update_dashboard_appearance' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_appearance', 'exempt' => false, 'token' => true, 'write' => true),
         // Noting that someone has watched a guided tour is theirs to do
@@ -367,7 +375,7 @@ function pg_panel_actions()
         'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
         'ws_flow_publish', 'ws_flow_pause', 'ws_flow_resume', 'ws_flow_bin',
         'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
-        'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_template_setup',
+        'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_tidy', 'ws_flow_template_setup',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_ai_sketch', 'ws_flow_quick_setup',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove', 'ws_flow_web_address',

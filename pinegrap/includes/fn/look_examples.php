@@ -1238,7 +1238,7 @@ function pg_look_examples_canvas_tools_pattern()
     return array(
         'id'      => 'pattern-canvas-tools',
         'title'   => lang('Canvas tools'),
-        'classes' => array('.wsf-palette', '.wsf-palette-rail', '.wsf-palette-rail-open', '.wsf-palette-rail-group', '.wsf-palette-panel', '.wsf-palette-top', '.wsf-palette-search', '.wsf-palette-groups', '.wsf-palette-head', '.wsf-palette-item', '.wsf-palette-tip', '.wsf-strip', '.wsf-strip-divider', '.wsf-zoom-label', '.pg-button-fill', '.pg-icon-button'),
+        'classes' => array('.wsf-palette', '.wsf-palette-rail', '.wsf-palette-rail-open', '.wsf-palette-rail-group', '.wsf-palette-panel', '.wsf-palette-top', '.wsf-palette-search', '.wsf-palette-groups', '.wsf-palette-head', '.wsf-palette-item', '.wsf-palette-tip', '.wsf-strip', '.wsf-strip-divider', '.wsf-zoom-label', '.wsf-map', '.wsf-map-boxes', '.wsf-map-box', '.wsf-map-view', '.pg-button-fill', '.pg-icon-button'),
         'html'    => '<div class="pgc-stage pg-look-tools">'
             . '<div class="wsf-palette"><div class="wsf-palette-rail" role="group" aria-label="' . h(lang('Add a box')) . '">'
             . $icon('bi-plus-lg', lang('Add a box'), 'pg-button pg-button-fill wsf-palette-rail-open')
@@ -1263,9 +1263,22 @@ function pg_look_examples_canvas_tools_pattern()
             . '<div class="wsf-strip" role="group" aria-label="' . h(lang('Canvas tools')) . '">'
             . $icon('bi-arrow-counterclockwise', lang('Undo')) . $icon('bi-arrow-clockwise', lang('Redo change')) . $divider
             . $icon('bi-dash-lg', lang('Zoom out')) . '<span class="wsf-zoom-label">100%</span>' . $icon('bi-plus-lg', lang('Zoom in')) . $icon('bi-arrows-fullscreen', lang('Fit to the screen')) . $divider
+            . '<button type="button" class="pg-button pg-button-ghost pg-button-sm wsf-tidy" title="' . h(lang('Place the boxes in columns by the order of their steps; with several boxes chosen, only those')) . '"><i class="bi bi-magic" aria-hidden="true"></i>' . h(lang('Tidy')) . '</button>'
             . str_replace('<button type="button"', '<button type="button" aria-pressed="true"', $icon('bi-bezier2', lang('Data threads')))
-            . '</div></div>'
-            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: the add rail floats at the canvas\'s top left, a filled "+" and an icon for each group with its name as tooltip; "+" opens the list as a card beside the rail, a group\'s icon opens it at that group. Esc, a box added or a click on the canvas closes it. The bottom strip, centred over the canvas, holds Undo, Redo, the zoom, Fit and the data threads; a pressed tool shows the quiet fill.')) . '</p>',
+            . $icon('bi-sticky', lang('Note'))
+            . str_replace('<button type="button"', '<button type="button" aria-pressed="true"', $icon('bi-map', lang('Map of the flow')))
+            . '</div>'
+            . '<div class="wsf-map" role="img" aria-label="' . h(lang('Map of the flow')) . '"><div class="wsf-map-boxes">'
+            . '<span class="wsf-map-box" style="left: 10px; top: 40px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 40px; top: 40px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 70px; top: 30px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 70px; top: 52px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 100px; top: 30px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 130px; top: 52px; width: 18px; height: 7px"></span>'
+            . '</div><div class="wsf-map-view" style="left: 6px; top: 20px; width: 90px; height: 54px"></div></div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: the add rail floats at the canvas\'s top left, a filled "+" and an icon for each group with its name as tooltip; "+" opens the list as a card beside the rail, a group\'s icon opens it at that group. Esc, a box added or a click on the canvas closes it. The bottom strip, centred over the canvas, holds Undo, Redo, the zoom, Fit and the data threads; a pressed tool shows the quiet fill.')) . '</p>'
+            . '<p class="pg-text-meta">' . h(lang('Tidy on the strip places the boxes again in columns by the order of their steps, frames round their boxes. The map at the bottom left shows the whole flow small with the part on screen framed; a drag on it moves the canvas. It shows by itself from 12 boxes, or when Map is pressed.')) . '</p>',
     );
 }
 

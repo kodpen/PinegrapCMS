@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-canvas-tools
-description: The flow canvas's tools (FE2): the add rail with group icons and the list as a card beside it; the bottom strip with Undo, Redo, zoom, Fit, Data threads; no palette column
+description: The flow canvas's tools (FE2): the add rail with group icons and the list as a card beside it; the bottom strip with Undo, Redo, zoom, Fit, Tidy, Data threads, Note, Map; no palette column
 ---
 
 ## What changed, and why?
@@ -16,10 +16,9 @@ description: The flow canvas's tools (FE2): the add rail with group icons and th
 - Keyboard: Tab reaches the rail from the canvas's area; F6 stops on the card while it is open; the Keyboard list names the rail (`fl_key_rail`).
 
 ## What is the bottom strip? (drawStrip())
-- 44 px, centred 16 px over the canvas's bottom, on the floating surface: Undo and Redo (while the draft is edited), a divider, zoom out, the percent, zoom in, Fit, a divider, Data threads, Note (while the draft may change, `workspace-flows-notes-frames.md`). `pg-icon-button pg-icon-button-sm`, name as tooltip and `aria-label`; a pressed one by the quiet fill. Its group is named "Canvas tools" (`fl_strip`).
+- 44 px, centred 16 px over the canvas's bottom, on the floating surface: Undo and Redo (while the draft is edited), a divider, zoom out, the percent, zoom in, Fit, a divider, Tidy with its word (while the draft may change), Data threads, Note (while the draft may change, `workspace-flows-notes-frames.md`), Map (`workspace-flows-tidy-map.md`). `pg-icon-button pg-icon-button-sm`, name as tooltip and `aria-label`; a pressed one by the quiet fill. Its group is named "Canvas tools" (`fl_strip`).
 - Redrawn with the bar (`drawBar()` calls it): the buttons follow the flow shown, a run shown has no Undo. Hidden with the List view, so List has no threads toggle.
 - An embedded drawing (`workspace-flow-embed.md`) has the zoom and Fit alone.
-- Tidy and Map join it in FE9.
 
 ## What is known not to fit yet?
 - Fit (the canvas core, `pg_graph_canvas.js`) keeps 48 px clear of the edges and knows neither the rail nor the strip: a box may be fitted under them.

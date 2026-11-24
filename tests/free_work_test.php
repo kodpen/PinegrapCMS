@@ -300,6 +300,63 @@ function test_free_work_landed_steps_from_the_log()
 	pg_assert_same(10812, free_work_holder('ad-conversions', 'SC2', $landed));
 }
 
+// A git command run in $dir with a fixed identity and, when given, a fixed
+// commit date; false when it fails.
+function pg_free_work_git($dir, $args, $date = '')
+{
+	$env = ($date !== '') ? 'GIT_AUTHOR_DATE=' . escapeshellarg($date) . ' GIT_COMMITTER_DATE=' . escapeshellarg($date) . ' ' : '';
+	exec($env . 'git -C ' . escapeshellarg($dir) . ' -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false ' . $args . ' >/dev/null 2>&1', $out, $code);
+
+	return $code === 0;
+}
+
+function pg_free_work_rmdir($dir)
+{
+	exec('rm -rf ' . escapeshellarg($dir));
+}
+
+function test_free_work_landed_pr_older_than_sixty_days_counts()
+{
+	$source = sys_get_temp_dir() . '/pg-free-work-src-' . getmypid();
+	$mirror = sys_get_temp_dir() . '/pg-free-work-mirror-' . getmypid() . '.git';
+	pg_free_work_rmdir($source);
+	pg_free_work_rmdir($mirror);
+	mkdir($source);
+
+	$old = gmdate('Y-m-d\TH:i:s\Z', time() - 200 * 86400);
+	$made = pg_free_work_git($source, 'init -q -b development')
+		&& pg_free_work_git($source, 'commit -q --allow-empty -m ' . escapeshellarg('[plan:old-plan] OP1 — first step (#9001)'), $old)
+		&& pg_free_work_git($source, 'commit -q --allow-empty -m ' . escapeshellarg('Merge train 20261120-2105'));
+
+	if (!$made) {
+		pg_free_work_rmdir($source);
+		pg_assert_true(false, 'git could not make the test repository');
+
+		return;
+	}
+
+	// The clone's own history: the PR of 200 days ago is landed.
+	$landed = free_work_landed((array) free_work_log_subjects($source, 'development'));
+	pg_assert_same(9001, free_work_holder('old-plan', 'OP1', $landed));
+	pg_assert_same(0, free_work_holder('old-plan', 'OP2', $landed));
+
+	// The commits-only mirror: made, then brought up to date.
+	$ref = free_work_history_mirror('file://' . $source, $mirror);
+	pg_assert_same('refs/heads/development', $ref);
+	pg_assert_same(9001, free_work_holder('old-plan', 'OP1', free_work_landed((array) free_work_log_subjects($mirror, (string) $ref))));
+
+	pg_free_work_git($source, 'commit -q --allow-empty -m ' . escapeshellarg('[plan:old-plan] OP2 — second step (#9002)'));
+	pg_assert_same('refs/heads/development', free_work_history_mirror('file://' . $source, $mirror));
+	$landed = free_work_landed((array) free_work_log_subjects($mirror, 'refs/heads/development'));
+	pg_assert_same(9001, free_work_holder('old-plan', 'OP1', $landed));
+	pg_assert_same(9002, free_work_holder('old-plan', 'OP2', $landed));
+
+	pg_assert_same(null, free_work_log_subjects($source, 'no-such-branch'));
+
+	pg_free_work_rmdir($source);
+	pg_free_work_rmdir($mirror);
+}
+
 function test_free_work_steps_skip_notes_on_a_step()
 {
 	$text = "## Which steps are there?\n- CX9 AI providers, after CX2 has landed.\n- CX9 done in two: CX9a #10470, CX9b #10493.\n"

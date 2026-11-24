@@ -420,6 +420,50 @@ function pg_pick_wave_rule_clean(array $in, $today)
 }
 
 /**
+ * A pick list line's shelf address at its location. An address kept at
+ * location 0 was typed before the first location was added and belongs to
+ * the default location only: another location without its own address has
+ * none, never the default location's shelf.
+ *
+ * @param array $bins                location_id => address of one product
+ * @param int   $location_id         where the line is picked
+ * @param int   $default_location_id the default location, 0 without
+ *                                   locations
+ * @return string '' when none
+ */
+function pg_pick_line_bin(array $bins, $location_id, $default_location_id)
+{
+    $location_id = (int) $location_id;
+
+    if (isset($bins[$location_id])) {
+        return (string) $bins[$location_id];
+    }
+
+    return ($location_id === (int) $default_location_id && isset($bins[0])) ? (string) $bins[0] : '';
+}
+
+/**
+ * Names each pick list line's location when the list spans more than one,
+ * so two lines of one product at two locations are told apart.
+ *
+ * @param array $lines pg_pick_list_totals() lines
+ * @param array $names location_id => name
+ * @return array the lines, each with 'location' ('' on a list of one
+ *               location)
+ */
+function pg_pick_list_location_names(array $lines, array $names)
+{
+    $several = count(array_unique(array_map('intval', array_column($lines, 'location_id')))) > 1;
+
+    foreach ($lines as $i => $line) {
+        $id = (int) (isset($line['location_id']) ? $line['location_id'] : 0);
+        $lines[$i]['location'] = ($several && isset($names[$id])) ? (string) $names[$id] : '';
+    }
+
+    return $lines;
+}
+
+/**
  * The key of a pick list line, as the wave's picked list keeps it.
  *
  * @param int $product_id
@@ -513,6 +557,22 @@ function pg_pick_wave_status_after($status, $done, $total)
 }
 
 /**
+ * A wave's status from the lines on its list now and its ticked keys: what
+ * a tick works out, and what an order leaving the wave changes.
+ *
+ * @param int   $status PG_WAVE_*
+ * @param array $lines  the wave's pick list lines
+ * @param array $picked the wave's ticked line keys
+ * @return int PG_WAVE_*
+ */
+function pg_pick_wave_status_now($status, array $lines, array $picked)
+{
+    $list = pg_pick_list_ticked($lines, $picked);
+
+    return pg_pick_wave_status_after($status, $list['done'], $list['total']);
+}
+
+/**
  * How a ship-by day reads against today: 'late' before today, 'today' on
  * it, '' after it or when no day is known.
  *
@@ -572,7 +632,8 @@ function pg_pick_single_item_address(array $rows, $product_id)
  * The verdict on one product scan at the pack screen.
  *
  * Codes: 'good' (counts one unit on 'line'), 'not_found' (no product has the
- * code), 'binned' (the product is in the Recycle Bin), 'too_many' (every
+ * code), 'binned' (a product in the Recycle Bin that the address does not
+ * want), 'too_many' (every
  * unit of the product on the address is scanned already), 'wrong_variant'
  * (another product of a variant group the address wants: 'line' is the
  * wanted line, 'options' what was scanned, 'wanted_options' what the line
@@ -593,10 +654,6 @@ function pg_pack_scan_verdict(array $lines, $product)
         return array('verdict' => 'not_found', 'line' => null);
     }
 
-    if (!empty($product['binned'])) {
-        return array('verdict' => 'binned', 'line' => null);
-    }
-
     $id = (int) $product['id'];
     $on_address = false;
 
@@ -614,6 +671,12 @@ function pg_pack_scan_verdict(array $lines, $product)
 
     if ($on_address) {
         return array('verdict' => 'too_many', 'line' => null);
+    }
+
+    // Only a product the address does not want: one moved to the Recycle
+    // Bin after the order was paid is still sent.
+    if (!empty($product['binned'])) {
+        return array('verdict' => 'binned', 'line' => null);
     }
 
     $group_id = (int) (isset($product['group_id']) ? $product['group_id'] : 0);

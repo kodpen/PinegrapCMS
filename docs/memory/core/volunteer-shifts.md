@@ -9,7 +9,7 @@ description: Volunteer shifts features G1 to G16 (Contacts › Volunteers, volun
 ## What are programmes and volunteers? (G1 to G4)
 - G1, a programme: name, coordinators, application form, roles (skills, trainings, documents), cut-off (24 hours by default), minimum age. #11136, `volunteer-programmes.md`.
 - G2, a profile from an application on the form: skills, free days, trainings (a site course completed), state Applied, Active, Paused, Left. Store #10949 (`volunteer-store.md`), application #11136; "Upload a new one" #11279 (`volunteer-document-upload.md`).
-- G3, Approve with the welcome e-mail; Pause and Mark as left by a coordinator. #11136, `volunteer-programmes.md`. Not built: the volunteer pausing or leaving by themselves (the page says to ask the coordinator); asked of the architect in the close-out PR.
+- G3, Approve with the welcome e-mail; Pause and Mark as left by a coordinator (#11136, `volunteer-programmes.md`); the volunteer's own "Pause my volunteering" and "Leave the programme", coming sign-ups given up, one coordinator e-mail (#11342, `volunteer-self-move.md`).
 - G4, documents with a valid-until date, the file behind `get_file.php` (#10949, `volunteer-document-file.md`); notices 30 and 7 days before (#11250, `volunteer-messages.md`); an expired document takes no sign-up (`pg_volunteer_fits()`, #10922, `volunteer-shift-rules.md`).
 
 ## How are shifts made and filled? (G5 to G10)

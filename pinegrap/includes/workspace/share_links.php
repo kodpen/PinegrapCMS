@@ -26,7 +26,8 @@
  * (ws_share_links_sweep()).
  *
  * The address (workspace_share.php) asks ws_share_link_answer() what to
- * send: the file, or one 404 for every fault. An open is counted once a
+ * send: the file, the read-only page of a note, a table or a checklist, or
+ * one 404 for every fault. An open is counted once a
  * minute a link at most (ws_share_link_count_open()).
  *
  * @author      Erdal Güral (Kodpen)
@@ -75,16 +76,16 @@ function ws_share_links_ready()
    --------------------------------------------------------------------------- */
 
 /**
- * The kinds of item a link can be made to now. The address answers these
- * only; a table and a list join as their pages are built. A note is only
- * one written in the channel, which is the channel's (ws_notes.owner_channel_id).
- * Pure.
+ * The kinds of item a link can be made to: a message's file, the channel's
+ * note whose card it is, a table or a checklist written in its text
+ * (share_links_text.php). A note is only one written in the channel, which
+ * is the channel's (ws_notes.owner_channel_id). Pure.
  *
  * @return string[]
  */
 function ws_share_link_kinds()
 {
-    return array('file', 'note');
+    return array('file', 'note', 'table', 'list');
 }
 
 /**
@@ -194,14 +195,16 @@ function ws_share_link_state($link, $now, $channel, $parent, $message, $in_past,
  * Does the item stand in the message? A file is the one the message carries,
  * still in the file manager's table. A note is the one whose card the
  * message is, and it belongs to the message's channel: a person's note shown
- * in the channel is theirs, never handed on by the channel. Pure.
+ * in the channel is theirs, never handed on by the channel. A table or a
+ * checklist is the n-th of its kind in the message's text. Pure.
  *
  * @param array|null $message  ws_messages row
  * @param string     $kind
  * @param int        $item_id
  * @param mixed      $item_row ws_share_link_item_row(): for a file whether its
  *                             files row exists, for a note the ws_notes row
- *                             the message's card shows, or null
+ *                             the message's card shows, for a table or a
+ *                             list its block, or null
  * @return bool
  */
 function ws_share_link_item_in($message, $kind, $item_id, $item_row)
@@ -217,6 +220,10 @@ function ws_share_link_item_in($message, $kind, $item_id, $item_row)
     if ((string) $kind === 'note') {
         return is_array($item_row) && ((int) $item_row['id'] === (int) $item_id)
             && (ws_note_channel_of($item_row) === (int) $message['channel_id']);
+    }
+
+    if (in_array((string) $kind, array('table', 'list'), true)) {
+        return is_array($item_row) && ($item_row['kind'] === (string) $kind) && ((int) $item_row['number'] === (int) $item_id);
     }
 
     return false;
@@ -458,6 +465,10 @@ function ws_share_link_js_strings()
         'sl_share'        => lang('Share by link…'),
         'sl_stop'         => lang('Stop sharing'),
         'sl_stop_ask'     => lang('The address stops working at once.'),
+        'sl_share_table'  => lang('Share table by link…'),
+        'sl_share_list'   => lang('Share checklist by link…'),
+        'sl_stop_table'   => lang('Stop sharing the table'),
+        'sl_stop_list'    => lang('Stop sharing the checklist'),
         'sl_until'        => ws_js_template('Shared by link until {var:1}', 1),
         'sl_ends'         => lang('Ends after'),
         'sl_day'          => lang('1 day'),
@@ -584,7 +595,7 @@ function ws_share_link_note_row($message, $note_id)
 
 /**
  * What ws_share_link_item_in() is given for an item: for a file whether its
- * files row exists, for a note its row.
+ * files row exists, for a note its row, for a table or a list its block.
  *
  * @param array|null $message
  * @param string     $kind
@@ -595,6 +606,10 @@ function ws_share_link_item_row($message, $kind, $item_id)
 {
     if ((string) $kind === 'file') {
         return ws_share_link_file_row($message);
+    }
+
+    if (in_array((string) $kind, array('table', 'list'), true)) {
+        return ws_share_link_text_row($message, (string) $kind, (int) $item_id);
     }
 
     return ((string) $kind === 'note') ? ws_share_link_note_row($message, (int) $item_id) : null;
@@ -612,6 +627,10 @@ function ws_share_link_item_name($message, $kind, $item_row)
 {
     if (((string) $kind === 'note') && is_array($item_row)) {
         return ws_share_link_note_name($item_row);
+    }
+
+    if (in_array((string) $kind, array('table', 'list'), true) && is_array($item_row)) {
+        return ws_share_link_text_name($item_row);
     }
 
     return (string) $message['file_name'];
@@ -664,20 +683,24 @@ function ws_share_link_find($token)
 }
 
 /**
- * The open link of an item, if any: not taken back, not ended.
+ * The open link of an item, if any: not taken back, not ended. A table's or
+ * a checklist's item_id is its number in the message, so the message
+ * tells it apart.
  *
  * @param string $kind
  * @param int    $item_id
  * @param int    $now
+ * @param int    $message_id
  * @return array|null
  */
-function ws_share_link_open_for_item($kind, $item_id, $now)
+function ws_share_link_open_for_item($kind, $item_id, $now, $message_id = 0)
 {
     if (!ws_share_links_ready()) {
         return null;
     }
 
-    $row = db_item("SELECT * FROM ws_share_links WHERE kind = '" . e((string) $kind) . "' AND item_id = '" . (int) $item_id . "'
+    $in_message = in_array((string) $kind, array('table', 'list'), true) ? " AND message_id = '" . (int) $message_id . "'" : '';
+    $row = db_item("SELECT * FROM ws_share_links WHERE kind = '" . e((string) $kind) . "' AND item_id = '" . (int) $item_id . "'" . $in_message . "
         AND revoked_at = 0 AND expires_at > '" . (int) $now . "' ORDER BY expires_at DESC LIMIT 1");
 
     return is_array($row) ? $row : null;
@@ -803,7 +826,7 @@ function ws_share_link_make_check($viewer, $message, $kind, $item_id, $days, $ma
         return $fail(lang(array('string' => 'A link lasts {var:1} days.', 'vars' => str_replace(',', ', ', WS_SHARE_LINK_DAYS))), 'days');
     }
 
-    $open = ws_share_link_open_for_item((string) $kind, (int) $item_id, $now);
+    $open = ws_share_link_open_for_item((string) $kind, (int) $item_id, $now, (int) $message['id']);
 
     if ($open) {
         return $fail(lang(array('string' => 'This item is already shared by link until {var:1}.', 'vars' => date('d.m.Y H:i', (int) $open['expires_at']))), 'item_id');
@@ -1175,9 +1198,13 @@ function ws_channel_share_links($viewer, $channel)
         $own = $channels[$own_id];
         $parent = ($own_id === (int) $channel['id']) ? null : $channel;
         $in_past = function_exists('ws_message_in_past') && ws_message_in_past($message);
-        $row = ((string) $link['kind'] === 'note')
-            ? ($notes[(int) $link['item_id'] . ':' . (int) $message['id']] ?? null)
-            : isset($files[(int) $message['file_id']]);
+        if (in_array((string) $link['kind'], array('table', 'list'), true)) {
+            $row = ws_share_link_text_row($message, (string) $link['kind'], (int) $link['item_id']);
+        } else {
+            $row = ((string) $link['kind'] === 'note')
+                ? ($notes[(int) $link['item_id'] . ':' . (int) $message['id']] ?? null)
+                : isset($files[(int) $message['file_id']]);
+        }
         $present = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], $row);
 
         if (ws_share_link_state($link, $now, $own, $parent, $message, $in_past, $present) !== 'open') {
@@ -1256,7 +1283,8 @@ function ws_share_link_count_open($link, $now = null)
  *
  * @param mixed $token
  * @return array|null kind; a file: link, path, name, mime, disposition; a
- *                    note: link, note, name
+ *                    note: link, note, name; a table or a list: link,
+ *                    message, block, name
  */
 function ws_share_link_answer($token)
 {
@@ -1284,6 +1312,12 @@ function ws_share_link_answer($token)
 
     if ((string) $link['kind'] === 'note') {
         return is_array($found['item']) ? array('kind' => 'note', 'link' => $link, 'note' => $found['item'], 'name' => (string) $found['name']) : null;
+    }
+
+    if (in_array((string) $link['kind'], array('table', 'list'), true)) {
+        return is_array($found['item'])
+            ? array('kind' => (string) $link['kind'], 'link' => $link, 'message' => $message, 'block' => $found['item'], 'name' => (string) $found['name'])
+            : null;
     }
 
     if ((string) $link['kind'] !== 'file') {
@@ -1319,9 +1353,21 @@ function ws_share_link_answer($token)
  */
 function ws_share_link_note_page($answer)
 {
-    $note = $answer['note'];
-    $body = (string) $note['body'];
-    $html = ws_render_body($body, ws_guest_refs(array($body)), null, false, null, null, true);
+    $body = (string) $answer['note']['body'];
+
+    return ws_share_link_page($answer, ws_render_body($body, ws_guest_refs(array($body)), null, false, null, null, true));
+}
+
+/**
+ * A shared item's read-only page around its drawn HTML: the site's name and
+ * the item's name above it, the link's end under it.
+ *
+ * @param array  $answer ws_share_link_answer()
+ * @param string $html   the item as the channel draws it
+ * @return string HTML
+ */
+function ws_share_link_page($answer, $html)
+{
     $software = PATH . SOFTWARE_DIRECTORY;
     $version = function ($file) {
         $path = PG_FUNCTIONS_DIR . $file;

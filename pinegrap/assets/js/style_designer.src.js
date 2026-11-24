@@ -16084,6 +16084,7 @@ const StyleDesigner = (function () {
         '__item_summary': _sdT('A sample product description — short and clear.'),
         '__cart_section_label': _sdT('Cart'),
         '__currency_symbol': _sdCurrencySymbol(),
+        '__currency_code': 'USD',
         '__order_number': 'PG-12345',
         '__order_status': _sdT('Completed'),
         '__shipping_method_name': _sdT('Standard Shipping'),
@@ -44902,7 +44903,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Labels'), tokens: [
             ['__add_button_label',  _sdT('Add button label (the page\'s setting)')],
             ['__skip_button_label', _sdT('Skip button label (the page\'s setting)')],
-            ['__currency_symbol',   _sdT('Currency symbol')]
+            ['__currency_symbol',   _sdT('Currency symbol')],
+            ['__currency_code',     _sdT('Currency code shown beside amounts (empty when the site shows none)')]
         ]},
         { label: _sdT('Product (loop_area)'), tokens: [
             ['__id',                    _sdT('Product ID')],
@@ -49520,10 +49522,17 @@ const StyleDesigner = (function () {
             ['has_quantity',           _sdT('The pick list asks for a quantity (not only donations)')],
             ['has_recipient_choice',   _sdT('The visitor picks who the products are shipped to')],
             ['has_skip_button',        _sdT('The page has a skip button')],
+            ['only_donations',         _sdT('Every product that can be ordered is a donation')],
+            ['not_only_donations',     _sdT('A product that can be ordered is not a donation')],
+            ['selects_by_checkbox_and_quantity', _sdT('The list has both check boxes and quantity boxes')],
+            ['selects_by_checkbox_only', _sdT('The list has check boxes and no quantity box')],
+            ['selects_by_quantity_only', _sdT('The list has quantity boxes and no check box')],
+            ['has_currency_code',      _sdT('The site shows a currency code beside amounts')],
             ['order_form_checkbox',    _sdT('Row: the product is chosen with a check box')],
             ['order_form_quantity',    _sdT('Row: the product is ordered by quantity')],
             ['order_form_donation',    _sdT('Row: the product is a donation of the visitor\'s amount')],
             ['order_form_unavailable', _sdT('Row: the product is out of stock')],
+            ['order_form_has_image',   _sdT('Row: the product has an image')],
             ['has_recurring_schedule', _sdT('Row: the visitor sets the payment schedule')],
             ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
@@ -55585,6 +55594,7 @@ const StyleDesigner = (function () {
                         : _sdT('This page type has no design widget; the region keeps drawing it from the page type\'s settings.')) +
                 '</div></div>';
         }
+        if (o.file) return _sdClassicFilePropsHtml(o);
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-classic-convert">' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
@@ -55595,12 +55605,45 @@ const StyleDesigner = (function () {
             '</div></div>';
     }
 
+    // A page with its own layout file the converter maps (o.file,
+    // pg_classic_widget_offers()): the pieces it would lose as list rows,
+    // five then "Show all N", and the converter, which keeps the file's
+    // markup.
+    function _sdClassicFilePropsHtml(o) {
+        var rows = Array.isArray(o.dropped) ? o.dropped : [];
+        var h = '';
+        if (rows.length) {
+            h += _sdRegionWhyHtml(_sdT('Its layout has pieces that have no design element')) +
+                '<div class="sd-prop-row"><div class="w-100"><ul class="list-unstyled mb-0" id="sd-classic-dropped" style="font-size:.66rem;line-height:1.3">';
+            rows.forEach(function (r, i) {
+                h += '<li class="py-1 border-bottom text-break' + (i >= SD_CLASSIC_DROPPED_SHOWN ? ' d-none' : '') + '">' + esc(r && r.text ? r.text : '') + '</li>';
+            });
+            h += '</ul>';
+            if (rows.length > SD_CLASSIC_DROPPED_SHOWN) {
+                h += '<button type="button" class="btn btn-link btn-sm p-0 mt-1" id="sd-classic-dropped-all" style="font-size:.7rem">' + esc(_sdT('Show all {var}', rows.length)) + '</button>';
+            }
+            h += '</div></div>';
+        }
+        return h + '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-solid theme-primary w-100" id="sd-classic-convert">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Builds a "{var}" widget from this page\'s layout, its markup kept, in the region\'s place. The layout file and the page type stay; undo brings the region back.', _swTypeInfo(o.kind).label)) +
+            '</div></div>';
+    }
+
+    // Dropped pieces listed before "Show all N".
+    var SD_CLASSIC_DROPPED_SHOWN = 5;
+
     // The page's own system region becomes the widget of its page type, in
     // its place; one undo step, after asking.
     function _sdClassicConvert(regionNode) {
         var o = _sdClassicWidgetOffer(regionNode);
         if (!o) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (o.file) { _sdClassicFileConvert(regionNode, o); return; }
         var label = _swTypeInfo(o.kind).label;
         var ask = _sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label);
         var held = Array.isArray(o.held) ? o.held : [];
@@ -55609,6 +55652,45 @@ const StyleDesigner = (function () {
         _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
             sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
         }, _sdClassicTreeSeed(_buildStarterTree(o.kind), o.tree));
+    }
+
+    // A page's own layout file as its widget's design elements, in the
+    // region's place (layout_code convert_type, pg_layout_type_file_convert());
+    // the confirm names how many pieces go, the toasts the widget and the
+    // pieces the layout lost.
+    function _sdClassicFileConvert(regionNode, o) {
+        var p = _pgActivePage();
+        if (!p || !(p.page_id > 0)) return;
+        var label = _swTypeInfo(o.kind).label;
+        var n = Array.isArray(o.dropped) ? o.dropped.length : 0;
+        var ask = n
+            ? _sdT('Build a "{var:1}" widget from this layout in the place of the classic region? {var:2} pieces with no design element are left out. Undo brings the region back.', [label, n])
+            : _sdT('Build a "{var}" widget from this layout in the place of the classic region? Undo brings the region back.', label);
+        var held = Array.isArray(o.held) ? o.held : [];
+        if (held.length) ask += '\n\n' + _sdT('The widget has no setting for: {var}. The page loses it.', held.join(', '));
+        if (!window.confirm(ask)) return;
+        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+        fetch(url, { method: 'POST', credentials: 'same-origin',
+                     body: JSON.stringify({ action: 'layout_code', sub_action: 'convert_type', page_id: p.page_id, starter: _buildStarterTree(o.kind), token: _pgToken() }),
+                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || data.status !== 'success' || !data.tree || data.kind !== o.kind) {
+                    sdToast(esc((data && data.message) || _sdT('The operation failed.')), 'error');
+                    return;
+                }
+                var tree = data.tree;
+                _backfillIds(tree);
+                var cfg = _sdLayoutWidgetCfg(o);
+                var own = (data.cfg && typeof data.cfg === 'object') ? data.cfg : {};
+                Object.keys(own).forEach(function (k) { cfg[k] = own[k]; });
+                _sdRegionToWidget(regionNode, o.kind, cfg, function () {
+                    sdToast(esc(_sdT('The page is now drawn by a "{var}" widget built from its layout; save the page to keep it.', label)), 'success', 7000);
+                    var left = (Array.isArray(data.dropped) ? data.dropped : []).map(function (r) { return r && r.text ? r.text : ''; }).filter(Boolean);
+                    if (left.length) sdToast(esc(_sdT('Left out of the widget: {var}', left.join('; '))), 'warning', 12000);
+                }, tree);
+            })
+            .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
     // A widget's starter layout with the page type's layout settings put in
@@ -58905,6 +58987,11 @@ const StyleDesigner = (function () {
         if (layoutWidgetBtn) layoutWidgetBtn.addEventListener('click', function () { _sdLayoutWidgetPlace(selectedNode); });
         var classicConvertBtn = document.getElementById('sd-classic-convert');
         if (classicConvertBtn) classicConvertBtn.addEventListener('click', function () { _sdClassicConvert(selectedNode); });
+        var classicDroppedAll = document.getElementById('sd-classic-dropped-all');
+        if (classicDroppedAll) classicDroppedAll.addEventListener('click', function () {
+            document.querySelectorAll('#sd-classic-dropped li.d-none').forEach(function (li) { li.classList.remove('d-none'); });
+            classicDroppedAll.remove();
+        });
         var layoutRemoveBtn = document.getElementById('sd-layout-remove-region');
         if (layoutRemoveBtn) layoutRemoveBtn.addEventListener('click', function () { _sdLayoutRegionRemove(selectedNode); });
 
@@ -85269,7 +85356,7 @@ const StyleDesigner = (function () {
     function _pgPrototypeShareDialog(startPageId) {
         if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
-        var state = { pages: [], durations: [], canShow: true, comments: false };
+        var state = { pages: [], durations: [], canShow: true, comments: false, approval: false };
         var when = function (unix) {
             if (!(unix > 0)) return '';
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
@@ -85310,6 +85397,23 @@ const StyleDesigner = (function () {
                             '<label class="form-field"><input class="check" type="checkbox" data-ps-comments>' +
                                 '<span>' + esc(_sdT('Allow comments')) + '</span></label>' +
                             '<div class="form-text">' + esc(_sdT('Whoever opens the link can pin comments with their name on the pages and answer them.')) + '</div></div>' +
+                        // Offered once the site keeps approvals; checked, it
+                        // turns "Allow comments" on and shows its fields.
+                        '<div class="mb-3 d-none" data-ps-approval-field>' +
+                            '<label class="form-field"><input class="check" type="checkbox" data-ps-approval>' +
+                                '<span>' + esc(_sdT('Ask for approval')) + '</span></label>' +
+                            '<div class="form-text">' + esc(_sdT('Whoever opens the link can approve each page or request changes with a note.')) + '</div>' +
+                            '<div class="row g-3 mt-0 d-none" data-ps-approval-more>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-approver">' + esc(_sdT('Approver\'s name')) + '</label>' +
+                                    '<input type="text" class="form-control form-control-sm" id="ps-approver" data-ps-approver maxlength="60" autocomplete="off"></div>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-approver-email">' + esc(_sdT('Approver\'s e-mail (optional)')) + '</label>' +
+                                    '<input type="email" class="form-control form-control-sm" id="ps-approver-email" data-ps-approver-email maxlength="255" autocomplete="off">' +
+                                    '<div class="form-text">' + esc(_sdT('Sent the answers and a reminder')) + '</div></div>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-answer-by">' + esc(_sdT('Answer by')) + '</label>' +
+                                    '<input type="date" class="form-control form-control-sm" id="ps-answer-by" data-ps-answer-by></div>' +
+                                '<div class="sm:col-6 d-flex align-items-end"><label class="form-field"><input class="check" type="checkbox" data-ps-publish-rule>' +
+                                    '<span>' + esc(_sdT('Publish only after approval')) + '</span></label></div>' +
+                            '</div></div>' +
                         '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
                         '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
@@ -85380,6 +85484,7 @@ const StyleDesigner = (function () {
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
+                         (l.approval ? '<span class="badge theme-primary me-1"><span class="bi bi-patch-check me-1" aria-hidden="true"></span>' + esc(_sdT('Asks for approval')) + '</span>' : '') +
                          (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
                          (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
             // A revoked link is listed only while its comments are kept:
@@ -85394,6 +85499,8 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            if (l.approval && l.approver_name) facts.push(_sdT('Approver: {var}', l.approver_name));
+            if (l.approval && l.answer_by) facts.push(_sdT('Answer by: {var}', l.answer_by));
             var showable = state.canShow && l.can_show && !revoked;
             return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '" data-ps-count="' + esc(String(count)) + '">' +
                        '<div class="d-flex flex-wrap align-items-center gap-3">' +
@@ -85428,8 +85535,11 @@ const StyleDesigner = (function () {
                 state.canShow = res.can_show !== false;
                 state.comments = res.comments_ready === true;
                 el.querySelector('[data-ps-comments-field]').classList.toggle('d-none', !state.comments);
+                state.approval = res.approval_ready === true;
+                el.querySelector('[data-ps-approval-field]').classList.toggle('d-none', !state.approval);
                 if (!startEl.options.length) fillPages();
                 fillDurations();
+                fillAnswerBy();
                 render(res.links || []);
             }).catch(function () { listEl.innerHTML = '<div class="fg-danger py-3">' + esc(_sdT('Network error.')) + '</div>'; });
         };
@@ -85444,8 +85554,29 @@ const StyleDesigner = (function () {
             });
         };
 
+        var approvalEl = el.querySelector('[data-ps-approval]');
+        var answerByEl = el.querySelector('[data-ps-answer-by]');
+        // "Answer by" runs from today to the day the link runs out.
+        var day = function (d) {
+            return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+        };
+        var fillAnswerBy = function () {
+            var now = new Date();
+            var seconds = parseInt(durationEl.value, 10) || 0;
+            answerByEl.min = day(now);
+            if (seconds > 0) answerByEl.max = day(new Date(now.getTime() + seconds * 1000));
+            else answerByEl.removeAttribute('max');
+        };
         el.addEventListener('change', function (e) {
             if (e.target && e.target.name === 'ps-audience') fillDurations();
+            if (e.target === approvalEl) {
+                el.querySelector('[data-ps-approval-more]').classList.toggle('d-none', !approvalEl.checked);
+                if (approvalEl.checked) {
+                    el.querySelector('[data-ps-comments]').checked = true;
+                    el.querySelector('[data-ps-approver]').focus();
+                }
+            }
+            if (e.target && e.target.name === 'ps-audience' || e.target === durationEl) fillAnswerBy();
         });
         el.addEventListener('click', function (e) {
             var urlBtn = e.target.closest('[data-ps-copy-url]');
@@ -85553,6 +85684,7 @@ const StyleDesigner = (function () {
             if (createBtn.disabled) return;
             errorEl.classList.add('d-none');
             var passwordEl = el.querySelector('[data-ps-password]');
+            var asks = state.approval && approvalEl.checked;
             createBtn.disabled = true;
             _pgApiPost('prototype_link_create', {
                 style_id: styleId,
@@ -85560,7 +85692,12 @@ const StyleDesigner = (function () {
                 start_page_id: parseInt(startEl.value, 10) || 0,
                 duration: parseInt(durationEl.value, 10) || 0,
                 password: passwordEl.value,
-                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0
+                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0,
+                approval: asks ? 1 : 0,
+                approver_name: asks ? el.querySelector('[data-ps-approver]').value : '',
+                approver_email: asks ? el.querySelector('[data-ps-approver-email]').value : '',
+                answer_by: asks ? answerByEl.value : '',
+                publish_rule: (asks && el.querySelector('[data-ps-publish-rule]').checked) ? 1 : 0
             }).then(function (res) {
                 createBtn.disabled = false;
                 if (!res || res.status !== 'success') {
@@ -85569,6 +85706,12 @@ const StyleDesigner = (function () {
                     return;
                 }
                 passwordEl.value = '';
+                if (asks) {
+                    approvalEl.checked = false;
+                    el.querySelector('[data-ps-approval-more]').classList.add('d-none');
+                    ['[data-ps-approver]', '[data-ps-approver-email]', '[data-ps-answer-by]'].forEach(function (q) { el.querySelector(q).value = ''; });
+                    el.querySelector('[data-ps-publish-rule]').checked = false;
+                }
                 madeEl.innerHTML = '<div class="fw-semibold">' + esc(_sdT('The link is ready. Copy it now and send it on.')) + '</div>' + addressBox(res.url);
                 madeEl.setAttribute('data-ps-made-id', String(res.link && res.link.id ? res.link.id : ''));
                 madeEl.classList.remove('d-none');

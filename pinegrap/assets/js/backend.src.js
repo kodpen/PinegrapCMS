@@ -1266,11 +1266,35 @@ $(document).ready(function () {
         }
     }
 
+    // Opens or shuts the drawer; true when it opened it.
     function toggleMenuDrawer() {
         if (isMenuDrawerOpen()) {
             closeMenuDrawer();
-        } else {
-            openMenuDrawer();
+            return false;
+        }
+
+        openMenuDrawer();
+        return true;
+    }
+
+    // The drawer comes before the bar in the page, so the focus left on the
+    // button that opened it would Tab on through the bar and never reach a
+    // row: it goes into the drawer, to the open panel's way back, else the
+    // current row, else the first. The drawer is no longer inert by now
+    // (openMenuDrawer() painted it).
+    function focusMenuDrawer() {
+        var menu = document.getElementById('menu');
+
+        if (!menu || !isMenuDrawerOpen()) {
+            return;
+        }
+
+        var target = menu.querySelector('.pg-menu-panel.is-open [data-pg-menu-back]')
+            || menu.querySelector('.pg-menu-main .list-group-item.active')
+            || menu.querySelector('.pg-menu-main .list-group-item');
+
+        if (target) {
+            target.focus({ preventScroll: true });
         }
     }
 
@@ -1428,7 +1452,11 @@ $(document).ready(function () {
 
             if (isMenuDrawerMode()) {
                 menuDrawerOpener = this;
-                toggleMenuDrawer();
+
+                if (toggleMenuDrawer()) {
+                    focusMenuDrawer();
+                }
+
                 return;
             }
 
@@ -1439,7 +1467,10 @@ $(document).ready(function () {
         $(document).on('click', '[data-pg-menu-drawer-toggle]', function (e) {
             e.preventDefault();
             menuDrawerOpener = this;
-            toggleMenuDrawer();
+
+            if (toggleMenuDrawer()) {
+                focusMenuDrawer();
+            }
         });
     }
 
@@ -4367,7 +4398,8 @@ function pg_bell_tile(row, module) {
         software_update: 'bi-arrow-repeat', erp_overdue: 'bi-exclamation-triangle', erp_money: 'bi-cash-coin',
         erp_low_stock: 'bi-box-seam', erp_quote_expiry: 'bi-hourglass-split', erp_auto_invoice: 'bi-receipt',
         mail_failed: 'bi-envelope-exclamation', ops: 'bi-activity', workspace: 'bi-chat-dots',
-        whatsapp_message: 'bi-whatsapp', prototype_comment: 'bi-chat-square-text'
+        whatsapp_message: 'bi-whatsapp', prototype_comment: 'bi-chat-square-text',
+        launch_answer: 'bi-clipboard-check'
     };
     var action = String(row.action || '');
     var glyph = /^bi-[a-z0-9-]+$/.test(String(row.glyph || '')) ? String(row.glyph) : (glyphs[action] || 'bi-bell');

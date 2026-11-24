@@ -60,18 +60,27 @@ function pg_of_layout($layout)
  *                          shipping and an available shippable product)
  * @param string $skip_label the skip button's label ('' for none)
  * @param array  $currencies pg_sw_currency_rows()
+ * @param string $currency_code the currency code the site shows beside
+ *                          amounts ('' for none)
  * @return array
  */
-function pg_of_flags($layout, $products, $recipient, $skip_label, $currencies = array())
+function pg_of_flags($layout, $products, $recipient, $skip_label, $currencies = array(), $currency_code = '')
 {
     $available = 0;
     $non_donations = 0;
+    $by = array('checkbox' => 0, 'quantity' => 0);
     foreach ((array)$products as $p) {
         if (empty($p['available'])) continue;
         $available++;
-        if ((string)($p['selection_type'] ?? '') !== 'donation') $non_donations++;
+        $type = (string)($p['selection_type'] ?? '');
+        if ($type !== 'donation') $non_donations++;
+        if (isset($by[$type])) $by[$type]++;
     }
     $list = (pg_of_layout($layout) === 'list');
+    // The classic list's column headings: what its rows ask for.
+    $checkbox = $list && $by['checkbox'] > 0;
+    $quantity = $list && $by['quantity'] > 0;
+    $only_donations = $available > $non_donations && $non_donations === 0;
     $of_flags = array(
         'has_products'         => $available > 0,
         'no_products'          => $available === 0,
@@ -83,6 +92,12 @@ function pg_of_flags($layout, $products, $recipient, $skip_label, $currencies = 
         'has_recipient_choice' => $available > 0 && (bool)$recipient,
         'has_skip_button'      => trim((string)$skip_label) !== '',
         'has_currency_choice'  => count((array)$currencies) > 1,
+        'has_currency_code'    => trim((string)$currency_code) !== '',
+        'only_donations'       => $only_donations,
+        'not_only_donations'   => !$only_donations,
+        'selects_by_checkbox_and_quantity' => $checkbox && $quantity,
+        'selects_by_checkbox_only' => $checkbox && !$quantity,
+        'selects_by_quantity_only' => $quantity && !$checkbox,
     );
     return $of_flags;
 }
@@ -92,7 +107,8 @@ function pg_of_flags($layout, $products, $recipient, $skip_label, $currencies = 
  * selection type, while it can be ordered; else it is unavailable.
  *
  * @param array $product with 'available', 'selection_type', 'recurring',
- *                       'recurring_schedule_editable_by_customer'
+ *                       'recurring_schedule_editable_by_customer',
+ *                       'image_name'
  * @return array
  */
 function pg_of_row_flags($product)
@@ -105,6 +121,7 @@ function pg_of_row_flags($product)
         'order_form_quantity'    => $on && $type === 'quantity',
         'order_form_donation'    => $on && $type === 'donation',
         'order_form_unavailable' => !$on,
+        'order_form_has_image'   => trim((string)($p['image_name'] ?? '')) !== '',
         'has_recurring_schedule' => $on && !empty($p['recurring']) && !empty($p['recurring_schedule_editable_by_customer']),
     );
     return $rf;
@@ -148,15 +165,17 @@ function pg_of_page_row_changes($row, $cfg)
  * @param string $skip_label the skip button's caption
  * @param string $symbol     the visitor's currency symbol as stored
  * @param string $cart_url   the cart page's address
+ * @param string $code       the currency code shown beside amounts
  * @return array token => HTML
  */
-function pg_of_tokens($add_label, $skip_label, $symbol, $cart_url)
+function pg_of_tokens($add_label, $skip_label, $symbol, $cart_url, $code = '')
 {
     return array(
         '__add_button_label'  => h((string)$add_label),
         '__skip_button_label' => h((string)$skip_label),
         '__currency_symbol'   => h(html_entity_decode((string)$symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
         '__cart_url'          => h((string)$cart_url),
+        '__currency_code'     => h((string)$code),
     );
 }
 
@@ -299,7 +318,8 @@ function pg_of_row_html($row_tree, $product, $posted, $prefill, $schedule, $widg
         '__name'                 => h((string)$p['name']),
         '__short_description'    => h((string)$p['short_description']),
         '__description'          => (string)$p['full_description'],
-        '__price_formatted'      => $rf['order_form_donation'] ? '' : (string)($p['price_html'] ?? ''),
+        // A donation has no price, ordered or not (the classic page).
+        '__price_formatted'      => ((string)($p['selection_type'] ?? '') === 'donation') ? '' : (string)($p['price_html'] ?? ''),
         '__image_url'            => (string)$p['image_name'] !== '' ? h(PATH . encode_url_path((string)$p['image_name'])) : '',
         '__image_alt'            => h((string)$p['short_description']),
         '__out_of_stock_message' => $out_of_stock,
@@ -324,7 +344,7 @@ function pg_of_row_html($row_tree, $product, $posted, $prefill, $schedule, $widg
 // Controls by name: product_id and quantity (drop-down layout), ship_to and
 // add_name (the recipient), the submit_add and submit_skip buttons.
 // Tokens: ^^__add_button_label^^, ^^__skip_button_label^^,
-// ^^__currency_symbol^^, ^^__cart_url^^.
+// ^^__currency_symbol^^, ^^__currency_code^^, ^^__cart_url^^.
 // Currency picker: the currency_id select and the currency_update button
 // (pg_sw_currency_picker()), shown by has_currency_choice.
 // Flags: pg_of_flags(). Errors: liveform 'order_form'.
@@ -367,7 +387,8 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     $recipient = defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING
         && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient' && $shippable;
     $currencies = pg_sw_currency_rows();
-    $of_flags = pg_of_flags($layout, $products, $recipient, $skip_label, $currencies);
+    $currency_code = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string)VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
+    $of_flags = pg_of_flags($layout, $products, $recipient, $skip_label, $currencies, $currency_code);
 
     $price_html = function ($p) use ($discounted) {
         $id = $p['id'];
@@ -376,7 +397,7 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
 
     // A row's own flags are decided per row, below.
     $row_flags = array('order_form_checkbox' => true, 'order_form_quantity' => true, 'order_form_donation' => true,
-        'order_form_unavailable' => true, 'has_recurring_schedule' => true);
+        'order_form_unavailable' => true, 'order_form_has_image' => true, 'has_recurring_schedule' => true);
     _eo_apply_visibility_bindings($tree, $of_flags + $row_flags);
     if (!$of_flags['has_products']) {
         foreach (array('product_id', 'quantity', 'ship_to', 'add_name', 'submit_add') as $name) _pg_member_drop_control($tree, $name);
@@ -442,7 +463,7 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
 
-    $tokens = pg_of_tokens($add_label, $skip_label, defined('VISITOR_CURRENCY_SYMBOL') ? (string)VISITOR_CURRENCY_SYMBOL : '', $cart_url);
+    $tokens = pg_of_tokens($add_label, $skip_label, defined('VISITOR_CURRENCY_SYMBOL') ? (string)VISITOR_CURRENCY_SYMBOL : '', $cart_url, $currency_code);
     $rendered = _pg_member_apply_tokens($rendered, $tokens);
     // The picker's own form follows the widget's: forms cannot nest.
     $currency_form = pg_sw_currency_form_html($widget_id, $currencies, get_request_uri());

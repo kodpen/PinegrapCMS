@@ -5,7 +5,7 @@ module: lead_score
 ---
 
 ## Where are the interest score's settings set?
-- Set on Site Settings › Visitors and privacy, row "Interest score" (`pgset-interest-score`, after Cookie consent; no Contacts category exists), drawn once `contact_scores` exists (LJ3b, #11245). Checked by `pg_lead_score_settings_input()`, stored by `pg_lead_score_settings_text()`: the defaults store nothing (row deleted). Written only when the card posted `lead_score_card`.
+- Set on Site Settings › Visitors and privacy, row "Interest score" (`pgset-interest-score`, after Cookie consent; no Contacts category exists), drawn once `contact_scores` exists (LJ3b, #11245). Checked by `pg_lead_score_settings_input()`, stored by `pg_lead_score_settings_text()`: the defaults store nothing (row deleted). Written only when the card posted `lead_score_card`. A change of threshold, points, pages or half-life marks every score row for the next pass (`visitors/lead-score.md`).
 - "Back to the defaults" only fills the fields from `data-pg-default`; the pane's Save writes them.
 - Fields: "Hot from" (`lead_score_threshold`), "What counts" as one row an act with its points (`lead_score_weight_<kind>`, 0 to 100), "Pricing pages" and "Contact pages" (`<select multiple data-pg-combobox>` of every page, ids), under "Advanced": "Points halve in" days, "Keep the journey for" months. Bounds as `visitors/lead-score.md`.
 - Pages are a multiple combobox because the page picker (`pg_picker_field()`) holds one value.

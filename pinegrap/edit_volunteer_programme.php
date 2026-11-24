@@ -277,7 +277,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (pg_volunteer_move($vp, $vp_person, $vp_to, (int) $user['id'])) {
-                log_activity('volunteer "' . $vp_person['name'] . '" of programme "' . $vp['name'] . '" was moved to ' . $vp_to);
                 $vp_done++;
             }
         }

@@ -5,7 +5,8 @@
  * Tests for the pure rules of an agent channel's share links
  * (includes/workspace/share_links.php) and their API answer
  * (includes/workspace/api_share_links.php): the end a link takes, its state,
- * the item it may point at, who made it, the sweep's cut-off and the routes.
+ * the item it may point at, who made it, the sweep's cut-off and the routes;
+ * a table or a checklist of a message's text (share_links_text.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -22,6 +23,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approvals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approval_guests.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/share_links.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/share_links_text.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/blocks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_io.php');
@@ -125,9 +128,9 @@ function test_share_link_item_is_the_file_the_message_carries()
 	pg_assert_true(!ws_share_link_item_in($message, 'file', 9, false), 'files row gone');
 	pg_assert_true(!ws_share_link_item_in($message, 'file', 8, true), 'another file');
 	pg_assert_true(!ws_share_link_item_in(share_links_test_message(array('file_id' => 0)), 'file', 0, true), 'no file');
-	pg_assert_true(!ws_share_link_item_in($message, 'table', 9, true), 'kind not built yet');
+	pg_assert_true(!ws_share_link_item_in($message, 'other', 9, true), 'an unknown kind');
 	pg_assert_true(!ws_share_link_item_in(null, 'file', 9, true));
-	pg_assert_same(array('file', 'note'), ws_share_link_kinds());
+	pg_assert_same(array('file', 'note', 'table', 'list'), ws_share_link_kinds());
 }
 
 function test_share_link_note_is_only_one_of_the_message_channel()
@@ -334,4 +337,119 @@ function test_channel_share_links_are_in_the_channel_detail_and_the_head()
 	pg_assert_contains("var sharing = self.sharingButton(channel);", $js, 'the head draws the share mark');
 	pg_assert_contains("item(t('sl_sharing'), 'bi-share', function () { self.showSharing(); }, 'ws-head-narrow');", $js, 'a menu entry on a phone');
 	pg_assert_contains("sharingTitle.setAttribute('data-info-key', 'sharing');", $js, 'Channel info has its Sharing part');
+}
+
+// A message's text with a titled table, a table inside a block of code, two
+// checklists and a second table.
+function share_links_test_text()
+{
+	return implode("\n", array(
+		'Plan for the week',
+		'::: Release',
+		'| Step | Who |',
+		'|---|---|',
+		'| Build | <@user:2> |',
+		'| Ship | =1+1 |',
+		'```',
+		'| Code | Only |',
+		'|---|---|',
+		'- [ ] not a list',
+		'```',
+		'- [ ] Write',
+		'- [x] Test',
+		'',
+		'Then:',
+		'* [ ] Merge',
+		'| A |',
+		'|---|',
+	));
+}
+
+function test_share_link_text_blocks_are_read_as_the_channel_draws_them()
+{
+	$blocks = ws_share_link_text_blocks(share_links_test_text());
+
+	pg_assert_same(4, count($blocks), 'the table in a block of code is code');
+	pg_assert_same(array('table', 1, 'Release'), array($blocks[0]['kind'], $blocks[0]['number'], $blocks[0]['title']));
+	pg_assert_same(array(array('Step', 'Who'), array('Build', '<@user:2>'), array('Ship', '=1+1')), $blocks[0]['rows']);
+	pg_assert_same(2, $blocks[0]['columns']);
+	pg_assert_same(array('list', 1, ''), array($blocks[1]['kind'], $blocks[1]['number'], $blocks[1]['title']));
+	pg_assert_same(array(array('index' => 0, 'checked' => false, 'text' => 'Write'), array('index' => 1, 'checked' => true, 'text' => 'Test')), $blocks[1]['items']);
+	pg_assert_same(array('list', 2), array($blocks[2]['kind'], $blocks[2]['number']), 'a line between makes a second checklist');
+	pg_assert_same(2, $blocks[2]['items'][0]['index'], 'items count through the whole message, as its ticks do');
+	pg_assert_same(array('table', 2), array($blocks[3]['kind'], $blocks[3]['number']));
+	pg_assert_same(array(), ws_share_link_text_blocks('Just words | and a bar'));
+	pg_assert_same(2, ws_share_link_text_block(share_links_test_text(), 'list', 2)['number']);
+	pg_assert_same(null, ws_share_link_text_block(share_links_test_text(), 'list', 3));
+}
+
+function test_share_link_text_item_is_its_number_in_the_message()
+{
+	$block = ws_share_link_text_block(share_links_test_text(), 'table', 2);
+	$message = share_links_test_message(array('file_id' => 0, 'sender_kind' => 'app', 'body' => share_links_test_text()));
+
+	pg_assert_true(ws_share_link_item_in($message, 'table', 2, $block));
+	pg_assert_true(!ws_share_link_item_in($message, 'table', 1, $block), 'another table');
+	pg_assert_true(!ws_share_link_item_in($message, 'list', 2, $block), 'a table is not a list');
+	pg_assert_true(!ws_share_link_item_in($message, 'table', 2, null), 'written away');
+	pg_assert_same(2, ws_share_link_text_row($message, 'table', 2)['number']);
+	pg_assert_same(null, ws_share_link_text_row(array('sender_kind' => 'guest') + $message, 'table', 2), 'a guest\'s text has no tables');
+	pg_assert_same(null, ws_share_link_text_row(array('sender_kind' => 'mail') + $message, 'list', 1), 'nor a mail');
+}
+
+function test_share_link_text_name_is_its_title_else_its_first_row()
+{
+	$blocks = ws_share_link_text_blocks(share_links_test_text());
+
+	pg_assert_same('Release', ws_share_link_text_name_source($blocks[0]));
+	pg_assert_same('Write', ws_share_link_text_name_source($blocks[1]));
+	pg_assert_same('A', ws_share_link_text_name_source($blocks[3]));
+	pg_assert_same('Step · Who', ws_share_link_text_name_source(array('title' => '') + $blocks[0]));
+	pg_assert_same(80, mb_strlen(ws_share_link_text_name_cut(str_repeat('ş', 120))));
+	pg_assert_same('Short', ws_share_link_text_name_cut(' Short '));
+}
+
+function test_share_link_table_csv_guards_cells_and_gives_a_formula_its_value()
+{
+	$block = ws_share_link_text_blocks(share_links_test_text())[0];
+	$grid = array(2 => array(1 => array('formula' => true, 'display' => '2')));
+	$plain = function ($text) {
+		return str_replace('<@user:2>', '@Ayşe', $text);
+	};
+
+	pg_assert_same("\"Step\",\"Who\"\r\n\"Build\",\"'@Ayşe\"\r\n\"Ship\",\"2\"\r\n", ws_share_link_table_csv($block, $grid, $plain), 'a formula gives its value');
+	pg_assert_same("\"Step\",\"Who\"\r\n\"Build\",\"'@Ayşe\"\r\n\"Ship\",\"'=1+1\"\r\n", ws_share_link_table_csv($block, null, $plain), 'a cell a spreadsheet would run is guarded');
+
+	$short = array('rows' => array(array('A', 'B'), array('say "hi"')), 'columns' => 2);
+
+	pg_assert_same("\"A\",\"B\"\r\n\"say \"\"hi\"\"\",\"\"\r\n", ws_share_link_table_csv($short, null, 'strval'), 'a missing cell is empty');
+}
+
+function test_share_link_list_markdown_and_page_take_the_ticks_given_since()
+{
+	$block = ws_share_link_text_blocks(share_links_test_text())[1];
+	$checks = array(0 => array('checked' => true, 'name' => 'Ayşe', 'at' => '1 Dec'), 1 => array('checked' => false), 5 => array('checked' => true));
+
+	pg_assert_same("- [x] Write\n- [ ] Test\n", ws_share_link_list_markdown($block, $checks, 'strval'));
+	pg_assert_same("# Done\n\n- [ ] Write\n- [x] Test\n", ws_share_link_list_markdown(array('title' => 'Done') + $block, array(), 'strval'), 'as written without ticks');
+	pg_assert_same(array(0 => $checks[0], 1 => $checks[1]), ws_share_link_list_checks($block, $checks));
+
+	$second = ws_share_link_text_blocks(share_links_test_text())[2];
+
+	pg_assert_same(array(0 => array('checked' => true)), ws_share_link_list_checks($second, array(2 => array('checked' => true))), 'numbered from the block\'s first item');
+}
+
+function test_share_link_text_shares_reach_the_screen_and_the_address()
+{
+	$messages = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$address = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_share.php');
+
+	pg_assert_contains("'text_shares' => function_exists('ws_share_links_text_map')", $messages);
+	pg_assert_contains("'text_shares' => (\$deleted || \$agent || (\$tag_card !== '')) ? array()", $messages, 'none where the text drawn is another');
+	pg_assert_contains("items = items.concat(self.shareTextItems(message));", $js, 'the message menu offers them');
+	pg_assert_contains("self.shareTextMarks(body, message);", $js, 'the drawn block gets the mark');
+	pg_assert_contains("ws_share_link_table_raw(\$answer)", $address);
+	pg_assert_contains("ws_share_link_list_raw(\$answer)", $address);
+	pg_assert_contains("echo ws_share_link_text_page(\$answer);", $address);
 }

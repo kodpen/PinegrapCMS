@@ -17,7 +17,7 @@ description: Where sessions reach the owner (2026-11-13): no coordinator writes 
 
 ## Who looks at a screen's pictures? (owner, 2026-11-14, channel message 2645)
 - To the architect's five proposals (channel message 2639) he answered: "5 önerin kabul. Onaylıyorum".
-- A screen whose behaviour its plan has decided: the architect looks, at one thing, whether it follows look A and the design sheet (`ui/list-table-layout.md`, `plans/panel-design-language/`). Its channel message saying so lets the PR land; the `Karar` comment quotes that message and names 2645. It is written as the architect's look, never as one the owner gave.
+- A screen whose behaviour its plan has decided: the architect looks, at one thing, whether it follows look A and the design sheet (`ui/list-table-layout.md`, `ui/look-sheet/`). Its channel message saying so lets the PR land; the `Karar` comment quotes that message and names 2645. It is written as the architect's look, never as one the owner gave.
 - A new design that no plan or sheet holds, and every product behaviour question, stay his.
 - A screen step uses the sheet's component first and posts its whole set at once (dark and light, 1440 and 390 px).
 - PR MERGE keeps one message "waiting for the owner" current in the channel: every PR and question that waits on him, a line each.

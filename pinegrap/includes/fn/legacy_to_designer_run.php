@@ -1130,10 +1130,7 @@ function pg_ltd_type_file_widget($target, $facts, $code, $starters)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
     $kind = (string)($target['kind'] ?? '');
     if ($kind === '' || !isset($starters[$kind]) || !is_array($starters[$kind])) return null;
-    $r = pg_layout_convert((string)($facts['type'] ?? ''), (string)$code, array(
-        'state' => (array)($facts['state'] ?? array()),
-        'row'   => pg_layout_convert_row(pg_layout_widget_tree_apply($starters[$kind], (array)($facts['tree'] ?? array()))),
-    ));
+    $r = pg_layout_type_file_convert($facts, $code, $starters[$kind]);
     if (!$r['ok'] || $r['dropped']) return null;
     return array('cfg' => array('regionType' => $kind) + (array)($facts['cfg'] ?? array()) + $r['cfg'], 'tree' => $r['tree']);
 }

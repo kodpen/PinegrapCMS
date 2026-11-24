@@ -79,6 +79,24 @@ if ($answer['kind'] === 'note') {
     exit;
 }
 
+// A table or a checklist: its read-only page, or with raw=1 its CSV or
+// Markdown.
+if (($answer['kind'] === 'table') || ($answer['kind'] === 'list')) {
+    pg_send_nosniff();
+
+    if ((string) ($_GET['raw'] ?? '') === '1') {
+        $table = ($answer['kind'] === 'table');
+        header('Content-Type: ' . ($table ? 'text/csv' : 'text/markdown') . '; charset=utf-8');
+        header('Content-Disposition: ' . pg_http_content_disposition($answer['name'] . ($table ? '.csv' : '.md'), true));
+        echo $table ? "\xEF\xBB\xBF" . ws_share_link_table_raw($answer) : ws_share_link_list_raw($answer);
+        exit;
+    }
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo ws_share_link_text_page($answer);
+    exit;
+}
+
 header('Content-Type: ' . $answer['mime']);
 header('Content-Disposition: ' . $answer['disposition']);
 pg_send_nosniff();

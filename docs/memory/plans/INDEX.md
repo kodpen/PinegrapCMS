@@ -24,8 +24,6 @@
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
 - canvas-label-menu-cites.md: Plan (owner 2026-11-24): buttons that open the Artifact Canvas say "Edit in Artifact Canvas"; its "?" is the help link and shortcuts get their own icon; places citing a menu row draw its new icon
-- channel-share-links-screens.md: Screens of the share links plan: the mark on a shared item, Share by link in its menu and the dialog, the head's share mark with its menu, Channel info's Sharing part, the system line
-- channel-share-links.md: Plan (owner 2026-11-23): an item of an agent channel shared by an unguessable link with an end date: files first, then notes, tables and lists; what the address answers; steps SL1 to SL6
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-examples-patterns-mail.md: Step DX2b of the Design examples plan: the parts of the approved e-mail settings drawing as patterns (tabs with a state, choice cards, provider sign-in, effects confirm), before EM1
@@ -63,10 +61,6 @@
 - launch-journey-screens.md: Plan launch-journey, how its first screens are put together (SJ2, SJ3): the set-up card on the dashboard, the purpose choice as radio cards, the go-live check
 - launch-journey-steps.md: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the store, the set-up card and purpose, the go-live check, the first week and team paths, the agency summary, API, close-out
 - launch-journey.md: Plan (owner 2026-11-20, poll 204): a set-up path by the site's purpose, steps marked from the real settings, a go-live check, the first week, a team member's path, the agency summary, API; SJ1a to SJ7
-- lead-journey-features.md: Plan lead-journey, features J1 to J15: the browser key and the tie, the journey, the interest and fit scores, interests, hot and returning alerts, lead sources, KVKK, API
-- lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
-- lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
-- lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
 - legacy-editable-layouts.md: Plan legacy-editable, layouts: a System region becomes its widget in the run; a stock layout by carried settings, a layout file by a piece map keeping the theme's markup; what stays code
 - legacy-editable-regions.md: Plan legacy-editable, regions: one door through the move screen, the run's new page_parts step, Login, Cart and Comments in the run, the true canvas of every region left, designs moved earlier
 - legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
@@ -80,11 +74,6 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
-- panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
-- panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
-- panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
-- panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
-- panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - prototype-approval-features.md: Plan prototype-approval, features A1 to A8: the link asking approval, the sealed verdict, older version, round two, publish rule, mails, the designer's side, events and API
 - prototype-approval-screens.md: Plan prototype-approval, how its parts sit: the Share prototype dialog's approval fields, the viewer's Review box and round two, the designer's Comments list and the Publish sheet's held row
@@ -118,3 +107,6 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
+- workspace-look-leftover-screens.md: Plan workspace-look-leftover, step WL10: how the bulk Delete of the Data list's selection bar is put together (the button, the confirm, the result notice, the right per table)
+- workspace-look-leftover-steps.md: Steps WL1-WL11 of the plan workspace-look-leftover: the field count in the look check, the old buttons by file, the old fields, the Data list's bulk Delete in the selection bar, close-out
+- workspace-look-leftover.md: Plan: the Workspace's old buttons (btn btn-) and old fields (formRow(), form-control) move to look A's recipes, file by file; Data's bulk Delete; what is left out

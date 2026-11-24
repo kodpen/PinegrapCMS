@@ -459,11 +459,183 @@ function _pg_volunteer_swap_finish(array $programme, array $shift, array $offere
 }
 
 /**
+ * Gives up one sign-up of a volunteer, signed or waiting: the row is
+ * cancelled, a swap asked of it is cancelled with it, and a signed place
+ * goes to the waitlist (pg_volunteer_waitlist_write()). Called under the
+ * shift's lock.
+ *
+ * @param array $programme
+ * @param array $shift  pg_volunteer_shift_get()
+ * @param array $own    the volunteer's sign-up (from $shift['signups'])
+ * @param array $signed the sign-ups moved up, for the caller to announce
+ * @return bool false when the row changed meanwhile
+ */
+function _pg_volunteer_signup_give_up(array $programme, array $shift, array $own, &$signed)
+{
+    if (!db_q("UPDATE volunteer_signups SET state = 'cancelled', offered_at = 0, cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = ?", array((int) $own['id'], $own['state'])) || (mysqli_affected_rows(db::$con) < 1)) {
+        return false;
+    }
+
+    // A swap asked of this place is cancelled with it.
+    db_q("UPDATE volunteer_signups SET state = 'cancelled', cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE shift_id = ? AND swap_from = ? AND state = 'waiting'", array((int) $shift['id'], (int) $own['id']));
+
+    if ($own['state'] === 'signed') {
+        pg_volunteer_waitlist_write($programme, (int) $shift['id'], (string) $own['role'], $signed);
+    }
+
+    return true;
+}
+
+/**
+ * The state a volunteer's own Pause or Leave moves them to, or the refusal:
+ * an active volunteer pauses, an active or paused one leaves; a second
+ * press of Pause is 'already_paused'. Pure.
+ *
+ * @param string $state  the volunteer's state
+ * @param string $action pause or leave
+ * @return string paused, left, already_paused or refused
+ */
+function pg_volunteer_self_move_check($state, $action)
+{
+    $to = array('pause' => 'paused', 'leave' => 'left')[(string) $action] ?? '';
+
+    if (($to === 'paused') && ((string) $state === 'paused')) {
+        return 'already_paused';
+    }
+
+    return (($to !== '') && pg_volunteer_state_move_allowed((string) $state, $to)) ? $to : 'refused';
+}
+
+/**
+ * The sign-ups a volunteer who pauses or leaves gives up: signed or
+ * waiting rows of shifts not started yet, whatever the cut-off. Pure.
+ *
+ * @param array  $rows sign-ups with state and start (the shift's start)
+ * @param string $now
+ * @return array the rows given up, in their order
+ */
+function pg_volunteer_give_up_rows(array $rows, $now)
+{
+    return array_values(array_filter($rows, function ($row) use ($now) {
+        return in_array((string) $row['state'], array('signed', 'waiting'), true) && ((string) $row['start'] > (string) $now);
+    }));
+}
+
+/**
+ * The one e-mail the programme's coordinators get when a volunteer paused
+ * or left: who, and every shift given up. Pure.
+ *
+ * @param array  $programme name
+ * @param string $name      the volunteer's name
+ * @param string $to        paused or left
+ * @param array  $shifts    the shifts given up (start, end, place)
+ * @return array subject, body
+ */
+function pg_volunteer_self_move_mail(array $programme, $name, $to, array $shifts)
+{
+    $vars = array('{programme}' => (string) $programme['name'], '{name}' => (string) $name);
+    $lines = array();
+
+    foreach ($shifts as $shift) {
+        $lines[] = '- ' . pg_volunteer_shift_when($shift);
+    }
+
+    return array(
+        'subject' => strtr(($to === 'left') ? lang('{programme}: a volunteer left') : lang('{programme}: a volunteer paused'), $vars),
+        'body'    => strtr(($to === 'left') ? lang('{name} left the programme.') : lang('{name} paused their volunteering.'), $vars) . "\n\n"
+            . ($lines ? lang('The places of these shifts were given up and offered to the waitlist:') . "\n" . implode("\n", $lines) : lang('No coming shifts were given up.')),
+    );
+}
+
+/**
+ * A volunteer's own Pause or Leave: the coordinator's move
+ * (pg_volunteer_move(), its log line and event), then every coming sign-up
+ * given up as a cancel gives one up, then one e-mail to the coordinators.
+ * Shift calls stop with the state: they ask active volunteers only.
+ *
+ * @param int    $volunteer_id
+ * @param string $action pause or leave
+ * @return string paused, left, already_paused or refused
+ */
+function _pg_volunteer_self_move($volunteer_id, $action)
+{
+    $volunteer = pg_volunteer_self_load($volunteer_id);
+
+    if ($volunteer === null) {
+        return 'refused';
+    }
+
+    $programme = $volunteer['programme'];
+    $to = pg_volunteer_self_move_check($volunteer['state'], $action);
+    $volunteer['name'] = trim($volunteer['first_name'] . ' ' . $volunteer['last_name']);
+
+    // The move is written against the state read, so a second press finds
+    // it moved and is refused.
+    if (!in_array($to, array('paused', 'left'), true) || !pg_volunteer_move($programme, $volunteer, $to, 0)) {
+        return ($to === 'already_paused') ? $to : 'refused';
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $rows = (array) db_items("SELECT volunteer_signups.shift_id, volunteer_signups.state, volunteer_shifts.start_time AS start FROM volunteer_signups INNER JOIN volunteer_shifts ON volunteer_shifts.id = volunteer_signups.shift_id
+        WHERE volunteer_signups.volunteer_id = '" . (int) $volunteer['id'] . "' AND volunteer_signups.state IN ('signed', 'waiting') AND volunteer_shifts.start_time > '" . escape($now) . "' ORDER BY volunteer_shifts.start_time, volunteer_signups.id");
+    $given = array();
+    $signed = array();
+
+    foreach (pg_volunteer_give_up_rows($rows, $now) as $row) {
+        $lock = 'pg_volunteer_shift_' . (int) $row['shift_id'];
+
+        if ((int) db_value("SELECT GET_LOCK('" . escape($lock) . "', 5)") !== 1) {
+            continue;
+        }
+
+        $shift = pg_volunteer_shift_get((int) $programme['id'], (int) $row['shift_id']);
+
+        foreach (($shift !== null) ? $shift['signups'] : array() as $signup) {
+            if (((int) $signup['volunteer_id'] === $volunteer['id']) && _pg_volunteer_signup_give_up($programme, $shift, $signup, $signed) && ($signup['state'] === 'signed')) {
+                $given[] = $shift;
+            }
+        }
+
+        db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");
+    }
+
+    foreach ($signed as $place) {
+        pg_volunteer_announce('shift.signed_up', $place[0], $place[1]);
+    }
+
+    $message = pg_volunteer_self_move_mail($programme, $volunteer['name'], $to, $given);
+
+    foreach (pg_volunteer_coordinator_emails($programme) as $address) {
+        _pg_volunteer_mail($address, $message);
+    }
+
+    return $to;
+}
+
+/**
+ * The e-mail addresses of a programme's coordinators.
+ *
+ * @param array $programme coordinators (user ids)
+ * @return array
+ */
+function pg_volunteer_coordinator_emails(array $programme)
+{
+    $ids = array_filter(array_map('intval', (array) ($programme['coordinators'] ?? array())));
+
+    if (!$ids) {
+        return array();
+    }
+
+    return array_values(array_filter(array_map('strval', (array) db_values("SELECT user_email FROM user WHERE user_id IN (" . implode(', ', $ids) . ")")), 'validate_email_address'));
+}
+
+/**
  * One action of a volunteer on a shift, written under the shift's lock so
  * a role's places never go over its count: 'sign_up', 'waitlist', 'take'
  * (an offered place: at once, or waiting for a coordinator when the
  * programme asks), 'cancel' (then the waitlist pass), 'offer', 'keep';
- * 'hours' adds hours outside a shift from the posted day, hours and note.
+ * 'hours' adds hours outside a shift from the posted day, hours and note;
+ * 'pause' and 'leave' move the volunteer (_pg_volunteer_self_move()).
  *
  * @param int    $volunteer_id
  * @param string $action
@@ -471,11 +643,17 @@ function _pg_volunteer_swap_finish(array $programme, array $shift, array $offere
  * @param string $role   for sign_up and waitlist
  * @param int    $target the offered sign-up for take
  * @return string the outcome: signed, waiting, asked, cancelled, offered,
- *                kept, hours_added, or a refusal ('refused', and for hours
- *                'day', 'hours', 'closed')
+ *                kept, hours_added, paused, left, or a refusal ('refused',
+ *                'already_paused', and for hours 'day', 'hours', 'closed')
  */
 function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $target = 0)
 {
+    // Pausing and leaving take no shift: they move the profile and give up
+    // every coming sign-up, each under its own shift's lock.
+    if (($action === 'pause') || ($action === 'leave')) {
+        return _pg_volunteer_self_move($volunteer_id, $action);
+    }
+
     // Hours worked outside a shift take no shift and no lock: their fields
     // come with the posted form (includes/fn/volunteer_hours.php).
     if ($action === 'hours') {
@@ -549,20 +727,19 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
         $asked = isset(pg_volunteer_swaps_pending($shift['signups'])[(int) $own['id']]);
 
         if (in_array($action, pg_volunteer_signup_actions($own, $shift, $now, $programme['cutoff_hours'], $asked), true)) {
-            if (($action === 'cancel') && db_q("UPDATE volunteer_signups SET state = 'cancelled', offered_at = 0, cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = ?", array((int) $own['id'], $own['state'])) && (mysqli_affected_rows(db::$con) > 0)) {
+            if (($action === 'cancel') && _pg_volunteer_signup_give_up($programme, $shift, $own, $signed)) {
                 $answer = 'cancelled';
-
-                // A swap asked of this place is cancelled with it.
-                db_q("UPDATE volunteer_signups SET state = 'cancelled', cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE shift_id = ? AND swap_from = ? AND state = 'waiting'", array((int) $shift['id'], (int) $own['id']));
-
-                if ($own['state'] === 'signed') {
-                    pg_volunteer_waitlist_write($programme, (int) $shift['id'], (string) $own['role'], $signed);
-                }
             } elseif (($action === 'offer') || ($action === 'keep')) {
                 db_q("UPDATE volunteer_signups SET offered_at = ?, updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = 'signed'", array(($action === 'offer') ? time() : 0, (int) $own['id']));
                 $answer = ($action === 'offer') ? 'offered' : 'kept';
             }
         }
+    }
+
+    // A volunteer leaving the waitlist never held a place: the row keeps no
+    // cancel stamp, so the report never counts it as a late cancel.
+    if (($answer === 'cancelled') && ($own['state'] === 'waiting')) {
+        db_q("UPDATE volunteer_signups SET cancelled_at = 0 WHERE id = ? AND state = 'cancelled'", array((int) $own['id']));
     }
 
     db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");

@@ -945,6 +945,12 @@ function pg_page_shell($properties = array())
 
     $output = output_header($properties);
 
+    // The hint line of a screen in the launch journey's catalogue, under the
+    // title, for a new person until they mark it (Don't show again).
+    if (empty($properties['hide_menu']) && function_exists('pg_launch_journey_hint_html')) {
+        $output .= pg_launch_journey_hint_html($_SERVER['SCRIPT_NAME'] ?? '', $GLOBALS['user'] ?? null);
+    }
+
     // Opt-in raw HTML printable between <body>/header and <main>.
     // Used by pages like view_log.php that render an advanced filter bar outside <main>.
     if (isset($properties['pre_main_html']) && is_string($properties['pre_main_html']) && $properties['pre_main_html'] !== '') {
@@ -8088,6 +8094,7 @@ function pg_js_bundles()
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',
             'assets/js/workspace_highlights.js',
+            'assets/js/workspace_token_retry.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),

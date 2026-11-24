@@ -100,3 +100,19 @@ function test_workspace_message_table_wide_rules_unchanged()
 	$cell = workspace_message_table_phone_test_rule($css, '.ws-table > :not(caption) > * > *');
 	pg_assert_true($cell !== null && strpos($cell, 'max-width: 24rem') !== false, 'a wide screen keeps the 24rem cell');
 }
+
+function test_workspace_message_table_frame_height_below_768()
+{
+	$css = workspace_message_table_phone_test_css();
+	$narrow = workspace_message_table_phone_test_media($css, '@media (max-width: 767.98px) {');
+	$frame = workspace_message_table_phone_test_rule($narrow, '.ws-table-wrap');
+
+	pg_assert_true($frame !== null, 'below 768px the frame has its own rule');
+	pg_assert_true(strpos($frame, 'max-height: 90vh') !== false, 'a long table\'s frame stops at 90vh');
+	pg_assert_true(strpos($frame, 'overflow-y: auto') !== false, 'the rows past 90vh scroll inside the frame');
+	pg_assert_true(strpos($frame, 'flex: none') !== false, 'the frame never shrinks under its table');
+	pg_assert_true(!preg_match('/(?<!-)height:|min-height/', $frame), 'a short table keeps its own height');
+
+	$wide = workspace_message_table_phone_test_rule($css, '.ws-table-wrap');
+	pg_assert_true($wide !== null && strpos($wide, 'max-height') === false, 'a wide screen keeps an uncapped frame');
+}

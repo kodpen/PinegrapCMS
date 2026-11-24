@@ -10,13 +10,13 @@ description: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the sto
 
 - SJ2 (M) done, PR #11292: the journey's `config_text` row (purpose, go-live time, hidden steps; `pg_config_text_save()`, no schema), the facts reader (each source's function, no title matching), a template key's purpose, the dashboard card through `pg_dashboard_v2_cards()` (`cards/launch.php` answering data, its renderer in `pg_dash_cards_<group>.js`), the purpose choice, "Do it" links, "Not for this site", "Hide set-up", Site Settings › General's purpose field. Features: L1, L2, L3.
 
-- SJ3 (M) after SJ2: the card's foot "Ready to go live?" (not drawn by SJ2; `ui/launch-journey-setup-card.md`), the go-live check and its "Go live" turning maintenance mode off and removing the robots catch-all itself (poll 209; never a payment mode), the confirmation naming each blocker and each of the two changes, a Site Log line for each, the go-live time. Features: L4.
+- SJ3 (M) done, PR #11312: the card's foot "Ready to go live?" (not drawn by SJ2; `ui/launch-journey-setup-card.md`), the go-live check and its "Go live" turning maintenance mode off and removing the robots catch-all itself (poll 209; never a payment mode), the confirmation naming each blocker and each of the two changes, a Site Log line for each, the go-live time. Features: L4.
 
-- SJ4 (M) after SJ3: the First week card; a team member's path card; first-visit hint lines, marked as `hint:<screen>` keys in `user.tours_seen` (`pg_tour_mark()`), only for screens in the catalogue. Features: L5, L6.
+- SJ4 (M) done, PR #11344: the First week card; a team member's path card; first-visit hint lines, marked as `hint:<screen>` keys in `user.tours_seen` (`pg_tour_mark()`), only for screens in the catalogue. Features: L5, L6.  (`ui/launch-journey-first-week-path.md`)
 
-- SJ5 (M) after SJ2 and SJ1b: the agency summary drawer, the signed page (a new root file, in `waf_sensitive_scripts()`), the customer's text answers, the bell line, withdraw. Features: L7.
+- SJ5 (M) done, PR #11314. After SJ2 and SJ1b: the agency summary drawer, the signed page (a new root file, in `waf_sensitive_scripts()`), the customer's text answers, the bell line, withdraw. Features: L7.
 
-- SJ6 (S) after SJ3: the read route with its types, `php tools/check_api_schema.php`; the MCP tool; the guide's `start` topic (`includes/fn/agent_guide.php`). Features: L8.
+- SJ6 (S) done, PR #11337: the read route with its types, `php tools/check_api_schema.php`; the MCP tool; the guide's `start` topic (`includes/fn/agent_guide.php`). Features: L8.
 
 - SJ7 (S) close-out: every L number checked against the code with its PR; `ui/launch-journey.md` written; this plan's files deleted; the changelog `[NEW]` line named in its PR.
 

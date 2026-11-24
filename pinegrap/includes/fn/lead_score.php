@@ -462,6 +462,41 @@ function pg_lead_score_settings_text(array $settings)
 }
 
 /**
+ * Whether new settings change the scores already worked out: the threshold
+ * (the hot flag the Hot Contacts view and the events read), an act's
+ * points, the pricing or contact pages, the half-life. The keep period
+ * changes no score. Pure.
+ *
+ * @param mixed $before the stored settings (text or array)
+ * @param mixed $after  the new settings (text or array)
+ * @return bool
+ */
+function pg_lead_score_settings_rework($before, $after)
+{
+    $before = pg_lead_score_settings($before);
+    $after = pg_lead_score_settings($after);
+
+    foreach (array('threshold', 'weights', 'pricing_pages', 'contact_pages', 'half_life') as $key) {
+        if ($before[$key] !== $after[$key]) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Marks every score row for the next scoring pass (scored_at 0), after
+ * settings that change the scores (pg_lead_score_settings_rework()).
+ */
+function pg_lead_score_rework_all()
+{
+    if (pg_schema_has('contact_scores', 'scored_at')) {
+        db("UPDATE contact_scores SET scored_at = 0");
+    }
+}
+
+/**
  * The site's interest score settings, read once per request.
  *
  * @return array pg_lead_score_settings()
@@ -593,6 +628,122 @@ function pg_lead_score_contact($contact_id, array $settings, $now)
 }
 
 /**
+ * The contacts a scoring pass works out, at most PG_LEAD_SCORE_BATCH: a
+ * visit started since a day before the last pass, a journey row since the
+ * last pass, a score with interest not worked out for a day (it fades), a
+ * score whose newest visit is past the keep period not worked out for a
+ * day (its visits are trimmed, so the row goes, as the journey's own rows
+ * do, even at interest 0), or a row marked for work (scored_at 0: a contact
+ * merge); minus those this pass already scored. Pure.
+ *
+ * @param int $since      the last finished pass's start
+ * @param int $started    this pass's start
+ * @param int $now
+ * @param int $keep_start pg_lead_keep_start()'s answer
+ * @return string SQL
+ */
+function pg_lead_score_candidates_sql($since, $started, $now, $keep_start)
+{
+    return "SELECT c.contact_id FROM (
+            SELECT contact_id FROM lead_visits WHERE started_at >= '" . max(0, (int) $since - 86400) . "' AND contact_id > 0
+            UNION SELECT contact_id FROM contact_journey WHERE at >= '" . (int) $since . "' AND contact_id > 0
+            UNION SELECT contact_id FROM contact_scores WHERE ((interest > 0 OR last_visit_at < '" . (int) $keep_start . "') AND scored_at < '" . ((int) $now - 86400) . "') OR scored_at = 0
+        ) c
+        LEFT JOIN contact_scores s ON s.contact_id = c.contact_id
+        WHERE s.contact_id IS NULL OR s.scored_at < '" . (int) $started . "'
+        ORDER BY c.contact_id LIMIT " . PG_LEAD_SCORE_BATCH;
+}
+
+/**
+ * What a contact merge does to the merged contacts' score rows: the
+ * strongest row (hot first, then the highest interest, the survivor's own
+ * on a tie) is kept for the contact that stays and marked for the next pass
+ * (scored_at 0); the others go. The kept row takes the newest visit and
+ * the last return of all of them, and stays hot when any was, so a person
+ * already told hot is not told again. Pure.
+ *
+ * @param array[] $rows    contact_scores rows of the survivor and the merged
+ *                         contacts: contact_id, interest, hot, hot_at,
+ *                         returned_at, last_visit_at
+ * @param int     $keep_id the contact that stays
+ * @return array|null from (the contact id whose row is kept), drop (ids),
+ *                    hot, hot_at, returned_at, last_visit_at; null for no row
+ */
+function pg_lead_score_merge_plan(array $rows, $keep_id)
+{
+    if (!$rows) {
+        return null;
+    }
+
+    usort($rows, function ($a, $b) use ($keep_id) {
+        $order = array((int) $b['hot'], (int) $b['interest'], (int) ((int) $b['contact_id'] === (int) $keep_id), -(int) $b['contact_id']);
+        $other = array((int) $a['hot'], (int) $a['interest'], (int) ((int) $a['contact_id'] === (int) $keep_id), -(int) $a['contact_id']);
+
+        return $order <=> $other;
+    });
+
+    $hot = 0;
+    $hot_at = (int) $rows[0]['hot_at'];
+    $returned_at = 0;
+    $last_visit_at = 0;
+    $drop = array();
+
+    foreach ($rows as $index => $row) {
+        if ((int) $row['hot'] === 1) {
+            $hot_at = $hot ? max($hot_at, (int) $row['hot_at']) : (int) $row['hot_at'];
+            $hot = 1;
+        }
+
+        $returned_at = max($returned_at, (int) $row['returned_at']);
+        $last_visit_at = max($last_visit_at, (int) $row['last_visit_at']);
+
+        if ($index > 0) {
+            $drop[] = (int) $row['contact_id'];
+        }
+    }
+
+    sort($drop);
+
+    return array(
+        'from' => (int) $rows[0]['contact_id'], 'drop' => $drop, 'hot' => $hot, 'hot_at' => $hot_at,
+        'returned_at' => $returned_at, 'last_visit_at' => $last_visit_at,
+    );
+}
+
+/**
+ * Leaves the contact that stays after a merge one score row, marked for the
+ * next pass (pg_lead_score_merge_plan()); the merged contacts' rows go.
+ *
+ * @param int[] $merged_ids
+ * @param int   $keep_id
+ * @return bool false when a query failed
+ */
+function pg_lead_score_merge(array $merged_ids, $keep_id)
+{
+    $ids = array_values(array_unique(array_merge(array_map('intval', $merged_ids), array((int) $keep_id))));
+    $rows = db_items("SELECT contact_id, interest, hot, hot_at, returned_at, last_visit_at FROM contact_scores WHERE contact_id IN (" . implode(',', $ids) . ")");
+
+    if ($rows === false) {
+        return false;
+    }
+
+    $plan = pg_lead_score_merge_plan((array) $rows, $keep_id);
+
+    if ($plan === null) {
+        return true;
+    }
+
+    if ($plan['drop'] && (db_q("DELETE FROM contact_scores WHERE contact_id IN (" . implode(',', $plan['drop']) . ")") === false)) {
+        return false;
+    }
+
+    return db_q(
+        "UPDATE contact_scores SET contact_id = ?, hot = ?, hot_at = ?, returned_at = ?, last_visit_at = ?, scored_at = 0 WHERE contact_id = ?",
+        array((string) (int) $keep_id, (string) $plan['hot'], (string) $plan['hot_at'], (string) $plan['returned_at'], (string) $plan['last_visit_at'], (string) $plan['from'])
+    ) !== false;
+}
+
+/**
  * The general job's scoring pass (J8): contacts with a visit started since
  * a day before the last pass (a visit still going gets later pages), a
  * journey row since the last pass, or a score not worked out for a day
@@ -631,16 +782,8 @@ function pg_lead_score_run($now, $budget = PG_LEAD_SCORE_TICK_SECONDS)
         return 0;
     }
 
-    $ids = (array) db_values("SELECT c.contact_id FROM (
-            SELECT contact_id FROM lead_visits WHERE started_at >= '" . max(0, $since - 86400) . "' AND contact_id > 0
-            UNION SELECT contact_id FROM contact_journey WHERE at >= '" . $since . "' AND contact_id > 0
-            UNION SELECT contact_id FROM contact_scores WHERE interest > 0 AND scored_at < '" . ($now - 86400) . "'
-        ) c
-        LEFT JOIN contact_scores s ON s.contact_id = c.contact_id
-        WHERE s.contact_id IS NULL OR s.scored_at < '" . $started . "'
-        ORDER BY c.contact_id LIMIT " . PG_LEAD_SCORE_BATCH);
-
     $settings = pg_lead_settings();
+    $ids = (array) db_values(pg_lead_score_candidates_sql($since, $started, $now, pg_lead_keep_start($now, $settings['keep_months'])));
     $clock = microtime(true);
     $scored = 0;
     $done = 0;

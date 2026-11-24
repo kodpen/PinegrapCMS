@@ -2226,8 +2226,10 @@ body:not(.toolbar) .software-content > #footer {
 }
 /* The rail's rules skip a drawer-only screen (.menu-drawer-only, below):
    its menu is the drawer at every width. :where() keeps their weight. */
+/* Hidden from sight only: visibility or display would take the label out
+   of the row's name, and a row with a count would be read as its number. */
 :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .list-group-text {
-  visibility: hidden;
+  opacity: 0;
 }
 
 /* A count on a menu entry (the ERP's overdue receivables). Expanded, it sits
@@ -2879,7 +2881,7 @@ body:not(.toolbar) .software-content > #footer {
   /* The drawer is always full width while open, so labels never hide down here
      regardless of the saved desktop rail state. */
   #menu:not(.expanded) .list-group .list-group-item .list-group-text {
-    visibility: visible;
+    opacity: 1;
   }
   /* And a count goes back into the line with them, before the arrow. */
   #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
@@ -16540,6 +16542,19 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     overflow-wrap: anywhere;
   }
 }
+/* Below 768px the frame is as tall as its table up to 90vh and scrolls the
+   rest inside, so a long table always shows at least 70vh of rows and a
+   short one keeps its own height. It never shrinks under its table in a
+   flex column (flex: none), whose scroll-container items may otherwise be
+   squeezed to a sliver. Vertical overscroll still chains to the
+   conversation, so a swipe on a full table moves on past it. */
+@media (max-width: 767.98px) {
+  .ws-table-wrap {
+    flex: none;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
 .ws-checklist {
   list-style: none;
   padding: 0;
@@ -22661,6 +22676,13 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     border-radius: 0;
     box-shadow: none;
   }
+  /* The channel view's full window height (.ws-app:not(:has(.ws-home))
+     above) is the more specific selector: without this, 100dvh, which the
+     on-screen keyboard does not shorten, beat --ws-fit-h and left the
+     writing box under the keyboard. */
+  .ws-app:not(:has(.ws-home)) {
+    height: var(--ws-fit-h, calc(100vh - 3.125rem));
+  }
   body.workspace_channels {
     overflow: hidden;
   }
@@ -28360,6 +28382,40 @@ html.ws-flow-layer-on body {
   padding: 0 8px;
   transform: translateX(-50%);
   white-space: nowrap;
+}
+/* The map (drawMap()): a 172 by 104 px card at the canvas's bottom left,
+   the flow's boxes as small blocks, the part on screen framed. */
+.wsf-map {
+  position: absolute;
+  z-index: 4;
+  bottom: 16px;
+  left: 16px;
+  width: 172px;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-sm);
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  cursor: pointer;
+  touch-action: none;
+  pointer-events: auto;
+}
+.wsf-map-boxes {
+  position: absolute;
+  inset: 0;
+}
+.wsf-map-box,
+.wsf-map-view {
+  position: absolute;
+  border-radius: 2px;
+}
+.wsf-map-box {
+  background: color-mix(in srgb, var(--pg-fg-2) 40%, transparent);
+}
+.wsf-map-view {
+  border: 1.5px solid var(--pg-primary);
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
 }
 .wsf-strip-divider {
   width: 1px;

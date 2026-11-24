@@ -281,9 +281,11 @@ function validate_token()
         || (!hash_equals($session_token, $token))
     ) {
         // Most often a page opened before the current sign-in: its token
-        // belongs to an earlier session.
+        // belongs to an earlier session. code 'token' lets such a page ask
+        // session_token for the current one and send again once.
         respond(array(
             'status' => 'error',
+            'code' => 'token',
             'message' => lang('Your session expired. Reload the page and try again.')
         ));
     }

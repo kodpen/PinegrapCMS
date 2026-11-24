@@ -3748,6 +3748,54 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'customers.hot',
+			'method'  => 'GET',
+			'path'    => '/customers/hot',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_hot',
+			'returns' => array('list' => 'HotContact', 'threshold' => 'integer'),
+			'summary' => 'Hot contacts: the customers whose interest score reached the threshold',
+			'description' => 'The Hot contacts view of the contacts list: highest interest score first, cursor paged. Each carries its score, fit, the acts that gave the most points, its interests, when it turned hot and followed_by, the people holding an open follow-up task tagged with the contact (Workspace user ids; null with the Workspace off). Scores are worked out by the scheduled job, never at the call. Read only. An application whose owner has the user role reaches only the customers of the contact groups given to that account.',
+			'details' => 'Only contacts whose visits are tied with the marketing cookie yes are scored, never a panel user. threshold is the site\'s hot threshold (60 unless changed under Site Settings, Visitors and privacy). reasons: pricing_page, contact_page, return_7d, form, booking, campaign_click or download. topic is the strongest interest (a page folder or a product group). The same fields as the customer.hot event. A site without the scores answers an empty list.',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.journey',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/journey',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_journey',
+			'returns' => array('list' => 'JourneyEntry', 'first_touch' => 'JourneyFirstTouch?'),
+			'summary' => 'A customer\'s journey: visits and acts in time order',
+			'description' => 'The Journey card of the contact screen, newest first, cursor paged: visits with their pages, forms, newsletter yes, campaign e-mails opened, downloads, bookings, orders and course steps. first_touch is where the customer first came from, null with no visit tied. Forms need forms:read, orders orders:read. For the user role only customers of its contact groups, 404 for the rest.',
+			'details' => 'Forms for the user role only on pages in folders the account may edit. Only visits of browsers that accepted marketing cookies are tied to a contact; a contact with panel work has no journey. kind is visit, form, newsletter, campaign_click, download, booking, order or course. A visit carries pages (each with the seconds spent, and item_type and item_id on a catalogue page) and minutes; an order its amount in minor units; a course step complete when the course was finished. Up to 200 rows of each source, inside the site\'s keep period.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.score',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/score',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_score',
+			'returns' => 'LeadScore',
+			'summary' => 'A customer\'s interest and fit scores with their reasons and interests',
+			'description' => 'The Interest card of the contact screen: interest (0 to 100, points from visits and acts fading by the half-life), fit (0 to 100, from the contact\'s fields), the site\'s threshold, hot, the reasons with their points and up to five interests. scored is false, and the scores null, while no visit is tied, for a panel user and until the scheduled job reaches the contact. An application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest.',
+			'details' => 'Interest reasons: pricing_page, contact_page, return_7d, form, booking, campaign_click, download. Fit reasons: company_domain, company, title, group. A topic\'s kind is folder (a page folder) or category (a product group); weight is the seconds spent there, faded.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'customers.wishlist',
 			'method'  => 'GET',
 			'path'    => '/customers/{id}/wishlist',
@@ -4151,6 +4199,19 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'launch.read',
+			'method'  => 'GET',
+			'path'    => '/launch',
+			'scope'   => 'system:read',
+			'handler' => 'api_launch_read',
+			'returns' => 'LaunchJourney',
+			'summary' => 'What is missing before the site goes live',
+			'description' => 'The set-up steps for the site\'s purpose, each read now from the setting that decides it: state done, todo or unknown (could not be read, never a blocker), level blocker, warning or none, a stable reason code and a line for a person. blockers and warnings are the go-live check; go_live_changes names what the panel\'s Go live turns off itself (maintenance, robots). Read only: going live is a person\'s press in the panel.',
+			'details' => 'hidden marks a step set to Not for this site; a hidden step that blocks still blocks. purpose is other while purpose_chosen is false. live_at is the first go-live, null before it.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'reports.sales',
 			'method'  => 'GET',
 			'path'    => '/reports/sales',
@@ -4254,6 +4315,24 @@ function api_schema() {
 				array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the row of this contact, as its contact card shows it, with the products due.'),
 				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'reports.lead_sources',
+			'method'  => 'GET',
+			'path'    => '/reports/lead-sources',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_lead_sources',
+			'returns' => array('list' => 'LeadSource', 'report' => 'LeadSourcesReport'),
+			'summary' => 'Lead sources: which channel, campaign or landing page brought leads and customers',
+			'description' => 'The Lead sources report: the contacts that became a lead (a form or a booking) or a customer (a first order or a paid invoice) in the window, grouped by the channel, campaign or landing page of their first or last touch, most leads first. converted counts the leads that became customers, share is that in per cent. revenue is the first orders\' total in minor units, only on a shop and to a key that also holds orders:read. Defaults to the last thirty days; a window is at most 400 days. One page.',
+			'details' => 'Only visits of browsers that accepted marketing cookies are tied to a contact, so only those count. An empty key is a lead with no visit tied or a visit without that value. report.ready is false before the journey\'s tables are there.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'touch', 'in' => 'query', 'type' => 'enum', 'values' => array('first', 'last'), 'default' => 'first'),
+				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('channel', 'campaign', 'landing_page'), 'default' => 'channel')
 			)
 		),
 
@@ -6113,7 +6192,12 @@ function api_schema() {
 				array('name' => 'duration',      'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'How long the link opens, in seconds from now. Required for anyone.'),
 				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft page of the design the prototype opens on.'),
 				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.'),
-				array('name' => 'allow_comments', 'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'Whoever opens the link can pin comments with a name on its pages and answer them. Off unless sent as true.')
+				array('name' => 'allow_comments', 'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'Whoever opens the link can pin comments with a name on its pages and answer them. Off unless sent as true.'),
+				array('name' => 'approval',       'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'The link asks for approval: whoever opens it can approve each page or request changes with a note. Turns allow_comments on. 422 on a site not upgraded to keep approvals.'),
+				array('name' => 'approver_name',  'in' => 'body', 'type' => 'string', 'max_length' => 60, 'description' => 'Who is asked to approve, 1 to 60 characters on one line. Required with approval.'),
+				array('name' => 'approver_email', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Optional: the approver\'s address, sent a receipt of each answer and later reminders. Used only for this review.'),
+				array('name' => 'answer_by',      'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'Optional YYYY-MM-DD: the day the answers are asked by, from today on and no later than the day the link runs out.'),
+				array('name' => 'publish_rule',   'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'With approval: a page shown by the link goes live only once its current draft is approved.')
 			)
 		),
 
