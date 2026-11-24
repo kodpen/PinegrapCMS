@@ -12,7 +12,7 @@ module: output
 
 ## What colour is a row?
 - The colour of its category in `pg_menu_categories()`, not of its module class: `pg_menu_category_tone($slot)` gives `top` (the untitled block, and a row no category lists), `content`, `design`, `ecommerce`, `accounting`, `marketing` or `system`.
-- `backend.src.css`, block "Main menu icons", has one line a category: `#menu [data-pg-menu-tone="…"]` sets `--pg-menu-tone` to blue, teal, rose, amber, lime, violet or grey (`--pg-tone-*`, `light-dark()` so both themes). A new category needs its line; the test checks each.
+- `backend.src.css`, block "Main menu icons", has one line a category: `:is(#menu, .pg-look-mi) [data-pg-menu-tone="…"]` sets `--pg-menu-tone` to blue, teal, rose, amber, lime, violet or grey (`--pg-tone-*`, `light-dark()` so both themes). A new category needs its line; the test checks each.
 - The row's icon sits on `pg_menu_icon_tile()`: `<span class="pg-mi-tile me-3" data-pg-menu-tone="…">`, 26 px, radius 8 px, the 15 px icon in the tone on a 13% tint with a 16% inner line; the current row (`.active`) 26% and 34%. The row is 34 px high, its label 13.5 px; collapsed, 11 px item padding centres the tile on the 60 px rail.
 - The Workspace's pin actions (My Notes, Incoming e-mail) return the same tile, so a row added without a reload looks like the server's.
 
@@ -23,7 +23,7 @@ module: output
 - On a tile like the rows': a panel carries its row's category (`data-pg-menu-tone`, passed to `pg_menu_panel()`, `pg_menu_other_markup()`, `pg_menu_tools_markup()`), the glyph in the tone on a 13% tint.
 - Bootstrap Icons' `::before` rule is unlayered and beats `@layer custom`, so its `line-height: 1` stays: the tile centres the glyph with top padding, not line-height.
 
-## Where do the moves and live parts go?
-- Step MI2 of `plans/main-menu-icons-redraw.md`. Until then the icons are at rest: the flows dot is hidden (`#menu .pg-mi [data-l]`). The Dashboard svg keeps `data-pg-clock` only so `backend.src.js` rolls the Calendars day (`.pg-mi-date`) over at midnight.
+## How do they move?
+- `ui/main-menu-icon-motion.md`: one move per icon on hover and focus, the live flows dot and Calendars day.
 
-Related: docs/memory/ui/main-menu-states.md, docs/memory/ui/main-menu-categories.md
+Related: docs/memory/ui/main-menu-icon-motion.md, docs/memory/ui/main-menu-states.md, docs/memory/ui/main-menu-categories.md

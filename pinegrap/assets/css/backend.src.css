@@ -1777,15 +1777,16 @@ html[data-bs-theme="dark"] body .design-color {
    icon, on a tile (pg_menu_icon_tile()) in the colour of the row's category
    (data-pg-menu-tone, pg_menu_category_tone()): the icon in the tone, the
    tile a 13% tint of it with a 16% inner line. The current row's tile is
-   stronger. The panels carry the same tone for their entries' tiles. */
-#menu [data-pg-menu-tone="top"] { --pg-menu-tone: var(--pg-tone-blue); }
-#menu [data-pg-menu-tone="content"] { --pg-menu-tone: var(--pg-tone-teal); }
-#menu [data-pg-menu-tone="design"] { --pg-menu-tone: var(--pg-tone-rose); }
-#menu [data-pg-menu-tone="ecommerce"] { --pg-menu-tone: var(--pg-tone-amber); }
-#menu [data-pg-menu-tone="accounting"] { --pg-menu-tone: var(--pg-tone-lime); }
-#menu [data-pg-menu-tone="marketing"] { --pg-menu-tone: var(--pg-tone-violet); }
-#menu [data-pg-menu-tone="system"] { --pg-menu-tone: var(--pg-tone-gray); }
-#menu .pg-mi-tile {
+   stronger. The panels carry the same tone for their entries' tiles, and
+   Design examples' "Menu row icon" (.pg-look-mi) draws the same tiles. */
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="top"] { --pg-menu-tone: var(--pg-tone-blue); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="content"] { --pg-menu-tone: var(--pg-tone-teal); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="design"] { --pg-menu-tone: var(--pg-tone-rose); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="ecommerce"] { --pg-menu-tone: var(--pg-tone-amber); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="accounting"] { --pg-menu-tone: var(--pg-tone-lime); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="marketing"] { --pg-menu-tone: var(--pg-tone-violet); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="system"] { --pg-menu-tone: var(--pg-tone-gray); }
+:is(#menu, .pg-look-mi) .pg-mi-tile {
   flex: none;
   display: inline-grid;
   place-items: center;
@@ -1803,7 +1804,7 @@ html[data-bs-theme="dark"] body .design-color {
   --pg-mi-tint: 26%;
   --pg-mi-line: 34%;
 }
-#menu .pg-mi-tile > svg {
+:is(#menu, .pg-look-mi) .pg-mi-tile > svg {
   width: 0.9375rem;
   height: 0.9375rem;
   overflow: visible;
@@ -1812,16 +1813,16 @@ html[data-bs-theme="dark"] body .design-color {
   font-size: 0.9375rem;
   line-height: 1;
 }
-#menu .pg-mi .pg-mi-f {
+:is(#menu, .pg-look-mi) .pg-mi .pg-mi-f {
   fill: currentColor;
   stroke: none;
 }
 /* A part that hides the line behind it (a frame's handles, the wheels):
    the tile's own colour over the menu's ground. */
-#menu .pg-mi .pg-mi-h {
+:is(#menu, .pg-look-mi) .pg-mi .pg-mi-h {
   fill: color-mix(in srgb, var(--pg-menu-tone) var(--pg-mi-tint), var(--pg-navbar-bg));
 }
-#menu .pg-mi .pg-mi-date {
+:is(#menu, .pg-look-mi) .pg-mi .pg-mi-date {
   fill: currentColor;
   stroke: none;
   font-family: inherit;
@@ -1829,8 +1830,80 @@ html[data-bs-theme="dark"] body .design-color {
   text-anchor: middle;
 }
 /* A live part (the Automation flows dot) shows only while it runs. */
-#menu .pg-mi [data-l] {
+:is(#menu, .pg-look-mi) .pg-mi [data-l] {
   opacity: 0;
+}
+
+/* The moves: one per icon, 0.5 s, played on the row's hover and keyboard
+   focus; the parts that move carry data-m, whose value names the move
+   (--pg-mi-k). Design examples' "Menu row icon" plays them on its items.
+   Nothing loops but the live part: the Automation flows dot runs the
+   connector while the row carries data-pg-flows-running. The dot moves by
+   translate keyframes along the path, as offset-path is not taken by SVG
+   parts in every browser. */
+@media (prefers-reduced-motion: no-preference) {
+  :is(#menu .list-group-item, .pg-look-mi-item):is(:hover, :focus-visible) .pg-mi [data-m] {
+    animation: var(--pg-mi-k) 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .pg-mi [data-m="pop"] { --pg-mi-k: pg-mi-pop; transform-box: fill-box; transform-origin: center; }
+  .pg-mi [data-m="pulse"] { --pg-mi-k: pg-mi-pulse; transform-box: fill-box; transform-origin: center; }
+  .pg-mi [data-m="write"] { --pg-mi-k: pg-mi-write; transform-box: fill-box; transform-origin: left center; }
+  .pg-mi [data-m="write2"] { --pg-mi-k: pg-mi-write2; transform-box: fill-box; transform-origin: left center; }
+  .pg-mi [data-m="peel"] { --pg-mi-k: pg-mi-peel; transform-origin: 20.5px 20.5px; }
+  .pg-mi [data-m="drop"] { --pg-mi-k: pg-mi-drop; }
+  .pg-mi [data-m="up"] { --pg-mi-k: pg-mi-up; }
+  .pg-mi [data-m="flip"] { --pg-mi-k: pg-mi-flip; }
+  .pg-mi [data-m="draw"] { --pg-mi-k: pg-mi-draw; stroke-dasharray: 30; }
+  .pg-mi [data-m="resize"] { --pg-mi-k: pg-mi-resize; transform-origin: 5.5px 5.5px; }
+  .pg-mi [data-m="drag"] { --pg-mi-k: pg-mi-drag; }
+  .pg-mi [data-m="print"] { --pg-mi-k: pg-mi-print; }
+  .pg-mi [data-m="in"] { --pg-mi-k: pg-mi-in; }
+  .pg-mi [data-m="tilt"] { --pg-mi-k: pg-mi-tilt; transform-origin: 12px 12px; }
+  .pg-mi [data-m="drive"] { --pg-mi-k: pg-mi-drive; }
+  .pg-mi [data-m="speed"] { --pg-mi-k: pg-mi-speed; opacity: 0; }
+  .pg-mi [data-m="tab"] { --pg-mi-k: pg-mi-tab; }
+  .pg-mi [data-m="send"] { --pg-mi-k: pg-mi-send; }
+  .pg-mi [data-m="recv"] { --pg-mi-k: pg-mi-recv; }
+  .pg-mi [data-m="join"] { --pg-mi-k: pg-mi-join; }
+  .pg-mi [data-m="lid"] { --pg-mi-k: pg-mi-lid; transform-origin: 21px 10px; }
+  :is(#menu .list-group-item, .pg-look-mi-item)[data-pg-flows-running] .pg-mi [data-l="run"] {
+    animation: pg-mi-run 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+@keyframes pg-mi-pop { 0% { transform: scale(0.55); opacity: 0.2; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: none; } }
+@keyframes pg-mi-pulse { 50% { transform: scale(1.18); } }
+@keyframes pg-mi-write { 0% { transform: scaleX(0); } 60%, 100% { transform: scaleX(1); } }
+@keyframes pg-mi-write2 { 0%, 35% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+@keyframes pg-mi-peel { 50% { transform: scale(1.3); } }
+@keyframes pg-mi-drop { 0% { transform: translateY(-4px); opacity: 0; } 60% { transform: translateY(0.6px); opacity: 1; } 100% { transform: none; } }
+@keyframes pg-mi-up { 50% { transform: translateY(-2px); } }
+@keyframes pg-mi-flip { 0% { transform: translateY(0); opacity: 1; } 40% { transform: translateY(-3px); opacity: 0; } 41% { transform: translateY(3px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes pg-mi-draw { 0% { stroke-dashoffset: 30; } 100% { stroke-dashoffset: 0; } }
+@keyframes pg-mi-resize { 50% { transform: scale(1.14); } }
+@keyframes pg-mi-drag { 50% { transform: translate(1.7px, 1.5px); } }
+@keyframes pg-mi-print { 0% { transform: translateY(-3.5px); opacity: 0.3; } 100% { transform: none; opacity: 1; } }
+@keyframes pg-mi-in { 0% { transform: translateX(-4px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes pg-mi-tilt { 30% { transform: rotate(-9deg); } 70% { transform: rotate(6deg); } }
+@keyframes pg-mi-drive { 50% { transform: translateX(2.2px); } }
+@keyframes pg-mi-speed { 0%, 100% { opacity: 0; transform: translateX(2px); } 50% { opacity: 1; transform: none; } }
+@keyframes pg-mi-tab { 50% { transform: translateX(1.6px); } }
+@keyframes pg-mi-send { 50% { transform: translateX(1.8px); } }
+@keyframes pg-mi-recv { 50% { transform: translateX(-1.8px); } }
+@keyframes pg-mi-join { 0% { transform: translateX(4px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes pg-mi-lid { 50% { transform: rotate(16deg); } }
+/* The connector of the Automation flows icon (M10.5 6.75h4a3 3 0 0 1 3 3V14)
+   as points on the 24-unit grid at their share of its length, the bend by
+   its quarters; the trip takes 70%, the dot fades out in the end. */
+@keyframes pg-mi-run {
+  0% { transform: translate(10.5px, 6.75px); opacity: 0; }
+  12% { opacity: 1; }
+  21.6% { transform: translate(14.5px, 6.75px); }
+  28% { transform: translate(15.65px, 6.98px); }
+  34.3% { transform: translate(16.62px, 7.63px); }
+  40.7% { transform: translate(17.27px, 8.6px); }
+  47% { transform: translate(17.5px, 9.75px); }
+  70% { transform: translate(17.5px, 14px); opacity: 1; }
+  80%, 100% { transform: translate(17.5px, 14px); opacity: 0; }
 }
 
 /* The Design Canvas's icon outside the main menu (pg_design_canvas_icon()):
@@ -4882,6 +4955,11 @@ a.link-top-row {
 }
 .pg-look-narrow {
   max-width: 12rem;
+}
+/* Design examples' "Menu row icon": an item plays its icon's move on hover
+   and keyboard focus, as a menu row does. */
+.pg-look-mi-item {
+  cursor: default;
 }
 .pg-look-pad {
   padding: 20px;

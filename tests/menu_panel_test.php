@@ -159,11 +159,11 @@ function test_menu_every_category_has_its_tone_in_the_stylesheet()
 		$tone = ($key === '') ? 'top' : $key;
 
 		pg_assert_true(isset($tones[$tone]), $tone . ' has a colour');
-		pg_assert_contains('#menu [data-pg-menu-tone="' . $tone . '"] { --pg-menu-tone: var(--pg-tone-' . $tones[$tone] . '); }', $css, $tone);
+		pg_assert_contains(':is(#menu, .pg-look-mi) [data-pg-menu-tone="' . $tone . '"] { --pg-menu-tone: var(--pg-tone-' . $tones[$tone] . '); }', $css, $tone);
 		pg_assert_contains('--pg-tone-' . $tones[$tone] . ': light-dark(', $css, $tone . ' in both themes');
 	}
 
-	pg_assert_same(7, substr_count($css, '#menu [data-pg-menu-tone="'), 'one line a category');
+	pg_assert_same(7, substr_count($css, ':is(#menu, .pg-look-mi) [data-pg-menu-tone="'), 'one line a category');
 	pg_assert_false(strpos($css, '#menu .pg-menu-panel[data-pg-menu-tone="') !== false, 'no tone a module');
 }
 
@@ -202,7 +202,7 @@ function test_menu_row_icon_sits_on_its_category_tile()
 	pg_assert_contains("  width: 1.625rem;\n  height: 1.625rem;\n  border-radius: 0.5rem;", $css, 'a 26 px tile');
 	pg_assert_contains("  --pg-mi-tint: 13%;\n  --pg-mi-line: 16%;", $css, 'a tint and an inner line');
 	pg_assert_contains("#menu .list-group-item.active .pg-mi-tile {\n  --pg-mi-tint: 26%;\n  --pg-mi-line: 34%;", $css, 'stronger on the current row');
-	pg_assert_contains("#menu .pg-mi-tile > svg {\n  width: 0.9375rem;", $css, 'a 15 px icon');
+	pg_assert_contains(":is(#menu, .pg-look-mi) .pg-mi-tile > svg {\n  width: 0.9375rem;", $css, 'a 15 px icon');
 }
 
 function test_menu_site_settings_row_is_retired()

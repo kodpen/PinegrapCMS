@@ -225,7 +225,7 @@ function test_automation_flows_menu_icon_is_two_boxes_and_a_connector()
 function test_automation_flows_menu_icon_live_dot_and_count()
 {
 	$css = preg_replace('#/\*.*?\*/#s', '', automation_flows_menu_test_file('assets/css/backend.src.css'));
-	$rest = strpos($css, "#menu .pg-mi [data-l] {\n  opacity: 0;\n}");
+	$rest = strpos($css, ":is(#menu, .pg-look-mi) .pg-mi [data-l] {\n  opacity: 0;\n}");
 
 	pg_assert_true($rest !== false, 'the live dot is hidden at rest');
 	pg_assert_false(automation_flows_menu_test_in_motion_block($css, (int) $rest), 'hidden whatever the motion setting');

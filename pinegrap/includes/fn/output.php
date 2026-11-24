@@ -3903,12 +3903,13 @@ function output_footer_secure($properties = false)
 // .pg-mi-h parts with the menu's ground, to hide the line behind them.
 //
 // Parts that move on hover are named by data-m (the move) and data-l (a live
-// part, the Automation flows dot); the moves live in backend.src.css under
-// "Main menu icons".
+// part, the Automation flows dot, which runs while the row carries
+// data-pg-flows-running); the moves live in backend.src.css under "Main menu
+// icons".
 //
-// Dashboard: the svg keeps the site's time (data-pg-clock) for the script in
-// backend.src.js that rolls the Calendars day over at midnight. Calendars:
-// today's day of the month, from the site's time zone.
+// Calendars: today's day of the month, from the site's time zone; the svg
+// keeps the site's time of day (data-pg-day, seconds since midnight) and date
+// for initMenuDay() in backend.src.js, which rolls the day over at midnight.
 //
 // $space is the margin class after the icon; the menu's rows pass '' and the
 // tile carries the margin. The Artifact Canvas's drawing (design_canvas) is
@@ -3944,11 +3945,9 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
     if (isset($icons[$name])) {
         $body = $icons[$name];
 
-        if ($name === 'dashboard') {
+        if ($name === 'calendars') {
             $seconds = ((int) date('G') * 3600) + ((int) date('i') * 60) + (int) date('s');
-            $extra = ' data-pg-clock="' . $seconds . '" data-pg-clock-date="' . date('Y-m-d') . '"';
-        } else if ($name === 'calendars') {
-            $extra = ' data-pg-day="1"';
+            $extra = ' data-pg-day="' . $seconds . '" data-pg-day-date="' . date('Y-m-d') . '"';
             $body = str_replace('{day}', date('j'), $body);
         }
     } else if ($name === 'design_canvas') {
