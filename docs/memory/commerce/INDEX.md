@@ -482,6 +482,7 @@
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
+- walk-in-queue-arrivals.md: Walk-in queue arrivals (WQ5): priority from staff, the kiosk and the desk row; I have a booking (today's booking by phone or e-mail); I'm on my way; where a moved-back number stands
 - walk-in-queue-desk.md: Walk-in queue desk (WQ4, queue_desk.php): Today tab, My desk, place staff, Open this desk, Call next, Call again, Not here, Send to another service, Finish, Pause
 - walk-in-queue-notices.md: A walk-in queue number's three notices (WQ3): taken, ahead, called; each once by its bit; WhatsApp, SMS or e-mail; kind queue as a service message; the texts and their places
 - walk-in-queue-number-page.md: The walk-in queue's public queue.php (WQ3): taking a number, the person's page and its 15-second read, Leave the queue, staff's Add a number, the limit, the firewall entry

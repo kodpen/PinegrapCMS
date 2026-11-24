@@ -99,6 +99,7 @@
 - connections-accounts-signin-page.md: Accounts and sign-in on Connections (CX11f): Apple's sign-in application and the Turnstile and hCaptcha keys on their pages; the cards keep the switches and the choice
 - connections-address-merchant-page.md: Address autocomplete providers and Merchant Center on Connections (CX11g4): keys, server, account, country on their pages; the card keeps switch and provider
 - connections-backup-accounts.md: Backup accounts (CX11j1): Connect a … account for backups on Google Drive's, OneDrive's and Dropbox's pages, the return to the Backups card, the card without a Connect button
+- connections-chat-notify-page.md: Slack's, Microsoft Teams' and Telegram's pages on Connections (CX11j2): each lists its chat notification targets and adds one; the Chat notifications card only leads there [decision: here]
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-reviews-page.md: Google reviews' page on Connections (CX11i): the Places API key and Place ID typed there under the Integrations gate; the Google Reviews card shows the connection
