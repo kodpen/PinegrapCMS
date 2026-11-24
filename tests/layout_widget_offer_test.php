@@ -107,7 +107,7 @@ function test_layout_widget_seed_form_views()
 
 function test_layout_widget_seed_types_reading_their_row()
 {
-	foreach (array('shopping cart', 'express order', 'billing information', 'order form', 'photo gallery', 'login') as $type) {
+	foreach (array('express order', 'billing information', 'order form', 'photo gallery', 'login') as $type) {
 		pg_assert_same(array(), pg_layout_widget_seed($type, array('next_page_id' => '3')), $type . ': the widget reads its page itself');
 	}
 }

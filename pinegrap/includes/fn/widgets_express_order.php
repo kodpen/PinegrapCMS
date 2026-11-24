@@ -2700,7 +2700,9 @@ function _eo_render_applied_offers()
 // lines 1732-1737 ("Bu Sepet Kaydedildi ..."). reference_code lives on
 // the orders row; we wrap it in the current page's URL with `?r=CODE`.
 // Returns empty string when no order exists yet (initial visit / no items).
-function _eo_render_saved_cart_link($cart_label)
+// The address that restores the visitor's cart (the current page with
+// `?r=<reference code>`), '' when there is no order or no code yet.
+function _eo_saved_cart_url()
 {
     $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     if ($order_id <= 0) return '';
@@ -2717,7 +2719,13 @@ function _eo_render_saved_cart_link($cart_label)
         $ru = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
         $page_name = ltrim(preg_replace('/\?.*$/', '', $ru), '/');
     }
-    $retrieve_url = $base_path . $page_name . '?r=' . rawurlencode($ref);
+    return $base_path . $page_name . '?r=' . rawurlencode($ref);
+}
+
+function _eo_render_saved_cart_link($cart_label)
+{
+    $retrieve_url = _eo_saved_cart_url();
+    if ($retrieve_url === '') return '';
     $lbl = $cart_label !== '' ? $cart_label : (string)lang('cart');
     // alert-secondary auto-adapts to data-bs-theme="dark|light" via Bootstrap
     // 5.3 dark-mode CSS variables. alert-light has FIXED light bg and would
