@@ -4,8 +4,10 @@
  * The new dashboard's set-up card (assets/js/pg_dash.js draws the frame):
  * the steps before going live, blockers first, "Do it" opening the screen
  * where each is done, "Not for this site" on a step's menu, "Change
- * purpose" and "Hide set-up" on the card's menu, and the purpose dialog
- * ("What is this site for?"); the foot "Ready to go live?" opens the
+ * purpose", "Agency summary" and "Hide set-up" on the card's menu, the
+ * purpose dialog ("What is this site for?") and the agency summary's
+ * drawer: its "What we need from you" lines and the customer's signed link
+ * (panel action launch_summary); the foot "Ready to go live?" opens the
  * go-live check ("Must be fixed", "Worth a look", "Go live"). The data is what
  * includes/dashboard/v2/cards/launch.php returns; every text in it was
  * translated on the server. Choices are saved through the panel action
@@ -25,6 +27,7 @@
 
     // The purpose dialog opens by itself once per page, not on every redraw.
     var asked = false;
+    var summaryOpened = false;
     var current = null;
 
     function save(request, done, failed) {
@@ -310,6 +313,229 @@
         pgUI.dialog.show(parts.root);
     }
 
+    // The agency summary: "What we need from you" lines with the customer's
+    // answers, "Add a line", each with its remove; the customer's link with
+    // Copy and "Withdraw link", or the expiry and "Make a new link". Every
+    // answer of launch_summary is the drawer's data after the change.
+    function summaryCall(request, done, failed) {
+        request.action = "launch_summary";
+        request.token = (typeof software_token !== "undefined") ? software_token : "";
+
+        $.ajax({
+            contentType: "application/json",
+            url: "api.php",
+            data: JSON.stringify(request),
+            type: "POST",
+            dataType: "json"
+        }).done(function (answer) {
+            if (answer && answer.status === "success" && answer.summary) {
+                done(answer.summary);
+            } else {
+                failed((answer && answer.message) || "");
+            }
+        }).fail(function () {
+            failed("");
+        });
+    }
+
+    function summaryDrawer(data) {
+        var el = pgDash.el;
+        var labels = data.labels;
+        var old = document.getElementById("pg_dash_launch_summary");
+        if (old) {
+            old.remove();
+        }
+
+        var phone = window.matchMedia("(max-width: 575.98px)").matches;
+        var root = el("dialog", "drawer " + (phone ? "drawer-bottom" : "drawer-end"));
+        root.id = "pg_dash_launch_summary";
+        root.style.width = "min(480px,100%)";
+        root.setAttribute("aria-labelledby", "pg_dash_launch_summary_title");
+
+        var header = el("div", "drawer-header");
+        var heading = el("div", "flex-grow-1 min-width-0");
+        var title = el("h5", "drawer-title mb-0", labels.summary);
+        title.id = "pg_dash_launch_summary_title";
+        heading.appendChild(title);
+        heading.appendChild(el("p", "small fg-2 mb-0 mt-1", labels.summary_line));
+        header.appendChild(heading);
+        var close = el("button", "btn-close ms-auto");
+        close.type = "button";
+        close.setAttribute("data-bs-dismiss", "drawer");
+        close.setAttribute("aria-label", labels.close);
+        header.appendChild(close);
+        root.appendChild(header);
+
+        var body = el("div", "drawer-body flex-grow-1 overflow-auto");
+        root.appendChild(body);
+
+        var note = el("p", "pg-dash-launch-note fg-emphasis-danger mb-3");
+        note.setAttribute("role", "status");
+        note.hidden = true;
+
+        function failed(text) {
+            note.textContent = text || labels.failed;
+            note.hidden = false;
+        }
+
+        function call(request, button) {
+            if (button) {
+                button.disabled = true;
+            }
+            note.hidden = true;
+            summaryCall(request, draw, function (text) {
+                if (button) {
+                    button.disabled = false;
+                }
+                failed(text);
+            });
+        }
+
+        function draw(summary) {
+            body.textContent = "";
+            body.appendChild(note);
+
+            if (!summary.ready) {
+                body.appendChild(el("p", "fg-2 mb-0", labels.no_key));
+                return;
+            }
+
+            body.appendChild(el("h6", "pg-field-label mb-2", labels.need));
+            var list = el("ul", "list-unstyled mb-3");
+            summary.lines.forEach(function (line) {
+                var item = el("li", "pg-list-row" + (line.answer ? "" : " is-read"));
+                var main = el("div", "pg-list-row-main");
+                var head = el("div", "pg-list-row-head");
+                head.appendChild(el("span", "pg-list-row-title", line.text));
+                main.appendChild(head);
+                main.appendChild(el("div", "pg-list-row-text", line.answered));
+                if (line.answer) {
+                    var gather = el("div", "pg-gather");
+                    var answer = el("div", "pg-gather-line", line.answer);
+                    // The customer's line breaks are kept.
+                    answer.style.whiteSpace = "pre-wrap";
+                    gather.appendChild(answer);
+                    main.appendChild(gather);
+                }
+                item.appendChild(main);
+
+                var side = el("div", "pg-list-row-side");
+                var remove = el("button", "pg-icon-button pg-icon-button-sm");
+                remove.type = "button";
+                remove.setAttribute("aria-label", labels.remove + ": " + line.text);
+                var icon = el("i", "bi bi-x-lg");
+                icon.setAttribute("aria-hidden", "true");
+                remove.appendChild(icon);
+                remove.addEventListener("click", function () {
+                    call({op: "remove", id: line.id}, remove);
+                });
+                side.appendChild(remove);
+                item.appendChild(side);
+                list.appendChild(item);
+            });
+            if (!summary.lines.length) {
+                body.appendChild(el("p", "fg-2 mb-3", labels.no_lines));
+            } else {
+                body.appendChild(list);
+            }
+
+            if (!summary.full) {
+                var add = el("div", "d-flex gap-2 mb-6");
+                var input = el("input", "pg-input flex-grow-1");
+                input.type = "text";
+                input.maxLength = 500;
+                input.id = "pg_dash_launch_summary_new";
+                input.placeholder = labels.add_hint;
+                input.setAttribute("aria-label", labels.add);
+                var addButton = el("button", "pg-button pg-button-quiet", labels.add);
+                addButton.type = "button";
+                var addLine = function () {
+                    if (input.value.trim() === "") {
+                        input.focus();
+                        return;
+                    }
+                    call({op: "add", text: input.value}, addButton);
+                };
+                addButton.addEventListener("click", addLine);
+                input.addEventListener("keydown", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        addLine();
+                    }
+                });
+                add.appendChild(input);
+                add.appendChild(addButton);
+                body.appendChild(add);
+            }
+
+            body.appendChild(el("h6", "pg-field-label mb-2", labels.link));
+            body.appendChild(el("p", "fg-2 mb-3", summary.link.text));
+
+            if (summary.link.state === "open") {
+                var field = el("input", "pg-input mb-3");
+                field.type = "text";
+                field.readOnly = true;
+                field.value = summary.link.url;
+                field.setAttribute("aria-label", labels.link);
+                body.appendChild(field);
+
+                var row = el("div", "d-flex gap-2");
+                var copy = el("button", "pg-button pg-button-quiet", labels.copy);
+                copy.type = "button";
+                copy.setAttribute("data-pg-copy", summary.link.url);
+                row.appendChild(copy);
+                var withdraw = el("button", "pg-button pg-button-danger", labels.withdraw);
+                withdraw.type = "button";
+                withdraw.addEventListener("click", function () {
+                    var ask = window.pgConfirm ? window.pgConfirm({
+                        title: labels.withdraw,
+                        message: labels.withdraw_ask,
+                        confirmText: labels.withdraw,
+                        cancelText: labels.cancel,
+                        variant: "danger"
+                    }) : Promise.resolve(window.confirm(labels.withdraw_ask));
+                    ask.then(function (yes) {
+                        if (yes) {
+                            call({op: "withdraw"}, withdraw);
+                        }
+                    });
+                });
+                row.appendChild(withdraw);
+                body.appendChild(row);
+            } else {
+                var wrap = el("div", "form-field mb-3");
+                var label = el("label", "form-label pg-field-label", labels.expiry);
+                label.setAttribute("for", "pg_dash_launch_summary_days");
+                wrap.appendChild(label);
+                var select = el("select", "pg-input");
+                select.id = "pg_dash_launch_summary_days";
+                summary.days.forEach(function (days) {
+                    var option = el("option", "", labels.days.replace("{var:1}", days));
+                    option.value = days;
+                    select.appendChild(option);
+                });
+                wrap.appendChild(select);
+                body.appendChild(wrap);
+
+                var make = el("button", "pg-button pg-button-fill", labels.make);
+                make.type = "button";
+                make.addEventListener("click", function () {
+                    call({op: "link", days: parseInt(select.value, 10)}, make);
+                });
+                body.appendChild(make);
+            }
+        }
+
+        pgUI.drawer.on(root, "hidden", function () {
+            root.remove();
+        });
+
+        document.body.appendChild(root);
+        body.appendChild(el("p", "fg-2 mb-0", labels.loading));
+        pgUI.drawer.show(root);
+        summaryCall({op: "get"}, draw, failed);
+    }
+
     function row(step, data, body) {
         var el = pgDash.el;
         var labels = data.labels;
@@ -374,6 +600,7 @@
         top.appendChild(el("span", "flex-grow-1"));
         top.appendChild(menu(labels.menu, [
             {text: labels.purpose, run: function () { purposeDialog(data); }},
+            {text: labels.summary, run: function () { summaryDrawer(data); }},
             {text: labels.hide, run: function () {
                 save({close: 1}, redraw, function (text) {
                     failedNote(body, text || labels.failed);
@@ -411,6 +638,10 @@
         if (data.ask && !asked && window.pgUI) {
             asked = true;
             purposeDialog(data);
+        } else if (!summaryOpened && window.pgUI && window.location.hash === "#launch-summary") {
+            // The bell line of a customer's answer opens the drawer.
+            summaryOpened = true;
+            summaryDrawer(data);
         }
     };
 

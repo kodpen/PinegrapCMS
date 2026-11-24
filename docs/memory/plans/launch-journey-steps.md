@@ -14,7 +14,7 @@ description: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the sto
 
 - SJ4 (M) after SJ3: the First week card; a team member's path card; first-visit hint lines, marked as `hint:<screen>` keys in `user.tours_seen` (`pg_tour_mark()`), only for screens in the catalogue. Features: L5, L6.
 
-- SJ5 (M) after SJ2 and SJ1b: the agency summary drawer, the signed page (a new root file, in `waf_sensitive_scripts()`), the customer's text answers, the bell line, withdraw. Features: L7.
+- SJ5 (M) done, PR #11314. After SJ2 and SJ1b: the agency summary drawer, the signed page (a new root file, in `waf_sensitive_scripts()`), the customer's text answers, the bell line, withdraw. Features: L7.
 
 - SJ6 (S) after SJ3: the read route with its types, `php tools/check_api_schema.php`; the MCP tool; the guide's `start` topic (`includes/fn/agent_guide.php`). Features: L8.
 

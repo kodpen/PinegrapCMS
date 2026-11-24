@@ -224,6 +224,12 @@ function pg_notification_visible($notification, $rights)
 		return ($target > 0);
 	}
 
+	// A customer's answer on the agency summary's page: addressed to the
+	// line's writer (includes/fn/launch_summary.php).
+	if ($action == 'launch_answer') {
+		return ($target > 0);
+	}
+
 	if ($action == 'software_update') {
 		return ($rights['role'] < 3);
 	}
@@ -776,6 +782,18 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['short']  = h($proto_words['short']);
 		$display['brief']  = h($proto_words['brief']);
 		$display['url']    = $proto_words['url'];
+		$display['icon']   = 'assets/images/notification-general.png';
+		$display['badge']  = 'assets/images/notification-general-badge.png';
+		$display['action'] = $action;
+
+	} elseif ($action == 'launch_answer') {
+
+		// title keeps the line's text; the words are the reader's language.
+		$launch_words = pg_launch_summary_bell_display($notification);
+		$display['title']  = h($launch_words['title']);
+		$display['short']  = h($launch_words['short']);
+		$display['brief']  = h($launch_words['brief']);
+		$display['url']    = $launch_words['url'];
 		$display['icon']   = 'assets/images/notification-general.png';
 		$display['badge']  = 'assets/images/notification-general-badge.png';
 		$display['action'] = $action;
