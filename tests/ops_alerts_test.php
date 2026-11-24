@@ -384,3 +384,14 @@ function test_ops_alerts_bell_url_of_a_deleted_product()
 	pg_assert_same('view_pick_waves.php', pg_ops_alert_bell_url('pack_short', 1, 42, true, false), 'only a sales row opens a product');
 	pg_assert_same('welcome.php', pg_ops_alert_bell_url('integrity', 1, 0, false, false), 'the reader rule still holds');
 }
+
+// An alert told once a day per subject keeps its send times in the state
+// file alone; when that file cannot be opened the code's newest bell row
+// holds it instead, or every pass would send it again.
+function test_ops_alerts_subject_alert_without_the_state_file()
+{
+	pg_assert_false(pg_ops_alert_reads_bell(true, true), 'a subject, the file read: the file alone');
+	pg_assert_true(pg_ops_alert_reads_bell(false, true), 'a subject, no file: the bell row');
+	pg_assert_true(pg_ops_alert_reads_bell(true, false), 'no subject: the bell row too');
+	pg_assert_true(pg_ops_alert_reads_bell(false, false));
+}

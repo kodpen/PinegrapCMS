@@ -604,7 +604,8 @@ function pg_ops_alert_state($change = null)
  * written.
  *
  * An alert with a subject has its send time in the state file only: the bell
- * row carries no subject, so a lost file may repeat such an alert once.
+ * row carries no subject, so a lost file may repeat such an alert once
+ * (pg_ops_alert_reads_bell()).
  *
  * @param string $code
  * @param string $subject
@@ -617,7 +618,7 @@ function pg_ops_alert_last_sent($code, $subject = '')
 
     $from_file = (is_array($state) && isset($state['sent'][$key])) ? (int) $state['sent'][$key] : 0;
 
-    if ($key !== $code) {
+    if (!pg_ops_alert_reads_bell(is_array($state), $key !== $code)) {
         return $from_file;
     }
 
@@ -629,6 +630,22 @@ function pg_ops_alert_last_sent($code, $subject = '')
             AND (order_total = '" . escape($code) . "')");
 
     return max($from_file, $from_bell);
+}
+
+/**
+ * Whether an alert's last send is read from its bell rows as well as the
+ * state file. An alert with a subject is read from the file alone, as the
+ * row carries no subject; but when the file cannot be opened the code's
+ * newest row holds every subject of it, so it is told once a day per code
+ * instead of on every pass. Pure.
+ *
+ * @param bool $state_read whether the state file was opened
+ * @param bool $subject    whether the alert has a subject
+ * @return bool
+ */
+function pg_ops_alert_reads_bell($state_read, $subject)
+{
+    return !$subject || !$state_read;
 }
 
 /**
