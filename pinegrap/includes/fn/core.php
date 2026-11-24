@@ -1212,6 +1212,7 @@ function pg_csv_export_time($timestamp, $date_format = null, $time_format = null
 // deprecated since PHP 8.1, and reads the same rows on every version.
 // A leading UTF-8 byte order mark (Excel's "CSV UTF-8", the panel exports)
 // is stepped over, so the first heading reads without it.
+// A line that is not UTF-8 is read as Windows-1254 (pg_csv_utf8_handle()).
 // Returns the handle, or false when the file cannot be opened.
 function pg_csv_open($path)
 {
@@ -1220,6 +1221,8 @@ function pg_csv_open($path)
     if (!$handle) {
         return false;
     }
+
+    $handle = pg_csv_utf8_handle($handle);
 
     $head = (string) fread($handle, 8192);
 
@@ -1258,6 +1261,56 @@ function pg_csv_open($path)
 
     if ($pending !== '') {
         fwrite($copy, "\n");
+    }
+
+    fclose($handle);
+    rewind($copy);
+
+    return $copy;
+}
+
+// The single-byte encoding a CSV line that is not UTF-8 is read as:
+// Windows-1254 where mbstring knows it, ISO-8859-9 otherwise (the two differ
+// only in the 0x80-0x9F range).
+function pg_csv_fallback_encoding()
+{
+    static $encoding = null;
+
+    if ($encoding === null) {
+        $known = array_map('strtolower', mb_list_encodings());
+        $encoding = in_array('windows-1254', $known, true) ? 'Windows-1254' : 'ISO-8859-9';
+    }
+
+    return $encoding;
+}
+
+// A handle whose lines are all UTF-8. Excel in Turkish saves "CSV (Comma
+// delimited)" in Windows-1254, whose letters are not UTF-8: a utf8mb4 column
+// cut 'Güral' to 'G' and the headings did not match. The handle is returned
+// as it is, at its start, when every line is UTF-8; otherwise the file is
+// copied into a temporary stream with each line that is not UTF-8 converted,
+// so a UTF-8 line beside a damaged one keeps its letters.
+function pg_csv_utf8_handle($handle)
+{
+    $valid = true;
+
+    while (($line = fgets($handle)) !== false) {
+        if (!mb_check_encoding($line, 'UTF-8')) {
+            $valid = false;
+            break;
+        }
+    }
+
+    rewind($handle);
+
+    if ($valid) {
+        return $handle;
+    }
+
+    $copy = fopen('php://temp', 'w+');
+
+    while (($line = fgets($handle)) !== false) {
+        fwrite($copy, mb_check_encoding($line, 'UTF-8') ? $line : mb_convert_encoding($line, 'UTF-8', pg_csv_fallback_encoding()));
     }
 
     fclose($handle);
