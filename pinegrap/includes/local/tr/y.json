@@ -242,6 +242,7 @@
     "You are in {var:1}, which these settings refuse: the site's pages do not open for you.": "Bulunduğunuz ülke {var:1}; bu ayarlar onu reddediyor, sitenin sayfaları sizin için açılmaz.",
     "You are in {var:1}, which these settings refuse; your address is on the Allowed IP Addresses, so the site still opens for you.": "Bulunduğunuz ülke {var:1}; bu ayarlar onu reddediyor, ancak adresiniz İzin Verilen IP Adresleri'nde olduğu için site sizin için açılır.",
     "You are invited": "Davetlisiniz",
+    "You are muted": "Sesiniz kapalı",
     "You are next": "Sıradaki sizsiniz",
     "You are no longer a reviewer of this programme. The reviews you sent are kept.": "Artık bu programın değerlendiricisi değilsiniz. Gönderdiğiniz değerlendirmeler saklanır.",
     "You are no longer signed in to the account that asked to connect {var:1}, so nothing was connected. Please sign in and connect {var:1} again from your account page.": "{var:1} bağlamayı isteyen hesapta artık oturumunuz açık değil, bu yüzden hiçbir şey bağlanmadı. Lütfen giriş yapın ve {var:1} hesabınızı hesap sayfanızdan yeniden bağlayın.",
