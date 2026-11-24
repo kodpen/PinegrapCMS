@@ -12,6 +12,10 @@ description: Short picks (PP5, #11259): the "Short…" drawer, the count fix as 
 - Each row of a product that tracks stock (`products.inventory = 1`, `pg_pack_tracked_products()`) has the switch "Set this location's count to what was found" and a number, default 0 (the units still on the shelf).
 - `pg_pack_count_fixes()` keeps only switched-on, still missing, tracked products with a whole number 0..`PG_PACK_COUNT_MAX`. Each is `pg_stock_set()` at the order's location (`pg_pack_address()['location_id']`, 0 without locations) with reason `count`, ref the order number, note "Counted at a short pick", then `pg_marketplace_product_changed()`.
 
+## Is the count fix the shelf count or the sellable count?
+- Open (#11346): the drawer asks for the units still on the shelf, but `pg_stock_set()` writes that figure as the location's count, and a location's count is the shelf minus the units paid, unsent orders there already took at completion (`includes/fn/stock_sales.php`). Units of those orders become sellable again.
+- Waits on the architect's answer in the PR that fixes #11346: subtract the units of paid, unsent orders at the location, ask for the sellable figure, or drop the switch.
+
 ## What follows a short close?
 - `pg_pack_after_short()`: the count fixes, one `pg_audit('pack', 'order_pack', …)` line with missing and counted, `pg_ops_alert('pack_short', …)` (group Deliveries, link Pick waves; once a day, no subject), `order.pack_short`.
 - `order.pack_short` carries `pg_pack_event_payload()` as `order.packed` does, `missing` filled. Registered in the webhook catalogue and samples, the Workspace events, watch catalogue, flow outputs (units, units in the box, wave) and the Orders flow area.
