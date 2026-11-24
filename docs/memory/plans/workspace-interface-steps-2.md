@@ -9,7 +9,7 @@ description: Plan workspace-interface, steps WI4 to WI9 (the screen line): the p
 - WI5 (M) after WI4, done in #11104 (`ui/workspace-screen-bar.md`): the bar's rule and My Tasks (board S1): `startTasks()` in `assets/js/workspace.js`; `barViews()`, `barFilter()` (the "Filter" button, its box, the tags line), `barSearch()` and `emptyScreen()` for the next steps. Patterns "Screen bar with filters" and "Empty screen" on Design examples; `ui/page-button-bar.md` points to the rule.
 - WI6 (M) after WI5, done in #11214 (`ui/workspace-screen-bar-notes-data.md`): My Notes (`startNotes()`, the "⋯" menu) and Data (`workspace_wtables.php`'s `#button_bar`, printed by the server; its views and search in one line), with their empty screens (board S2).
 - WI7 (M) after WI6, done in #11238 (`ui/workspace-screen-bar-calendars-board-timeline.md`): Work Calendar (`startCalendar()`), My calendar (`assets/js/workspace_my_calendar.js`), Planning Board (`startBoard()`), Decision Timeline (`startTimeline()`), with their empty screens (board S2).
-- WI8 (S) after WI7, done in #PRNUM (`workspace/workspace-channel-new-line.md`): the channel's "New" line (board C1) in the conversation's drawing of `workspace.js`: where it stands is a pure function of the read mark the screen opened with (red test first); "Go to new messages" scrolls to it; nothing is written.
+- WI8 (S) after WI7, done in #11269 (`workspace/workspace-channel-new-line.md`): the channel's "New" line (board C1) in the conversation's drawing of `workspace.js`: where it stands is a pure function of the read mark the screen opened with (red test first); "Go to new messages" scrolls to it; nothing is written.
 - WI9 (S) last: close-out.
 
 ## What does the close-out do?
