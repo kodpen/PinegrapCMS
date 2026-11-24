@@ -857,6 +857,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					$form_item_view_page_id = $row['page_id'];
 					$form_item_view_page_comments = $row['comments'];
 				}
+				// Items that open a detail page a signed-out visitor may not read are
+				// teasers, whoever asks: no description and no media.
+				$rss_teaser = ($form_item_view_page_id != '') && pg_sw_feed_teaser_access(pg_sw_feed_page_access($form_item_view_page_id));
 				// prepare form item view page id that will be used for joining tables for comments later
 				$form_item_view_page_id_for_comments = 0;
 				// if comments are enabled for form item view page, then store id
@@ -1360,7 +1363,10 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             // An address typed into the field: size unknown, type from its extension.
                             $output_rss_media = pg_sw_feed_url_enclosure_xml($submitted_form['media_text'], URL_SCHEME . HOSTNAME_SETTING);
                         }
-						
+						if ($rss_teaser)
+						{
+							$output_rss_media = '';
+						}
 						$output_form_item_view_page_link = '';
 						$output_rss_guid = '';
 						// if there is a form item view page, then add link to it
@@ -1391,7 +1397,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						$output_rss_items .= '<item>
             ' . $output_rss_categories . '
             <title>' . $output_rss_title . '</title>
-            <description>' . $output_rss_description . '</description>
+            ' . ($rss_teaser ? '' : '<description>' . $output_rss_description . '</description>') . '
             <link>' . $output_form_item_view_page_link . '</link>
             ' . $output_rss_guid . '
             ' . $output_rss_media . '
@@ -1632,7 +1638,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						$output_rss_items .= '<item>
             ' . $output_rss_categories . '
             <title>' . $output_rss_title . '</title>
-            <description>' . $output_rss_description . '</description>
+            ' . ($rss_teaser ? '' : '<description>' . $output_rss_description . '</description>') . '
             <link>' . $output_form_item_view_page_link . '</link>
             <pubDate>' . date('D, d M Y H:i:s O', $submitted_form['submitted_timestamp']) . '</pubDate>
         </item>';
