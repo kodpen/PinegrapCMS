@@ -905,8 +905,7 @@ function pg_proto_comments_page_stamp($page_ids)
         return 0;
     }
 
-    // Both ids only grow, so their sum moves with a new comment or verdict.
-    return (int) db_value($sql) + pg_proto_verdicts_style_stamp($style_id);
+    return (int) db_value($sql);
 }
 
 /**
@@ -1175,7 +1174,8 @@ function pg_proto_comments_style_stamp($style_id)
         return 0;
     }
 
-    return (int) db_value($sql);
+    // Both ids only grow, so their sum moves with a new comment or verdict.
+    return (int) db_value($sql) + pg_proto_verdicts_style_stamp($style_id);
 }
 
 /**
