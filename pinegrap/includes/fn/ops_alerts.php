@@ -177,7 +177,7 @@ function pg_ops_alert_codes()
         'contacts_hot' => array(
             'label' => lang('Contacts became hot'),
             'type'  => 'warning',
-            'url'   => 'view_contacts.php',
+            'url'   => 'view_contacts.php?filter=hot_contacts',
         ),
         // New delivery problems found by the hourly pass, one row a walk
         // (pg_delivery_tower_alerts_send()).

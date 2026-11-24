@@ -129,7 +129,7 @@ function pg_audience_operators()
 /**
  * The catalogue of conditions: per key its label, family, the operators it
  * takes, the kind of value ('text', 'number', 'money', 'days', 'none',
- * 'product', 'product_group', 'contact_group', 'form', 'form_field',
+ * 'product', 'product_group', 'folder', 'contact_group', 'form', 'form_field',
  * 'consent', 'status', 'stage', 'band') and the table it reads. 'window' marks a condition
  * that also takes days (a visit window, required).
  *
@@ -167,6 +167,10 @@ function pg_audience_conditions()
         'landing_page' => array('label' => lang('Landing page'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
         'utm_source' => array('label' => lang('UTM source'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
         'utm_campaign' => array('label' => lang('UTM campaign'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
+
+        'interest_score' => array('label' => lang('Interest score'), 'family' => 'interest', 'ops' => array('gte', 'lte'), 'value' => 'number', 'table' => 'contact_scores'),
+        'interest_folder' => array('label' => lang('Interested in a folder'), 'family' => 'interest', 'ops' => array('yes', 'no'), 'value' => 'folder', 'table' => 'contact_scores'),
+        'interest_product_group' => array('label' => lang('Interested in a product group'), 'family' => 'interest', 'ops' => array('yes', 'no'), 'value' => 'product_group', 'table' => 'contact_scores'),
 
         'feedback_band' => array('label' => lang('Last survey score'), 'family' => 'feedback', 'ops' => array('eq', 'neq'), 'value' => 'band', 'table' => 'feedback_responses'),
         'feedback_answered' => array('label' => lang('Answered a survey'), 'family' => 'feedback', 'ops' => array('within', 'not_within'), 'value' => 'days', 'table' => 'feedback_responses'),
@@ -325,7 +329,8 @@ function pg_audience_condition_clean(array $condition)
             break;
 
         case 'number':
-            $number = pg_audience_int($value, 0, PG_AUDIENCE_MAX_NUMBER);
+            // An interest score is out of 100 (contact_scores.interest).
+            $number = pg_audience_int($value, 0, ($key === 'interest_score') ? 100 : PG_AUDIENCE_MAX_NUMBER);
 
             if ($number === null) {
                 return null;
@@ -357,6 +362,7 @@ function pg_audience_condition_clean(array $condition)
 
         case 'product':
         case 'product_group':
+        case 'folder':
         case 'contact_group':
         case 'form':
             $id = pg_audience_int($value, 1, 4294967295);
@@ -754,6 +760,21 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
 
             return pg_audience_sql_in(pg_audience_sql_visits(' AND visitors.' . $column . ' = ?'), true);
 
+        case 'interest_score':
+            // "At most" also takes a contact never scored (no visit tied to
+            // them), as "Number of orders" takes one who never ordered.
+            $params[] = $value;
+
+            return ($op === 'gte')
+                ? pg_audience_sql_in('SELECT contact_scores.contact_id FROM contact_scores WHERE contact_scores.interest >= ?', true)
+                : pg_audience_sql_in('SELECT contact_scores.contact_id FROM contact_scores WHERE contact_scores.interest > ?', false);
+
+        case 'interest_folder':
+        case 'interest_product_group':
+            $params[] = pg_audience_topic_pattern(($c['key'] === 'interest_folder') ? 'folder' : 'category', $value);
+
+            return pg_audience_sql_in('SELECT contact_scores.contact_id FROM contact_scores WHERE contact_scores.topics LIKE ?', $op === 'yes');
+
         case 'group':
             $params[] = $value;
 
@@ -762,6 +783,21 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
     }
 
     return '';
+}
+
+/**
+ * The LIKE pattern finding one interest among a contact_scores.topics JSON
+ * list: the start of its object as json_encode() writes the rows of
+ * pg_lead_interest_topics() (id, then kind, both plain ASCII), so neither a
+ * name's escaping nor another kind's id can match. Pure.
+ *
+ * @param string $kind 'folder' or 'category'
+ * @param int    $id   the folder's or the product group's id
+ * @return string
+ */
+function pg_audience_topic_pattern($kind, $id)
+{
+    return '%{"id":' . (int) $id . ',"kind":"' . (($kind === 'category') ? 'category' : 'folder') . '",%';
 }
 
 /**
@@ -1540,6 +1576,7 @@ function pg_audience_editor_data()
             'subscriptions' => lang('Subscriptions'),
             'forms' => lang('Forms'),
             'visits' => lang('Visits'),
+            'interest' => lang('Interest'),
             'feedback' => lang('Surveys'),
             'groups' => lang('Contact Groups'),
         ),
@@ -1561,7 +1598,7 @@ function pg_audience_editor_data()
  */
 function pg_audience_rules_refs($rules)
 {
-    $refs = array('product' => array(), 'product_group' => array(), 'contact_group' => array(), 'form' => array(), 'form_field' => array());
+    $refs = array('product' => array(), 'product_group' => array(), 'folder' => array(), 'contact_group' => array(), 'form' => array(), 'form_field' => array());
     $catalogue = pg_audience_conditions();
     $walk = function (array $level) use (&$walk, &$refs, $catalogue) {
         foreach ($level['conditions'] as $condition) {
@@ -1682,7 +1719,7 @@ function pg_audience_ref_labels($rules)
  * The editor's picker search: up to 20 records of one kind whose name
  * contains the text, as {id, text}.
  *
- * @param string $kind product, product_group, contact_group, form or form_field
+ * @param string $kind product, product_group, folder, contact_group, form or form_field
  * @param string $q
  * @return array
  */
@@ -1716,6 +1753,11 @@ function pg_audience_picker_rows($kind, $where, array $params, $limit)
             break;
         case 'product_group':
             $from = "SELECT id, TRIM(CONCAT(name, IF(short_description <> '', CONCAT(' - ', short_description), ''))) AS name FROM product_groups";
+            break;
+        case 'folder':
+            // Not the site's root folder, which is no interest
+            // (pg_lead_interest_topics()).
+            $from = 'SELECT folder_id AS id, folder_name AS name FROM folder WHERE folder_parent <> 0';
             break;
         case 'contact_group':
             $from = 'SELECT id, name FROM contact_groups';
