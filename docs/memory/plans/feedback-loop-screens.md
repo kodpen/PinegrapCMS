@@ -14,7 +14,7 @@ description: Plan feedback-loop, how its panel screens are put together (FD2): t
 - Empty: one line on what a survey does and the Add button.
 
 ## How does a new survey start?
-- "Add survey" opens starting points (the sheet of `plans/design-examples-patterns.md` DX2; before it lands, cards [cards]): After a booking, After an event, After a course, After a form, After a delivery, After a mail conversation, Every few months. A card fills the kind, when it is sent and the default texts; the edit screen opens with the survey off.
+- "Add survey" opens starting points [Starting-point sheet]: After a booking, After an event, After a course, After a form, After a delivery, After a mail conversation, Every few months. A card fills the kind, when it is sent and the default texts; the edit screen opens with the survey off.
 
 ## How are Add and Edit laid out?
 - The edit layout (`ui/edit-screen-wide-layout.md`): form column, status column, save bar. Cards [cards] in this order:

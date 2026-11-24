@@ -14,7 +14,7 @@ description: Plan walk-in-queue, how its panel screens are put together (WQ2, WQ
 
 ## How is a place's screen laid out? (WQ2)
 - Head: name, pill, one fill following the state, "Open the queue" or "Close the queue". Tabs [Segmented control and status]: "Set-up", "Desks", "Today" (WQ4), "Report" (WQ7), each shown from its step.
-- Set-up as folded rows, one open at a time (the settings pane of `plans/design-examples-patterns.md` DX1; before it lands, [Cards]), each with one line of what is set:
+- Set-up as folded rows, one open at a time [Settings pane], each with one line of what is set:
   1. "Services": a row each [Rows and gathered rows], its letter and the minutes to start the estimate with; "Add a service", each with its remove.
   2. "Hours": the week as on a Bookings staff member, days off.
   3. "Taking a number": QR, site page, kiosk switches [Fields]; party size; daily cap; the closed text.

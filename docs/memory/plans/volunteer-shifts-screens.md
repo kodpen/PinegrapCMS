@@ -11,7 +11,7 @@ description: Plan volunteer-shifts, how its panel screens are put together (VS2,
 ## How are programmes laid out? (VS2)
 - A list on the list table driver: name, active volunteers, shifts this week filled of needed, a pill [Segmented control and status]: Open, Paused. One fill "Add programme" [Buttons]: a small drawer asks the name and the form.
 - A programme's head: name, pill. Tabs [Segmented control and status]: "Shifts" (VS3, the first tab once built), "Applications", "Volunteers", "Hours" (VS6), "Report" (VS7), "Set-up".
-- Set-up as folded rows, one open at a time (the settings pane of `plans/design-examples-patterns.md` DX1; before it lands, [Cards]), one line of state each:
+- Set-up as folded rows, one open at a time [Settings pane], one line of state each:
   1. "Application form": the form, and which field gives skills, birth date and free days [Fields].
   2. "Roles": a role a row [Rows and gathered rows]: name, skills, trainings, documents needed; "Add a role", each with its remove. Under the rows one hint line: "Do not ask for a health report."
   3. "Sign-up rules": cut-off hours, minimum age, swaps need approval.
