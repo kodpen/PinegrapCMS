@@ -307,6 +307,7 @@ function api_app_event_area($name, $module_label = '') {
 		'mail'            => 'E-mail',
 		'whatsapp'        => 'WhatsApp',
 		'booking'         => 'Bookings',
+		'queue'           => 'Queue',
 		'subscription'    => 'Subscriptions',
 		'credit'          => 'Store credit',
 		'referral'        => 'Store credit',

@@ -361,6 +361,7 @@
     "Give the client the site address": "İstemciye site adresini ver",
     "Give the copy-code button a sample code of at most {var:1} letters and digits, without spaces.": "Kodu kopyala düğmesine boşluksuz, en çok {var:1} harf ve rakamdan oluşan bir örnek kod verin.",
     "Give the course a name.": "Kursa bir ad verin.",
+    "Give the day as YYYY-MM-DD.": "Günü YYYY-AA-GG olarak verin.",
     "Give the days as YYYY-MM-DD.": "Günleri YYYY-AA-GG biçiminde verin.",
     "Give the desk a name.": "Masaya bir ad verin.",
     "Give the element an id to use it.": "Kullanmak için öğeye bir id verin.",

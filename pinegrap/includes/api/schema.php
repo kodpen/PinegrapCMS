@@ -6873,6 +6873,93 @@ function api_schema() {
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500)
 			)
+		),
+
+		array(
+			'id'      => 'queue.places',
+			'method'  => 'GET',
+			'path'    => '/queue/places',
+			'scope'   => 'queue:read',
+			'handler' => 'api_queue_places',
+			'returns' => array('list' => 'QueuePlace'),
+			'summary' => 'Walk-in queue places',
+			'description' => 'The places of Calendars > Queue by name, in one page: status open, paused or closed, the services with their key, name and letter, the desks with their services, state closed, open or paused and the user who has one open, and the numbers waiting and taken today. An owner with the user role reaches only the places whose staff list names them.',
+			'details' => 'address is null when none is given. A desk\'s user_id is null while it is closed. 503 service_unavailable until the database update that adds the queue has run.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'queue.tickets',
+			'method'  => 'GET',
+			'path'    => '/queue/tickets',
+			'scope'   => 'queue:read',
+			'handler' => 'api_queue_tickets',
+			'returns' => array('list' => 'QueueTicket'),
+			'summary' => 'The numbers of a queue place',
+			'description' => 'A place\'s numbers of one day in the order they were taken, cursor paged. state: waiting, called (at a desk), served, left (left the queue) or no_show (Not here). number is what the person sees, such as A-012; source is qr, site, kiosk or staff. Times are ISO-8601 UTC. The order desks call in is not this one: priority and bookings stand some numbers earlier.',
+			'details' => 'day is the site\'s day, YYYY-MM-DD, today when left out. name, phone and email are null once the place\'s keep period cleared them, and null when none was given. priority is the key of the place\'s priority group. A number sent to another service takes that service\'s letter and count.',
+			'params'  => array(
+				array('name' => 'place_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'day',      'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The day, YYYY-MM-DD in the site\'s zone; today when left out.'),
+				array('name' => 'state',    'in' => 'query', 'type' => 'enum', 'values' => array('waiting', 'called', 'served', 'left', 'no_show')),
+				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'queue.tickets.create',
+			'method'  => 'POST',
+			'path'    => '/queue/tickets',
+			'scope'   => 'queue:write',
+			'handler' => 'api_queue_tickets_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'QueueTicketJoined',
+			'summary' => 'Take a queue number for a visitor',
+			'description' => 'A number at a place, as its kiosk (source kiosk, which the place\'s "At the kiosk" switch must allow) or staff (source staff) take one; the place must be open. The service is needed when the place has more than one. 409 queue_closed when the place or the way is closed; 409 join_refused when the hours, the daily cap or the closing time refuse it, with the place\'s words as message. Sends the "taken" notice to the phone or e-mail and announces queue.joined. Answers 201 with the number, the person\'s page link and how many are ahead.',
+			'details' => 'link opens the person\'s page, where they follow their turn and can leave the queue; it is given only here, so print or show it at once. phone is read as a mobile number and refused with 422 when it cannot be. priority is the key of one of the place\'s priority groups (GET /queue/places does not list them; they are set on the place\'s screen).',
+			'params'  => array(
+				array('name' => 'place_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'service',    'in' => 'body', 'type' => 'string', 'max_length' => 20, 'description' => 'The service\'s key, as GET /queue/places lists it.'),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'phone',      'in' => 'body', 'type' => 'string', 'max_length' => 40),
+				array('name' => 'email',      'in' => 'body', 'type' => 'string', 'max_length' => 190),
+				array('name' => 'party_size', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 50, 'description' => 'The people the number stands for, kept only where the place asks.'),
+				array('name' => 'priority',   'in' => 'body', 'type' => 'string', 'max_length' => 20),
+				array('name' => 'source',     'in' => 'body', 'type' => 'enum', 'values' => array('kiosk', 'staff'), 'default' => 'kiosk')
+			)
+		),
+
+		array(
+			'id'      => 'queue.desks.call',
+			'method'  => 'POST',
+			'path'    => '/queue/desks/{id}/call',
+			'scope'   => 'queue:write',
+			'handler' => 'api_queue_desks_call',
+			'dry_run' => true,
+			'returns' => 'QueueTicket',
+			'summary' => 'Call the next number to a desk',
+			'description' => 'Call next, as on the desk screen: the first number in calling order among the desk\'s services goes to the desk, for the user who has the desk open. 409 desk_not_open when the desk is closed or paused (it is opened on the desk screen); 409 desk_busy while a number is still at it; 409 nobody_waiting when nobody waits for its services. Sends the "called" notice and announces queue.called. Answers the number called.',
+			'details' => 'The calling order puts a priority person and a booking within its grace window before the others. Two desks never call one person: when another desk took them a moment earlier, the next one is called.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'queue.tickets.finish',
+			'method'  => 'POST',
+			'path'    => '/queue/tickets/{id}/finish',
+			'scope'   => 'queue:write',
+			'handler' => 'api_queue_tickets_finish',
+			'dry_run' => true,
+			'returns' => 'QueueTicket',
+			'summary' => 'Finish a queue number',
+			'description' => 'Finish, as on the desk screen: the number at its desk was served, and the desk may call the next. 409 ticket_state when the number is not at a desk. Announces queue.served. Answers the number.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
 		)
 
 	);
