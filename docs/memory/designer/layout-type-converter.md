@@ -7,15 +7,15 @@ module: layout_convert
 ## What does it do?
 - `pg_layout_convert($type, $code, $ctx)` (`includes/fn/layout_convert.php`): the custom form converter ([[layout-form-converter]]) made general. Parts by `pg_di_php_parts()`, markup by the HTML converter, so the theme's wrappers and classes stay. Pure.
 - Answers `ok` (false for a type with no map), `tree`, `cfg` (settings the layout sets: `empty_message`), `dropped`: `piece` (the PHP source), `line`, `code` (`condition`, `value`, `loop`, `code`, or a map's own code such as `browse`).
-- `ctx`: `state` (`pg_layout_convert_state()`, from the type row), `row` (the starter's row template, `pg_layout_convert_row()`: the loop area's one column's content), `header`, `footer`.
+- `ctx`: `state` (`pg_layout_convert_state()`, from the type row), `row` (the starter's row, `pg_layout_convert_row()`: its loop area's one column), `header`, `footer`.
 
 ## What is the piece map?
 - `pg_layout_piece_map($type)`: `echo` (a printed value: `none`, `token:<name>[,<name>]`, `submit:<token>`, `ctx:<key>`, `row`), `if` (a condition: `widget` skipped, `flag` (one or nested flags) shown under the widget's flag, `empty` the widget's empty message, `section`, `keep`, `drop`; `state` = settings without which it is never drawn, `drop_when`; a key `elseif:<cond>` read only after an "else").
 - `else` (the flag of an "otherwise", or `keep`), `loop` (`list`, or `list:<row flag>` for one kind of records of the widget's one list: [[layout-type-converter-photo-gallery]]; `section:<name>` for a list the widget draws itself).
-- Options `forms`, `flag_list`, `controls`, `submits`, `media`: [[layout-type-converter-order-form]]; `text:`, `form:`, `cfg_bound`, `opposite`: [[layout-type-converter-catalog]]. Types: `pg_layout_convert_types()`.
-- A condition whose settings are off is left out unreported: the visitor never sees it. Anything the map does not name is dropped with what it holds.
-- A flag never goes on a node holding the list (the widget's empty message sits in the list's place), unless the map says `flag_list`.
-- An address, text or image source that is one widget value alone is bound (`_bindings.href` / `text` / `src`), never typed.
+- Options `forms`, `flag_list`, `controls`, `submits`, `media`: [[layout-type-converter-order-form]]; `text:`, `form:`, `cfg_bound`, `opposite`: [[layout-type-converter-catalog]]; `record`, `cross_sell`, loop `token:`, else `widget`: [[layout-type-converter-catalog-detail]]. Types: `pg_layout_convert_types()`.
+- A condition whose settings are off is left out unreported. Anything the map does not name is dropped with what it holds.
+- A flag never goes on a node holding the list (the widget's empty message is there), unless the map says `flag_list`.
+- An address, text or image source that is one widget value alone is bound (`_bindings.*`), never typed.
 
 ## What do the form list pieces become?
 - Messages, `<form>` attributes and hidden fields, the pagination: nothing, the widget draws them. The browse and search form: the widget's search box; with browse on it is dropped (`browse`).
@@ -32,6 +32,6 @@ module: layout_convert
 - The Region panel's dropped list and its Convert: [[layout-type-converter-editor]].
 
 ## Tests?
-- `tests/layout_convert_test.php`: the map, templates, starting-site texts under each setting, lines, target, widget, dry run count.
+- `tests/layout_convert_test.php`: map, templates, starting-site texts by setting, lines, target, widget, dry run.
 
 Related: docs/memory/designer/legacy-types-step.md, docs/memory/designer/legacy-stock-types.md

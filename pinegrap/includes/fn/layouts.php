@@ -476,6 +476,12 @@ function pg_layout_widget_seed($page_type, array $row, array $field_names = arra
             if ($int('next_page_id') > 0) {
                 $cfg['next_page_id'] = $int('next_page_id');
             }
+            // The buttons' words (^^__add_button_label^^, ^^__back_label^^).
+            foreach (array('add_button_label', 'back_button_label') as $key) {
+                if (isset($row[$key]) && ((string) $row[$key] !== '')) {
+                    $cfg[$key] = (string) $row[$key];
+                }
+            }
             break;
 
         case 'form list view':

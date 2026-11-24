@@ -914,6 +914,12 @@ function pg_sw_raw_token_keys()
         // A product group's rich text and code field (catalog listing).
         '__active_cat_description',
         '__active_cat_code',
+        // A product's code field and its lines (catalog detail).
+        '__code',
+        '__product_line',
+        '__product_lines_html',
+        '__product_choice_options',
+        '__keywords_html',
         // Renderer-built blocks.
         '__variant_picker',
         '__group_tree_html',
