@@ -357,6 +357,7 @@
     "Paragraph": "Paragraf",
     "Paragraph of text beneath the heading to explain the feature.": "Başlığın altında özelliği anlatan bir paragraf.",
     "Paragraph of text beneath the heading to explain the heading.": "Başlığın altında başlığı anlatan bir paragraf.",
+    "Paragraph style": "Paragraf stili",
     "Paragraph {var:1} holds more than text and cannot be changed here.": "{var:1}. paragrafta metinden fazlası var; burada değiştirilemez.",
     "Paragraph {var:1} is not in the file.": "{var:1}. paragraf dosyada yok.",
     "Parallax": "Paralaks",

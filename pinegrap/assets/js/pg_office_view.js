@@ -2907,6 +2907,9 @@
     // The bits of bold (1), italic (2) and underline (4) a format sends.
     var DOC_FORMATS = [['bold', 1], ['italic', 2], ['underline', 4]];
 
+    // The kinds a paragraph can be given, in the order the choice shows them.
+    var DOC_KINDS = ['normal', 'heading1', 'heading2', 'heading3', 'bullet', 'number'];
+
     // A paragraph's look, a number for each UTF-16 unit of its text, from
     // the stretches the server sent ([[characters, bits], ...]), which count
     // characters: one outside the basic plane takes two units.
@@ -3000,6 +3003,13 @@
         var editable = !!(options && options.editable) && !!edit;
         var texts = (edit && edit.ok && edit.paragraphs) ? edit.paragraphs : {};
         var marks = (edit && edit.ok && edit.marks) ? edit.marks : {};
+
+        // By position, each paragraph's kind in the file (normal, heading1
+        // to heading3, bullet, number, other), and the one asked for when
+        // it is to change (DOC_KINDS).
+        var kinds = (edit && edit.ok && edit.kinds) ? edit.kinds : {};
+        var wantKinds = {};
+        var kindChoice = null;
 
         // By position: the text typed, and the server's drawing of a
         // paragraph opened, to put back when its change is undone.
@@ -3117,12 +3127,18 @@
             });
         }
 
-        // The paragraphs changed: a new text, a format, or both.
+        // The paragraphs changed: a new text, a format, a kind, or more.
         function positionsNow() {
             var list = Object.keys(changesNow());
 
             Object.keys(looks).forEach(function (position) {
                 if (list.indexOf(position) < 0 && formatted(position)) {
+                    list.push(position);
+                }
+            });
+
+            Object.keys(wantKinds).forEach(function (position) {
+                if (list.indexOf(position) < 0) {
                     list.push(position);
                 }
             });
@@ -3244,10 +3260,55 @@
             return true;
         }
 
-        // The bar's buttons pressed when all of the selected text has theirs.
+        // The paragraph the kind choice speaks for: the one open or picked,
+        // when its kind may change; else null.
+        function kindPosition() {
+            var node = shown.editor ? shown.editor.node : shown.node;
+            var position = node ? node.getAttribute('data-p') : null;
+
+            return (position !== null && own(kinds, position) && !node.classList.contains('office-locked')) ? position : null;
+        }
+
+        // Asks for a kind for the picked paragraph; its file's kind again
+        // takes the change back.
+        function applyKind(kind) {
+            var position = kindPosition();
+
+            if (position === null || DOC_KINDS.indexOf(kind) < 0) {
+                drawBar();
+                return;
+            }
+
+            if (kind === kinds[position]) {
+                delete wantKinds[position];
+            } else {
+                wantKinds[position] = kind;
+            }
+
+            var node = doc.querySelector('[data-p="' + position + '"]');
+
+            if (node && !(shown.editor && shown.editor.node === node)) {
+                redraw(node);
+            }
+
+            drawBar();
+            notify();
+        }
+
+        // The bar's buttons pressed when all of the selected text has theirs;
+        // the kind choice on the picked paragraph's kind.
         function drawBar() {
             if (!bar) {
                 return;
+            }
+
+            if (kindChoice) {
+                var position = kindPosition();
+                var kind = position === null ? '' : (own(wantKinds, position) ? wantKinds[position] : kinds[position]);
+
+                kindChoice.other.hidden = kind !== 'other';
+                kindChoice.select.disabled = position === null;
+                kindChoice.select.value = kind === '' ? 'normal' : kind;
             }
 
             var range = selectedText();
@@ -3321,7 +3382,15 @@
                 node.innerHTML = drawn[position];
             }
 
-            node.classList.toggle('office-edited', own(changes, position) || shaped);
+            // A kind asked for shows as a look of the paragraph until the
+            // save draws it again as what it has become.
+            if (own(wantKinds, position)) {
+                node.setAttribute('data-kind', wantKinds[position]);
+            } else {
+                node.removeAttribute('data-kind');
+            }
+
+            node.classList.toggle('office-edited', own(changes, position) || shaped || own(wantKinds, position));
         }
 
         // Remembers a paragraph's text as a change, unless it is the file's
@@ -3610,6 +3679,36 @@
                 bar.appendChild(button);
             });
 
+            // The picked paragraph's kind, when the server sent the kinds.
+            if (Object.keys(kinds).length) {
+                var field = el('span', 'pg-input pg-input-sm office-kind');
+                var select = el('select');
+                var other = el('option', '', strings.kind_other || '');
+
+                select.setAttribute('aria-label', strings.doc_kind || '');
+                select.title = strings.doc_kind || '';
+
+                DOC_KINDS.forEach(function (kind) {
+                    var option = el('option', '', strings['kind_' + kind] || kind);
+
+                    option.value = kind;
+                    select.appendChild(option);
+                });
+
+                other.value = 'other';
+                other.disabled = true;
+                other.hidden = true;
+                select.appendChild(other);
+
+                select.addEventListener('change', function () {
+                    applyKind(select.value);
+                });
+
+                field.appendChild(select);
+                bar.appendChild(field);
+                kindChoice = { select: select, other: other };
+            }
+
             container.insertBefore(bar, doc);
         }
 
@@ -3634,6 +3733,10 @@
                         item.text = list[key];
                     }
 
+                    if (own(wantKinds, key)) {
+                        item.kind = wantKinds[key];
+                    }
+
                     if (formatted(key)) {
                         var look = lookOf(key, false);
 
@@ -3653,10 +3756,11 @@
             reset: function () {
                 closeEditor(false);
 
-                var positions = Object.keys(changes).concat(Object.keys(looks));
+                var positions = Object.keys(changes).concat(Object.keys(looks), Object.keys(wantKinds));
 
                 changes = {};
                 looks = {};
+                wantKinds = {};
                 shown.last = null;
 
                 positions.forEach(function (position) {
