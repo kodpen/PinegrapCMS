@@ -265,6 +265,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_note_channel();         // 11.0.273
 	upgrade_2026_11_0_launch_summary_lines();    // 11.0.274
 	upgrade_2026_11_0_ws_share_links();          // 11.0.275
+	upgrade_2026_11_0_prototype_approval();      // 11.0.276
 
 }
 
@@ -9367,5 +9368,56 @@ function upgrade_2026_11_0_ws_share_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: an item of an agent channel can be shared by a link that ends after 1, 7 or 30 days.');
+
+}
+
+// 11.0.276 - A prototype share link asking approval (owner, poll 206;
+// includes/fn/prototype_verdicts.php, includes/fn/prototype_approval.php).
+// Five columns on prototype_links, read with the link on every load of the
+// viewer: approval (the link asks for approval), publish_rule (a draft shown
+// by the link goes live only after an approval of its current state),
+// approver_name and approver_email (typed by the designer; the address is
+// used only for this review's service mails and is optional), answer_by (the
+// "Answer by" day, NULL for none). Every link there is keeps asking nothing.
+// prototype_verdicts keeps one row per verdict: the link, the design
+// (style_id, deleted with it), the draft page, verdict ('approved' or
+// 'changes_requested', VARCHAR rather than ENUM for the reason the price
+// history step gives), the name the guest typed, the note (plain text, ''
+// for none), the draft's fingerprint (sha1, the page_revisions.tree_hash
+// shape) and the node fingerprints (JSON, node id => sha1) at that moment,
+// and when it was given. Older verdicts stay: the standing one of a page per
+// link is the newest. idx_link_page gives a link's verdicts by page in id
+// order, idx_page a page's verdicts of every link, idx_style the delete with
+// the design. The guest's address is not kept.
+function upgrade_2026_11_0_prototype_approval() {
+
+	if (install_table_exists('prototype_links')) {
+
+		install_add_column('prototype_links', 'approval', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+		install_add_column('prototype_links', 'publish_rule', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+		install_add_column('prototype_links', 'approver_name', "VARCHAR(60) NOT NULL DEFAULT ''");
+		install_add_column('prototype_links', 'approver_email', "VARCHAR(255) NOT NULL DEFAULT ''");
+		install_add_column('prototype_links', 'answer_by', "DATE NULL DEFAULT NULL");
+
+	}
+
+	install_create_table('prototype_verdicts', "CREATE TABLE prototype_verdicts (
+		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		link_id            INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id            INT UNSIGNED NOT NULL DEFAULT 0,
+		verdict            VARCHAR(20) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		author_name        VARCHAR(60) NOT NULL DEFAULT '',
+		note               TEXT NOT NULL,
+		fingerprint        CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		node_fingerprints  MEDIUMTEXT NULL,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_link_page (link_id, page_id, id),
+		KEY idx_page (page_id, id),
+		KEY idx_style (style_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Designs: a prototype share link can ask its customer to approve each page or request changes; no link asks it until the designer turns it on.');
 
 }

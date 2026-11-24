@@ -9406,6 +9406,7 @@ function get_tables() {
 		'shipment_problems',
 		'prototype_links',
 		'prototype_comments',
+		'prototype_verdicts',
 	);
 
 }
