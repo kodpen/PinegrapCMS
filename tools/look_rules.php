@@ -247,9 +247,9 @@ function pg_look_blank_comments($source, $ext)
  * How many old Bootstrap buttons and tab strips a panel source draws:
  * 'button' counts `btn btn-`, 'tabs' the classes nav-tabs, nav-pills and
  * nav-underline. A Workspace file (a path holding `workspace`) also gets
- * 'field': each formRow( call (not its definition) and each form-control,
- * form-label or form-text class, the old fields the kit's form parts
- * replace. Comments and the given site-output ranges are left out.
+ * 'field': each form-control, form-label or form-text class, the old
+ * fields the kit's form parts replace (formRow() is built from them).
+ * Comments and the given site-output ranges are left out.
  *
  * @param string $source
  * @param string $ext 'php' or 'js'
@@ -275,8 +275,7 @@ function pg_look_markup_counts($source, $ext, array $skip = array(), $path = '')
 	);
 
 	if (strpos(str_replace('\\', '/', (string) $path), 'workspace') !== false) {
-		$counts['field'] = (int) preg_match_all('/(?<!function )(?<![\w$])formRow\(/', $source)
-			+ (int) preg_match_all('/(?<![\w-])form-(?:control|label|text)(?![\w-])/', $source);
+		$counts['field'] = (int) preg_match_all('/(?<![\w-])form-(?:control|label|text)(?![\w-])/', $source);
 	}
 
 	return $counts;

@@ -13974,10 +13974,6 @@ b.ws-agent-card-anchor:focus-visible {
   font-size: .85rem;
 }
 /* The person's own quiet hours under a channel's notifications. */
-.ws-info-qh .form-label {
-  margin-bottom: .25rem;
-  font-size: .85em;
-}
 .ws-info-qh-actions {
   display: flex;
   flex-wrap: wrap;
@@ -14879,7 +14875,7 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: var(--ws-space-2);
 }
-.ws-look-row > .form-control {
+.ws-look-row > .pg-input {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -16355,8 +16351,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   color: var(--pg-fg-body);
 }
 /* A message's text to select and copy by hand. 16px keeps iOS from zooming
-   in on the field. */
-.ws-copy-area {
+   in on the field. Two classes to outrank the field recipe's own size. */
+.pg-input.ws-copy-area {
   font-size: 16px;
   resize: vertical;
   max-height: 60vh;
@@ -18745,7 +18741,7 @@ a.ws-chip-message:hover,
    whose own size it has to outrank. */
 @media (pointer: coarse) {
   .ws-emoji-search,
-  #ws-poll-form .form-control,
+  #ws-poll-form .pg-input,
   .ws-code-edit {
     font-size: var(--pg-text-field-touch);
   }
@@ -22236,6 +22232,22 @@ button.ws-cal-more {
   gap: 6px;
   margin-bottom: 16px;
 }
+.ws-plan-field.ws-field-flush {
+  margin-bottom: 0;
+}
+/* A look A field joined to its buttons in an .input-group: the field
+   takes the room left, a button is as tall as the field. The joined
+   corners come from the restated .input-group.input-group rules. */
+.input-group > .pg-input {
+  flex: 1 1 auto;
+  width: 1%;
+}
+.input-group > :is(.pg-button, .pg-icon-button) {
+  height: auto;
+}
+.input-group > .pg-input:focus {
+  z-index: 5;
+}
 .ws-plan-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -25526,7 +25538,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     color: var(--pg-primary);
     text-decoration: underline;
 }
-.ws-text-area {
+/* Two classes: the field recipe's textarea height and size come later. */
+.pg-input.ws-text-area {
     min-height: 60vh;
     font-family: var(--pg-font-mono);
     font-size: .875rem;
@@ -27435,7 +27448,7 @@ html.ws-flow-layer-on body {
   max-width: 50%;
   text-align: right;
 }
-.wsf-share-level :is(select.form-control) {
+.wsf-share-level :is(select.form-control, select.pg-input) {
   width: auto;
 }
 .wsf-main {
