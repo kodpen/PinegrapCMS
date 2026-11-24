@@ -17,6 +17,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/link_preview.php');
+
 // Root 1; 2 public, 3 inherits from it; 4 private, 5 inherits from it; bin 9
 // with a public folder 10 and an inheriting folder 11 moved into it.
 function private_content_access_rows()
@@ -65,4 +67,21 @@ function test_public_file_readers_use_the_resolved_folders()
 	pg_assert_contains('pg_files_public_sql()', $api, 'API files');
 	pg_assert_contains('pg_files_public_sql()', $canvas, 'canvas pictures');
 	pg_assert_false(strpos($canvas, "folder.folder_access_control_type = 'public'") !== false, 'canvas no longer reads the own column');
+}
+
+// The card of the site's own page is shared with every reader of the
+// channel, guests included: only a page every visitor opens gets one.
+function test_link_preview_own_card_only_for_open_pages()
+{
+	$row = array('page_name' => 'members', 'page_title' => 'Members area', 'page_meta_description' => 'Board minutes', 'folder_archived' => '0');
+
+	pg_assert_same(array('title' => 'Members area', 'description' => 'Board minutes', 'site_name' => 'Site'), ws_link_preview_own_card($row, 'public', 'Site'), 'public page');
+	pg_assert_same('members', ws_link_preview_own_card(array('page_title' => '') + $row, 'public', 'Site')['title'], 'name when no title');
+
+	foreach (array('private', 'membership', 'registration', 'guest') as $access) {
+		pg_assert_same(null, ws_link_preview_own_card($row, $access, 'Site'), $access . ' page');
+	}
+
+	pg_assert_same(null, ws_link_preview_own_card(array('folder_archived' => '1') + $row, 'public', 'Site'), 'archived folder');
+	pg_assert_same(null, ws_link_preview_own_card(null, 'public', 'Site'), 'no page');
 }

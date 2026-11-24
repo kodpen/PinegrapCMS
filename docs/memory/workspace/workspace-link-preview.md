@@ -13,13 +13,14 @@ description: A Workspace message's link preview (#9843): the ws_link_previews ro
 
 ## How does the general job read it?
 - `job.php`, Workspace on: `ws_link_preview_due()` (one small read), then `ws_link_preview_run()`: rows waiting over a day close as `none`; at most 5 rows a pass, 60 reads an hour for the site (`read_at` of the last hour), a pass stops after 20 s. A row is claimed (`read_at` set while `waiting`) so overlapping runs never read it twice; a message deleted or edited to another address since is skipped.
-- A link to the site's own page (`ws_link_preview_own_page()` against `HOSTNAME_SETTING` and `PATH`, www. ignored) takes its card from the `page` row (title else name, meta description; a binned page shows nothing) or, for the home page, `TITLE`; the site name is `ORGANIZATION_NAME`, else `TITLE`, else the host. No call. Such a link gets its row even on a local host (`ws_link_preview_wanted()`).
+- A link to the site's own page (`ws_link_preview_own_page()` against `HOSTNAME_SETTING` and `PATH`, www. ignored) takes its card from the `page` row (title else name, meta description) only for a page every visitor opens (`ws_link_preview_own_card()`, #PRNUM) or, for the home page, `TITLE`; the site name is `ORGANIZATION_NAME`, else `TITLE`, else the host. No call. Such a link gets its row even on a local host (`ws_link_preview_wanted()`).
+- Public folder, not archived, not binned; a private, member, registration or guest page gives nothing: the card reaches every reader of the channel, guests included.
 - Anything else: `ws_link_preview_fetch()` over `api_http_request()` (the resolved address is checked and is the one called), plain http allowed, redirects walked here, at most 3, each checked again.
 - `ws_link_preview_url_allowed()` refuses credentials in the address, a port other than 80/443, an address inside the network, a dotless or local name (`.local`, `.internal`, `.lan`…) and a numeric last label. Only `text/html` or XHTML; 8 s for the whole answer; the body is read up to `</head>` or 256 KB (the limit reached with no `</head>`: nothing). No cURL: nothing.
 - Fields (`ws_link_preview_fields()`): og:title, twitter:title, else `<title>`; og:description, description, twitter:description; og:site_name, else the host without www. The page's charset is honoured. `ws_link_preview_cut()` keeps them plain (no tags, entities decoded, control and direction marks out) and cuts at 300 / 500 / 100 characters; they are escaped where drawn. No title: `none`.
 
 ## Where is the card?
-- Drawn under the message, removed by its writer, and what is left out for a later yes of the owner: `workspace-link-preview-card.md`. Over the API: `api/workspace-api-link-preview.md`.
+- `workspace-link-preview-card.md`; over the API `api/workspace-api-link-preview.md`.
 
 ## Where is it switched off?
 - Site Settings, Channels, mail and voice, card "Link previews" (`pgset-ws-link-preview`), switch "Show a card under a message's web address", on by default; saved with the pane's Save by anyone with the Workspace settings right (`ws_link_preview_settings_save()`, the marker field `ws_link_preview_card`). Stored as `config_text` `ws_link_preview_off` = `1`; no column.
