@@ -11,6 +11,7 @@
 - experiment-goals.md: Page experiment goals (PX3, #6230): form, order, click, page; counted for the variant the pg_exp cookie holds, once a day per experiment by a mark in the cookie, into experiment_hourly.goals
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - lead-hot-contacts-followed-by.md: What the Hot Contacts view's "assignee" column reads (lead-journey J11): "Followed by", the people holding an open follow-up task of the contact; no assignee column on contacts [decision: here]
+- lead-hot-contacts.md: The contacts list's Hot Contacts view (LJ4b): its condition, columns and order, the empty line, Open and Remind me (a Workspace follow-up), the bell link of contacts_hot; no assignee column yet
 - lead-journey-rules.md: The visitor journey's pure rules (lead_journey.php, LJ1a): browser key verdict, tie and move on a shared browser, tying back in the keep period, interest score half-life
 - lead-journey-store.md: The visitor journey's four tables (step 11.0.265), the pg_lead browser key cookie under the marketing yes, the visit rows, the ties at each act's save path, a refusal, panel users (LJ1b)
 - lead-journey-view.md: The visitor journey read and drawn (LJ2, #10946): the merge by time, the contact screen's Journey card, the Workspace card's folded row, erase, export, inventory, the keep period trim
