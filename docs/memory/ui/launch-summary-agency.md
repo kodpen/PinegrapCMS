@@ -17,7 +17,7 @@ module: launch_summary
 - `pg_launch_summary_link_state()`: `invalid` 404, `withdrawn` 403, `expired` 410 (secure card, one sentence), else the page.
 - Shell `output_header_secure()`: no panel menu or top bar, not the site's theme. The juror page's shell was taken over `output_header()`'s `hide_menu`, which draws the signed-in panel's bar parts.
 - One `.pg-card`: the site's name as head, "Set-up steps" with "{done} of {all} steps done" under it, then "What we need from you": each line with its answer in a textarea and "Send".
-- The steps list (`pg_launch_summary_steps()`, pure): the done steps with a teal "Done" pill, then the open ones with a gray "Waiting" pill, each group in the set-up card's order. Name and state only: never the row's line, a blocker's text, the reason or a setting's value. A step hidden on the card ("Not for this site") is not among the card's rows, so it is not listed or counted. Owner asked for the open steps in `workflow/decisions-made-product-101.md`; LS1, PR #PRNUM.
+- The steps list (`pg_launch_summary_steps()`, pure): the done steps with a teal "Done" pill, then the open ones with a gray "Waiting" pill, each group in the set-up card's order. Name and state only: never the row's line, a blocker's text, the reason or a setting's value. A step hidden on the card ("Not for this site") is not among the card's rows, so it is not listed or counted. Owner asked for the open steps in `workflow/decisions-made-product-101.md`; LS1, PR #11399.
 - An answer is a POST with the form token; an unchanged answer writes nothing ("This answer was already sent.").
 
 ## Who hears an answer?
