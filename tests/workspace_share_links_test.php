@@ -244,3 +244,48 @@ function test_share_link_item_mark_carries_the_end_and_never_the_address()
 	pg_assert_same(array('id' => 5, 'until_at' => mktime(9, 0, 0, 1, 2, 2027), 'until' => '02.01.2027 09:00', 'can_revoke' => true), $mark);
 	pg_assert_same(false, ws_share_link_item_mark(share_links_test_link(), 0)['can_revoke']);
 }
+
+function test_share_link_kind_icon_names_each_kind()
+{
+	pg_assert_same('bi-file-earmark', ws_share_link_kind_icon('file'));
+	pg_assert_same('bi-journal-text', ws_share_link_kind_icon('note'));
+	pg_assert_same('bi-table', ws_share_link_kind_icon('table'));
+	pg_assert_same('bi-list-check', ws_share_link_kind_icon('list'));
+	pg_assert_same('bi-link-45deg', ws_share_link_kind_icon('other'), 'an unknown kind keeps the link icon');
+}
+
+function test_share_link_opened_words_count_the_opens()
+{
+	pg_assert_same('not opened yet', ws_share_link_opened_words(0));
+	pg_assert_same('opened once', ws_share_link_opened_words(1));
+	pg_assert_same('opened 4 times', ws_share_link_opened_words('4'));
+}
+
+function test_share_link_row_lists_who_the_end_and_the_opens_without_the_address()
+{
+	$until = mktime(9, 0, 0, 1, 2, 2027);
+	$row = ws_share_link_row(share_links_test_link(array('expires_at' => $until, 'opens' => 3)), 'plan.png', 'Ayşe', true);
+
+	pg_assert_same('plan.png', $row['name']);
+	pg_assert_same('bi-file-earmark', $row['icon']);
+	pg_assert_same('Ayşe · until 02.01.2027 09:00 · opened 3 times', $row['line']);
+	pg_assert_same('02.01.2027 09:00', $row['until']);
+	pg_assert_same(true, $row['can_revoke']);
+	pg_assert_false(isset($row['url']) || isset($row['token_hash']), 'never the address');
+
+	$unnamed = ws_share_link_row(share_links_test_link(array('expires_at' => $until, 'opens' => 0)), 'plan.png', '', 0);
+
+	pg_assert_same('until 02.01.2027 09:00 · not opened yet', $unnamed['line'], 'an unknown maker leaves no empty part');
+	pg_assert_same(false, $unnamed['can_revoke']);
+}
+
+function test_channel_share_links_are_in_the_channel_detail_and_the_head()
+{
+	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channels.php');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("\$brief['share_links'] = function_exists('ws_channel_share_links')", $channels);
+	pg_assert_contains("var sharing = self.sharingButton(channel);", $js, 'the head draws the share mark');
+	pg_assert_contains("item(t('sl_sharing'), 'bi-share', function () { self.showSharing(); }, 'ws-head-narrow');", $js, 'a menu entry on a phone');
+	pg_assert_contains("sharingTitle.setAttribute('data-info-key', 'sharing');", $js, 'Channel info has its Sharing part');
+}

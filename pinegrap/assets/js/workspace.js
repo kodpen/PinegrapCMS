@@ -12330,6 +12330,14 @@
                 actions.appendChild(shareNotice);
             }
 
+            // Who outside the team reads it and its items' open links
+            // (sharingButton()); on a phone an entry of the menu.
+            var sharing = self.sharingButton(channel);
+
+            if (sharing) {
+                actions.appendChild(sharing);
+            }
+
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
             memberFaces(faces, channel);
             faces.addEventListener('click', function () { self.showMembers(); });
@@ -12774,6 +12782,10 @@
             item(t('channel_info'), 'bi-info-circle', function () { self.showMembers(); }, 'ws-head-narrow');
             item(t('members') + ' (' + channel.members.length + ')', 'bi-people', function () { self.showMembers(); }, 'ws-head-narrow');
             item(t('channel_search'), 'bi-search', function () { self.searchChannel(); }, 'ws-head-narrow');
+
+            if (self.sharingShown(channel)) {
+                item(t('sl_sharing'), 'bi-share', function () { self.showSharing(); }, 'ws-head-narrow');
+            }
 
             if (self.tourReady()) {
                 item(t('tour_start'), 'bi-signpost-split', function () { self.startTour(); }, 'ws-head-narrow');
@@ -13266,13 +13278,27 @@
                 body.appendChild(agentList);
             }
 
-            // The guests with an open share (ws_channel_info_guests()): read
-            // only or read and write, who shared and when; their last seen
-            // only for a manager, as a person's.
+            // Sharing: the guests with an open share (ws_channel_info_guests():
+            // read only or read and write, who shared and when; their last
+            // seen only for a manager, as a person's), then in an agent
+            // channel the open links to its items (ws_channel_share_links());
+            // the same two parts as the head's share menu.
             var guests = channel.guests || [];
+            var links = channel.share_links || [];
+            var sharingTitle = el('h3', 'ws-panel-kicker', t('sl_sharing'));
 
-            if (guests.length) {
-                section(t('cm_guests') + ' · ' + guests.length);
+            sharingTitle.tabIndex = -1;
+            sharingTitle.setAttribute('data-info-key', 'sharing');
+            body.appendChild(sharingTitle);
+
+            if (!guests.length && !links.length) {
+                body.appendChild(el('p', 'ws-info-person-role ws-info-sharing-none', t('sl_nothing')));
+            } else {
+                body.appendChild(el('div', 'ws-info-person-name ws-info-sharing-part', guests.length ? t('sl_this_channel') + ' · ' + guests.length : t('sl_this_channel')));
+
+                if (!guests.length) {
+                    body.appendChild(el('div', 'ws-info-person-role', t('sl_not_outside')));
+                }
 
                 var guestList = el('div', 'ws-info-people ws-info-guests');
 
@@ -13291,6 +13317,33 @@
                 });
 
                 body.appendChild(guestList);
+
+                if (channel.share_links) {
+                    body.appendChild(el('div', 'ws-info-person-name ws-info-sharing-part', t('sl_by_link') + ' · ' + links.length));
+
+                    var linkList = el('div', 'ws-info-people ws-info-guests ws-info-links');
+
+                    links.forEach(function (link) {
+                        var tile = el('span', 'pg-icon-tile');
+
+                        tile.appendChild(icon(link.icon, ''));
+
+                        var row = personRow(tile, el('div', 'ws-info-person-name', link.name), link.line, linkList);
+
+                        row.setAttribute('data-link-id', link.id);
+
+                        if (link.can_revoke) {
+                            var stop = lookButton('pg-button pg-button-quiet pg-button-sm', t('sl_stop'), '');
+
+                            stop.setAttribute('aria-label', t('sl_stop') + ': ' + link.name);
+                            stop.setAttribute('data-info-key', 'link-stop-' + link.id);
+                            stop.addEventListener('click', function () { self.shareStopLink(link.id); });
+                            row.appendChild(stop);
+                        }
+                    });
+
+                    body.appendChild(linkList);
+                }
             }
 
             // The reader's notifications from this channel, the menu's three
@@ -13610,6 +13663,18 @@
 
             if (faces) {
                 memberFaces(clear(faces), channel);
+            }
+
+            // The share mark comes and goes with the guests and the links.
+            var sharingOld = actions.querySelector(':scope > .ws-head-sharing');
+            var sharingNew = self.sharingButton(channel);
+
+            if (sharingOld && sharingNew) {
+                actions.replaceChild(sharingNew, sharingOld);
+            } else if (sharingOld) {
+                sharingOld.remove();
+            } else if (sharingNew) {
+                actions.insertBefore(sharingNew, faces || actions.firstChild);
             }
 
             var menu = actions.querySelector(':scope > .pg-menu-wrap');
@@ -15383,15 +15448,20 @@
 
         // Stop sharing, asked once: the address stops working at once.
         shareStop: function (message, done) {
+            this.shareStopLink(message.file.share.open.id, done);
+        },
+
+        // Stop sharing a link by its id, asked once (the item's menu, the
+        // head's share menu, Channel info).
+        shareStopLink: function (linkId, done) {
             var self = this;
-            var open = message.file.share.open;
 
             ask(t('sl_stop_ask'), t('sl_stop'), true).then(function (yes) {
                 if (!yes) {
                     return;
                 }
 
-                api('ws_share_link_revoke', { link_id: open.id }).then(function (data) {
+                api('ws_share_link_revoke', { link_id: linkId }).then(function (data) {
                     self.shareChanged(data.message, done);
                 }).catch(fail);
             });
@@ -15406,8 +15476,121 @@
 
             this.sync();
 
+            // The head's share mark and Channel info's Sharing read the
+            // channel's links again.
+            app.refreshInfo();
+
             if (done) {
                 done();
+            }
+        },
+
+        // Is anything of the channel shared outside: a guest with an open
+        // share, or an open link to one of its items?
+        sharingShown: function (channel) {
+            return !!channel && !channel.guest && !!((channel.guests || []).length || (channel.share_links || []).length);
+        },
+
+        // The head's share mark: a menu of two parts, "This channel" (its
+        // guests, or "Not shared outside") and, in an agent channel,
+        // "Shared by link" (a row per open link, Stop sharing for who may).
+        // Null while nothing is shared; hidden on a phone, where the menu's
+        // entry opens Channel info's Sharing (showSharing()).
+        sharingButton: function (channel) {
+            var self = this;
+
+            if (!self.sharingShown(channel)) {
+                return null;
+            }
+
+            var guests = channel.guests || [];
+            var links = channel.share_links || [];
+            var wrap = el('span', 'pg-menu-wrap ws-head-wide ws-head-sharing');
+            var toggle = el('button', 'pg-icon-button pg-icon-button-sm');
+            var menu = el('ul', 'menu pg-menu-end ws-sharing-menu');
+
+            toggle.type = 'button';
+            toggle.title = t('sl_sharing');
+            toggle.setAttribute('aria-label', t('sl_sharing'));
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            toggle.setAttribute('data-bs-placement', 'bottom-end');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.appendChild(icon('bi-share', ''));
+            wrap.appendChild(toggle);
+
+            function header(label) {
+                var li = el('li');
+
+                li.appendChild(el('h6', 'menu-header', label));
+                menu.appendChild(li);
+            }
+
+            // A row that is read, not pressed: the icon, the name and the
+            // line under it.
+            function row(iconName, name, line) {
+                var li = el('li');
+                var text = el('div', 'menu-text ws-sharing-row');
+                var content = el('span', 'menu-item-content ws-sharing-text');
+
+                text.appendChild(icon(iconName, 'me-3'));
+                content.appendChild(el('span', 'ws-sharing-name', name));
+                content.appendChild(el('span', 'menu-item-description ws-sharing-line', line));
+                text.appendChild(content);
+                li.appendChild(text);
+                menu.appendChild(li);
+            }
+
+            header(guests.length ? t('sl_this_channel') + ' · ' + guests.length : t('sl_this_channel'));
+
+            if (guests.length) {
+                guests.forEach(function (guest) {
+                    row(guest.access === 'read' ? 'bi-eye' : 'bi-chat-dots', guest.name, guest.line);
+                });
+            } else {
+                var none = el('li');
+
+                none.appendChild(el('span', 'menu-text', t('sl_not_outside')));
+                menu.appendChild(none);
+            }
+
+            if (channel.share_links) {
+                var divider = el('li');
+
+                divider.appendChild(el('hr', 'menu-divider'));
+                menu.appendChild(divider);
+                header(t('sl_by_link') + ' · ' + links.length);
+
+                links.forEach(function (link) {
+                    row(link.icon, link.name, link.line);
+
+                    if (link.can_revoke) {
+                        var li = el('li');
+                        var stop = button('menu-item ws-sharing-stop', t('sl_stop'), 'bi-x-lg');
+
+                        stop.setAttribute('aria-label', t('sl_stop') + ': ' + link.name);
+                        stop.addEventListener('click', function () { self.shareStopLink(link.id); });
+                        li.appendChild(stop);
+                        menu.appendChild(li);
+                    }
+                });
+            }
+
+            wrap.appendChild(menu);
+
+            return wrap;
+        },
+
+        // On a phone: Channel info opened at its Sharing.
+        showSharing: function () {
+            if (!app.infoOpen) {
+                app.showMembers();
+            }
+
+            var title = app.infoPanel ? app.infoPanel.querySelector('[data-info-key="sharing"]') : null;
+
+            if (title) {
+                title.scrollIntoView({ block: 'start' });
+                title.focus({ preventScroll: true });
             }
         },
 

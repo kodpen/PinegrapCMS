@@ -163,6 +163,9 @@ function ws_channel_detail($viewer, $channel)
 
     // The guests with an open share, beside People and Agents (guests.php).
     $brief['guests'] = function_exists('ws_channel_info_guests') ? ws_channel_info_guests($channel, $brief['can_manage']) : array();
+    // The open links to its items, in an agent channel; null elsewhere
+    // (share_links.php): the head's share mark and Channel info's Sharing.
+    $brief['share_links'] = function_exists('ws_channel_share_links') ? ws_channel_share_links($viewer, $channel) : null;
     $brief['can_change_kind'] = ws_can_change_channel_kind($viewer, $channel);
     $brief['can_clear'] = ws_can_clear_channel($viewer, $channel);
     $brief['can_pin'] = ws_can_pin($viewer, $channel);

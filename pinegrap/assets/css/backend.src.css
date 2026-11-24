@@ -20939,6 +20939,39 @@ button.ws-file-name {
   position: static;
   flex: none;
 }
+/* The head's share menu (sharingButton()): a read row holds the kind icon,
+   the name and its line, cut to the menu's width. */
+.ws-sharing-menu {
+  width: min(22rem, calc(100vw - 2rem));
+}
+.ws-sharing-row {
+  display: flex;
+  align-items: flex-start;
+}
+.ws-sharing-text {
+  min-width: 0;
+}
+.ws-sharing-name,
+.ws-sharing-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-sharing-line {
+  white-space: normal;
+}
+/* Channel info's Sharing: a part's name over its rows, Stop sharing at a
+   link row's right. */
+.ws-info-sharing-part {
+  margin-top: .5rem;
+}
+.ws-info-sharing-none {
+  margin: 0;
+  white-space: normal;
+}
+.ws-info-links .pg-button {
+  flex: none;
+}
 .ws-share-address {
   display: flex;
   gap: .5rem;
