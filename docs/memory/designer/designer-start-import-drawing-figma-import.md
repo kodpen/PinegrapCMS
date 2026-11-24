@@ -10,7 +10,7 @@ description: The Figma start as drawn, second half (figma.html, B7 to B9): the v
 
 ## What does the running import show?
 - "Making n pages", a bar, and a row per ticked frame: done with its counts of pictures and vectors, working with a spinner, waiting in grey. The window says it may be closed: the import goes on, and the design's card on the designs home says where it is (`designer-start-import-drawing-home-line.md`).
-- Foot: "Stop" quiet and a grey "Working…". "Stop" makes no design and removes what was fetched.
+- Foot: "Stop" quiet and a grey "Working…". "Stop" asks first with the dialog of board B12 (`designer-start-import-drawing-home-line.md`); confirmed, no design is made, what was fetched is removed and the window goes back to the frame list with its ticks kept.
 - The bar is the progress bar, a Design example made from this board.
 - A frame that fails turns rose and the others go on; the report lists it as "Not made". The limit met half way: the row reads "Waiting for Figma, goes on at <time>" and the import goes on by itself.
 

@@ -1,6 +1,6 @@
 ---
 name: designer-start-import-drawing-home-line
-description: The line a Figma import puts on the design's card of the designs home, as drawn (figma.html, board B11, step ST5b): its four states, "Continue" and "Stop", and "Report" until "Got it" or 14 days
+description: The line a Figma import puts on the design's card of the designs home, as drawn (figma.html, B11 and B12, ST5b): four states, "Continue", the dialog "Stop" opens, "Report"
 ---
 
 ## Where does a Figma import show after the New design window is closed?
@@ -14,8 +14,10 @@ description: The line a Figma import puts on the design's card of the designs ho
 - Paused (the home was left and no job runs): "Paused · n of n frames" with "Continue" (quiet, small) and "Stop" (ghost, small). "Continue" goes on from the frame it stopped at.
 - Done: "Imported from Figma · Report", "Report" being a link in the line.
 
-## What does "Stop" on the card do?
-- It asks first with the question dialog, then removes the pages made and what was fetched into the file manager. "Stop" in the running window asks nothing, since no page is kept there either.
+## What does "Stop" do, on the card and in the running window?
+- One rule in both places: it always asks, with the "Confirm with its effects" dialog of board B12, "Stop the import?" over the file's name and "n of n frames made".
+- Two rose rows say what goes: "The n pages made are removed" ("No design is made from this file.") and "The pictures and vectors fetched are removed" (their counts leave the file manager). One blue row says what a new try costs: "A new try reads the file from Figma again", since the reading kept for this import is lost and counts against Figma's limit once more.
+- "Cancel" quiet, "Stop the import" danger. "Cancel", Escape and the cross change nothing: a running import goes on, a paused one stays paused. Confirmed, the card leaves the designs home.
 
 ## How is the report read again?
 - "Report" opens the New design window at the report's pane (board B9) with the same counts and frame rows; its foot then reads "Copy the report" (ghost, left), "Got it" (quiet), "Open the design" (filled).
