@@ -3676,7 +3676,7 @@ function pg_return_amount_cents($value)
  *                          quantity, tax_total (the line's)
  * @param array $quantities order item id => how many go back
  * @param int   $discount   orders.discount
- * @return int minor units
+ * @return int minor units, never below zero
  */
 function pg_return_refund_estimate($lines, $quantities, $discount)
 {
@@ -3740,7 +3740,9 @@ function pg_return_refund_estimate($lines, $quantities, $discount)
         }
     }
 
-    return $amount;
+    // A return of credit lines alone gives nothing back, never a refund
+    // below zero.
+    return max(0, $amount);
 }
 
 /**
