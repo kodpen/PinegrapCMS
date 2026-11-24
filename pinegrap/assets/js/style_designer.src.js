@@ -55605,7 +55605,7 @@ const StyleDesigner = (function () {
         var h = '';
         if (rows.length) {
             h += _sdRegionWhyHtml(_sdT('Its layout has pieces that have no design element')) +
-                '<div class="sd-prop-row"><ul class="list-unstyled mb-0" id="sd-classic-dropped" style="font-size:.66rem;line-height:1.3">';
+                '<div class="sd-prop-row"><div class="w-100"><ul class="list-unstyled mb-0" id="sd-classic-dropped" style="font-size:.66rem;line-height:1.3">';
             rows.forEach(function (r, i) {
                 h += '<li class="py-1 border-bottom text-break' + (i >= SD_CLASSIC_DROPPED_SHOWN ? ' d-none' : '') + '">' + esc(r && r.text ? r.text : '') + '</li>';
             });
@@ -55613,7 +55613,7 @@ const StyleDesigner = (function () {
             if (rows.length > SD_CLASSIC_DROPPED_SHOWN) {
                 h += '<button type="button" class="btn btn-link btn-sm p-0 mt-1" id="sd-classic-dropped-all" style="font-size:.7rem">' + esc(_sdT('Show all {var}', rows.length)) + '</button>';
             }
-            h += '</div>';
+            h += '</div></div>';
         }
         return h + '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-solid theme-primary w-100" id="sd-classic-convert">' +
