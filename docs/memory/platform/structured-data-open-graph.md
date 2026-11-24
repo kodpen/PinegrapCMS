@@ -6,7 +6,8 @@ description: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json
 ## What may structured data contain?
 - Never invented data: `review` / `aggregateRating` are not written without real review data. Google `offers` alone is enough; a Rich Results Test warning is not an error. The legacy "google require it so we set random" block was removed - do not bring it back.
 - `aggregateRating` comes only from `pg_review_aggregate_jsonld()` (verified reviews, on the page that shows them with stars): `docs/memory/commerce/product-reviews-verified.md`.
-- BlogPosting `author` (`pg_submitted_form_author_name()`) follows the form's Schema Author choice (`custom_form_pages.schema_author`, 11.0.53): the contact (default), the site as an Organization with `url`, or a form field (`field:<id>`). Never `user.user_username` (half a credential; the setup admin signs template samples and has no contact). No name: the site's Organization. Test: `tests/seo_author_name_test.php`. Visible byline: the 7 built-in templates' post pages bind `submitter_name` (same rule); sites built from them earlier and comment names on legacy pages still print usernames (`designer/submitted-form-system-fields.md`, `designer/designed-page-comment-names.md`).
+- BlogPosting `author` (`pg_submitted_form_author_name()`) follows the form's Schema Author choice (`custom_form_pages.schema_author`, 11.0.53): the contact (default), the site as an Organization with `url`, or a form field (`field:<id>`). Never `user.user_username` (half a credential; the setup admin signs template samples and has no contact). No name: the site's Organization.
+- Author test: `tests/seo_author_name_test.php`. Visible byline: `designer/submitted-form-system-fields.md`, `designer/designed-page-comment-names.md`.
 - JSON-LD is always an array + `json_encode()`. String concatenation is forbidden: one quoted product name invalidates the whole block and readers silently drop it.
 
 ## How is custom JSON-LD handled?
@@ -16,6 +17,7 @@ description: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json
 
 ## Which rules apply to OG images and merchant data?
 - In the `media` field the value decides (`pg_resolve_submitted_form_og_image`): a video address is NOT og:image; in rich text the first http(s) `<img>`, a pasted `data:` one is skipped (#4870).
+- Offer price and availability: `pg_product_jsonld_price_cents()`, `pg_product_jsonld_availability()` in both builders (#11459).
 - Merchant parts (`pg_product_merchant_jsonld_parts`) only when `shippable = 1` and `MERCHANT_COUNTRY` is filled; both production paths (legacy block, `_pg_build_product_jsonld`) go through the same helper.
 - OG image resolvers use `SELECT *`: `files.image_width/height` came in 4.4, naming the columns breaks the query on an old DB.
 - Every resolved image address passes `pg_normalize_url_slashes()`. Stored content can carry double-slash addresses (`http://host//x.jpg`); emitted markup must have one form. A new OG / JSON-LD address source must pass it too.

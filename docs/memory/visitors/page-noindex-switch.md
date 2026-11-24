@@ -7,6 +7,7 @@ description: What the per-page noindex/nofollow switch does in three places, whi
 Three things at once; if one is missing it is a bug:
 - Emits `<meta name="robots" content="noindex, follow">` at the start of the `$meta_tags` block in `get_page_content.php`.
   On an indexed page the same tag carries noarchive / max-snippet instead (`pg_page_robots_content()`).
+- Sends the same noindex as an `X-Robots-Tag` header (`pg_page_robots_header()`, #11459), so the page's PDF and a page answering JSON or XML stay out too; not during the SEO pass.
 - Adds `Disallow` lines to `robots.txt`: `pg_build_robots_disallow_rules()` (`includes/fn/seo.php`) -> `get_robots.txt.php`.
 - Drops the page from the sitemap: `get_sitemap_info.php` + `sitemap = 0` forced on the save side.
 
