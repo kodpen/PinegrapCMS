@@ -21,7 +21,9 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - CX11g Ecommerce, done: g1 the card gateways #10919, g2 Stripe, PayPal, PayTR, Givex #10973, g3 shipping #10988, g4 address autocomplete, Merchant Center #11007 (pages: `ui/connections-payment-*`, `-shipping-*`, `-address-merchant-*`). CX11h Accounting (Paraşüt, Logo İşbaşı): done (#11030).
 - CX11i Integrations (Google reviews): done (#11117).
 - CX11j Updates and maintenance: j1 the backup accounts (Drive, OneDrive, Dropbox), done (#11193). Cron Jobs: nothing to move; S3, FTP, object storage: no service.
-- CX11j2 the Chat notifications targets. Architect (2026-11-23, message 12293): they move, Slack, Teams and Telegram each a service page listing its targets with a target's whole block; the card becomes the line to Connections; storage, pg_notify_test() and the queue do not change (full answer: `ui/connections-chat-notify-page.md`). Done (#11215).
+- CX11j2 the Chat notifications targets moved to Slack's, Teams' and Telegram's pages (architect 2026-11-23, message 12293; `ui/connections-chat-notify-page.md`). Done (#11215).
+- CX11k the Workspace's categories: nothing to move in Team (calendars are each person's, on My calendar), Channels (GitHub in CX8; Calls' addresses are typed, no service), Pinegrap AI (the licence key), agents and Voice (CX9).
+- CX11k waits on the architect: Claude's routine address and token and the MCP servers card, kept on the tab by the owner's drawing (poll 190, after poll 149).
 
 ## Where are CX9's binding decisions?
 - In `api/ai-connections.md` (architect 2026-11-17, message 9391) and `api/ai-connections-feature-cards.md`.
