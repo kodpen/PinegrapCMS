@@ -19,7 +19,7 @@ priority: 7
 - Storage: with the page's draft; a step that finds it needs a table or a column stops and asks the architect.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- SK1 (M) The reader, pure: boxes in, sections with kinds and unsure marks out.
+- SK1 (M) The reader, pure: boxes in, sections with kinds and unsure marks out. Done (#11493, `designer/sketch-reader.md`).
 - SK2 (M) The Sketch tool on the graph canvas: frame, boxes, chips, snapping.
 - SK3 (M) after SK1: the builder, pure: a section list to a tree from starters, with variables.
 - SK4 (M) after SK2, SK3: "Build the page", "Build again", the sketch kept with the draft.
