@@ -6,7 +6,8 @@
  * (?v=<volunteer id>&t=<token>) without an account: that volunteer's
  * programme, their next shifts with Cancel, Offer my place or Keep my place,
  * the shifts they fit with Sign up, Join the waitlist or Take this place,
- * and their documents' dates. It also takes the buttons of the my_account
+ * their documents' dates, and hours worked outside a shift sent for
+ * approval. It also takes the buttons of the my_account
  * widget's "volunteering" section for a signed-in member (?p= one of the
  * member's own profiles) and sends them back with a notice
  * (includes/fn/volunteer_signup.php).
@@ -38,7 +39,7 @@ if ($vo_throttled) {
 
 if ($vo_post) {
     validate_token_field();
-    pg_request_single_values(array('v', 't', 'p', 'shift', 'action', 'role', 'target', 'send_to'));
+    pg_request_single_values(array('v', 't', 'p', 'shift', 'action', 'role', 'target', 'send_to', 'day', 'hours', 'note'));
 }
 
 $vo_input = $vo_post ? $_POST : $_GET;
@@ -60,7 +61,7 @@ if ($vo_linked === null) {
         exit;
     }
 
-    $vo_answer = pg_volunteer_self_act($vo_profile, (string) ($_POST['action'] ?? ''), (int) ($_POST['shift'] ?? 0), (string) ($_POST['role'] ?? ''), (int) ($_POST['target'] ?? 0));
+    $vo_answer = pg_volunteer_page_act($vo_profile, $_POST);
     $vo_text = pg_volunteer_answer_text($vo_answer);
     include_once('liveform.class.php');
     $vo_notices = new liveform('my_account');
@@ -76,7 +77,7 @@ $vo_link = $vo_page . '?v=' . $vo_linked . '&t=' . (string) $vo_input['t'];
 $vo_content = '';
 
 if ($vo_post) {
-    $vo_answer = pg_volunteer_self_act($vo_linked, (string) ($_POST['action'] ?? ''), (int) ($_POST['shift'] ?? 0), (string) ($_POST['role'] ?? ''), (int) ($_POST['target'] ?? 0));
+    $vo_answer = pg_volunteer_page_act($vo_linked, $_POST);
     go($vo_link . '&done=' . rawurlencode($vo_answer));
 }
 

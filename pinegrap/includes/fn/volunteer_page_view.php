@@ -23,6 +23,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_hours.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_volunteer_hours.php');
 
 /**
  * The classes of look A (the signed page). Pure.
@@ -42,6 +44,8 @@ function pg_volunteer_page_secure_classes()
         'quiet'  => 'pg-button pg-button-sm pg-button-quiet',
         'fill'   => 'pg-button pg-button-sm pg-button-fill',
         'danger' => 'pg-button pg-button-sm pg-button-danger',
+        'label'  => 'pg-field-label',
+        'input'  => 'pg-input',
     );
 }
 
@@ -173,6 +177,10 @@ function pg_volunteer_page_html(array $views, array $form, array $classes)
             $html .= ($rows !== '') ? '<div class="' . $c['list'] . '">' . $rows . '</div>' : '<p class="' . $c['meta'] . '">' . h(lang('No shifts for you right now.')) . '</p>';
         }
 
+        if ($volunteer['state'] === 'active') {
+            $html .= pg_volunteer_page_hours_html($form, $c, $profile);
+        }
+
         if ($view['documents']) {
             $html .= '<h3 class="h6 mb-2">' . h(lang('My documents')) . '</h3><div class="' . $c['list'] . ' mb-0">';
 
@@ -191,6 +199,23 @@ function pg_volunteer_page_html(array $views, array $form, array $classes)
 }
 
 /**
+ * Runs a button of the volunteer's page for one profile: hours outside a
+ * shift, or a shift's action (pg_volunteer_self_act()).
+ *
+ * @param int   $volunteer_id
+ * @param array $post
+ * @return string the answer for pg_volunteer_answer_text()
+ */
+function pg_volunteer_page_act($volunteer_id, array $post)
+{
+    if ((string) ($post['action'] ?? '') === 'hours') {
+        return pg_volunteer_outside_add($volunteer_id, $post);
+    }
+
+    return pg_volunteer_self_act($volunteer_id, (string) ($post['action'] ?? ''), (int) ($post['shift'] ?? 0), (string) ($post['role'] ?? ''), (int) ($post['target'] ?? 0));
+}
+
+/**
  * What an action's outcome tells the volunteer. Pure.
  *
  * @param string $answer pg_volunteer_self_act()
@@ -205,7 +230,16 @@ function pg_volunteer_answer_text($answer)
         'cancelled' => lang('Your place was cancelled.'),
         'offered'   => lang('Your place is offered to the other volunteers. You keep it until someone takes it.'),
         'kept'      => lang('You kept your place.'),
+        'hours_added' => lang('Your hours were sent. They count once the coordinator approves them.'),
     );
+    $refusals = array(
+        'day'   => lang(array('string' => 'Choose a day in the last {var:1} days, not after today.', 'vars' => array(PG_VOLUNTEER_OUTSIDE_DAYS))),
+        'hours' => lang('Give the hours as a number from 0.25 to 24.'),
+    );
+
+    if (isset($refusals[$answer])) {
+        return array($refusals[$answer], false);
+    }
 
     return isset($texts[$answer]) ? array($texts[$answer], true) : array(lang('This could not be done: the shift changed meanwhile. Please check it and try again.'), false);
 }

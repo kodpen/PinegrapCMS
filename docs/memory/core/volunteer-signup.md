@@ -14,7 +14,7 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 - A link opened adds the volunteer to `$_SESSION['volunteer']['ids']`, which `get_file.php` reads for the volunteer's own document files.
 
 ## What does the page show?
-- Per programme: "My next shifts" (signed and waiting rows of shifts not ended), "Shifts for you" (an active volunteer of an open programme: shifts of the next 60 days, at most 100, `PG_VOLUNTEER_AHEAD_DAYS`), "My documents" (kind and date only).
+- Per programme: "My next shifts" (signed and waiting rows of shifts not ended), "Shifts for you" (an active volunteer of an open programme: shifts of the next 60 days, at most 100, `PG_VOLUNTEER_AHEAD_DAYS`), "My documents" (kind and date only); for an active volunteer "Hours": a link to the scan page and "Add hours outside a shift" (`core/volunteer-hours.md`).
 - A role is offered only when the volunteer fits it (`pg_volunteer_fits()`): "Sign up" with a free place, "Take this place" for an offered place nobody asked for, else "Join the waitlist" (`pg_volunteer_shift_choices()`).
 - A signed place: "Cancel" until the programme's cut-off, past it "Offer my place", an offer "Keep my place" while nobody asked; a waiting row "Leave the waitlist" until the start (`pg_volunteer_signup_actions()`).
 

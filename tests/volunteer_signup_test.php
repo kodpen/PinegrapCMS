@@ -117,6 +117,6 @@ function test_volunteer_page_is_sensitive()
 
 	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/volunteer.php');
 	pg_assert_contains("header('Cache-Control: no-store, private');", $page);
-	pg_assert_true(strpos($page, 'validate_token_field();') < strpos($page, 'pg_volunteer_self_act('), 'every write checks the form token first');
+	pg_assert_true(strpos($page, 'validate_token_field();') < strpos($page, 'pg_volunteer_page_act('), 'every write checks the form token first');
 	pg_assert_contains('in_array($vo_profile, $vo_ids, true)', $page, 'a member acts on their own profiles only');
 }
