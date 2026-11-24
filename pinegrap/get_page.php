@@ -2743,7 +2743,7 @@ else
 		$get_access_cp = $_GET['edit'];
 	}
 	// if the user is logged in and $get_access_cp is not set to 'no' and the user has control panel access, then remember that the toolbar should be outputted
-	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
+	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || pg_waiting_user_is_staff($user) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
 	{
 		$toolbar = true;
 	}

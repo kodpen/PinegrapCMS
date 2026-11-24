@@ -200,6 +200,7 @@ if ($send_to != '') {
     || !empty($user['manage_erp'])
     || !empty($user['manage_workspace'])
     || !empty($user['manage_packing'])
+    || pg_waiting_user_is_staff($user)
     || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)
 ) {
     $continue_url = PATH . SOFTWARE_DIRECTORY . '/welcome.php';

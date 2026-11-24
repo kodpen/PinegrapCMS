@@ -221,6 +221,24 @@ function pg_waiting_user_desk_scope($user)
 }
 
 /**
+ * Whether a User-role person is on a queue place's staff list: on its own
+ * this opens their desk (queue_desk.php), so the role-3 ladders (welcome
+ * screen, sign-in landing, the site's toolbar, the password mails) let them
+ * into the panel. False for roles 0-2, whose role passes the ladders already.
+ *
+ * @param array $user id and role
+ * @return bool
+ */
+function pg_waiting_user_is_staff($user)
+{
+    if (!is_array($user) || ((int) ($user['role'] ?? 0) !== 3) || ((int) ($user['id'] ?? 0) <= 0) || !pg_waiting_ready()) {
+        return false;
+    }
+
+    return is_array(pg_waiting_user_desk_scope(array('id' => (int) $user['id'], 'role' => 3)));
+}
+
+/**
  * A place's staff list written, the rest of its settings kept.
  *
  * @param array $place pg_waiting_place_get()

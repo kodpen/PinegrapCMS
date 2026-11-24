@@ -143,3 +143,18 @@ function test_walk_in_queue_desk_call_lock_is_per_desk_and_database()
 	$locked = substr($module, strpos($module, 'function pg_waiting_call_next_locked('));
 	pg_assert_contains('pg_waiting_desk_current(', substr($locked, 0, strpos($locked, "\n}\n")), 'the desk is looked at inside the lock');
 }
+
+// The role-3 ladder: a User-role person whose only access is a place's staff
+// list reaches the panel (welcome screen, sign-in landing, the site's
+// toolbar, the set and reset password mails) and so finds My desk.
+function test_walk_in_queue_desk_staff_is_on_every_role_3_ladder()
+{
+	foreach (array('welcome.php', 'get_page.php', 'includes/fn/content.php', 'set_password.php') as $file) {
+		pg_assert_contains("pg_waiting_user_is_staff(\$user)", (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' knows a desk\'s staff');
+	}
+
+	pg_assert_contains("pg_waiting_user_is_staff(array('id' => \$_POST['user_id'] ?? 0, 'role' => \$user_role))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/reset_password.php'), 'reset_password.php names the panel login for a desk\'s staff');
+
+	pg_assert_false(pg_waiting_user_is_staff(array('id' => 5, 'role' => 2)), 'a manager is no staff member: the role passes the ladder already');
+	pg_assert_false(pg_waiting_user_is_staff(array('id' => 0, 'role' => 3)), 'no account');
+}
