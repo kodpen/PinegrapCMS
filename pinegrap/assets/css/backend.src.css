@@ -16540,6 +16540,19 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     overflow-wrap: anywhere;
   }
 }
+/* Below 768px the frame is as tall as its table up to 90vh and scrolls the
+   rest inside, so a long table always shows at least 70vh of rows and a
+   short one keeps its own height. It never shrinks under its table in a
+   flex column (flex: none), whose scroll-container items may otherwise be
+   squeezed to a sliver. Vertical overscroll still chains to the
+   conversation, so a swipe on a full table moves on past it. */
+@media (max-width: 767.98px) {
+  .ws-table-wrap {
+    flex: none;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
 .ws-checklist {
   list-style: none;
   padding: 0;
