@@ -991,6 +991,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_mail_later_js_strings());
     // The link card's "Remove preview" (link_preview.php).
     $strings = array_merge($strings, ws_link_preview_js_strings());
+    // Share by link on an item of an agent channel (share_links.php).
+    $strings = array_merge($strings, ws_share_link_js_strings());
     // Remind me later's words (mail_remind.php).
     $strings = array_merge($strings, ws_mail_remind_js_strings());
     // Add to my calendar on a mail (personal_plan_mail.php).

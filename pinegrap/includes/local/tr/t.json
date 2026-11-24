@@ -2121,6 +2121,7 @@
     "The address service asks to wait. Try again in a minute.": "Adres hizmeti beklemenizi istiyor. Bir dakika sonra yeniden deneyin.",
     "The address service did not answer.": "Adres hizmeti yanıt vermedi.",
     "The address service did not answer: {var:1}": "Adres hizmeti yanıt vermedi: {var:1}",
+    "The address stops working at once.": "Adres hemen çalışmaz olur.",
     "The address takes only a whole number for {var:1}, and the run gave none.": "Adres {var:1} için yalnız tam sayı alır ve çalıştırma bir tam sayı vermedi.",
     "The address that was refused: {var:1}": "Reddedilen adres: {var:1}",
     "The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.": "Platformun gelen webhook için verdiği adres. Kaydedilirken denetlenir: çözümlenen ve bu ağın dışında kalan bir https adresi olmalıdır.",

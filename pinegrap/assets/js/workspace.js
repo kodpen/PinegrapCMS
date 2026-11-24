@@ -14087,7 +14087,7 @@
             // A poll question's own picture is drawn in its box, not here.
             if (message.file && !self.pollQuestionPicture(message)) {
                 var fileBox = el('div', 'ws-msg-file');
-                fileBox.appendChild(self.filePreview(message));
+                fileBox.appendChild(self.shareMark(self.filePreview(message), message.file));
 
                 if (message.file.versions) {
                     var versions = menuButton(button('ws-file-versions', t('file_versions', message.file.versions), 'bi-clock-history'));
@@ -14450,6 +14450,8 @@
                 if (message.file.text) {
                     items.push({ icon: 'bi-file-earmark-text', label: t('file_edit_text'), action: function () { self.openText(message); } });
                 }
+
+                items = items.concat(self.shareItems(message));
             }
 
             if (message.can_edit || message.can_delete || message.can_hide) {
@@ -15145,6 +15147,142 @@
         // A file of the conversation was edited: the message that now carries
         // the edited file is drawn again, or, for an edited copy sent as a new
         // message, the conversation is brought up to date.
+        // ── Share by link (includes/workspace/share_links.php) ──────────
+        //
+        // An item of an agent channel handed on by an address with an end.
+        // file.share: open (the link: id, until, can_revoke) or null, and
+        // can_make; null outside an agent channel.
+
+        // The link icon of an item a link is open to, named by its end; null
+        // for any other item.
+        shareMarkNode: function (file) {
+            var open = file && file.share && file.share.open;
+
+            if (!open) {
+                return null;
+            }
+
+            var mark = el('span', 'ws-share-mark');
+            var words = t('sl_until', open.until);
+
+            mark.title = words;
+            mark.setAttribute('role', 'img');
+            mark.setAttribute('aria-label', words);
+            mark.appendChild(icon('bi-link-45deg', ''));
+
+            return mark;
+        },
+
+        // The mark as a quiet round badge at the card's top right; the card
+        // is given back.
+        shareMark: function (node, file) {
+            var mark = this.shareMarkNode(file);
+
+            if (mark && node) {
+                node.classList.add('ws-share-host');
+                node.appendChild(mark);
+            }
+
+            return node;
+        },
+
+        // The item menu's entry: Share by link... while no link is open and
+        // the reader may post, Stop sharing for who may take the open one
+        // back. done() runs once the change is made (the Files tab redraws).
+        shareItems: function (message, done) {
+            var self = this;
+            var share = message.file && message.file.share;
+
+            if (!share || message.deleted || message.past || self.era) {
+                return [];
+            }
+
+            if (share.open) {
+                return share.open.can_revoke ? [{ icon: 'bi-link-45deg', label: t('sl_stop'), action: function () { self.shareStop(message, done); } }] : [];
+            }
+
+            return share.can_make ? [{ icon: 'bi-link-45deg', label: t('sl_share'), action: function () { self.shareDialog(message, done); } }] : [];
+        },
+
+        // The small dialog: the item's name and the end as three choices;
+        // Create makes the link, then the same dialog shows its address once.
+        shareDialog: function (message, done) {
+            var self = this;
+            var choices = String(t('sl_day_choices')).split(',');
+            var days = String(t('sl_day_default'));
+            var seg = formParts.seg(t('sl_ends'), choices.map(function (day) {
+                return [day, (day === '1') ? t('sl_day') : t('sl_days', day)];
+            }), function (value) {
+                days = value;
+                press();
+            });
+
+            function press() {
+                Object.keys(seg.items).forEach(function (key) {
+                    seg.items[key].setAttribute('aria-pressed', (key === days) ? 'true' : 'false');
+                });
+            }
+
+            press();
+
+            ask(message.file.name, t('sl_create'), false, formParts.group(t('sl_ends'), seg.node)).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_share_link_make', { message_id: message.id, days: days }).then(function (data) {
+                    self.shareChanged(data.message, done);
+                    askClosed().then(function () { self.shareShow(data.url, data.until); });
+                }).catch(fail);
+            });
+        },
+
+        // The address of a new link, this once, with Copy; Done closes it.
+        shareShow: function (url, until) {
+            var row = el('div', 'ws-share-address');
+            var field = formParts.input('text', url);
+            var copy = lookButton('pg-button pg-button-quiet pg-button-sm', t('sl_copy'), 'bi-clipboard');
+
+            field.readOnly = true;
+            field.setAttribute('aria-label', t('sl_address'));
+            field.addEventListener('focus', function () { field.select(); });
+            copy.addEventListener('click', function () { copyText(url); });
+            row.appendChild(field);
+            row.appendChild(copy);
+
+            ask(t('sl_shown_once', until), t('sl_done'), false, row, { info: true });
+        },
+
+        // Stop sharing, asked once: the address stops working at once.
+        shareStop: function (message, done) {
+            var self = this;
+            var open = message.file.share.open;
+
+            ask(t('sl_stop_ask'), t('sl_stop'), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                api('ws_share_link_revoke', { link_id: open.id }).then(function (data) {
+                    self.shareChanged(data.message, done);
+                }).catch(fail);
+            });
+        },
+
+        // The message comes back with its mark; the system line with the
+        // next read.
+        shareChanged: function (changed, done) {
+            if (changed) {
+                this.replaceMessage(changed);
+            }
+
+            this.sync();
+
+            if (done) {
+                done();
+            }
+        },
+
         fileEdited: function (result) {
             if (result && result.message) {
                 this.replaceMessage(result.message);
@@ -23128,6 +23266,14 @@
                 }).catch(fail);
             };
 
+            // A link made or taken back: the tab is read again for its marks.
+            var redraw = function () {
+                if ((self.tab === 'files') && (self.pane === pane)) {
+                    clear(pane);
+                    self.drawFiles();
+                }
+            };
+
             var draw = function () {
                 clear(pane);
 
@@ -23181,6 +23327,7 @@
                         items.push({ icon: 'bi-file-earmark-text', label: t('file_edit_text'), action: function () { self.openText(message); } });
                     }
 
+                    items = items.concat(self.shareItems(message, redraw));
                     items.push('-');
                     items.push({ icon: 'bi-link-45deg', label: t('copy_link'), action: function () { copyText(absoluteUrl(message.file.url)); } });
 
@@ -23217,7 +23364,7 @@
 
                         tile.addEventListener('click', function () { viewImages(gallery, index); });
                         onContext(tile, function () { return fileMenu(message, index); });
-                        grid.appendChild(tile);
+                        grid.appendChild(self.shareMark(tile, message.file));
                     };
 
                     // The gallery is drawn FILE_PAGE tiles at a time: a
@@ -23290,7 +23437,7 @@
 
                         tile.addEventListener('click', function () { previewFile(message.file); });
                         onContext(tile, function () { return fileMenu(message, 0); });
-                        reel.appendChild(tile);
+                        reel.appendChild(self.shareMark(tile, message.file));
                     });
 
                     films.appendChild(reel);
@@ -23338,6 +23485,13 @@
                         link.appendChild(el('span', 'ws-file-ext', message.file.ext));
                         link.appendChild(el('span', 'text-truncate', message.file.name));
                         row.appendChild(link);
+
+                        var shared = self.shareMarkNode(message.file);
+
+                        if (shared) {
+                            shared.classList.add('ws-share-mark-inline');
+                            row.appendChild(shared);
+                        }
                         // Sender and time on one line, cut short when the row is narrow.
                         var meta = el('small', 'fg-secondary ws-grow ws-file-meta', (message.sender ? message.sender.name + ' · ' : '') + message.time);
                         meta.title = meta.textContent;

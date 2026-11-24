@@ -272,7 +272,7 @@ function ws_api_share_links_revoke($params)
 
     api_dry_run_stop('updated', 'workspace_share_link', array('id' => (int) $link['id'], 'state' => 'revoked'));
 
-    ws_share_link_revoke($link);
+    ws_share_link_revoke($link, null, ws_api_share_link_maker($viewer));
 
     api_ok(ws_api_share_link_read(ws_share_link((int) $link['id'])));
 }

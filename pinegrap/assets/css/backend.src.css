@@ -2866,7 +2866,6 @@ body:not(.toolbar) .software-content > #footer {
 .software-menu-backdrop.show {
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
   transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 
@@ -11775,7 +11774,6 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sm.is-drawer-open .pg-sm-dscrim {
   opacity: 1;
-  pointer-events: auto;
 }
 /* "Saved" after a save (confirmSave() in backend.src.js): one toast just
    under the head of the pane, or of the open drawer; the script sets its top
@@ -11794,7 +11792,6 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-sm-saved > .toast {
   max-width: 100%;
   box-shadow: var(--pg-shadow-lg);
-  pointer-events: auto;
 }
 .pg-sm.is-drawer-open .pg-sm-saved {
   left: auto;
@@ -20802,6 +20799,43 @@ button.ws-file-name {
   color: var(--pg-fg-2);
   margin: .5rem 0 .5rem;
 }
+/* An item shared by link (share_links.php): a quiet round link mark at
+   the card's top right, inline in a Files tab row. */
+.ws-share-host {
+  position: relative;
+}
+.ws-share-mark {
+  position: absolute;
+  top: .35rem;
+  right: .35rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--pg-border-color-translucent);
+  background: var(--pg-bg-1);
+  color: var(--pg-fg-2);
+}
+.ws-file-card.ws-share-host > .ws-share-mark {
+  top: -.6rem;
+  right: -.6rem;
+}
+.ws-share-mark.ws-share-mark-inline {
+  position: static;
+  flex: none;
+}
+.ws-share-address {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+.ws-share-address .pg-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .ws-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
@@ -27757,7 +27791,6 @@ html.ws-flow-layer-on body {
   box-shadow: var(--pg-shadow-float);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  pointer-events: auto;
 }
 .wsf-palette-rail {
   display: flex;
@@ -28148,7 +28181,6 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 }
 .wsf-data-field,
 .wsf-data-out {
-  pointer-events: auto;
 }
 .wsf-data-field:hover,
 .wsf-data-out:hover {
@@ -28221,7 +28253,6 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
    thread is on its way the fields it may go into are lit and the one
    under the pointer is filled. */
 .wsf-data-live {
-  pointer-events: auto;
   cursor: crosshair;
 }
 .wsf-data-unused .wsf-data-ring {
@@ -28236,7 +28267,6 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   color: var(--pg-bg-body);
 }
 .wsf-data-target {
-  pointer-events: auto;
   cursor: copy;
   border-style: dashed;
   border-color: var(--ws-accent);
@@ -30227,7 +30257,6 @@ select.pg-list-table-field option.private {
   flex: 0 0 auto;
 }
 .pg-picker-upload:disabled {
-  pointer-events: auto;
   cursor: not-allowed;
 }
 .pg-picker-folders .pg-picker-upload {
