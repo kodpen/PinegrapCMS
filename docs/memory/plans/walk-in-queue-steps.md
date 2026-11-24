@@ -23,7 +23,9 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ7 (M) after WQ5, done in #11246: the report with the staffing line, Excel. Features: W11.
 
-- WQ8 (S) after WQ7: the four events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: W12, W13.
+- WQ8 (S) after WQ7, done in #11276: the four events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: W12, W13 (`commerce/walk-in-queue-events.md`, `api/api-walk-in-queue-routes.md`).
+
+- WQ8b (S) after WQ8: `queue.served` as a satisfaction-survey touchpoint (`plans/feedback-loop.md`): its line in `pg_feedback_event_record()`'s map and the survey's touchpoint choice. Features: W12.
 
 - WQ9 (S) close-out: every W number checked against the code with its PR; `commerce/walk-in-queue.md` written; this plan's files deleted; the changelog `[NEW]` line named in its PR.
 

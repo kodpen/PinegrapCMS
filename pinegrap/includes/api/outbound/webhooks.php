@@ -124,6 +124,14 @@ function api_webhook_core_events() {
 		'booking.rescheduled' => 'A booking was moved to another time; start_at and end_at are the new times',
 		'booking.cancelled'   => 'A booking was cancelled, by the customer or by staff',
 		'booking.completed'   => 'Staff marked a booking done, on the agenda or through the API',
+		// A walk-in queue number (includes/fn/walk_in_queue_tickets.php,
+		// pg_waiting_event_payload()). id is the number's; place, service,
+		// number (A-012), state, the desk and its staff member, the person's
+		// name, phone and e-mail and the times (UTC) follow, never the link.
+		'queue.joined'  => 'A walk-in queue number was taken: on the public page, at the kiosk, by staff or through the API',
+		'queue.called'  => 'A walk-in queue number was called to a desk with Call next, on the desk screen or through the API (Call again is not announced)',
+		'queue.served'  => 'A walk-in queue number was finished at its desk',
+		'queue.no_show' => 'A called walk-in queue number was marked Not here and left the queue (one moved back to wait again is not announced)',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',

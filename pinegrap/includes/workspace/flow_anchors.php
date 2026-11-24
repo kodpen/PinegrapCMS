@@ -310,6 +310,11 @@ function ws_flow_event_outputs()
     $booking = array($value('name', 'text', lang('Name')), $value('email', 'text', lang('E-mail')), $value('start_at', 'text', lang('Start')),
         $value('end_at', 'text', lang('End')), $value('status', 'text', lang('Status')), $value('service_name', 'text', lang('Service')),
         $value('staff_name', 'text', lang('Staff member')));
+    // A walk-in queue number (pg_waiting_event_payload()).
+    $queue = array($value('number', 'text', lang('Number')), $value('place_name', 'text', lang('Place')), $value('service_name', 'text', lang('Service')),
+        $value('desk_name', 'text', lang('Desk')), $value('state', 'text', lang('Status')), $value('name', 'text', lang('Name')),
+        $value('phone', 'text', lang('Mobile number')), $value('email', 'text', lang('E-mail')), $value('contact_id', 'number', lang('Contact')),
+        $value('booking_id', 'number', lang('Booking')));
 
     return array(
         'order.created'          => array($order),
@@ -365,6 +370,10 @@ function ws_flow_event_outputs()
         'booking.rescheduled'    => $booking,
         'booking.cancelled'      => $booking,
         'booking.completed'      => $booking,
+        'queue.joined'           => $queue,
+        'queue.called'           => $queue,
+        'queue.served'           => $queue,
+        'queue.no_show'          => $queue,
         'ticket.checked_in'      => array($value('order_id', 'number', lang('Order')), $order, $value('product_id', 'number', lang('Product')),
             $value('recurrence_number', 'number', lang('Repeat')), $value('checked_in_at', 'text', lang('Checked in at')), $value('checked_in_by', 'number', lang('Checked in by'))),
         'erp.invoice.created'    => $invoice,

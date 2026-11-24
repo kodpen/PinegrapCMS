@@ -80,6 +80,7 @@ require_once($pg_api_directory . '/resources/comments.php');
 require_once($pg_api_directory . '/resources/short_links.php');
 require_once($pg_api_directory . '/resources/experiments.php');
 require_once($pg_api_directory . '/resources/bookings.php');
+require_once($pg_api_directory . '/resources/queue.php');
 require_once($pg_api_directory . '/resources/store.php');
 require_once($pg_api_directory . '/resources/store_regions.php');
 require_once($pg_api_directory . '/resources/store_currencies.php');

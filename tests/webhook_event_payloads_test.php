@@ -95,6 +95,10 @@ function webhook_payloads_test_builders()
 		'pg_booking_event_payload' => function () {
 			return pg_booking_event_payload(array('id' => 1, 'service_id' => 2, 'staff_id' => 3, 'user_id' => 0, 'name' => 'A', 'email' => 'a@example.com', 'start_at' => 0, 'end_at' => 0, 'status' => 'confirmed', 'source' => 'site'));
 		},
+		'pg_waiting_event_payload' => function () {
+			return pg_waiting_event_payload(array('id' => 1, 'place_id' => 2, 'service' => 's1', 'letter' => 'A', 'number' => 12, 'state' => 'waiting', 'source' => 'qr', 'priority' => '', 'party_size' => 0, 'booking_id' => 0,
+				'desk_id' => 0, 'staff_user_id' => 0, 'contact_id' => 0, 'name' => '', 'phone' => '', 'email' => '', 'joined_at' => 1000, 'called_at' => 0, 'done_at' => 0), array('name' => 'P', 'services' => array()), '');
+		},
 		'pg_commission_status_event' => function () {
 			return pg_commission_status_event(array('id' => 1, 'reference_code' => 'R', 'affiliate_code' => 'A', 'order_id' => 3, 'amount' => 10, 'status' => 'pending'), 'payable');
 		},

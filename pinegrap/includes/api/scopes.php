@@ -71,6 +71,12 @@ function api_scope_groups() {
 		// services and the staff members' hours stay in the panel.
 		'bookings'  => array('label' => 'Bookings',   'read' => 'bookings:read',  'write' => 'bookings:write'),
 
+		// The walk-in queue of Calendars > Queue. Writing takes a number for
+		// a visitor (a kiosk application), calls the next number to an open
+		// desk and finishes it; places, desks and opening a desk stay in the
+		// panel.
+		'queue'     => array('label' => 'Queue',      'read' => 'queue:read',     'write' => 'queue:write'),
+
 		// What visitors wrote under pages, records, products and events.
 		// Writing is moderation: publishing, holding, featuring, removing.
 		'comments'  => array('label' => 'Comments',   'read' => 'comments:read',  'write' => 'comments:write'),
@@ -499,6 +505,17 @@ function api_owner_scopes($owner) {
 			$scopes[] = 'bookings:write';
 
 		}
+
+	}
+
+	// The queue's desks open to roles 0 to 2 and to a role-3 user a place's
+	// staff list names, who reaches only those places
+	// (pg_waiting_user_desk_scope()); the endpoints filter for that.
+	if (($role <= 2) || (($role === 3) && function_exists('pg_waiting_ready') && pg_waiting_ready()
+		&& (pg_waiting_user_desk_scope(array('id' => isset($owner['id']) ? (int)$owner['id'] : 0, 'role' => $role)) !== false))) {
+
+		$scopes[] = 'queue:read';
+		$scopes[] = 'queue:write';
 
 	}
 

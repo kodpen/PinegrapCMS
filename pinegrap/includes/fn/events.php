@@ -314,6 +314,10 @@ function pg_event_workspace_events()
         'booking.rescheduled',
         'booking.cancelled',
         'booking.completed',
+        'queue.joined',
+        'queue.called',
+        'queue.served',
+        'queue.no_show',
         'product.review.created',
         'order.return.approved',
         'order.return.received',
@@ -401,12 +405,13 @@ function pg_event_contact_of_address($address)
 
 // The site's events kept only while an active scheduled action or flow
 // names them: a stock change comes with every line of every sale, and the
-// customer rhythm pass may announce thousands of customers in one night;
-// rows nobody waits for would hold up the run's batch for the events people
-// do.
+// customer rhythm pass may announce thousands of customers in one night, and
+// a busy walk-in queue makes four events of each of hundreds of numbers a
+// day; rows nobody waits for would hold up the run's batch for the events
+// people do.
 function pg_event_workspace_on_demand()
 {
-    return array('inventory.changed', 'customer.rhythm_stage_changed', 'customer.reorder_due');
+    return array('inventory.changed', 'customer.rhythm_stage_changed', 'customer.reorder_due', 'queue.joined', 'queue.called', 'queue.served', 'queue.no_show');
 }
 
 // Is the event kept, given the rules of the active scheduled actions that

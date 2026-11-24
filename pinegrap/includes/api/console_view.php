@@ -88,6 +88,7 @@ function api_console_group_labels() {
 		'subscriptions'  => lang('Subscriptions'),
 		'experiments'    => lang('Experiments'),
 		'bookings'       => lang('Bookings'),
+		'queue'          => lang('Queue'),
 		'docs'           => lang('Documentation')
 	);
 

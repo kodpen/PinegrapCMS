@@ -354,6 +354,7 @@ function pg_waiting_call_next($place, $desk, $user_id, $now = null)
             $ticket = db_item("SELECT * FROM waiting_tickets WHERE id = '" . (int) $next['id'] . "'");
             pg_waiting_notify($ticket, $place, 'called', array('desk' => $desk['name']));
             pg_waiting_notify_ahead($place, $ticket['service'], $now);
+            pg_announce('queue.called', pg_waiting_event_payload($ticket, $place, (string) $desk['name']));
 
             return $ticket;
         }
@@ -379,7 +380,7 @@ function pg_waiting_call_again($ticket, $now = null)
 }
 
 /**
- * "Finish": the number at the desk was served.
+ * "Finish": the number at the desk was served; queue.served is announced.
  *
  * @param array    $ticket
  * @param int|null $now
@@ -387,7 +388,17 @@ function pg_waiting_call_again($ticket, $now = null)
  */
 function pg_waiting_finish($ticket, $now = null)
 {
-    return pg_waiting_ticket_move($ticket, "state = 'served', done_at = '" . (($now === null) ? time() : (int) $now) . "'");
+    if (!pg_waiting_ticket_move($ticket, "state = 'served', done_at = '" . (($now === null) ? time() : (int) $now) . "'")) {
+        return false;
+    }
+
+    $facts = pg_waiting_event_facts($ticket['id']);
+
+    if ($facts) {
+        pg_announce('queue.served', pg_waiting_event_payload($facts['ticket'], $facts['place'], $facts['desk']));
+    }
+
+    return true;
 }
 
 /**
@@ -414,7 +425,17 @@ function pg_waiting_not_here($ticket, $place, $now = null)
         return pg_waiting_ticket_move($ticket, "state = 'waiting', moved_back = 1, desk_id = 0, staff_user_id = 0, called_at = '" . $now . "'") ? 'moved_back' : '';
     }
 
-    return pg_waiting_ticket_move($ticket, "state = 'no_show', done_at = '" . $now . "'") ? 'no_show' : '';
+    if (!pg_waiting_ticket_move($ticket, "state = 'no_show', done_at = '" . $now . "'")) {
+        return '';
+    }
+
+    $facts = pg_waiting_event_facts($ticket['id']);
+
+    if ($facts) {
+        pg_announce('queue.no_show', pg_waiting_event_payload($facts['ticket'], $facts['place'], $facts['desk']));
+    }
+
+    return 'no_show';
 }
 
 /**
