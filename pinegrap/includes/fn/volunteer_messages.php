@@ -403,7 +403,8 @@ function pg_volunteer_document_notice_text($kind, $valid_until, $whose)
  * The general job's document notices: a document of a volunteer who has not
  * left, ending within 30 days, gets its 30-day and its 7-day notice once
  * each (pg_volunteer_document_notice()) by e-mail, to the volunteer and the
- * programme's coordinators. The bit is claimed first: a dying pass loses a
+ * programme's coordinators. A document whose kind has a newer one valid
+ * longer (the volunteer brought the new one) is told about no more. The bit is claimed first: a dying pass loses a
  * notice, never doubles it.
  *
  * @param string $today 'YYYY-MM-DD'
@@ -422,6 +423,8 @@ function pg_volunteer_document_notices_run($today)
         LEFT JOIN contacts ON contacts.id = volunteers.contact_id
         WHERE volunteers.state <> 'left' AND volunteer_documents.notice_sent < 3
             AND volunteer_documents.valid_until >= '" . escape($today) . "' AND volunteer_documents.valid_until <= '" . escape(pg_volunteer_add_days($today, 30)) . "'
+            AND NOT EXISTS (SELECT 1 FROM volunteer_documents AS newer WHERE newer.volunteer_id = volunteer_documents.volunteer_id
+                AND newer.kind = volunteer_documents.kind AND newer.valid_until > volunteer_documents.valid_until)
         ORDER BY volunteer_documents.valid_until, volunteer_documents.id LIMIT " . (int) PG_VOLUNTEER_PASS_ROWS) as $row) {
         $notice = pg_volunteer_document_notice((string) $row['valid_until'], $today, pg_volunteer_notices_sent((int) $row['notice_sent']));
         $bit = pg_volunteer_notice_bit($notice);

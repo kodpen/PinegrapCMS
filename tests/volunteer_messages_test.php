@@ -135,3 +135,12 @@ function test_volunteer_calls_form()
 	pg_assert_true(strpos($html, ' checked') !== false);
 	pg_assert_same(array(lang('Your shift calls choice was saved.'), true), pg_volunteer_answer_text('calls_saved'));
 }
+
+function test_volunteer_document_notice_skips_a_replaced_document()
+{
+	$source = pg_test_function_source('pg_volunteer_document_notices_run');
+
+	pg_assert_contains('NOT EXISTS (SELECT 1 FROM volunteer_documents AS newer', $source, 'a document with a newer one of its kind uploaded is not told about');
+	pg_assert_contains('newer.kind = volunteer_documents.kind', $source);
+	pg_assert_contains('newer.valid_until > volunteer_documents.valid_until', $source);
+}
