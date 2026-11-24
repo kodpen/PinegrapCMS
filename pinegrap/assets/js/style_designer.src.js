@@ -85209,6 +85209,9 @@ const StyleDesigner = (function () {
             // keeps its stored version, the editor keeps the changes.
             if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
+            // The stored tree this tab started from: the server refuses a
+            // page somebody else wrote since (pg_page_base_is_stale()).
+            if (!rec.unchanged && p.page_id > 0 && p.baseHash) rec.base_hash = p.baseHash;
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
@@ -85281,6 +85284,9 @@ const StyleDesigner = (function () {
                 // A page that joined the design with this save has its place
                 // in the tab layout stored below.
                 if (p && m.page_id > 0 && (!(p.page_id > 0) || p.pickedPending)) layoutFresh = true;
+                // The stored tree the next save of this page starts from; a
+                // page left out of the write keeps the base it had.
+                if (p && m.base_hash) p.baseHash = m.base_hash;
                 if (p && m.page_id > 0) {
                     p.page_id = m.page_id;
                     var newKey = 'p' + m.page_id;
@@ -86434,6 +86440,8 @@ const StyleDesigner = (function () {
                 converted: sp.converted ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
+                // Hash of the stored tree loaded (pg_page_base_hash()).
+                baseHash: sp.baseHash || '',
                 // The page's form-level settings, as stored; written back
                 // with the page. The fields are the widget's controls.
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},

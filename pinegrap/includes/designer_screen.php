@@ -172,6 +172,12 @@ function pg_designer_screen_render($ctx)
             // A page of a classic style just opened (?classic=1): its tree is
             // not saved yet, so the tab starts unsaved and Save writes it.
             'converted'             => !empty($p['converted']) ? 1 : 0,
+            // The stored tree this tab starts from, sent back with Save: a
+            // page somebody else wrote in the meantime is not overwritten
+            // (pg_page_base_is_stale()). A converted page's tree is not the
+            // stored one, so its base is read from the row.
+            'baseHash'              => pg_page_base_hash(!empty($p['converted'])
+                                           ? pg_page_tree_json((int)$p['page_id']) : (string)$p['tree_json']),
         );
     }
     if (empty($js_pages)) {
@@ -3243,6 +3249,19 @@ function pg_designer_screen_post($ctx)
                 'vars'   => ($nm !== '' ? $nm : (string)(isset($p['page_id']) ? $p['page_id'] : ''))));
             continue;
         }
+        // The lock can lapse (a tab asleep longer than PG_COLLAB_STALE) and
+        // be claimed again after somebody else saved the page and left. The
+        // tab's tree is then older than the stored one; writing it would
+        // silently undo that save, so the page is skipped like a locked one.
+        $base_pid = isset($p['page_id']) ? (int)$p['page_id'] : 0;
+        if ($base_pid > 0 && isset($p['base_hash'])
+            && pg_page_base_is_stale($base_pid, (string)$p['base_hash'], pg_page_tree_json($base_pid))) {
+            $locked_pages[$base_pid] = true;
+            $warnings[] = lang(array(
+                'string' => 'The page "{var:1}" was changed by somebody else after you opened it, so your changes to it were not saved. Reload the editor to see the latest version.',
+                'vars'   => ($nm !== '' ? $nm : (string)$base_pid)));
+            continue;
+        }
         $r = pg_designer_save_page($style_id, $p, $user, true);
         foreach ($r['errors'] as $e) $errors[] = $e;
         foreach ($r['warnings'] as $w) $warnings[] = $w;
@@ -3585,6 +3604,14 @@ function pg_designer_screen_post($ctx)
                     'fields'   => pg_cf_load_page_fields($pid),
                     'settings' => function_exists('pg_cf_load_page_form_settings') ? pg_cf_load_page_form_settings($pid) : array(),
                 );
+            }
+        }
+        // The base the next save of each written page starts from: the tree
+        // as it is stored now, after the merges and references above.
+        foreach ($id_map as $mi => $m) {
+            $pid = (int)$m['page_id'];
+            if ($pid > 0 && in_array($pid, $written, true)) {
+                $id_map[$mi]['base_hash'] = pg_page_base_hash(pg_page_tree_json($pid));
             }
         }
         $reply = array(
