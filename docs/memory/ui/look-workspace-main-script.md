@@ -18,7 +18,7 @@ description: WL2: the buttons of assets/js/workspace.js (channel head, panes, dr
 
 ## Which old buttons are left, and why?
 - The context menu's rows (`.ws-ctx-item`, shared with `workspace_editor.js`): menus are left out of the plan.
-- Buttons joined to a field in an `input-group` (the checklist's Add item, the guest link's Copy, the poll's link Remove, an option's More and Remove) moved with the fields in WL8 (#PRNUM): `pg-button pg-button-quiet` (`-sm` in a small group), joined corners kept (`ui/look-workspace-fields.md`).
+- Buttons joined to a field in an `input-group` (the checklist's Add item, the guest link's Copy, the poll's link Remove, an option's More and Remove) moved with the fields in WL8 (#11391): `pg-button pg-button-quiet` (`-sm` in a small group), joined corners kept (`ui/look-workspace-fields.md`).
 - Pressed toggles with a label: My Tasks' and the timeline's Agents filter (`active` + `aria-pressed`), and the agent feedback marks (`is-on`): no recipe draws a pressed labelled button (`plans/workspace-look-leftover.md`, "What does a step do when no recipe fits?").
 
 ## Which CSS followed the classes?

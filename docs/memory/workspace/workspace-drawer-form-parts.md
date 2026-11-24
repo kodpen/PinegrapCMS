@@ -6,7 +6,7 @@ description: The Workspace kit's drawer form parts in look A (formParts, h.form,
 ## Where are the parts?
 - `formParts` in `assets/js/workspace.js` (next to `formRow()` and `select()`), handed over as `form` by `featureHelpers()` and by `window.PGWsKit`.
 - My calendar's plan drawer (`planDrawer()` in `workspace_my_calendar.js`) and its roadmap (`workspace_my_calendar_roadmap.js`) take them as `var part = h.form;` and build every field from them; they define no `field()` or `input()` of their own.
-- "Add to the plan" (`eventForm()` in `workspace.js`) takes them as `var part = formParts;` since #9909. Every other form calls `formRow()`, which since WL8 (#PRNUM) returns `formParts.field()` (`ui/look-workspace-fields.md`).
+- "Add to the plan" (`eventForm()` in `workspace.js`) takes them as `var part = formParts;` since #9909. Every other form calls `formRow()`, which since WL8 (#11391) returns `formParts.field()` (`ui/look-workspace-fields.md`).
 - Neither drawer holds a Bootstrap form class (`form-control`, `form-label`, `form-text`, `input-group`, `row`/`col-*`, `.switch`, `btn btn-*`); the pickers they share (`peoplePicker`, the customer pickers) are not rebuilt.
 
 ## What does each part build?

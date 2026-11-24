@@ -3,7 +3,7 @@ name: look-workspace-fields
 description: WL8: formRow() is the form parts' field(), the form-control and form-label lines of assets/js/workspace.js on pg-input and pg-field-label, input groups, the CSS that followed, what is left
 ---
 
-## How is a Workspace form row built now? (WL8, #PRNUM)
+## How is a Workspace form row built now? (WL8, #11391)
 - `formRow(label, control, help)` in `assets/js/workspace.js` returns `formParts.field()`: `div.ws-plan-field`, `label.pg-field-label`, the control, a `pg-text-meta` help line. Every caller, in `workspace.js` and through `featureHelpers()` (`h.formRow`) in the other scripts, moved with it.
 - `field()` took formRow's naming: the caption binds the control or a wrapper's first unnamed field; a picker box with a role is named through `aria-labelledby` (`tests/workspace_field_names_test.php`).
 - The row's gap is `.ws-plan-field`'s 16px margin. A row that must sit flush (quiet hours' From and To, Add people) gets `ws-field-flush`; `mb-*` utilities on the row no longer place it.
