@@ -41,6 +41,7 @@
 - canvas-data-views-follow.md: Plan canvas-data-views, DV4's census: how a channel's canvas card with data layers shows the current rows (drawn in the card by the reader's browser), and what it leaves to DV5
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
+- canvas-label-menu-cites.md: Plan (owner 2026-11-24): buttons that open the Artifact Canvas say "Edit in Artifact Canvas"; its "?" is the help link and shortcuts get their own icon; places citing a menu row draw its new icon
 - channel-notes-own.md: Plan (owner 2026-11-23): a note written in a channel belongs to the channel, off My Notes and off a person's limit, listed in the channel's Notes tab; steps CN1 to CN3
 - channel-share-links-screens.md: Screens of the share links plan: the mark on a shared item, Share by link in its menu and the dialog, the head's share mark with its menu, Channel info's Sharing part, the system line
 - channel-share-links.md: Plan (owner 2026-11-23): an item of an agent channel shared by an unguessable link with an end date: files first, then notes, tables and lists; what the address answers; steps SL1 to SL6
