@@ -1,10 +1,10 @@
 ---
 name: bug-hunt-areas-multi-language-pages
-description: Bug hunt 32, multi-language pages (#PR in the body): the language lost on a payment's return and in the form sender's subject, what was read clean, what needs an order language column
+description: Bug hunt 32, multi-language pages (#11423): the language lost on a payment's return and in the form sender's subject, what was read clean, what needs an order language column
 ---
 
 ## Which area was it?
-- A site with more than one language: the language switcher, hreflang and canonical, the sitemap, the language kept through a form, search and the cart, mails in the visitor's language. Hunt 32, PR "[iş] Bug hunt — multi-language pages".
+- A site with more than one language: the language switcher, hreflang and canonical, the sitemap, the language kept through a form, search and the cart, mails in the visitor's language. Hunt 32, PR #11423.
 - Files read: `includes/fn/widgets_language.php`, `includes/translate/seo.php`, `render.php` (links, alternates, finalize), `includes/fn/translate.php`, `includes/fn/language_redirect.php`, the router's language directory, `get_sitemap_info.php`'s hand-over, `includes/fn/form_mails.php`, `order_completion.php`'s receipt, the payment return addresses.
 
 ## What was fixed?

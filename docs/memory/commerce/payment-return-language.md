@@ -1,6 +1,6 @@
 ---
 name: payment-return-language
-description: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it
+description: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
 ---
 
 ## Which return addresses carry the language?
