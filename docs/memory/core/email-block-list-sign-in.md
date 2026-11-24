@@ -12,11 +12,10 @@ module: auth
 - Password: `validate_login()` (the sign-in screens, Change Password), `initialize_user()` for api.php credentials; a refusal costs a dummy `password_verify()` like a wrong password.
 - Passkey without a name: `pg_passkey_passwordless_refusal()`; Google, Microsoft, Apple: `pg_signin_block_refuses()` in `signin.php`.
 - The reset link (`set_password.php`): the password is set, but `pg_post_password_signin()` opens no session when `pg_post_password_signin_refusal()` says 'blocked' (or 'factor' for an account with a second step); the visitor is told to sign in, where the password is refused. Before, a blocked member reset the password and was signed in by the link.
-- A remembered device: `initialize_user()` refuses the `software[auth]` token of a blocked member (`pg_user_id_login_blocked()`) as it refuses a disabled account's, and clears the cookie. Before, the device stayed signed in for the token's whole life.
+- A remembered device: `initialize_user()` and `get_file.php` both ask `pg_auth_remembered_signin_refusal()` (`includes/authentication.php`, see `remembered-sign-in-refusals.md`); a blocked member's `software[auth]` token signs nobody in and the cookie is cleared. Before, the device stayed signed in for the token's whole life.
 
 ## What is not covered?
 - A session already open when the address is listed runs on until it ends; only a new sign-in is refused.
-- `get_file.php`'s own remember-me path (no `functions.php`) does not ask the list; a file request alone signs the member in there.
 
 ## Tests?
 - `tests/member_accounts_test.php` (`pg_post_password_signin_refusal()`, the remember-me check); `tests/login_refusal_test.php` for the password paths.
