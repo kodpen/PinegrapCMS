@@ -307,6 +307,15 @@ function test_image_editor_data_menu_picker_no_columns()
 	pg_assert_same(array(0, array('dataNoColumns')), $r['pick'], 'the picker says so too');
 }
 
+// A table or channel name with no space in it wraps inside its row of the
+// picker instead of pushing the row wider than a phone's screen.
+function test_image_editor_data_menu_long_name_wraps()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/pg_image_editor.src.css');
+
+	pg_assert_true((bool) preg_match('/\.pgie \.pgie-datatable \.pgie-ptext \{[^}]*max-width: 100%;[^}]*overflow-wrap: anywhere;/', $css), 'the row\'s words stay inside it and break anywhere');
+}
+
 // The server's rows of the tables: the channel's name and its tone on each
 // board, none for a table of no channel.
 function test_image_editor_data_menu_tables_shape()
