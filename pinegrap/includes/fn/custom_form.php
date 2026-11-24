@@ -3061,7 +3061,9 @@ function pg_cf_shown_when_hidden($fields, $values)
             $id = (string)$fields[$i]['id'];
             if (isset($hidden[$id])) continue;
             $other = pg_cf_rule_other_field($r, $fields, 'shown_when');
-            if ($other === null) continue;
+            // A rule that names its own field is not drawn in the browser
+            // (pg_cf_apply_field_bindings()), so the field is always shown.
+            if ($other === null || (string)$other['id'] === $id) continue;
             $oid   = (string)$other['id'];
             $shown = (isset($hidden[$oid]) || !isset($values[$oid])) ? '' : $values[$oid];
             if (pg_cf_rule_verdict($r, '', null, '', false, $shown) === 'hidden') {
