@@ -5298,7 +5298,7 @@ function ws_handle_action($action, $request)
             ));
 
         case 'ws_task_time_stop':
-            $result = ws_task_time_stop($viewer);
+            $result = ws_task_time_stop($viewer, (int) ($request['task_id'] ?? 0));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
