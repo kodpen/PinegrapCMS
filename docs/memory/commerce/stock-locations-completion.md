@@ -13,7 +13,7 @@ module: stock_sales
 
 ## What does completion take?
 - `pg_order_complete_line_stock()`, `pg_bundle_take_stock()` (optional `$location_id`; checkout passes the order's) and the local sale call `pg_stock_sale_take()`: the line's quantity or what the location holds, whichever is less (`pg_stock_sale_amount()`), through `pg_stock_change()`, read again and retried up to 3 times when a parallel writer moved the row (`pg_stock_change_from_row()`). A location with none left takes nothing and announces nothing; the out-of-stock flag still reads the total.
-- The order's holds, placed at its location, are released after the takes (`stock-holds.md`).
+- The order's holds at its location are released after the takes (`stock-holds.md`).
 - Without locations `pg_stock_sale_take()` answers null and each caller runs its old decrement of the total: the same writes as before (source pins in the test).
 
 ## How do the barcode screens count?
