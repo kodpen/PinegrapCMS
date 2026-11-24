@@ -91,6 +91,8 @@ function pg_dashboard_v2_config($user, $row = null, $look = null)
     $shop = defined('ECOMMERCE') && (ECOMMERCE === true);
     $cards = array();
 
+    $menu_icons = pg_dashboard_v2_card_menu_icons();
+
     foreach ($visible as $id => $card) {
         $cards[$id] = array(
             'title'    => $card['title'],
@@ -101,6 +103,8 @@ function pg_dashboard_v2_config($user, $row = null, $look = null)
             'desc'     => isset($gallery[$id]) ? $gallery[$id]['desc'] : '',
             'new'      => isset($gallery[$id]) ? $gallery[$id]['new'] : 0,
             'sketch'   => isset($gallery[$id]) ? $gallery[$id]['sketch'] : 'boxes',
+            // A card that stands for a main menu row draws the row's icon.
+            'svg'      => (isset($menu_icons[$id]) && function_exists('pg_menu_icon_cite')) ? pg_menu_icon_cite($menu_icons[$id]) : '',
         );
     }
 

@@ -22,6 +22,7 @@ priority: 6
 - Known: the Workspace's Notes part and the header's new note button. The worker lists the rest by searching each redrawn row's old glyph (the rows: `ui/main-menu-icon-rows.md`) in the Workspace's tools dock, the header's quick buttons, the dashboard cards' heads, the command palette and the empty states.
 - An icon that stands for an action or an object and not for the module (a note's own icon in a list, a file type) stays.
 - The PR lists each place before and after; the designer agent looks at it when it lands.
+- Done (#11249): `pg_menu_icon_cite()`, the places and those left in `ui/main-menu-icon-cite.md`.
 
 ## Which order, and what does the close-out do?
 - CL1 and CL2 both enter the canvas's script: one worker, CL1 then CL2. CL3 apart, after MI2.

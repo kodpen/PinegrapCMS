@@ -1106,9 +1106,17 @@
     function emptyScreen(spec) {
         var box = el('div', 'ws-empty-screen');
         var tile = el('span', 'pg-icon-tile ws-empty-screen-tile pg-tone-' + (spec.tone || 'gray'));
+        // A screen that stands for a main menu row draws that row's icon
+        // (CFG.menu_icons, server markup); its bi icon is the fallback.
+        var drawn = (spec.menuIcon && CFG && CFG.menu_icons) ? (CFG.menu_icons[spec.menuIcon] || '') : '';
 
         tile.setAttribute('aria-hidden', 'true');
-        tile.appendChild(icon(spec.icon || 'bi-inbox', ''));
+
+        if (drawn) {
+            tile.innerHTML = drawn;
+        } else {
+            tile.appendChild(icon(spec.icon || 'bi-inbox', ''));
+        }
         box.appendChild(tile);
         box.appendChild(el('div', 'pg-title-section ws-empty-screen-title', spec.title));
 
@@ -29234,7 +29242,7 @@
             if (none) {
                 var empty = el('div', 'pg-card');
 
-                empty.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
+                empty.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', menuIcon: 'notes', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
                 list.appendChild(empty);
             }
 
