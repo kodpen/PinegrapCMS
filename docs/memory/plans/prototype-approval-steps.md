@@ -16,7 +16,7 @@ description: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the 
 
 - PA5 (S) after PA2: the answer mail (from `pg_proto_comment_answer()`, hourly per link by a `waf_rate_exceeded()` counter as the bell's) and the "Answer by" reminder in the general job. Features: A6.
 
-- PA6 (S) after PA3: the three events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`), the guest's words quoted; the read-only API routes with their types, `php tools/check_api_schema.php`; the read-only MCP tools (verdicts, comments). Features: A8.
+- PA6 (S) done (#11398): the three events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`), the guest's words quoted; the read-only API routes with their types, `php tools/check_api_schema.php`; the read-only MCP tools (verdicts, comments). Features: A8.
 
 - PA7 (S) close-out: every A number checked against the code with its PR; `designer/prototype-approval.md` written and named in `designer/prototype-comments.md`; this plan's three files deleted; no `[NEW]` line (an addition to prototype comments), the `[SCHEME]` item named in PA1b.
 
