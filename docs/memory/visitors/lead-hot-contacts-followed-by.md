@@ -1,6 +1,6 @@
 ---
 name: lead-hot-contacts-followed-by
-description: The Hot Contacts view's "Followed by" column (LJ4c, #PR): the people holding an open follow-up task of the contact, read in one batch; no assignee column on contacts
+description: The Hot Contacts view's "Followed by" column (LJ4c, #11301): the people holding an open follow-up task of the contact, read in one batch; no assignee column on contacts
 module: contact_list
 ---
 
@@ -15,7 +15,7 @@ module: contact_list
 - "Remind me" stays offered on a followed contact: a second person may follow too.
 
 ## Where is the code?
-- LJ4c (#PR), `includes/fn/contact_list.php`. `pg_contact_list_workspace_on()` gates the column (and Remind me). `pg_contact_list_followers()` reads the page's contacts in one query (`ws_refs` of `task`/`contact` joined to `ws_tasks` status todo, doing, waiting and `ws_task_assignees`); `pg_contact_list_rows()` then names the people with one `ws_people()` call.
+- LJ4c (#11301), `includes/fn/contact_list.php`. `pg_contact_list_workspace_on()` gates the column (and Remind me). `pg_contact_list_followers()` reads the page's contacts in one query (`ws_refs` of `task`/`contact` joined to `ws_tasks` status todo, doing, waiting and `ws_task_assignees`); `pg_contact_list_rows()` then names the people with one `ws_people()` call.
 - `pg_contact_list_followers_map()` (pure) keeps each person once, in the order of their first open task; `pg_contact_list_followed_cell()` (pure) draws the chips (`pg-initials` in the person's tone, then the name).
 - Any open task tagged with the contact counts, not only the ones Remind me opened: a channel task on the contact also says somebody is on it.
 
