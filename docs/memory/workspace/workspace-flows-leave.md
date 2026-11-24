@@ -24,7 +24,7 @@ description: Leaving a flow (FE14, flow_leave.php): leave rules in the graph, ev
 
 ## Where is left shown?
 - `ws_flow_run_statuses()` has `left` ("Left the flow"); the canvas's `RUN_STATES` and the flag's `FLAG_STATES` (`bi-box-arrow-right`, the secondary tone) cover the runs list, run view and run card. Swept at 30 days as other ended runs. Retry and skip are not offered on a left run.
-- API: run `status` `left`, the runs list's `status=left` filter, the draft writes' `leave` part (`ws_api_flow_input()`), `WorkspaceFlowGraph.leave`, `left` in `ws_flow_counts()` (runs left in the days).
+- API: run `status` `left`, the runs list's `status=left` filter, the draft update's `leave` part (`ws_api_flow_input()`; a create takes none, for the MCP tool's size budget), `WorkspaceFlowGraph.leave`, `left` in `ws_flow_counts()` (runs left in the days).
 
 ## How is it set on the canvas?
 - "Leaving the flow" in the name's window (`leaveField()` in `workspace_flow.js`, after the home channel): each rule's event with × (Remove the rule), then a list "Choose what happens" and "Add a rule" while the draft may change and under the limit; each change is one undo step.
