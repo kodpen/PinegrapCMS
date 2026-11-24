@@ -29,9 +29,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_volunteer_page_hours_html(array $form, array $c, array $profile)
 {
     $id = 'vo_hours_' . (int) $profile['p'];
-    // The site's look (5.3.8) has no keys of its own for a field.
-    $label = 'class="' . ($c['label'] ?? 'form-label') . '"';
-    $input = $c['input'] ?? 'form-control';
+    // Look A's buttons mean look A's fields; else the site's (5.3.8).
+    $look_a = (strpos($c['quiet'], 'pg-button') === 0);
+    $label = 'class="' . ($look_a ? 'pg-field-label' : 'form-label') . '"';
+    $input = $look_a ? 'pg-input' : 'form-control';
 
     return '<h3 class="h6 mb-2">' . h(lang('Hours')) . '</h3>'
         . '<p class="' . $c['meta'] . '">' . h(lang('At your shift, scan the QR poster of your place to check in and out.')) . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/volunteer_check_in.php') . '">' . h(lang('Scan the poster')) . '</a></p>'
@@ -44,4 +45,21 @@ function pg_volunteer_page_hours_html(array $form, array $c, array $profile)
         . '</div><label ' . $label . ' for="' . $id . '_note">' . h(lang('What did you do?')) . '</label><input type="text" class="' . $input . ' mb-3" id="' . $id . '_note" name="note" maxlength="255">'
         . '<p class="' . $c['meta'] . '">' . h(lang('The coordinator approves the hours before they count.')) . '</p>'
         . '<button type="submit" class="' . $c['fill'] . '">' . h(lang('Send for approval')) . '</button></form></details>';
+}
+
+/**
+ * What adding hours outside a shift tells the volunteer. Pure.
+ *
+ * @param string $answer pg_volunteer_outside_add()
+ * @return array|null text, ok; null for an answer of another action
+ */
+function pg_volunteer_hours_answer_text($answer)
+{
+    $texts = array(
+        'hours_added' => array(lang('Your hours were sent. They count once the coordinator approves them.'), true),
+        'day'         => array(lang(array('string' => 'Choose a day in the last {var:1} days, not after today.', 'vars' => array(PG_VOLUNTEER_OUTSIDE_DAYS))), false),
+        'hours'       => array(lang('Give the hours as a number from 0.25 to 24.'), false),
+    );
+
+    return $texts[$answer] ?? null;
 }

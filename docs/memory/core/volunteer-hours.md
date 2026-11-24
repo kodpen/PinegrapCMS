@@ -27,6 +27,6 @@ module: volunteer_hours, volunteer_hours_view, widgets_volunteer_hours
 - "QR posters": a button a place.
 
 ## How are hours outside a shift entered?
-- On the volunteer's page (signed link and My Account), active volunteers: "Add hours outside a shift" with a day in the last 90 days, hours 0.25-24 (comma or point), a note (`pg_volunteer_outside_input()`), drawn by `includes/fn/widgets_volunteer_hours.php` (a site file, so its native date field is allowed). Posts `action=hours` to `volunteer.php` (`pg_volunteer_page_act()`); a row with `shift_id` NULL waits for approval.
+- On the volunteer's page (signed link and My Account), active volunteers: "Add hours outside a shift" with a day in the last 90 days, hours 0.25-24 (comma or point), a note (`pg_volunteer_outside_input()`), drawn by `includes/fn/widgets_volunteer_hours.php` (a site file, so its native date field is allowed). Posts `action=hours` to `volunteer.php`, which `pg_volunteer_self_act()` hands to `pg_volunteer_outside_add()`; a row with `shift_id` NULL waits for approval.
 
 Related: docs/memory/core/volunteer-signup.md, docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md

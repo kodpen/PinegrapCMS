@@ -134,3 +134,14 @@ function test_volunteer_check_in_page_is_sensitive()
 	pg_assert_true(strpos($page, 'pg_volunteer_poster_code_valid(') < strpos($page, 'pg_volunteer_scan_rows('), 'the poster is checked before any shift is read');
 	pg_assert_contains("\$_SESSION['volunteer']['ids']", $page, 'only the volunteers this browser holds');
 }
+
+function test_volunteer_hours_answers_reach_the_page()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_volunteer_hours.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
+
+	pg_assert_true(pg_volunteer_hours_answer_text('hours_added')[1]);
+	pg_assert_false(pg_volunteer_hours_answer_text('day')[1]);
+	pg_assert_same(null, pg_volunteer_hours_answer_text('signed'), 'a shift action keeps its own text');
+	pg_assert_contains("if (\$action === 'hours')", pg_test_function_source('pg_volunteer_self_act'), 'the page\'s posted hours reach the store');
+}
