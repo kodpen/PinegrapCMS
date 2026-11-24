@@ -885,17 +885,20 @@ function submit_order($type) {
     // the order's pages read what was charged.
     $shipping_less = 0;
     $shipping_less_ship_to_id = 0;
+    $shipping_less_from = 0;
 
     if (($shipping > 0) && pg_order_charges_settle_rates()) {
         $settled = pg_order_charges_reachable($charged_lines, $discount, array('shipping' => $shipping));
 
         if ($settled['shipping'] < $shipping) {
-            $shipping_less_ship_to_id = (int) db_value(
-                "SELECT id FROM ship_tos
+            $shipping_less_row = db_item(
+                "SELECT id, shipping_cost FROM ship_tos
                 WHERE order_id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "' AND shipping_cost >= '" . ($shipping - $settled['shipping']) . "'
                 ORDER BY id DESC LIMIT 1");
 
-            if ($shipping_less_ship_to_id > 0) {
+            if (is_array($shipping_less_row) && ((int) $shipping_less_row['id'] > 0)) {
+                $shipping_less_ship_to_id = (int) $shipping_less_row['id'];
+                $shipping_less_from = (int) $shipping_less_row['shipping_cost'];
                 $shipping_less = $shipping - $settled['shipping'];
                 $shipping = $settled['shipping'];
             }
@@ -3539,10 +3542,15 @@ function submit_order($type) {
     }
 
     // The recipient that gave up the shipping's minor units (see the totals
-    // above) keeps the cost the order was charged.
+    // above) keeps the cost the order was charged. A compare-and-set on the
+    // cost read above: the payment service's message may complete the order
+    // and lower the same recipient while this return waits on the service
+    // (pg_order_complete_from_payment()), and the recipient is lowered once.
     if ($shipping_less > 0) {
-        db("UPDATE ship_tos SET shipping_cost = shipping_cost - " . (int) $shipping_less . "
-            WHERE id = '" . (int) $shipping_less_ship_to_id . "'");
+        db_q(
+            "UPDATE ship_tos SET shipping_cost = ?
+            WHERE id = ? AND order_id = ? AND shipping_cost = ?",
+            array((string) ($shipping_less_from - $shipping_less), (string) $shipping_less_ship_to_id, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0), (string) $shipping_less_from)) or output_error('Query failed.');
     }
 
     // Complete the order (includes/fn/order_completion.php): its values, the
