@@ -20,7 +20,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 
 ## Clusters
 
-- `application-review-*`: 9 files.
+- `application-review-*`: 11 files; start at `application-review-overview.md`.
 - `audit-trail-*`: 9 files.
 - `campaign-profile-*`: 8 files.
 - `code-editor-*`: 6 files.

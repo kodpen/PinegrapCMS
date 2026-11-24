@@ -14,8 +14,10 @@
 - application-review-decisions.md: A programme's Decisions tab (AR6, #11149): accepted, rejected, waitlisted, declined; the decision e-mails' preview and send; the waitlist call; the result on the submitter's form item view
 - application-review-jurors.md: An outside juror's signed link and page (AR4): application_juror.php, the HMAC link, withdrawn and expired states, Copy the link and Send the link again, reminders with the link, the waf entry
 - application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end [decision: here]
+- application-review-overview.md: Start file of the application review desk (Forms › Application programmes): which application-review-* file holds the store, set-up, reviewers, scoring, jurors, ranking, decisions, report and API
 - application-review-programme.md: Application programme settings (AR2): the Forms screens, the period check in the submit path, the entry row with eligibility, the override, criteria templates
 - application-review-ranking.md: A programme's Entries tab (AR5): combined scores of the current round, the consensus flag and Settle, ranking per category, the shortlist cut, "Start round N"
+- application-review-report.md: A programme's Report tab and Excel (AR7, #11222); GET /application-programs and its entries (API, MCP); events application.scored and application.decided in the webhook and flow catalogues
 - application-review-reviewers.md: A programme's Reviewers tab (AR3a): panel users and outside jurors, category pools, Remove, "Give out entries" per category, conflicts listed
 - application-review-rules.md: Pure rules of application review: eligibility codes, weighted sums, leniency correction, spread flag, balanced assignment, shortlist tie rule
 - application-review-store.md: Application review desk tables (11.0.258, #10832): defaults, personal data erase and export of them, audit_log types application_program and application_entry
