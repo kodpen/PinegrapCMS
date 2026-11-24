@@ -691,6 +691,25 @@ function pg_layout_widget_tree_apply(array $tree, array $seed)
     return $walk($tree, false);
 }
 
+/**
+ * The page settings a type's conditions read (pg_layout_piece_map()
+ * 'state', includes/fn/layout_convert.php), from the page's row of its
+ * type table: a condition on a setting that is off is never drawn and is
+ * left out unreported. Pure.
+ *
+ * @param string $type
+ * @param array  $row
+ * @return array  setting => bool
+ */
+function pg_layout_convert_state($type, $row)
+{
+    if ((string)$type !== 'form list view') return array();
+    $on = function ($key) use ($row) {
+        return !empty($row[$key]) && (int)$row[$key] === 1;
+    };
+    return array('browse' => $on('browse'), 'search' => $on('search'), 'show_results' => $on('show_results_by_default'));
+}
+
 // Of the pages that draw a custom layout (pg_layout_custom_page_ids()), those
 // whose type has a widget, page id => ['kind' => widget kind, 'cfg' =>
 // settings carried from the page's type settings, 'tree' => the settings
@@ -802,7 +821,8 @@ function pg_classic_type_facts(array $page_ids)
 // 'type' => page type, 'kind' => widget kind, 'modified' => whether the
 // page draws its own layout file (page.layout_modified), 'cfg' =>
 // pg_layout_widget_seed(), 'tree' => pg_layout_widget_tree_seed(), 'held'
-// => pg_layout_widget_held() codes), read from the page's type row.
+// => pg_layout_widget_held() codes, 'state' => pg_layout_convert_state()),
+// read from the page's type row.
 function _pg_widget_type_facts(array $page_ids, array $kinds)
 {
     $ids = array();
@@ -854,6 +874,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
             'cfg'      => pg_layout_widget_seed($type, $row, $field_names),
             'tree'     => pg_layout_widget_tree_seed($type, $row),
             'held'     => pg_layout_widget_held($type, $row, $field_names),
+            'state'    => pg_layout_convert_state($type, $row),
         );
     }
 

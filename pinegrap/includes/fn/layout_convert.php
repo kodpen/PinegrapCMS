@@ -16,6 +16,12 @@
  * field rows (pg_cf_load_page_fields()) and, for a layout that still holds
  * the generated part, generate_form_layout_content()'s text.
  *
+ * The same for the other page types a widget stands in for
+ * (pg_layout_convert()): a page's own layout file becomes its widget's
+ * design elements, each piece of the type's data contract turned into what
+ * the widget has for it by the type's piece map (pg_layout_piece_map()),
+ * and the pieces with no element reported.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -686,4 +692,417 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
         if (!empty($n['children'])) _pg_lfc_row_labels($n['children'], $by_id, $for);
     }
     unset($n);
+}
+
+// ── Page type layouts (pg_layout_convert()) ─────────────────────────────────
+
+/**
+ * The page types whose own layout file converts into their widget's design
+ * elements by a piece map, in the order of pg_layout_piece_map().
+ *
+ * @return array
+ */
+function pg_layout_convert_types()
+{
+    return array('form item view', 'form list view');
+}
+
+/**
+ * What each piece of a page type's data contract (the variables its view
+ * template is given) becomes in the widget's tree. Null for a type with no
+ * map yet. Keys are PHP sources; white space in them is not compared.
+ *
+ * 'echo': a printed value: 'none' (the widget draws it: messages, the
+ * form's hidden fields), 'token:<name>' (the widget's value of that name,
+ * bound where an element holds it alone), 'ctx:<key>' (markup the caller
+ * reads from the page's settings, the header and footer), 'row' (the
+ * record: the widget's row template).
+ *
+ * 'if': a condition: array('becomes' => 'widget' (the widget draws what it
+ * holds: skipped), 'flag' (shown only under the widget's flag 'flag'),
+ * 'empty' (the widget's empty state: its words become the empty message),
+ * 'keep' (drawn as it is) or 'drop' (no element: reported), 'state' => the
+ * page setting (pg_layout_convert_state()) without which it is never
+ * drawn, 'drop_when' => array(setting => code): a setting under which it
+ * holds a part the widget has not, reported with that code).
+ *
+ * 'else': the flag the "otherwise" branch of a condition shows under.
+ * 'loop': a foreach: 'list' (the widget's list, its body the row's
+ * wrapper).
+ *
+ * @param string $type
+ * @return array|null
+ */
+function pg_layout_piece_map($type)
+{
+    $none = array('$messages' => 'none', '$system' => 'none', '$attributes' => 'none');
+    switch ((string)$type) {
+        case 'form list view':
+            return array(
+                'echo' => $none + array(
+                    '$header' => 'ctx:header',
+                    '$footer' => 'ctx:footer',
+                    "\$form['content']" => 'row',
+                    'number_format($total_number_of_forms)' => 'token:__result_count',
+                    'pg_format_number($total_number_of_forms, 0)' => 'token:__result_count',
+                ),
+                'if' => array(
+                    // The browse and search form: the widget's search box,
+                    // shown when its search is on. A browse it has not.
+                    '$browse or $search' => array('becomes' => 'widget', 'state' => array('browse', 'search'), 'drop_when' => array('browse' => 'browse')),
+                    // Words asking to browse or search first, while the
+                    // list waits for it: the widget always lists.
+                    '$browse_or_search_required' => array('becomes' => 'drop', 'state' => array('required')),
+                    '$number_of_forms == 0' => array('becomes' => 'empty'),
+                    // "Found N results" after a search: no widget flag says
+                    // a search is in force.
+                    '$browse_active or $search_active' => array('becomes' => 'drop', 'state' => array('browse', 'search')),
+                    '$number_of_pages > 1' => array('becomes' => 'widget'),
+                ),
+                'else' => array('$number_of_forms == 0' => 'has_records'),
+                'loop' => array('$forms as $form' => 'list'),
+            );
+
+        case 'form item view':
+            return array(
+                'echo' => $none + array(
+                    '$content' => 'row',
+                    'h($auto_registration_email_address)' => 'token:__new_account_email',
+                    'h($auto_registration_set_password_url)' => 'token:__new_account_set_password_url',
+                    'h($edit_button_url)' => 'token:__edit_url',
+                ),
+                'if' => array(
+                    '$auto_registration' => array('becomes' => 'flag', 'flag' => 'has_new_account'),
+                    '$auto_registration_set_password_url' => array('becomes' => 'flag', 'flag' => 'has_set_password_link'),
+                    '$edit_button_url' => array('becomes' => 'flag', 'flag' => 'can_edit'),
+                ),
+                'else' => array(),
+                'loop' => array(),
+            );
+    }
+    return null;
+}
+
+/**
+ * A widget starter's row template: what its first loop area holds, or the
+ * content of the loop area's one column (the layout's own loop body lays
+ * the records out). Pure.
+ *
+ * @param array $starter
+ * @return array  nodes
+ */
+function pg_layout_convert_row($starter)
+{
+    $loop = _pg_lc_find_loop(is_array($starter) ? $starter : array());
+    if ($loop === null) return array();
+    $kids = array_values((array)($loop['children'] ?? array()));
+    if (count($kids) === 1 && ($kids[0]['type'] ?? '') === 'col') return array_values((array)($kids[0]['children'] ?? array()));
+    return $kids;
+}
+
+function _pg_lc_find_loop($node)
+{
+    if (($node['type'] ?? '') === 'loop_area') return $node;
+    foreach ((array)($node['children'] ?? array()) as $c) {
+        if (!is_array($c)) continue;
+        $hit = _pg_lc_find_loop($c);
+        if ($hit !== null) return $hit;
+    }
+    return null;
+}
+
+/**
+ * A page's own layout file as the design elements of its page type's
+ * widget (pg_layout_widget_kinds()): the custom form converter made
+ * general. Parts by pg_di_php_parts(), markup by the HTML converter, so the
+ * theme's wrappers and classes stay; each PHP piece becomes what the type's
+ * piece map (pg_layout_piece_map()) says, and a piece it does not name is
+ * dropped with what it holds and reported. A <script> or <style> stays a
+ * raw block.
+ *
+ * Pure: no query, no file.
+ *
+ * @param string $type  the page type
+ * @param string $code  the layout's PHP text
+ * @param array  $ctx   'state' (pg_layout_convert_state()), 'row' (the row
+ *                      template, pg_layout_convert_row()), 'header' and
+ *                      'footer' (the page's markup for them)
+ * @return array  'ok' (false for a type with no map or a text not readable
+ *                as PHP), 'tree' (root), 'cfg' (widget settings the layout
+ *                sets: 'empty_message'), 'dropped' (list of array('piece'
+ *                => the PHP source, 'line' => its line, 'code' =>
+ *                'condition', 'value', 'loop', 'code' or a drop_when code))
+ */
+function pg_layout_convert($type, $code, $ctx = array())
+{
+    $out = array('ok' => false, 'tree' => pg_di_root(array()), 'cfg' => array(), 'dropped' => array());
+    $map = pg_layout_piece_map($type);
+    $parts = ($map === null) ? null : pg_di_php_parts((string)$code);
+    if ($parts === null) return $out;
+
+    $norm = function ($s) { return preg_replace('/\s+/', '', (string)$s); };
+    $echo = array();
+    foreach ($map['echo'] as $k => $v) $echo[$norm($k)] = $v;
+    $ifs = array();
+    foreach ($map['if'] as $k => $v) $ifs[$norm($k)] = $v + array('key' => $norm($k));
+    $else = array();
+    foreach ($map['else'] as $k => $v) $else[$norm($k)] = $v;
+    $loops = array();
+    foreach ($map['loop'] as $k => $v) $loops[$norm($k)] = $v;
+    $state = (array)($ctx['state'] ?? array());
+    $state['required'] = (!empty($state['browse']) || !empty($state['search'])) && empty($state['show_results']);
+
+    $html = '';
+    $stack = array();     // open blocks: 'mode' (keep, skip, flag, capture, list), 'key', 'close', 'buf'
+    $line = 1;
+    $loop_seen = false;
+    $drop = function ($piece, $at, $code_) use (&$out) {
+        $out['dropped'][] = array('piece' => trim((string)$piece), 'line' => (int)$at, 'code' => (string)$code_);
+    };
+    $kept = function () use (&$stack) {
+        foreach ($stack as $fr) if ($fr['mode'] === 'skip') return false;
+        return true;
+    };
+    $in_tag = function () use (&$html) {
+        return strrpos($html, '<') !== false && strrpos($html, '<') > (int)strrpos($html, '>');
+    };
+    // What a condition's branch becomes: an array of the frame's mode and
+    // what to write at its start and end.
+    $branch = function ($raw, $at) use ($ifs, $state, $drop, $in_tag, $norm) {
+        $cond = $norm($raw);
+        if (!isset($ifs[$cond])) {
+            $drop($raw, $at, 'condition');
+            return array('mode' => 'skip');
+        }
+        $p = $ifs[$cond];
+        if (isset($p['state'])) {
+            $any = false;
+            foreach ((array)$p['state'] as $s) if (!empty($state[$s])) $any = true;
+            if (!$any) return array('mode' => 'skip', 'key' => $p['key']);
+        }
+        foreach ((array)($p['drop_when'] ?? array()) as $s => $c) {
+            if (!empty($state[$s])) {
+                $drop($raw, $at, $c);
+                return array('mode' => 'skip', 'key' => $p['key']);
+            }
+        }
+        switch ($p['becomes']) {
+            case 'widget':
+                return array('mode' => 'skip', 'key' => $p['key']);
+            case 'keep':
+                return array('mode' => 'keep', 'key' => $p['key']);
+            case 'empty':
+                return array('mode' => 'capture', 'key' => $p['key'], 'buf' => '');
+            case 'flag':
+                if ($in_tag()) break;
+                return array('mode' => 'flag', 'key' => $p['key'], 'open' => '<pg-vis data-flag="' . h($p['flag']) . '">', 'close' => '</pg-vis>');
+        }
+        $drop($raw, $at, 'condition');
+        return array('mode' => 'skip', 'key' => $p['key']);
+    };
+    $write = function ($text) use (&$stack, &$html) {
+        for ($i = count($stack) - 1; $i >= 0; $i--) {
+            if ($stack[$i]['mode'] === 'capture') { $stack[$i]['buf'] .= $text; return; }
+        }
+        $html .= $text;
+    };
+
+    foreach ($parts as $p) {
+        if ($p['kind'] === 'html') {
+            if ($kept()) $write($p['text']);
+            $line += substr_count($p['text'], "\n");
+            continue;
+        }
+        $at = $line;
+        foreach ($p['tokens'] as $t) {
+            if (is_array($t) && $t[0] !== T_WHITESPACE && $t[0] !== T_COMMENT && $t[0] !== T_DOC_COMMENT) { $at = (int)$t[2]; break; }
+        }
+        foreach ($p['tokens'] as $t) $line = max($line, is_array($t) ? (int)$t[2] + substr_count($t[1], "\n") : $line);
+        $src = _pg_lc_source($p['tokens']);
+        if ($src === '') continue;
+        $open_kept = $kept();
+
+        if (!empty($p['echo'])) {
+            if ($open_kept) $write(_pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop));
+            continue;
+        }
+        if (preg_match('/^if\s*\((.+)\)\s*(:|\{)$/s', $src, $m)) {
+            if (!$open_kept) { $stack[] = array('mode' => 'skip'); continue; }
+            $fr = $branch($m[1], $at);
+            $fr['chain'] = array($fr);
+            if (isset($fr['open'])) $write($fr['open']);
+            $stack[] = $fr;
+            continue;
+        }
+        if (preg_match('/^\}?\s*(else\s*if|elseif)\s*\((.+)\)\s*(:|\{)$/s', $src, $m) || preg_match('/^\}?\s*else\s*(:|\{)$/s', $src)) {
+            if (!$stack) { if ($open_kept) $drop($src, $at, 'code'); continue; }
+            $top = array_pop($stack);
+            $outer = $kept();
+            if (isset($top['close']) && $outer) $write($top['close']);
+            if (($top['mode'] ?? '') === 'capture' && $outer) $out['cfg']['empty_message'] = _pg_lc_words($top['buf']);
+            $chain = isset($top['chain']) ? $top['chain'] : array();
+            if (!$outer || !$chain) { $stack[] = array('mode' => 'skip'); continue; }
+            if (isset($m[2])) {
+                $fr = $branch($m[2], $at);
+            } else {
+                $fr = _pg_lc_else($chain, $else, $in_tag());
+                if ($fr === null) {
+                    $drop('else', $at, 'condition');
+                    $fr = array('mode' => 'skip');
+                }
+            }
+            $fr['chain'] = array_merge($chain, array($fr));
+            if (isset($fr['open'])) $write($fr['open']);
+            $stack[] = $fr;
+            continue;
+        }
+        if (preg_match('/^foreach\s*\((.+)\)\s*(:|\{)$/s', $src, $m)) {
+            if (!$open_kept) { $stack[] = array('mode' => 'skip'); continue; }
+            $key = $norm($m[1]);
+            if (isset($loops[$key]) && $loops[$key] === 'list' && !$loop_seen && !$in_tag()) {
+                $loop_seen = true;
+                $write('<pg-loop>');
+                $stack[] = array('mode' => 'list', 'close' => '</pg-loop>');
+            } else {
+                $drop($m[1], $at, 'loop');
+                $stack[] = array('mode' => 'skip');
+            }
+            continue;
+        }
+        if (preg_match('/^(endif|endforeach|endfor|endwhile|endswitch|\})$/', $src)) {
+            if (!$stack) { if ($open_kept) $drop($src, $at, 'code'); continue; }
+            $top = array_pop($stack);
+            if ($kept()) {
+                if (isset($top['close'])) $write($top['close']);
+                if (($top['mode'] ?? '') === 'capture') $out['cfg']['empty_message'] = _pg_lc_words($top['buf']);
+            }
+            continue;
+        }
+        // Any other code: a block it opens is skipped whole.
+        if ($open_kept) $drop($src, $at, 'code');
+        if (preg_match('/(:|\{)$/', $src)) $stack[] = array('mode' => 'skip');
+    }
+
+    $nodes = _pg_lfc_parse($html);
+    $row = array_values((array)($ctx['row'] ?? array()));
+    $nodes = _pg_lc_finish($nodes, $row);
+    if (_pg_lc_find_loop(array('children' => $nodes)) === null) {
+        // A widget draws its records where its list stands: one at the end.
+        $nodes[] = pg_di_mk('loop_area', array(), $row);
+    }
+    if (isset($out['cfg']['empty_message']) && $out['cfg']['empty_message'] === '') unset($out['cfg']['empty_message']);
+    $out['ok'] = true;
+    $out['tree'] = pg_di_root($nodes);
+    return $out;
+}
+
+// One PHP part's code, comments out and white space kept to one space; a
+// closing semicolon dropped.
+function _pg_lc_source($tokens)
+{
+    $s = '';
+    foreach ($tokens as $t) {
+        if (is_array($t) && in_array($t[0], array(T_COMMENT, T_DOC_COMMENT), true)) continue;
+        $s .= (is_array($t) && $t[0] === T_WHITESPACE) ? ' ' : (is_array($t) ? $t[1] : $t);
+    }
+    return trim(rtrim(trim($s), ';'));
+}
+
+// The text a printed value stands for in the stream.
+function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
+{
+    $key = $norm($src);
+    if (isset($echo[$key])) {
+        $v = (string)$echo[$key];
+        if ($v === 'none') return '';
+        if ($v === 'row') return '<pg-row></pg-row>';
+        if (strpos($v, 'token:') === 0) return '^^' . substr($v, 6) . '^^';
+        if (strpos($v, 'ctx:') === 0) return (string)($ctx[substr($v, 4)] ?? '');
+    }
+    // Interface words the template prints: the words themselves, which
+    // the page's translation reads like any text.
+    if (preg_match('/^(?:h\()?lang\(\s*\'((?:[^\'\\\\]|\\\\.)*)\'\s*\)\)?$/s', $src, $m) && (strpos($src, 'h(') !== 0 || substr($src, -2) === '))')) {
+        return h(stripslashes($m[1]));
+    }
+    $drop($src, $at, 'value');
+    return '';
+}
+
+// The plain words of a captured branch.
+function _pg_lc_words($html)
+{
+    return trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES, 'UTF-8')));
+}
+
+// The "otherwise" branch after $chain: the flag the map gives the last
+// condition's opposite, drawn as it is when every branch before it is
+// never drawn (or drawn by the widget), null when it has no element.
+function _pg_lc_else($chain, $else, $in_tag)
+{
+    $last = end($chain);
+    $key = isset($last['key']) ? $last['key'] : '';
+    if ($key !== '' && isset($else[$key]) && !$in_tag) {
+        return array('mode' => 'flag', 'key' => '', 'open' => '<pg-vis data-flag="' . h($else[$key]) . '" data-around-list="1">', 'close' => '</pg-vis>');
+    }
+    foreach ($chain as $fr) {
+        if (($fr['mode'] ?? '') !== 'skip' || !isset($fr['key'])) return null;
+    }
+    return array('mode' => 'keep', 'key' => '');
+}
+
+// The markers turned into the widget's parts: the list (pg-loop) into its
+// loop area, the record (pg-row) into the row template, a flagged branch
+// (pg-vis) into its nodes shown under the flag; an address or a text that
+// is one widget value alone is bound to it.
+function _pg_lc_finish($nodes, $row)
+{
+    $out = array();
+    foreach ($nodes as $n) {
+        $tag = _pg_lfc_tag($n);
+        $kids = _pg_lc_finish((array)($n['children'] ?? array()), $row);
+        if ($tag === 'pg-row') {
+            foreach ($row as $r) $out[] = $r;
+            continue;
+        }
+        if ($tag === 'pg-loop') {
+            $out[] = pg_di_mk('loop_area', array(), $kids);
+            continue;
+        }
+        if ($tag === 'pg-vis') {
+            $flag = (string)_pg_lfc_attr($n, 'data-flag');
+            foreach ($kids as $k) $out[] = _pg_lc_flag($k, $flag);
+            continue;
+        }
+        $n['children'] = $kids;
+        $out[] = _pg_lc_bind($n);
+    }
+    return $out;
+}
+
+// A node shown only under $flag; one that holds the list is entered
+// instead, so the widget's empty message in the list's place is never cut
+// with it.
+function _pg_lc_flag($n, $flag)
+{
+    if (($n['type'] ?? '') === 'loop_area') return $n;
+    if (_pg_lc_find_loop($n) !== null) {
+        foreach ($n['children'] as $i => $c) $n['children'][$i] = _pg_lc_flag($c, $flag);
+        return $n;
+    }
+    if (isset($n['props']['_bindings']['eo_visible_if'])) {
+        return pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_bindings' => array('eo_visible_if' => $flag)), array($n));
+    }
+    $n['props']['_bindings']['eo_visible_if'] = $flag;
+    return $n;
+}
+
+function _pg_lc_bind($n)
+{
+    foreach (array('href', 'text') as $prop) {
+        if (isset($n['props'][$prop]) && is_string($n['props'][$prop]) && preg_match('/^\s*\^\^(__[a-z0-9_]+)\^\^\s*$/', $n['props'][$prop], $m)) {
+            $n['props']['_bindings'][$prop] = $m[1];
+            $n['props'][$prop] = ($prop === 'href') ? '#' : '';
+        }
+    }
+    return $n;
 }

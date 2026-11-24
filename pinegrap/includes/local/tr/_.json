@@ -66,6 +66,7 @@
     "\"{var:1}\" is not an expiration date.": "\"{var:1}\" bir son kullanma tarihi değil.",
     "\"{var:1}\" is open in the Page Design Studio.": "\"{var:1}\" Sayfa Tasarım Stüdyosu'nda açık.",
     "\"{var:1}\" is used on {var:2} pages:": "\"{var:1}\" {var:2} sayfada kullanılıyor:",
+    "\"{var:1}\" keeps its System region: its layout has pieces that have no design element.": "\"{var:1}\" Sistem bölgesi olarak kalıyor: düzeninde tasarım öğesi olmayan parçalar var.",
     "\"{var:1}\" keeps its System region: its widget's layout did not come with Convert.": "\"{var:1}\" Sistem bölgesini korur: widget'ının yerleşimi Dönüştür ile gelmedi.",
     "\"{var:1}\" keeps its page regions: some of them sit in a shared component.": "\"{var:1}\" sayfa bölgelerini koruyor: bazıları paylaşılan bir bileşende.",
     "\"{var:1}\" opens on {var:2}.": "\"{var:1}\" dersi {var:2} tarihinde açılır.",

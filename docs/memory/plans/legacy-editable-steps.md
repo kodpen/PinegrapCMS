@@ -13,19 +13,20 @@ description: Plan legacy-editable, steps LE1 to LE12 with size and order: the me
 - LE4 (M) done (#11158) the true canvas: markers around every region pass in `get_page_content.php` while marking is on, `legacy_region_preview` answering every region node, the band and the Region panel's line and action. `includes/fn/layouts.php`, `style_designer.src.js` (`node --check`).
 - LE5 (M) done (#11270) the seed's missing settings, the dry run's reasons (`designer/legacy-stock-types.md`).
 - LE5b (M) done (#11290) the run's `types` step, a "Page types" row (`designer/legacy-types-step.md`).
-- LE6 (M) the converter's core: `pg_layout_convert()`, `pg_layout_piece_map()`, the Region panel's dropped list and confirm, the run converting a file page with nothing dropped; first family form list view and form item view.
+- LE6 (M) done (#PR) `pg_layout_convert()`, `pg_layout_piece_map()`, a file page dropping nothing converts in the run; form list and item view.
+- LE6b (M) the Region panel's dropped list and confirm, its Convert on a file page.
 - LE7 (M) order form. LE8 (M) photo gallery, catalog, catalog detail. LE9 (M, a and b if past the size) shopping cart, express order, the checkout steps, view order. LE10 (M) the account pages and search results.
 - LE11 (S) the "Designs moved earlier" card, its dry run drawer and run.
 - LE12 (S) close-out: `designer/legacy-editable-overview.md` written with the last numbers; `designer/legacy-overview.md`, `classic-style-to-design.md`, `canvas-closed-blocks-regions.md` and `layout-widget-offer.md` corrected; this plan's five files deleted; the changelog `[NEW]` line named in its PR.
 
 ## In which order?
-- LE1 first. Then LE2 and LE4 side by side (the run's files; the page render and the editor). LE3 after LE2. LE5 after LE2. LE5b after LE5. LE6 after LE5b and LE4. LE7 to LE10 after LE6, one at a time: each adds its types' rows to the piece map. LE11 after LE5b. LE12 last.
+- LE1 first. Then LE2 and LE4 side by side (the run's files; the page render and the editor). LE3 after LE2. LE5 after LE2. LE5b after LE5. LE6 after LE5b and LE4, LE6b after LE6. LE7 to LE10 after LE6, one at a time: each adds its types' rows to the piece map. LE11 after LE5b. LE12 last.
 - `style_designer.src.js` and `get_page_content.php` are entered by other plans: check the open PRs first (`workflow/held-file-bundled-sources.md`).
 
 ## What does every step's PR carry?
 - The measure before and after on both starting sites ("fully editable N of M", the reasons of the rest).
 - For a step that changes what a visitor gets (LE2, LE5 to LE10): the sandbox pictures classic and moved, wide and phone, and Back to classic tried on one page.
-- For LE3, LE4, LE6 and LE11: the Screen check at 1440 and 390 px against `legacy-editable-screens.md`.
+- For LE3, LE4, LE6b and LE11: the Screen check at 1440 and 390 px against `legacy-editable-screens.md`.
 - The twins changed together (editor and server), `php tools/check_bindings.php` and `check_canvas_samples.php` where a widget's tree is built.
 
 ## When does a step stop and ask the architect?

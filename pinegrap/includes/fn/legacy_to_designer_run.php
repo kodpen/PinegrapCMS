@@ -1011,7 +1011,17 @@ function pg_ltd_run_types($state, $row, $user, $set_at, $starters)
         $page = $pages[$page_id];
         $target = pg_ltd_type_target((string)$page['page_name'], $facts, $hosted);
         if ($target['state'] !== 'convert') continue;
-        $widget = pg_ltd_type_widget($target, $facts, $starters);
+        if (!empty($target['file'])) {
+            // Read again: the file may have changed since the dry run.
+            $code = pg_ltd_type_file_code($page_id, $facts);
+            $widget = ($code === null) ? null : pg_ltd_type_file_widget($target, $facts, $code, $starters);
+            if ($widget === null) {
+                $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => '"{var:1}" keeps its System region: its layout has pieces that have no design element.', 'vars' => array($page['page_name']))));
+                continue;
+            }
+        } else {
+            $widget = pg_ltd_type_widget($target, $facts, $starters);
+        }
         if ($widget === null) {
             $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => '"{var:1}" keeps its System region: its widget\'s layout did not come with Convert.', 'vars' => array($page['page_name']))));
             continue;
@@ -1060,6 +1070,36 @@ function pg_ltd_type_widget($target, $facts, $starters)
     if ($kind === '' || !isset($starters[$kind]) || !is_array($starters[$kind])) return null;
     return array('cfg' => array('regionType' => $kind) + (array)($facts['cfg'] ?? array()),
                  'tree' => pg_layout_widget_tree_apply($starters[$kind], (array)($facts['tree'] ?? array())));
+}
+
+/**
+ * The widget a page type target drawn by its own layout file becomes
+ * ('convert' with 'file'): its settings (the kind, pg_layout_widget_seed()'s
+ * and what the layout sets, its empty message) and the layout converted
+ * into the widget's design elements (pg_layout_convert()), the records
+ * drawn by the kind's posted starter's row. Null when no starter of the
+ * kind was kept or the layout drops a piece: the page keeps its System
+ * region.
+ *
+ * Pure: no query.
+ *
+ * @param array  $target    pg_ltd_type_target()
+ * @param array  $facts     the page's pg_classic_type_facts() entry
+ * @param string $code      the layout file's text
+ * @param array  $starters  kind => tree
+ * @return array|null  'cfg', 'tree'
+ */
+function pg_ltd_type_file_widget($target, $facts, $code, $starters)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
+    $kind = (string)($target['kind'] ?? '');
+    if ($kind === '' || !isset($starters[$kind]) || !is_array($starters[$kind])) return null;
+    $r = pg_layout_convert((string)($facts['type'] ?? ''), (string)$code, array(
+        'state' => (array)($facts['state'] ?? array()),
+        'row'   => pg_layout_convert_row(pg_layout_widget_tree_apply($starters[$kind], (array)($facts['tree'] ?? array()))),
+    ));
+    if (!$r['ok'] || $r['dropped']) return null;
+    return array('cfg' => array('regionType' => $kind) + (array)($facts['cfg'] ?? array()) + $r['cfg'], 'tree' => $r['tree']);
 }
 
 /**

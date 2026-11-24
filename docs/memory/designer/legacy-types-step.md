@@ -6,7 +6,7 @@ module: legacy_to_designer_run, legacy_to_designer_plan
 
 ## What does the types step do?
 - Last step of every style, alone and in a set (`pg_ltd_steps()`): `pg_ltd_run_types()` reads each moved page whose tree still holds its own System region (`pg_ltd_tree_has_own_system()`), a set's pages by their `origins`.
-- Only a `convert` target (`pg_ltd_type_target()`: stock layout, every setting held) is converted; `held` and `file` pages stay System regions (`legacy-stock-types.md`, LE6).
+- Only a `convert` target (`pg_ltd_type_target()`: stock layout or a file dropping nothing, every setting held) is converted; `held` and `file` pages stay System regions (`legacy-stock-types.md`). A file target's tree comes from `pg_ltd_type_file_widget()` ([[layout-type-converter]]).
 - The widget (`pg_ltd_type_widget()`, pure): settings `regionType` plus `pg_layout_widget_seed()`; layout the kind's kept starter through `pg_layout_widget_tree_apply()`. It takes the region's place (`pg_ltd_type_splice()`, the region's `_id` kept) and the page is saved through `pg_ltd_save_page()`.
 - One widget a page, named `<page-slug>-<kind-slug>-widget` (`pg_ltd_widget_name($page_name, $kind)`); a resumed step finds it again by name and settings (`pg_ltd_widget_row()` with the config and tree passed in).
 

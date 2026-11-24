@@ -736,6 +736,7 @@ function pg_ltd_plan_facts($s, $converted)
     if ($own_system) {
         $hosted = pg_hosted();
         foreach (pg_classic_type_facts(array_keys($own_system)) as $page_id => $t) {
+            if (!empty($t['modified']) && !$hosted) $t['dropped'] = pg_ltd_type_file_dropped($page_id, $t);
             $facts['types'][] = pg_ltd_type_target($own_system[$page_id], $t, $hosted);
         }
     }
@@ -1106,23 +1107,66 @@ function pg_ltd_tree_has_own_system($tree)
  * What the run's types step does with a page whose own System region a
  * widget stands in for: 'convert' (the stock layout, every setting held by
  * the widget), 'held' (a type setting the widget cannot hold, named in
- * 'held') or 'file' (its own layout file, left to the converter). A hosted
- * site draws no layout file, so its pages are never 'file'. Pure.
+ * 'held') or 'file' (its own layout file, which drops pieces the widget has
+ * no element for, or was not read). A layout file the converter takes
+ * whole ($facts 'dropped' empty, pg_layout_convert()) is 'convert' with
+ * 'file' true. A hosted site draws no layout file, so its pages are never
+ * 'file'. Pure.
  *
  * @param string $page_name
- * @param array  $facts   a pg_classic_type_facts() entry
+ * @param array  $facts   a pg_classic_type_facts() entry, with 'dropped'
+ *                        (pg_ltd_type_file_dropped()) for a layout file read
  * @param bool   $hosted
- * @return array  'page_name', 'kind', 'state', 'held' (codes)
+ * @return array  'page_name', 'kind', 'state', 'held' (codes), 'file' (true
+ *                for a layout file that converts)
  */
 function pg_ltd_type_target($page_name, $facts, $hosted)
 {
     $held = array_values(array_map('strval', (array)($facts['held'] ?? array())));
-    if (!empty($facts['modified']) && !$hosted) {
+    $file = !empty($facts['modified']) && !$hosted;
+    if ($file && (!isset($facts['dropped']) || !is_array($facts['dropped']) || $facts['dropped'])) {
         $state = 'file';
     } else {
         $state = $held ? 'held' : 'convert';
     }
-    return array('page_name' => (string)$page_name, 'kind' => (string)($facts['kind'] ?? ''), 'state' => $state, 'held' => $held);
+    $out = array('page_name' => (string)$page_name, 'kind' => (string)($facts['kind'] ?? ''), 'state' => $state, 'held' => $held);
+    if ($file && $state === 'convert') $out['file'] = true;
+    return $out;
+}
+
+/**
+ * What a page's own layout file drops when it converts into its page
+ * type's widget (pg_layout_convert()): the dropped list, or null when the
+ * type has no piece map or the file cannot be read or parsed.
+ *
+ * @param int   $page_id
+ * @param array $facts  the page's pg_classic_type_facts() entry
+ * @return array|null
+ */
+function pg_ltd_type_file_dropped($page_id, $facts)
+{
+    $code = pg_ltd_type_file_code($page_id, $facts);
+    if ($code === null) return null;
+    $r = pg_layout_convert((string)$facts['type'], $code, array('state' => (array)($facts['state'] ?? array())));
+    return $r['ok'] ? $r['dropped'] : null;
+}
+
+/**
+ * A page's own layout file as it is on disk, null for a type the converter
+ * has no piece map for or a file that cannot be read.
+ *
+ * @param int   $page_id
+ * @param array $facts  the page's pg_classic_type_facts() entry
+ * @return string|null
+ */
+function pg_ltd_type_file_code($page_id, $facts)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
+    if (!in_array((string)($facts['type'] ?? ''), pg_layout_convert_types(), true)) return null;
+    $file = pg_layout_file_name((int)$page_id);
+    if ($file === '' || !is_file(LAYOUT_DIRECTORY_PATH . '/' . $file)) return null;
+    $code = @file_get_contents(LAYOUT_DIRECTORY_PATH . '/' . $file);
+    return is_string($code) ? $code : null;
 }
 
 /**
@@ -1176,6 +1220,8 @@ function pg_ltd_plan_groups($p)
         $layouts += (int)($s['custom_layouts'] ?? 0);
         foreach ((array)($s['types'] ?? array()) as $t) {
             if (($t['state'] ?? '') === 'convert') $editable['types'][] = (string)$t['page_name'];
+            // A layout file that converts is not left as code.
+            if (($t['state'] ?? '') === 'convert' && !empty($t['file'])) --$layouts;
             if (($t['state'] ?? '') !== 'held') continue;
             foreach ((array)$t['held'] as $c) $held[(string)$c][] = (string)$t['page_name'];
         }

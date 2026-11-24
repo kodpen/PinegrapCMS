@@ -15,7 +15,7 @@ module: layouts
 
 ## Where do the facts come from?
 - `pg_classic_type_facts($page_ids)` (`layouts.php`): per page of a widget type, `type`, `kind`, `modified` (`page.layout_modified`), `cfg`, `tree`, `held`. `_pg_widget_offers()` builds the editor's offers from the same reader.
-- `pg_ltd_type_target($name, $facts, $hosted)`: `convert`, `held`, or `file` (own layout file, left to LE6's converter; never on a hosted site).
+- `pg_ltd_type_target($name, $facts, $hosted)`: `convert`, `held`, or `file` (own layout file that drops pieces or was not read; never on a hosted site). A file the converter takes whole is `convert` with `file` true ([[layout-type-converter]]).
 - `pg_ltd_plan_facts()` gives `types` for the pages still holding their own System region: a tree with an unnamed `system` node (`pg_ltd_tree_has_own_system()`), or no tree and `<system></system>` in the style's code.
 
 ## What does the dry run show?
