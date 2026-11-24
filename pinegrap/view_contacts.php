@@ -281,8 +281,8 @@ $show_hide_date_range = '';
 // has already put the date range in shape).
 $oldest_timestamp = (int) db_value("SELECT MIN(timestamp) FROM contacts");
 
-// if the filter is not set to all duplicate contacts, then run logic to get date range
-if ($filter != 'all_duplicate_contacts') {
+// The duplicates and hot views read no date range (pg_contact_list_filter()).
+if (($filter != 'all_duplicate_contacts') && ($filter != 'hot_contacts')) {
     $decrease_year['start_month'] = '01';
     $decrease_year['start_day'] = '01';
    $decrease_year['start_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') - 1;
@@ -1098,7 +1098,7 @@ if ((($_GET['submit_data'] ?? '') == 'Export Contacts') || pg_list_excel_asked()
                                 <input type="search" class="form-ghost" data-pg-list-search="view_contacts" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
                             </label>
                             ' . $output_contact_groups_toggle . '
-                            ' . (($filter != 'all_duplicate_contacts') ? pg_list_sort_menu('view_contacts.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) : '') . '
+                            ' . ((($filter != 'all_duplicate_contacts') && ($filter != 'hot_contacts')) ? pg_list_sort_menu('view_contacts.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) : '') . '
                             <form id="search_form" action="view_contacts.php" method="get" class="search_form disable_shortcut">
                                 <div class="input-group input-group-sm w-auto">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
@@ -1128,7 +1128,7 @@ if ((($_GET['submit_data'] ?? '') == 'Export Contacts') || pg_list_excel_asked()
             </div>
         </div>
 </main>
-' . $output_organize_dialog . '
+' . $output_organize_dialog . ((($filter == 'hot_contacts') && pg_contact_list_hot_remind($user)) ? pg_contact_list_hot_remind_dialog() : '') . '
 <script>
     // The selected-row actions post what the list has selected
     // (edit_contacts.php resolves it with the list\'s own query and the

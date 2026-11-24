@@ -4085,6 +4085,13 @@ function ws_handle_action($action, $request)
 
             return $made['ok'] ? ws_action_ok(array('task' => $made['task'])) : ws_action_error($made['error'], $made['field']);
 
+        // "Remind me" on the contacts list's Hot Contacts view: a follow-up
+        // of the contact for the person asking, on no channel.
+        case 'ws_contact_followup':
+            $made = ws_contact_followup_open($viewer, (int) ($request['contact_id'] ?? 0), $request);
+
+            return $made['ok'] ? ws_action_ok(array('task' => $made['task'])) : ws_action_error($made['error'], $made['field']);
+
         case 'ws_channel_members_add':
             $channel = ws_action_channel($viewer, $request, 'post');
 

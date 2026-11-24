@@ -20,7 +20,7 @@ module: lead_tell
 - `ws_events_catalog()` once `pg_lead_ready()` and `contact_scores.returned_at`: record the contact, right `contacts`, no filter. Outputs: contact, Interest score, Fit score, Strongest interest, so a condition box tests a range or a topic. Quick setup: the Customers area.
 
 ## Who of the staff is told?
-- Ops alert `contacts_hot` ("Contacts became hot", no group: listed under Operations alerts for Slack, Teams and Telegram), bell link `view_contacts.php`. Sent at the end of a finished scoring pass by `pg_lead_alert_send()` when contacts turned hot in the last day (`hot_at`), once a day; names up to three (`pg_lead_alert_detail()`).
+- Ops alert `contacts_hot` ("Contacts became hot", no group: listed under Operations alerts for Slack, Teams and Telegram), bell link `view_contacts.php?filter=hot_contacts`, the Hot Contacts view (`visitors/lead-hot-contacts.md`). Sent at the end of a finished scoring pass by `pg_lead_alert_send()` when contacts turned hot in the last day (`hot_at`), once a day; names up to three (`pg_lead_alert_detail()`).
 
 Tests: `tests/lead_tell_test.php`, `webhook_event_payloads_test.php`, the parity table's line.
 Related: docs/memory/visitors/lead-score.md, docs/memory/platform/ops-alerts.md

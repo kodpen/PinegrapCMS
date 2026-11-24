@@ -264,6 +264,7 @@
     "Last used (relative time)": "Son kullanım (göreli zaman)",
     "Last used (relative time, else \"Never\")": "Son kullanım (göreli zaman, yoksa \"Hiç\")",
     "Last used {var:1}.": "Son kullanım {var:1}.",
+    "Last visit": "Son ziyaret",
     "Last visits": "Son ziyaretler",
     "Last write failed": "Son yazma başarısız",
     "Last written through a canvas you do not reach": "En son erişemediğiniz bir tuval üzerinden yazıldı",

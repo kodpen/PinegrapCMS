@@ -59,13 +59,13 @@ function test_audiences_editor_refs_collects_ids_by_kind()
 	));
 
 	pg_assert_same(
-		array('product' => array(5, 9), 'product_group' => array(2), 'contact_group' => array(3), 'form' => array(40), 'form_field' => array(77)),
+		array('product' => array(5, 9), 'product_group' => array(2), 'folder' => array(), 'contact_group' => array(3), 'form' => array(40), 'form_field' => array(77)),
 		pg_audience_rules_refs($rules),
 		'ids once each, nested set included, a form answer by its field'
 	);
 
 	pg_assert_same(
-		array('product' => array(), 'product_group' => array(), 'contact_group' => array(), 'form' => array(), 'form_field' => array()),
+		array('product' => array(), 'product_group' => array(), 'folder' => array(), 'contact_group' => array(), 'form' => array(), 'form_field' => array()),
 		pg_audience_rules_refs('not json'),
 		'nothing named'
 	);

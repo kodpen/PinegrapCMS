@@ -320,6 +320,8 @@ function pg_list_table_source(array $spec)
         'created' => (string) ($spec['created'] ?? ''),
         'rows' => $spec['rows'] ?? null,
         'all' => !empty($spec['all']),
+        // The line shown with no row, as HTML; '' for "No records found.".
+        'empty' => (string) ($spec['empty'] ?? ''),
         'params_out' => isset($spec['params_out']) && is_array($spec['params_out']) ? $spec['params_out'] : array(),
         'edit' => pg_list_table_edit_spec($spec['edit'] ?? null, $columns),
     );
@@ -1055,7 +1057,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     }
 
     $output .= '</tbody></table>';
-    $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
+    $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . ((($source['empty'] ?? '') !== '') ? $source['empty'] : h(lang('No records found.'))) . '</p>';
     $output .= '<div class="pg-list-table-foot"></div></div>';
     $output .= '<aside class="pg-list-table-details" aria-label="' . h(lang('Details')) . '" hidden>'
         . '<div class="pg-list-table-details-head"><strong>' . h(lang('Details')) . '</strong>'

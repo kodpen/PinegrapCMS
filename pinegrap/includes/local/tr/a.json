@@ -3539,6 +3539,7 @@
     "A task cannot wait for itself.": "Bir görev kendini bekleyemez.",
     "A task changes status": "Görevin durumu değişti",
     "A task for the person who made the quote, due on its last day. Needs the notice above and the Workspace.": "Teklifi hazırlayan kişiye, son gününde bitecek bir görev. Yukarıdaki bildirim ve Çalışma Alanı açık olmalıdır.",
+    "A task for you in the Workspace, reminded on that day.": "Çalışma Alanı'nda size bir görev; o gün hatırlatılır.",
     "A task for you on this channel, tagged with the customer. You are reminded on the day, in your inbox and by e-mail, at the time you pick or at {var:1}.": "Bu kanalda size müşterinin etiketlendiği bir görev açılır. O gün, seçtiğiniz saatte (seçmezseniz {var:1}) gelen kutunuzda ve e-postayla hatırlatılırsınız.",
     "A task is completed": "Görev tamamlandı",
     "A task needs a title.": "Görevin bir başlığı olmalı.",

@@ -25,7 +25,7 @@
 
     var root, store, config, text, catalogue, byKey, state, countTimer, countRun = 0, uid = 0;
 
-    var PICKERS = { product: 1, product_group: 1, contact_group: 1, form: 1 };
+    var PICKERS = { product: 1, product_group: 1, folder: 1, contact_group: 1, form: 1 };
     var NUMBERS = { number: 1, money: 1, days: 1 };
 
     function el(tag, attrs, children) {

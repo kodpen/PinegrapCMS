@@ -260,3 +260,33 @@ function test_ws_customer_card_remind_me()
 	pg_assert_contains('{2}', $strings['cust_remind_done'], 'the task and its day filled in by the card');
 	pg_assert_contains(WS_TASK_REMIND_DAY_TIME, $strings['cust_remind_note'], 'the day\'s reminder time named');
 }
+
+// "Remind me" on the Hot Contacts view: the contact tagged, for the person
+// asking, on no channel, only with the contacts right; a Workspace action.
+function test_ws_contact_followup()
+{
+	$source = workspace_followup_test_source('ws_contact_followup_open');
+
+	pg_assert_contains("empty(\$viewer['contacts'])", $source, 'only with the contacts right');
+	pg_assert_contains("ws_customer_exists('contact', \$contact_id)", $source, 'a contact that is there');
+	pg_assert_contains("array(array('type' => 'contact', 'id' => (int) \$contact_id))", $source, 'the contact tagged');
+	pg_assert_contains("'channel_id' => 0", $source, 'on no channel');
+	pg_assert_contains("'assignees'  => array((int) \$viewer['id'])", $source, 'for the person asking');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($actions, "case 'ws_contact_followup':");
+	pg_assert_true($start !== false, 'the Workspace actions answer ws_contact_followup');
+	pg_assert_contains('ws_contact_followup_open($viewer, (int) ($request[\'contact_id\'] ?? 0), $request)', substr($actions, (int) $start, 400), 'for the person asking');
+
+	if (!defined('PG_API_PANEL')) {
+		define('PG_API_PANEL', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
+	$rows = pg_panel_actions();
+	pg_assert_same('pg_panel_ws', $rows['ws_contact_followup']['handler'] ?? '', 'a row handled by the Workspace');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_hot_contacts.js');
+	pg_assert_contains("action: 'ws_contact_followup'", $script, 'the dialog asks the action');
+}

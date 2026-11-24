@@ -279,3 +279,54 @@ function ws_customer_followup_open($viewer, $channel, $request, $dry = false)
         'due_label' => is_array($task) ? ws_task_due_label($task) : '',
     ));
 }
+
+/**
+ * "Remind me" on the contacts list's Hot Contacts view: a follow-up of the
+ * contact for the person asking, on no channel, so it is theirs alone; due
+ * on the day they pick (at the time they pick, or the day's reminder time)
+ * and reminded then. An empty title says what it is about without the name:
+ * the contact's tag shows who, to whoever may see contacts.
+ *
+ * @param array $viewer     ws_viewer() of a person with the contacts right
+ * @param int   $contact_id
+ * @param array $request    title, due_date, due_time
+ * @param bool  $dry        make every check and open nothing (the API's dry run)
+ * @return array ok, error, field, task (id, number, due_label) once opened
+ */
+function ws_contact_followup_open($viewer, $contact_id, $request, $dry = false)
+{
+    if (empty($viewer['contacts'])) {
+        return array('ok' => false, 'error' => lang('Access denied.'), 'field' => '', 'task' => null);
+    }
+
+    if (!ws_customer_exists('contact', $contact_id)) {
+        return array('ok' => false, 'error' => lang('The contact could not be found.'), 'field' => '', 'task' => null);
+    }
+
+    $title = trim((string) ($request['title'] ?? ''));
+
+    $made = ws_followup_task_open($viewer, array(
+        'title'      => ($title !== '') ? $title : lang('Follow up a hot contact'),
+        'refs'       => array(array('type' => 'contact', 'id' => (int) $contact_id)),
+        'channel_id' => 0,
+        'assignees'  => array((int) $viewer['id']),
+        'due_date'   => (string) ($request['due_date'] ?? ''),
+        'due_time'   => (string) ($request['due_time'] ?? ''),
+    ), false, $dry);
+
+    if (!$made['ok']) {
+        return array('ok' => false, 'error' => $made['error'], 'field' => $made['field'], 'task' => null);
+    }
+
+    if ($dry) {
+        return array('ok' => true, 'error' => '', 'field' => '', 'task' => null);
+    }
+
+    $task = ws_task($made['task_id']);
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'task' => array(
+        'id'        => (int) $made['task_id'],
+        'number'    => ws_task_number($made['task_id']),
+        'due_label' => is_array($task) ? ws_task_due_label($task) : '',
+    ));
+}

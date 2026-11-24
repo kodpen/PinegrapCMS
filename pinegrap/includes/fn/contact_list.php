@@ -60,6 +60,14 @@ function pg_contact_list_filters($role)
         'my_subscribers' => lang('My Subscribers'),
         'my_affiliates' => lang('My Affiliates'),
         'my_customers' => lang('My Customers'),
+    );
+
+    // The contacts the interest score calls hot, once the scores are kept.
+    if (pg_contact_list_hot_ready()) {
+        $filters['hot_contacts'] = lang('Hot Contacts');
+    }
+
+    $filters += array(
         'my_members' => lang('My Members'),
         'my_active_members' => lang('My Active Members'),
         'my_expired_members' => lang('My Expired Members'),
@@ -75,6 +83,17 @@ function pg_contact_list_filters($role)
     }
 
     return $filters;
+}
+
+/**
+ * Whether the scores the Hot Contacts view reads are kept (the visitor
+ * journey's contact_scores table, LJ1b).
+ *
+ * @return bool
+ */
+function pg_contact_list_hot_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('contact_scores', 'hot');
 }
 
 /**
@@ -430,6 +449,15 @@ function pg_contact_list_view($filter)
             $view['subheading'] = lang('All my contacts who have submitted orders.');
             break;
 
+        case 'hot_contacts':
+            // One scores row a contact at most (its key); read through the
+            // hot flag's index.
+            $view['join'] = ' INNER JOIN contact_scores ON contact_scores.contact_id = contacts.id';
+            $view['condition'] = '(contact_scores.hot = 1)';
+            $view['heading'] = lang('Hot Contacts');
+            $view['subheading'] = lang('Contacts whose interest score reached the threshold, the highest first.');
+            break;
+
         case 'my_members':
             $view['condition'] = "(contacts.member_id != '')";
             $view['membership_label'] = lang('Member');
@@ -535,7 +563,9 @@ function pg_contact_list_filter($user, $filter, $groups)
         $conditions[] = $view['condition'];
     }
 
-    if (!$duplicates) {
+    // A contact is hot today whenever it was last changed, so the hot view
+    // reads no date range, as the duplicates view.
+    if (!$duplicates && ($filter != 'hot_contacts')) {
         $start = mktime(0, 0, 0, (int) $state['start_month'], (int) $state['start_day'], (int) $state['start_year']);
         $stop = mktime(23, 59, 59, (int) $state['stop_month'], (int) $state['stop_day'], (int) $state['stop_year']);
         $conditions[] = '(contacts.timestamp >= ?) AND (contacts.timestamp <= ?)';
@@ -738,7 +768,14 @@ function pg_contact_list_sort($filter)
     $sort_columns['last_modified'] = lang('Last Modified');
     $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
-    if ($filter == 'all_duplicate_contacts') {
+    if ($filter == 'hot_contacts') {
+        // The highest score first, the latest visit next; the sort kept for
+        // the other views is not this view's.
+        $sort_columns = array('score' => lang('Score'), 'last_visit' => lang('Last visit'), 'last_name' => lang('Last Name'));
+        $sort_sql = array('score' => 'contact_scores.interest', 'last_visit' => 'contact_scores.last_visit_at', 'last_name' => 'contacts.last_name');
+        $sort_default = array('sort' => 'score', 'order' => 'desc');
+        $sort_levels = array($sort_default, array('sort' => 'last_visit', 'order' => 'desc'));
+    } elseif ($filter == 'all_duplicate_contacts') {
         $sort_levels = array(array('sort' => 'email', 'order' => 'asc'));
     } else {
         // pg_list_state() reads a sort from the request only on the screen;
@@ -819,7 +856,9 @@ function pg_contact_list_select($filter, $scores = false)
         contact_user.user_username as user_username,
         contact_user.user_role as user_role,
         contacts.timestamp' . ($scores ? ',
-        contact_scores.interest as lead_interest' : '');
+        contact_scores.interest as lead_interest' : '') . (($filter == 'hot_contacts') ? ',
+        contact_scores.reasons as lead_reasons,
+        contact_scores.last_visit_at as lead_last_visit' : '');
 }
 
 /**
@@ -844,6 +883,10 @@ function pg_contact_list_columns($filter, $shows_groups, $scores = false)
     $duplicates = ($filter == 'all_duplicate_contacts');
 
     $columns = array('picture' => array('heading' => lang('Image'), 'width' => '5rem', 'kind' => 'image'));
+
+    if ($filter == 'hot_contacts') {
+        return pg_contact_list_hot_columns($columns, $shows_groups);
+    }
 
     if ($duplicates) {
         $columns['email'] = array('heading' => lang('Email'), 'width' => '14rem', 'sort' => 'contacts.email_address');
@@ -883,6 +926,195 @@ function pg_contact_list_columns($filter, $shows_groups, $scores = false)
     $columns['actions'] = array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions');
 
     return $columns;
+}
+
+/**
+ * The Hot Contacts view's columns: the contact, the score, the strongest
+ * reason, the last visit and the row's actions (Open, Remind me).
+ *
+ * @param array $columns      the picture column
+ * @param bool  $shows_groups whether the groups are shown (the toggle)
+ * @return array key => spec
+ */
+function pg_contact_list_hot_columns(array $columns, $shows_groups)
+{
+    $columns['contact'] = array('heading' => lang('Contact'), 'width' => '16rem', 'sort' => 'contacts.last_name');
+    $columns['score'] = array('heading' => lang('Score'), 'width' => '7rem', 'kind' => 'number', 'sort' => 'contact_scores.interest');
+    $columns['reason'] = array('heading' => lang('Why'), 'width' => '16rem');
+    $columns['last_visit'] = array('heading' => lang('Last visit'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'contact_scores.last_visit_at');
+
+    if ($shows_groups) {
+        $columns['groups'] = array('heading' => lang('Contact Groups'), 'width' => '12rem');
+    }
+
+    $columns['actions'] = array('heading' => lang('Action'), 'width' => '12rem', 'kind' => 'actions');
+
+    return $columns;
+}
+
+/**
+ * The strongest reason of a contact_scores.reasons text, as the Interest
+ * card says it: the interest reason with the most points, else the fit
+ * reason with the most. '' when none is known. Pure but for lang().
+ *
+ * @param mixed $reasons contact_scores.reasons ({interest: [...], fit: [...]})
+ * @return string
+ */
+function pg_contact_list_hot_reason($reasons)
+{
+    $reasons = json_decode((string) $reasons, true);
+
+    foreach (array('interest', 'fit') as $part) {
+        $list = (is_array($reasons) && isset($reasons[$part]) && is_array($reasons[$part])) ? $reasons[$part] : array();
+
+        usort($list, function ($a, $b) {
+            return ((float) ($b['points'] ?? 0)) <=> ((float) ($a['points'] ?? 0));
+        });
+
+        foreach ($list as $reason) {
+            $text = is_array($reason) ? pg_lead_score_reason_text((string) ($reason['kind'] ?? '')) : '';
+
+            if ($text !== '') {
+                return $text;
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The line the Hot Contacts view shows with no row: nobody is hot, and for a
+ * user who may change it, where the threshold is set.
+ *
+ * @param bool $settings whether the viewer may open Site Settings (role < 3)
+ * @return string HTML
+ */
+function pg_contact_list_hot_empty($settings)
+{
+    return h(lang('No contact is hot today.'))
+        . ($settings ? ' <a class="pg-link-secondary" href="settings_privacy.php#pgset-interest-score">' . h(lang('Change when a contact is hot')) . '</a>' : '');
+}
+
+/**
+ * One row of the Hot Contacts view: the picture and the name open the
+ * contact; Open and Remind me are quiet small buttons. Remind me is offered
+ * only to a member of the Workspace team (pg_contact_list_hot_remind()).
+ *
+ * @param array  $contact a row of pg_contact_list_select()
+ * @param string $filter
+ * @param string $picture the picture's markup
+ * @param string $group_names the contact's groups, escaped
+ * @param bool   $remind  whether Remind me is offered
+ * @return array array('id', 'class', 'cells')
+ */
+function pg_contact_list_hot_row($contact, $filter, $picture, $group_names, $remind)
+{
+    $id = (int) $contact['id'];
+    $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . $filter;
+    $edit_url = h('edit_contact.php?id=' . $id . '&send_to=' . urlencode($list_url));
+    $name = pg_contact_list_row_name($contact);
+    $company = (trim((string) ($contact['first_name'] . $contact['last_name'])) !== '') ? (string) $contact['company'] : '';
+    $settings = pg_lead_settings();
+    $visit = (int) ($contact['lead_last_visit'] ?? 0);
+
+    $actions = '<a class="pg-button pg-button-quiet pg-button-sm" href="' . $edit_url . '">' . h(lang('Open')) . '</a>';
+
+    if ($remind) {
+        $actions .= ' <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-remind="' . $id . '" data-pg-remind-name="' . h($name) . '"><i class="bi bi-alarm" aria-hidden="true"></i> ' . h(lang('Remind me')) . '</button>';
+    }
+
+    return array('id' => (string) $id, 'class' => '', 'cells' => array(
+        'picture' => pg_list_cell(pg_contact_list_edit_link($id, $name, $list_url, $picture), 'align-middle text-start'),
+        'contact' => pg_list_cell('<a class="pg-link-secondary" href="' . $edit_url . '">' . h($name) . '</a>'
+            . (($company !== '') ? '<div class="fg-secondary small">' . h($company) . '</div>' : ''), 'align-middle'),
+        'score' => pg_list_cell(pg_lead_score_list_cell($contact['lead_interest'] ?? null, $settings['threshold']), 'align-middle text-end'),
+        'reason' => pg_list_cell(h(pg_contact_list_hot_reason($contact['lead_reasons'] ?? '')), 'align-middle'),
+        'last_visit' => pg_list_cell(($visit > 0) ? pg_list_when($visit, '') : '', 'align-middle'),
+        'groups' => pg_list_cell($group_names),
+        'actions' => pg_list_cell($actions, 'align-middle text-nowrap action-buttons'),
+    ));
+}
+
+/**
+ * Whether the Hot Contacts view offers Remind me to this user: a follow-up
+ * is a Workspace task (includes/workspace/followups.php), so only with the
+ * Workspace on and the user a member of its team.
+ *
+ * @param array $user
+ * @return bool
+ */
+function pg_contact_list_hot_remind($user)
+{
+    static $answer = array();
+    $key = (int) ($user['id'] ?? 0);
+
+    if (isset($answer[$key])) {
+        return $answer[$key];
+    }
+
+    $answer[$key] = false;
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+        if (function_exists('ws_enabled') && ws_enabled() && function_exists('ws_contact_followup_open')) {
+            $viewer = ws_viewer($user);
+            $answer[$key] = !empty($viewer['member']) && !empty($viewer['contacts']);
+        }
+    }
+
+    return $answer[$key];
+}
+
+/**
+ * The dialog Remind me opens on the Hot Contacts view, and its script
+ * (assets/js/pg_hot_contacts.js): what to follow up on (optional), the day
+ * (a week ahead), the time (optional, else the day's reminder time). The
+ * save asks the Workspace action ws_contact_followup.
+ *
+ * @return string HTML
+ */
+function pg_contact_list_hot_remind_dialog()
+{
+    $path = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+
+    return '
+<dialog class="dialog pg-dialog-centered" id="hot_remind_dialog" aria-labelledby="hot_remind_title"'
+        . ' data-pg-done="' . h(lang('Reminder set: {1}, {2}')) . '" data-pg-failed="' . h(lang('The reminder could not be set.')) . '">
+    <form class="d-flex flex-column" id="hot_remind_form" novalidate>
+        <div class="dialog-header">
+            <h5 class="dialog-title" id="hot_remind_title"><i class="bi bi-alarm me-3" aria-hidden="true"></i>' . h(lang('Remind me')) . '</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+        </div>
+        <div class="dialog-body">
+            <p class="pg-card-sub mb-5" id="hot_remind_who"></p>
+            <input type="hidden" name="contact_id" value="">
+            <div class="mb-5">
+                <label class="pg-field-label" for="hot_remind_what">' . h(lang('What to follow up on')) . '</label>
+                <input type="text" class="form-control" id="hot_remind_what" name="title" maxlength="255" placeholder="' . h(lang('Follow up a hot contact')) . '">
+            </div>
+            <div class="d-flex flex-wrap gap-5">
+                <div>
+                    <label class="pg-field-label" for="hot_remind_day">' . h(lang('Day')) . '</label>
+                    <input type="text" class="form-control" id="hot_remind_day" name="due_date" data-pg-date required value="' . h(date('Y-m-d', strtotime('+7 days'))) . '">
+                </div>
+                <div>
+                    <label class="pg-field-label" for="hot_remind_time">' . h(lang('Time')) . '</label>
+                    <input type="text" class="form-control" id="hot_remind_time" name="due_time" data-pg-time value="">
+                </div>
+            </div>
+            <p class="form-text mb-0 mt-3">' . h(lang('A task for you in the Workspace, reminded on that day.')) . '</p>
+            <p class="fg-danger mb-0 mt-3" id="hot_remind_error" role="alert" hidden></p>
+        </div>
+        <div class="dialog-footer">
+            <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+            <button type="submit" class="pg-button pg-button-fill">' . h(lang('Set the reminder')) . '</button>
+        </div>
+    </form>
+</dialog>
+' . get_date_picker_format() . pg_fields_script() . '
+<script src="' . $path . '/assets/js/pg_hot_contacts.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_hot_contacts.js') . '" defer></script>';
 }
 
 /**
@@ -955,7 +1187,7 @@ function pg_contact_list_source($user, $params)
     $quick_edit = pg_contact_quick_edit_columns($filter, pg_contact_quick_group_options($user));
     $scores = pg_contact_list_shows_scores($filter);
 
-    if ($scores) {
+    if ($scores || ($filter == 'hot_contacts')) {
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_score.php');
     }
 
@@ -963,7 +1195,8 @@ function pg_contact_list_source($user, $params)
         'list' => 'view_contacts',
         'columns' => pg_contact_list_editable_columns(pg_contact_list_columns($filter, $shows_groups, $scores), $quick_edit),
         // One scores row a contact at most (its key), so the join adds no row.
-        'from' => $list['tables'] . ($scores ? '
+        // The hot view joins the scores itself (pg_contact_list_view()).
+        'from' => $list['tables'] . (($scores && ($filter != 'hot_contacts')) ? '
             LEFT JOIN contact_scores ON contact_scores.contact_id = contacts.id' : ''),
         'where' => $list['condition'],
         'params' => $list['params'],
@@ -978,6 +1211,7 @@ function pg_contact_list_source($user, $params)
             return pg_contact_list_rows($user, $filter, $groups, $shows_groups, $duplicates ? pg_contact_list_duplicates_order($records) : $records);
         },
         'all' => $duplicates,
+        'empty' => ($filter == 'hot_contacts') ? pg_contact_list_hot_empty((int) $user['role'] < 3) : '',
         'params_out' => array('filter' => $filter),
         // The cells that change in place (pg_contact_quick_edit_columns()),
         // written by the list's own screen with the contact screen's checks.
@@ -1230,6 +1464,10 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name,
     } else {
         // No picture: the letters of the name (includes/fn/contacts.php).
         $picture = pg_avatar_markup_for($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['company'] ?? '', $contact['id'] ?? '', 'pg-avatar-50');
+    }
+
+    if ($filter == 'hot_contacts') {
+        return pg_contact_list_hot_row($contact, $filter, $picture, $group_names, pg_contact_list_hot_remind($user));
     }
 
     $cells = array(

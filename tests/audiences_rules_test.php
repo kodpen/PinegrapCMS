@@ -57,6 +57,9 @@ function audiences_rules_test_samples()
 		'landing_page' => array('key' => 'landing_page', 'op' => 'eq', 'value' => 'spring-sale', 'days' => 30),
 		'utm_source' => array('key' => 'utm_source', 'op' => 'eq', 'value' => 'newsletter', 'days' => 14),
 		'utm_campaign' => array('key' => 'utm_campaign', 'op' => 'eq', 'value' => 'black-friday', 'days' => 14),
+		'interest_score' => array('key' => 'interest_score', 'op' => 'gte', 'value' => 60),
+		'interest_folder' => array('key' => 'interest_folder', 'op' => 'yes', 'value' => 7),
+		'interest_product_group' => array('key' => 'interest_product_group', 'op' => 'no', 'value' => 4),
 		'feedback_band' => array('key' => 'feedback_band', 'op' => 'eq', 'value' => 'low'),
 		'feedback_answered' => array('key' => 'feedback_answered', 'op' => 'within', 'value' => 30),
 		'group' => array('key' => 'group', 'op' => 'not_in', 'value' => 5),
@@ -357,4 +360,48 @@ function test_audiences_survey_conditions()
 	$answered = pg_audience_sql(array('conditions' => array(array('key' => 'feedback_answered', 'op' => 'within', 'value' => 30))), 1800000000);
 	pg_assert_same(array(1800000000 - 30 * 86400), $answered['params'], 'answered since 30 days ago');
 	pg_assert_contains('feedback_responses.answered_at >= ?', $answered['sql'], 'by the answer time');
+}
+
+function test_audiences_interest_score_range()
+{
+	$range = pg_audience_sql(array('match' => 'all', 'conditions' => array(
+		array('key' => 'interest_score', 'op' => 'gte', 'value' => 30),
+		array('key' => 'interest_score', 'op' => 'lte', 'value' => 60),
+	)), 1800000000);
+	pg_assert_same(array(30, 60), $range['params'], 'both ends of the range');
+	pg_assert_contains('contacts.id IN (SELECT contact_scores.contact_id FROM contact_scores WHERE contact_scores.interest >= ?)', $range['sql'], 'at least reads the score');
+	pg_assert_contains('contacts.id NOT IN (SELECT contact_scores.contact_id FROM contact_scores WHERE contact_scores.interest > ?)', $range['sql'], 'at most also takes the unscored');
+
+	pg_assert_same(100, pg_audience_condition_clean(array('key' => 'interest_score', 'op' => 'gte', 'value' => '100'))['value'], 'a score of 100 is kept');
+	pg_assert_same(null, pg_audience_condition_clean(array('key' => 'interest_score', 'op' => 'gte', 'value' => 101)), 'a score over 100 is dropped');
+	pg_assert_same(null, pg_audience_condition_clean(array('key' => 'interest_score', 'op' => 'eq', 'value' => 50)), 'only at least and at most');
+	pg_assert_same(500, pg_audience_condition_clean(array('key' => 'order_count', 'op' => 'gte', 'value' => 500))['value'], 'other numbers keep their bound');
+}
+
+function test_audiences_interest_topic_matches_the_stored_topic()
+{
+	$folder = pg_audience_sql(array('conditions' => array(array('key' => 'interest_folder', 'op' => 'yes', 'value' => 12))), 1800000000);
+	pg_assert_same(array('%{"id":12,"kind":"folder",%'), $folder['params'], 'the folder by id and kind');
+	pg_assert_contains('contacts.id IN (SELECT contact_scores.contact_id FROM contact_scores WHERE contact_scores.topics LIKE ?)', $folder['sql'], 'yes reads the topics');
+
+	$group = pg_audience_sql(array('conditions' => array(array('key' => 'interest_product_group', 'op' => 'no', 'value' => 3))), 1800000000);
+	pg_assert_same(array('%{"id":3,"kind":"category",%'), $group['params'], 'a product group is a category topic');
+	pg_assert_contains('contacts.id NOT IN (', $group['sql'], 'no takes the rest');
+
+	// The pattern finds the topic as the scoring pass stores it, whatever
+	// its name holds, and not another kind's or another id's.
+	$stored = json_encode(pg_lead_interest_topics(
+		array(array('kind' => 'visit', 'at' => 1800000000, 'pages' => array(array('tr/fiyat', 60)))),
+		array('tr/fiyat' => array(12, 'Ürünler / "Yeni"')),
+		1800000000
+	));
+	$like = function ($pattern, $text) {
+		return preg_match('/^' . implode('.*', array_map(function ($part) {
+			return preg_quote($part, '/');
+		}, explode('%', $pattern))) . '$/s', $text) === 1;
+	};
+	pg_assert_contains('"id":12', $stored, 'the pass stored the folder');
+	pg_assert_true($like(pg_audience_topic_pattern('folder', 12), $stored), 'the folder matches');
+	pg_assert_false($like(pg_audience_topic_pattern('category', 12), $stored), 'a category of the same id does not');
+	pg_assert_false($like(pg_audience_topic_pattern('folder', 1), $stored), 'folder 1 does not match folder 12');
 }

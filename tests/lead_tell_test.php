@@ -70,7 +70,7 @@ function test_lead_tell_alert()
 {
 	$codes = pg_ops_alert_codes();
 	pg_assert_true(isset($codes['contacts_hot']), 'the alert code');
-	pg_assert_same('view_contacts.php', $codes['contacts_hot']['url'], 'the bell opens the contacts');
+	pg_assert_same('view_contacts.php?filter=hot_contacts', $codes['contacts_hot']['url'], 'the bell opens the Hot Contacts view');
 
 	$detail = pg_lead_alert_detail(5, array('Ayşe Demir', '', 'ali@example.com', 'Can', 'Deniz'));
 	pg_assert_contains('5', $detail, 'the count');
