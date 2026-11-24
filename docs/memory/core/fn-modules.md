@@ -340,7 +340,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype_links`: [[designer-prototype-share-links]], [[release-bundle-share-link]]
 - `prototype_map`: [[prototype-map-read]]
 - `prototype_review_mails`: [[prototype-approval-mails]]
-- `prototype_verdicts`: [[prototype-approval-hold]], [[prototype-approval-review]], [[prototype-approval-round-two]], [[prototype-approval-store]]
+- `prototype_verdicts`: [[prototype-approval]], [[prototype-approval-hold]], [[prototype-approval-review]], [[prototype-approval-round-two]], [[prototype-approval-store]]
 - `push_broker`: [[api-native-push]]
 - `quiet_hours`: [[api-workspace-quiet-hours]], [[quiet-hours]]
 - `ready_reports`: [[order-report-ready-reports]], [[order-report-ready-strip]], [[visitor-report-ready-reports]]

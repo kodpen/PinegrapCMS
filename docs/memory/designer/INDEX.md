@@ -637,6 +637,7 @@
 - prototype-approval-review.md: A prototype link asking approval (PA2): the Share prototype dialog's and the API's approval fields, the viewer's "Review this page" box, the verdict door, the approver's receipt mail, the bell line
 - prototype-approval-round-two.md: Prototype approval round two (PA3): "Show what changed" outlines, the viewer page list marks, verdicts in the Comments list and the Share prototype dialog count
 - prototype-approval-store.md: Prototype link approval store (11.0.276): five prototype_links columns, prototype_verdicts, deleted with the design and by Delete comments, privacy erase and export
+- prototype-approval.md: Prototype approval start file: a share link asking Approve this page or Request changes, sealed to the draft; which file covers each part, A1 to A8 checked with their PRs [decision: decisions-made-product-93.md, decisions-made-schema-49.md]
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
 - prototype-back-key.md: P in the visual editor opens the Prototype view with the selected element's link picked (_sdProtoBack()); where the key is left alone, what it picks, why P
 - prototype-badge-list.md: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel [decision: here]
