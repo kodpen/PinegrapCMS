@@ -117,6 +117,25 @@ function ws_flow_mail_fields($start, $contact)
 }
 
 /**
+ * The ^^fields^^ a box's mail fills for each recipient, as the editor offers
+ * them in "Add value" (the group "Recipient"): the names
+ * pg_mail_merge_contact_fields() fills, each with its label. Pure.
+ *
+ * @return array of array key, label
+ */
+function ws_flow_mail_words()
+{
+    $labels = array('name' => lang('Name'), 'first_name' => lang('First name'), 'last_name' => lang('Last name'));
+    $words = array();
+
+    foreach (pg_mail_merge_contact_fields(null) as $field) {
+        $words[] = array('key' => (string) $field['name'], 'label' => (string) ($labels[$field['name']] ?? $field['name']));
+    }
+
+    return $words;
+}
+
+/**
  * The run's record a page's PHP is given as data, under the name a campaign
  * profile's action gives it: order, form, booking, contact. Pure.
  *

@@ -2444,6 +2444,7 @@
     "files: the storage place of files is being added; {var:1} follows in the next pass": "files: dosyaların saklandığı yer ekleniyor; {var:1} sonraki geçişte gelecek",
     "file{suffix:1}": "dosya",
     "fill is an object of at most {var:1} layer names, each with its words or its picture.": "fill, her biri yazısı ya da resmiyle en çok {var:1} katman adından oluşan bir nesnedir.",
+    "filled for each recipient": "her alıcı için ayrı dolar",
     "film": "film",
     "finance": "finansman",
     "finance, loan, monthly, credit": "finansman, kredi, aylık, borç",

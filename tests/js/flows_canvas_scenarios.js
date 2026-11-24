@@ -1104,6 +1104,63 @@ module.exports = [
     },
 
     {
+        name: 'a box panel\'s fields: a long help behind its "?", Add value inside the field with Recipient and Always, the recipient\'s word a chip, the folded Sender showing who sends',
+        fixture: 'mail',
+        run: async (h) => {
+            await h.open();
+            await pick(h, 'email_1');
+
+            const why = await h.page((harness, label) => {
+                const head = Array.prototype.filter.call(document.querySelectorAll('#wsf-side .wsf-field-head'), (node) => node.querySelector('label').textContent.trim() === label)[0];
+                const wrap = head && head.parentNode;
+
+                const note = wrap && wrap.querySelector('.form-text');
+
+                return wrap ? { ask: !!wrap.querySelector('.wsf-help-ask'), line: note ? note.textContent : '', lines: note ? Math.round(note.getBoundingClientRect().height / parseFloat(getComputedStyle(note).lineHeight)) : 0, shut: wrap.querySelector('.wsf-help-pop').classList.contains('d-none') } : null;
+            }, h.t('fl_email_purpose'));
+
+            h.ok('Why carries a "?", its window shut, at most one line of help under it', !!why && why.ask && why.shut && (why.lines <= 1) && (h.t('fl_email_purpose_help').indexOf(why.line) === 0), why);
+
+            const lines = await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .form-text'), (note) => Math.round(note.getBoundingClientRect().height / parseFloat(getComputedStyle(note).lineHeight))));
+
+            h.ok('no help under a field runs over one line', lines.every((count) => count <= 1), lines);
+            await h.click({ css: '#wsf-side .wsf-help-ask' });
+            h.ok('the "?" opens the whole help over the panel', await h.page((harness, text) => {
+                const pop = document.querySelector('#wsf-side .wsf-help-pop');
+
+                return !pop.classList.contains('d-none') && (pop.textContent === text) && (getComputedStyle(pop).position === 'absolute');
+            }, h.t('fl_email_purpose_help')));
+            await h.key('Escape');
+            h.ok('Esc shuts it, the focus on its "?", the box still chosen', await h.page(() => document.querySelector('#wsf-side .wsf-help-pop').classList.contains('d-none') && document.activeElement.classList.contains('wsf-help-ask')));
+            h.same('the panel stays open', (await h.state()).selected && (await h.state()).selected.id, 'email_1');
+
+            const subject = await h.page(() => {
+                const input = document.querySelector('#wsf-side .wsf-values');
+                const wrap = input.closest('.mb-5');
+
+                return { chips: Array.prototype.map.call(input.querySelectorAll('.wsf-chip'), (chip) => chip.getAttribute('data-token')), hint: !!wrap.querySelector('.form-text'), add: !!input.parentNode.querySelector('.wsf-values-add') };
+            });
+
+            h.same('the subject: its recipient word a chip, no hint under it, Add value inside', subject, { chips: ['^^name^^'], hint: false, add: true });
+            await h.click({ css: '#wsf-side .wsf-values-add' });
+
+            const list = await h.page(() => {
+                const shown = document.querySelector('#wsf-side .wsf-values-list:not(.d-none)');
+
+                return shown ? { first: shown.firstChild.textContent, groups: Array.prototype.map.call(shown.querySelectorAll('.wsf-values-group'), (head) => head.firstChild.textContent) } : null;
+            });
+
+            h.same('the list: what a value is, Recipient first, Always last', list, { first: h.t('fl_values_what'), groups: [h.t('fl_values_recipient'), h.t('fl_values_none'), h.t('fl_values_always')].filter((name) => name !== h.t('fl_values_none')) });
+            await h.click({ text: 'First name', within: '#wsf-side .wsf-values-list' });
+
+            const save = await saveNumber(h, 1);
+
+            h.same('the word is kept as typed', nodeIn(save.data.graph, 'email_1').config.subject, 'Welcome, ^^name^^^^first_name^^');
+            h.same('the folded Sender shows the site\'s name', await h.page(() => document.querySelector('#wsf-side .wsf-fold-shows').textContent), 'Organizasyonum');
+        }
+    },
+
+    {
         name: 'Change on the start row makes the start another kind in place, its arrows kept, one undo step',
         run: async (h) => {
             await h.open();

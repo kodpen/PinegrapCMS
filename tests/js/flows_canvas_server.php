@@ -80,6 +80,7 @@ $config = array(
 		'metrics' => array(), 'digest_only' => (object) array(), 'targets' => array(), 'changes' => (object) array(),
 		'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(),
 		'events' => null, 'tables' => array(), 'mcp' => array(),
+		'mail_words' => function_exists('ws_flow_mail_words') ? ws_flow_mail_words() : array(), 'mail_sender' => 'Organizasyonum',
 		'retry' => array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_DELAY_MAX),
 	),
 	'outputs'   => $outputs,

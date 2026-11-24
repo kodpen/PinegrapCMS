@@ -46,7 +46,8 @@ function test_workspace_flow_tick_field_stands_before_its_label()
 
 	$tick = strpos($body, 'if (tick) {');
 	$control = strpos($body, 'line.appendChild(control);', $tick);
-	$caption = strpos($body, 'words.appendChild(caption);', $tick);
+	$caption = strpos($body, 'words.appendChild(head);', $tick);
+	pg_assert_contains('var head = caption;', $body, 'the label is its head, unless a "?" stands beside it');
 
 	pg_assert_true($tick !== false && $control !== false && $caption !== false, 'the tick branch draws the box and its label');
 	pg_assert_true($control < $caption, 'the box comes before its label');

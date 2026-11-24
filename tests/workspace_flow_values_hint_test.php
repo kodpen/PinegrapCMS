@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the help under a value field on the Flows canvas
- * (valuesHint(), assets/js/workspace_flow.js): it names {{date}} and the
- * other words of scheduled actions only in the boxes whose texts the run
- * fills with them. A derived value box said they worked, and
- * "{{date}} {{time}}" written by one into a table cell stayed as typed.
+ * Tests for the words "Add value" offers under "Always" on the Flows canvas
+ * (alwaysWords(), assets/js/workspace_flow.js): {{date}} and {{time}} only
+ * in the boxes whose texts the run fills with them. A derived value box said
+ * they worked, and "{{date}} {{time}}" written by one into a table cell
+ * stayed as typed. The e-mail's recipient words (ws_flow_mail_words()) are
+ * the ones its send path fills.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -44,13 +45,39 @@ function test_workspace_flow_values_hint_word_kinds()
 	pg_assert_same('Due 05.11.2026', $fill['title'], 'a task fills them');
 }
 
-// Every value field asks it; both texts are translated.
+// No hint stands under a value field any more: the list's first line says
+// what a value is and "Always" names the words.
 function test_workspace_flow_values_hint_wiring()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	$flows = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 
-	pg_assert_contains("var wrap = field(label, input, help ? help + ' ' + valuesHint(node) : valuesHint(node));", $js, 'the value field');
-	pg_assert_same(1, substr_count($js, "'fl_values_hint'"), 'only through it');
-	pg_assert_contains("'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),", $flows, 'the plain help');
+	pg_assert_contains("var wrap = field(label, input, help);", $js, 'the value field passes only its own help');
+	pg_assert_same(0, substr_count($js, "'fl_values_hint"), 'no hint key');
+	pg_assert_same(0, substr_count($js, 'valuesHint('), 'no hint function');
+	pg_assert_contains("var always = alwaysWords(node.kind);", $js, 'Always in the list');
+	pg_assert_contains("'fl_values_what'      => lang(", $flows, 'the list\'s first line');
+}
+
+// The recipient words an e-mail box offers are the fields its mail fills for
+// the person it goes to, each labelled.
+function test_workspace_flow_values_mail_words()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_mail_campaign.php');
+
+	$words = ws_flow_mail_words();
+	$filled = array_map(function ($field) {
+		return $field['name'];
+	}, pg_mail_merge_contact_fields(null));
+
+	pg_assert_same($filled, array_column($words, 'key'), 'the same words, in order');
+	pg_assert_same(array('name', 'first_name', 'last_name'), array_column($words, 'key'), 'name, first and last name');
+
+	foreach ($words as $word) {
+		pg_assert_true($word['label'] !== '' && $word['label'] !== $word['key'], 'a label for ' . $word['key']);
+	}
+
+	$flows = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+	pg_assert_contains("\$steps['mail_words'] = function_exists('ws_flow_mail_words') ? ws_flow_mail_words() : array();", $flows, 'in the editor\'s settings');
 }

@@ -548,6 +548,70 @@ JS
 	pg_assert_same(array('task_3', 'task', 'Call', 480, 224, 1), $result['copy'], 'a copy: a free id, its title and settings (not shared), right of it, past the boxes in the way');
 }
 
+// A box panel's fields (FE5): a help that fits a line stands under the
+// field, a longer one opens from the "?" with its first sentence under the
+// field when that fits; an e-mail's recipient words are chips beside the
+// values; "Always" offers only the words the box's run fills; the folded
+// Sender row shows who sends.
+function test_workspace_flows_canvas_panel_fields()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'WORD_KINDS', 'HELP_LINE') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = [^\n]*;\n/m', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('helpSplit', 'valueParts', 'valueWords', 'mailWordNames', 'alwaysWords', 'senderShown'),
+		$constants . <<<'JS'
+var FL = { steps: { mail_words: [{ key: 'name', label: 'Name' }, { key: 'first_name', label: 'First name' }] } };
+var long = 'The order\'s customer or the guest. Marketing goes only to a person who agreed to it.';
+var run = 'An https address outside this network, or one the site may reach through its proxy server today.';
+var names = mailWordNames({ kind: 'email' });
+var out = {};
+out.help = [helpSplit('Empty: the organization\'s name.'), helpSplit(long), helpSplit(run), helpSplit(''), helpSplit(null)];
+out.names = [Object.keys(names), names['^^name^^'].label, Object.keys(mailWordNames({ kind: 'sms' }))];
+out.words = valueWords(Object.assign({ '{{trigger.x}}': { label: 'x' } }, names));
+out.parts = [
+    valueParts('Hi ^^name^^, {{node.form_1.email}} and ^^city^^', ['name', 'first_name']),
+    valueParts('Hi ^^name^^', []),
+    valueParts('{{trigger.who|nobody}}', ['name']),
+    valueParts('', ['name'])
+];
+out.always = [alwaysWords('email'), alwaysWords('value'), alwaysWords('row_set')];
+out.sender = [senderShown({}, 'Kodpen'), senderShown({ from_name: ' Shop ' }, 'Kodpen'), senderShown({ from_email: 'a@b.c' }, 'Kodpen'), senderShown({}, undefined)];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('line' => 'Empty: the organization\'s name.', 'more' => ''), $result['help'][0], 'a short help stands as its line');
+	pg_assert_same(array('line' => 'The order\'s customer or the guest.', 'more' => 'The order\'s customer or the guest. Marketing goes only to a person who agreed to it.'), $result['help'][1], 'a long one: its first sentence under the field, all of it behind the "?"');
+	pg_assert_same('', $result['help'][2]['line'], 'no line when even the first sentence is longer than one');
+	pg_assert_true($result['help'][2]['more'] !== '', 'all of it behind the "?"');
+	pg_assert_same(array('line' => '', 'more' => ''), $result['help'][3], 'no help, nothing');
+	pg_assert_same(array('line' => '', 'more' => ''), $result['help'][4], 'nor for null');
+	pg_assert_same(array(array('^^name^^', '^^first_name^^'), 'fl_values_recipient › Name', array()), $result['names'], 'recipient words only in an e-mail box, named Recipient › word');
+	pg_assert_same(array('name', 'first_name'), $result['words'], 'the words among the names');
+	pg_assert_same(array(
+		array(array('text' => 'Hi '), array('token' => '^^name^^'), array('text' => ', '), array('token' => '{{node.form_1.email}}'), array('text' => ' and ^^city^^')),
+		array(array('text' => 'Hi ^^name^^')),
+		array(array('token' => '{{trigger.who|nobody}}')),
+		array(),
+	), $result['parts'], 'values and the known words are chips; an unknown word and words outside an e-mail stay text');
+	pg_assert_same(array(
+		array(array('{{date}}', 'fl_word_date'), array('{{time}}', 'fl_word_time')),
+		array(array('{{date}}', 'fl_word_date'), array('{{time}}', 'fl_word_time'), array('{{weekday}}', 'fl_word_weekday')),
+		array(),
+	), $result['always'], 'date and time where the run fills them, the weekday in a derived value, none in a table cell');
+	pg_assert_same(array('Kodpen', 'Shop', 'a@b.c', ''), $result['sender'], 'the From name, else the address, else the site\'s name');
+}
+
 // An arrow carries its outcome's name when its box has more than one
 // outcome, and always on always, each, other, cancelled and failed; the only
 // outcome of a box (a post's done, a start's next) goes unnamed.
@@ -1028,6 +1092,18 @@ function ws_flows_canvas_test_node(array $names, $script)
 
 	// The token helpers every reader of a value token calls.
 	$names = array_unique(array_merge($names, array('tokenBare', 'tokenFallback', 'tokenWith', 'holdsToken'), in_array('runValue', $names, true) ? array('runValueOf', 'runStepOf', 'loopValueOf') : array()));
+
+	// A field splits its help (helpSplit(), the "?" of helpAsk()); a value
+	// text cuts its chips out with valueParts() and an e-mail's words.
+	if (in_array('field', $names, true) || in_array('valueField', $names, true)) {
+		$names = array_unique(array_merge($names, array('helpSplit', 'helpAsk')));
+		preg_match('/^ *var HELP_LINE = [^\n]*;\n/m', $source, $line);
+		$body .= $line[0] ?? '';
+	}
+
+	if (array_intersect(array('drawValues', 'valueInput', 'valueField'), $names)) {
+		$names = array_unique(array_merge($names, array('valueParts', 'valueWords', 'mailWordNames')));
+	}
 
 	foreach ($names as $name) {
 		$function = ws_flows_canvas_test_script_function($source, $name);
@@ -2304,7 +2380,7 @@ JS
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 
-	pg_assert_contains("list.appendChild(el('div', 'small fg-secondary', valuesNone(node)));", ws_flows_canvas_test_script_function($source, 'valueField'));
+	pg_assert_contains("list.appendChild(el('div', 'small fg-secondary px-1', valuesNone(node)));", ws_flows_canvas_test_script_function($source, 'valueField'));
 }
 
 // The groups of the flow boxes and their colours (dark theme as the visual
