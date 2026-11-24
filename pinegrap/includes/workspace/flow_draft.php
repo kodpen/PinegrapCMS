@@ -1257,10 +1257,12 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'ai.classes' => array('hint' => 'with mode classify, up to ' . WS_STEP_AI_CLASSES_MAX . ' outcome names; an arrow leaves on class_1 for the first, class_2 for the second, and on other when none fits'),
         'value.c' => array('hint' => 'the third value; with rule replace what goes in place of b (empty takes it out), with rule split the part to take: 1 the first (when empty), -1 the last'),
     );
-    // The same two settings on every step box.
+    // The same two settings on every step box; sending hours on the boxes
+    // that send (flow_send_hours.php).
     $any = array(
         'retry'       => array('hint' => 'how many times a failed box tries again; left out for none'),
         'retry_after' => array('hint' => 'the minutes it waits before it tries again; needed with retry'),
+        'hours'       => array('hint' => 'sending hours in the site\'s time zone, left out (off) unless asked: {"on":true,"days":[1,2,3,4,5],"from":"09:00","to":"20:00","outside":"wait"}; days 1 Monday to 7 Sunday; from before to on the same day; outside wait sends at the next hour that fits (the box waits), skip sends nothing then (sent 0)'),
     );
     $kinds = array(
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
