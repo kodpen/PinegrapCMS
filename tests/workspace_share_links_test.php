@@ -453,3 +453,24 @@ function test_share_link_text_shares_reach_the_screen_and_the_address()
 	pg_assert_contains("ws_share_link_list_raw(\$answer)", $address);
 	pg_assert_contains("echo ws_share_link_text_page(\$answer);", $address);
 }
+
+// Taking back a link that had ended or closed already (expired, its item or
+// message gone) writes no line: the item had stopped being shared, and its
+// name may be gone with it.
+function test_share_link_revoke_line_only_for_an_open_link()
+{
+	$until = mktime(14, 30, 0, 12, 1, 2026);
+
+	pg_assert_same('@coordinator stopped sharing plan.png', ws_share_link_revoke_line('open', '@coordinator', 'plan.png', $until), 'an open link taken back says so');
+
+	foreach (array('expired', 'closed', 'revoked') as $state) {
+		pg_assert_same('', ws_share_link_revoke_line($state, '@coordinator', '', $until), 'a link ' . $state . ' writes no line');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/share_links.php');
+	$start = strpos($source, 'function ws_share_link_revoke(');
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains('ws_share_link_revoke_line(', $body, 'the take-back follows the rule');
+	pg_assert_true(strpos($body, 'ws_share_link_read(') < strpos($body, 'UPDATE ws_share_links'), 'the state is read before the link is taken back');
+}

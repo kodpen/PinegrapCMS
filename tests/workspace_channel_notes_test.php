@@ -309,3 +309,62 @@ function test_ws_note_move_checks()
 	pg_assert_contains('ws_note_channel_of($note) <= 0', $copy, 'the copy takes a channel\'s note only');
 	pg_assert_contains("ws_note_save(\$viewer, array('note_id' => 0,", $copy, 'and writes a new note of the reader\'s, in their limit');
 }
+
+// A channel's note keeps its card: its writer owns nothing, so taking the
+// card's share back is refused before any row is read.
+function test_ws_note_unshare_refuses_a_channel_note()
+{
+	$result = ws_note_unshare(array('id' => 7), array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), 99);
+
+	pg_assert_same(false, $result['ok'], 'the writer cannot take the card away');
+	pg_assert_same(lang('A channel\'s note keeps its card in its channel.'), $result['error'], 'and is told why');
+}
+
+// An edit of a channel's note writes no inbox line, its writer's neither;
+// a person's note tells its owner and the people it is shared with.
+function test_ws_note_change_told_skips_a_channel_note()
+{
+	pg_assert_same(array(), ws_note_change_told(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), array(), 3, 0), 'a channel\'s note tells nobody');
+	pg_assert_same(array(7, 8), ws_note_change_told(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 0), array(8, 3, 8), 3, 0), 'a person\'s note tells its owner and the people, not the one who changed it');
+	pg_assert_same(array(8), ws_note_change_told(array('id' => 5, 'user_id' => 7), array(8), 3, 7), 'nor the one skipped');
+	pg_assert_contains('ws_note_change_told(', ws_channel_notes_test_source('ws_note_notify_change'), 'the inbox follows the rule');
+}
+
+// The files of a channel's note are for the channel's members only: its
+// writer who left the channel loses them.
+function test_ws_note_readers_of_a_channel_note_are_its_members()
+{
+	$members = array(10 => array(3, 4), 20 => array(5));
+
+	pg_assert_same(array(3, 4), ws_note_readers_of(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), array(array('user_id' => 0, 'channel_id' => 10)), $members), 'a channel\'s note: its channel\'s members, not its writer');
+	pg_assert_same(array(3, 4), ws_note_readers_of(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), array(), $members), 'with no card row too');
+	pg_assert_same(array(7, 8, 5), ws_note_readers_of(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 0), array(array('user_id' => 8, 'channel_id' => 0), array('user_id' => 0, 'channel_id' => 20)), $members), 'a person\'s note: its owner, the people, the channels');
+	pg_assert_contains('ws_note_readers_of(', ws_channel_notes_test_source('ws_note_readers'), 'the folder follows the rule');
+}
+
+// Claude reaches a channel's note only through its channel, whatever the
+// owner's access; a person's note as before.
+function test_ws_note_claude_reach_of_a_channel_note_asks_its_channel()
+{
+	$allowed = function ($channel_id) {
+		return (int) $channel_id === 20;
+	};
+
+	pg_assert_same(false, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10, 'access' => 'edit'), array(), $allowed), 'a channel closed to Claude keeps its note from Claude');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 20, 'access' => 'view'), array(), $allowed), 'an allowed channel gives it');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 3, 'owner_channel_id' => 0, 'access' => 'owner'), array(), $allowed), 'a note of the owner\'s own');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 3, 'channel_id' => 0)), $allowed), 'a person share');
+	pg_assert_same(false, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 0, 'channel_id' => 10)), $allowed), 'a share only in a closed channel');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 0, 'channel_id' => 20)), $allowed), 'a share in an allowed channel');
+}
+
+// The notes a record's mentions list are read with owner_channel_id, or a
+// channel's note would count its writer as its owner.
+function test_ws_ref_notes_open_reads_the_owner_channel()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
+	$start = strpos($source, 'function ws_ref_notes_open(');
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains('owner_channel_id', $body, 'the channel a note belongs to is read');
+}

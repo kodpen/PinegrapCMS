@@ -922,6 +922,10 @@ function ws_share_link_revoke($link, $now = null, $by = null)
 {
     $now = ($now === null) ? time() : (int) $now;
 
+    // The state before it is taken back: only a link still open gets the
+    // conversation's line.
+    $read = is_array($by) ? ws_share_link_read($link, $now) : null;
+
     db("UPDATE ws_share_links SET revoked_at = '" . $now . "' WHERE id = '" . (int) $link['id'] . "' AND revoked_at = 0");
 
     $done = mysqli_affected_rows(db::$con) > 0;
@@ -929,20 +933,37 @@ function ws_share_link_revoke($link, $now = null, $by = null)
     if ($done) {
         log_activity(lang(array('string' => 'a workspace share link was taken back: {var:1}', 'vars' => '#' . (int) $link['id'])));
 
-        if (is_array($by)) {
-            $message = ws_message((int) $link['message_id']);
+        if (is_array($read)) {
+            $line = ws_share_link_revoke_line($read['state'], ws_share_link_who($by, (int) $link['channel_id']), (string) $read['name'], (int) $link['expires_at']);
 
-            if (is_array($message) && ((int) $message['deleted_at'] === 0)) {
-                $row = ws_share_link_item_row($message, (string) $link['kind'], (int) $link['item_id']);
-                $name = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], $row)
-                    ? ws_share_link_item_name($message, (string) $link['kind'], $row) : (string) $message['file_name'];
+            if ($line !== '') {
+                ws_message_system((int) $read['message']['channel_id'], $line);
 
-                ws_share_link_note($message, $by, false, (int) $link['expires_at'], (int) $link['channel_id'], $name);
+                if (function_exists('ws_message_touch')) {
+                    ws_message_touch((int) $read['message']['id']);
+                }
             }
         }
     }
 
     return $done;
+}
+
+/**
+ * The conversation's line of a link taken back: only one that was open, as
+ * the item's mark and the channel's Sharing showed it. A link that had ended
+ * or closed already (expired, its item, message or channel gone) writes
+ * none. Pure but for lang().
+ *
+ * @param string $state    ws_share_link_state() before it was taken back
+ * @param string $who      ws_share_link_who()
+ * @param string $name     the item's name
+ * @param int    $until_at the link's end
+ * @return string '' for no line
+ */
+function ws_share_link_revoke_line($state, $who, $name, $until_at)
+{
+    return ((string) $state === 'open') ? ws_share_link_line(false, $who, $name, $until_at) : '';
 }
 
 /**

@@ -11,6 +11,7 @@ description: A channel's note (ws_notes.owner_channel_id): access from the chann
 ## Who reaches it?
 - `ws_note_access_of()`: for a channel's note only the channel counts, its writer included: may post (`ws_can_post_channel()`, so not in an archived channel) gives `edit`, may read gives `view`, else nothing. Never `owner`, and no share row is read.
 - So the owner's rights never reach it: lock (`ws_note_lock_note()` refuses), a note group (`ws_note_place_check()` refuses), a share with a person or another channel (`ws_note_share_people()`, `ws_note_share_channel()`: "A channel's note is not shared elsewhere."), the card's edit switch, pinning.
+- Also its card's share (`ws_note_unshare()` refuses), its files' folder (members only, `ws_note_readers_of()`), Claude's reach (`ws_note_claude_reach_of()`) and any query of own columns (reads `owner_channel_id`): `workflow/bug-hunt-areas-channel-notes-share.md`.
 - Deleting: its writer while they read the channel, and whoever manages it (`ws_can_manage_channel()`): `ws_note_delete_check()` asks the pure `ws_note_channel_may_delete()` (PR #11226). The panel's `ws_note_delete` reads the note at `view` and leaves the decision to the check.
 - Where it is listed: `channel-notes-tab.md`.
 
