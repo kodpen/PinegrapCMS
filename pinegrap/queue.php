@@ -95,7 +95,7 @@ if (isset($qu_input['n'])) {
     }
 
     $qu_content = '<p class="pg-text-meta text-center mb-2">' . h($qu_status['place']) . '</p>'
-        . '<p class="pg-display-4 fw-bold text-center mb-5">' . h($qu_status['number']) . '</p>'
+        . '<p class="pg-display-4 fw-bold text-center mb-5" data-pg-queue-field="number">' . h($qu_status['number']) . '</p>'
         . '<div class="text-center mb-7" role="status" aria-live="polite">'
         . '<p class="h5 mb-2" data-pg-queue-field="headline">' . h($qu_status['headline']) . '</p>'
         . '<p class="mb-0" data-pg-queue-field="line">' . h($qu_status['line']) . '</p>'

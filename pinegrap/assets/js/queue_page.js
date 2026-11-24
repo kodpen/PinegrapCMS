@@ -37,7 +37,9 @@
             return;
         }
 
-        ['headline', 'line', 'note'].forEach(function (name) {
+        // The number too: "Send to another service" gives it the other
+        // service's letter and count.
+        ['number', 'headline', 'line', 'note'].forEach(function (name) {
             var field = document.querySelector('[data-pg-queue-field="' + name + '"]');
             var text = status[name] || '';
 
@@ -50,12 +52,14 @@
             }
         });
 
-        if (leave && (status.state !== 'waiting')) {
-            leave.hidden = true;
+        // Shown again when the number waits again: Not here moved it back,
+        // or it was sent to another service.
+        if (leave) {
+            leave.hidden = (status.state !== 'waiting');
         }
 
-        if (onWay && !status.on_way) {
-            onWay.hidden = true;
+        if (onWay) {
+            onWay.hidden = !status.on_way;
         }
 
         if (status.final) {
