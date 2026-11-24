@@ -7671,14 +7671,27 @@ function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = fals
     if (!empty($product['mpn']))    $data['mpn']  = $product['mpn'];
     if (!empty($product['gtin']))   $data['gtin'] = $product['gtin'];
 
+    // The offer price everybody gets is the price the page shows a visitor
+    // who is not signed in (get_discounted_product_prices(false)).
+    $offer_prices = function_exists('get_discounted_product_prices') ? get_discounted_product_prices(false) : array();
+    $product_id = isset($product['id']) ? (int)$product['id'] : 0;
+    $price_cents = pg_product_jsonld_price_cents(
+        isset($product['price']) ? $product['price'] : 0,
+        (is_array($offer_prices) && isset($offer_prices[$product_id])) ? $offer_prices[$product_id] : null
+    );
+
     $data['offers'] = array(
         '@type'           => 'Offer',
         'url'             => $canonical_url,
         'priceCurrency'   => $currency_code,
-        'price'           => sprintf('%01.2f', ((int)$product['price']) / 100),
+        'price'           => sprintf('%01.2f', $price_cents / 100),
         'priceValidUntil' => date('Y-m-d', strtotime('+1 year')),
         'itemCondition'   => 'https://schema.org/NewCondition',
-        'availability'    => _pg_product_is_out_of_stock($product) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        'availability'    => pg_product_jsonld_availability(
+            isset($product['inventory']) ? $product['inventory'] : 0,
+            isset($product['inventory_quantity']) ? $product['inventory_quantity'] : 0,
+            isset($product['backorder']) ? $product['backorder'] : 0
+        ),
     );
 
     // Google's merchant listing facts ride on the offer (shipping cost and

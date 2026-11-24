@@ -1029,13 +1029,44 @@ function pg_page_seo_extras_ready($recheck = false)
 }
 
 /**
- * The og:locale value for the site's interface language.
+ * The language og:locale names for a page in the source language: the
+ * language the pages are written in (config.translation_source_language),
+ * else the panel language, else English. The panel language alone named a
+ * Turkish locale for pages written in English when the panel was Turkish.
+ *
+ * @param string $source config.translation_source_language as resolved
+ * @param string $panel  the panel language
+ * @return string
  */
-function pg_og_locale()
+function pg_og_locale_language($source, $panel)
 {
-    $language = defined('SOFTWARE_LANGUAGE') ? SOFTWARE_LANGUAGE : 'en';
+    $source = trim((string) $source);
 
-    switch ($language) {
+    if ($source !== '') {
+        return $source;
+    }
+
+    $panel = trim((string) $panel);
+
+    return (($panel !== '') && ($panel !== 'undefined')) ? $panel : 'en';
+}
+
+/**
+ * The og:locale value for the language the pages are written in. A page
+ * served in another site language has its own og:locale written by the
+ * language pass (pg_tr_render_finalize()).
+ *
+ * @param string|null $language null reads the site's source language
+ */
+function pg_og_locale($language = null)
+{
+    if ($language === null) {
+        $language = pg_og_locale_language(
+            defined('TRANSLATION_SOURCE_LANGUAGE') ? (string) TRANSLATION_SOURCE_LANGUAGE : '',
+            defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : '');
+    }
+
+    switch ((string) $language) {
         case 'tr':
             return 'tr_TR';
 
@@ -2598,6 +2629,172 @@ function pg_page_robots_content($noindex, $nofollow, $noarchive, $max_snippet, $
     }
 
     return implode(', ', $directives);
+}
+
+/**
+ * The X-Robots-Tag header a page sends beside its robots tag: only for
+ * noindex, so a PDF (?pdf=true) or a page that answers JSON or XML, which
+ * carries no tag a crawler reads, stays out of the index as well. The other
+ * directives describe how an HTML result is shown and stay in the tag.
+ *
+ * @param string $robots_content pg_page_robots_content()
+ * @return string the header line, '' for none
+ */
+function pg_page_robots_header($robots_content)
+{
+    $robots_content = trim((string) $robots_content);
+
+    if (strpos($robots_content, 'noindex') !== 0) {
+        return '';
+    }
+
+    return 'X-Robots-Tag: ' . $robots_content;
+}
+
+/**
+ * Where a page's head ends: at the first </head>, or at <body when the
+ * design left </head> out (HTML allows it); null when the output has
+ * neither (JSON, XML, a fragment), which is no document and gets no title.
+ *
+ * @param string $content
+ * @return int|null
+ */
+function pg_head_end_offset($content)
+{
+    $content = (string) $content;
+    $end = stripos($content, '</head');
+
+    if ($end === false) {
+        $end = preg_match('/<body[\s>]/i', $content, $match, PREG_OFFSET_CAPTURE) ? $match[0][1] : false;
+    }
+
+    return ($end === false) ? null : $end;
+}
+
+/**
+ * The text of the head's <title>, '' when the head has none. A <title>
+ * inside the body (an inline drawing's accessible name) is never read.
+ *
+ * @param string $content
+ * @return string as written, not decoded
+ */
+function pg_head_title_text($content)
+{
+    $content = (string) $content;
+    $end = pg_head_end_offset($content);
+
+    if ($end === null) {
+        return '';
+    }
+
+    $head = substr($content, 0, $end);
+
+    if (!preg_match('/<title\b[^>]*>(.*?)<\/title\s*>/is', $head, $match)) {
+        return '';
+    }
+
+    return trim($match[1]);
+}
+
+/**
+ * Put the page title into the head's <title>. Only the head's element is
+ * replaced: the pass that wrote every <title>…</title> of the page also
+ * renamed each inline drawing's <title> (an icon's accessible name) after
+ * the page, and missed a title the design wrote over several lines. A head
+ * without a title gets one before </head>; output with no head is left as
+ * it is.
+ *
+ * @param string $content
+ * @param string $title_html the title, already escaped
+ * @return string
+ */
+function pg_head_title_replace($content, $title_html)
+{
+    $content = (string) $content;
+    $element = '<title>' . $title_html . '</title>';
+    $end = pg_head_end_offset($content);
+
+    if ($end === null) {
+        return $content;
+    }
+
+    $head = substr($content, 0, $end);
+
+    if (preg_match('/<title\b[^>]*>.*?<\/title\s*>/is', $head, $match, PREG_OFFSET_CAPTURE)) {
+        return substr($content, 0, $match[0][1]) . $element . substr($content, $match[0][1] + strlen($match[0][0]));
+    }
+
+    return $head . $element . substr($content, $end);
+}
+
+/**
+ * The price a Product offer names, in minor units: the offer price everybody
+ * gets (get_discounted_product_prices(false)) when it is above 0 and below
+ * the product's price, as the page shows it to a visitor who is not signed
+ * in; else the product's price. The full price beside a shown offer price
+ * is a price mismatch for a merchant listing.
+ *
+ * @param int|string      $price       products.price
+ * @param int|string|null $offer_price the offer price, null for none
+ * @return int
+ */
+function pg_product_jsonld_price_cents($price, $offer_price)
+{
+    $price = (int) round((float) $price);
+
+    if ($offer_price === null) {
+        return $price;
+    }
+
+    $offer_price = (int) round((float) $offer_price);
+
+    return (($offer_price > 0) && ($offer_price < $price)) ? $offer_price : $price;
+}
+
+/**
+ * The schema.org availability of a product: in stock while no inventory is
+ * kept or some is left; at none or below none (an oversold product), on back
+ * order when it may still be ordered, else out of stock. Both Product
+ * builders read it: the classic one gave an oversold product InStock and a
+ * back order PreOrder (an item not released yet), the widget's InStock.
+ *
+ * @param int|string $inventory          products.inventory
+ * @param int|string $inventory_quantity products.inventory_quantity
+ * @param int|string $backorder          products.backorder
+ * @return string
+ */
+function pg_product_jsonld_availability($inventory, $inventory_quantity, $backorder)
+{
+    if (((int) $inventory !== 1) || ((int) $inventory_quantity > 0)) {
+        return 'https://schema.org/InStock';
+    }
+
+    return ((int) $backorder === 1) ? 'https://schema.org/BackOrder' : 'https://schema.org/OutOfStock';
+}
+
+/**
+ * The page number a classic list's canonical address names: a whole number
+ * above 1, else 0 for none. "2abc" compared above 1 and was written into the
+ * canonical as it was typed.
+ *
+ * @param mixed $value the address value
+ * @return int
+ */
+function pg_canonical_page_number($value)
+{
+    if (!is_string($value)) {
+        return 0;
+    }
+
+    $value = trim($value);
+
+    if (!preg_match('/^[0-9]{1,9}$/', $value)) {
+        return 0;
+    }
+
+    $number = (int) $value;
+
+    return ($number > 1) ? $number : 0;
 }
 
 /**

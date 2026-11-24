@@ -1057,12 +1057,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'form list view':
 
                 // If there is a specific page number for this page, then use it.
-                if (isset($_GET[$page_id . '_page_number']) && is_string($_GET[$page_id . '_page_number']) && $_GET[$page_id . '_page_number'] != '' and $_GET[$page_id . '_page_number'] > 1) {
-                    $query_string = '?' . $page_id . '_page_number=' . urlencode(trim($_GET[$page_id . '_page_number']));
+                // Only a whole number above 1 names a later page.
+                if (($pg_canonical_page = pg_canonical_page_number($_GET[$page_id . '_page_number'] ?? null)) > 0) {
+                    $query_string = '?' . $page_id . '_page_number=' . $pg_canonical_page;
 
                 // Otherwise if there is a general page number, then use it.
-                } else if (isset($_GET['page_number']) && is_string($_GET['page_number']) && $_GET['page_number'] != '' and $_GET['page_number'] > 1) {
-                    $query_string = '?page_number=' . urlencode(trim($_GET['page_number']));
+                } else if (($pg_canonical_page = pg_canonical_page_number($_GET['page_number'] ?? null)) > 0) {
+                    $query_string = '?page_number=' . $pg_canonical_page;
                 }
 
                 break;
@@ -2807,21 +2808,22 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $jsonld['gtin'] = $item['gtin'];
                             }
 
-                            // if the inventory is enabled for the product,
-                            // and the product is out of stock
-                            if (($item['inventory'] == 1) && ($item['inventory_quantity'] == 0)) {
-                                $availability = ($item['backorder'] == 1)
-                                    ? 'https://schema.org/PreOrder'
-                                    : 'https://schema.org/OutOfStock';
-                            } else {
-                                $availability = 'https://schema.org/InStock';
-                            }
+                            // In stock, out of stock (an oversold product
+                            // too) or on back order.
+                            $availability = pg_product_jsonld_availability($item['inventory'], $item['inventory_quantity'], $item['backorder']);
+
+                            // The offer price everybody gets is the price
+                            // the page shows.
+                            $jsonld_offer_prices = get_discounted_product_prices(false);
+                            $jsonld_price_cents = pg_product_jsonld_price_cents(
+                                (int) str_replace(',', '', $item['price']),
+                                (is_array($jsonld_offer_prices) && isset($jsonld_offer_prices[$item['id']])) ? $jsonld_offer_prices[$item['id']] : null);
 
                             $jsonld['offers'] = array(
                                 '@type'           => 'Offer',
                                 'url'             => $canonical_url,
                                 'priceCurrency'   => BASE_CURRENCY_CODE,
-                                'price'           => sprintf('%01.2f', ((int) str_replace(',', '', $item['price'])) / 100),
+                                'price'           => sprintf('%01.2f', $jsonld_price_cents / 100),
                                 'priceValidUntil' => date('Y-m-d', strtotime('+1 year')),
                                 'itemCondition'   => 'https://schema.org/NewCondition',
                                 'availability'    => $availability,
@@ -5947,23 +5949,23 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $page_title = pg_sw_error_title($pg_error_screen['code'], $page_title);
     }
 
-    // If this page has a title then use that for title tag. Escaped for the
-    // replacement string as well: "$1" in a title is text, not a back reference.
+    // If this page has a title then use that for the head's title tag. Only
+    // the head's: an inline drawing's <title> in the body is its own name.
     if ($page_title != '') {
-        $content = preg_replace('/<title>.*?<\/title>/i', pg_regex_replacement('<title>' . h($page_title) . '</title>'), $content);
+        $content = pg_head_title_replace($content, h($page_title));
 
     // else page does not have a title set, so let's look elsewhere for a title
     } else {
-        // look for a title in the style
-        preg_match('/<title>(.*?)<\/title>/i', $content, $matches);
+        // look for a title in the style's head
+        $pg_style_title = pg_head_title_text($content);
 
         // if title in style for page does not contain a title, add default title
         // We store the title so we can include it in the open graph tag.
-        if (empty($matches[1])) {
-            $content = preg_replace('/<title>.*?<\/title>/i', pg_regex_replacement('<title>' . h(TITLE) . '</title>'), $content);
+        if ($pg_style_title === '') {
+            $content = pg_head_title_replace($content, h(TITLE));
             $page_title = TITLE;
         } else {
-            $page_title = unhtmlspecialchars(trim($matches[1]));
+            $page_title = unhtmlspecialchars($pg_style_title);
         }
     }
 
@@ -6194,6 +6196,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         if ($robots_content !== '') {
             $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+        }
+
+        // noindex as a header too: the page's PDF, or a page that answers
+        // JSON or XML, has no tag a crawler reads. Not during the SEO pass,
+        // which draws pages inside another request.
+        $pg_robots_header = pg_page_robots_header($robots_content);
+
+        if (($pg_robots_header !== '') && !pg_seo_rendering() && !headers_sent()) {
+            header($pg_robots_header);
         }
     }
 
