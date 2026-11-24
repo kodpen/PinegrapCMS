@@ -22,4 +22,4 @@ description: The one-line bar and empty screens of Work Calendar, My calendar, P
 - No decision: `emptyScreen()` (blue `bi-clock-history`, "No decisions yet", the old sentence); filtered to nothing: `barEmptyFound()`.
 
 ## What pins it?
-- `tests/workspace_task_filters_test.php` (`test_workspace_task_filters_calendar_board_timeline_bars`). Built in WI7 of `plans/workspace-interface-steps-2.md`.
+- `tests/workspace_task_filters_test.php` (`test_workspace_task_filters_calendar_board_timeline_bars`). Built in #11238.

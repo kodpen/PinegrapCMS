@@ -26,7 +26,7 @@ description: A Workspace screen's one-line bar (My Tasks first): "Filter", its b
 - Every filter's meaning, address parameter and default: the same `ws_tasks` state, `agents=1`, `urgent=1` (now `setSoon(true)` before the first load), `task`, `new`. Status, department, priority, Made by agents and "Pressing, coming up" stand behind "Filter"; the views are Mine, Given by me, My departments, Everyone, My time; the pressed view shows the list's count.
 
 ## Which screens have it?
-- My Tasks (#11104); My Notes and Data (#11214, `workspace-screen-bar-notes-data.md`); Work Calendar, My calendar, Planning Board and Decision Timeline (WI7, `workspace-screen-bar-calendars-board-timeline.md`), with `barSteps()` for date stepping.
+- My Tasks (#11104); My Notes and Data (#11214, `workspace-screen-bar-notes-data.md`); Work Calendar, My calendar, Planning Board and Decision Timeline (#11238, `workspace-screen-bar-calendars-board-timeline.md`), with `barSteps()` for date stepping.
 
 ## What pins it?
 - `tests/workspace_task_filters_test.php`; patterns "Screen bar with filters" and "Empty screen" on Design examples (`look-design-examples.md`). Checked on a sandbox at 1440, 1100 and 390 px in both themes.
