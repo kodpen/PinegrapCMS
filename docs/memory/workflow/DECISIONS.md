@@ -630,7 +630,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-33.md: Which columns, and who writes and reads them? (architect, 2026-11-20, agent channel message 10460, answer to K1's request 1799)
 - decisions-made-schema-34.md: Where are the rules and the earlier parts?
 - decisions-made-schema-34.md: May holding units during payment get a table? (owner, 2026-11-20, agent channel poll 172, message 10457)
-- decisions-made-schema-34.md: Which columns does `stock_holds` have? (architect, 2026-11-20, plan stock-holds)
+- decisions-made-schema-34.md: Which columns does `stock_holds` have? (architect, 2026-11-20)
 - decisions-made-schema-35.md: Where are the rules and the earlier parts?
 - decisions-made-schema-35.md: Does the ad conversions plan get a table? (owner, 2026-11-20, agent channel poll 174, channel message 10512)
 - decisions-made-schema-35.md: Which columns does it have? (architect, 2026-11-20, channel message 10514)
@@ -1054,6 +1054,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/sales-watch.md: Sales watch overview: order rhythm alerts (orders stopped, payment broken, price error, return spike), what binds it, the architect's answers, each feature's PR, what is left out
 - commerce/shipment-label-auto.md: Automatic carrier label once an order is paid (2026.11.0, #8432): per-driver switch, the general job's run, its limits, the failed row on the order screen and in the API
 - commerce/shipment-tracking-hunt.md: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop fixed in the drivers (#10660)
+- commerce/stock-holds.md: Stock holds in short: units held 15 minutes for an order while its payment runs; what binds it, what is left out, where the detail is
 - commerce/stock-locations-total-writers.md: Stock locations (#10814): writers that change only the total go through pg_stock_total_write() at a location; tracking off deletes rows, on rebuilds from the total; the source pin
 - commerce/store-credit-points-take-back.md: An order's reward points taken back on cancel, full refund and line refund (#6256, decision #6306): recomputed from the lines, balance first, the converted rest off the newest points cards
 - commerce/store-credit-rules.md: What binds store credit (owner, 2026-11-02, #5039, #6306): a customer-bound gift card, not a payment method, never pays for a gift card product, the reward goal kept, money in minor units

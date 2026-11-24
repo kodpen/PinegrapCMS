@@ -382,7 +382,7 @@ description: Generated from the module field of the memory files: each includes/
 - `sms_reply`: [[mail-sms-reply]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `state_list_edit`: [[list-table-quick-edit-states]]
-- `stock_holds`: [[stock-holds-placing]], [[stock-holds-record]], [[stock-holds-shown]]
+- `stock_holds`: [[stock-holds]], [[stock-holds-placing]], [[stock-holds-record]], [[stock-holds-shown]]
 - `stock_location_screens`: [[stock-locations-screens]]
 - `stock_locations`: [[bug-hunt-areas-stock-locations]], [[stock-locations-model]]
 - `stock_moves`: [[stock-locations-moves]]

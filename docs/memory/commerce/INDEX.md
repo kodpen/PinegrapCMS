@@ -229,7 +229,7 @@
 - order-completion-line-comments.md: Order completion stage functions for a line's comments, its e-mailed page and the product_ordered and order_completed campaigns (A2c4): inputs, unit rules, what changed
 - order-completion-lines.md: Per-line stage functions of the order completion (#2713, #2740, #2766, A2c3b): stock, reservations, membership, folder access, gift cards, product forms, submitted forms, watcher
 - order-completion-shipping-less.md: The recipient that gives up the shipping's minor units on a payment callback is lowered by a compare-and-set, so two callbacks lower it once
-- order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read before the decrement, the out_of_stock flag and bell, what is announced, event spots
+- order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read, the hold released with the take, the out_of_stock flag, what is announced
 - order-completion.md: pg_order_complete() (#2638, every stage since #2972): the session-free completion of an incomplete order, the once-only lock, its context, what it writes in order
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
 - order-discount-charged-today.md: Order discount vs recurring lines not charged today: the cap at today's subtotal (pg_order_charged_discount), which lines are charged, why the cap sits in apply_offers_to_cart()
@@ -416,6 +416,7 @@
 - stock-holds-placing.md: Where submit_order.php places the stock hold before the payment (SH3), the way back when units are not free, a payment's return, and the releases on a failed payment and at the cart
 - stock-holds-record.md: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a lock, release at completion, the daily sweep (SH1 #10711, SH2 #10759, SH3)
 - stock-holds-shown.md: What people see of stock holds (SH4 #11166): the cart notice's words when other checkouts hold the units, and "Held in checkouts: n" under Edit Product's stock
+- stock-holds.md: Stock holds in short: units held 15 minutes for an order while its payment runs; what binds it, what is left out, where the detail is [decision: decisions-made-product-86.md, decisions-made-schema-34.md]
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md, decisions-made-schema-33.md]

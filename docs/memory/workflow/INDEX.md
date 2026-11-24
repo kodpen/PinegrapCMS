@@ -217,7 +217,7 @@
 - decisions-made-schema-31.md: Decisions list, schema part 31 (2026-11-20 on): the order profit tables erp_order_costs, erp_order_profit and erp_cost_rates
 - decisions-made-schema-32.md: Decisions list, schema part 32 (2026-11-20 on): ws_app_answers, an application's answer shown to the writer of a command alone
 - decisions-made-schema-33.md: Decisions list, schema part 33 (2026-11-20 on): the stock_taken columns on order_items and order_item_components, so a marketplace cancel puts back only what the sale took
-- decisions-made-schema-34.md: Decisions list, schema part 34 (2026-11-20 on): the stock_holds table of plan stock-holds, units held for an order while its payment runs
+- decisions-made-schema-34.md: Decisions list, schema part 34 (2026-11-20 on): the stock_holds table, units held for an order while its payment runs
 - decisions-made-schema-35.md: Decisions list, schema part 35 (2026-11-20 on): the ad_conversion_events table of plan ad-conversions, the send queue, the event log and the buyer's ids until sent
 - decisions-made-schema-36.md: Decisions list, schema part 36 (2026-11-20 on): the privacy_requests table of plan privacy-centre, its columns, and destruction records kept as audit_log lines
 - decisions-made-schema-37.md: Decisions list, schema part 37 (2026-11-20 on): the application that saved a note, kept on the note and on its versions
