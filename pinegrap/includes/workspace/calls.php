@@ -1393,5 +1393,10 @@ function ws_call_js_strings()
         'call_hand_up'    => lang('Hand raised'),
         'call_weak'       => lang('Weak connection'),
         'call_muted_talk' => lang('You are muted'),
+        'call_pin'        => lang('Show large'),
+        'call_unpin'      => lang('Unpin'),
+        'call_more'       => lang('More'),
+        'call_self_hide'  => lang('Hide my picture'),
+        'call_self_show'  => lang('Show my picture'),
     );
 }

@@ -67,15 +67,15 @@ JS
 		return;
 	}
 
-	$empty = array('audio' => '', 'video' => '', 'speaker' => '', 'muted' => false, 'cameraOff' => false);
+	$empty = array('audio' => '', 'video' => '', 'speaker' => '', 'muted' => false, 'cameraOff' => false, 'size' => '');
 
 	pg_assert_same($empty, $result['none'], 'nothing kept: no choice, not muted, camera on');
 	pg_assert_same($empty, $result['broken'], 'broken text: no choice');
 	pg_assert_same($empty, $result['list'], 'not an object: no choice');
-	pg_assert_same(array('audio' => 'mic2', 'video' => 'cam1', 'speaker' => 'out3', 'muted' => true, 'cameraOff' => true), $result['kept'], 'the kept choices are read back');
+	pg_assert_same(array('audio' => 'mic2', 'video' => 'cam1', 'speaker' => 'out3', 'muted' => true, 'cameraOff' => true, 'size' => ''), $result['kept'], 'the kept choices are read back');
 	pg_assert_same($empty, $result['wrong'], 'values of the wrong type read as no choice, unknown names are dropped');
-	pg_assert_same(array('audio' => 'mic2', 'video' => 'cam9', 'speaker' => '', 'muted' => false, 'cameraOff' => false), $result['changed'], 'one change keeps the other choices');
-	pg_assert_same(array('audio' => '', 'video' => '', 'speaker' => 'out1', 'muted' => false, 'cameraOff' => true), $result['fresh'], 'a first change starts from no choice');
+	pg_assert_same(array('audio' => 'mic2', 'video' => 'cam9', 'speaker' => '', 'muted' => false, 'cameraOff' => false, 'size' => ''), $result['changed'], 'one change keeps the other choices');
+	pg_assert_same(array('audio' => '', 'video' => '', 'speaker' => 'out1', 'muted' => false, 'cameraOff' => true, 'size' => ''), $result['fresh'], 'a first change starts from no choice');
 }
 
 function test_workspace_calls_choices_fall_back_to_the_default()

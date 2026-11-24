@@ -5,6 +5,7 @@ description: Workspace calls remember the chosen microphone, camera and speaker 
 
 ## What does a call remember, and where?
 - The microphone, camera and speaker last picked in the call window's gear panel, and whether the person was muted or had the camera off, in the browser's `localStorage` under one key, `pg_ws_call_choices` (JSON). Never sent to the site: device ids mean nothing in another browser.
+- The same key keeps the window's size, `size`: `large`, `small` or empty (CN2, `calls-window.md`).
 - Each change is saved when it is made: Mute, Turn camera off/on, a select of the gear panel. Reads and writes are in try/catch (`choicesLoad()`, `choicesSave()` in `assets/js/workspace_calls.js`); a private window or blocked site data remembers nothing and the call goes on with the defaults.
 - Owner (2026-11-24): the devices fell back to a default every time (`workflow/decisions-made-workspace-50.md`).
 
