@@ -5,7 +5,7 @@ module: designer
 ---
 
 ## When is a converted common region's component "used"?
-- Architect (2026-11-24), reading the owner's 2026-10-27 decision: a shared component that draws a converted common region counts as used. Before PR #PRNUM the palette's Delete said "(It is not used on any page.)" and `delete_many` removed it without `force` (#11502).
+- Architect (2026-11-24), reading the owner's 2026-10-27 decision: a shared component that draws a converted common region counts as used. Before PR #11515 the palette's Delete said "(It is not used on any page.)" and `delete_many` removed it without `force` (#11502).
 - `pg_shared_component_usage()` adds, for such a row, the pages where the region's `<cregion>` tag stands, read by `pg_shared_component_region_usage_read()` (`includes/fn/designer.php`): the page's desktop or mobile style code, a page region, a designer region embedding the tag (one level, as `get_page_content.php` expands it), a `common`/`designer` region node of the page's tree. Only the row that draws the region (lowest id, `pg_common_region_components_read()`) counts.
 - Each such entry carries `common_region: <region name>` beside the usual `page_id`, `page_name`, `style_id`, `style_name`, `binned`.
 
