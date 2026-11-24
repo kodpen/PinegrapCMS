@@ -153,6 +153,10 @@ function pg_panel_get_notifications($request, $action)
     $notifications = db_items("SELECT * FROM notifications ORDER BY timestamp DESC");
     $now = time();
     $date_format = defined('DATE_FORMAT') ? (string) DATE_FORMAT : 'month_day';
+    // The reader's own zone when they keep one, the zone the full time in
+    // the row's title is written in (get_absolute_time()): the day heading
+    // and the short time read the same clock, '' being the site's.
+    $zone = pg_time_uses_user_zone(array()) ? pg_timezone_canonical(USER_TIMEZONE) : '';
 
     foreach ($notifications as $notification) {
 
@@ -179,7 +183,7 @@ function pg_panel_get_notifications($request, $action)
             // The short time the row's head shows ("5 min", "Yesterday",
             // "9 Nov"), the full date and time for its title attribute and
             // the moment for its datetime attribute.
-            'time' => pg_notification_short_time((int) $notification['timestamp'], $now, '', $date_format),
+            'time' => pg_notification_short_time((int) $notification['timestamp'], $now, $zone, $date_format),
             'time_title' => get_absolute_time(array('timestamp' => (int) $notification['timestamp'], 'format' => 'plain_text', 'size' => 'short', 'year' => true)),
             'datetime' => gmdate('Y-m-d\TH:i:s\Z', (int) $notification['timestamp']),
             // What the workspace told this person, or the rest of the site.
@@ -190,7 +194,7 @@ function pg_panel_get_notifications($request, $action)
             // Drawn as the dashboard's Next up row: the module's tag, the
             // day heading it stands under and the one button's job.
             'module' => pg_notification_module($notification['action'] ?? ''),
-            'day' => pg_notification_day((int) $notification['timestamp'], $now),
+            'day' => pg_notification_day((int) $notification['timestamp'], $now, $zone),
             // A Workspace row with nowhere to go (a flow's notice with the
             // Workspace off) is read with Mark as read, not opened.
             'button' => ((($display['action'] === 'workspace') && ((string) $display['url'] === '')) ? '' : pg_notification_button($display['action'], $display['kind'], $display['join'])),
