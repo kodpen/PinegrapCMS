@@ -20,7 +20,7 @@ description: Webhook events of flow runs (A7, #2406): workspace.flow.run.finishe
 - `id` (the run), `channel_id` (key rule; null for a run of no channel, heard by whole-site subscriptions only), `flow_id`, `flow_name`, `run`: `ws_api_flow_run_present()`'s fields without `steps`, `graph`, `access`, `can_cancel` (one body for all subscribers; the test keeps the fields in step with `ws_api_flow_run_schema()`).
 - Cancelled: `cancelled_by` (person id).
 - End: `result`, the box the result comes from (`ws_flow_run_result_step()`): failed = the first failed box (as the owner's notice); done = the box that finished last on done, end boxes passed over, the start box only when nothing else ran. Fields as WorkspaceFlowRunStep: node_id, kind, name, status, outcome, task_id, attempt, finished_at, outputs, result.
-- Waiting: `waiting` = the box (no outcome, finished_at) plus `for` (task, approval, delay, retry), `task_id`, `approval_id`, `until`.
+- Waiting: `waiting` = the box (no outcome, finished_at) plus `for` (task, approval, delay, retry, hours: a sending box waiting for its sending hours), `task_id`, `approval_id`, `until`.
 - The panel's run flag (state and one-line result) is `workspace-flows-run-flag.md` (#2903); here the End body's `result` stands for it.
 
 ## What do readers outside the channel not get?
