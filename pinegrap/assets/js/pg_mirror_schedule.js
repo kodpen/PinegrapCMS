@@ -38,11 +38,12 @@
 
     // Classes the editor puts on a canvas element to show its own state.
     var STATE_CLASSES = ['sd-selected', 'sd-multi-selected', 'sd-drop-hl', 'sd-ghost', 'sd-resizing',
-        'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn'];
+        'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn', 'sd-tb-inside', 'sd-tb-below', 'sd-tb-end'];
     // Elements the editor adds to the canvas around the design: element
     // toolbars, notes, badges, chips, drop zones, the align guide.
     var CHROME_CLASSES = ['sd-tb', 'sd-persistent-note', 'sd-issue-badge', 'sd-chip-row', 'sd-dz', 'sd-align-guide'];
-    var CHROME_SELECTOR = 'script, ' + CHROME_CLASSES.map(function (c) { return '.' + c; }).join(', ');
+    var CHROME_PARTS = CHROME_CLASSES.map(function (c) { return '.' + c; }).join(', ');
+    var CHROME_SELECTOR = 'script, ' + CHROME_PARTS;
     // Attributes that make an element editable or draggable on the canvas.
     var EDIT_ATTRS = ['contenteditable', 'draggable', 'spellcheck'];
 
@@ -135,6 +136,7 @@
         REST: REST,
         HOLD_MAX: HOLD_MAX,
         STATE_CLASSES: STATE_CLASSES,
+        CHROME_PARTS: CHROME_PARTS,
         CHROME_SELECTOR: CHROME_SELECTOR,
         EDIT_ATTRS: EDIT_ATTRS,
         initial: initial,

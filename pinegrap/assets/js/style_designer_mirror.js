@@ -74,19 +74,27 @@ StyleDesigner.definePart('mirror', function (K) {
         return el.getAttribute('class') || '';
     }
 
+    // The class list a change is judged by: that of the editor's chrome
+    // (a toolbar, a badge) the element sits in, else its own.
+    function ownerClass(el) {
+        if (!el || el.nodeType !== 1) return '';
+        var chrome = el.closest ? el.closest(S.CHROME_PARTS) : null;
+        return classOf(chrome || el);
+    }
+
     // A mutation record in the shape PGMirrorSchedule.matters() reads.
     function shape(r) {
         if (r.type === 'attributes') {
-            return { type: r.type, name: r.attributeName, cls: classOf(r.target), old: r.oldValue, now: r.target.getAttribute(r.attributeName) };
+            return { type: r.type, name: r.attributeName, cls: ownerClass(r.target), old: r.oldValue, now: r.target.getAttribute(r.attributeName) };
         }
-        if (r.type === 'characterData') return { type: r.type, cls: classOf(r.target.parentNode) };
+        if (r.type === 'characterData') return { type: r.type, cls: ownerClass(r.target.parentNode) };
         var nodes = [];
         var add = function (list) {
             for (var i = 0; i < list.length; i++) nodes.push(list[i].nodeType === 1 ? classOf(list[i]) : null);
         };
         add(r.addedNodes);
         add(r.removedNodes);
-        return { type: r.type, cls: classOf(r.target), nodes: nodes };
+        return { type: r.type, cls: ownerClass(r.target), nodes: nodes };
     }
 
     function observed(records) {

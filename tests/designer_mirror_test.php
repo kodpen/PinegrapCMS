@@ -121,6 +121,7 @@ function test_mirror_tells_design_changes_from_editor_marks()
 	$r = mirror_test_node('out = ['
 		. 'M.matters({type: "attributes", name: "class", cls: "sd-wrap sd-selected", old: "sd-wrap", now: "sd-wrap sd-selected"}),'
 		. 'M.matters({type: "attributes", name: "class", cls: "btn sd-drop-hl", old: "btn", now: "btn sd-drop-hl"}),'
+		. 'M.matters({type: "attributes", name: "class", cls: "sd-wrap sd-tb-below", old: "sd-wrap sd-tb-end", now: "sd-wrap sd-tb-below"}),'
 		. 'M.matters({type: "attributes", name: "class", cls: "btn btn-lg", old: "btn", now: "btn btn-lg"}),'
 		. 'M.matters({type: "attributes", name: "contenteditable", cls: "p", old: null, now: "true"}),'
 		. 'M.matters({type: "attributes", name: "style", cls: "p", old: "", now: "color:red"}),'
@@ -139,19 +140,19 @@ function test_mirror_tells_design_changes_from_editor_marks()
 		return;
 	}
 
-	pg_assert_same(array(false, false, true, false, true, false, false, false, true, true, false, true, false, false), $r, 'what a mirror shows');
+	pg_assert_same(array(false, false, false, true, false, true, false, false, false, true, true, false, true, false, false), $r, 'what a mirror shows');
 }
 
 // A class list loses the editor's state classes only.
 function test_mirror_cleans_state_classes()
 {
-	$r = mirror_test_node('out = [M.clean("sd-wrap sd-selected  btn sd-multi-selected"), M.clean(""), M.clean(null), M.CHROME_SELECTOR.indexOf("script") === 0];');
+	$r = mirror_test_node('out = [M.clean("sd-wrap sd-selected  btn sd-multi-selected"), M.clean(""), M.clean(null), M.CHROME_SELECTOR.indexOf("script") === 0, M.CHROME_PARTS.indexOf("script") === -1];');
 
 	if ($r === null) {
 		return;
 	}
 
-	pg_assert_same(array('sd-wrap btn', '', '', true), $r, 'state classes removed');
+	pg_assert_same(array('sd-wrap btn', '', '', true, true), $r, 'state classes removed');
 }
 
 // A width is scaled to fit its box, never above 1; the frame's height is the
