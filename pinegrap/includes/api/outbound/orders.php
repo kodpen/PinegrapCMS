@@ -1238,7 +1238,10 @@ function mp_order_take_stock($matched, $order_ref = '') {
 			db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
 				WHERE (id = '" . e($product_id) . "') AND (out_of_stock != '1')");
 
-			if (function_exists('create_notification')) {
+			// The guard above makes the flag and the warning happen once per
+			// product, as a web order's (order_completion.php): a product
+			// already out of stock is not announced again by every order.
+			if ((mysqli_affected_rows(db::$con) > 0) && function_exists('create_notification')) {
 
 				create_notification(array(
 					'action'     => 'out_stock',
