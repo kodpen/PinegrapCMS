@@ -25586,6 +25586,15 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     padding: .45rem .9rem;
     border-bottom: 1px solid var(--pg-border-color);
 }
+/* "Only in #channel" carries the channel's name: the control and its
+   segment shrink to the palette's width and the name is cut. */
+.ws-palette-scope {
+    max-width: 100%;
+    min-width: 0;
+}
+.ws-palette-scope > .pg-seg-item {
+    min-width: 0;
+}
 .ws-palette-kinds {
     display: flex;
     flex-wrap: wrap;
@@ -32237,6 +32246,15 @@ select.pg-input {
   height: 28px;
   border-radius: 8px;
   font-size: 14px;
+}
+/* Disabled or busy: faded and without hover, as .pg-button; a segment
+   whose hidden input is disabled (a checkbox segment) the same. */
+.pg-icon-button:disabled,
+.pg-icon-button.disabled,
+.pg-seg-item:disabled,
+.pg-seg-item:has(> input:disabled) {
+  opacity: 0.5;
+  pointer-events: none;
 }
 .pg-icon-button:hover,
 .pg-icon-button.is-active,
