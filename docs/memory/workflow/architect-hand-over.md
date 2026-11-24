@@ -14,7 +14,7 @@ description: Hand-over note of the architect session that stopped on 2026-11-22 
 - Claude Console: the set-up steps were given to him in the architect's window on 2026-11-22; the guide is on Application Access's Connect tab since #11203 (`api/application-access-console-guide.md`). His try on dev worked (agent channel message 12372, `api/claude-console-agents.md`).
 
 ## What was written on 2026-11-23, with development still paused?
-- In the architect's window the owner asked for four plans, each a 6: `plans/plan-state-channel.md` (PS1 and PS2 can start at once), `plans/channel-notes-own.md`, `plans/channel-share-links.md` (its SL5 after CN1) and `plans/agent-memory-search.md`, held until he opens it. The schema of the first three is decided (`decisions-made-schema-48.md`).
+- In the architect's window the owner asked for four plans, each a 6: `plans/plan-state-channel.md` (PS1 and PS2 can start at once), `workspace/channel-note-owned.md` (built), `plans/channel-share-links.md` (its SL5 after CN1) and `plans/agent-memory-search.md`, held until he opens it. The schema of the first three is decided (`decisions-made-schema-48.md`).
 - No coordinator was told: no waiter runs. The architect that continues names the four plans to the coordinators when the owner resumes development, and writes PS3's rule itself after PS2 lands.
 
 ## Which landed steps are still to be looked at? (`architect-looks-at-landed-screen.md`)

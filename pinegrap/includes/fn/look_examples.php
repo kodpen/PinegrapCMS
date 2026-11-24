@@ -473,6 +473,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_tools_dock_pattern($p);
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
+    $patterns[] = pg_look_examples_add_list_pattern();
     $patterns[] = pg_look_examples_menu_icon_pattern();
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
@@ -1265,6 +1266,49 @@ function pg_look_examples_canvas_tools_pattern()
             . str_replace('<button type="button"', '<button type="button" aria-pressed="true"', $icon('bi-bezier2', lang('Data threads')))
             . '</div></div>'
             . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: the add rail floats at the canvas\'s top left, a filled "+" and an icon for each group with its name as tooltip; "+" opens the list as a card beside the rail, a group\'s icon opens it at that group. Esc, a box added or a click on the canvas closes it. The bottom strip, centred over the canvas, holds Undo, Redo, the zoom, Fit and the data threads; a pressed tool shows the quiet fill.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's add list at an arrow (board B1): the arrow's "+",
+ * the dashed "+" after a box, the card with its search, "Often next" and
+ * the groups as chips.
+ *
+ * @return array the pattern's id, title, classes and markup
+ */
+function pg_look_examples_add_list_pattern()
+{
+    $row = function ($group, $icon, $name) {
+        return '<button type="button" class="wsf-palette-item wsf-add-item wsf-group-' . $group . '" title="' . h($name) . '">'
+            . '<span class="pg-icon-tile wsf-palette-tile"><i class="bi ' . $icon . '" aria-hidden="true"></i></span>'
+            . '<span class="wsf-palette-name">' . h($name) . '</span></button>';
+    };
+    $chip = function ($name, $count, $pressed = false) {
+        return '<button type="button" class="pg-button pg-button-quiet pg-button-sm wsf-add-chip" aria-pressed="' . ($pressed ? 'true' : 'false') . '">'
+            . h($name) . '<span class="wsf-palette-count">' . (int) $count . '</span></button>';
+    };
+    $plus = function ($class, $label) {
+        return '<button type="button" class="wsf-plus ' . $class . '" title="' . h($label) . '" aria-label="' . h($label) . '" style="position: static"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>';
+    };
+
+    return array(
+        'id'      => 'pattern-add-list',
+        'title'   => lang('Add list'),
+        'classes' => array('.wsf-plus', '.wsf-out-plus', '.wsf-add-pop', '.wsf-add-find', '.wsf-add-search', '.wsf-add-key', '.wsf-add-list', '.wsf-add-chips', '.wsf-add-chip', '.wsf-palette-stage-head', '.wsf-palette-tip'),
+        'html'    => '<div class="d-flex flex-wrap align-items-start gap-4">'
+            . '<div class="d-flex gap-3 align-items-center">' . $plus('wsf-edge-plus', lang('Add a box on this arrow')) . $plus('wsf-out-plus', lang('Add a box after {var:1}')) . '</div>'
+            . '<div class="wsf-add-pop" role="dialog" aria-label="' . h(lang('Add a box here')) . '" style="position: relative">'
+            . '<div class="wsf-add-find"><input type="search" class="pg-input pg-input-sm wsf-add-search" placeholder="' . h(lang('Search boxes')) . '" aria-label="' . h(lang('Search boxes')) . '"><kbd class="wsf-add-key" aria-hidden="true">/</kbd></div>'
+            . '<div class="wsf-add-list">'
+            . '<h3 class="wsf-palette-stage-head">' . h(lang('Often next')) . '</h3>'
+            . $row('logic', 'bi-hourglass-split', lang('Wait')) . $row('logic', 'bi-signpost-split', lang('Condition')) . $row('people', 'bi-check2-square', lang('Task'))
+            . '<h3 class="wsf-palette-stage-head">' . h(lang('All')) . '</h3>'
+            . '<div class="wsf-add-chips" role="group" aria-label="' . h(lang('All')) . '">' . $chip(lang('Message'), 6, true) . $chip(lang('People and tasks'), 6) . $chip(lang('Logic'), 5) . $chip(lang('System'), 7) . '</div>'
+            . '<div class="wsf-palette-rows">' . $row('message', 'bi-chat-square', lang('Post a message')) . $row('message', 'bi-envelope', lang('Send an e-mail')) . '</div>'
+            . '</div>'
+            . '<p class="wsf-palette-tip pg-text-meta">' . h(lang('Dropping an arrow\'s end on empty space opens this list too.')) . '</p>'
+            . '</div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: pointing at an arrow shows a "+" at its middle; a dashed "+" stands after a box with a free outcome. Either opens this list there: the search ("/" reaches it), "Often next" by the box before, then the groups as chips with their counts. The box chosen cuts the arrow in two; the boxes after it move one column right when there is no room. A on the canvas opens it at the arrow or box chosen.')) . '</p>',
     );
 }
 

@@ -242,6 +242,7 @@
 - volunteer-account-list.md: My Account's account.volunteering list (the member's coming volunteer shifts), its tokens, and the designer twins of the volunteering section and list
 - volunteer-board.md: A volunteer programme's Shifts tab (VS3): the week's board by day, role pills and their three colours, Add shift with Repeat weekly, Copy last week, a shift's drawer with Call volunteers and Remove
 - volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and the search and picker exclusion due with uploading [decision: here]
+- volunteer-hours.md: Volunteer check-in and hours (VS6): a place's QR poster, volunteer_check_in.php, the Hours tab's list of the day, "Did not come" after 30 minutes, hours approval, hours outside a shift
 - volunteer-messages.md: Volunteer passes of the general job (VS5): unfilled-shift call, day-before reminder, document notices; channels, 09-20 hours, SMS kind volunteer, Shift calls switch
 - volunteer-programmes.md: Contacts › Volunteers (VS2): the programmes list, a programme's Set-up rows, applications from its form with Approve, the Volunteers tab and the profile drawer; who sees what
 - volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token

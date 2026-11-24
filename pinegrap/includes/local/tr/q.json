@@ -1,5 +1,6 @@
 {
     "QR Code": "QR Kodu",
+    "QR code": "QR kodu",
     "QR code for the authenticator app": "Doğrulama uygulaması için QR kodu",
     "QR code for the link": "Bağlantı için QR kodu",
     "QR code for the short link": "Kısa bağlantı için QR kodu",
@@ -8,6 +9,7 @@
     "QR code of your number's page": "Numaranızın sayfasının QR kodu",
     "QR code to take a number": "Numara almak için QR kodu",
     "QR poster": "QR afişi",
+    "QR posters": "QR afişleri",
     "QUOTE": "TEKLİF",
     "Qty": "Miktar",
     "Qty to sold": "Satılacak Miktar",

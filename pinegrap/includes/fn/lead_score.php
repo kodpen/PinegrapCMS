@@ -564,9 +564,10 @@ function pg_lead_score_contact($contact_id, array $settings, $now)
     ));
     $topics = pg_lead_interest_topics($rows, $folders, $now, $settings['half_life'], pg_lead_interest_categories(pg_lead_interest_items($rows)));
     $hot = ($interest['score'] >= $settings['threshold']) ? 1 : 0;
+    $old = db_item("SELECT hot, last_visit_at, returned_at FROM contact_scores WHERE contact_id = '" . $contact_id . "'");
 
     // hot_at is assigned before hot, so it still reads the row's old flag.
-    return db_q(
+    $written = db_q(
         "INSERT INTO contact_scores (contact_id, interest, fit, reasons, topics, points, hot, hot_at, last_visit_at, touched_at, scored_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE interest = VALUES(interest), fit = VALUES(fit), reasons = VALUES(reasons), topics = VALUES(topics),
@@ -579,6 +580,16 @@ function pg_lead_score_contact($contact_id, array $settings, $now)
             (string) $hot, (string) ($hot ? $now : 0), (string) $last_visit, (string) $touched, (string) $now,
         )
     ) !== false;
+
+    // customer.hot and customer.returned (includes/fn/lead_tell.php).
+    if ($written) {
+        pg_lead_tell(pg_lead_tell_moves($old, $hot, $last_visit, $now), array(
+            'contact_id' => $contact_id, 'interest' => $interest['score'], 'fit' => $fit['score'],
+            'reasons' => $interest['reasons'], 'topics' => $topics, 'last_visit_at' => $last_visit,
+        ), $settings['threshold'], $now);
+    }
+
+    return $written;
 }
 
 /**
@@ -645,6 +656,11 @@ function pg_lead_score_run($now, $budget = PG_LEAD_SCORE_TICK_SECONDS)
 
     $finished = ($done === count($ids)) && (count($ids) < PG_LEAD_SCORE_BATCH);
     pg_config_text_save('lead_score_pass', json_encode($finished ? array('since' => $started, 'started' => 0) : array('since' => $since, 'started' => $started)));
+
+    // The staff's "Hot contacts" alert, once a day (includes/fn/lead_tell.php).
+    if ($finished) {
+        pg_lead_alert_send($now);
+    }
 
     return $scored;
 }

@@ -12,7 +12,7 @@ module: graph_canvas
 
 ## Why a core with adapters?
 - Owner, 2026-10-24 (#2445): the Flows canvas serves other features too, so the generic part is one core named `pg_graph_canvas` / `pgc-` and each user brings an adapter; the second user is the designer's Prototype view (`designer/prototype-view.md`).
-- What means something to one user stays in its adapter: Flows keeps `KINDS`, `RUN_STATES`, `STEP_STATES`, forms, toolbar, publish, runs, graph JSON and its boxes in workspace_flow.js, with the literals `tests/workspace_flows_canvas_test.php` reads.
+- What means something to one user stays in its adapter: Flows keeps `KINDS`, run and step states, forms, toolbar, publish, runs, graph JSON and its boxes in workspace_flow.js.
 
 ## Where are its texts?
 - `pg_graph_canvas_js_strings()` (`includes/fn/graph_canvas.php`), keys `pgc_*`, merged into the Workspace config next to `ws_flow_js_strings()`. The core reads them through `adapter.text(key, ...)`; an adapter may name its own (Flows gives its box role `fl_box` through `boxRole()`).
@@ -20,8 +20,8 @@ module: graph_canvas
 
 ## What does create() draw and drag since 2c (#4518)?
 - `box(item, {className, into, out, fill})`: focus, role, `data-node`, `data-refocus`, in port, the adapter's content, out port (titled while `editable()`); `place()` calls `adapter.placed()`; `edge(index, from, to)` adds the arrow's group to `ui.svg`; `mark(selected)`; `announce(text)` on `ui.live`.
-- A press the adapter's `press()` leaves without a kind is the core's: out port → `connect` (`canConnect()`, `connected(from, to)`), box → `move` (`moved(item)`; `none` read-only), arrow → selected, else pan. `cancel()` puts a moved box back. Flows keeps its data threads, the double tap and the empty-canvas click in its hooks.
-- The adapter is built before the Workspace lends its `t()`: give `text` and `boxRole` as functions that read it late.
+- A press the adapter's `press()` leaves without a kind is the core's: out port → `connect` (`canConnect()`, `connected(from, to)`; let go on the empty canvas: optional `dropped(from, port, point)`), box → `move` (`moved(item)`; `none` read-only), arrow → selected, else pan. `cancel()` puts a moved box back. Flows keeps its data threads, the double tap and the empty-canvas click in its hooks.
+- The adapter is built before the Workspace lends its `t()`: `text` and `boxRole` are functions that read it late.
 
 ## How does autosave work (2d, #4557)?
 - `G.autosave(host)` (not tied to `create()`): `changed()`, `later()` (save after `host.delay`), `save({keepalive})`, `flush()`, `leave(leaving)`. Its state is kept on `host.record`; Flows passes its `state`, so `state.dirty`, `saving`, `saveError`, `conflict`, `leaveSent` keep their readers.

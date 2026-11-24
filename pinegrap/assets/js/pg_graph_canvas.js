@@ -1534,6 +1534,8 @@
     //    an arrow may go from one box (its named port, else null) to a
     //    target, and an arrow drawn from an out port released on a target
     //    (to is null on none of the graph);
+    //  - dropped(from, port, point) (optional): an arrow drawn from an out
+    //    port let go on the empty canvas, at that canvas point;
     //  - targets and target(element) (optional): a selector of what an
     //    arrow may end on beside a box (an end chip), and the item of such
     //    an element (else item() of its data-node);
@@ -2415,6 +2417,10 @@
 
                 if (aim.element && (event.type === 'pointerup')) {
                     adapter.connected(done.from, aim.item, done.port || null);
+                } else if (!aim.element && done.moved && (event.type === 'pointerup') && adapter.dropped) {
+                    // Let go on the empty canvas: the adapter may offer a
+                    // new box there (adapter.dropped, the canvas point).
+                    adapter.dropped(done.from, done.port || null, view.point(event.clientX, event.clientY));
                 }
 
                 return true;

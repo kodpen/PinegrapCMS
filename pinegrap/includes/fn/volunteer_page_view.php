@@ -24,6 +24,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board_view.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_documents.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_hours.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_volunteer_hours.php');
 
 /**
  * The classes of look A (the signed page). Pure.
@@ -181,6 +183,10 @@ function pg_volunteer_page_html(array $views, array $form, array $classes)
             $html .= ($rows !== '') ? '<div class="' . $c['list'] . '">' . $rows . '</div>' : '<p class="' . $c['meta'] . '">' . h(lang('No shifts for you right now.')) . '</p>';
         }
 
+        if ($volunteer['state'] === 'active') {
+            $html .= pg_volunteer_page_hours_html($form, $c, $profile);
+        }
+
         $kinds = pg_volunteer_programme_kinds($programme);
 
         if ($view['documents'] || $kinds) {
@@ -251,6 +257,12 @@ function pg_volunteer_calls_form_html(array $form, array $c, array $volunteer, a
  */
 function pg_volunteer_answer_text($answer)
 {
+    $hours = pg_volunteer_hours_answer_text($answer);
+
+    if ($hours !== null) {
+        return $hours;
+    }
+
     $texts = array(
         'signed'    => lang('You are signed up for the shift.'),
         'waiting'   => lang('You are on the waitlist. We will e-mail you when a place opens.'),

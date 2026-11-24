@@ -106,6 +106,7 @@
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
 - api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file [decision: here]
 - api-panel-coverage.md: How far the external API covers what the panel manages (gap list #5239, X1-X13 landed; audit #7967), how a new write route reuses the screen's write path, and what deliberately has no endpoint
+- api-pick-pack-routes.md: GET /pick-waves, GET /pick-waves/{id} (the pick list), GET /orders/{id}/packs and POST /products/{id}/shelf (PUT too): scopes, fields, status words, MCP tools, what is not built
 - api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart [decision: here]
 - api-privacy-routes.md: The read-only privacy API (KV6, #10897): GET /privacy/inventory, /privacy/requests and /privacy/requests/{id}, the privacy:read scope, views, cursor, steps [decision: here]
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle

@@ -21,6 +21,6 @@ description: Main menu row 21, Page Design Studio: its Other entry holding the o
 - A pinned 16 or 17 needs nothing: `user.selected_appmenu_items_array` is only written (`user_pinned_app_update`, `includes/panel/dashboard.php`); nothing reads it and no screen calls the action, so a stored 16 or 17 pins nothing.
 
 ## What was left for the stylesheet?
-- `backend.src.css` is a shared file and was not touched in #8987: the `.pg-mi-ads` and `.pg-mi-styles` rules are unused; the active Other entry has no visible mark of its own; the Turkish title "Sayfa Tasarım Stüdyosu" ends in an ellipsis at the 250px expanded width when the row is marked (semibold), its `title` carries the whole name.
+- `backend.src.css` is a shared file and was not touched in #8987: the `.pg-mi-ads` and `.pg-mi-styles` rules are unused; the active Other entry has no visible mark of its own; the Turkish title "Sayfa Tasarım Stüdyosu" ends in an ellipsis at the expanded width (256 px since #11271) when the row is marked (semibold), its `title` carries the whole name.
 
 Related: docs/memory/ui/main-menu-categories.md, docs/memory/ui/main-menu-panels.md, docs/memory/ui/settings-system-tools.md

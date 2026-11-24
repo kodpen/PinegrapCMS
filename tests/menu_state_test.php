@@ -116,3 +116,16 @@ function test_menu_script_keeps_a_navigator_screen_open_or_narrowed()
 	pg_assert_contains("return (shown === 'expanded') ? 'collapsed' : 'expanded';", $js, 'the button narrows and opens, never hides');
 	pg_assert_same(1, substr_count($js, "setCookie('softwaremenustatus'"), 'one place writes the other screens\' state');
 }
+
+function test_menu_widening_never_animates_the_page_grid()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	pg_assert_same(0, preg_match('/transition:[^;]*grid-template-columns\s+0?\.\d+s/', $css), 'an animated grid column lays the whole page out on every frame');
+	pg_assert_contains(".software-container.pg-menu-grows {\n  transition: grid-template-columns 0s linear 0.3s;", $css, 'a growing column waits for the rail\'s slide');
+	pg_assert_contains("\$('.software-container').toggleClass('pg-menu-grows', MENU_STATE_RANK[state] > MENU_STATE_RANK[shownMenuState()]);", $js, 'set before the state is painted');
+	pg_assert_contains("#menu.expanded .pg-menu-main {\n    min-width: calc(var(--pg-rail-w-expanded) - 1.25rem);", $css, 'rows laid out at the open width');
+	pg_assert_contains("#menu.pg-menu-moving .list-group-item .pg-mi [data-m] {\n    animation: none;", $css, 'no icon move while the rail moves');
+	pg_assert_contains("menu.classList.add('pg-menu-moving');", $js, 'marked while the rail moves');
+}

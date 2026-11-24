@@ -6,7 +6,7 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 ## Which steps are there?
 - VS1a (S) first, no schema (done, #10922): new `includes/fn/volunteer_shifts.php`, pure: who fits a role on a day (skills, trainings, a document valid then, free hours, no other shift), the waitlist pass, the cut-off, the call's pick, the show-up rate, hours sums, document notice days, the signed token. Features: G4, G7, G8, G10, G13 (the rules).
 
-- VS1b (M) after VS1a (done, #10949): the five `volunteer_*` tables (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the privacy registrations; a document's file behind `get_file.php`; their tests. Features: G2, G4 (the store).
+- VS1b (M) after VS1a (done, #10949): the five `volunteer_*` tables (poll 206, `workflow/decisions-made-schema-46.md`); the privacy registrations; a document's file behind `get_file.php`. Features: G2, G4 (the store).
   - Built (#10949), `core/volunteer-store.md`.
 
 - VS2 (M) after VS1b (done, #11136): Contacts › Volunteers: the programmes list and a programme's Set-up (form and its fields, roles, rules, messages, coordinators); applications with Approve; the volunteer's profile. Features: G1, G2, G3.
@@ -26,7 +26,8 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS5 (M) after VS4 (done, #11250): the general job's passes: the unfilled call, the day-before reminder, the document notices; SMS and WhatsApp kind `volunteer`, a service message (poll 207); the profile's "Shift calls" switch turns the calls off. Features: G4, G10.
   - Built (#11250), `core/volunteer-messages.md`.
 
-- VS6 (M) after VS4: the QR poster per place and the scan page (`event_check_in.php`'s way), the coordinator's list of the day, "Did not come", hours and their approval, hours outside a shift. Features: G11, G12, G13.
+- VS6 (M) after VS4 (done, #11256): the QR poster per place and the scan page (`event_check_in.php`'s way), the coordinator's list of the day, "Did not come", hours and their approval, hours outside a shift. Features: G11, G12, G13.
+  - Built (#11256), `core/volunteer-hours.md`.
 
 - VS7 (M) after VS6: the hours certificate (`certificate.php`'s way, a signed check code, nothing stored), the thank-you mails, the report and Excel. Features: G14, G15.
 

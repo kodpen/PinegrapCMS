@@ -23,7 +23,7 @@ module: lead_score
 ## How does the pass run?
 - `job.php` calls `pg_lead_score_run()` every tick; it works only every 600 s (`PG_LEAD_SCORE_EVERY`) unless a pass is unfinished, within 10 s of the tick (`pg_cron_time_left()`), 200 contacts a run.
 - Pass record config_text `lead_score_pass` `{since, started}`, claimed with `pg_config_text_claim()` so overlapping runs do not both go. Candidates: a visit started since `since` − 1 day (a visit still going), a journey row since `since`, a score with interest over 0 not worked out for a day (fading); minus those already scored in this pass (`scored_at` ≥ `started`).
-- `pg_lead_score_contact()`: a contact with panel work, no visit any more or no contacts row loses its row. Writes `interest`, `fit`, `reasons` `{interest, fit}`, `topics`, `points` `{at, kinds}`, `hot` (interest ≥ threshold), `hot_at` set when it turns hot, `last_visit_at`, `touched_at` (newest journey row), `scored_at`. `returned_at` and the events are LJ4.
+- `pg_lead_score_contact()`: a contact with panel work, no visit any more or no contacts row loses its row. Writes `interest`, `fit`, `reasons` `{interest, fit}`, `topics`, `points` `{at, kinds}`, `hot` (interest ≥ threshold), `hot_at` set when it turns hot, `last_visit_at`, `touched_at` (newest journey row), `scored_at`. `returned_at` and the events: `visitors/lead-tell.md`.
 
 ## Where is it shown?
 - Contact screen, second column under the picture: card "Interest" (`pg_lead_score_contact_card()`), only once scored: Interest and Fit figures of 100, a "Hot" pill, "Why" (top three of both reasons), "Interested in" pills.

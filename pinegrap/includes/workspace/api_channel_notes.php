@@ -7,7 +7,9 @@
  * as "Write a note" under the composer's paperclip does. The route runs the
  * panel's own check (ws_note_channel_write_check()) before its dry run stops,
  * so both meet the same refusals. GET lists the channel's own notes, as its
- * Notes tab does (ws_note_channel_page()).
+ * Notes tab does (ws_note_channel_page()). POST /workspace/notes/{id}/move
+ * makes a note of the owner's the channel's, as the card's "Move to this
+ * channel" does (ws_note_move()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -66,6 +68,23 @@ function ws_channel_note_api_routes()
                 array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The note\'s title. Left out, its first line names it.'),
                 array('name' => 'body', 'in' => 'body', 'type' => 'string', 'required' => true, 'description' => 'The note\'s text, in Markdown, at most 60,000 characters.'),
                 array('name' => 'channel_edit', 'in' => 'body', 'type' => 'bool', 'description' => 'Kept for older callers and ignored: who may post in the channel changes its notes.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.move',
+            'method'      => 'POST',
+            'path'        => '/workspace/notes/{id}/move',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_notes_move',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceNote',
+            'summary'     => 'Move a note into a channel',
+            'description' => 'Makes a note of the owner\'s own the channel\'s, as "Move to this channel" on its card does: it leaves the owner\'s notes and limit, GET /workspace/channels/{id}/notes lists it, and who may post there changes it. A card is posted when it is not shared there yet; every other share goes. Not the owner\'s own, or locked: 403. A channel not read: 404; not posted in, or at its note limit: 422 on channel_id. Answers the note.',
+            'details'     => 'Use it to move many notes written before into the channel they belong to, one call each. Its card in the channel stays; a card elsewhere says it is no longer shared, and it leaves its note group and the menu pin. The apps that keep notes in sync learn that it left the lists from deleted in GET /workspace/notes?updated_since=. The way back is in the panel: "Copy to my notes" on the channel\'s note. Who a card posted for it is written as follows POST /workspace/channels/{id}/files. Send an Idempotency-Key so a retried call does not post a second card.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The channel the note moves to.'),
             ),
         ),
     );
@@ -165,4 +184,48 @@ function ws_api_channel_notes_create($params)
     }
 
     api_ok(array('message_id' => (int) $result['message_id'], 'note_id' => (int) $result['note_id'], 'revision' => (int) $result['revision']), 201);
+}
+
+/**
+ * Moves a note of the owner's into a channel (ws_note_move()).
+ */
+function ws_api_notes_move($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_notes_ready() || !ws_note_channel_owner_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
+
+    $channel = ws_api_channel_or_404($viewer, $params['channel_id']);
+    $checked = ws_note_move_check($viewer, $note, $channel);
+
+    if (!$checked['ok']) {
+        if ($checked['field'] === 'note_id') {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], 'channel_id');
+    }
+
+    api_dry_run_stop('updated', 'workspace_note', array(
+        'id'         => (int) $note['id'],
+        'channel_id' => (int) $channel['id'],
+        'card'       => ($checked['card'] !== null) ? 'kept' : 'posted',
+    ));
+
+    $writer = ws_api_message_writer();
+    $result = ws_note_move($viewer, $note, $channel, array(
+        'app_id'        => (int) $writer['app_id'],
+        'via_client_id' => (int) $writer['via_client_id'],
+    ));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'channel_id');
+    }
+
+    api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, (int) $note['id'], 'view'))));
 }

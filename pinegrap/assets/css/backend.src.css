@@ -774,13 +774,17 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
      grid, the sidebar, the backdrop and every element anchored under the bar,
      so they are declared once instead of being repeated as literals. */
   --pg-navbar-h: 50px;
-  --pg-rail-w: 60px;
+  --pg-rail-w: 66px;
+  /* The main menu's icon tile and the line drawing on it (rows, rail, panel
+     entries, phone drawer). The rail is the tile plus 17px on each side. */
+  --pg-menu-tile: 2rem;
+  --pg-menu-icon: 1.2rem;
   /* Wide enough for the longest label the panel ships. In Turkish that is
-     "Tüm Nakliye Yöntemleri" at 214px of text plus 27px of icon and padding;
+     "Tüm Nakliye Yöntemleri" at 214px of text plus 33px of icon and padding;
      English is shorter. A label longer than this ellipsises rather than
      widening the rail -- see the width declaration in the lg block below for
      why the rail must never size itself to its contents. */
-  --pg-rail-w-expanded: 250px;
+  --pg-rail-w-expanded: 256px;
   /* Radius of the pocket the content sits in, where the rail meets the bar. */
   --pg-corner: 16px;
 
@@ -1790,9 +1794,9 @@ html[data-bs-theme="dark"] body .design-color {
   flex: none;
   display: inline-grid;
   place-items: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  border-radius: 0.5rem;
+  width: var(--pg-menu-tile);
+  height: var(--pg-menu-tile);
+  border-radius: 0.625rem;
   vertical-align: middle;
   --pg-mi-tint: 13%;
   --pg-mi-line: 16%;
@@ -1805,12 +1809,12 @@ html[data-bs-theme="dark"] body .design-color {
   --pg-mi-line: 34%;
 }
 :is(#menu, .pg-look-mi) .pg-mi-tile > svg {
-  width: 0.9375rem;
-  height: 0.9375rem;
+  width: var(--pg-menu-icon);
+  height: var(--pg-menu-icon);
   overflow: visible;
 }
 #menu .menu-body .pg-mi-tile > .bi {
-  font-size: 0.9375rem;
+  font-size: var(--pg-menu-icon);
   line-height: 1;
 }
 :is(#menu, .pg-look-mi) .pg-mi .pg-mi-f {
@@ -1844,6 +1848,10 @@ html[data-bs-theme="dark"] body .design-color {
 @media (prefers-reduced-motion: no-preference) {
   :is(#menu .list-group-item, .pg-look-mi-item):is(:hover, :focus-visible) .pg-mi [data-m] {
     animation: var(--pg-mi-k) 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  /* Not while the rail widens or narrows (.pg-menu-moving, backend.src.js). */
+  #menu.pg-menu-moving .list-group-item .pg-mi [data-m] {
+    animation: none;
   }
   .pg-mi [data-m="pop"] { --pg-mi-k: pg-mi-pop; transform-box: fill-box; transform-origin: center; }
   .pg-mi [data-m="pulse"] { --pg-mi-k: pg-mi-pulse; transform-box: fill-box; transform-origin: center; }
@@ -2059,7 +2067,14 @@ tr.uploaded td {
   grid-template-areas:
     "navbar navbar"
     "sidebar content";
-  transition: grid-template-columns 0.3s ease;
+}
+/* The column is not animated: every frame of an animated grid column lays
+   the whole page out again, which made the menu stutter as it widened.
+   The rail (position: fixed) slides alone; a column that grows takes its
+   new width once the slide is over (.pg-menu-grows, set by backend.src.js),
+   a column that shrinks at once, under the rail still narrowing. */
+.software-container.pg-menu-grows {
+  transition: grid-template-columns 0s linear 0.3s;
 }
 .software-sidebar {
   grid-area: sidebar;
@@ -2187,12 +2202,12 @@ body:not(.toolbar) .software-content > #footer {
 #menu .list-group {
   padding: 0 6px;
 }
-/* A row is 34px high, its label 13.5px. Collapsed, the 6px list padding
-   plus 11px item padding centres the 26px tile on the 60px rail; expanded,
+/* A row is 40px high, its label 13.5px. Collapsed, the 6px list padding
+   plus 11px item padding centres the 32px tile on the 66px rail; expanded,
    the tile keeps its place. */
 #menu .list-group .list-group-item {
   margin-bottom: 1px;
-  min-height: 2.125rem;
+  min-height: 2.5rem;
   padding: 0.25rem 0.6875rem;
   border-radius: var(--pg-radius-lg);
   font-size: 0.84375rem;
@@ -2642,8 +2657,8 @@ body:not(.toolbar) .software-content > #footer {
 }
 /* An entry's icon on a tile, as on the rows: the glyph in the tone of the
    row's category (data-pg-menu-tone, pg_menu_panel(); the tones sit under
-   "Main menu icons") on a 13% tint of it. The tile is about as tall as the
-   text line was with its padding, so the entries keep their height. */
+   "Main menu icons") on a 13% tint of it. The tile is the rows' 32px, the
+   entry 40px high with its padding, as a row is. */
 #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi {
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
@@ -2652,15 +2667,34 @@ body:not(.toolbar) .software-content > #footer {
    beats this layer: the glyph is centred in the tile by the top padding. */
 #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi::before {
   box-sizing: border-box;
-  width: 1.625rem;
-  height: 1.625rem;
-  padding-top: calc((1.625rem - 0.9375rem) / 2);
-  border-radius: var(--pg-radius);
+  width: var(--pg-menu-tile);
+  height: var(--pg-menu-tile);
+  padding-top: calc((var(--pg-menu-tile) - var(--pg-menu-icon)) / 2);
+  border-radius: 0.625rem;
   text-align: center;
-  font-size: 0.9375rem;
+  font-size: var(--pg-menu-icon);
   color: var(--pg-menu-tone);
   background: color-mix(in srgb, var(--pg-menu-tone) 13%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-menu-tone) 16%, transparent);
+}
+
+/* A System tools entry (pg_menu_tools_markup()): the name ends in an
+   ellipsis inside the panel, and the mark of a tool that opens in a new tab
+   stands at the row's right end. */
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-entry-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-entry-ext {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--pg-fg-2);
 }
 
 /* A jump point inside the screen of the entry above it (the Visitors
@@ -2671,7 +2705,7 @@ body:not(.toolbar) .software-content > #footer {
   --bs-link-opacity: 0.72;
   position: relative;
   margin-bottom: 0;
-  padding: 0.2rem 0.625rem 0.2rem calc(0.625rem + 1.625rem + 0.5rem);
+  padding: 0.2rem 0.625rem 0.2rem calc(0.625rem + var(--pg-menu-tile) + 0.5rem);
   font-size: 0.8125rem;
   line-height: 1.35;
   border-radius: var(--pg-radius);
@@ -2680,7 +2714,7 @@ body:not(.toolbar) .software-content > #footer {
   content: "";
   position: absolute;
   inset-block: 0;
-  inset-inline-start: calc(0.625rem + 0.8125rem - 0.5px);
+  inset-inline-start: calc(0.625rem + var(--pg-menu-tile) / 2 - 0.5px);
   border-inline-start: 1px solid currentColor;
   opacity: 0.25;
 }
@@ -2916,6 +2950,7 @@ body:not(.toolbar) .software-content > #footer {
    media queries add no specificity of their own. */
 @media (prefers-reduced-motion: reduce) {
   .software-container,
+  .software-container.pg-menu-grows,
   .software-container .software-sidebar,
   .software-container:not(.expanded) .software-sidebar,
   .software-menu-backdrop.show,
@@ -2959,6 +2994,12 @@ body:not(.toolbar) .software-content > #footer {
      the content fills its own column with no correction at all. */
   .software-container.expanded .software-sidebar {
     width: var(--pg-rail-w-expanded);
+  }
+  /* The rows are laid out at about the width they end at as soon as the
+     menu is set to open, so the rail widening uncovers them instead of
+     ellipsising every label again on each frame; as the panels do. */
+  :where(.software-container:not(.menu-drawer-only)) #menu.expanded .pg-menu-main {
+    min-width: calc(var(--pg-rail-w-expanded) - 1.25rem);
   }
 
   /* Hidden: the column goes, and the rail slides out with it rather than
@@ -15803,6 +15844,24 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   font-weight: 600;
   color: var(--pg-fg-2);
 }
+/* The "New" line over the first message that came since the last visit: a
+   rose hairline with its words in the middle. */
+.ws-new-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 4px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--pg-tone-rose);
+  scroll-margin-top: 1rem;
+}
+.ws-new-line::before,
+.ws-new-line::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid color-mix(in srgb, var(--pg-tone-rose) 45%, transparent);
+}
 .ws-msg {
   position: relative;
   display: grid;
@@ -27845,7 +27904,8 @@ html.ws-flow-layer-on body {
 }
 .wsf-palette-rail,
 .wsf-palette-panel,
-.wsf-strip {
+.wsf-strip,
+.wsf-add-pop {
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: 13px;
   background: var(--pg-surface-float);
@@ -28041,6 +28101,85 @@ html.ws-flow-layer-on body {
   padding: 10px 16px 12px;
   border-top: 1px solid var(--pg-border-color-translucent);
   color: var(--pg-fg-3);
+}
+/* The add list at a place (openAdd(), board B1): a 280 px card under the
+   arrow's "+" or the box's, the search with its "/" key, "Often next", the
+   groups as chips with their counts, the rows of the chip pressed. */
+.wsf-add-pop {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  max-height: 420px;
+  overflow: hidden;
+}
+.wsf-add-find {
+  position: relative;
+  flex-shrink: 0;
+  margin: 12px 12px 6px;
+}
+.wsf-add-find .wsf-add-search {
+  padding-right: 32px;
+}
+.wsf-add-key {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.wsf-add-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 8px;
+  overflow-y: auto;
+}
+.wsf-add-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 12px 6px;
+}
+.wsf-add-chip[aria-pressed="true"] {
+  color: var(--pg-accent);
+}
+.wsf-add-chip .wsf-palette-count {
+  margin-left: 2px;
+}
+.wsf-add-none {
+  margin: 4px 16px;
+}
+/* The "+" on an arrow (pointed at or chosen) and the dashed one after a
+   box with a free outcome: 20 px rounds on the canvas, at its zoom. */
+.wsf-plus {
+  position: absolute;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--pg-accent);
+  border-radius: 50%;
+  background: var(--pg-surface-float);
+  color: var(--pg-accent);
+  font-size: var(--pg-text-meta);
+  line-height: 1;
+}
+.wsf-out-plus {
+  border-style: dashed;
+  color: var(--pg-fg-3);
+  border-color: var(--pg-fg-3);
+}
+.wsf-plus:hover,
+.wsf-plus:focus-visible {
+  background: var(--pg-accent);
+  color: var(--pg-on-accent);
+  border-color: var(--pg-accent);
+}
+.wsf-app.wsf-outlined .wsf-add-pop {
+  display: none;
 }
 /* The bottom strip (drawStrip()): centred 16 px over the canvas's bottom,
    44 px high; Undo and Redo, the zoom and Fit, the data threads. */

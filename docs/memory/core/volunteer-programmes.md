@@ -5,7 +5,7 @@ module: volunteer_programmes, volunteer_programme_setup
 ---
 
 ## Where is it?
-- `view_volunteer_programmes.php` (list, "Add programme" drawer) and `edit_volunteer_programme.php` (head with Open/Pause the programme, tabs Shifts (the default, `core/volunteer-board.md`), Applications, Volunteers, Set-up; the profile drawer by `?volunteer=`). Script `assets/js/volunteer_programme.js`, plain, no twin. Built in #11136, step VS2 of plan `volunteer-shifts`.
+- `view_volunteer_programmes.php` (list, "Add programme" drawer) and `edit_volunteer_programme.php` (head with Open/Pause the programme, tabs Shifts (the default, `core/volunteer-board.md`), Applications, Volunteers, Hours (`core/volunteer-hours.md`), Set-up; the profile drawer by `?volunteer=`). Script `assets/js/volunteer_programme.js`, plain, no twin. Built in #11136, step VS2 of plan `volunteer-shifts`.
 - Pure rules and the store reads/writes: `includes/fn/volunteer_programmes.php` (in `functions.php`), tested in `tests/volunteer_programmes_test.php`. The Set-up form: `includes/fn/volunteer_programme_setup.php`, loaded by the screen only.
 - Menu: Contacts › Volunteers, inside the Contacts menu, so a role 3 coordinator needs contact access to see the link; the screens themselves open by membership alone.
 

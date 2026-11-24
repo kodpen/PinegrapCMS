@@ -21,7 +21,7 @@ module: product_bins
 - An empty cell clears the address, as the file's other text columns do; a cell past 40 characters leaves the row out, named in "These rows were not imported because their shelf address is longer than 40 characters". No export column yet.
 
 ## What does the API take?
-- `POST /products/{id}/inventory` takes `shelf` (body string, max 40, nullable): written at the call's location (`pg_bin_location_key()`) after the stock change succeeded, never on a dry run; "" or null removes it, left out leaves it. Text that is not UTF-8: 422 `shelf`. The answer adds `shelf` (`string?`) when sent. The batch endpoint does not take it; `PUT /products/{id}/shelf` for the address alone is PP6.
+- `POST /products/{id}/inventory` takes `shelf` (body string, max 40, nullable): written at the call's location (`pg_bin_location_key()`) after the stock change succeeded, never on a dry run; "" or null removes it, left out leaves it. Text that is not UTF-8: 422 `shelf`. The answer adds `shelf` (`string?`) when sent. The batch endpoint does not take it. The address alone: `POST /products/{id}/shelf` (PUT too, `api/api-pick-pack-routes.md`).
 
 ## What guards it?
 - `tests/product_bins_test.php`: the cleaner, screen values, posted boxes, the stock card's rows (one box a location, beside its count), import columns and rows, Modify Selected's one entry, the API param and its order. No browser run.

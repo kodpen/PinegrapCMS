@@ -299,6 +299,10 @@ function ws_flow_event_outputs()
     $rhythm = array($value('stage', 'text', lang('Rhythm stage')), $value('previous_stage', 'text', lang('Stage before')),
         $value('interval_days', 'number', lang('Days between orders')), $value('days_since_last_order', 'number', lang('Days since the last order')),
         $value('chance', 'number', lang('Chance of ordering again (%)')), $value('last_order_number', 'text', lang('Last order number')));
+    // A hot or returning contact (pg_lead_event_payload()): the scores and
+    // the strongest interest, so a condition box can test a range or a topic.
+    $lead = array($value('id', 'number', lang('Contact')), $value('score', 'number', lang('Interest score')), $value('fit', 'number', lang('Fit score')),
+        $value('topic', 'text', lang('Strongest interest')));
     // A satisfaction survey's answer (pg_feedback_event_payload()).
     $feedback = array($value('survey_name', 'text', lang('Survey')), $value('kind', 'text', lang('Kind')), $value('touchpoint', 'text', lang('Touchpoint')),
         $value('record_type', 'text', lang('Record type')), $value('record_id', 'number', lang('Record')), $value('contact_id', 'number', lang('Contact')),
@@ -323,6 +327,8 @@ function ws_flow_event_outputs()
         'shipment.problem'       => $problem,
         'shipment.problem_resolved' => array_merge($problem, array($value('reason', 'text', lang('What settled it')))),
         'customer.rhythm_stage_changed' => $rhythm,
+        'customer.hot'           => $lead,
+        'customer.returned'      => $lead,
         'customer.reorder_due'   => array_merge($rhythm, array($value('products_text', 'text', lang('Products due')), $value('reorder_url', 'text', lang('Reorder link')))),
         'cart_quote.created'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact'))),
         'cart_quote.ordered'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact')), $order),

@@ -12,14 +12,14 @@ description: Workspace notes (ws_notes): tables, limits, body format, versions, 
 
 ## How does an assistant answer inside a note?
 - `@Claude` or Pinegrap AI on a line of the note queues a `ws_ai_requests` row with `note_id` and `note_text` (`ws_note_claude_ask()`); the answer lands in `note_reply`. The screen polls `ws_note_claude_state()`; for answered or failed requests `ws_note_claude_deliver()` takes the request once (`note_done`) and writes the answer under the line that asked as a `**Claude:**` / `**Pinegrap AI:**` block.
-- The delivery is a save like any other (PR #520): a version and the titled blocks' index (`ws_blocks_index()`). The note is never cut: `ws_note_answer_fit()` shortens the answer to the room left (ellipsis); with under 20 characters left the request fails with "The note is full…", shown as a toast. Test: `tests/workspace_notes_test.php`.
+- The delivery is a save like any other (PR #520): a version and the blocks' index (`ws_blocks_index()`). The note is never cut: `ws_note_answer_fit()` shortens the answer to the room left (ellipsis); with under 20 characters left the request fails with "The note is full…", shown as a toast. Test: `tests/workspace_notes_test.php`.
 
 ## What does the API offer?
 - `GET/POST /workspace/notes`, `GET/POST|PATCH /workspace/notes/{id}` (dry run through `ws_note_save_check()`, Idempotency-Key, `base` → 409 `changed_meanwhile`), versions list and get; generic `workspace:read/write` scopes; every note route is an MCP tool. The object carries `created_at` and `updated_at`.
-- The list is paged (issue #511, PR #566): `ws_notes_page_rows()` runs own pinned, other own, then shared notes (`ws_notes_position_pack()`: group, `updated_at`, id), `limit` up to 200 (default 100), `next_cursor` until `has_more` is false, `page.total` every match. `search` and `updated_since` are in the query; a shared note counts as changed when shared since `updated_since` (`s.created_at`).
-- The screen's list (`ws_notes_list()`) shows every own note and as many shared ones. Lists read the text cut to `WS_NOTE_LIST_BODY` (4000) characters; a single note is read whole. Test: `tests/workspace_notes_page_test.php`.
+- The list is paged (#511, PR #566): `ws_notes_page_rows()` runs own pinned, other own, then shared notes (`ws_notes_position_pack()`: group, `updated_at`, id), `limit` up to 200 (default 100), `next_cursor` until `has_more` is false, `page.total` every match. `search` and `updated_since` are in the query; a shared note counts as changed when shared since `updated_since` (`s.created_at`).
+- The screen's list (`ws_notes_list()`) shows every own note and as many shared. Lists read the text cut to `WS_NOTE_LIST_BODY` (4000) characters; a single note is read whole. Test: `tests/workspace_notes_page_test.php`.
 - The revision an update sends back (PR #1663): workspace-notes-revision.md.
 - A message sharing a note carries `note_card` (#2082, PR #2239; revision, updated_at, can_edit and changed_by since PR #10742 and #10797): one `ws_note_cards_map()` per page, `ws_api_message_note_card()` per row; null with no share, a share taken back or a deleted message. Test: `tests/workspace_api_note_card_test.php`.
-- `POST /workspace/channels/{id}/notes` writes a note and its card in a channel in one move (PR #10742): `channel-notes-written.md`.
-- Deletes over the API, remembered 30 days for sync clients (PR #1674), as is a share taken back (PR #1983): workspace-notes-deletions.md.
-- Re-import: PR #1812 (workspace-notes-sources.md). Sync: workspace-notes-sync-decisions.md.
+- `POST /workspace/channels/{id}/notes` writes a note and its card in a channel in one move (PR #10742): `channel-notes-written.md`. Channel's notes: `channel-note-owned.md`.
+- Deletes over the API, kept 30 days for sync clients, as a share taken back is: workspace-notes-deletions.md.
+- Re-import: workspace-notes-sources.md. Sync: workspace-notes-sync-decisions.md.

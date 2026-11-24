@@ -19,7 +19,7 @@ description: A note's card in a channel and its windows: look (plain card, full 
 
 ## What do the foot and the menu hold?
 - Foot: one small muted line (`ws-cn-foot pg-text-meta`): "Belongs to <owner> · Changed by <name> · <when>", "Written by <writer>" for a channel's note (the card map's `owned`) (`footLine()` joins `footWords()`; `changedWords()` reads the server's `changed_by`), cut with an ellipsis where too long, then a small ghost "Versions" button with its `pg-count` at the end when the note keeps any (icon and count only under 576 px).
-- Menu (`pg-icon-button` ⋯, `menuItems()`): Read, Edit (owner or edit access), Versions, Open on the notes screen (not on a channel's note); for the owner on the channel's own share (not a note group's) the switch "People who may post here can edit" (`ws_note_channel_edit`).
+- Menu (⋯, `menuItems()`): Read, Edit (owner or edit access), Versions, Open on the notes screen (not on a channel's note); for the owner on the channel's own share (not a note group's) the switch "People who may post here can edit" (`ws_note_channel_edit`); Move and Copy to my notes: `channel-note-move.md`.
 
 ## What do the windows do?
 - Write a note: in the composer's attach (paperclip) menu for who may post, not in a thread or an archive era; title, the note's writing box (marks, lists, headings, table, code); Send calls `ws_note_channel_write`, then the channel syncs.
