@@ -1564,9 +1564,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/automation-flows-decisions.md: Automation flows outside the Workspace (owner #8961, M1a): on at every site behind the right only, the one gate, the boxes that need the Workspace, what stays inside it, where each part is
 - workspace/automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
 - workspace/calls-background.md: Blur/Remove background in a call (CN7, #11412): the Background effects switch, pinned MediaPipe files fetched into data/call_background, the browser's own blur first
-- workspace/calls-choices.md: Workspace calls remember the chosen microphone, camera and speaker and the mute and camera state in the browser (CN1): the key, the fallback, the Speaker or headphones select
-- workspace/calls-leave-page.md: Leaving the Workspace during a call (CN3): links that leave the page open in a new tab, a reload or a close asks first
-- workspace/calls-overview.md: Start here for Workspace voice and video calls (plan CL1-CL8, closed with #11156): what is built, the rules every change keeps, which file answers what
+- workspace/calls-choices.md: Workspace calls remember the chosen microphone, camera and speaker and the mute and camera state in the browser (CN1, #11384): the key, the fallback, the Speaker or headphones select
+- workspace/calls-leave-page.md: Leaving the Workspace during a call (CN3, #11386): links that leave the page open in a new tab, a reload or a close asks first
+- workspace/calls-overview.md: Start here for Workspace voice and video calls (CL1-CL8, then CN1-CN7 closed 2026-11-24): what is built, the rules every change keeps, what is left out, which file answers what
+- workspace/calls-share.md: Screen sharing in a Workspace call (CL4 #10908, CN4 #11392): several shares at once, one a member, by share/unshare marks, a share ends when its sharer leaves, the screen line, the share button
 - workspace/canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads
 - workspace/canvas-data-views.md: A Data table on a canvas as a chart or table (data layer, DV1-DV6): owner decisions, where it follows its rows or is a still, its rules, which file holds each part
 - workspace/canvas-overview.md: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a drawing, a live page and data on one card; the decisions that bind it, how a page reaches tables, which file holds each part
