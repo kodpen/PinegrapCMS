@@ -615,7 +615,7 @@ function ws_canvas_split_file_row($where, $channel_id, $public)
         LEFT JOIN folder ON folder.folder_id = files.folder
         WHERE " . $where . " AND ("
         . "files.id IN (SELECT file_id FROM ws_messages WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0)"
-        . ($public ? " OR ((folder.folder_access_control_type = 'public') AND (files.attachment = '0'))" : '')
+        . ($public ? " OR (" . pg_files_public_sql() . ")" : '')
         . ") LIMIT 1");
 
     if (!is_array($row) || !in_array(strtolower((string) $row['type']), array('png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'), true)) {

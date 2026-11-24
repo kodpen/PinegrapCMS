@@ -614,7 +614,8 @@ function ws_link_preview_read($url)
 /**
  * The card of this site's page, from the page table: its title (else its
  * name) and meta description. The home page takes the site's title. A page
- * in the recycle bin, or no page of that name, shows nothing.
+ * in the recycle bin, or no page of that name, shows nothing; nor does a page
+ * a signed-out visitor cannot open (ws_link_preview_own_card()).
  *
  * @param string $page_name '' for the home page
  * @return array|null
@@ -641,20 +642,40 @@ function ws_link_preview_own_fields($page_name)
         );
     }
 
-    $binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page_folder') : '';
-    $row = db_item("SELECT page_name, page_title, page_meta_description FROM page
-        WHERE page_name = '" . e($page_name) . "'" . $binned . " LIMIT 1");
+    $binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
+    $row = db_item("SELECT page.page_name, page.page_title, page.page_meta_description, page.page_folder, folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON folder.folder_id = page.page_folder
+        WHERE page.page_name = '" . e($page_name) . "'" . $binned . " LIMIT 1");
 
-    if (!$row) {
+    return ws_link_preview_own_card($row, is_array($row) ? (string) get_access_control_type($row['page_folder']) : '', $site);
+}
+
+/**
+ * The card fields of one page row of this site, or null when the page is not
+ * one every visitor opens. The card is stored once per message and shown to
+ * every reader of the channel, a guest's channel included, so a private,
+ * member, registration or guest page, or one in an archived folder, gives no
+ * title or description: the page itself would answer such a reader with a
+ * sign-in or an error. Pure.
+ *
+ * @param array|null $row    page_name, page_title, page_meta_description, folder_archived
+ * @param string     $access get_access_control_type() of the page's folder
+ * @param string     $site   the site's name for the card
+ * @return array|null title, description, site_name
+ */
+function ws_link_preview_own_card($row, $access, $site)
+{
+    if (!is_array($row) || ((string) $access !== 'public') || ((string) ($row['folder_archived'] ?? '') === '1')) {
         return null;
     }
 
-    $title = trim((string) $row['page_title']);
+    $title = trim((string) ($row['page_title'] ?? ''));
 
     return array(
-        'title'       => ws_link_preview_cut(($title !== '') ? $title : (string) $row['page_name'], WS_LINK_PREVIEW_TITLE_MAX),
-        'description' => ws_link_preview_cut((string) $row['page_meta_description'], WS_LINK_PREVIEW_DESCRIPTION_MAX),
-        'site_name'   => ws_link_preview_cut($site, WS_LINK_PREVIEW_SITE_MAX),
+        'title'       => ws_link_preview_cut(($title !== '') ? $title : (string) ($row['page_name'] ?? ''), WS_LINK_PREVIEW_TITLE_MAX),
+        'description' => ws_link_preview_cut((string) ($row['page_meta_description'] ?? ''), WS_LINK_PREVIEW_DESCRIPTION_MAX),
+        'site_name'   => ws_link_preview_cut((string) $site, WS_LINK_PREVIEW_SITE_MAX),
     );
 }
 
