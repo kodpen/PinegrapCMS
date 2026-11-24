@@ -74,6 +74,7 @@ function pg_dashboard_v2_cards()
     $built[] = 'mail';
     $built[] = 'packing';
     $built[] = 'launch';
+    $built = array_merge($built, array('firstweek', 'starthere'));
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -91,6 +92,8 @@ function pg_dashboard_v2_cards()
 
         // General
         'launch'     => $card(lang('Set up your site'), 'bi-rocket-takeoff', 'general', 'L', null, 'launch'),
+        'firstweek'  => $card(lang('First week'), 'bi-calendar-week', 'general', 'M', null, 'firstweek'),
+        'starthere'  => $card(lang('Start here'), 'bi-signpost-split', 'general', 'M', null, 'starthere'),
         'ai'         => $card(lang('Assistant'), 'bi-stars', 'general', 'M', null, 'workspace'),
         'goals'      => $card(lang('My goals'), 'bi-bullseye', 'general', 'S', null, 'all'),
         'pipeline'   => $card(lang('Work line'), 'bi-funnel', 'general', 'L', 2, 'all'),
@@ -181,7 +184,7 @@ function pg_dashboard_v2_card_timing()
  */
 function pg_dashboard_v2_gates()
 {
-    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows', 'mail', 'launch');
+    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows', 'mail', 'launch', 'firstweek', 'starthere');
 }
 
 /**
@@ -214,9 +217,39 @@ function pg_dashboard_v2_launch_gate($role, $closed)
 }
 
 /**
- * The drawn layout with the set-up card first while the person may see it
- * and it is not in the layout, so it comes to an administrator by itself,
- * whatever layout or preset they keep. Pure.
+ * May the person see the "First week" card: an administrator (role 0)
+ * during the seven days after going live (pg_launch_journey_first_week()).
+ * Pure.
+ *
+ * @param int  $role
+ * @param bool $open
+ * @return bool
+ */
+function pg_dashboard_v2_firstweek_gate($role, $open)
+{
+    return ((int) $role === 0) && (bool) $open;
+}
+
+/**
+ * May the person see the "Start here" card: a team member (Designer,
+ * Manager or User) whose account is new (pg_launch_journey_is_new()) and
+ * who has not hidden it. Pure.
+ *
+ * @param int  $role
+ * @param bool $hidden PG_LAUNCH_JOURNEY_PATH_KEY is in their tours_seen
+ * @param bool $new
+ * @return bool
+ */
+function pg_dashboard_v2_starthere_gate($role, $hidden, $new)
+{
+    return ((int) $role >= 1) && ((int) $role <= 3) && !$hidden && (bool) $new;
+}
+
+/**
+ * The drawn layout with the launch journey's cards first while the person
+ * may see them and they are not in the layout: the set-up card and the
+ * "First week" card come to an administrator, "Start here" to a new team
+ * member, by themselves, whatever layout or preset they keep. Pure.
  *
  * @param array|null $stored  the layout's cards list, null when every card is drawn
  * @param array      $visible id => card
@@ -224,19 +257,25 @@ function pg_dashboard_v2_launch_gate($role, $closed)
  */
 function pg_dashboard_v2_launch_first($stored, $visible)
 {
-    if (!is_array($stored) || !isset($visible['launch'])) {
+    if (!is_array($stored)) {
         return $stored;
     }
 
+    $kept = array();
     foreach ($stored as $entry) {
-        if (is_array($entry) && isset($entry['id']) && ($entry['id'] === 'launch')) {
-            return $stored;
+        if (is_array($entry) && isset($entry['id'])) {
+            $kept[(string) $entry['id']] = true;
         }
     }
 
-    array_unshift($stored, array('id' => 'launch', 'w' => 'L'));
+    $first = array();
+    foreach (array('launch' => 'L', 'firstweek' => 'M', 'starthere' => 'M') as $id => $width) {
+        if (isset($visible[$id]) && !isset($kept[$id])) {
+            $first[] = array('id' => $id, 'w' => $width);
+        }
+    }
 
-    return $stored;
+    return array_merge($first, $stored);
 }
 
 /**
@@ -314,6 +353,11 @@ function pg_dashboard_v2_gate($gate, $user)
         case 'launch':
             // The set-up card is for administrators, while it was not closed.
             return pg_dashboard_v2_launch_gate($role, pg_launch_journey_stored()['closed']);
+        case 'firstweek':
+            return pg_dashboard_v2_firstweek_gate($role, pg_launch_journey_first_week(pg_launch_journey_stored()['live_at'], time())['open']);
+        case 'starthere':
+            // The cheap answers first: the stored marks are on the user row.
+            return pg_dashboard_v2_starthere_gate($role, ($role < 1) || pg_tour_seen(PG_LAUNCH_JOURNEY_PATH_KEY, $user), ($role >= 1) && pg_launch_journey_newcomer($user));
         case 'mail':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
             $visible = pg_messages_mail_visible($user);

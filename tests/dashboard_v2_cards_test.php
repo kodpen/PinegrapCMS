@@ -22,7 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards.php');
 // change or go missing.
 function test_dashboard_v2_cards_has_the_thirty_ids()
 {
-	$ids = array('launch', 'ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes', 'mail',
+	$ids = array('launch', 'firstweek', 'starthere', 'ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes', 'mail',
 		'content', 'comments', 'files', 'visitors', 'visitmap', 'engagement', 'gsearch', 'ga',
 		'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars',
 		'shop', 'salesmap', 'ops', 'orders', 'offers', 'recovery', 'fx', 'packing', 'perf', 'subs');
@@ -84,4 +84,25 @@ function test_dashboard_v2_launch_gate_and_place()
 	pg_assert_same($kept, pg_dashboard_v2_launch_first($kept, $visible), 'where the person put it');
 	pg_assert_same(null, pg_dashboard_v2_launch_first(null, $visible), 'every card drawn');
 	pg_assert_same(array(), pg_dashboard_v2_launch_first(array(), array('goals' => array())), 'not visible');
+}
+
+// The First week card is an administrator's during the week; Start here is a
+// new team member's until they hide it; both come first in a stored layout
+// that lacks them, after the set-up card.
+function test_dashboard_v2_firstweek_and_starthere_gates()
+{
+	pg_assert_true(pg_dashboard_v2_firstweek_gate(0, true), 'first week: administrator');
+	pg_assert_false(pg_dashboard_v2_firstweek_gate(0, false), 'first week: over');
+	pg_assert_false(pg_dashboard_v2_firstweek_gate(2, true), 'first week: manager');
+
+	pg_assert_false(pg_dashboard_v2_starthere_gate(0, false, true), 'start here: administrator');
+	pg_assert_true(pg_dashboard_v2_starthere_gate(1, false, true), 'start here: designer');
+	pg_assert_true(pg_dashboard_v2_starthere_gate(3, false, true), 'start here: user');
+	pg_assert_false(pg_dashboard_v2_starthere_gate(2, true, true), 'start here: hidden');
+	pg_assert_false(pg_dashboard_v2_starthere_gate(2, false, false), 'start here: not new');
+
+	$visible = array('launch' => array(), 'firstweek' => array(), 'goals' => array());
+	$first = pg_dashboard_v2_launch_first(array(array('id' => 'goals')), $visible);
+	pg_assert_same(array('launch', 'firstweek', 'goals'), array_column($first, 'id'), 'journey cards first');
+	pg_assert_same('M', $first[1]['w'], 'first week medium');
 }
