@@ -1233,7 +1233,7 @@
             return;
         }
 
-        var back = K.button('btn btn-sm btn-text theme-secondary', label, 'bi-arrow-left');
+        var back = K.lookButton('pg-button pg-button-ghost pg-button-sm', label, 'bi-arrow-left');
 
         back.setAttribute('data-refocus', refocusKey || 'back');
         back.addEventListener('click', onBack);
@@ -1583,7 +1583,7 @@
             drawRows();
         });
         tools.appendChild(search);
-        ui.chips = el('div', 'wsf-chips');
+        ui.chips = el('div', 'pg-seg pg-seg-wrap');
         ui.chips.setAttribute('role', 'toolbar');
         ui.chips.setAttribute('aria-label', t('fl_list_filter'));
         tools.appendChild(ui.chips);
@@ -1661,9 +1661,9 @@
 
         K.clear(ui.chips);
         CHIPS.forEach(function (chip) {
-            var button = K.button('btn btn-sm rounded-pill wsf-chip' + ((state.chip === chip[0]) ? ' active' : ''), t(chip[1]) + ' ');
+            var button = K.lookButton('pg-seg-item', t(chip[1]), '');
 
-            button.appendChild(el('span', 'wsf-chip-count', String(counts[chip[0]])));
+            button.appendChild(el('em', 'pg-seg-count', String(counts[chip[0]])));
             button.setAttribute('aria-pressed', (state.chip === chip[0]) ? 'true' : 'false');
             button.setAttribute('data-refocus', 'chip-' + (chip[0] || 'all'));
             button.addEventListener('click', function () {
@@ -1692,7 +1692,7 @@
             ui.flowsQuick.classList.toggle('d-none', !offer);
 
             if (offer) {
-                ui.flowsQuick.appendChild(quickButton('btn btn-sm btn-outline theme-primary rounded-pill px-5'));
+                ui.flowsQuick.appendChild(quickButton('pg-button pg-button-quiet pg-button-sm'));
             }
         }
     }
@@ -2039,7 +2039,7 @@
         var label = el('label', 'wsf-start-title', t('fl_ai_sketch'));
         var help = el('span', 'wsf-start-help', t('fl_ai_sketch_help'));
         var input = el('input', 'form-control form-control-sm');
-        var go = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
+        var go = K.lookButton('pg-button pg-button-fill pg-button-sm align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
         var status = el('div', 'wsf-start-help');
 
         card.noValidate = true;
@@ -2119,7 +2119,7 @@
         var icons = el('div', 'wsf-tpl-icons');
         var start = KINDS[template.start];
         var meta = el('div', 'wsf-tpl-meta');
-        var use = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_use'), 'bi-plus-lg');
+        var use = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_tpl_use'), 'bi-plus-lg');
 
         icons.setAttribute('aria-hidden', 'true');
         template.graph.nodes.forEach(function (node) {
@@ -2164,8 +2164,8 @@
         foot.appendChild(use);
 
         if (template.saved.edit) {
-            var edit = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
-            var bin = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
+            var edit = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
+            var bin = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
 
             edit.setAttribute('data-refocus', 'tpl-edit-' + template.key);
             edit.addEventListener('click', function () { templateDialog(template); });
@@ -2209,8 +2209,8 @@
         var cross = el('button', 'btn-close');
         var body = el('div', 'dialog-body');
         var foot = el('div', 'dialog-footer');
-        var cancel = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_cancel'));
-        var submit = K.button('btn btn-sm btn-solid theme-primary', '');
+        var cancel = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_tpl_cancel'), '');
+        var submit = K.button('pg-button pg-button-fill pg-button-sm', '');
         var error = el('div', 'alert theme-danger small py-2 mb-0 d-none');
         var categories = Object.keys(FL.template_categories || {}).filter(function (key) { return key !== 'saved'; });
         var name = el('input', 'form-control form-control-sm');
@@ -2679,9 +2679,9 @@
         var flow = state.flow;
         var error = el('div', 'wsf-setup-error d-none');
         var actions = el('div', 'wsf-setup-actions');
-        var openIt = K.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('fl_tpl_open'), 'bi-bounding-box');
-        var publishIt = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_publish'), 'bi-send');
-        var close = K.button('btn btn-sm btn-text theme-secondary wsf-setup-close', '', 'bi-x-lg');
+        var openIt = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_tpl_open'), 'bi-bounding-box');
+        var publishIt = K.lookButton('pg-button pg-button-fill pg-button-sm', t('fl_tpl_publish'), 'bi-send');
+        var close = K.button('pg-icon-button pg-icon-button-sm wsf-setup-close', '', 'bi-x-lg', t('close'));
         var title = el('h2', 'wsf-setup-title', t('fl_tpl_setup'));
 
         closeSetup();
@@ -2817,7 +2817,7 @@
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
         if (options.edit) {
-            var edit = K.button('btn btn-sm btn-outline theme-secondary', t('edit'), 'bi-pencil');
+            var edit = K.lookButton(BAR_QUIET, t('edit'), 'bi-pencil');
             edit.addEventListener('click', options.edit);
             ui.bar.appendChild(edit);
         }
@@ -3058,7 +3058,7 @@
             return;
         }
 
-        var create = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_new'), 'bi-plus-lg');
+        var create = K.lookButton(BAR_FILL, t('fl_new'), 'bi-plus-lg');
 
         create.setAttribute('data-refocus', 'new');
         create.addEventListener('click', function () {
@@ -3073,7 +3073,7 @@
         ui.bar.appendChild(create);
 
         if (quickOffered()) {
-            ui.bar.appendChild(quickButton('btn btn-sm btn-outline theme-secondary rounded-pill px-5'));
+            ui.bar.appendChild(quickButton(BAR_QUIET));
         }
     }
 
@@ -3085,7 +3085,7 @@
     }
 
     function quickButton(className) {
-        var button = K.button(className, t('fl_quick_title'), 'bi-magic');
+        var button = K.lookButton(className, t('fl_quick_title'), 'bi-magic');
 
         button.addEventListener('click', function () { openQuick(button); });
 
@@ -3610,7 +3610,7 @@
         ui.save.classList.toggle('fg-secondary', !(state.saveError || state.conflict));
 
         if (state.saveError && !state.saving) {
-            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'), '');
             retry.addEventListener('click', function () {
                 state.saveError = '';
                 state.dirty = true;
@@ -4952,7 +4952,7 @@
                 // thread; the focus goes to the box's title after it, or
                 // to its line in the outline when its settings are closed.
                 if (state.edit && !state.run) {
-                    var remove = K.button('btn btn-sm btn-text theme-secondary py-0', t('fl_thread_remove_short'), 'bi-x-lg');
+                    var remove = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_thread_remove_short'), 'bi-x-lg');
 
                     remove.setAttribute('aria-label', t('fl_thread_remove_of', thread.label));
                     remove.title = remove.getAttribute('aria-label');
@@ -5017,7 +5017,7 @@
         return paletteItems().map(function (item) {
             var add = K.button(className, t(item[1]));
 
-            add.insertBefore(K.flowIcon(item[0], 'me-1'), add.firstChild);
+            add.insertBefore(K.flowIcon(item[0], ''), add.firstChild);
 
             // One box starts a flow; a second would be a problem to fix.
             if (startTaken(item[0])) {
@@ -5674,7 +5674,7 @@
 
         ids.forEach(function (id) {
             var node = nodeById(id);
-            var go = K.button('btn btn-sm btn-text theme-secondary wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
+            var go = K.button('pg-button pg-button-ghost pg-button-sm wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
 
             go.appendChild(nameText(node));
             go.title = t(state.marks.boxes[id] === 'added' ? 'fl_ai_added_long' : 'fl_ai_changed_long');
@@ -5686,7 +5686,7 @@
             ui.marksBox.appendChild(go);
         });
 
-        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_hide'));
+        var hide = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto', t('fl_ai_hide'), '');
 
         hide.addEventListener('click', hideMarks);
         ui.marksBox.appendChild(hide);
@@ -5704,7 +5704,7 @@
         }
 
         var text = el('p', 'wsf-ai-marks-text mb-0');
-        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_sketch_hide'));
+        var hide = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto', t('fl_ai_sketch_hide'), '');
 
         text.tabIndex = -1;
         text.setAttribute('data-refocus', 'ai-sketch');
@@ -8876,7 +8876,7 @@
 
             box.appendChild(connections(node));
 
-            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_box'), 'bi-trash');
+            var remove = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_remove_box'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'node', id: node.id }); });
             box.appendChild(remove);
         }
@@ -8892,7 +8892,7 @@
         var flow = state.flow;
         var wrap = el('div', 'wsf-try border-top pt-5 mb-5');
         var runs = K.select([['0', t('fl_try_no_run')]], '0');
-        var go = K.button('btn btn-sm btn-outline theme-secondary', t('fl_try'), 'bi-eye');
+        var go = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_try'), 'bi-eye');
         var out = el('div', 'wsf-try-out small mt-3');
         var listed = false;
 
@@ -10165,7 +10165,7 @@
                 row.value = text;
                 refreshNode(node);
             });
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
 
             name.placeholder = t('fl_constants_name');
             name.setAttribute('aria-label', t('fl_constants_name'));
@@ -10195,7 +10195,7 @@
         box.appendChild(el('div', 'form-label small fw-semibold', t('fl_constants_rows')));
         box.appendChild(list);
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_constants_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_constants_add'), 'bi-plus-lg');
 
         add.setAttribute('data-refocus', 'constants-add-' + node.id);
         add.disabled = config.rows.length >= ((FL.limits && FL.limits.constants) || 20);
@@ -10671,7 +10671,7 @@
                 refreshNode(node);
             });
             var type = K.select([['text', t('fl_constants_text')], ['number', t('fl_constants_number')]], (item.type === 'number') ? 'number' : 'text');
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', item.key || String(index + 1)));
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_constants_remove', item.key || String(index + 1)));
 
             name.placeholder = t('fl_web_field_name');
             name.setAttribute('aria-label', t('fl_web_field_name'));
@@ -10697,7 +10697,7 @@
         box.appendChild(el('div', 'form-label small fw-semibold', t('fl_web_fields')));
         box.appendChild(list);
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_web_field_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_web_field_add'), 'bi-plus-lg');
 
         add.setAttribute('data-refocus', 'web-add-' + node.id);
         add.disabled = config.fields.length >= ((FL.limits && FL.limits.web_fields) || 20);
@@ -10717,7 +10717,7 @@
     function webAddressField(box) {
         var flow = state.flow;
         var url = el('input', 'form-control form-control-sm font-monospace');
-        var renew = K.button('btn btn-sm btn-outline theme-secondary mt-2', t('fl_web_address_make'), 'bi-arrow-repeat');
+        var renew = K.lookButton('pg-button pg-button-quiet pg-button-sm mt-2', t('fl_web_address_make'), 'bi-arrow-repeat');
         var show = function (address) {
             url.value = address || '';
             url.placeholder = t('fl_web_address_none');
@@ -11241,7 +11241,7 @@
             var op = K.select(ops.concat(((item.op !== '') && (ops.indexOf(item.op) === -1)) ? [item.op] : []).map(function (key) {
                 return [key, info.operators[key] || key];
             }), item.op);
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_rows_where_remove'));
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_rows_where_remove'));
 
             pick.setAttribute('aria-label', t('fl_rows_where_column'));
             pick.setAttribute('data-refocus', 'rows-where-' + node.id + '-' + index);
@@ -11284,7 +11284,7 @@
             box.appendChild(wrap);
         });
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_rows_where_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_rows_where_add'), 'bi-plus-lg');
 
         add.setAttribute('data-refocus', 'rows-where-add-' + node.id);
         add.disabled = !state.edit || !table || (list.length >= (info.most || 10));
@@ -11679,7 +11679,7 @@
                     config.classes[index] = value;
                     refreshNode(node);
                 });
-                var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_ai_class_remove', name || String(index + 1)));
+                var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_ai_class_remove', name || String(index + 1)));
 
                 input.setAttribute('aria-label', t('fl_ai_class_n', String(index + 1)));
                 input.setAttribute('data-refocus', 'ai-class-' + node.id + '-' + index);
@@ -11710,7 +11710,7 @@
             box.appendChild(el('div', 'form-label small fw-semibold', t('fl_ai_classes')));
             box.appendChild(list);
 
-            var add = K.button('btn btn-sm btn-outline theme-secondary mb-2', t('fl_ai_class_add'), 'bi-plus-lg');
+            var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-2', t('fl_ai_class_add'), 'bi-plus-lg');
 
             add.setAttribute('data-refocus', 'ai-class-add-' + node.id);
             add.disabled = !state.edit || (config.classes.length >= 8);
@@ -12397,7 +12397,7 @@
             var row = field(meta.label, input);
 
             if (state.edit) {
-                var remove = K.button('btn btn-sm btn-link px-0', t('fl_change_remove'), 'bi-x');
+                var remove = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_change_remove'), 'bi-x');
 
                 remove.addEventListener('click', function () {
                     delete config.fields[name];
@@ -12596,7 +12596,7 @@
             row.appendChild(K.icon('bi-arrow-right'));
             row.appendChild(nameText(nodeById(edge.to), 'wsf-link-name text-truncate'));
 
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg');
 
             nameLabel(remove, 'fl_remove_arrow_to', nodeById(edge.to));
             remove.title = remove.getAttribute('aria-label');
@@ -12624,7 +12624,7 @@
         var targets = candidates(node);
         var group = el('div', 'input-group input-group-sm');
         var pick = K.select([['', t('fl_connect_pick')]].concat(targets.map(function (target) { return [target.id, nameOf(target)]; })), '');
-        var add = K.button('btn btn-outline theme-secondary', t('fl_connect_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet', t('fl_connect_add'), 'bi-plus-lg');
 
         pick.classList.add('wsf-connect');
         nameLabel(pick, 'fl_connect_title', node);
@@ -12687,7 +12687,7 @@
         }
 
         if (state.edit) {
-            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_arrow'), 'bi-trash');
+            var remove = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_remove_arrow'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'edge', id: index }); });
             box.appendChild(remove);
         }
@@ -12703,7 +12703,7 @@
         box.appendChild(el('p', 'small mb-3', thread.from ? text : text + ' ' + t(thread.gone ? 'fl_values_gone' : 'fl_values_missing')));
 
         if (state.edit && !state.run) {
-            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_thread_remove'), 'bi-trash');
+            var remove = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_thread_remove'), 'bi-trash');
 
             remove.addEventListener('click', function () { removeSelected({ type: 'thread', id: threadKey(thread) }); });
             box.appendChild(remove);
@@ -12813,7 +12813,7 @@
 
             adds.setAttribute('role', 'group');
             adds.setAttribute('aria-label', t('fl_palette'));
-            paletteButtons('btn btn-sm btn-outline theme-secondary').forEach(function (add) {
+            paletteButtons('pg-button pg-button-quiet pg-button-sm').forEach(function (add) {
                 adds.appendChild(add);
             });
             ui.outlineBox.appendChild(adds);
@@ -13933,7 +13933,7 @@
         ui.conflictBox.appendChild(K.icon('bi-exclamation-triangle'));
         ui.conflictBox.appendChild(el('span', 'flex-grow-1', state.conflict));
 
-        var reload = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reload'), 'bi-arrow-clockwise');
+        var reload = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_reload'), 'bi-arrow-clockwise');
 
         reload.addEventListener('click', function () {
             state.dirty = false;
@@ -14095,7 +14095,7 @@
         var title = el('h2', 'dialog-title fs-md');
         var cross = el('button', 'btn-close');
         var foot = el('div', 'dialog-footer');
-        var close = K.button('btn btn-sm btn-text theme-secondary', t('fl_share_close'));
+        var close = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_share_close'), '');
 
         modal.id = 'wsf-share';
         modal.tabIndex = -1;
@@ -14239,7 +14239,7 @@
         row.appendChild(level);
 
         if (manage) {
-            var remove = K.button('btn btn-sm btn-text theme-secondary wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
+            var remove = K.button('pg-icon-button pg-icon-button-sm wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
 
             remove.setAttribute('data-share-focus', 'remove-' + share.id);
             remove.addEventListener('click', function () {
@@ -14347,7 +14347,7 @@
         var picker = K.peoplePicker([], others);
         var row = el('div', 'd-flex flex-wrap align-items-center gap-3 mt-3');
         var level = K.select(Object.keys(LEVELS).map(function (key) { return [key, t(LEVELS[key])]; }), 'run');
-        var add = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_share'), 'bi-share');
+        var add = K.lookButton('pg-button pg-button-fill pg-button-sm', t('fl_share'), 'bi-share');
 
         picker.setAttribute('role', 'group');
         picker.setAttribute('aria-label', t('fl_share_people'));
@@ -14424,7 +14424,7 @@
         var choice = K.select(channels.map(function (channel) {
             return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
         }), channels[0].id);
-        var add = K.button('btn btn-sm btn-outline theme-secondary', t('fl_share'), 'bi-hash');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_share'), 'bi-hash');
 
         choice.classList.add('w-auto', 'max-w-100');
         choice.setAttribute('aria-label', t('fl_share_channel'));
@@ -14887,7 +14887,7 @@
         // which loadRuns() itself does not draw.
         if (!list.items.length && list.error && !list.loading) {
             var failed = el('p', 'small fg-danger', t('fl_runs_failed') + ' ' + list.error);
-            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'), '');
 
             retry.setAttribute('data-refocus', 'runs-retry');
             retry.addEventListener('click', function () {
@@ -14932,7 +14932,7 @@
         ui.side.appendChild(rows);
 
         if (list.next) {
-            var more = K.button('btn btn-sm btn-text theme-secondary', t('fl_runs_more'), 'bi-chevron-down');
+            var more = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_runs_more'), 'bi-chevron-down');
 
             more.setAttribute('data-refocus', 'runs-more');
             more.disabled = list.loading;
@@ -15083,7 +15083,7 @@
             return;
         }
 
-        var close = K.button('btn btn-sm btn-outline theme-secondary', t('fl_run_close'), 'bi-x-lg');
+        var close = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_run_close'), 'bi-x-lg');
 
         ui.runBox.appendChild(runBadge(RUN_STATES, run.status));
         ui.runBox.appendChild(el('span', 'flex-grow-1', t('fl_run_shown', run.id, run.version)));
@@ -15107,7 +15107,7 @@
         var line = el('div', 'w-100 small ' + (note.lost ? 'fg-danger' : 'fg-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
 
         if (!note.lost) {
-            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'), '');
 
             retry.setAttribute('data-refocus', 'run-retry');
             retry.addEventListener('click', function () {
@@ -15142,14 +15142,14 @@
         ui.side.appendChild(facts);
 
         if (run.can_cancel) {
-            var cancel = K.button('btn btn-sm btn-outline theme-warning', t('fl_run_cancel'), 'bi-x-circle');
+            var cancel = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_run_cancel'), 'bi-x-circle');
 
             cancel.setAttribute('data-refocus', 'run-cancel');
             cancel.addEventListener('click', function () { cancelRun(cancel); });
             tools.appendChild(cancel);
         }
 
-        var all = K.button('btn btn-sm btn-text theme-secondary', t('fl_run_all'), 'bi-clock-history');
+        var all = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_run_all'), 'bi-clock-history');
 
         all.setAttribute('data-refocus', 'run-all');
         all.addEventListener('click', function () {
@@ -15207,7 +15207,7 @@
         }
 
         if (step && taskShown(step)) {
-            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'step-task'));
+            wrap.appendChild(taskLink(step, node, 'pg-button pg-button-quiet pg-button-sm', 'step-task'));
         }
 
         // A failed box (one that stopped half way too) is tried again or
@@ -15215,8 +15215,8 @@
         // cancelled takes neither.
         if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled'].indexOf(state.run.status) < 0)) {
             var mend = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var retry = K.button('btn btn-sm btn-outline theme-primary', t('fl_step_retry'), 'bi-arrow-repeat');
-            var skip = K.button('btn btn-sm btn-outline theme-secondary', t('fl_step_skip'), 'bi-skip-forward');
+            var retry = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_step_retry'), 'bi-arrow-repeat');
+            var skip = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_step_skip'), 'bi-skip-forward');
 
             retry.setAttribute('data-refocus', 'step-retry');
             skip.setAttribute('data-refocus', 'step-skip');
@@ -15251,7 +15251,7 @@
             }
 
             if (state.stash && state.stash.edit && item.token) {
-                var fix = K.button('btn btn-sm btn-outline theme-primary', t('fl_reason_fallback'), 'bi-input-cursor-text');
+                var fix = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_reason_fallback'), 'bi-input-cursor-text');
 
                 fix.setAttribute('data-refocus', 'reason-fix-' + index);
                 fix.addEventListener('click', function () { fixEmpty(node, item); });
@@ -15259,7 +15259,7 @@
             }
 
             if (item.node_id && nodeById(item.node_id)) {
-                var open = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reason_open'), 'bi-box-arrow-in-right');
+                var open = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_reason_open'), 'bi-box-arrow-in-right');
 
                 open.setAttribute('data-refocus', 'reason-open-' + index);
                 open.addEventListener('click', function () {
@@ -15399,7 +15399,7 @@
         }
 
         if (step && (step.status === 'waiting') && taskShown(step)) {
-            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'run-otask-' + node.id));
+            box.appendChild(taskLink(step, node, 'pg-button pg-button-quiet pg-button-sm', 'run-otask-' + node.id));
         }
 
         return box;
@@ -15566,7 +15566,7 @@
                 wrap.appendChild(el('p', 'small mb-1 wsf-run-result', runFilled(item.text, reads)));
             }
 
-            var toggle = K.button('btn btn-sm btn-link p-0 mb-2', t(shown[id] ? 'fl_run_template_hide' : 'fl_run_template_show'));
+            var toggle = K.lookButton('pg-button pg-button-ghost pg-button-sm mb-2', t(shown[id] ? 'fl_run_template_hide' : 'fl_run_template_show'), '');
 
             toggle.setAttribute('aria-expanded', shown[id] ? 'true' : 'false');
             toggle.setAttribute('data-refocus', 'run-template-' + id);
@@ -15836,7 +15836,7 @@
                 return;
             }
 
-            var clear = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
+            var clear = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg');
 
             clear.setAttribute('aria-label', t('fl_run_customer_clear'));
             clear.title = t('fl_run_customer_clear');
