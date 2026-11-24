@@ -1199,6 +1199,7 @@ function api_openapi_objects()
         'PrivacyRequest' => 'api_privacy_request_schema',
         'PrivacyRequestDetail' => 'api_privacy_request_detail_schema',
         'SystemStatus'   => 'api_system_status_schema',
+        'SecurityScanReport' => 'api_security_scan_schema',
         'LaunchJourney'  => 'api_launch_schema',
         'LaunchStep'     => 'api_launch_step_schema',
         'ApiRefusalsReport' => 'api_refusals_report_schema',
