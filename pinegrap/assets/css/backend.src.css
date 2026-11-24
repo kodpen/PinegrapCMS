@@ -20536,6 +20536,29 @@ a.ws-chip-message:hover,
 .ws-call-tile.is-lost {
   opacity: .5;
 }
+/* A raised hand and a weak connection, at the tile's top left. */
+.ws-call-tile-marks {
+  position: absolute;
+  top: var(--ws-space-1);
+  left: var(--ws-space-1);
+  display: flex;
+  gap: var(--ws-space-1);
+}
+.ws-call-tile-mark {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  color: var(--pg-warning-fg-emphasis);
+  font-size: var(--pg-text-meta);
+}
+.ws-call-tile-mark.is-weak {
+  color: var(--pg-danger-fg-emphasis);
+}
+.ws-call-tile-mark[hidden] {
+  display: none;
+}
 .ws-call-video {
   position: absolute;
   inset: 0;

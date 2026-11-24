@@ -145,7 +145,7 @@ function test_workspace_calls_share_the_browser_wiring()
 	pg_assert_true(strpos($js, "pc.addTransceiver('video', { direction: 'sendrecv' })") !== false, 'the offerer opens the screen\'s line with every connection, so a share needs no new offer');
 	pg_assert_true(strpos($js, "slot.direction = 'sendrecv';") !== false, 'the answerer sends on the screen\'s line too');
 	pg_assert_true(strpos($js, 'navigator.mediaDevices.getDisplayMedia(') !== false, 'the screen is asked of the browser, which lets the person choose it');
-	pg_assert_true(strpos($js, "send(0, mine.sharing ? 'share' : 'ping', '');") !== false, 'the sharer renews its share with the keep-alive');
+	pg_assert_true(strpos($js, "keepAlive(mine.sharing, mine.hand).forEach(function (kind) { send(0, kind, ''); });") !== false, 'the sharer renews its share with the keep-alive');
 	pg_assert_true(strpos($js, 'track.onended') !== false || strpos($js, "addEventListener('ended'") !== false, 'the browser\'s own Stop sharing ends the share');
 	pg_assert_true(strpos($js, "'pg-icon-button', '', 'bi-display', t('call_share')") !== false, 'the share button is an icon button beside mute and camera (Design examples: Buttons)');
 }
