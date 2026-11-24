@@ -485,6 +485,7 @@ function get_sitemap_info() {
                         $sql_join
                         WHERE
                             (forms.page_id = '$custom_form_page_id')
+                            " . pg_form_list_view_complete_sql(false) . "
                             $sql_where
                         ORDER BY forms.last_modified_timestamp DESC");
                     
