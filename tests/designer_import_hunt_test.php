@@ -65,3 +65,52 @@ function test_designer_import_hunt_consent_script_warned()
 
 	pg_assert_contains('track.js', implode("\n", $page['warnings']));
 }
+
+// Every node of a converted tree, depth first.
+function _test_dih_nodes($nodes)
+{
+	$out = array();
+	foreach ($nodes as $n) {
+		$out[] = $n;
+		if (!empty($n['children'])) {
+			$out = array_merge($out, _test_dih_nodes($n['children']));
+		}
+	}
+	return $out;
+}
+
+// The tree of a converted node list as one string of its props.
+function _test_dih_props_text($nodes)
+{
+	$s = '';
+	foreach (_test_dih_nodes($nodes) as $n) {
+		$s .= json_encode($n['props'], JSON_UNESCAPED_SLASHES) . "\n";
+	}
+	return $s;
+}
+
+function test_designer_import_hunt_paste_drops_script_inside_text()
+{
+	// The paste says its scripts were left out: one inside a paragraph,
+	// heading or link is left out too.
+	$out = pg_designer_import_fragment('<p>&copy; <script>document.write(2026)</script> Firma</p>'
+		. '<h2>Title<span><script>alert(1)</script></span></h2><a href="/x">Go<script>alert(2)</script></a>', array('id' => 1));
+	$text = _test_dih_props_text($out['children']);
+
+	pg_assert_false(stripos($text, '<script') !== false, 'a script stayed in the text');
+	pg_assert_contains('Firma', $text);
+	pg_assert_contains('Title', $text);
+	pg_assert_contains('3 <script> blocks left out.', implode("\n", $out['warnings']));
+}
+
+function test_designer_import_hunt_page_script_inside_text_runs_once()
+{
+	// On a page import the script becomes the page's script; left in the
+	// paragraph as well, it ran twice.
+	$page = pg_designer_import_html('<html><body><p>&copy; <script>var y = 2026;</script> Firma</p></body></html>', 'index.html', _test_dih_ctx());
+	$text = _test_dih_props_text(array($page['tree']));
+
+	pg_assert_false(stripos($text, '<script') !== false, 'a script stayed in the text');
+	pg_assert_same(1, count($page['js']));
+	pg_assert_contains('var y = 2026;', $page['js'][0]['content']);
+}

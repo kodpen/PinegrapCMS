@@ -1155,7 +1155,21 @@ function pg_di_attrs($node, $ctx, $skip)
 function pg_di_inner_html($node, $ctx)
 {
     $html = '';
-    foreach ($node->childNodes as $cn) $html .= pg_dom_html($cn);
+    foreach ($node->childNodes as $cn) {
+        // A script inside the text is not text: a page import has already
+        // made it the page's script, a paste drops it. Kept here as well it
+        // ran a second time, or ran after the paste said it was left out.
+        if ($cn->nodeType === XML_ELEMENT_NODE) {
+            if (strtolower($cn->nodeName) === 'script') continue;
+            if ($cn->getElementsByTagName('script')->length > 0) {
+                $cn = $cn->cloneNode(true);
+                $scripts = array();
+                foreach ($cn->getElementsByTagName('script') as $sc) $scripts[] = $sc;
+                foreach ($scripts as $sc) $sc->parentNode->removeChild($sc);
+            }
+        }
+        $html .= pg_dom_html($cn);
+    }
     // An icon inside a heading or link text stays inline markup; the
     // placeholder gives way to the original <svg>.
     if (!empty($ctx->svg_raw) && strpos($html, '<pg-svg') !== false) {
