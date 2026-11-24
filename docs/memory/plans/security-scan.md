@@ -17,7 +17,7 @@ priority: 6
 
 ## What does each step build? (`[plan:security-scan] SC<n> — <topic>`)
 - SC1 (S) done (#11425, `waf/security-scan-findings.md`): the table by a migration step, the pure finding model (kind, place, fingerprint, severity, state), tests.
-- SC2 (M) File scan: a PHP file not in the release reference; an executable name in the upload folders (`.php`, `.phtml`, `.phar`, a double extension), PHP tags inside a picture; a changed or new `.htaccess` / `.user.ini`; known shell marks (`eval(base64_decode(`, `assert($_`) only in files outside the reference. After SC1.
+- SC2 (M) File scan (in progress): a PHP file not in the release reference; an executable name in the upload folders (`.php`, `.phtml`, `.phar`, a double extension), PHP tags inside a picture; a changed or new `.htaccess` / `.user.ini`; known shell marks (`eval(base64_decode(`, `assert($_`) only in files outside the reference. After SC1.
 - SC3 (M) The section: findings by severity with place, reason and "What to do"; Quarantine (moved to a folder that cannot run, with Restore), Ignore with a note, "Scan now" with its progress, the last run. After SC2.
 - SC4 (S) The Firewall card: last scan, open findings by severity, "Scan now"; the ops alert `security_finding`, once a day (`platform/ops-alerts.md`). After SC3.
 - SC5 (M) Stored content: a script, hidden iframe or redirect from a host the site never used, in pages, regions, styles and settings. After SC1.
