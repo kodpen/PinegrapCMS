@@ -146,7 +146,7 @@ function pg_volunteer_posters_html(array $programme, array $places)
     $html .= '<div class="d-flex flex-wrap gap-2">';
 
     foreach ($places as $place) {
-        $html .= '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="edit_volunteer_programme.php?id=' . (int) $programme['id'] . '&amp;view=poster&amp;place=' . h(rawurlencode($place)) . '"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h($place) . '</a>';
+        $html .= '<a class="pg-button pg-button-quiet pg-button-sm max-w-100" target="_blank" rel="noopener" title="' . h($place) . '" href="edit_volunteer_programme.php?id=' . (int) $programme['id'] . '&amp;view=poster&amp;place=' . h(rawurlencode($place)) . '"><i class="bi bi-qr-code" aria-hidden="true"></i><span class="text-truncate">' . h($place) . '</span></a>';
     }
 
     return $html . '</div></section>';
