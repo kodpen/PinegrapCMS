@@ -20931,7 +20931,10 @@ button.ws-file-name {
   background: var(--pg-bg-1);
   color: var(--pg-fg-2);
 }
-.ws-file-card.ws-share-host > .ws-share-mark {
+/* A note card's menu button sits at its top right: the mark rides the
+   card's corner, as on a file card. */
+.ws-file-card.ws-share-host > .ws-share-mark,
+.ws-cn-card.ws-share-host > .ws-share-mark {
   top: -.6rem;
   right: -.6rem;
 }

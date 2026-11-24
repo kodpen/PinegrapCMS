@@ -1401,4 +1401,33 @@ div.pg-guest-poll-option {
   }
 }
 
+
+/* A note shared by link (workspace_share.php): one read-only column, the
+   site's name and the note's name above it, the link's end under it. */
+.pg-guest-shared {
+  max-width: 52rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  background: var(--pg-bg-body);
+}
+
+.pg-guest-shared-head {
+  padding-bottom: .75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--pg-border-color);
+}
+
+.pg-guest-shared-head .pg-guest-title {
+  white-space: normal;
+}
+
+.pg-guest-shared-foot {
+  margin-top: 2rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--pg-border-color);
+  font-size: .85rem;
+  color: var(--pg-fg-2);
+}
+
 }

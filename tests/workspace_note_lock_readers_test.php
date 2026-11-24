@@ -42,6 +42,7 @@ function workspace_note_lock_readers()
 		'includes/workspace/refs.php'               => 'ws_note_lock_closed(',
 		'includes/workspace/wtable_import.php'      => 'ws_note_lock_closed(',
 		'includes/workspace/note_lock.php'          => 'none: the lock itself',
+		'includes/workspace/share_links.php'        => 'none: a channel\'s note only (owner_channel_id), which is never locked',
 		'includes/workspace/note_groups.php'        => 'none: groups and places, no text; ws_note_groups() redacts a closed group',
 		'includes/workspace/note_group_shares.php'  => 'none: share rows only; a locked note or group is never shared',
 		'includes/workspace/notes_import.php'       => 'none: writes new notes from a file',

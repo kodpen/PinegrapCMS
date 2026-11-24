@@ -282,7 +282,7 @@ function test_workspace_channel_notes_js_hooks()
 	pg_assert_contains('window.PGWsChannelNotes = {', $script, 'the script lends card() and write()');
 	pg_assert_contains("'assets/js/workspace_channel_notes.js',", $output, 'the script is in the workspace bundle (pg_js_bundles())');
 	pg_assert_true(strpos($output, "'assets/js/workspace_channel_notes.js'") < strpos($output, "'assets/js/workspace.js',"), 'and printed before workspace.js');
-	pg_assert_contains('window.PGWsChannelNotes.card(window.PGWsKit, card, this.noteHooks())', $workspace, 'noteCardNode() draws the card through the script');
+	pg_assert_contains('window.PGWsChannelNotes.card(window.PGWsKit, card, Object.assign(self.noteHooks(), {', $workspace, 'noteCardNode() draws the card through the script');
 	pg_assert_contains("label: t('cn_write')", $workspace, 'the attach menu offers Write a note');
 	pg_assert_contains('!self.isThread && !self.era && !!self.channel && !!self.channel.can_post', $workspace, 'only to who may post in the channel, not in a thread');
 	pg_assert_contains("versions: 1 }", $script, 'the Versions drawer reads the list the notes screen reads');

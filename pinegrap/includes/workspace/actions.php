@@ -2721,14 +2721,17 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That message could not be found.'));
             }
 
+            // The message's file, or the note whose card it is.
+            $kind = (($request['kind'] ?? '') === 'note') ? 'note' : 'file';
+            $item_id = ($kind === 'note') ? (int) ($request['item_id'] ?? 0) : (int) $message['file_id'];
             $maker = ws_share_link_maker((int) $viewer['id']);
-            $checked = ws_share_link_make_check($viewer, $message, 'file', (int) $message['file_id'], (string) ($request['days'] ?? ''), $maker);
+            $checked = ws_share_link_make_check($viewer, $message, $kind, $item_id, (string) ($request['days'] ?? ''), $maker);
 
             if (!$checked['ok']) {
                 return ws_action_error($checked['error']);
             }
 
-            $made = ws_share_link_make($message, $checked, 'file', (int) $message['file_id'], $maker);
+            $made = ws_share_link_make($message, $checked, $kind, $item_id, $maker);
 
             if (!$made['ok']) {
                 return ws_action_error($made['error']);
