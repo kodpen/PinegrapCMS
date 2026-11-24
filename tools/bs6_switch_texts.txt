@@ -585,13 +585,13 @@ not beat Floating UI's.
 >>>
 
 The template gallery's width class was on the dropped .modal-dialog box;
-it is now on the dialog itself.
+it is now on the New design window itself, which holds the gallery.
 
 @@ assets/css/designer_home.css
 <<<
 #sdTemplateModal .sd-tpl-dialog {
 ===
-#sdTemplateModal.sd-tpl-dialog {
+#sdStartModal.sd-ns-dialog {
 >>>
 
 The settings cards put a check's or a switch's control in the right-hand

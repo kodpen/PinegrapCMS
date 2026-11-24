@@ -843,12 +843,146 @@
     // Ahead of Bootstrap's own listener, so the gallery as it was printed
     // does not open once it is out of date.
     document.addEventListener('click', function (event) {
-        if (C.templatesStale && C.templateUrl && event.target.closest && event.target.closest('[data-bs-target="#sdTemplateModal"]')) {
+        if (C.templatesStale && C.templateUrl && event.target.closest && event.target.closest('[data-sd-start="template"]')) {
             event.preventDefault();
             event.stopPropagation();
             window.location.href = C.templateUrl;
         }
     }, true);
+
+    // The New design window (pg_designer_start_window()): the starts are a
+    // vertical tab list, each showing its own pane; the foot's one button
+    // takes the chosen start's words and the address of its framework
+    // choice, and stands aside for the template start, whose cards carry
+    // their own button. A start card or ?start=<key> names the start it
+    // opens on.
+    (function () {
+        var win = document.getElementById('sdStartModal');
+
+        if (!win || !window.pgUI) {
+            return;
+        }
+
+        var tabs = Array.prototype.slice.call(win.querySelectorAll('.sd-ns-item'));
+        var go = document.getElementById('sd-ns-go');
+
+        function open(tab) {
+            return tab.getAttribute('aria-disabled') !== 'true';
+        }
+
+        function paneOf(tab) {
+            return document.getElementById(tab.getAttribute('aria-controls'));
+        }
+
+        function syncGo() {
+            var pane = win.querySelector('.sd-ns-pane:not([hidden])');
+
+            if (!pane || !go) {
+                return;
+            }
+
+            var label = pane.getAttribute('data-go') || '';
+            var pick = pane.querySelector('input[type="radio"][data-href]:checked');
+
+            go.classList.toggle('d-none', !label || !pick);
+
+            if (label && pick) {
+                go.textContent = label;
+                go.href = pick.getAttribute('data-href');
+            }
+        }
+
+        function choose(key, focus) {
+            var tab = null;
+
+            tabs.forEach(function (t) {
+                if (t.getAttribute('data-start') === key && open(t)) {
+                    tab = t;
+                }
+            });
+
+            tab = tab || tabs[0];
+
+            if (!tab) {
+                return;
+            }
+
+            if (tab.getAttribute('data-start') === 'template' && C.templatesStale && C.templateUrl) {
+                window.location.href = C.templateUrl;
+                return;
+            }
+
+            tabs.forEach(function (t) {
+                var on = (t === tab);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+                t.tabIndex = on ? 0 : -1;
+                t.classList.toggle('is-active', on);
+                paneOf(t).hidden = !on;
+            });
+
+            if (focus) {
+                tab.focus();
+            }
+
+            syncGo();
+        }
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                if (open(tab)) {
+                    choose(tab.getAttribute('data-start'), false);
+                }
+            });
+        });
+
+        // Up and down walk the open starts, Home and End go to the ends.
+        win.querySelector('.sd-ns-list').addEventListener('keydown', function (event) {
+            var usable = tabs.filter(open);
+            var at = usable.indexOf(document.activeElement);
+            var next = null;
+
+            if (event.key === 'ArrowDown') {
+                next = usable[(at + 1) % usable.length];
+            } else if (event.key === 'ArrowUp') {
+                next = usable[(at - 1 + usable.length) % usable.length];
+            } else if (event.key === 'Home') {
+                next = usable[0];
+            } else if (event.key === 'End') {
+                next = usable[usable.length - 1];
+            }
+
+            if (next) {
+                event.preventDefault();
+                choose(next.getAttribute('data-start'), true);
+            }
+        });
+
+        win.addEventListener('change', syncGo);
+
+        pgUI.dialog.on(win, 'show', function (event) {
+            var source = event.relatedTarget;
+            choose((source && source.dataset && source.dataset.sdStart) || win.dataset.sdStart || 'blank', false);
+        });
+
+        pgUI.dialog.on(win, 'hidden', function () {
+            delete win.dataset.sdStart;
+        });
+
+        var asked = new URLSearchParams(window.location.search).get('start');
+
+        if (asked && tabs.some(function (t) { return t.getAttribute('data-start') === asked; })) {
+            var show = function () {
+                win.dataset.sdStart = asked;
+                pgUI.dialog.show(win);
+            };
+
+            if (document.readyState === 'complete') {
+                show();
+            } else {
+                window.addEventListener('load', show);
+            }
+        }
+    })();
 
     function countDesigns() {
         var count = document.querySelectorAll('.sdh-card').length;
