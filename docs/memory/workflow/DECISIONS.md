@@ -1257,6 +1257,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep
 - platform/content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md
 - platform/content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out
+- platform/feedback-loop.md: Satisfaction surveys as a whole (built 2026.11.0, #10808 to #11235): what binds them, which file holds each part, what was left out; start here before a feedback_* change
 - platform/feedback-store.md: Satisfaction survey tables feedback_surveys and feedback_responses (11.0.263, FD1b): defaults, NULL token_hash, person_hash of a number, personal data erasure, export and inventory of the answers
 - platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Artifact Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
