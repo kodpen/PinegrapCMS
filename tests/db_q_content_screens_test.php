@@ -120,7 +120,7 @@ function db_q_content_screens_test_calls($path)
 function db_q_content_screens_test_files()
 {
 	return array(
-		'duplicate_page_f.php' => 22,
+		'duplicate_page_f.php' => 18,
 		'edit_calendar_event.php' => 22,
 		'theme_designer.php' => 20,
 	);
