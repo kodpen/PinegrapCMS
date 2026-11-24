@@ -572,7 +572,8 @@ function pg_pick_single_item_address(array $rows, $product_id)
  * The verdict on one product scan at the pack screen.
  *
  * Codes: 'good' (counts one unit on 'line'), 'not_found' (no product has the
- * code), 'binned' (the product is in the Recycle Bin), 'too_many' (every
+ * code), 'binned' (a product in the Recycle Bin that the address does not
+ * want), 'too_many' (every
  * unit of the product on the address is scanned already), 'wrong_variant'
  * (another product of a variant group the address wants: 'line' is the
  * wanted line, 'options' what was scanned, 'wanted_options' what the line
@@ -593,10 +594,6 @@ function pg_pack_scan_verdict(array $lines, $product)
         return array('verdict' => 'not_found', 'line' => null);
     }
 
-    if (!empty($product['binned'])) {
-        return array('verdict' => 'binned', 'line' => null);
-    }
-
     $id = (int) $product['id'];
     $on_address = false;
 
@@ -614,6 +611,12 @@ function pg_pack_scan_verdict(array $lines, $product)
 
     if ($on_address) {
         return array('verdict' => 'too_many', 'line' => null);
+    }
+
+    // Only a product the address does not want: one moved to the Recycle
+    // Bin after the order was paid is still sent.
+    if (!empty($product['binned'])) {
+        return array('verdict' => 'binned', 'line' => null);
     }
 
     $group_id = (int) (isset($product['group_id']) ? $product['group_id'] : 0);
