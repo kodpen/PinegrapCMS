@@ -10,7 +10,7 @@ module: notify_channels_page, connections_screen
 
 ## What does a chat service's page show?
 - `connections.php?service=slack`, `teams`, `telegram`. "Connection details" (`pg_notify_page_details()`): the card's intro, the Webhook delivery job warning while it is off, one block per target of that service, then Add a target.
-- A block is its own form (`pg_notify_page_target_form()`): Name, the service and where it sends (scheme and host, never the address or token), the last failure, the alert codes in Operations alerts, Sales watch, Deliveries (`pg_notify_alert_groups()`), Workspace events; "Save" (filled), "Save and send a test", "Delete" (asks first).
+- A block is its own form (`pg_notify_page_target_form()`): Name, the service and where it sends (scheme and host, never the address or token), the last failure (dated by `get_absolute_time()`), the alert codes in Operations alerts, Sales watch, Deliveries (`pg_notify_alert_groups()`), Workspace events; "Save" (filled), "Save and send a test", "Delete" (asks first).
 - Add a target (`pg_notify_page_add_form()`): no Service select, the page is the service. Slack and Teams take "Webhook address", Telegram "Bot token" and "Chat ID" (password boxes); every alert code ticked.
 - A site that cannot seal gets the encryption note and no form. "Where it is used": the Alerts card and the Chat notifications card, Connected while the service has a target.
 
