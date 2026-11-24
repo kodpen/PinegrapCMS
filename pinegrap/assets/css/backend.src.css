@@ -20761,6 +20761,77 @@ a.ws-chip-message:hover,
   align-content: start;
   overflow-y: auto;
 }
+/* Made larger with nothing on the stage: the grid fills the window. A
+   tile clicked is pinned large in the share's place, the others in the
+   rail; one's own tile can be hidden on this screen. The head holds the
+   size, full screen and the window's menu. */
+.ws-call.is-stage:not(.is-showing) .ws-call-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-stage[data-count] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-stage[data-count="1"],
+.ws-call[data-kind="video"].is-stage:not(.is-showing) .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-tile {
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.ws-call[data-kind="video"].is-stage:not(.is-showing) .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
+  aspect-ratio: 16 / 9;
+}
+.ws-call:fullscreen {
+  border-radius: 0;
+}
+.ws-call-tile[hidden],
+.ws-call-tile.is-pinned,
+.ws-call-share > .bi[hidden],
+.ws-call-share-tools > [hidden] {
+  display: none;
+}
+.ws-call-tile-pin {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+.ws-call-tile-pin:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: calc(-1 * var(--pg-focus-ring-width));
+}
+.ws-call-tile-name,
+.ws-call-tile-marks {
+  z-index: 1;
+  pointer-events: none;
+}
+.ws-call-share > .bi {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
+}
+.ws-call-bar .pg-icon-button {
+  flex: 0 0 auto;
+}
+.ws-call-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.ws-call-menu {
+  top: 100%;
+  right: 0;
+  z-index: 2;
+}
 @media (max-width: 991.98px) {
   .ws-call.is-stage {
     inset: 0;
@@ -20776,7 +20847,7 @@ a.ws-chip-message:hover,
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: visible;
   }
-  .ws-call.is-stage .ws-call-tile {
+  .ws-call.is-stage.is-showing .ws-call-tile {
     height: 4.5rem;
     aspect-ratio: auto;
   }

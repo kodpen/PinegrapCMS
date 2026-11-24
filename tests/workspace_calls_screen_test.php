@@ -269,16 +269,16 @@ function test_workspace_calls_screen_the_share_stage()
 {
 	$got = workspace_calls_screen_test_run(<<<'JS'
 console.log(JSON.stringify({
-	nobody: C.stageState([], 10, false, true, false, 0),
-	other: C.stageState([11], 10, false, true, false, 0),
-	other_small: C.stageState([11], 10, true, true, false, 0),
-	other_full: C.stageState([11], 10, false, true, true, 0),
-	mine: C.stageState([10], 10, false, true, false, 0),
-	phone: C.stageState([11], 10, false, false, false, 0),
-	several: C.stageState([11, 12, 13], 10, false, true, false, 0),
-	chosen: C.stageState([11, 12, 13], 10, false, true, false, 12),
-	chosen_gone: C.stageState([11, 13], 10, false, true, false, 12),
-	mine_and_other: C.stageState([10, 12], 10, false, true, false, 0)
+	nobody: C.stageState([], 10, '', true, false, 0),
+	other: C.stageState([11], 10, '', true, false, 0),
+	other_small: C.stageState([11], 10, 'small', true, false, 0),
+	other_full: C.stageState([11], 10, '', true, true, 0),
+	mine: C.stageState([10], 10, '', true, false, 0),
+	phone: C.stageState([11], 10, '', false, false, 0),
+	several: C.stageState([11, 12, 13], 10, '', true, false, 0),
+	chosen: C.stageState([11, 12, 13], 10, '', true, false, 12),
+	chosen_gone: C.stageState([11, 13], 10, '', true, false, 12),
+	mine_and_other: C.stageState([10, 12], 10, '', true, false, 0)
 }));
 JS
 	);
@@ -289,25 +289,25 @@ JS
 	}
 
 	pg_assert_true(is_array($got), 'workspace_calls.js runs under node');
-	pg_assert_same(array('is-showing' => false, 'is-stage' => false, 'is-self-sharing' => false), $got['nobody']['classes'], 'nobody shares: the grid at card size');
+	pg_assert_same(array('is-showing' => false, 'is-stage' => false, 'is-pinned' => false, 'is-self-sharing' => false), $got['nobody']['classes'], 'nobody shares: the grid at card size');
 	pg_assert_same(array('show' => true, 'on' => false), $got['nobody']['share'], 'the share button is free');
 	pg_assert_same(array(0, array()), array($got['nobody']['main'], $got['nobody']['rail']), 'no screen on the stage, none on the rail');
-	pg_assert_same(array('is-showing' => true, 'is-stage' => true, 'is-self-sharing' => false), $got['other']['classes'], 'a: another member shares: the stage');
-	pg_assert_same(array('label' => 'call_smaller', 'icon' => 'bi-arrows-angle-contract'), $got['other']['size'], 'the stage can be made smaller');
+	pg_assert_same(array('is-showing' => true, 'is-stage' => true, 'is-pinned' => false, 'is-self-sharing' => false), $got['other']['classes'], 'a: another member shares: the stage');
+	pg_assert_same(array('label' => 'call_smaller', 'icon' => 'bi-arrows-angle-contract', 'next' => 'small'), $got['other']['size'], 'the stage can be made smaller');
 	pg_assert_same(array('label' => 'call_full_screen', 'icon' => 'bi-fullscreen'), $got['other']['full'], 'and full screen');
 	pg_assert_same(array('show' => true, 'on' => false), $got['other']['share'], 'c: another\'s share does not hold the button');
 	pg_assert_same(array(11, array()), array($got['other']['main'], $got['other']['rail']), 'the one share on the stage');
-	pg_assert_same(array('is-showing' => true, 'is-stage' => false, 'is-self-sharing' => false), $got['other_small']['classes'], 'made smaller: the screen at card size, no stage');
+	pg_assert_same(array('is-showing' => true, 'is-stage' => false, 'is-pinned' => false, 'is-self-sharing' => false), $got['other_small']['classes'], 'made smaller: the screen at card size, no stage');
 	pg_assert_same('call_larger', $got['other_small']['size']['label'], 'it can be made larger again');
 	pg_assert_same('call_full_exit', $got['other_full']['full']['label'], 'in full screen the button leaves it');
-	pg_assert_same(array('is-showing' => false, 'is-stage' => false, 'is-self-sharing' => true), $got['mine']['classes'], 'b: this member shares: its own screen is not shown, the notice is');
+	pg_assert_same(array('is-showing' => false, 'is-stage' => false, 'is-pinned' => false, 'is-self-sharing' => true), $got['mine']['classes'], 'b: this member shares: its own screen is not shown, the notice is');
 	pg_assert_same(array('show' => true, 'on' => true), $got['mine']['share'], 'b: the share button is pressed');
 	pg_assert_same(0, $got['mine']['main'], 'b: one\'s own screen is never on the stage');
 	pg_assert_same(array('show' => false, 'on' => false), $got['phone']['share'], 'e: no getDisplayMedia: no share button, the screen is only watched');
 	pg_assert_same(array(11, array(12, 13)), array($got['several']['main'], $got['several']['rail']), 'several shares: the first on the stage, the others as rail tiles');
 	pg_assert_same(array(12, array(11, 13)), array($got['chosen']['main'], $got['chosen']['rail']), 'the share the viewer chose is on the stage, the one it swapped goes to the rail');
 	pg_assert_same(array(11, array(13)), array($got['chosen_gone']['main'], $got['chosen_gone']['rail']), 'the chosen share ending: the first other takes the stage');
-	pg_assert_same(array('is-showing' => true, 'is-stage' => true, 'is-self-sharing' => true), $got['mine_and_other']['classes'], 'a sharer sees the others\' shares, its notice too');
+	pg_assert_same(array('is-showing' => true, 'is-stage' => true, 'is-pinned' => false, 'is-self-sharing' => true), $got['mine_and_other']['classes'], 'a sharer sees the others\' shares, its notice too');
 	pg_assert_same(array(12, array()), array($got['mine_and_other']['main'], $got['mine_and_other']['rail']), 'its own share is on neither');
 	pg_assert_true($got['phone']['classes']['is-stage'], 'e: a phone still shows another\'s screen');
 }
@@ -319,9 +319,8 @@ function test_workspace_calls_screen_the_share_stage_wiring()
 
 	pg_assert_true(strpos($js, "el('div', 'alert theme-info small ws-call-notice')") !== false, 'b: the notice is a small info alert');
 	pg_assert_true(strpos($js, "makeButton('pg-button pg-button-danger pg-button-sm', t('call_share_stop'), '')") !== false, 'b: with a small danger Stop sharing');
-	pg_assert_true(strpos($js, 'document.fullscreenEnabled && area.requestFullscreen') !== false, 'full screen only where the page may');
+	pg_assert_true(strpos($js, 'document.fullscreenEnabled && win.requestFullscreen') !== false, 'full screen only where the page may');
 	pg_assert_true(strpos($js, "document.addEventListener('fullscreenchange', mine.onFull);") !== false, 'Esc out of full screen redraws the button');
-	pg_assert_true(strpos($js, "if (!state.classes['is-showing'] && full && document.exitFullscreen) {") !== false, 'd: the share ending leaves full screen');
 	pg_assert_true(strpos($css, 'width: min(72rem, calc(100vw - 2rem));') !== false && strpos($css, 'height: min(45rem, calc(100vh - 2rem));') !== false, 'the stage\'s size');
 	pg_assert_true(strpos($css, 'grid-template-columns: minmax(0, 1fr) 11rem;') !== false, 'the tile rail of 11rem beside the screen');
 	pg_assert_true(preg_match('/\.ws-call-share-video \{[^}]*object-fit: contain;/', $css) === 1, 'the screen is never cut');

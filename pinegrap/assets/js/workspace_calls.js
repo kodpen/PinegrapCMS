@@ -13,8 +13,10 @@
  * and a weak connection; the person speaking while muted is told so.
  * Another member's shared screen is shown large in the same window (the
  * stage), the tiles beside it, or under it on a narrow screen, the other
- * shares among them as tiles a click puts on the stage; it can be made
- * smaller or full screen.
+ * shares among them as tiles a click puts on the stage. A click on a tile
+ * pins it large the same way (one's own too). The window's head can make
+ * it larger or smaller at any time (remembered with the choices) or full
+ * screen; its menu hides one's own picture on this screen.
  *
  * Sound and picture go from browser to browser (WebRTC). The site carries
  * only who is in the call and the browsers' connection messages
@@ -374,7 +376,7 @@
     // broken or of the wrong type reads as no choice.
     function choicesRead(text) {
         var read = null;
-        var out = { audio: '', video: '', speaker: '', muted: false, cameraOff: false };
+        var out = { audio: '', video: '', speaker: '', muted: false, cameraOff: false, size: '' };
 
         try {
             read = JSON.parse(text || 'null');
@@ -393,6 +395,9 @@
         });
         out.muted = read.muted === true;
         out.cameraOff = read.cameraOff === true;
+        // The window's size: made larger or smaller, else '' (large only
+        // while something is on its stage).
+        out.size = ((read.size === 'large') || (read.size === 'small')) ? read.size : '';
 
         return out;
     }
@@ -409,7 +414,8 @@
             out[name] = (typeof out[name] === 'boolean') ? (change[name] === true) : String(change[name] || '');
         });
 
-        return out;
+        // Read again, so an unknown size reads as none.
+        return choicesRead(JSON.stringify(out));
     }
 
     // The speaker to show as chosen among the outputs: the remembered one
@@ -439,23 +445,38 @@
         return { show: true, on: (sharers || []).indexOf(me) >= 0 };
     }
 
-    // What the window shows of the shares: the stage while another member
-    // shares (large, or card-sized when made smaller), the notice while
-    // this member shares, and the labels of the share area's two buttons.
-    // The stage holds the share the viewer chose (chosen), else the first
-    // other one; the other shares go to the rail. One's own is on neither.
-    function stageState(sharers, me, small, can, full, chosen) {
+    // What the window shows: on its stage the share the viewer chose
+    // (chosen), else the first other one, or a member's tile pinned large
+    // (view.pin: 0 one's own, a member id, -1 none; a pin of a member no
+    // longer there, or of one's own hidden picture, is none), which puts
+    // every share on the rail; the notice while this member shares; and
+    // the labels of the head's size and full screen buttons. size is the
+    // window's chosen size ('large', 'small', or '': large while something
+    // is on the stage); full screen is always large. One's own share is on
+    // neither stage nor rail. view: { pin, tiles (the other members' ids),
+    // selfHidden }.
+    function stageState(sharers, me, size, can, full, chosen, view) {
+        var see = view || {};
+        var tiles = (see.tiles || []).map(Number);
+        var pin = (typeof see.pin === 'number') ? see.pin : -1;
+
+        if (((pin === 0) && see.selfHidden) || ((pin > 0) && (tiles.indexOf(pin) < 0))) {
+            pin = -1;
+        }
+
         var others = (sharers || []).filter(function (id) { return id !== me; });
-        var main = (others.indexOf(chosen) >= 0) ? chosen : (others[0] || 0);
-        var showing = !!main;
+        var main = (pin >= 0) ? 0 : ((others.indexOf(chosen) >= 0) ? chosen : (others[0] || 0));
+        var showing = !!main || (pin >= 0);
+        var chosenLarge = (size === 'large') || ((size !== 'small') && showing);
         var share = shareState(sharers, me, can);
 
         return {
-            classes: { 'is-showing': showing, 'is-stage': showing && !small, 'is-self-sharing': share.on },
+            classes: { 'is-showing': showing, 'is-stage': chosenLarge || !!full, 'is-pinned': pin >= 0, 'is-self-sharing': share.on },
             share: share,
             main: main,
+            pin: pin,
             rail: others.filter(function (id) { return id !== main; }),
-            size: small ? { label: 'call_larger', icon: 'bi-arrows-angle-expand' } : { label: 'call_smaller', icon: 'bi-arrows-angle-contract' },
+            size: chosenLarge ? { label: 'call_smaller', icon: 'bi-arrows-angle-contract', next: 'small' } : { label: 'call_larger', icon: 'bi-arrows-angle-expand', next: 'large' },
             full: full ? { label: 'call_full_exit', icon: 'bi-fullscreen-exit' } : { label: 'call_full_screen', icon: 'bi-fullscreen' }
         };
     }
@@ -806,7 +827,7 @@
         var chosen = choicesLoad();
 
         // Held at once, so a second click does not start a second call.
-        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: { audio: chosen.audio, video: chosen.video }, speaker: chosen.speaker, muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
+        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: { audio: chosen.audio, video: chosen.video }, speaker: chosen.speaker, muted: false, cameraOff: false, size: chosen.size, pin: -1, selfHidden: false, ever: false, sending: Promise.resolve() };
         // Added only for the call's length: a beforeunload listener keeps
         // some browsers from holding the page in their back-forward cache.
         window.addEventListener('beforeunload', askBeforeLeaving);
@@ -1212,22 +1233,25 @@
         stageDraw(mine);
     }
 
-    // The window against the share: the stage, the notice, the share
-    // button and the share area's two buttons.
+    // The window against its stage: the share or the pinned tile on it,
+    // the notice, the share button and the head's size and full screen.
     function stageDraw(mine) {
         if (!mine.node) {
             return;
         }
 
-        var full = !!document.fullscreenElement && (document.fullscreenElement === mine.shareArea);
-        var state = stageState(mine.sharers || [], mine.memberId, !!mine.small, !!mine.shareButton, full, mine.watching || 0);
+        var full = !!document.fullscreenElement && (document.fullscreenElement === mine.node);
+        var state = stageState(mine.sharers || [], mine.memberId, mine.size || '', !!mine.shareButton, full, mine.watching || 0, {
+            pin: (typeof mine.pin === 'number') ? mine.pin : -1,
+            tiles: Object.keys(mine.peers).map(Number),
+            selfHidden: !!mine.selfHidden
+        });
         var held = state.main ? mine.peers[state.main] : null;
-        var screen = (held && held.screen) || null;
+        var pinned = (state.pin > 0) ? (mine.peers[state.pin] && mine.peers[state.pin].tile) : ((state.pin === 0) ? mine.selfTile : null);
+        var picture = (held && held.screen) || (pinned && pinned.video.srcObject) || null;
 
-        // Leaving the stage leaves full screen too.
-        if (!state.classes['is-showing'] && full && document.exitFullscreen) {
-            document.exitFullscreen().catch(function () {});
-        }
+        // A pinned member gone, or one's own picture hidden: nothing pinned.
+        mine.pin = state.pin;
 
         Object.keys(state.classes).forEach(function (name) {
             mine.node.classList.toggle(name, state.classes[name]);
@@ -1235,19 +1259,37 @@
         mine.shareArea.hidden = !state.classes['is-showing'];
         mine.notice.hidden = !state.classes['is-self-sharing'];
 
-        if (mine.shareVideo.srcObject !== screen) {
-            mine.shareVideo.srcObject = screen;
+        if (mine.shareVideo.srcObject !== picture) {
+            mine.shareVideo.srcObject = picture;
         }
 
-        mine.shareName.textContent = held ? t('call_sharing', mine.names[state.main] || '') : '';
+        // The pinned tile shows on the stage, so not in the rail; without a
+        // picture (a voice call, a camera off) its person icon.
+        [mine.selfTile].concat(Object.keys(mine.peers).map(function (id) { return mine.peers[id].tile; })).forEach(function (one) {
+            if (one) {
+                one.node.classList.toggle('is-pinned', one === pinned);
+                one.pin.setAttribute('aria-pressed', (one === pinned) ? 'true' : 'false');
+            }
+        });
+        mine.shareIcon.hidden = !pinned || ((mine.kind === 'video') && !pinned.node.classList.contains('is-camera-off'));
+        mine.unpinButton.hidden = !pinned;
 
         if (held) {
+            mine.shareName.textContent = t('call_sharing', mine.names[state.main] || '');
             mine.shareName.insertBefore(h().icon('bi-display'), mine.shareName.firstChild);
+        } else if (pinned) {
+            mine.shareName.textContent = (state.pin === 0) ? t('call_you') : (mine.names[state.pin] || '');
+            mine.shareName.insertBefore(h().icon('bi-pin-angle-fill'), mine.shareName.firstChild);
+        } else {
+            mine.shareName.textContent = '';
         }
         iconSwap(mine.sizeButton, state.size.icon, t(state.size.label));
+        mine.sizeButton.dataset.next = state.size.next;
 
         if (mine.fullButton) {
             iconSwap(mine.fullButton, state.full.icon, t(state.full.label));
+            mine.fullButton.setAttribute('aria-pressed', full ? 'true' : 'false');
+            mine.fullButton.classList.toggle('is-active', full);
         }
 
         if (mine.shareButton) {
@@ -1290,6 +1332,7 @@
                 node.appendChild(held.name);
                 node.addEventListener('click', function () {
                     mine.watching = id;
+                    mine.pin = -1;
                     stageDraw(mine);
                 });
                 mine.screens[id] = held;
@@ -1317,8 +1360,9 @@
         layout(mine);
     }
 
-    // The share area: the shared screen (never cut: contain), the sharer's
-    // name, and its two buttons, larger or smaller and full screen.
+    // The share area: the shared screen or the pinned tile's picture
+    // (never cut: contain), the sharer's or the pinned member's name, and
+    // Unpin while a tile is pinned.
     function shareAreaDraw(mine) {
         var el = h().el;
         var area = el('div', 'ws-call-share');
@@ -1328,35 +1372,117 @@
         mine.shareVideo = el('video', 'ws-call-share-video');
         mine.shareVideo.autoplay = true;
         mine.shareVideo.playsInline = true;
-        // The sound comes from the sharer's tile.
+        // The sound comes from the member's tile.
         mine.shareVideo.muted = true;
         area.appendChild(mine.shareVideo);
+        mine.shareIcon = h().icon('bi-person-circle');
+        mine.shareIcon.hidden = true;
+        area.appendChild(mine.shareIcon);
         mine.shareName = el('div', 'ws-call-share-name');
         area.appendChild(mine.shareName);
 
-        mine.sizeButton = makeButton('pg-icon-button', '', 'bi-arrows-angle-contract', t('call_smaller'));
-        mine.sizeButton.addEventListener('click', function () {
-            mine.small = !mine.small;
+        mine.unpinButton = makeButton('pg-icon-button', '', 'bi-pin-angle-fill', t('call_unpin'));
+        mine.unpinButton.setAttribute('aria-label', t('call_unpin'));
+        mine.unpinButton.hidden = true;
+        mine.unpinButton.addEventListener('click', function () {
+            mine.pin = -1;
             stageDraw(mine);
         });
-        tools.appendChild(mine.sizeButton);
-
-        if (document.fullscreenEnabled && area.requestFullscreen) {
-            mine.fullButton = makeButton('pg-icon-button', '', 'bi-fullscreen', t('call_full_screen'));
-            mine.fullButton.addEventListener('click', function () {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(function () {});
-                } else {
-                    area.requestFullscreen().catch(function () {});
-                }
-            });
-            tools.appendChild(mine.fullButton);
-        }
+        tools.appendChild(mine.unpinButton);
 
         area.appendChild(tools);
         mine.shareArea = area;
 
         return area;
+    }
+
+    // The window's head: its name, the call's state, Make larger or
+    // smaller (remembered for the next call), Full screen where the page
+    // may, and the window's menu.
+    function headDraw(mine, win) {
+        var el = h().el;
+        var bar = el('div', 'ws-call-bar');
+
+        // The name opens the call's conversation; on a page that is that
+        // conversation (the guest page) it is the name only.
+        if (hooks.openChannel) {
+            var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
+
+            name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
+            bar.appendChild(name);
+        } else {
+            bar.appendChild(el('span', 'ws-call-name', mine.name));
+        }
+        mine.state = el('span', 'ws-call-state');
+        bar.appendChild(mine.state);
+
+        mine.sizeButton = makeButton('pg-icon-button', '', 'bi-arrows-angle-expand', t('call_larger'));
+        mine.sizeButton.addEventListener('click', function () {
+            mine.size = mine.sizeButton.dataset.next || 'large';
+            choicesSave({ size: mine.size });
+            stageDraw(mine);
+        });
+        bar.appendChild(mine.sizeButton);
+
+        if (document.fullscreenEnabled && win.requestFullscreen) {
+            mine.fullButton = makeButton('pg-icon-button', '', 'bi-fullscreen', t('call_full_screen'));
+            mine.fullButton.setAttribute('aria-pressed', 'false');
+            mine.fullButton.addEventListener('click', function () {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(function () {});
+                } else {
+                    win.requestFullscreen().catch(function () {});
+                }
+            });
+            bar.appendChild(mine.fullButton);
+        }
+
+        bar.appendChild(menuDraw(mine));
+
+        return bar;
+    }
+
+    // The window's menu: Hide my picture / Show my picture, which hides
+    // one's own tile on this screen only (the others still see it).
+    function menuDraw(mine) {
+        var el = h().el;
+        var wrap = el('div', 'ws-call-menu-wrap');
+        var toggle = makeButton('pg-icon-button', '', 'bi-three-dots-vertical', t('call_more'));
+        var menu = el('ul', 'menu ws-call-menu');
+        var li = el('li');
+        var item = makeButton('menu-item', t('call_self_hide'), 'bi-person-slash');
+        var open = function (on) {
+            menu.classList.toggle('show', on);
+            toggle.setAttribute('aria-expanded', on ? 'true' : 'false');
+        };
+
+        toggle.setAttribute('aria-label', t('call_more'));
+        toggle.setAttribute('aria-haspopup', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.addEventListener('click', function () { open(!menu.classList.contains('show')); });
+        item.addEventListener('click', function () {
+            mine.selfHidden = !mine.selfHidden;
+            mine.selfTile.node.hidden = mine.selfHidden;
+            relabel(item, t(mine.selfHidden ? 'call_self_show' : 'call_self_hide'));
+            iconSwap(item, mine.selfHidden ? 'bi-person' : 'bi-person-slash', t(mine.selfHidden ? 'call_self_show' : 'call_self_hide'));
+            open(false);
+            stageDraw(mine);
+        });
+        li.appendChild(item);
+        menu.appendChild(li);
+        wrap.appendChild(toggle);
+        wrap.appendChild(menu);
+
+        // A click elsewhere or Esc closes it.
+        mine.onMenuAway = function (event) {
+            if ((event.type === 'keydown') ? (event.key === 'Escape') : !wrap.contains(event.target)) {
+                open(false);
+            }
+        };
+        document.addEventListener('click', mine.onMenuAway);
+        document.addEventListener('keydown', mine.onMenuAway);
+
+        return wrap;
     }
 
     // The notice while this member shares: its own screen is not shown.
@@ -1402,6 +1528,8 @@
         win.setAttribute('aria-label', t(mine.kind === 'video' ? 'call_video' : 'call_voice'));
         win.setAttribute('data-kind', mine.kind);
 
+        win.appendChild(headDraw(mine, win));
+
         // The grid: one tile a member, one's own first (its picture never
         // plays its own sound back).
         var body = el('div', 'ws-call-body');
@@ -1419,21 +1547,6 @@
             mine.peers[id].tile = mine.peers[id].tile || tile(mine, Number(id));
         });
 
-        var bar = el('div', 'ws-call-bar');
-
-        // The name opens the call's conversation; on a page that is that
-        // conversation (the guest page) it is the name only.
-        if (hooks.openChannel) {
-            var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
-
-            name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
-            bar.appendChild(name);
-        } else {
-            bar.appendChild(el('span', 'ws-call-name', mine.name));
-        }
-        mine.state = el('span', 'ws-call-state');
-        bar.appendChild(mine.state);
-        win.appendChild(bar);
         win.appendChild(noticeDraw(mine));
         win.appendChild(mutedDraw(mine));
 
@@ -1496,7 +1609,7 @@
         win.appendChild(tools);
         win.appendChild(panel);
 
-        [mine.muteButton, mine.cameraButton, mine.shareButton, mine.handButton, devices, mine.sizeButton, mine.fullButton].forEach(function (node) {
+        [mine.muteButton, mine.cameraButton, mine.shareButton, mine.handButton, devices].forEach(function (node) {
             if (node) {
                 node.setAttribute('aria-label', node.title);
             }
@@ -1544,7 +1657,21 @@
         marks.appendChild(weakMark);
         node.appendChild(marks);
 
-        var held = { id: id, node: node, video: video, name: name, loudAt: 0, speaking: false, handMark: handMark, weakMark: weakMark };
+        // The whole tile is a button that pins it large (one's own too); a
+        // second click, or Unpin on the stage, lets it go.
+        var pin = el('button', 'ws-call-tile-pin');
+
+        pin.type = 'button';
+        pin.title = t('call_pin');
+        pin.setAttribute('aria-label', t('call_pin'));
+        pin.setAttribute('aria-pressed', 'false');
+        pin.addEventListener('click', function () {
+            mine.pin = (mine.pin === id) ? -1 : id;
+            stageDraw(mine);
+        });
+        node.appendChild(pin);
+
+        var held = { id: id, node: node, video: video, name: name, pin: pin, loudAt: 0, speaking: false, handMark: handMark, weakMark: weakMark };
 
         // Another member's sound plays on the chosen speaker.
         if (id && mine.speaker && sinkSupported()) {
@@ -2028,11 +2155,16 @@
             mine.audio.close().catch(function () {});
         }
 
+        if (mine.onMenuAway) {
+            document.removeEventListener('click', mine.onMenuAway);
+            document.removeEventListener('keydown', mine.onMenuAway);
+        }
+
         if (mine.onFull) {
             document.removeEventListener('fullscreenchange', mine.onFull);
         }
 
-        if (document.fullscreenElement && mine.shareArea && (document.fullscreenElement === mine.shareArea)) {
+        if (document.fullscreenElement && mine.node && (document.fullscreenElement === mine.node)) {
             document.exitFullscreen().catch(function () {});
         }
 
