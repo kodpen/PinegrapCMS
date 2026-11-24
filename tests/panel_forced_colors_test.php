@@ -110,7 +110,7 @@ function test_panel_forced_colors_on_states_take_highlight()
 		'button.pg-vs-cell.is-active',
 		'.pg-sale-switch .btn.active',
 		'.pg-sale-method[aria-pressed="true"]',
-		'.ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"]',
+		'.ws-rich-tools .pg-icon-button[aria-pressed="true"]',
 		'.ws-format-tool.active',
 		'.btn-check:checked + .pg-role-card',
 	);
