@@ -734,3 +734,151 @@ function pg_pack_state(array $lines, $short = false)
 
     return array('status' => $status, 'units' => $units, 'scanned' => $scanned, 'missing' => $missing);
 }
+
+/**
+ * A pack's lines from the address's order lines: one line per product with
+ * its units summed, the scans already counted on the stored pack kept (never
+ * more than the line wants). A line whose product is gone (product id 0) is
+ * kept on its own: it cannot be scanned and leaves the pack short.
+ *
+ * @param array      $items  the address's order lines: 'product_id',
+ *                           'quantity', and what the screen shows ('name',
+ *                           'code', 'options', 'image', 'group_id')
+ * @param array|null $stored order_packs.scan_lines decoded, or null
+ * @return array lines as pg_pack_scan_verdict() reads them, in the order of
+ *               the order lines
+ */
+function pg_pack_lines_build(array $items, $stored)
+{
+    $scanned = array();
+
+    foreach ((array) $stored as $row) {
+        if (is_array($row) && !empty($row['product_id'])) {
+            $id = (int) $row['product_id'];
+            $scanned[$id] = (isset($scanned[$id]) ? $scanned[$id] : 0) + max(0, (int) (isset($row['scanned']) ? $row['scanned'] : 0));
+        }
+    }
+
+    $lines = array();
+    $at = array();
+
+    foreach ($items as $item) {
+        $id = (int) (isset($item['product_id']) ? $item['product_id'] : 0);
+        $quantity = max(0, (int) (isset($item['quantity']) ? $item['quantity'] : 0));
+
+        if ($quantity <= 0) {
+            continue;
+        }
+
+        if ($id > 0 && isset($at[$id])) {
+            $lines[$at[$id]]['quantity'] += $quantity;
+            continue;
+        }
+
+        $line = array(
+            'product_id' => $id,
+            'quantity' => $quantity,
+            'scanned' => 0,
+            'group_id' => (int) (isset($item['group_id']) ? $item['group_id'] : 0),
+            'name' => (string) (isset($item['name']) ? $item['name'] : ''),
+            'code' => (string) (isset($item['code']) ? $item['code'] : ''),
+            'options' => isset($item['options']) ? (array) $item['options'] : array(),
+            'image' => (string) (isset($item['image']) ? $item['image'] : ''),
+        );
+
+        if ($id > 0) {
+            $at[$id] = count($lines);
+        }
+
+        $lines[] = $line;
+    }
+
+    foreach ($lines as $i => $line) {
+        if ($line['product_id'] > 0 && isset($scanned[$line['product_id']])) {
+            $lines[$i]['scanned'] = min($line['quantity'], $scanned[$line['product_id']]);
+        }
+    }
+
+    return $lines;
+}
+
+/**
+ * What order_packs.scan_lines keeps of a pack's lines: the product, the
+ * units wanted and scanned; names and pictures are read again each time.
+ *
+ * @param array $lines pg_pack_lines_build()
+ * @return array
+ */
+function pg_pack_scan_lines_store(array $lines)
+{
+    $out = array();
+
+    foreach ($lines as $line) {
+        $out[] = array(
+            'product_id' => (int) $line['product_id'],
+            'quantity' => (int) $line['quantity'],
+            'scanned' => (int) (isset($line['scanned']) ? $line['scanned'] : 0),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * A scanned order code as the order number it stands for: blanks and a
+ * leading "#" typed by hand are dropped.
+ *
+ * @param mixed $code
+ * @return string '' when nothing is left
+ */
+function pg_pack_order_code($code)
+{
+    $code = is_scalar($code) ? trim((string) $code) : '';
+    $code = ltrim($code, '#');
+
+    return (strlen($code) > 100) ? '' : trim($code);
+}
+
+/**
+ * Whether a marketplace package of the order is accepted (Picking) when its
+ * pack is checked: still Created and not accepted yet, as the label and the
+ * invoiced paths accept it first.
+ *
+ * @param array $map a marketplace_order_map row: 'remote_status', 'approved'
+ * @return bool
+ */
+function pg_pack_marketplace_acceptable(array $map)
+{
+    return isset($map['remote_status']) && ((string) $map['remote_status'] === 'Created') && empty($map['approved']);
+}
+
+/**
+ * The data of order.packed and order.pack_short: the order, the address,
+ * the wave, the packer, the units and the lines missing by product id; no
+ * customer data.
+ *
+ * @param array  $pack         'order_id', 'ship_to_id', 'wave_id',
+ *                             'packer_id', 'units', 'scanned', 'missing'
+ *                             (product_id => units)
+ * @param string $order_number
+ * @return array
+ */
+function pg_pack_event_payload(array $pack, $order_number)
+{
+    $missing = array();
+
+    foreach ((array) (isset($pack['missing']) ? $pack['missing'] : array()) as $product_id => $units) {
+        $missing[] = array('product_id' => (int) $product_id, 'units' => (int) $units);
+    }
+
+    return array(
+        'id' => (int) $pack['order_id'],
+        'order_number' => (string) $order_number,
+        'ship_to_id' => (int) $pack['ship_to_id'],
+        'wave_id' => (int) (isset($pack['wave_id']) ? $pack['wave_id'] : 0),
+        'packer_id' => (int) (isset($pack['packer_id']) ? $pack['packer_id'] : 0),
+        'units' => (int) (isset($pack['units']) ? $pack['units'] : 0),
+        'scanned' => (int) (isset($pack['scanned']) ? $pack['scanned'] : 0),
+        'missing' => $missing,
+    );
+}

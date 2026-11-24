@@ -9670,6 +9670,27 @@ button.no-popover:focus-visible {
   .pg-pick-row .pg-list-row-main { flex-basis: 100%; order: 3; }
 }
 
+/* The Pack screen (pack.php): the scan field's row turns red for a refused
+   scan (.is-refused, two seconds, pack.js); each line is a card, a full one
+   turns green (.is-full) and sinks to the end. */
+.pg-pack { max-width: 44rem; margin: 0 auto; }
+.pg-pack-scan-row { display: flex; gap: 8px; align-items: center; }
+.pg-pack-code { flex: 1; min-width: 0; min-height: 48px; }
+.pg-pack-scan.is-refused .pg-pack-code { border-color: var(--pg-tone-rose); background: color-mix(in srgb, var(--pg-tone-rose) 12%, transparent); }
+.pg-pack-scan.is-refused .pg-field-help { color: var(--pg-tone-rose); }
+.pg-pack-video { width: 100%; margin-top: 8px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; }
+.pg-pack-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-pack-lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.pg-pack-line { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+.pg-pack-line .pg-list-row-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.pg-pack-units { flex: none; margin: 0; }
+.pg-pack-line.is-full { border-color: var(--pg-tone-teal); background: color-mix(in srgb, var(--pg-tone-teal) 10%, transparent); }
+.pg-pack-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.pg-pack-done { margin: 12px 0 16px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.pg-pack-done > li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pg-pack-ok { color: var(--pg-tone-teal); }
+.pg-pack-warn { color: var(--pg-tone-amber); }
+
 /* ── Settings screen section anchors ──────────────────────────────────────
    The settings cards carry an id (#pgset-security, #pgset-waf, …) so the
    global search can link straight to a section of that very long screen.

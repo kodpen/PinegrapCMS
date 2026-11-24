@@ -218,6 +218,18 @@ function api_webhook_event_payloads() {
 			'sample' => $order_sample + array('ship_to_id' => 1290, 'delivery_date' => '2026-11-19') + $parcel_sample
 		),
 
+		'order.packed' => array(
+			'fields' => $order + array(
+				'ship_to_id' => array('integer', 'The shipping address whose parcel was checked.'),
+				'wave_id'    => array('integer', 'The pick wave the address was in, 0 for none.'),
+				'packer_id'  => array('integer', 'The user who scanned the last unit.'),
+				'units'      => array('integer', 'The units the address wants.'),
+				'scanned'    => array('integer', 'The units scanned into the box.'),
+				'missing'    => array('object[]', 'The units not scanned, each product_id and units; empty for a packed parcel.')
+			),
+			'sample' => $order_sample + array('ship_to_id' => 1290, 'wave_id' => 12, 'packer_id' => 4, 'units' => 3, 'scanned' => 3, 'missing' => array())
+		),
+
 		'order.cancelled' => array(
 			'fields' => $order + array(
 				'reason'        => array('string', 'The reason given, empty for none.'),

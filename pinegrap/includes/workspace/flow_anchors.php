@@ -314,6 +314,7 @@ function ws_flow_event_outputs()
         'order.delivered'        => array_merge(array($order, $value('delivery_date', 'text', lang('Delivery date'))), $tracking),
         'order.cancelled'        => array($order),
         'order.return.requested' => array($order),
+        'order.packed'           => array($order, $value('units', 'number', lang('Units')), $value('wave_id', 'number', lang('Wave'))),
         'order.return.approved'  => $return,
         'order.return.received'  => $return,
         'order.return.refunded'  => array_merge($return, array($value('refund_method', 'text', lang('How it was refunded')))),
