@@ -15,6 +15,7 @@
 - lead-journey-rules.md: The visitor journey's pure rules (lead_journey.php, LJ1a): browser key verdict, tie and move on a shared browser, tying back in the keep period, interest score half-life
 - lead-journey-store.md: The visitor journey's four tables (step 11.0.265), the pg_lead browser key cookie under the marketing yes, the visit rows, the ties at each act's save path, a refusal, panel users (LJ1b)
 - lead-journey-view.md: The visitor journey read and drawn (LJ2, #10946): the merge by time, the contact screen's Journey card, the Workspace card's folded row, erase, export, inventory, the keep period trim
+- lead-score-pass.md: The interest score's scoring pass (LJ3): when it runs, which contacts it works out (keep period rows included), what it writes, what marks a row for work (a contact merge, a settings change)
 - lead-score-settings.md: The interest score's settings row under Site Settings › Visitors and privacy (LJ3b, #11245): its fields, the save into config_text lead_score, Back to the defaults; the contacts list's Score column
 - lead-score.md: The visitor journey's scores (LJ3, LJ3b): config_text lead_score, behaviour events, the fit score, interests by page folder or product category, the job's pass, the Interest card
 - lead-sources-report.md: First and last touch of a lead or customer (LJ5): the contact_journey rows kind 3 and 4, the four save paths, once per contact, and the Lead sources report under Visitors with its Excel

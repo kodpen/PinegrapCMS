@@ -213,7 +213,7 @@ description: Generated from the module field of the memory files: each includes/
 - `lead_journey`: [[lead-journey-rules]]
 - `lead_journey_store`: [[lead-journey-store]]
 - `lead_journey_view`: [[lead-journey-view]]
-- `lead_score`: [[lead-score]], [[lead-score-settings]]
+- `lead_score`: [[bug-hunt-areas-lead-scoring]], [[lead-score]], [[lead-score-pass]], [[lead-score-settings]]
 - `lead_tell`: [[lead-tell]]
 - `lead_touch`: [[lead-sources-report]]
 - `legacy_bootstrap`: [[legacy-bootstrap-map]], [[legacy-layouts-converter]], [[legacy-layouts-left]], [[legacy-layouts-output-pass]], [[legacy-layouts-shapes]]
