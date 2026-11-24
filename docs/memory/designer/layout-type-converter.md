@@ -28,7 +28,8 @@ module: layout_convert
 ## How does the move run use it?
 - The dry run reads each file page of a mapped type (`pg_ltd_type_file_dropped()`); nothing dropped and nothing held makes the target `convert` with `file` true: listed under "Page types", its kind's starter posted, not counted under "Pages with a custom layout".
 - The types step reads the file again and builds the widget with `pg_ltd_type_file_widget()`; a drop since then or no starter leaves the System region, with a report line.
-- In the editor the Region panel's dropped list and confirm come with LE6b.
+## And in the editor?
+- The Region panel's dropped list and its Convert: [[layout-type-converter-editor]].
 
 ## Tests?
 - `tests/layout_convert_test.php`: the map, the templates, all starting-site form list texts under each setting, lines, the target, the widget, the dry run count.

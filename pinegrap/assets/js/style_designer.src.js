@@ -55594,6 +55594,7 @@ const StyleDesigner = (function () {
                         : _sdT('This page type has no design widget; the region keeps drawing it from the page type\'s settings.')) +
                 '</div></div>';
         }
+        if (o.file) return _sdClassicFilePropsHtml(o);
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-classic-convert">' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
@@ -55604,12 +55605,45 @@ const StyleDesigner = (function () {
             '</div></div>';
     }
 
+    // A page with its own layout file the converter maps (o.file,
+    // pg_classic_widget_offers()): the pieces it would lose as list rows,
+    // five then "Show all N", and the converter, which keeps the file's
+    // markup.
+    function _sdClassicFilePropsHtml(o) {
+        var rows = Array.isArray(o.dropped) ? o.dropped : [];
+        var h = '';
+        if (rows.length) {
+            h += _sdRegionWhyHtml(_sdT('Its layout has pieces that have no design element')) +
+                '<div class="sd-prop-row"><div class="w-100"><ul class="list-unstyled mb-0" id="sd-classic-dropped" style="font-size:.66rem;line-height:1.3">';
+            rows.forEach(function (r, i) {
+                h += '<li class="py-1 border-bottom text-break' + (i >= SD_CLASSIC_DROPPED_SHOWN ? ' d-none' : '') + '">' + esc(r && r.text ? r.text : '') + '</li>';
+            });
+            h += '</ul>';
+            if (rows.length > SD_CLASSIC_DROPPED_SHOWN) {
+                h += '<button type="button" class="btn btn-link btn-sm p-0 mt-1" id="sd-classic-dropped-all" style="font-size:.7rem">' + esc(_sdT('Show all {var}', rows.length)) + '</button>';
+            }
+            h += '</div></div>';
+        }
+        return h + '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-solid theme-primary w-100" id="sd-classic-convert">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Builds a "{var}" widget from this page\'s layout, its markup kept, in the region\'s place. The layout file and the page type stay; undo brings the region back.', _swTypeInfo(o.kind).label)) +
+            '</div></div>';
+    }
+
+    // Dropped pieces listed before "Show all N".
+    var SD_CLASSIC_DROPPED_SHOWN = 5;
+
     // The page's own system region becomes the widget of its page type, in
     // its place; one undo step, after asking.
     function _sdClassicConvert(regionNode) {
         var o = _sdClassicWidgetOffer(regionNode);
         if (!o) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (o.file) { _sdClassicFileConvert(regionNode, o); return; }
         var label = _swTypeInfo(o.kind).label;
         var ask = _sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label);
         var held = Array.isArray(o.held) ? o.held : [];
@@ -55618,6 +55652,45 @@ const StyleDesigner = (function () {
         _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
             sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
         }, _sdClassicTreeSeed(_buildStarterTree(o.kind), o.tree));
+    }
+
+    // A page's own layout file as its widget's design elements, in the
+    // region's place (layout_code convert_type, pg_layout_type_file_convert());
+    // the confirm names how many pieces go, the toasts the widget and the
+    // pieces the layout lost.
+    function _sdClassicFileConvert(regionNode, o) {
+        var p = _pgActivePage();
+        if (!p || !(p.page_id > 0)) return;
+        var label = _swTypeInfo(o.kind).label;
+        var n = Array.isArray(o.dropped) ? o.dropped.length : 0;
+        var ask = n
+            ? _sdT('Build a "{var:1}" widget from this layout in the place of the classic region? {var:2} pieces with no design element are left out. Undo brings the region back.', [label, n])
+            : _sdT('Build a "{var}" widget from this layout in the place of the classic region? Undo brings the region back.', label);
+        var held = Array.isArray(o.held) ? o.held : [];
+        if (held.length) ask += '\n\n' + _sdT('The widget has no setting for: {var}. The page loses it.', held.join(', '));
+        if (!window.confirm(ask)) return;
+        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+        fetch(url, { method: 'POST', credentials: 'same-origin',
+                     body: JSON.stringify({ action: 'layout_code', sub_action: 'convert_type', page_id: p.page_id, starter: _buildStarterTree(o.kind), token: _pgToken() }),
+                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || data.status !== 'success' || !data.tree || data.kind !== o.kind) {
+                    sdToast(esc((data && data.message) || _sdT('The operation failed.')), 'error');
+                    return;
+                }
+                var tree = data.tree;
+                _backfillIds(tree);
+                var cfg = _sdLayoutWidgetCfg(o);
+                var own = (data.cfg && typeof data.cfg === 'object') ? data.cfg : {};
+                Object.keys(own).forEach(function (k) { cfg[k] = own[k]; });
+                _sdRegionToWidget(regionNode, o.kind, cfg, function () {
+                    sdToast(esc(_sdT('The page is now drawn by a "{var}" widget built from its layout; save the page to keep it.', label)), 'success', 7000);
+                    var left = (Array.isArray(data.dropped) ? data.dropped : []).map(function (r) { return r && r.text ? r.text : ''; }).filter(Boolean);
+                    if (left.length) sdToast(esc(_sdT('Left out of the widget: {var}', left.join('; '))), 'warning', 12000);
+                }, tree);
+            })
+            .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
     // A widget's starter layout with the page type's layout settings put in
@@ -58914,6 +58987,11 @@ const StyleDesigner = (function () {
         if (layoutWidgetBtn) layoutWidgetBtn.addEventListener('click', function () { _sdLayoutWidgetPlace(selectedNode); });
         var classicConvertBtn = document.getElementById('sd-classic-convert');
         if (classicConvertBtn) classicConvertBtn.addEventListener('click', function () { _sdClassicConvert(selectedNode); });
+        var classicDroppedAll = document.getElementById('sd-classic-dropped-all');
+        if (classicDroppedAll) classicDroppedAll.addEventListener('click', function () {
+            document.querySelectorAll('#sd-classic-dropped li.d-none').forEach(function (li) { li.classList.remove('d-none'); });
+            classicDroppedAll.remove();
+        });
         var layoutRemoveBtn = document.getElementById('sd-layout-remove-region');
         if (layoutRemoveBtn) layoutRemoveBtn.addEventListener('click', function () { _sdLayoutRegionRemove(selectedNode); });
 

@@ -118,5 +118,5 @@ function test_layout_code_page_cache_sub_actions()
 
 	pg_assert_true(isset($sub_actions['layout_code']));
 	pg_assert_same(array('save'), $sub_actions['layout_code']['dirty']);
-	pg_assert_same(array('read', 'regenerate', 'convert'), $sub_actions['layout_code']['clean']);
+	pg_assert_same(array('read', 'regenerate', 'convert', 'convert_type'), $sub_actions['layout_code']['clean']);
 }

@@ -375,3 +375,35 @@ function test_lc_order_form_row_through_the_widget()
 	pg_assert_true(strpos($html, 'type="checkbox"') === false && strpos($html, 'donation_5') === false, 'one control');
 }
 
+function test_lc_type_file_convert_keeps_the_dropped_list()
+{
+	$facts = array('type' => 'form list view', 'state' => array('browse' => true), 'tree' => array());
+	$code = "<div class=\"theme\">\n<?php if (\$browse or \$search): ?><form></form><?php endif ?>\n<?php foreach (\$forms as \$form): ?><?=\$form['content']?><?php endforeach ?></div>";
+	$r = pg_layout_type_file_convert($facts, $code, _test_lc_starter());
+	pg_assert_true($r['ok']);
+	pg_assert_same(array('browse'), _test_lc_codes($r['dropped']), 'the Region panel gets what the run refuses');
+	pg_assert_same('theme', $r['tree']['children'][0]['props']['cssClass'], 'the theme\'s wrapper stays');
+	pg_assert_same(1, count(_test_lc_of_type($r['tree'], 'loop_area')));
+	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'catalog'), $code, array())['ok'], 'a type with no map');
+}
+
+function test_lc_dropped_rows()
+{
+	$rows = pg_layout_dropped_rows(array(
+		array('piece' => '$watcher_option', 'line' => 42, 'code' => 'condition'),
+		array('piece' => '$secret', 'line' => 3, 'code' => 'value'),
+		array('piece' => '$a as $b', 'line' => 4, 'code' => 'loop'),
+		array('piece' => 'echo   date()', 'line' => 5, 'code' => 'code'),
+		array('piece' => '$browse or $search', 'line' => 6, 'code' => 'browse'),
+		array('piece' => str_repeat('x', 70), 'line' => 7, 'code' => 'other'),
+	));
+	pg_assert_same(array(42, 3, 4, 5, 6, 7), array_column($rows, 'line'));
+	if (lang(array('info' => true)) !== 'en') return;
+	pg_assert_same('line 42 · a condition on $watcher_option · dropped', $rows[0]['text']);
+	pg_assert_same('line 3 · the value $secret · dropped', $rows[1]['text']);
+	pg_assert_same('line 4 · a loop over $a as $b · dropped', $rows[2]['text']);
+	pg_assert_same('line 5 · PHP code echo date() · dropped', $rows[3]['text']);
+	pg_assert_same('line 6 · the browse form · dropped', $rows[4]['text']);
+	pg_assert_same('line 7 · ' . str_repeat('x', 59) . '… · dropped', $rows[5]['text'], 'a long piece is cut');
+	pg_assert_same(array(), pg_layout_dropped_rows(array()));
+}

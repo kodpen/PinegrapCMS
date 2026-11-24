@@ -26,6 +26,7 @@
     "PHP cURL": "PHP cURL",
     "PHP code": "PHP kodu",
     "PHP code that runs on the server each time the page is shown.": "Sayfa her gösterildiğinde sunucuda çalışan PHP kodu.",
+    "PHP code {var:1}": "PHP kodu {var:1}",
     "PHP code: it stays code and runs on the site as written": "PHP kodu: kod olarak kalır ve sitede yazıldığı gibi çalışır",
     "PHP code: it stays code and runs on the site as written.": "PHP kodu: kod olarak kalır ve sitede yazıldığı gibi çalışır.",
     "PHP date() letters, e.g. <code>d.m.Y</code> or <code>j F Y H:i</code>. Write <code>relative</code> for \"3 days ago\".": "PHP date() harfleri, örneğin <code>d.m.Y</code> ya da <code>j F Y H:i</code>. \"3 gün önce\" için <code>relative</code> yazın.",
