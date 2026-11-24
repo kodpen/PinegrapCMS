@@ -286,10 +286,36 @@ if ($erp_document === false) {
         }
 
         if (!$ws_legacy) {
-            // The folder's private access stays in charge; a public channel's
-            // file is simply open to the whole team as well.
-            if ($ws_member && ((string) $ws_row['kind'] === 'public')) {
+            // A public channel's file is open to the whole team. Otherwise
+            // the folder's private access decides, but staff pass every
+            // private folder: they get a private, guest or mailbox channel's
+            // file only while they read the channel.
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/workspace_file_gate.php');
+
+            $ws_channel_id = (int) $ws_row['channel_id'];
+            $ws_in = false;
+            $ws_audit = false;
+
+            if ($ws_member && ($ws_role < 3) && ((string) $ws_row['kind'] !== 'public')) {
+                $ws_in_result = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members
+                    WHERE channel_id = '" . $ws_channel_id . "' AND user_id = '" . (int) $ws_user['id'] . "'");
+                $ws_in = ($ws_in_result !== false) && (mysqli_num_rows($ws_in_result) > 0);
+
+                if (!$ws_in && !empty($_SESSION['software']['ws_audit'][$ws_channel_id])) {
+                    $ws_staff = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members m
+                        JOIN user u ON u.user_id = m.user_id
+                        WHERE m.channel_id = '" . $ws_channel_id . "' AND u.user_role < 3 LIMIT 1");
+
+                    $ws_audit = ($ws_staff !== false) && (mysqli_num_rows($ws_staff) === 0);
+                }
+            }
+
+            $ws_verdict = pg_ws_channel_file_verdict((string) $ws_row['kind'], $ws_role, $ws_member, $ws_in, $ws_audit);
+
+            if ($ws_verdict === 'open') {
                 $workspace_file = true;
+            } elseif ($ws_verdict === 'refuse') {
+                output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
             }
         } else {
             $workspace_file = true;
