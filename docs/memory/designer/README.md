@@ -49,6 +49,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `layout-type-*`: 7 files.
 - `legacy-bootstrap-*`: 11 files; start at `legacy-bootstrap-overview.md`.
 - `legacy-layouts-*`: 8 files.
+- `options-panel-*`: 6 files.
 - `prototype-approval-*`: 8 files; start at `prototype-approval.md`.
 - `release-bundle-*`: 9 files; start at `release-bundle.md`.
 - `system-widget-*`: 9 files.

@@ -590,6 +590,11 @@
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image on the page and the canvas (#9199): an icon without words; its address in data-pg-fallback, never in the onerror code
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
+- options-panel-census-bss.md: Options panel census, part 4: what Bootstrap Studio has that the Page Design Studio lacks, each as have, partly or missing, with where ours lives (view transitions to collection pages) [decision: here]
+- options-panel-census-layout.md: Options panel census, part 2: gaps to place and size an element (grid tracks, position, layer order, per size values, sticky, scroll snap, aspect ratio, object fit)
+- options-panel-census-look.md: Options panel census, part 3: gaps to dress and move an element (hover/focus/pressed, transitions, gradients, filters, blend, transforms, text effects, masks)
+- options-panel-census-today.md: Options panel census, part 1: every Options panel control on 2026-11-24 per element kind and Style/Advanced section, and which rows take a per screen size value
+- options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24): what the designer's Options panel sets today and what needs code, each gap sized S or M
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out. [decision: here]
