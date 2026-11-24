@@ -1791,6 +1791,7 @@
     "Move-in": "Taşınma",
     "Move-out Cleaning": "Taşınma Temizliği",
     "Moved": "Ertelendi",
+    "Moved before page content went into the pages: its page content sits in one shared part.": "Sayfa içeriği sayfalara geçmeden önce taşındı: sayfa içeriği tek bir ortak parçada duruyor.",
     "Moved to another time": "Başka bir saate alındı",
     "Moved to place {var:1} of {var:2}": "{var:2} yerden {var:1}. yere taşındı",
     "Moved to the Recycle Bin": "Geri Dönüşüm Kutusuna taşındı",

@@ -9,8 +9,10 @@
  * designers and administrators, as the conversion itself. The chosen styles'
  * dry run (includes/fn/legacy_to_designer_plan.php) lists what a bulk move
  * would write for each; Convert starts that move (legacy_to_designer_run.php),
- * worked by this screen's short requests and the general job. Back to
- * classic sends a set's pages back; Towards Bootstrap 5 reports what a
+ * worked by this screen's short requests and the general job. Designs
+ * moved earlier (includes/fn/legacy_earlier_designs.php) lists the Legacy
+ * designs with their fully editable pages, a design's dry run in a drawer
+ * and its run on the design's pages. Back to classic sends a set's pages back; Towards Bootstrap 5 reports what a
  * Legacy design's move to Bootstrap 5.3.8 would convert
  * (includes/fn/legacy_bootstrap_report.php), makes and deletes its trial
  * design and previews a page in it (includes/fn/legacy_bootstrap_trial.php).
@@ -25,6 +27,7 @@ include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_earlier_designs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_theme.php');
 
@@ -161,6 +164,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $liveform->add_error(h($move_error));
         header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-trial-' . $move_design);
+        exit;
+    }
+    // Designs moved earlier: Convert in a design's dry run drawer runs the
+    // page_parts and types steps on its pages, with the starter layouts the
+    // browser built for the page types its dry run converts.
+    if (!empty($_POST['earlier_convert'])) {
+        $earlier_id = (int)($_POST['earlier'] ?? 0);
+        $earlier_row = pg_lte_row(pg_lte_designs(pg_ltd_closed_measure()), $earlier_id);
+        $starters = ($earlier_row !== null) ? pg_ltd_starters_clean($_POST['starters'] ?? '', pg_ltd_plan_type_kinds(array(pg_lte_plan($earlier_row)))) : array();
+        unset($_POST['starters'], $_REQUEST['starters']);
+        $earlier_error = pg_lte_run_start($earlier_id, $user, $starters);
+        if ($earlier_error === '') {
+            log_activity(lang(array('string' => 'the conversion of the design {var:1} in the Page Design Studio was started', 'vars' => array((string)$earlier_row['name']))), $_SESSION['sessionusername']);
+            header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-run');
+            exit;
+        }
+        $liveform->add_error(h($earlier_error));
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
         exit;
     }
     foreach ((array)($_POST['styles'] ?? array()) as $id) {
@@ -374,6 +395,17 @@ $left_kinds = array();
 foreach (array_slice($figures['kinds'], 0, 3, true) as $kind => $n) {
     $left_kinds[] = (isset($region_labels[$kind]) ? $region_labels[$kind] : lang('Unknown')) . ' ' . pg_format_number($n, 0);
 }
+// Designs moved earlier: each Legacy design with its fully editable pages,
+// its dry run in a drawer (?earlier=<id>, nothing written) and Convert.
+$back_designs = pg_ltc_designs();
+$earlier_rows = pg_lte_designs($measure, array_column($back_designs, 'id'));
+$earlier_open = is_scalar($_GET['earlier'] ?? null) ? (int)$_GET['earlier'] : 0;
+$earlier_open_row = ($earlier_open > 0) ? pg_lte_row($earlier_rows, $earlier_open) : null;
+$output_earlier = pg_lte_card_html($earlier_rows);
+if ($earlier_open_row !== null) {
+    $output_earlier .= pg_lte_drawer_html($earlier_open_row, pg_lte_plan($earlier_open_row), $busy);
+}
+
 $output_summary = '';
 foreach (array(
     array(lang('Pages fully editable'), pg_format_number($figures['editable'], 0) . ' <small>/ ' . pg_format_number($figures['pages'], 0) . '</small>', lang('pages of the moved designs')),
@@ -496,7 +528,7 @@ if ($running !== null || $moving !== null) {
     } else {
         $progress = pg_ltd_state_progress($running);
         $run_title = lang('Moving to the Page Design Studio');
-        $run_text = lang('{var:1} of {var:2} styles done');
+        $run_text = !empty($running['earlier']) ? lang('{var:1} of {var:2} designs done') : lang('{var:1} of {var:2} styles done');
         $run_done = 'legacy_to_designer.php?ended=1#ltd-ended';
     }
     $output_run = '
@@ -583,7 +615,7 @@ if ($output_runs !== '') {
 // page sent back to the classic style it came from. No button while a move
 // runs.
 $output_back = '';
-foreach (pg_ltc_designs() as $d) {
+foreach ($back_designs as $d) {
     $rows = '';
     $ready = 0;
     foreach ($d['pages'] as $p) {
@@ -614,7 +646,7 @@ foreach (pg_ltc_designs() as $d) {
             . h(lang(array('string' => 'Send {var:1} pages back', 'vars' => array($ready)))) . '</button></form>';
     }
     $output_back .= '
-        <div class="mb-7">
+        <div class="mb-7" id="ltd-back-' . (int)$d['id'] . '">
             <h3 class="h6">' . h($d['name']) . '</h3>
             ' . $all . '
             <details><summary>' . h(lang(array('string' => '{var:1} pages', 'vars' => array(count($d['pages']))))) . '</summary>
@@ -694,6 +726,7 @@ pg_page_shell([
             <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
+    ' . $output_earlier . '
     <div id="ltd-back-result">' . $liveform->output_errors() . $liveform->output_notices() . $liveform->get_warnings() . '</div>
     ' . $output_back . $output_bootstrap . $output_classic . $output_runs . '
 </main>
