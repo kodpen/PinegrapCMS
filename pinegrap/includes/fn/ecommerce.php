@@ -5413,6 +5413,159 @@ function pg_offer_usage_counts($offer_id)
     return $counts;
 }
 
+/**
+ * The offers of an order that no longer hold when it is submitted: the cart
+ * worked their discount out earlier, and since then the offer may have
+ * ended, been disabled or deleted, reached its usage limit (another order
+ * was completed meanwhile) or lost the code it needs (a single-use key code
+ * another order used). Pure.
+ *
+ * @param array  $offers     rows of id, status, start_date, end_date,
+ *                           require_code, code and conditions_met (the
+ *                           customer conditions, pg_offer_customer_conditions_met());
+ *                           null offer columns for an offer that is gone
+ * @param string $today      Y-m-d
+ * @param string $offer_code the offer code the order's special offer code
+ *                           names now (get_offer_code_for_special_offer_code())
+ * @return array the ids that no longer hold, in the order given
+ */
+function pg_offer_use_refused(array $offers, $today, $offer_code)
+{
+    $refused = array();
+    foreach ($offers as $offer) {
+        $holds = pg_offer_is_running($offer, $today)
+            && !empty($offer['conditions_met'])
+            && (empty($offer['require_code'])
+                || (mb_strtolower((string) $offer['code']) === mb_strtolower((string) $offer_code)));
+        if (!$holds) {
+            $refused[] = (int) $offer['id'];
+        }
+    }
+    return $refused;
+}
+
+/**
+ * The named locks a submit holds while it checks an order's offers, takes
+ * the payment and completes the order: one per offer with a usage limit and
+ * one for a single-use key code, so of two checkouts using the last use only
+ * the first is completed and the second finds the limit reached. Sorted, so
+ * two submits take them in the same order. Pure.
+ *
+ * @param array      $offers   rows of id and usage_limit (bool)
+ * @param array|null $key_code pg_order_key_code()
+ * @return array
+ */
+function pg_offer_use_lock_names(array $offers, $key_code)
+{
+    $names = array();
+    foreach ($offers as $offer) {
+        if (!empty($offer['usage_limit'])) {
+            $names[] = 'pg_offer_use_' . (int) $offer['id'];
+        }
+    }
+    if ($key_code && !empty($key_code['single_use'])) {
+        $names[] = 'pg_key_code_use_' . (int) $key_code['id'];
+    }
+    $names = array_values(array_unique($names));
+    sort($names, SORT_STRING);
+    return $names;
+}
+
+/**
+ * The offers an order uses, as pg_offer_use_refused() and
+ * pg_offer_use_lock_names() read them: the same three marks
+ * pg_offer_usage_counts() counts (orders.discount_offer_id,
+ * order_items.offer_id, ship_tos.offer_id).
+ *
+ * @param int $order_id
+ * @return array
+ */
+function pg_order_used_offers($order_id)
+{
+    $order_id = (int) $order_id;
+    $ids = array();
+    $discount_offer_id = (int) db_value("SELECT discount_offer_id FROM orders WHERE id = '" . e($order_id) . "'");
+    if ($discount_offer_id > 0) {
+        $ids[$discount_offer_id] = true;
+    }
+    foreach (db_items("SELECT DISTINCT offer_id AS id FROM order_items WHERE (order_id = '" . e($order_id) . "') AND (offer_id != '0')" . pg_order_item_active_sql()) as $row) {
+        $ids[(int) $row['id']] = true;
+    }
+    if (ECOMMERCE_SHIPPING == true) {
+        foreach (db_items("SELECT DISTINCT offer_id AS id FROM ship_tos WHERE (order_id = '" . e($order_id) . "') AND (offer_id != '0')") as $row) {
+            $ids[(int) $row['id']] = true;
+        }
+    }
+    $offers = array();
+    foreach (array_keys($ids) as $offer_id) {
+        $row = db_item("SELECT status, start_date, end_date, require_code, code FROM offers WHERE id = '" . e($offer_id) . "'");
+        $usage_limit = false;
+        foreach (pg_offer_conditions($offer_id) as $condition) {
+            if (($condition['type'] == 'usage limit') && (((int) $condition['int_value'] > 0) || ((int) $condition['text_value'] > 0))) {
+                $usage_limit = true;
+            }
+        }
+        $offers[] = array(
+            'id' => $offer_id,
+            'status' => $row['status'] ?? null,
+            'start_date' => $row['start_date'] ?? null,
+            'end_date' => $row['end_date'] ?? null,
+            'require_code' => $row['require_code'] ?? 0,
+            'code' => $row['code'] ?? '',
+            'usage_limit' => $usage_limit,
+        );
+    }
+    return $offers;
+}
+
+/**
+ * The submit's check of the offers an order uses, made before the payment.
+ * Locks the limited offers and a single-use key code (pg_offer_use_lock_names())
+ * for the rest of the request, then asks whether each offer still holds.
+ * 'changed': an offer no longer holds; it has been taken off the cart
+ * (apply_offers_to_cart()), so the total the shopper saw is not the total
+ * now. 'busy': another checkout held a lock for longer than ten seconds.
+ *
+ * @param int $order_id
+ * @return string 'ok', 'changed' or 'busy'
+ */
+function pg_order_offer_use_check($order_id)
+{
+    $offers = pg_order_used_offers($order_id);
+    $special_offer_code = (string) db_value("SELECT special_offer_code FROM orders WHERE id = '" . e((int) $order_id) . "'");
+    $key_code = ($special_offer_code !== '') ? pg_order_key_code($special_offer_code) : null;
+    if (!$offers && !$key_code) {
+        return 'ok';
+    }
+    foreach (pg_offer_use_lock_names($offers, $key_code) as $lock) {
+        if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 10)") !== 1) {
+            return 'busy';
+        }
+    }
+    foreach ($offers as $key => $offer) {
+        $offers[$key]['conditions_met'] = pg_offer_customer_conditions_met($offer['id']);
+    }
+    $offer_code = ($special_offer_code !== '') ? get_offer_code_for_special_offer_code($special_offer_code) : '';
+    if (pg_offer_use_refused($offers, (string) db_value("SELECT CURRENT_DATE()"), $offer_code)) {
+        apply_offers_to_cart();
+        return 'changed';
+    }
+    return 'ok';
+}
+
+/**
+ * Whether an offer's gift line names a product that was deleted: the
+ * product row its LEFT JOIN reads is gone. Such a line is taken off the
+ * cart, as a line an offer discounted is when its product is gone. Pure.
+ *
+ * @param array $order_item a row with product_price from LEFT JOIN products
+ * @return bool
+ */
+function pg_offer_gift_line_product_gone($order_item)
+{
+    return !isset($order_item['product_price']);
+}
+
 // A tiered order discount: "spend 100 get 5%, spend 250 get 10%". The ladder
 // is one offer_conditions row, "<cents>:<percent>" pairs separated by commas,
 // read back sorted so the richest tier the cart reaches is found first.
@@ -6578,7 +6731,8 @@ function apply_offers_to_cart()
     $offers_and_offer_actions = array();
     // loop through the order items that were added by offers in order to determine if they are still valid
     foreach ($order_items as $order_item) {
-        // if this offer does not require a code or it has the same code that the customer entered,
+        // if the gift's product still exists (a deleted product's line goes),
+        // and this offer does not require a code or it has the same code that the customer entered,
         // and this offer is valid,
         // and not only the best offer should be applied for this code or it is the best offer for the code,
         // and the action is still set to add product,
@@ -6587,7 +6741,7 @@ function apply_offers_to_cart()
         // if this product has not already been added for this offer and action,
         // or the product is allowed to be added multiple times,
         // then the order item is valid, so update quantity and discount for product
-        if ((($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
+        if (!pg_offer_gift_line_product_gone($order_item) && (($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
             $discounted_price = pg_offer_gift_price($order_item['product_price'], $order_item['offer_action_add_product_discount_amount'], $order_item['offer_action_add_product_discount_percentage']);
             // A free gift left alone in its recipient (the last paid line
             // there was taken out) would stop the checkout, so it goes too;

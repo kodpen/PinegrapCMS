@@ -1568,6 +1568,22 @@ function submit_order($type) {
         }
     }
     
+    // The offers the order uses are asked again before the payment: the cart
+    // worked their discount out earlier, and an offer may have ended or
+    // reached its usage limit since. The limited ones stay locked until the
+    // request ends, so a second checkout using the last use waits for this
+    // one and then finds the limit reached. A payment's return is not asked
+    // again: the payment may already be taken.
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
+        $offer_use = pg_order_offer_use_check((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
+        if ($offer_use == 'changed') {
+            $liveform->add_notice(lang('An offer on your order has ended or reached its usage limit, so it was removed and the total has changed. Please review the new total and submit the order again.'));
+        } elseif ($offer_use == 'busy') {
+            $liveform->add_notice(lang('Another order is using the same offer right now. Please submit the order again in a moment.'));
+        }
+    }
+
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {
         // A hold left by an earlier submit (the visitor came back from the
