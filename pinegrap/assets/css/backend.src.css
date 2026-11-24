@@ -1850,7 +1850,7 @@ html[data-bs-theme="dark"] body .design-color {
     animation: var(--pg-mi-k) 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
   }
   /* Not while the rail widens or narrows (.pg-menu-moving, backend.src.js). */
-  .software-container.pg-menu-moving #menu .pg-mi [data-m] {
+  #menu.pg-menu-moving .list-group-item .pg-mi [data-m] {
     animation: none;
   }
   .pg-mi [data-m="pop"] { --pg-mi-k: pg-mi-pop; transform-box: fill-box; transform-origin: center; }

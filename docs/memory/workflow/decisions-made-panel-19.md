@@ -11,6 +11,6 @@ description: Decisions list, panel part 19 (2026-11-24 on): main menu row icons 
 - A row's icon is at least 1.2rem. Why: with a colour for every category the icon is what tells a row apart, so it has to be read at a glance.
 - It replaces the 15 px icon of the drawing he accepted on 2026-11-22; the tile and the row grow with it. The rest of that drawing stays: the line family, the category colours, one move a row.
 - The menu's widening must not stutter: a fault to fix, not a choice.
-- Plan: `plans/main-menu-icon-size.md`, step MZ1.
+- Done in #11271: the measures in `ui/main-menu-icons.md`, the widening in `ui/main-menu-widening.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/main-menu-icons.md

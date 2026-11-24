@@ -1175,6 +1175,8 @@ $(document).ready(function () {
      */
     var MENU_DRAWER_BREAKPOINT = 1024;
     var MENU_STATES = ['expanded', 'collapsed', 'hidden'];
+    // How wide each wide-screen state's grid column is, in order.
+    var MENU_STATE_RANK = { hidden: 0, collapsed: 1, expanded: 2 };
     // The panel this tab keeps open (initMenuPanels()). Assigned up here: the
     // init calls below run before the rest of this section is reached.
     var MENU_PANEL_KEY = 'pgMenuPanel';
@@ -1370,9 +1372,6 @@ $(document).ready(function () {
 
         return document.querySelector(MENU_TOGGLES);
     }
-
-    // How wide each wide-screen state's grid column is, in order.
-    var MENU_STATE_RANK = { hidden: 0, collapsed: 1, expanded: 2 };
 
     // Draws a wide-screen state on the container, the menu and the button.
     // The grid column is never animated: animating it lays the whole page
@@ -2128,14 +2127,15 @@ $(document).ready(function () {
     }
 
     // While the rail changes width (the menu view button, a panel opened from
-    // the rail) the container carries .pg-menu-moving, and the icons' hover
-    // moves do not start: a move starting under a widening rail is what
-    // made the widening stutter.
+    // the rail) the menu carries .pg-menu-moving, and the icons' hover moves
+    // do not start under a rail that is still moving. The class goes on the
+    // menu, not the container: a class change on the container restyles the
+    // whole page.
     function initMenuMotion() {
         var sidebar = document.querySelector('.software-container .software-sidebar');
-        var container = sidebar ? sidebar.closest('.software-container') : null;
+        var menu = sidebar ? sidebar.querySelector('#menu') : null;
 
-        if (!container) {
+        if (!menu) {
             return;
         }
 
@@ -2145,13 +2145,13 @@ $(document).ready(function () {
 
         sidebar.addEventListener('transitionrun', function (e) {
             if (isSlide(e)) {
-                container.classList.add('pg-menu-moving');
+                menu.classList.add('pg-menu-moving');
             }
         });
         ['transitionend', 'transitioncancel'].forEach(function (type) {
             sidebar.addEventListener(type, function (e) {
                 if (isSlide(e)) {
-                    container.classList.remove('pg-menu-moving');
+                    menu.classList.remove('pg-menu-moving');
                 }
             });
         });
