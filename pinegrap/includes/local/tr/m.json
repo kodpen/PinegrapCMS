@@ -970,6 +970,7 @@
     "Menu item ({var:1}) on menu ({var:2}) was deleted through the API by the application {var:3} (key {var:4}).": "Menü ({var:2}) öğesi ({var:1}) ve altındaki öğeler, {var:3} uygulaması tarafından (anahtar {var:4}) API üzerinden silindi.",
     "Menu item ID": "Menü öğesi kimliği",
     "Menu item address": "Menü öğesi adresi",
+    "Menu item link relation (noopener or empty)": "Menü öğesi bağlantı ilişkisi (noopener veya boş)",
     "Menu item name": "Menü öğesi adı",
     "Menu item window (_blank or empty)": "Menü öğesi penceresi (_blank veya boş)",
     "Menu name": "Menü adı",

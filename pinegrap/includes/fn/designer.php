@@ -7356,8 +7356,10 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
     $menu_items = isset($menu_tree['children'][(int) $parent_id]) ? $menu_tree['children'][(int) $parent_id] : array();
     // loop through all menu items in order to get child menu items, and add to the array
     foreach ($menu_items as $menu_item) {
-        // if this item has a link page name, and if it does not link to a page that is already in the sequence, then add menu item to array
-        if (($menu_item['link_page_name'] != '') && (in_array($menu_item['link_page_name'], $page_names_in_menu_sequence) == false)) {
+        // An item linked to a page not yet in the sequence adds it, unless
+        // the page is offline (Recycle Bin, drafts): its link leads nowhere.
+        if (($menu_item['link_page_name'] != '') && (in_array($menu_item['link_page_name'], $page_names_in_menu_sequence) == false)
+            && !pg_menu_page_offline($menu_item['link_page_folder_id'])) {
             // add the item's link page name to the array
             $page_names_in_menu_sequence[] = $menu_item['link_page_name'];
             // add the menu item to the array

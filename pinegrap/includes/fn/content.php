@@ -200,6 +200,67 @@ function pg_menu_tree_flatten(array $rows)
 }
 
 /**
+ * Whether a menu item is drawn for the visitor, as pg_menu_tree() reads it.
+ *
+ * An item linked to a page that no longer exists is never drawn: its link
+ * would lead nowhere. An item with security on, or linked to a page that is
+ * offline (in the Recycle Bin or the drafts folder, $offline), is drawn only
+ * when the visitor may view the page's folder ($can_view). An item linked to
+ * no page (a URL, or a heading for its sub-items) is always drawn.
+ *
+ * @param array         $item      a menu row (link_page_id, link_page_name,
+ *                                 link_page_folder_id, security)
+ * @param callable|null $can_view  folder id => bool (null: every page may be viewed)
+ * @param callable|null $offline   folder id => bool (null: no page is offline)
+ * @return bool
+ */
+function pg_menu_item_shown(array $item, $can_view = null, $offline = null)
+{
+    $page_id = isset($item['link_page_id']) ? (int) $item['link_page_id'] : 0;
+    $page = isset($item['link_page_name']) ? (string) $item['link_page_name'] : '';
+
+    if ($page === '') {
+        return $page_id <= 0;
+    }
+
+    $folder = isset($item['link_page_folder_id']) ? $item['link_page_folder_id'] : 0;
+
+    if (empty($item['security']) && (($offline === null) || !call_user_func($offline, $folder))) {
+        return true;
+    }
+
+    return ($can_view === null) || (bool) call_user_func($can_view, $folder);
+}
+
+/**
+ * Whether the pages of a folder are offline: the Recycle Bin or below it,
+ * or the drafts folder.
+ *
+ * @param int $folder_id
+ * @return bool
+ */
+function pg_menu_page_offline($folder_id)
+{
+    if (function_exists('pg_folder_binned') && pg_folder_binned($folder_id)) {
+        return true;
+    }
+
+    return function_exists('pg_page_is_draft') && pg_page_is_draft($folder_id);
+}
+
+/**
+ * The rel a menu link takes: noopener for one opened in a new window, so the
+ * opened page gets no handle on the window of the site.
+ *
+ * @param string $target  the link's target ('_blank' or empty)
+ * @return string
+ */
+function pg_menu_link_rel($target)
+{
+    return ($target === '_blank') ? 'noopener' : '';
+}
+
+/**
  * The common and designer regions behind <cregion> tags, read once per
  * request: the names a call asks for that no earlier call has read are read
  * together in one query, and what was read (a region, or that there is none)
@@ -585,11 +646,9 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
         if (defined('FRONTEND_LANGUAGE')) {
             $menu_item['name'] = pg_tr_text($menu_item['name'], 'text');
         }
-        // If security is disabled,
-        // or if this menu item is not connected to a page
-        // or this visitor has access to view this menu item's page,
-        // then show the menu item and its child items, if any exist.
-        if (($menu_item['security'] == 0) || ($menu_item['link_page_name'] == '') || (check_view_access($menu_item['link_page_folder_id']) == true)) {
+        // An item and its child items are shown unless its page is gone, or
+        // has security on or is offline while the visitor may not view it.
+        if (pg_menu_item_shown($menu_item, function ($folder_id) { return check_view_access($folder_id) == true; }, 'pg_menu_page_offline')) {
             // A sub menu exists when any item sits under this one.
             $sub_menu_exists = !empty($menu_tree['counts'][(int) $menu_item['id']]);
             $output_link_href = '';
@@ -609,7 +668,7 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
                 }
                 // if link should open in a new window, then prepare target
                 if ($menu_item['link_target'] == 'New Window') {
-                    $output_link_target = ' target="_blank"';
+                    $output_link_target = ' target="_blank" rel="' . pg_menu_link_rel('_blank') . '"';
                 }
                 // else there should not be a link, so disable link
             } else {

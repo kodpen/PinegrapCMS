@@ -27,9 +27,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * Give every link whose address is a menu item's the item's window: its
- * target prop, unless the designer set one. The token is a row value of
- * the main loop and of the sub-item lists alike.
+ * Give every link whose address is a menu item's the item's window and its
+ * rel (noopener for a new window): the target and rel props, unless the
+ * designer set them. The tokens are row values of the main loop and of the
+ * sub-item lists alike.
  *
  * @param array $node a widget tree node, changed in place
  */
@@ -39,6 +40,10 @@ function pg_mw_stamp_targets(&$node)
     if (isset($node['props']['_bindings']['href']) && $node['props']['_bindings']['href'] === '__menu_item_url'
         && empty($node['props']['target'])) {
         $node['props']['target'] = '^^__menu_item_target^^';
+    }
+    if (isset($node['props']['_bindings']['href']) && $node['props']['_bindings']['href'] === '__menu_item_url'
+        && empty($node['props']['rel'])) {
+        $node['props']['rel'] = '^^__menu_item_rel^^';
     }
     if (!empty($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as &$child) pg_mw_stamp_targets($child);
@@ -70,7 +75,8 @@ function pg_mw_can_edit_menu($menu_id)
 // loop_area: one row per top-level item the visitor may see. Row tokens
 // (the main loop and the menu.children lists alike, pg_sw_list_menu_rows()):
 // ^^__menu_item_name^^, ^^__menu_item_id^^, ^^__menu_item_url^^,
-// ^^__menu_item_target^^ (stamped on the links of an item's address),
+// ^^__menu_item_target^^ and ^^__menu_item_rel^^ (stamped on the links of
+// an item's address),
 // ^^__menu_item_has_children^^, ^^__menu_item_is_current^^,
 // ^^__menu_item_holds_current^^ ('1' or empty, for conditions).
 // Tokens: ^^__menu_name^^; ^^__menu_item_id^^ reads 0 outside the main
@@ -100,7 +106,8 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
         }
         $by_parent = pg_sw_list_menu_rows($items, _pg_sa_page_id(),
             function ($folder_id) { return check_view_access($folder_id) == true; },
-            defined('FRONTEND_LANGUAGE') ? function ($name) { return pg_tr_text($name, 'text'); } : null);
+            defined('FRONTEND_LANGUAGE') ? function ($name) { return pg_tr_text($name, 'text'); } : null,
+            'pg_menu_page_offline');
         // The items' addresses for the page's prefetch list (speculation.php).
         foreach ($by_parent as $level) {
             foreach ($level as $row) pg_speculation_note(array(html_entity_decode($row['__menu_item_url'], ENT_QUOTES | ENT_HTML5, 'UTF-8')));
@@ -142,7 +149,7 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
         '__menu_item_id' => '0',
     ));
     $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + $placed);
-    $html = str_replace(' target=""', '', str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html));
+    $html = str_replace(array(' target=""', ' rel=""'), '', str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html));
 
     if ($menu_id > 0 && $mode !== 'background' && pg_mw_can_edit_menu($menu_id)) {
         $html = pg_sw_add_edit_chip($html, pg_sw_backend_edit_url('view_menu_items.php', $menu_id, array('from' => 'pages')),
@@ -159,12 +166,14 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
  * The pages of a menu in reading order, as get_menu_sequence() walks them:
  * each item before the items under it, an item that links to no page left
  * out, a page listed once (its first item). No access check: the classic
- * region shows every page of the menu.
+ * region shows every page of the menu, but an offline page (in the Recycle
+ * Bin or the drafts folder) is left out, as its link would lead nowhere.
  *
- * @param array $items the menu's rows as pg_menu_tree() reads them, in sort order
+ * @param array         $items   the menu's rows as pg_menu_tree() reads them, in sort order
+ * @param callable|null $offline folder id => bool (null: no page is offline)
  * @return array of array('name', 'page' (page name), 'page_id')
  */
-function pg_mw_sequence($items)
+function pg_mw_sequence($items, $offline = null)
 {
     $children = array();
     foreach (is_array($items) ? $items : array() as $item) {
@@ -174,13 +183,16 @@ function pg_mw_sequence($items)
     $out   = array();
     $pages = array();
     $seen  = array();
-    $walk  = function ($parent) use (&$walk, &$out, &$pages, &$seen, $children) {
+    $walk  = function ($parent) use (&$walk, &$out, &$pages, &$seen, $children, $offline) {
         if (empty($children[$parent])) return;
         foreach ($children[$parent] as $item) {
             $id = (int)$item['id'];
             if (isset($seen[$id])) continue;
             $seen[$id] = true;
             $page = isset($item['link_page_name']) ? (string)$item['link_page_name'] : '';
+            if ($page !== '' && $offline !== null && call_user_func($offline, isset($item['link_page_folder_id']) ? $item['link_page_folder_id'] : 0)) {
+                $page = '';
+            }
             if ($page !== '' && !isset($pages[$page])) {
                 $pages[$page] = true;
                 $out[] = array(
@@ -269,7 +281,7 @@ function _render_system_widget_menu_sequence_region($tree_json, $widget_id, $cfg
         foreach ((array)$menu_tree['children'] as $level) {
             foreach ($level as $item) $items[] = $item;
         }
-        $sequence = pg_mw_sequence($items);
+        $sequence = pg_mw_sequence($items, 'pg_menu_page_offline');
     }
     $values = pg_mw_sequence_values($sequence, _pg_sa_page_id(),
         defined('FRONTEND_LANGUAGE') ? function ($name) { return pg_tr_text($name, 'text'); } : null);
