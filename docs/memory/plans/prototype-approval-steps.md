@@ -4,7 +4,7 @@ description: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the 
 ---
 
 ## Which steps are there?
-- PA1a (S) first, no schema: new `includes/fn/prototype_approval.php`, pure: the draft's fingerprint (tree and settings, `sha1` as `page_revisions.tree_hash`), node fingerprints (a node's own values), changed, added and removed nodes, a verdict's state, the "Answer by" check, the hourly mail rule. `tests/prototype_approval_test.php` red first: a moved node, a text change, a settings-only change, a removed node. Features: A2, A3, A4.
+- PA1a (S) done (#11288), no schema: new `includes/fn/prototype_approval.php`, pure: the draft's fingerprint (tree and settings, `sha1` as `page_revisions.tree_hash`), node fingerprints (a node's own values), changed, added and removed nodes, a verdict's state, the "Answer by" check, the hourly mail rule. `tests/prototype_approval_test.php` red first: a moved node, a text change, a settings-only change, a removed node. Features: A2, A3, A4.
 
 - PA1b (M) after PA1a: the five `prototype_links` columns and `prototype_verdicts` (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the five privacy registrations and `pg_contact_holders()`; verdicts deleted with their design and with a link's comments (`pg_proto_comments_delete_design()`, Delete comments); their tests. Features: A1, A2 (the store).
 
