@@ -23,8 +23,8 @@ description: Y5 widget offer beside a custom layout: page type to widget kind, c
   - catalog detail: `next_page_id` when set.
   - form list view (`collection = 'a'` row): `form_page_id`, `detail_page_id`, `max_results`, `items_per_page`, `search_enabled`, `search_label`, the four viewer filters, sorts 1 and 2 (the submitted date and the record statistics as they are, a form field by its name, `descending_*` = DESC; random, reference code, submitter… are dropped).
   - form item view: `form_page_id`.
-- Not carried: columns, image sizes, featured and new items, the advanced search, sort 3, header and footer. The other widgets read their page's type row themselves (checkout steps, cart, express order, order form, gallery) or need nothing.
-- The editor fills the rest with `_swTypeDefaults()` after the seed.
+- Into the layout: the catalog's columns and image size; held by neither: `pg_layout_widget_held()` ([[legacy-stock-types]]). The other widgets read their page's type row themselves (checkout steps, cart, express order, order form, gallery) or need nothing.
+- The editor fills the rest with `_swTypeDefaults()` after the seed. Each offer is `{kind, cfg, tree, held}` (held as words).
 
 ## Are 301s needed?
 - Not while the page keeps its `page_type`: `get_page.php` resolves `/<catalog>/<group>` and `/<form list>/<address>` by the page's type, and the widgets link the same way (`/<listing page>/<address_name>`, `/<detail page>/<address_name>`). A 301 is needed only if a step ever changes the type or deletes the type row.

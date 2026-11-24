@@ -55304,11 +55304,11 @@ const StyleDesigner = (function () {
     // A new widget of `kind` with `cfg` and its starter layout takes the
     // region node's place, in the page tree or in the shared component the
     // node sits in; one undo step. `done()` runs once it is placed.
-    function _sdRegionToWidget(regionNode, kind, cfg, done) {
+    function _sdRegionToWidget(regionNode, kind, cfg, done, starter) {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var start = _sdAnyParent(regionNode);
         var name = _swAutoName(kind, null, { target: start ? start.parent : null });
-        _swCreateRow(name, cfg, _buildStarterTree(kind), function (newId, newName) {
+        _swCreateRow(name, cfg, starter || _buildStarterTree(kind), function (newId, newName) {
             // The node may have gone meanwhile (another tab, an undo); the
             // widget is then listed in the design, unplaced.
             var hit = _sdAnyParent(regionNode);
@@ -55442,7 +55442,7 @@ const StyleDesigner = (function () {
         var cfg = _sdLayoutWidgetCfg(o);
         var start = _sdAnyParent(regionNode);
         var name = _swAutoName(o.kind, null, { target: start ? start.parent : null });
-        _swCreateRow(name, cfg, _buildStarterTree(o.kind), function (newId, newName) {
+        _swCreateRow(name, cfg, _sdClassicTreeSeed(_buildStarterTree(o.kind), o.tree), function (newId, newName) {
             // The region may have gone meanwhile; the widget is then listed
             // in the design, unplaced.
             var hit = _sdAnyParent(regionNode);
@@ -55520,10 +55520,48 @@ const StyleDesigner = (function () {
         if (!o) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var label = _swTypeInfo(o.kind).label;
-        if (!window.confirm(_sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label))) return;
+        var ask = _sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label);
+        var held = Array.isArray(o.held) ? o.held : [];
+        if (held.length) ask += '\n\n' + _sdT('The widget has no setting for: {var}. The page loses it.', held.join(', '));
+        if (!window.confirm(ask)) return;
         _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
             sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
-        });
+        }, _sdClassicTreeSeed(_buildStarterTree(o.kind), o.tree));
+    }
+
+    // A widget's starter layout with the page type's layout settings put in
+    // (o.tree, pg_layout_widget_tree_seed()): the column of its first loop
+    // area spans 12 / columns from the small screen up, and the image bound
+    // to the product picture gets the width and height. Twin of
+    // pg_layout_widget_tree_apply().
+    function _sdClassicTreeSeed(tree, seed) {
+        seed = (seed && typeof seed === 'object') ? seed : {};
+        var columns = parseInt(seed.columns, 10) || 0;
+        var width = parseInt(seed.image_width, 10) || 0;
+        var height = parseInt(seed.image_height, 10) || 0;
+        var colDone = columns <= 0;
+        var imageDone = width <= 0 && height <= 0;
+        (function walk(node, inLoop) {
+            if (!node || typeof node !== 'object') return;
+            var props = node.props || {};
+            if (!colDone && inLoop && node.type === 'col') {
+                colDone = true;
+                props.xs = '12';
+                props.sm = columns >= 2 ? '6' : '';
+                props.md = columns >= 3 ? '4' : '';
+                props.lg = columns >= 4 ? String(12 / columns) : '';
+                props.xl = '';
+                props.xxl = '';
+                node.props = props;
+            }
+            if (!imageDone && node.type === 'content' && props._bindings && props._bindings.src === '__image_url') {
+                imageDone = true;
+                if (width > 0) props.width = String(width);
+                if (height > 0) props.height = String(height);
+            }
+            (Array.isArray(node.children) ? node.children : []).forEach(function (c) { walk(c, inLoop || node.type === 'loop_area'); });
+        })(tree, false);
+        return tree;
     }
 
     // What the converter left out of the widget, by its code (layout_code
