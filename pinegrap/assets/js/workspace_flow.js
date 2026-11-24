@@ -14488,6 +14488,38 @@
         return nodes.filter(function (node) { return !kindOf(node).pure; }).concat(nodes.filter(function (node) { return kindOf(node).pure; }));
     }
 
+    // The marks of a trial on the canvas (ws_flow_trial's steps, of which
+    // the first `shown` are walked): each walked box done with its outcome,
+    // a Wait passed, a box that would fail failed; the step in turn next.
+    // The arrows a walked box left on are taken: its outcome's, and always
+    // unless it failed. Pure.
+    function trialMarks(steps, shown, edges) {
+        var marks = {};
+        var taken = [];
+        var list = steps || [];
+        var walked = Math.min(Math.max(0, shown || 0), list.length);
+
+        list.slice(0, walked).forEach(function (step) {
+            var failed = step.status === 'failed';
+
+            marks[step.node_id] = { state: failed ? 'failed' : ((step.kind === 'delay') ? 'passed' : 'done'), outcome: step.outcome || '' };
+        });
+
+        if (steps && (walked < list.length)) {
+            marks[list[walked].node_id] = { state: 'next', outcome: '' };
+        }
+
+        (edges || []).forEach(function (edge, index) {
+            var mark = marks[edge.from];
+
+            if (mark && (mark.state !== 'next') && mark.outcome && ((edge.on === mark.outcome) || ((edge.on === 'always') && (mark.state !== 'failed')))) {
+                taken.push(index);
+            }
+        });
+
+        return { marks: marks, taken: taken };
+    }
+
     // A run's flag (assets/js/workspace_flow_flag.js, in the workspace
     // bundle so the run's card in a channel draws the same one).
     function runFlag(run, options) {

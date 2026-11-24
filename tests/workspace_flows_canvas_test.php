@@ -4202,3 +4202,55 @@ JS
 	pg_assert_true($result['map']['boxes'][0]['y'] > 6, 'centred in height');
 	pg_assert_same($result['map']['boxes'][0]['x'], $result['map']['view']['x'], 'the view starts where the first box does');
 }
+
+// The trial on the canvas (trialMarks()): the steps walked so far wear a
+// mark (a Wait "passed", a failed box failed, the rest done with their
+// outcome), the step in turn "next", and the arrows a walked box left on
+// are taken; nothing after the step in turn is marked.
+function test_workspace_flows_canvas_trial_marks()
+{
+	$result = ws_flows_canvas_test_node(
+		array('trialMarks'),
+		<<<'JS'
+var steps = [
+    { node_id: 's', kind: 'manual', status: 'done', outcome: 'next' },
+    { node_id: 'w', kind: 'delay', status: 'done', outcome: 'done' },
+    { node_id: 'c', kind: 'condition', status: 'done', outcome: 'no' },
+    { node_id: 'm', kind: 'email', status: 'failed', outcome: 'failed' },
+    { node_id: 'e', kind: 'end', status: 'done', outcome: '' }
+];
+var edges = [
+    { from: 's', to: 'w', on: 'next' },
+    { from: 'w', to: 'c', on: 'done' },
+    { from: 'c', to: 'x', on: 'yes' },
+    { from: 'c', to: 'm', on: 'no' },
+    { from: 'm', to: 'e', on: 'failed' },
+    { from: 'm', to: 'y', on: 'done' },
+    { from: 'm', to: 'z', on: 'always' }
+];
+var out = {};
+out.none = trialMarks(steps, 0, edges);
+out.three = trialMarks(steps, 3, edges);
+out.all = trialMarks(steps, 9, edges);
+out.empty = trialMarks(null, 2, edges);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('marks' => array('s' => array('state' => 'next', 'outcome' => '')), 'taken' => array()), $result['none'], 'nothing walked: the start is in turn');
+	pg_assert_same(array(
+		's' => array('state' => 'done', 'outcome' => 'next'),
+		'w' => array('state' => 'passed', 'outcome' => 'done'),
+		'c' => array('state' => 'done', 'outcome' => 'no'),
+		'm' => array('state' => 'next', 'outcome' => ''),
+	), $result['three']['marks'], 'three walked, a Wait passed, the e-mail in turn');
+	pg_assert_same(array(0, 1, 3), $result['three']['taken'], 'the arrows left on: the condition on no, never on yes');
+	pg_assert_same(array('state' => 'failed', 'outcome' => 'failed'), $result['all']['marks']['m'], 'a box that would fail');
+	pg_assert_same(array(0, 1, 3, 4), $result['all']['taken'], 'a failed box leaves on its failed arrow only, never on always');
+	pg_assert_same(array('state' => 'done', 'outcome' => ''), $result['all']['marks']['e'], 'the end walked');
+	pg_assert_same(array('marks' => array(), 'taken' => array()), $result['empty'], 'no answer yet: no marks');
+}
