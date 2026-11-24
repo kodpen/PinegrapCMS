@@ -381,6 +381,7 @@
 - invoice-order-shared-form.md: add_erp_invoice.php (Invoice an Order) draws its Order card, Summary and save bar through includes/forms/invoice_order_form.php (wide layout, step B11); what the screen keeps
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
 - launch-journey-catalogue.md: The launch journey's pure catalogue (SJ1a, PR #11160): purposes, steps per purpose, each step's rule over a facts array, blocker or warning, payment live per driver, the first week
+- launch-journey-first-week-path.md: After the set-up (SJ4): the First week card, a new team member's Start here card, the hint lines under catalogue screens and their hint:<screen> keys in user.tours_seen
 - launch-journey-go-live.md: The go-live check: "Ready to go live?", its dialog, "Go live" turning maintenance mode off and removing the robots catch-all, the confirmation, Site Log lines, the go-live time
 - launch-journey-setup-card.md: Dashboard card "Set up your site" (cards/launch.php): the launch_journey config_text row, the facts reader, "Do it", "Not for this site", "Hide set-up", the purpose dialog, General's purpose field
 - launch-summary-agency.md: The agency summary (SJ5): the set-up card's "Agency summary" drawer, the customer's signed page launch_summary.php, text answers, the launch_answer bell line, withdraw

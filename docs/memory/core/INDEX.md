@@ -250,6 +250,7 @@
 - volunteer-messages.md: Volunteer passes of the general job (VS5): unfilled-shift call, day-before reminder, document notices; channels, 09-20 hours, SMS kind volunteer, Shift calls switch
 - volunteer-programmes.md: Contacts › Volunteers (VS2): the programmes list, a programme's Set-up rows, applications from its form with Approve, the Volunteers tab and the profile drawer; who sees what
 - volunteer-report.md: A volunteer programme's Report tab (VS7): periods, places filled of needed and late cancels by week, approved hours by role and volunteer, active and left volunteers, the Excel workbook
+- volunteer-self-move.md: A volunteer's own "Pause my volunteering" and "Leave the programme" (VS8b, G3): one path with the coordinator's move, coming sign-ups given up as a cancel, one coordinator e-mail
 - volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token
 - volunteer-signup.md: A volunteer's own shifts (VS4): volunteer.php's signed link, My Account's volunteering section, Sign up, waitlist, Cancel to the cut-off, Offer my place and its swap approval, Send sign-up link
 - volunteer-store.md: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule [decision: here]
