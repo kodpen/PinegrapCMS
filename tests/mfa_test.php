@@ -337,3 +337,27 @@ function test_mfa_verify_totp_never_spends_a_recovery_code()
 	pg_assert_contains('if (!pg_mfa_verify_totp($user_id, $mfa_code)) {', $endpoint, 'account_security.php asks for a TOTP code only');
 	pg_assert_true(strpos($endpoint, 'pg_mfa_verify_code(') === false, 'account_security.php never calls pg_mfa_verify_code()');
 }
+
+// Turning on an authenticator key asks for the session alone. An account
+// whose second factor is already its passkeys keeps its unused recovery
+// codes then: new codes for such an account need the password and an
+// e-mailed code (account_security.php), and a stolen session must not get a
+// fresh set while the owner's own codes stop working.
+function test_mfa_setup_keeps_codes_of_a_passkey_account()
+{
+	pg_assert_true(function_exists('pg_mfa_setup_keeps_codes'), 'pg_mfa_setup_keeps_codes() exists');
+
+	if (!function_exists('pg_mfa_setup_keeps_codes')) {
+		return;
+	}
+
+	pg_assert_same(true, pg_mfa_setup_keeps_codes(true, 10), 'passkey account with codes left');
+	pg_assert_same(true, pg_mfa_setup_keeps_codes(true, 1), 'passkey account with one code left');
+	pg_assert_same(false, pg_mfa_setup_keeps_codes(true, 0), 'passkey account with no code left');
+	pg_assert_same(false, pg_mfa_setup_keeps_codes(false, 4), 'no passkey: a fresh set as before');
+	pg_assert_same(false, pg_mfa_setup_keeps_codes(false, 0), 'no passkey, no codes');
+
+	// mfa.php completes the sign-in when no codes are to be shown.
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/mfa.php');
+	pg_assert_contains('if ($codes === array()) {', $screen, 'mfa.php signs in when the codes were kept');
+}

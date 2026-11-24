@@ -274,6 +274,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 pg_mfa_attempt_clear($user_id);
 
+                // The account kept the codes it had (pg_mfa_setup_keeps_codes()):
+                // nothing to show, the sign-in completes.
+                if ($codes === array()) {
+                    pg_mfa_screen_complete($user_id, $username, $send_to, $remember);
+                }
+
                 // The codes are shown once, from the session, so a reload of
                 // the next screen still has them; the record is renewed so the
                 // time spent copying them does not run it out.
