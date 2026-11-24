@@ -13,11 +13,7 @@ module: subscriptions_account
 - Paused, then resumed: the row was due at once and charged a second time for the same period. Cancelled: the customer was charged after cancelling while the card was being forgotten at the service, and the row ended at once instead of running to the paid date.
 - After the lock, `set_status` reads the row the renewal left (next date moved, or past_due after a failure), so the move's status check sees the outcome.
 
-## What does a resume do to a charge date that has passed?
-- Nothing yet: pause keeps `next_charge_at` and resume only sets `active`, so a date passed while paused is due at once, and the paid renewal puts the next charge on the next date of the series counted from `created_at` (`pg_subscription_renewal_next_at()`): resumed on 28 March after a 1 February date, charged on 28 March and again on 1 April.
-- Which behaviour replaces it is a product question put to the architect in the PR that fixes #11426.
-
 ## Tested?
 - `tests/subscriptions_account_test.php`: the lock is taken before the status write and let go after the card call; a lock not obtained writes nothing. Not run against a database.
 
-Related: commerce/subscriptions-account.md, commerce/subscriptions-renewal.md, commerce/subscriptions-operator-screen.md, api/api-customer-subscriptions.md
+Related: commerce/subscriptions-resume-charge-date.md, commerce/subscriptions-account.md, commerce/subscriptions-renewal.md, commerce/subscriptions-operator-screen.md, api/api-customer-subscriptions.md

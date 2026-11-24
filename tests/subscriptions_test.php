@@ -132,6 +132,30 @@ function test_subscription_transition_fields()
 	pg_assert_same(null, pg_subscription_transition_fields(array('status' => 'ended'), 'active', $now), 'a refused move writes nothing');
 }
 
+function test_subscription_resume_moves_a_passed_charge_date()
+{
+	$created = mktime(12, 0, 0, 1, 1, 2027);
+	$feb = mktime(12, 0, 0, 2, 1, 2027);
+	$now = mktime(12, 0, 0, 3, 28, 2027);
+	$paused = array('status' => 'paused', 'retry_count' => '0', 'period' => 'monthly', 'created_at' => (string) $created, 'next_charge_at' => (string) $feb);
+
+	$resumed = pg_subscription_transition_fields($paused, 'active', $now);
+	pg_assert_same(pg_subscription_renewal_next_at($created, 'monthly', $now), $resumed['next_charge_at'], 'the next series date after now');
+	pg_assert_same((int) date('Ymd', mktime(12, 0, 0, 4, 1, 2027)), (int) date('Ymd', $resumed['next_charge_at']), 'resumed 28 March: next charge 1 April, nothing due today');
+
+	$ahead = $paused;
+	$ahead['next_charge_at'] = (string) mktime(12, 0, 0, 4, 1, 2027);
+	pg_assert_false(isset(pg_subscription_transition_fields($ahead, 'active', $now)['next_charge_at']), 'a date still to come stays');
+
+	$unknown = $paused;
+	$unknown['next_charge_at'] = '0';
+	pg_assert_false(isset(pg_subscription_transition_fields($unknown, 'active', $now)['next_charge_at']), 'no date stays no date');
+
+	$past_due = $paused;
+	$past_due['status'] = 'past_due';
+	pg_assert_false(isset(pg_subscription_transition_fields($past_due, 'active', $now)['next_charge_at']), 'a paid retry is not a resume: the renewal sets its date');
+}
+
 function test_subscription_event_dedupe_only_by_webhook_id()
 {
 	$store = pg_subscription_event_row(5, 'renewed', 900, 17688, '', 'Charged', 1900000000);
