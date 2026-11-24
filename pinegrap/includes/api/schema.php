@@ -3597,6 +3597,7 @@ function api_schema() {
 			'status'  => 201,
 			'summary' => 'Subscribe to events',
 			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes. With channel_group_id the subscription hears only the workspace events of the channels in that group of channels and in the groups inside it, with the same body, signature and retries as any other.',
+			'details' => 'Each event is sent only while the application holds the read scope of its data (order.* orders:read, customer.* customers:read, and so on): naming one it lacks is refused with 403 insufficient_scope, naming the scope, and a subscription whose application later loses it is sent nothing of that event.',
 			'params'  => array(
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'https address to call. It is checked now, not at delivery time.'),
 				array('name' => 'events', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'required' => true, 'description' => 'Event names. GET this endpoint to see the list.'),
@@ -3659,7 +3660,7 @@ function api_schema() {
 			'returns' => 'Webhook',
 			'summary' => 'Change a subscription',
 			'description' => 'Move the address, change the events, or switch deliveries off (disabled) and on again (active) without losing the signing secret. A subscription the site marked failing is switched back on with status=active; what still waits is sent again by POST /webhooks/{id}/retry, not by this call. A disabled subscription receives nothing and its queued events are dropped. A plain POST to /webhooks/{id} removes the subscription: without PATCH, or on IIS, use POST /webhooks/{id}/update.',
-			'details' => 'A plain POST to /webhooks/{id} has removed the subscription since the first release.',
+			'details' => 'A plain POST to /webhooks/{id} has removed the subscription since the first release. New events are refused with 403 insufficient_scope when the application lacks the read scope of their data, as on POST /webhooks.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'url',    'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'https address to call. It is checked now, not at delivery time.'),
@@ -3713,6 +3714,7 @@ function api_schema() {
 			'returns' => array('webhook_id' => 'integer', 'delivery_id' => 'integer', 'event' => 'string', 'queued' => 'boolean'),
 			'summary' => 'Send a test event',
 			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. With event, that event\'s sample (GET /webhooks/events) is queued instead, under its own name, with the header X-Pinegrap-Test: 1 and test: true in the body; it is never announced, so no other subscriber hears it. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
+			'details' => 'An event whose data the application may not read is refused with 403 insufficient_scope.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'event', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One of the subscription\'s own events whose sample is written; refused with 422 otherwise. Left out: webhook.test.')

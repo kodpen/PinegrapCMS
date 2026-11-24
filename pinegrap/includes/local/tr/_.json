@@ -1459,6 +1459,7 @@
     "{var:1} key codes were imported": "{var:1} anahtar kod içe aktarıldı",
     "{var:1} label(s) already have a pickup booked ({var:2}). A second request may be charged again: tick \"Book another pickup\" to send it anyway.": "{var:1} etiket için zaten kurye çağrılmış ({var:2}). İkinci talep yeniden ücretlendirilebilir: yine de göndermek için \"Yeniden kurye çağır\" kutusunu işaretleyin.",
     "{var:1} lacks the right the start needs": "{var:1} başlangıcın gerektirdiği izne sahip değil",
+    "{var:1} lacks {var:2}, so its subscription is not sent the events that need it. Give it the permission on Application Access › Permissions.": "{var:1} uygulamasında {var:2} izni yok; bu yüzden aboneliğine bu izni gerektiren olaylar gönderilmiyor. İzni Uygulama Erişimi › İzinler'den verin.",
     "{var:1} late": "{var:1} geciken",
     "{var:1} late cancels": "{var:1} geç iptal",
     "{var:1} leads": "{var:1} önde",

@@ -61,9 +61,11 @@ function api_app_automation_panel_test_url_inside($url)
 	return array('ok' => false, 'ip' => '10.0.0.1', 'error' => 'That address is inside this network and is not called.');
 }
 
-function api_app_automation_panel_test_check($url, $events, $held, $checker = 'api_app_automation_panel_test_url_ok')
+// The application holds webhooks:manage and orders:read unless $granted
+// says otherwise.
+function api_app_automation_panel_test_check($url, $events, $held, $checker = 'api_app_automation_panel_test_url_ok', $granted = array('orders:read', 'webhooks:manage'))
 {
-	return api_webhook_create_check($url, $events, $held, $checker);
+	return api_webhook_create_check($url, $events, $held, $granted, $checker);
 }
 
 // The starting point ticks every contract scope a row of the screen offers,
@@ -152,6 +154,7 @@ function test_api_webhook_create_check_refusals()
 		'unknown event' => array(api_app_automation_panel_test_check('https://hooks.example.com/a', array('order.created', 'no.such'), 0), 422, 'validation_failed', 'events', 'Unknown event: no.such'),
 		'no event'      => array(api_app_automation_panel_test_check('https://hooks.example.com/a', array(), 0), 422, 'validation_failed', 'events', 'At least one event is required.'),
 		'limit'         => array(api_app_automation_panel_test_check('https://hooks.example.com/a', array('order.created'), 50), 409, 'too_many_webhooks', null, 'An application may hold 50 subscriptions.'),
+		'no read scope' => array(api_app_automation_panel_test_check('https://hooks.example.com/a', array('order.created', 'customer.created'), 0), 403, 'insufficient_scope', 'events', 'The application lacks customers:read, which reads the data of customer.created. Give it that permission first.'),
 	);
 
 	foreach ($cases as $name => $case) {
@@ -230,18 +233,27 @@ function test_api_webhook_test_refusal()
 	$payloads = array('order.created' => array('fields' => array(), 'sample' => array('id' => 1)));
 	$row = array('status' => 'active', 'events' => json_encode(array('order.created', 'order.shipped')));
 
-	pg_assert_same(null, api_webhook_test_refusal($row, 'order.created', $payloads));
-	pg_assert_same(null, api_webhook_test_refusal($row, '', $payloads), 'no event is webhook.test');
+	$granted = array('orders:read', 'webhooks:manage');
 
-	$stopped = api_webhook_test_refusal(array('status' => 'disabled') + $row, 'order.created', $payloads);
+	pg_assert_same(null, api_webhook_test_refusal($row, 'order.created', $payloads, $granted));
+	pg_assert_same(null, api_webhook_test_refusal($row, '', $payloads, $granted), 'no event is webhook.test');
+	pg_assert_same(null, api_webhook_test_refusal($row, '', $payloads, array('webhooks:manage')), 'webhook.test carries no data');
+
+	// The sample of an event the application may not read is refused as
+	// the event itself is held back.
+	$unread = api_webhook_test_refusal($row, 'order.created', $payloads, array('webhooks:manage'));
+	pg_assert_same(403, $unread['status']);
+	pg_assert_same('insufficient_scope', $unread['code']);
+
+	$stopped = api_webhook_test_refusal(array('status' => 'disabled') + $row, 'order.created', $payloads, $granted);
 	pg_assert_same(409, $stopped['status']);
 	pg_assert_same('webhook_disabled', $stopped['code']);
 
-	$deaf = api_webhook_test_refusal($row, 'customer.created', $payloads);
+	$deaf = api_webhook_test_refusal($row, 'customer.created', $payloads, $granted);
 	pg_assert_same(422, $deaf['status']);
 	pg_assert_same('event', $deaf['field']);
 
-	$no_sample = api_webhook_test_refusal($row, 'order.shipped', $payloads);
+	$no_sample = api_webhook_test_refusal($row, 'order.shipped', $payloads, $granted);
 	pg_assert_same('event', $no_sample['field']);
 }
 

@@ -310,6 +310,13 @@ function pg_notification_visible($notification, $rights)
 		return ($rights['role'] < 3);
 	}
 
+	// An event subscription skipped for a scope its application lacks
+	// (api_webhook_scope_skip_note()): for the administrators, who give
+	// applications their permissions.
+	if ($action == 'webhook_scope') {
+		return ((int) $rights['role'] === 0);
+	}
+
 	if ($action == 'new_comment') {
 		return pg_notification_comment_visible($notification, $rights);
 	}
@@ -1049,6 +1056,20 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['title']       = h(lang('E-mail campaign profiles were turned into flows'));
 		$display['description'] = h(lang(array('string' => 'Flows made: {var:1}. The report is on the E-mail Campaign Profiles screen.', 'vars' => (int) ($notification['title'] ?? 0))));
 		$display['url']         = 'view_email_campaign_profiles.php#profile-flows';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'webhook_scope') {
+
+		// title is the scope, order_id the application, form_id the
+		// subscription (api_webhook_scope_skip_note()).
+		$app_name = (string) db_value("SELECT name FROM api_apps WHERE id = '" . (int) ($notification['order_id'] ?? 0) . "' LIMIT 1");
+
+		$display['title']       = lang('Events are not delivered to an application');
+		$display['short']       = lang('Events not delivered');
+		$display['description'] = h(lang(array('string' => '{var:1} lacks {var:2}, so its subscription is not sent the events that need it. Give it the permission on Application Access › Permissions.', 'vars' => array(($app_name !== '') ? $app_name : '#' . (int) ($notification['order_id'] ?? 0), (string) ($notification['title'] ?? '')))));
+		$display['url']         = 'api_settings.php';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
