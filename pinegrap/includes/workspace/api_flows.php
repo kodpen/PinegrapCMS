@@ -83,7 +83,8 @@ function ws_api_flow_graph_schema()
         'v'     => 'integer',
         'nodes' => array(array('id' => 'string', 'kind' => 'string', 'label' => 'string', 'x' => 'integer', 'y' => 'integer', 'config' => 'object')),
         'edges' => array(array('from' => 'string', 'to' => 'string', 'on' => 'string')),
-        'notes' => array(array('id' => 'string', 'text' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer')),
+        'notes' => array(array('id' => 'string', 'text' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer', 'by' => 'string', 'day' => 'string')),
+        'frames' => array(array('id' => 'string', 'name' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer', 'folded' => 'boolean')),
     );
 }
 
@@ -419,7 +420,7 @@ function ws_api_flow_answer($viewer, $id, $full = true)
 
 /**
  * The fields of a flow write, in the shape ws_flow_save() reads; only those
- * sent. nodes, edges and notes are the three parts of the draft: a part not
+ * sent. nodes, edges, notes and frames are the four parts of the draft: a part not
  * sent is kept from the draft as it is ($current), or empty on a new flow.
  *
  * @param array      $params
@@ -436,7 +437,7 @@ function ws_api_flow_input($params, $current = null)
         }
     }
 
-    $sent = array_intersect(array('nodes', 'edges', 'notes'), array_keys($params));
+    $sent = array_intersect(array('nodes', 'edges', 'notes', 'frames'), array_keys($params));
 
     if (($current === null) || !empty($sent)) {
         $graph = ($current !== null) ? ws_flow_graph_of($current) : ws_flow_graph_empty();
@@ -838,7 +839,7 @@ function ws_api_flow_from_template($templates, $params, $data)
         return array('ok' => false, 'error' => $error, 'status' => $status, 'field' => $field, 'data' => array());
     };
 
-    if (array_intersect(array('nodes', 'edges', 'notes'), array_keys($params))) {
+    if (array_intersect(array('nodes', 'edges', 'notes', 'frames'), array_keys($params))) {
         return $refused(lang('Send a template or boxes, not both.'), 422, 'template');
     }
 

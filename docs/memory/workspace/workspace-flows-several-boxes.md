@@ -8,7 +8,7 @@ description: Several flow boxes at once (FE7, #11289): chosen with the core's ge
 - Not in an embedded drawing (`embed()` sets the adapter's `several` to null) or in the outline.
 
 ## What do the floating tools hold? (drawSeveral())
-- `.pg-floatbar.wsf-several` in the canvas layer, 12 px under the lowest box, at its zoom: "{n} boxes" (`fl_boxes_count`), Duplicate, Copy, Delete (`fl_delete_boxes`) as ghost small `pg-button`s. Copy alone while the draft cannot change (`addable()`). Redrawn with `markSelected()` and after a move. FE8 adds Frame.
+- `.pg-floatbar.wsf-several` in the canvas layer, 12 px under the lowest box, at its zoom: "{n} boxes" (`fl_boxes_count`), Duplicate, Copy, Frame (`workspace-flows-notes-frames.md`), Delete (`fl_delete_boxes`) as ghost small `pg-button`s. Copy alone while the draft cannot change (`addable()`). Redrawn with `markSelected()` and after a move.
 
 ## Which keys act on them? (canvasKey())
 - Arrow keys move the set a grid step (Shift: four); Delete or Backspace removes it; Ctrl+C, Ctrl+V, Ctrl+D copy, paste, duplicate the set or the one box selected (Ctrl+D on one box is ⋯ › Duplicate, no arrows). Keyboard list: `fl_key_several`, `fl_key_copy`.

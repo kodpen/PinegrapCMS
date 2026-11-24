@@ -1082,6 +1082,7 @@
     "A flow begins with one of these, and has only one.": "Akış bunlardan biriyle başlar; bir akışta yalnızca bir tane olur.",
     "A flow can be shared with at most {var:1} people and channels.": "Bir akış en fazla {var:1} kişi ve kanalla paylaşılabilir.",
     "A flow can hold at most {var:1} boxes.": "Bir akışta en fazla {var:1} kutu olabilir.",
+    "A flow can hold at most {var:1} frames.": "Bir akış en çok {var:1} çerçeve tutabilir.",
     "A flow can hold at most {var:1} notes.": "Bir akışta en fazla {var:1} not olabilir.",
     "A flow cannot start itself.": "Bir akış kendini başlatamaz.",
     "A flow has one box that starts it.": "Bir akışı tek bir kutu başlatır.",

@@ -1303,7 +1303,7 @@ module.exports = [
             await pick(h, 'task_1');
             await h.click(BOX('task_2'), { modifiers: ['Shift'] });
             h.same('Shift+click adds the box to the one selected', await chosen(), ['task_1', 'task_2']);
-            h.same('their tools float under them', await tools(), [h.t('fl_boxes_count', 2), h.t('fl_duplicate'), h.t('fl_copy'), h.t('fl_delete_boxes')]);
+            h.same('their tools float under them', await tools(), [h.t('fl_boxes_count', 2), h.t('fl_duplicate'), h.t('fl_copy'), h.t('fl_frame'), h.t('fl_delete_boxes')]);
             h.ok('the panel is closed', await h.page(() => !document.querySelector('#ws-root .wsf-side-open')));
 
             await h.drag(BOX('task_1'), { x: (await h.at(BOX('task_1'))).x + 64, y: (await h.at(BOX('task_1'))).y + 32 });
@@ -1348,6 +1348,79 @@ module.exports = [
             h.ok('the rectangle is gone', await h.page(() => document.querySelector('#ws-root .pgc-lasso').classList.contains('pgc-hidden')));
             await h.click({ x: left.x, y: left.y });
             h.same('a click on the empty canvas lets them go', await chosen(), []);
+        }
+    },
+
+    {
+        name: 'notes and frames: Frame round several boxes, its name, a drag of its head moves its boxes, fold and undo; Note on the strip, its text, moved and resized',
+        fixture: 'threads',
+        run: async (h) => {
+            const FRAME = '#ws-root .wsf-frame[data-frame="frame_1"]';
+            const NOTE = '#ws-root .wsf-note[data-note="note_1"]';
+            const focusIs = (css) => h.page((harness, selector) => !!(document.activeElement && document.activeElement.matches(selector)), css);
+            const toCanvas = () => h.page(() => document.querySelector('#ws-root [role="application"]').focus());
+            let saves = 0;
+
+            await h.open();
+            await pick(h, 'task_1');
+            await h.click(BOX('task_2'), { modifiers: ['Shift'] });
+            await h.click({ css: '#ws-root .wsf-several button', text: h.t('fl_frame') });
+            h.ok('a frame round them, its name focused', await focusIs(FRAME + ' .wsf-frame-name'));
+            h.same('it counts its boxes', await h.page((harness, css) => document.querySelector(css + ' .wsf-frame-count').textContent, FRAME), h.t('fl_boxes_count', 2));
+            await h.type('Welcome');
+            await h.key('Enter');
+
+            let save = await saveNumber(h, ++saves);
+            let frame = save.data.graph.frames[0];
+
+            h.same('the frame is kept with its name', [save.data.graph.frames.length, frame.name, frame.folded], [1, 'Welcome', false]);
+            h.ok('it lies round both boxes', frame.x < nodeIn(save.data.graph, 'task_1').x && frame.x + frame.w > nodeIn(save.data.graph, 'task_2').x + BOX_W, frame);
+
+            const before = { frame: frame.x, box: nodeIn(save.data.graph, 'task_1').x, end: nodeIn(save.data.graph, 'end_1').x };
+            const head = await h.at({ css: FRAME + ' .wsf-frame-count' });
+
+            await h.drag({ x: head.x, y: head.y }, { x: head.x + 96, y: head.y });
+            save = await saveNumber(h, ++saves);
+            frame = save.data.graph.frames[0];
+            h.ok('a drag of its head moves it', frame.x > before.frame, frame);
+            h.same('its boxes move with it', nodeIn(save.data.graph, 'task_1').x - before.box, frame.x - before.frame);
+            h.same('a box outside stays', nodeIn(save.data.graph, 'end_1').x, before.end);
+
+            await h.click({ label: h.t('fl_frame_fold') });
+            h.ok('folded, its boxes are hidden', await h.page((harness, css) => document.querySelector(css).classList.contains('d-none'), BOX('task_1')));
+            h.ok('folded, it is one row', await h.page((harness, css) => document.querySelector(css).getBoundingClientRect().height < 48, FRAME));
+            save = await saveNumber(h, ++saves);
+            h.same('the fold is kept', save.data.graph.frames[0].folded, true);
+            await toCanvas();
+            await h.key('z', 'Control');
+            h.ok('one undo opens it again', await h.page((harness, css) => !document.querySelector(css).classList.contains('d-none'), BOX('task_1')));
+
+            await h.click({ label: h.t('fl_note_add') });
+            h.ok('Note adds a note, its text focused', await focusIs(NOTE + ' .wsf-note-text'));
+            await h.type('Ask the team first');
+            save = await saveNumber(h, ++saves);
+
+            let note = save.data.graph.notes[0];
+
+            h.same('the note is kept', [note.id, note.text, note.w, note.h], ['note_1', 'Ask the team first', 208, 128]);
+            h.ok('with its day', /^\d{4}-\d{2}-\d{2}$/.test(note.day), note.day);
+
+            const grip = await h.at({ css: NOTE + ' .wsf-note-grip' }, { force: true });
+
+            await h.drag({ x: grip.x - 2, y: grip.y - 2 }, { x: grip.x + 80, y: grip.y + 48 }, { force: true });
+            save = await saveNumber(h, ++saves);
+            note = save.data.graph.notes[0];
+            h.ok('resized at its corner', (note.w > 208) && (note.h > 128), note);
+
+            const by = await h.at({ css: NOTE + ' .wsf-note-head' }, { dx: -40 });
+
+            await h.drag({ x: by.x, y: by.y }, { x: by.x, y: by.y + 96 });
+            save = await saveNumber(h, ++saves);
+            h.ok('moved by its head', save.data.graph.notes[0].y > note.y, save.data.graph.notes[0]);
+
+            await h.click({ label: h.t('fl_note_remove') });
+            save = await saveNumber(h, ++saves);
+            h.same('its × removes it', save.data.graph.notes.length, 0);
         }
     },
 
@@ -1562,7 +1635,7 @@ module.exports = [
             await h.click({ text: h.t('fl_new'), within: BAR });
             await h.until('created', () => h.store.callsOf('ws_flow_create').length === 1, 3000);
             await h.settle();
-            h.same('named as an untitled flow, no box', h.store.callsOf('ws_flow_create')[0].data, { name: h.t('fl_untitled'), graph: { v: 1, nodes: [], edges: [], notes: [] } });
+            h.same('named as an untitled flow, no box', h.store.callsOf('ws_flow_create')[0].data, { name: h.t('fl_untitled'), graph: { v: 1, nodes: [], edges: [], notes: [], frames: [] } });
 
             const state = await h.state();
 

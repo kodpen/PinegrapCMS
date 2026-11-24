@@ -6,7 +6,8 @@
  * (includes/workspace/flows.php): the graph kept in its shape
  * (ws_flow_graph_normalize()) and the check that says what stops a graph
  * from being published (ws_flow_graph_check()), each of its problem codes,
- * a join, a loop, and the notes of the canvas left out of it.
+ * a join, a loop, and the notes and frames of the canvas left out of it;
+ * the frames part of the API's draft writes (includes/workspace/api_flows.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -22,6 +23,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // templates' (ws_template_assign_valid()).
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 
 // A box of the graph.
 function ws_flows_test_node($id, $kind, $label = '', $config = array())
@@ -264,7 +266,7 @@ function test_workspace_flows_normalize_keeps_the_shape()
 	));
 
 	pg_assert_same(1, $graph['v']);
-	pg_assert_same(array('v', 'nodes', 'edges', 'notes'), array_keys($graph), 'unknown keys dropped');
+	pg_assert_same(array('v', 'nodes', 'edges', 'notes', 'frames'), array_keys($graph), 'unknown keys dropped');
 	pg_assert_same(3, count($graph['nodes']), 'a box that is not an object is dropped');
 
 	$start = $graph['nodes'][0];
@@ -298,6 +300,9 @@ function test_workspace_flows_normalize_keeps_the_shape()
 	pg_assert_same(-100000, $note['x']);
 	pg_assert_same(0, $note['w'], 'a size is not below 0');
 	pg_assert_same(0, $note['h']);
+	pg_assert_same(array('id', 'text', 'x', 'y', 'w', 'h', 'by', 'day'), array_keys($note), 'a note keeps its writer and day');
+	pg_assert_same('', $note['by'], 'no writer sent');
+	pg_assert_same('', $note['day'], 'no day sent');
 
 	pg_assert_same(ws_flow_graph_empty(), ws_flow_graph_normalize('{not json'), 'unreadable JSON is an empty graph');
 	pg_assert_same($graph, ws_flow_graph_normalize($graph), 'normalizing twice changes nothing');
@@ -319,6 +324,87 @@ function test_workspace_flows_notes_are_ignored()
 	);
 
 	pg_assert_same(array(), ws_flow_graph_check($graph));
+}
+
+// A note's writer is a short name on one line, its day a date or nothing.
+function test_workspace_flows_note_writer_and_day()
+{
+	$graph = ws_flow_graph_normalize(array('notes' => array(
+		array('id' => 'n1', 'text' => 'Ask Ayşe', 'by' => "Ayşe\nYılmaz " . str_repeat('x', 100), 'day' => '2026-11-24'),
+		array('id' => 'n2', 'text' => 'Later', 'by' => array('Ali'), 'day' => '24.11.2026'),
+	)));
+
+	pg_assert_same(80, mb_strlen($graph['notes'][0]['by']), 'cut to 80 characters');
+	pg_assert_same('Ayşe Yılmaz', mb_substr($graph['notes'][0]['by'], 0, 11), 'on one line');
+	pg_assert_same('2026-11-24', $graph['notes'][0]['day']);
+	pg_assert_same('', $graph['notes'][1]['by'], 'not a text');
+	pg_assert_same('', $graph['notes'][1]['day'], 'not a Y-m-d date');
+}
+
+// A frame: a named rectangle behind boxes, folded or open.
+function test_workspace_flows_frames_normalized()
+{
+	$graph = ws_flow_graph_normalize(array('frames' => array(
+		array('id' => ' f1 ', 'name' => "Welcome\tpart " . str_repeat('ş', 200), 'x' => 10.4, 'y' => -200000, 'w' => -5, 'h' => 'tall', 'folded' => 1, 'colour' => 'red'),
+		array('id' => 'f2', 'name' => 'Open', 'x' => 0, 'y' => 0, 'w' => 300, 'h' => 200, 'folded' => 'no'),
+		array('id' => 'f3', 'folded' => true),
+		'not a frame',
+	)));
+
+	pg_assert_same(3, count($graph['frames']), 'a frame that is not an object is dropped');
+	$frame = $graph['frames'][0];
+	pg_assert_same(array('id', 'name', 'x', 'y', 'w', 'h', 'folded'), array_keys($frame), 'unknown keys dropped');
+	pg_assert_same('f1', $frame['id']);
+	pg_assert_same(160, mb_strlen($frame['name']), 'name cut to 160 characters');
+	pg_assert_same('Welcome part ', mb_substr($frame['name'], 0, 13), 'on one line');
+	pg_assert_same(10, $frame['x']);
+	pg_assert_same(-100000, $frame['y'], 'held at the edge');
+	pg_assert_same(0, $frame['w'], 'a size is not below 0');
+	pg_assert_same(0, $frame['h']);
+	pg_assert_true($frame['folded'] === true, 'folded from 1');
+	pg_assert_true($graph['frames'][1]['folded'] === false, 'a word is not folded');
+	pg_assert_true($graph['frames'][2]['folded'] === true);
+	pg_assert_same('', $graph['frames'][2]['name']);
+	pg_assert_same(array(), ws_flow_graph_normalize(array('frames' => 'x'))['frames'], 'not a list');
+	pg_assert_same($graph, ws_flow_graph_normalize($graph), 'normalizing twice changes nothing');
+}
+
+// Frames are never checked but for their count; one more than the limit is a
+// problem a draft may hold.
+function test_workspace_flows_frames_checked_for_count_only()
+{
+	$graph = ws_flows_test_process();
+	$graph['frames'] = array(
+		array('id' => '', 'name' => ''),
+		array('id' => 'start', 'name' => 'The same id as a box', 'x' => 999999),
+		array('id' => 'start', 'name' => 'Twice', 'folded' => true),
+	);
+	pg_assert_same(array(), ws_flow_graph_check($graph), 'never checked');
+
+	$graph['frames'] = array_fill(0, WS_FLOW_MAX_FRAMES + 1, array('id' => 'f', 'name' => 'Part'));
+	pg_assert_same(array('too_many'), ws_flows_test_codes($graph), 'one frame more');
+	pg_assert_same(30, WS_FLOW_MAX_FRAMES, 'thirty frames');
+}
+
+// The API's draft write takes frames as a part of its own: sent, it replaces
+// the draft's frames; left out, they are kept.
+function test_workspace_flows_api_frames_part()
+{
+	$current = array('draft' => json_encode(array('v' => 1, 'nodes' => array(), 'edges' => array(),
+		'notes' => array(array('id' => 'n1', 'text' => 'Kept')),
+		'frames' => array(array('id' => 'f1', 'name' => 'Old')))));
+
+	$sent = ws_api_flow_input(array('frames' => array(array('id' => 'f2', 'name' => 'New'))), $current);
+	pg_assert_same('f2', $sent['graph']['frames'][0]['id'], 'frames replaced');
+	pg_assert_same(1, count($sent['graph']['frames']));
+	pg_assert_same('n1', $sent['graph']['notes'][0]['id'], 'notes kept');
+
+	$kept = ws_api_flow_input(array('notes' => array()), $current);
+	pg_assert_same('Old', $kept['graph']['frames'][0]['name'], 'frames left out are kept');
+
+	$schema = ws_api_flow_graph_schema();
+	pg_assert_same(array('id' => 'string', 'name' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer', 'folded' => 'boolean'), $schema['frames'][0], 'the schema names a frame');
+	pg_assert_true(isset($schema['notes'][0]['by'], $schema['notes'][0]['day']), 'a note\'s writer and day');
 }
 
 function test_workspace_flows_node_ids()
