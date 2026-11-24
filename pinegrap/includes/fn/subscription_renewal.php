@@ -499,6 +499,14 @@ function pg_subscription_renewal_io()
             return (int) db_value("SELECT COUNT(*) FROM subscription_events
                 WHERE (subscription_id = '" . e((int) $id) . "') AND (kind = 'renewed')");
         },
+        // Whether a renewal of the row holds a payment: the event of a
+        // confirmed one, or the order of the cron's own charge.
+        'recorded' => function ($id, $transaction_id) {
+            return (int) db_value("SELECT COUNT(*) FROM subscription_events AS e
+                LEFT JOIN orders AS o ON o.id = e.order_id
+                WHERE (e.subscription_id = '" . e((int) $id) . "') AND (e.kind = 'renewed')
+                    AND ((e.remote_event_id = '" . e((string) $transaction_id) . "') OR (o.transaction_id = '" . e(mb_substr((string) $transaction_id, 0, 50)) . "'))") > 0;
+        },
         'price_notice' => 'pg_subscription_price_notice_latest',
         'notice_read' => function ($id) {
             // The SQL carries a placeholder: db_q() binds it (db_item()
@@ -730,7 +738,9 @@ function pg_subscription_renewal_is_held($row, $driver)
  * @param int    $now
  * @param array  $io     pg_subscription_renewal_io(); null for the real one
  * @return string paid, nothing, refused (the amount or the first order
- *                does not match), busy (a run holds the row: try again)
+ *                does not match), busy (a run holds the row: try again),
+ *                unrecorded (the row no longer waits and no renewal holds
+ *                this payment: staff must look at it)
  */
 function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = null)
 {
@@ -744,9 +754,17 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
     $row = call_user_func($io['read'], $id);
 
     if (!pg_subscription_renewal_is_held($row, $driver)) {
+        // A payment of this driver's row that no renewal holds: the row was
+        // cancelled while it waited for the customer's confirmation, and the
+        // customer confirmed afterwards. The cron's own paid charge is held
+        // by its order, written before this lock was let go.
+        $transaction_id = (string) ($answer['transaction_id'] ?? '');
+        $unrecorded = is_array($row) && ((string) ($row['driver'] ?? '') === (string) $driver)
+            && ($transaction_id !== '') && isset($io['recorded'])
+            && !call_user_func($io['recorded'], $id, $transaction_id);
         call_user_func($io['unlock'], $id);
 
-        return 'nothing';
+        return $unrecorded ? 'unrecorded' : 'nothing';
     }
 
     $first = call_user_func($io['first_order'], $row);
