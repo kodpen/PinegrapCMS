@@ -46,6 +46,7 @@
 - bug-hunt-areas-connections-merges.md: The bug hunt in Connections after the CX11 merges (area connections-merges): Claude's, the chat services' and the MCP connectors' pages; the faults fixed and what was read clean
 - bug-hunt-areas-coupons-discounts.md: The bug hunt of coupons and discounts (area 31, 2026-11-24): offer dates, usage limits under two checkouts, a gift of a deleted product; what it fixed, what was read clean
 - bug-hunt-areas-csv-import-export.md: The bug hunt of the panel's CSV imports and exports (area 27, 2026-11-24): the four faults fixed, what was read clean, what was not run
+- bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
@@ -53,10 +54,12 @@
 - bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question
 - bug-hunt-areas-main-menu-redraw.md: The bug hunt of the main menu after its redraw (MI1-MI3, MZ1), 2026-11-24: the rail's row names for a screen reader, the phone drawer's focus, what read clean
 - bug-hunt-areas-member-accounts.md: Bug hunt area 21, member accounts (2026-11-24): sign-up, sign-in, reset, e-mail change, blocked and deleted members; the four faults fixed, what read clean, what was left
+- bug-hunt-areas-menus-navigation.md: The bug hunt of site menus and navigation (2026-11-24, hunt 36): the faults fixed, what was left for a decision, what was read clean
 - bug-hunt-areas-migration-steps-11.md: Bug hunt of the 2026.11.0 migration steps (area 13, #11376): no fault; run twice, cut off at 57 points, paused, upgraded from a real 2026.4.10 install, tables of schema-46 to -49 matched
 - bug-hunt-areas-multi-language-pages.md: Bug hunt 32, multi-language pages (#11423): the language lost on a payment's return and in the form sender's subject, what was read clean, what needs an order language column
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
+- bug-hunt-areas-page-versions-publish.md: The bug hunt of page drafts, scheduled publishing and revisions (2026-11-24, hunt 35): the three faults fixed, the finding left as an issue, what was read clean
 - bug-hunt-areas-phone-dark-new-screens.md: Bug hunt 15 (2026-11-24): the 2026.11.0 screens at 390 px and in the dark theme on a sandbox; the five faults fixed in #11382, what read clean, what was not reached
 - bug-hunt-areas-pick-pack.md: The bug hunt of pick and pack (PP1-PP7, 2026-11-24, #11341): six faults fixed, two issues opened for a decision, what was read clean
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]

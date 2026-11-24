@@ -46,6 +46,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `designer-prototype-*`: 9 files.
 - `email-designs-*`: 6 files; start at `email-designs.md`.
 - `form-list-*`: 8 files.
+- `layout-type-*`: 6 files.
 - `legacy-bootstrap-*`: 11 files; start at `legacy-bootstrap-overview.md`.
 - `legacy-layouts-*`: 8 files.
 - `prototype-approval-*`: 8 files; start at `prototype-approval.md`.
