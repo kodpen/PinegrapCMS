@@ -22,4 +22,4 @@ module: feedback
 ## How is an answer link signed?
 - `pg_feedback_token_make($purpose, $response_id, $issued_at, $key)`: id and issue time in base 36, then an HMAC-SHA256 of `feedback-<purpose>:<id>:<issued>` under `ENCRYPTION_KEY` (`pg_feedback_key()`), the per-feature pattern of `pg_booking_manage_token()`.
 - Purposes: `answer` and `stop`; a token of another purpose, another key, older than 30 days or more than 5 minutes ahead returns 0 from `pg_feedback_token_check()`. Only `pg_feedback_token_hash()` (sha256) is stored, in `token_hash`.
-- Tests: `tests/feedback_test.php`. Tables and sends come in later steps (`plans/feedback-loop-steps.md`).
+- Tests: `tests/feedback_test.php`. The whole feature: `feedback-loop.md`.

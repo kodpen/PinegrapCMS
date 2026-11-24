@@ -36,4 +36,4 @@ module: feedback_followup
 
 Test: `tests/feedback_followup_test.php`.
 
-Related: docs/memory/platform/feedback-answer.md, docs/memory/workspace/workspace-followups.md, docs/memory/api/api-webhook-events.md, docs/memory/plans/feedback-loop-steps.md
+Related: docs/memory/platform/feedback-answer.md, docs/memory/workspace/workspace-followups.md, docs/memory/api/api-webhook-events.md, docs/memory/platform/feedback-loop.md

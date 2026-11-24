@@ -26,4 +26,4 @@ module: feedback_answer
 
 Test: `tests/feedback_answer_test.php`.
 
-Related: docs/memory/platform/feedback-send-pass.md, docs/memory/platform/feedback-rules.md, docs/memory/ui/messages-area-survey-edit.md, docs/memory/plans/feedback-loop-steps.md
+Related: docs/memory/platform/feedback-send-pass.md, docs/memory/platform/feedback-rules.md, docs/memory/ui/messages-area-survey-edit.md, docs/memory/platform/feedback-loop.md

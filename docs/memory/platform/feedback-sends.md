@@ -24,4 +24,4 @@ module: feedback_sends
 
 Test: `tests/feedback_sends_test.php`.
 
-Related: docs/memory/platform/feedback-send-pass.md, docs/memory/platform/feedback-store.md, docs/memory/platform/feedback-rules.md, docs/memory/plans/feedback-loop-steps.md
+Related: docs/memory/platform/feedback-send-pass.md, docs/memory/platform/feedback-store.md, docs/memory/platform/feedback-rules.md, docs/memory/platform/feedback-loop.md

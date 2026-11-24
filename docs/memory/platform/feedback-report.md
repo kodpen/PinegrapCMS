@@ -31,4 +31,4 @@ module: feedback_report
 
 Tests: `tests/feedback_report_test.php`, `tests/audiences_rules_test.php`, `tests/messages_area_test.php`.
 
-Related: docs/memory/platform/feedback-rules.md, docs/memory/platform/feedback-store.md, docs/memory/ui/messages-area-surveys-tab.md, docs/memory/plans/feedback-loop-steps.md
+Related: docs/memory/platform/feedback-rules.md, docs/memory/platform/feedback-store.md, docs/memory/ui/messages-area-surveys-tab.md, docs/memory/platform/feedback-loop.md

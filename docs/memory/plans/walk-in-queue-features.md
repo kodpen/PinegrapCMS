@@ -25,7 +25,7 @@ description: Plan walk-in-queue, features W1 to W14: places and desks, taking a 
 ## What else?
 - (W10) The lobby screen: a page with no menu for a TV or monitor, now-serving numbers and desks, a chime on each call; numbers only, never a name.
 - (W11) The report: wait and handling time (median and the slowest tenth), people who left, not here, per desk and staff member, arrivals by hour and weekday, and the desks that would have kept the wait under a target; Excel (`pg_xlsx_write_book()`).
-- (W12) Events `queue.joined`, `queue.called`, `queue.served`, `queue.no_show` in the webhook and flow catalogues (`workspace/workspace-flows-adding.md`); `queue.served` is a touchpoint of the survey plan (`plans/feedback-loop.md`) once both are built.
+- (W12) Events `queue.joined`, `queue.called`, `queue.served`, `queue.no_show` in the webhook and flow catalogues (`workspace/workspace-flows-adding.md`); `queue.served` is a touchpoint of the survey plan (`platform/feedback-loop.md`) once it is built.
 - (W13) `GET /queue/places`, `GET /queue/tickets`, `POST /queue/tickets` (a kiosk application joins), the call and finish routes; the MCP tools.
 - (W14) A number's name, phone and e-mail are cleared after the place's keep period (30 days by default); the figures stay. Export and erase cover them.
 
