@@ -72,9 +72,8 @@ function software_update_check($return_details = false)
         $details['curl_errno'] = $server['curl_errno'];
         $details['curl_error'] = $server['curl_error'];
 
-        db("DELETE FROM notifications WHERE action = 'software_update'");
-
         if ($server['error'] !== '') {
+            pg_update_notice_set(false);
             $details['error'] = $server['error'];
             log_activity(pg_update_check_error_text($details));
 
@@ -84,9 +83,9 @@ function software_update_check($return_details = false)
         $decision = $server['decision'];
         $flag = in_array($decision['outcome'], array('update', 'blocked'), true);
 
-        if ($flag) {
-            create_notification(array('action' => 'software_update', 'type' => 'success', 'user' => '[SOFTWARE]', 'title' => 'available'));
-        }
+        // One row while the update waits: a check that finds it again keeps
+        // the row and its read marks, so it does not come back unread.
+        pg_update_notice_set($flag);
 
         db("UPDATE config SET software_update_available = '" . ($flag ? 1 : 0) . "'");
         // The tile of System Status reads the answer, not the attempt stamped above.
@@ -160,7 +159,7 @@ function software_update_check($return_details = false)
     }
 
     if ($details['error'] !== '') {
-        db("DELETE FROM notifications WHERE action = 'software_update'");
+        pg_update_notice_set(false);
         log_activity(pg_update_check_error_text($details));
 
         return $return_details ? $details : false;
@@ -168,11 +167,10 @@ function software_update_check($return_details = false)
 
     $details['response'] = $response;
 
-    // The answer replaces the "update available" notification: without this
-    // every check, and every opening of the Software Updater, added one more
-    // row to the bell while an update waited, and an answer that offers
-    // nothing left the old one standing.
-    db("DELETE FROM notifications WHERE action = 'software_update'");
+    // The answer settles the "update available" notification
+    // (pg_update_notice_set()) once the version is compared: one row while
+    // an update waits, kept with its read marks by every later check and
+    // every opening of the Software Updater; none when nothing is offered.
 
     // Numerically, part by part, and without a warning when either version
     // has fewer than three parts (pg_update_version_newer()).
@@ -184,8 +182,9 @@ function software_update_check($return_details = false)
     // if the new version is greater than the old version, then there is an available software update
     if ($new_version_is_greater_than_old_version == TRUE) {
         $software_update_available = 1;
-        create_notification(array('action' => 'software_update', 'type' => 'success', 'user' => '[SOFTWARE]', 'title' => 'available'));
     }
+
+    pg_update_notice_set($software_update_available === 1);
 
     // update database to remember whether there is a software update available or not
     db("UPDATE config SET software_update_available = '" . $software_update_available . "'");
