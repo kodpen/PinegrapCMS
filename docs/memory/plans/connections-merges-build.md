@@ -23,7 +23,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - CX11j2 the Chat notifications targets moved to Slack's, Teams' and Telegram's pages (architect 2026-11-23, message 12293). Done (#11215).
 - CX11k the Workspace's categories, done (#11244): nothing else to move. Owner (2026-11-24, poll 222): Claude and the MCP servers move, each row keeps a line to Connections (`decisions-made-product-100.md`).
 - CX11k2 Claude: the routine address and token on Claude's page; the row and Set up's step 4 lead there. Done (#11265).
-- CX11k3 MCP, own PR: the servers (address, token) and the 12 connectors to their pages; the row leads there. Done (#PRNUM, `ui/connections-mcp-connector-page.md`); a server by address keeps its settings in the drawer.
+- CX11k3 MCP, own PR: the servers (address, token) and the 12 connectors to their pages; the row leads there. Done (#11284, `ui/connections-mcp-connector-page.md`); a server by address keeps its settings in the drawer.
 
 ## Where are CX9's binding decisions?
 - In `api/ai-connections.md` (architect 2026-11-17, message 9391) and `api/ai-connections-feature-cards.md`.
