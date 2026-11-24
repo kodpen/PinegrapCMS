@@ -358,3 +358,13 @@ function test_ws_note_claude_reach_of_a_channel_note_asks_its_channel()
 	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 0, 'channel_id' => 20)), $allowed), 'a share in an allowed channel');
 }
 
+// The notes a record's mentions list are read with owner_channel_id, or a
+// channel's note would count its writer as its owner.
+function test_ws_ref_notes_open_reads_the_owner_channel()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
+	$start = strpos($source, 'function ws_ref_notes_open(');
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains('owner_channel_id', $body, 'the channel a note belongs to is read');
+}
