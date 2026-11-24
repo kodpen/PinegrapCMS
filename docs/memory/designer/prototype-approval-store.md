@@ -5,7 +5,7 @@ module: prototype_verdicts
 ---
 
 ## What does the step add?
-- `upgrade_2026_11_0_prototype_approval()` (11.0.276), approved by poll 206 (`workflow/decisions-made-schema-46.md`); the exact columns were put to the architect in #11298.
+- `upgrade_2026_11_0_prototype_approval()` (11.0.276), approved by poll 206; the columns as the architect agreed them: the decisions list, schema part 49.
 - `prototype_links`: `approval`, `publish_rule` (TINYINT 0/1), `approver_name` VARCHAR(60), `approver_email` VARCHAR(255), `answer_by` DATE NULL (no date). Every link written before asks nothing.
 - `prototype_verdicts`: `link_id`, `style_id`, `page_id`, `verdict` (`approved` | `changes_requested`), `author_name` (typed by the guest), `note` ('' for none), `fingerprint` (40 hex), `node_fingerprints` (JSON id => sha1, MEDIUMTEXT), `created_at`. Keys `idx_link_page (link_id, page_id, id)`, `idx_page (page_id, id)`, `idx_style`. No address, IP or contact of the guest.
 - Older verdicts stay; the standing one per page and link is the newest (`pg_proto_verdicts_newest()`, `prototype-approval-fingerprints.md`).
@@ -22,6 +22,6 @@ module: prototype_verdicts
 - The scope's `prototype_link_ids` are the links whose `approver_email` is one of the person's addresses. Entry `prototype_verdicts` (found by those links) keeps the verdict and blanks `author_name` ({name}) and `note`; entry `prototype_link_approvers` (table `prototype_links`, by `approver_email`) blanks the name and the address, so no review mail goes any more. Verdicts run first.
 - Export section `prototype_reviews`: the links naming the person with each verdict (design name, page, verdict, name, note, fingerprint, times); token, hint, password and node fingerprints left out.
 - Inventory: `prototype_links` (person `approver_email`) and `prototype_verdicts`, both `contract`, `until_erased`.
-- No contact id is kept, so `pg_contact_holders()` has no entry, and no retention rule was added; both put to the architect in #11298.
+- No contact id is kept, so `pg_contact_holders()` has no entry, and there is no retention rule: verdicts are kept as prototype comments are (the decisions list, schema part 49).
 
 Related: docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/designer/designer-prototype-comments-door.md, docs/memory/plans/prototype-approval-steps.md
