@@ -25,4 +25,4 @@ module: prototype_approval
 - `pg_proto_answer_by_reminder_due()`: the day before the date, pages undecided, not sent that day.
 - `pg_proto_answer_mail_rate()`: one answer mail per link an hour, a `waf_rate_exceeded()` counter with the link id as subject, as the bell line (`designer-prototype-comments-list.md`). `pg_proto_answer_mail_due()`: a valid approver address, answers to tell of, the hour's mail not gone. Sending: `prototype-approval-mails.md`.
 
-Related: docs/memory/plans/prototype-approval.md, docs/memory/designer/designer-prototype-comments-door.md
+Related: docs/memory/designer/prototype-approval.md, docs/memory/designer/designer-prototype-comments-door.md
