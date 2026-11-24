@@ -19,9 +19,9 @@ description: The bug hunt of price rounding (area 17, 2026-11-24): money in chec
 - Shipping cost formulas: whole weight points times whole rates. The order screen's refund: worked out by lines with the ERP, capped at what is left.
 - The ERP: line totals and rates through `money.php`; stock and profit cost rounding with `round()`.
 
-## What was left?
+## Which issue did it open, and what was left?
 - The affiliate commission (`pg_order_commission()`, the recurring commission profile) still multiplies floats and rounds once; a payout, not a customer figure, and its source is pinned by `order_submit_affiliate_test.php`.
-- The iyzico basket in the base currency lists every line with a price (a subscription starting later included, a line below zero left out), while the price is the subtotal charged today; with such a cart the sums differ outside the rounding this hunt covers.
+- The iyzico basket in the base currency lists every line with a price (a subscription starting later included, a line below zero left out), while the price is the subtotal charged today; with such a cart the sums differ and iyzico refuses it: issue #11390.
 - `supplier_feed.php` takes VAT off a supplier cost with a float division (an import, not a sale).
 
 ## What was not run?
