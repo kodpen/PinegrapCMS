@@ -29,7 +29,7 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS6 (M) after VS4 (done, #11256): the QR poster per place and the scan page (`event_check_in.php`'s way), the coordinator's list of the day, "Did not come", hours and their approval, hours outside a shift. Features: G11, G12, G13.
   - Built (#11256), `core/volunteer-hours.md`.
 
-- VS7 (M) after VS6: the hours certificate (`certificate.php`'s way, a signed check code, nothing stored), the thank-you mails, the report and Excel. Features: G14, G15.
+- VS7 (M) after VS6 (done, #11285): the hours certificate, the thank-you mails, the report and Excel; `core/volunteer-certificate.md`, `core/volunteer-report.md`. Features: G14, G15.
 
 - VS8 (S) after VS7: the six events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: G16.
 

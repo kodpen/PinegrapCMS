@@ -20,6 +20,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_shifts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_certificate.php');
 
 if (!defined('PG_VOLUNTEER_CHECK_IN_EARLY')) {
     // Minutes before a shift's start from which its poster checks in.
@@ -431,6 +432,8 @@ function pg_volunteer_hours_queue($programme_id, $now)
 /**
  * Approves hours rows of the queue: stamps who and when and keeps the
  * minutes counted then; a row approved meanwhile is not written twice.
+ * Each volunteer whose approved hours reach 50, 100 or 250 is thanked by
+ * e-mail once (pg_volunteer_thanks_send()).
  *
  * @param int   $programme_id
  * @param array $ids
@@ -441,6 +444,7 @@ function pg_volunteer_hours_queue($programme_id, $now)
 function pg_volunteer_hours_approve($programme_id, array $ids, array $queue, $user_id)
 {
     $done = 0;
+    $volunteers = array();
 
     foreach (array_unique(array_map('intval', $ids)) as $id) {
         if (!isset($queue[$id])) {
@@ -452,7 +456,14 @@ function pg_volunteer_hours_approve($programme_id, array $ids, array $queue, $us
 
         if ($ok && (mysqli_affected_rows(db::$con) === 1)) {
             $done++;
+            $volunteers[(int) $queue[$id]['volunteer_id']] = true;
         }
+    }
+
+    $programme = $volunteers ? pg_volunteer_programme_get((int) $programme_id) : null;
+
+    foreach (($programme !== null) ? array_keys($volunteers) : array() as $volunteer_id) {
+        pg_volunteer_thanks_send($programme, $volunteer_id);
     }
 
     return $done;

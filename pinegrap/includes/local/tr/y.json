@@ -461,6 +461,7 @@
     "You have been served.": "İşleminiz tamamlandı.",
     "You have begun and want a hand: we take over the parts you choose and bring them together.": "Başladınız ve yardım istiyorsunuz: seçtiğiniz kısımları üstlenir ve hepsini bir araya getiririz.",
     "You have confirm the sale transaction with the 'Confirm' button or press the 'Delete' button to cancel it.": "Satış işlemini 'Onayla' butonu ile onaylamanız veya iptal etmek için 'Sil' butonuna basmanız gerekiyor.",
+    "You have given {var:1} approved hours so far. You can print your hours certificate on your volunteering page.": "Şimdiye kadar {var:1} onaylı saat verdiniz. Saat belgenizi gönüllülük sayfanızdan yazdırabilirsiniz.",
     "You have logged out successfully.": "Başarıyla çıkış yaptınız.",
     "You have logged out successfully. <a href=\"{var:1}/\">Login</a>.": "Başarıyla çıkış yaptınız. <a href=\"{var:1}/\">Giriş Yap</a>.",
     "You have no courses yet.": "Henüz kursunuz yok.",
