@@ -76549,6 +76549,9 @@ const StyleDesigner = (function () {
         // Zoomed to a frame (_sdProtoZoomTo()): its id and the view to go
         // back to, null when not; the last tap (_sdProtoTap()).
         zoom: null, tap: null,
+        // The Sketch tool: its switch, the stored sketch with its undo
+        // history and the box selected (_sdSketchData()).
+        sketchOn: false, sk: { key: null, data: null, hist: null, sel: null },
         // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
         // null when none.
         rowDrag: null,
@@ -76796,7 +76799,25 @@ const StyleDesigner = (function () {
             _sdProtoPathPick(!_sdProto.pathPick);
         });
         ui.pathBtn.setAttribute('aria-pressed', 'false');
-        [ui.searchBtn, ui.pathBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        // Sketch, a switch: boxes drawn in the sketch pages; "New page"
+        // puts an empty one on the map (_sdSketchNewPage()).
+        ui.sketchBtn = _sdProtoButton('bi-pencil-square', _sdT('Sketch'), function () { _sdSketchSwitch(!_sdProto.sketchOn); });
+        ui.sketchBtn.title = _sdT('Sketch: draw a page as boxes');
+        ui.sketchBtn.classList.add('sd-bp-switch');
+        ui.sketchBtn.setAttribute('role', 'switch');
+        ui.sketchBtn.setAttribute('aria-checked', 'false');
+        ui.sketchBtn.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Sketch')));
+        var sketchKnob = _sdProtoEl('span', 'sd-vb-switch');
+        sketchKnob.setAttribute('aria-hidden', 'true');
+        ui.sketchBtn.appendChild(sketchKnob);
+        ui.sketchNew = _sdProtoButton('bi-file-earmark-plus', _sdT('New sketch page'), function () { _sdSketchNewPage(); });
+        ui.sketchNew.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('New page')));
+        [ui.searchBtn, ui.pathBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload, ui.sketchNew].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        tools.appendChild(ui.sketchBtn);
+        tools.appendChild(ui.sketchNew);
+        var sketchLine = _sdProtoEl('span', 'sd-vb-sep');
+        sketchLine.setAttribute('aria-hidden', 'true');
+        tools.appendChild(sketchLine);
         tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
@@ -76964,8 +76985,12 @@ const StyleDesigner = (function () {
             routeMargin: 40,
             portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },
             select: function (selected) { _sdProtoSelect(selected); },
-            moved: function (item) { _sdProtoKeep(item); },
-            canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; },
+            moved: function (item) {
+                if (item.kind === 'sketch') _sdSketchPlaced(item);
+                else _sdProtoKeep(item);
+            },
+            // A sketch page is no page yet: no arrow leads to it.
+            canConnect: function (from, to, port) { return !!to && to.kind !== 'sketch' && _sdProtoArrowHref(from, to, port) !== null; },
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
             // The core reads the view on every pan and zoom (and changes it
             // in place): the pictures near the view are made again soon
@@ -76981,13 +77006,15 @@ const StyleDesigner = (function () {
             // The selected page's foot button ("Show the whole page",
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty',
+            // A sketch box's chip opens its menu, its heading input types.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
             // 'connect' once it moves, so what may take the arrow lights up.
             // The "+" handle beside a mark is that mark (_sdProtoGrip()).
             press: function (event, next) {
+                if (_sdSketchPress(event, next)) return;
                 var grip = event.target.closest ? event.target.closest('.sd-proto-grip') : null;
                 var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);
                 if (row) {
@@ -77012,7 +77039,8 @@ const StyleDesigner = (function () {
                     next.to = frame.getAttribute('data-node');
                 }
             },
-            move: function (event, drag) {
+            move: function (event, drag, dx, dy) {
+                if (/^sk/.test(drag.kind || '')) { _sdSketchMove(event, drag, dx, dy); return; }
                 if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;
                 var item = _sdProto.byId[drag.link.frame];
                 var row = _sdProtoRow(item, drag.link.port);
@@ -77025,6 +77053,7 @@ const StyleDesigner = (function () {
                 _sdProtoDrawing(true);
             },
             release: function (event, done) {
+                if (/^sk/.test(done.kind || '')) { _sdSketchRelease(event, done); return; }
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
                 if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
                 if (done.kind === 'path' && !done.moved && event.type === 'pointerup') _sdProtoPathTo(done.to);
@@ -77033,8 +77062,12 @@ const StyleDesigner = (function () {
                 // tap; anything else breaks a pair of taps.
                 _sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);
             },
-            cancel: function () { _sdProtoDrawing(false); },
+            cancel: function (done) {
+                _sdProtoDrawing(false);
+                if (done && /^sk/.test(done.kind || '')) _sdSketchMount(false);
+            },
             key: function (event) {
+                if (_sdSketchKey(event)) return true;
                 // Esc clears the path (or the wait for its page), else goes
                 // back from a frame zoomed to, else closes the view.
                 if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }
@@ -77087,6 +77120,19 @@ const StyleDesigner = (function () {
             if (!event.buttons) _sdProtoGripHover(mark);
         });
         ui.root.addEventListener('pointerleave', function () { if (!_sdProto.drawing) _sdProtoGripHover(null); });
+        // A sketch box's chip opens its menu; a double-click on a box edits
+        // its heading.
+        ui.boxes.addEventListener('click', function (event) {
+            var chip = event.target.closest ? event.target.closest('.sd-sketch-chip') : null;
+            if (chip) _sdSketchChipMenu(chip);
+        });
+        ui.boxes.addEventListener('dblclick', function (event) {
+            var boxEl = (_sdProto.sketchOn && event.target.closest) ? event.target.closest('.sd-sketch-box') : null;
+            if (!boxEl || event.target.closest('.sd-sketch-chip, .sd-sketch-input')) return;
+            var frameId = boxEl.closest('[data-node]').getAttribute('data-node');
+            var b = _sdSketchBox(frameId, boxEl.getAttribute('data-box'));
+            if (b) _sdSketchEdit(frameId, b, null);
+        });
         // Tab onto a drawable mark shows its handle too.
         ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });
         ui.boxes.addEventListener('focusout', function (event) { _sdProtoGripFor(event.relatedTarget); });
@@ -77098,7 +77144,8 @@ const StyleDesigner = (function () {
         // on the map or on the canvas bar, where the view's controls are.
         document.addEventListener('pointerdown', function (event) {
             if (!_sdProto.open) return;
-            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+            // A sketch chip's own press toggles its menu (_sdSketchChipMenu()).
+            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target) && !(_sdProto.menu.chip && _sdProto.menu.rowEl.contains(event.target))) _sdProtoMenuClose(false);
             if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target) && !(_sdProto.problemsAnchor && _sdProto.problemsAnchor.contains(event.target))) _sdProtoProblemsClose(false);
         }, true);
         // A frame's list stands by its badge: a zoom of the canvas closes it.
@@ -77237,6 +77284,7 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoFrameName(item) {
+        if (item.kind === 'sketch') return item.name;
         if (item.kind === 'shared') return item.name || _sdT('Shared component {var:1}', item.sharedId);
         return item.name || _sdT('Untitled page');
     }
@@ -77584,6 +77632,645 @@ const StyleDesigner = (function () {
         }
         if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
         _sdProtoLegsSoon();
+    }
+
+    // ── Sketch ──
+    // "Sketch" in the canvas bar's Prototype mode: "New page" puts an empty
+    // sketch frame (id k:<n>) on the map beside the design's pages. While
+    // the switch is on, a drag inside a sketch frame draws a box, a box is
+    // moved by its body and resized by its handles, lined up with the frame
+    // and its other boxes (PGGraphCanvas.snapRect(); Alt held: free) with
+    // the guides shown while it moves. Each box carries a chip naming what
+    // it is, whose menu changes it; a word typed on a selected box is its
+    // heading. Ctrl+Z and Ctrl+Y undo the sketch while the switch is on.
+    // Kept in this browser (pg_proto_sketch_<style id>) until the sketch is
+    // kept with the page's draft.
+
+    // Frame width and head, the body's least height and the room kept
+    // under its lowest box, the grid, the snapping reach (screen pixels),
+    // the smallest box, the first box's size; how many pages, boxes and
+    // heading characters are kept.
+    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80 };
+
+    // What a box can be. A box without a kind chosen is read from the
+    // sketch; until the reader runs its chip says so.
+    var SD_SKETCH_KINDS = [
+        { key: 'header', icon: 'bi-window-desktop', text: function () { return _sdT('Header'); } },
+        { key: 'intro', icon: 'bi-easel', text: function () { return _sdT('Intro'); } },
+        { key: 'features', icon: 'bi-grid-3x2-gap', text: function () { return _sdT('Features'); } },
+        { key: 'cards', icon: 'bi-postcard', text: function () { return _sdT('Cards'); } },
+        { key: 'text', icon: 'bi-text-paragraph', text: function () { return _sdT('Text'); } },
+        { key: 'picture', icon: 'bi-image', text: function () { return _sdT('Picture'); } },
+        { key: 'gallery', icon: 'bi-images', text: function () { return _sdT('Gallery'); } },
+        { key: 'form', icon: 'bi-ui-checks', text: function () { return _sdT('Form'); } },
+        { key: 'cta', icon: 'bi-hand-index', text: function () { return _sdT('Call to action'); } },
+        { key: 'footer', icon: 'bi-layout-text-window-reverse', text: function () { return _sdT('Footer'); } },
+        { key: 'catalog', icon: 'bi-shop', text: function () { return _sdT('Catalog'); } },
+        { key: 'blog', icon: 'bi-journal-text', text: function () { return _sdT('Blog list'); } },
+        { key: 'booking', icon: 'bi-calendar-check', text: function () { return _sdT('Booking'); } }
+    ];
+
+    function _sdSketchKind(key) {
+        return SD_SKETCH_KINDS.filter(function (k) { return k.key === key; })[0] || null;
+    }
+
+    function _sdSketchStoreKey() {
+        return 'pg_proto_sketch_' + ((_design && _design.styleId) ? _design.styleId : 'new');
+    }
+
+    // A stored sketch made safe to draw: numbers whole and finite, boxes
+    // inside their frame's width, a known kind or none, a short heading.
+    function _sdSketchClean(raw) {
+        var num = function (v, lo, hi, d) { v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d; };
+        var out = { n: 1, pages: [] };
+        var used = {};
+        var pages = (raw && Array.isArray(raw.pages)) ? raw.pages.slice(0, SD_SKETCH.pages) : [];
+        pages.forEach(function (p) {
+            var id = num(p && p.id, 0, 1e9, 0);
+            if (!id || used['p' + id]) return;
+            used['p' + id] = true;
+            var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
+                var bid = num(b && b.id, 0, 1e9, 0);
+                if (!bid || used['b' + bid]) return;
+                used['b' + bid] = true;
+                var w = num(b.w, SD_SKETCH.min, SD_SKETCH.w, SD_SKETCH.min);
+                page.boxes.push({
+                    id: bid,
+                    x: num(b.x, 0, SD_SKETCH.w - w, 0), y: num(b.y, 0, 1e5, 0), w: w, h: num(b.h, SD_SKETCH.min, 1e5, SD_SKETCH.min),
+                    kind: _sdSketchKind(b.kind) ? b.kind : '',
+                    text: String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, SD_SKETCH.text)
+                });
+                out.n = Math.max(out.n, bid + 1);
+            });
+            out.n = Math.max(out.n, id + 1);
+            out.pages.push(page);
+        });
+        return out;
+    }
+
+    // The sketch of the open design, read once per design; its undo
+    // history starts there.
+    function _sdSketchData() {
+        var sk = _sdProto.sk;
+        var key = _sdSketchStoreKey();
+        if (sk.key !== key) {
+            var raw = null;
+            try { raw = JSON.parse(window.localStorage.getItem(key) || 'null'); } catch (e) { raw = null; }
+            sk.key = key;
+            sk.data = _sdSketchClean(raw);
+            sk.hist = window.PGGraphCanvas.historyOf('sketch', JSON.stringify(sk.data));
+            sk.sel = null;
+        }
+        return sk.data;
+    }
+
+    function _sdSketchWrite() {
+        var sk = _sdProto.sk;
+        try {
+            if (sk.data.pages.length) window.localStorage.setItem(sk.key, JSON.stringify(sk.data));
+            else window.localStorage.removeItem(sk.key);
+        } catch (e) {}
+    }
+
+    // A change made: kept, a step of the undo history (fold: an arrow-key
+    // nudge joins the one before it), the frames drawn again.
+    function _sdSketchChanged(fold, say) {
+        var sk = _sdProto.sk;
+        _sdSketchWrite();
+        window.PGGraphCanvas.historyRecord(sk.hist, JSON.stringify(sk.data), !!fold, Date.now());
+        _sdSketchMount(true);
+        if (say && _sdProto.canvas) _sdProto.canvas.announce(say);
+    }
+
+    function _sdSketchUndo(back) {
+        var sk = _sdProto.sk;
+        _sdSketchData();
+        var was = window.PGGraphCanvas.historyStep(sk.hist, back);
+        if (was === null) {
+            if (_sdProto.canvas) _sdProto.canvas.announce(back ? _sdT('Nothing to undo') : _sdT('Nothing to redo'));
+            return true;
+        }
+        sk.data = _sdSketchClean(JSON.parse(was));
+        _sdSketchWrite();
+        if (sk.sel && !_sdSketchBox(sk.sel.frame, sk.sel.box)) sk.sel = null;
+        _sdSketchMount(true);
+        return true;
+    }
+
+    function _sdSketchPage(frameId) {
+        var m = /^k:(\d+)$/.exec(String(frameId || ''));
+        var id = m ? Number(m[1]) : 0;
+        return id ? (_sdSketchData().pages.filter(function (p) { return p.id === id; })[0] || null) : null;
+    }
+
+    function _sdSketchBox(frameId, boxId) {
+        var page = _sdSketchPage(frameId);
+        return page ? (page.boxes.filter(function (b) { return b.id === Number(boxId); })[0] || null) : null;
+    }
+
+    // The body's height: its least, or room under the lowest box.
+    function _sdSketchBodyH(page) {
+        var low = 0;
+        page.boxes.forEach(function (b) { low = Math.max(low, b.y + b.h); });
+        return Math.max(SD_SKETCH.minH, low + SD_SKETCH.pad);
+    }
+
+    function _sdSketchItem(page) {
+        return { id: 'k:' + page.id, kind: 'sketch', name: page.name || _sdT('Page {var:1}', page.id), x: page.x, y: page.y, w: SD_SKETCH.w, h: SD_SKETCH.head + _sdSketchBodyH(page) };
+    }
+
+    // The sketch frames (again) on the map, after the pages and chips; the
+    // selected frame and box stay selected, the box keeps the focus when
+    // `refocus`.
+    function _sdSketchMount(refocus) {
+        var canvas = _sdProto.canvas;
+        var ui = _sdProto.ui;
+        if (!canvas || !ui) return;
+        var data = _sdSketchData();
+        var had = ui.boxes.contains(document.activeElement) && document.activeElement.closest('.sd-sketch-frame');
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-sketch-frame')).forEach(function (n) { n.parentNode.removeChild(n); });
+        _sdProto.items = _sdProto.items.filter(function (item) {
+            if (item.kind !== 'sketch') return true;
+            delete _sdProto.byId[item.id];
+            return false;
+        });
+        data.pages.forEach(function (page) {
+            var item = _sdSketchItem(page);
+            _sdProto.items.push(item);
+            _sdProto.byId[item.id] = item;
+            ui.boxes.appendChild(canvas.box(item, {
+                className: 'sd-proto-frame sd-sketch-frame',
+                fill: function (node) { _sdSketchFill(item, page, node); }
+            }));
+        });
+        var focused = canvas.focused();
+        if (focused !== null && /^k:/.test(String(focused)) && !_sdProto.byId[focused]) {
+            _sdProto.selected = null;
+            canvas.focus(null);
+        }
+        _sdProtoSelect(_sdProto.selected);
+        var sel = _sdSketchSelEl();
+        if (sel && (refocus || had)) sel.focus({ preventScroll: true });
+        else if (had && focused !== null && _sdProto.byId[focused]) {
+            var node = ui.boxes.querySelector('[data-node="' + String(focused) + '"]');
+            if (node) node.focus({ preventScroll: true });
+        }
+    }
+
+    function _sdSketchFill(item, page, node) {
+        var on = _sdProto.sketchOn;
+        var head = _sdProtoEl('div', 'sd-proto-head');
+        head.appendChild(_sdProtoEl('span', 'bi bi-pencil-square sd-proto-kind'));
+        head.lastChild.setAttribute('aria-hidden', 'true');
+        head.appendChild(_sdProtoEl('span', 'sd-proto-name', item.name));
+        head.appendChild(_sdProtoEl('span', 'sd-proto-meta', page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length)));
+        node.appendChild(head);
+        node.setAttribute('aria-label', _sdT('Sketch') + ': ' + item.name);
+        var body = _sdProtoEl('div', 'sd-sketch-body');
+        body.style.height = (item.h - SD_SKETCH.head) + 'px';
+        if (!page.boxes.length) body.appendChild(_sdProtoEl('p', 'sd-sketch-hint', on ? _sdT('Drag here to draw a box') : _sdT('Turn on Sketch to draw boxes')));
+        var sel = _sdProto.sk.sel;
+        page.boxes.forEach(function (b) {
+            var picked = !!(sel && sel.frame === item.id && sel.box === b.id);
+            body.appendChild(_sdSketchBoxEl(b, picked, on));
+        });
+        node.appendChild(body);
+    }
+
+    function _sdSketchBoxName(b) {
+        var kind = _sdSketchKind(b.kind);
+        var name = kind ? kind.text() : _sdT('Not read yet');
+        return b.text ? name + ': ' + b.text : name;
+    }
+
+    function _sdSketchBoxEl(b, picked, on) {
+        var kind = _sdSketchKind(b.kind);
+        var el = _sdProtoEl('div', 'sd-sketch-box' + (picked ? ' sd-sketch-on' : '') + (kind ? ' sd-sketch-kind-' + kind.key : ' sd-sketch-unread'));
+        el.setAttribute('data-box', String(b.id));
+        el.setAttribute('role', 'group');
+        el.setAttribute('aria-roledescription', _sdT('Box'));
+        el.setAttribute('aria-label', _sdSketchBoxName(b));
+        el.tabIndex = on ? 0 : -1;
+        el.style.left = b.x + 'px';
+        el.style.top = b.y + 'px';
+        el.style.width = b.w + 'px';
+        el.style.height = b.h + 'px';
+        var chip = _sdProtoEl('button', 'sd-sketch-chip');
+        chip.type = 'button';
+        chip.tabIndex = on ? 0 : -1;
+        chip.title = _sdT('Change what this box is');
+        chip.setAttribute('aria-haspopup', 'menu');
+        chip.innerHTML = '<span class="bi ' + (kind ? kind.icon : 'bi-question-circle') + '" aria-hidden="true"></span>';
+        chip.appendChild(_sdProtoEl('span', 'sd-sketch-chip-text', kind ? kind.text() : _sdT('Not read yet')));
+        chip.appendChild(_sdProtoEl('span', 'bi bi-chevron-down sd-sketch-caret'));
+        chip.lastChild.setAttribute('aria-hidden', 'true');
+        el.appendChild(chip);
+        if (b.text) el.appendChild(_sdProtoEl('span', 'sd-sketch-heading', b.text));
+        if (picked && on) {
+            ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].forEach(function (side) {
+                var h = _sdProtoEl('span', 'sd-sketch-handle sd-sketch-handle-' + side);
+                h.setAttribute('data-side', side);
+                h.setAttribute('aria-hidden', 'true');
+                el.appendChild(h);
+            });
+        }
+        return el;
+    }
+
+    function _sdSketchSelEl() {
+        var sel = _sdProto.sk.sel;
+        var ui = _sdProto.ui;
+        if (!sel || !ui) return null;
+        var frame = ui.boxes.querySelector('.sd-sketch-frame[data-node="' + sel.frame + '"]');
+        return frame ? frame.querySelector('.sd-sketch-box[data-box="' + sel.box + '"]') : null;
+    }
+
+    // One box selected (null: none), its frame selected on the map.
+    function _sdSketchPick(frameId, boxId, refocus) {
+        var sk = _sdProto.sk;
+        var was = sk.sel;
+        sk.sel = (frameId && boxId) ? { frame: String(frameId), box: Number(boxId) } : null;
+        if (sk.sel && _sdProto.canvas && _sdProto.canvas.focused() !== sk.sel.frame) {
+            _sdProto.canvas.focus(sk.sel.frame);
+            _sdProtoSelect({ type: 'node', id: sk.sel.frame });
+        }
+        if (JSON.stringify(was) !== JSON.stringify(sk.sel)) _sdSketchMount(refocus);
+        else if (refocus) { var el = _sdSketchSelEl(); if (el) el.focus({ preventScroll: true }); }
+    }
+
+    // The Sketch switch: on, boxes are drawn, moved and typed in; off, a
+    // sketch frame moves as a whole like the others.
+    function _sdSketchSwitch(on) {
+        var ui = _sdProto.ui;
+        _sdProto.sketchOn = !!on;
+        if (!on) _sdProto.sk.sel = null;
+        if (ui) {
+            ui.sketchBtn.classList.toggle('active', !!on);
+            ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
+            ui.root.classList.toggle('sd-sketch-mode', !!on);
+        }
+        _sdSketchMount(false);
+        if (_sdProto.canvas) _sdProto.canvas.announce(on ? _sdT('Sketch on: drag inside a sketch page to draw a box.') : _sdT('Sketch off'));
+    }
+
+    // "New page": an empty sketch frame right of everything on the map,
+    // selected and brought into view; the switch goes on.
+    function _sdSketchNewPage() {
+        var data = _sdSketchData();
+        if (data.pages.length >= SD_SKETCH.pages) {
+            sdToast(esc(_sdT('A sketch can have at most {var:1} pages.', SD_SKETCH.pages)), 'warning', 4000);
+            return;
+        }
+        var right = null;
+        var top = null;
+        _sdProto.items.forEach(function (item) {
+            right = Math.max(right === null ? -Infinity : right, item.x + item.w);
+            top = Math.min(top === null ? Infinity : top, item.y);
+        });
+        var id = data.n++;
+        var page = { id: id, name: '', x: window.PGGraphCanvas.snap(right === null ? 0 : right + 96), y: window.PGGraphCanvas.snap(top === null ? 0 : top), boxes: [] };
+        data.pages.push(page);
+        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
+        _sdProto.sk.sel = null;
+        _sdSketchChanged(false, _sdT('New sketch page: drag inside it to draw a box.'));
+        var item = _sdProto.byId['k:' + id];
+        if (!item || !_sdProto.canvas) return;
+        _sdProto.canvas.focus(item.id);
+        _sdProtoSelect({ type: 'node', id: item.id });
+        _sdProto.canvas.view.reveal(item);
+        var node = _sdProto.ui.boxes.querySelector('[data-node="k:' + id + '"]');
+        if (node) node.focus({ preventScroll: true });
+    }
+
+    // A sketch frame moved on the map.
+    function _sdSketchPlaced(item) {
+        var page = _sdSketchPage(item.id);
+        if (!page) return;
+        page.x = Math.round(item.x);
+        page.y = Math.round(item.y);
+        // The core has placed the frame: kept and a step of the history,
+        // nothing drawn again.
+        _sdSketchWrite();
+        window.PGGraphCanvas.historyRecord(_sdProto.sk.hist, JSON.stringify(_sdProto.sk.data), false, Date.now());
+    }
+
+    // A press inside a sketch frame's body while the switch is on: on a
+    // handle a resize, on a box a move, on the empty body a box drawn.
+    // False when the press is not the sketch's (the frame's head moves the
+    // frame as the core does).
+    function _sdSketchPress(event, next) {
+        if (!_sdProto.sketchOn || !event.target.closest || event.shiftKey) return false;
+        var body = event.target.closest('.sd-sketch-body');
+        var frame = body ? body.closest('.sd-sketch-frame[data-node]') : null;
+        var item = frame ? _sdProto.byId[frame.getAttribute('data-node')] : null;
+        var page = item ? _sdSketchPage(item.id) : null;
+        if (!page) return false;
+        var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
+        var boxEl = event.target.closest('.sd-sketch-box');
+        var b = boxEl ? _sdSketchBox(item.id, boxEl.getAttribute('data-box')) : null;
+        var handle = event.target.closest('.sd-sketch-handle');
+        next.frame = item;
+        next.page = page;
+        next.body = body;
+        next.local = { x: at.x - item.x, y: at.y - item.y - SD_SKETCH.head };
+        event.preventDefault();
+        if (b) {
+            next.kind = handle ? 'skresize' : 'skmove';
+            next.side = handle ? handle.getAttribute('data-side') : '';
+            next.box = b;
+            next.start = { x: b.x, y: b.y, w: b.w, h: b.h };
+            _sdSketchPick(item.id, b.id, true);
+            // The box drawn again: the element dragged is the new one.
+            next.el = _sdSketchSelEl();
+            next.body = next.el ? next.el.parentNode : body;
+        } else {
+            next.kind = 'skdraw';
+            _sdSketchPick(null, null, false);
+            if (_sdProto.canvas.focused() !== item.id) {
+                _sdProto.canvas.focus(item.id);
+                _sdProtoSelect({ type: 'node', id: item.id });
+            }
+            // Drawn again by the pick: the body drawn into is the new one.
+            var node = _sdProto.ui.boxes.querySelector('.sd-sketch-frame[data-node="' + item.id + '"]');
+            next.body = node ? node.querySelector('.sd-sketch-body') : body;
+            if (node) node.focus({ preventScroll: true });
+        }
+        return true;
+    }
+
+    // The rectangle of a sketch drag, lined up and kept inside the frame's
+    // width (and below its top).
+    function _sdSketchRect(event, drag, dx, dy) {
+        var k = _sdProto.view.k || 1;
+        var ddx = dx / k;
+        var ddy = dy / k;
+        var r;
+        var sides = '';
+        if (drag.kind === 'skmove') {
+            r = { x: drag.start.x + ddx, y: drag.start.y + ddy, w: drag.start.w, h: drag.start.h };
+        } else if (drag.kind === 'skresize') {
+            var s = drag.start;
+            sides = drag.side;
+            r = { x: s.x, y: s.y, w: s.w, h: s.h };
+            if (sides.indexOf('w') !== -1) { r.x = s.x + ddx; r.w = s.w - ddx; }
+            if (sides.indexOf('e') !== -1) r.w = s.w + ddx;
+            if (sides.indexOf('n') !== -1) { r.y = s.y + ddy; r.h = s.h - ddy; }
+            if (sides.indexOf('s') !== -1) r.h = s.h + ddy;
+        } else {
+            var a = drag.local;
+            var bx = a.x + ddx;
+            var by = a.y + ddy;
+            sides = (bx < a.x ? 'w' : 'e') + (by < a.y ? 'n' : 's');
+            r = { x: Math.min(a.x, bx), y: Math.min(a.y, by), w: Math.abs(bx - a.x), h: Math.abs(by - a.y) };
+        }
+        var others = [{ x: 0, y: 0, w: SD_SKETCH.w, h: _sdSketchBodyH(drag.page) }];
+        drag.page.boxes.forEach(function (b) { if (b !== drag.box) others.push(b); });
+        var out = window.PGGraphCanvas.snapRect(r, others, { sides: sides, reach: SD_SKETCH.reach / k, grid: SD_SKETCH.grid, min: drag.kind === 'skdraw' ? 1 : SD_SKETCH.min, free: !!event.altKey });
+        if (drag.kind === 'skmove') {
+            out.x = Math.max(0, Math.min(SD_SKETCH.w - out.w, out.x));
+            out.y = Math.max(0, out.y);
+        } else {
+            var right = Math.min(SD_SKETCH.w, out.x + out.w);
+            var bottom = out.y + out.h;
+            out.x = Math.max(0, out.x);
+            out.y = Math.max(0, out.y);
+            out.w = Math.max(1, right - out.x);
+            out.h = Math.max(1, bottom - out.y);
+        }
+        return out;
+    }
+
+    function _sdSketchGuides(body, guides) {
+        Array.prototype.slice.call(body.querySelectorAll('.sd-sketch-guide')).forEach(function (g) { g.parentNode.removeChild(g); });
+        (guides || []).forEach(function (g) {
+            var line = _sdProtoEl('span', 'sd-sketch-guide sd-sketch-guide-' + g.axis);
+            line.setAttribute('aria-hidden', 'true');
+            if (g.axis === 'x') {
+                line.style.left = g.at + 'px';
+                line.style.top = g.from + 'px';
+                line.style.height = (g.to - g.from) + 'px';
+            } else {
+                line.style.top = g.at + 'px';
+                line.style.left = g.from + 'px';
+                line.style.width = (g.to - g.from) + 'px';
+            }
+            body.appendChild(line);
+        });
+    }
+
+    function _sdSketchMove(event, drag, dx, dy) {
+        var r = _sdSketchRect(event, drag, dx, dy);
+        if (drag.kind === 'skdraw' && !drag.el) {
+            drag.el = _sdProtoEl('div', 'sd-sketch-box sd-sketch-ghost');
+            drag.el.setAttribute('aria-hidden', 'true');
+            drag.body.appendChild(drag.el);
+            var hint = drag.body.querySelector('.sd-sketch-hint');
+            if (hint) hint.hidden = true;
+        }
+        if (!drag.el) return;
+        drag.rect = r;
+        drag.el.style.left = r.x + 'px';
+        drag.el.style.top = r.y + 'px';
+        drag.el.style.width = r.w + 'px';
+        drag.el.style.height = r.h + 'px';
+        // The body grows under a box taken lower down.
+        drag.body.style.height = Math.max(parseFloat(drag.body.style.height) || 0, r.y + r.h + SD_SKETCH.pad) + 'px';
+        _sdSketchGuides(drag.body, r.guides);
+    }
+
+    function _sdSketchRelease(event, done) {
+        if (!done.moved || !done.rect || event.type !== 'pointerup') {
+            _sdSketchMount(true);
+            return;
+        }
+        var r = done.rect;
+        if (done.kind === 'skdraw') {
+            if (r.w < SD_SKETCH.min || r.h < SD_SKETCH.min) {
+                _sdSketchMount(false);
+                return;
+            }
+            if (done.page.boxes.length >= SD_SKETCH.boxes) {
+                _sdSketchMount(false);
+                sdToast(esc(_sdT('A sketch page can have at most {var:1} boxes.', SD_SKETCH.boxes)), 'warning', 4000);
+                return;
+            }
+            var data = _sdSketchData();
+            var b = { id: data.n++, x: r.x, y: r.y, w: r.w, h: r.h, kind: '', text: '' };
+            done.page.boxes.push(b);
+            _sdProto.sk.sel = { frame: done.frame.id, box: b.id };
+            _sdSketchChanged(false, _sdT('Box drawn. Type its heading; the chip says what it is.'));
+            return;
+        }
+        done.box.x = r.x;
+        done.box.y = r.y;
+        done.box.w = r.w;
+        done.box.h = r.h;
+        _sdSketchChanged(false);
+    }
+
+    // Keys on a selected box: Delete takes it out, the arrows move it
+    // (Shift: farther), Enter or F2 edits its heading and a letter starts
+    // it, Esc lets it go. Ctrl+Z and Ctrl+Y undo the sketch while the
+    // switch is on; Delete on a sketch frame takes the page out.
+    function _sdSketchKey(event) {
+        if (!_sdProto.sketchOn) return false;
+        var name = String(event.key || '');
+        var ctrl = event.ctrlKey || event.metaKey;
+        if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
+            return _sdSketchUndo(!(name.toLowerCase() === 'y' || event.shiftKey));
+        }
+        var t = event.target;
+        var boxEl = t && t.closest ? t.closest('.sd-sketch-box') : null;
+        var frameEl = t && t.classList && t.classList.contains('sd-sketch-frame') ? t : null;
+        if (frameEl && (name === 'Delete' || name === 'Backspace')) {
+            var gone = _sdSketchPage(frameEl.getAttribute('data-node'));
+            if (!gone) return false;
+            var data = _sdSketchData();
+            data.pages = data.pages.filter(function (p) { return p !== gone; });
+            _sdProto.sk.sel = null;
+            _sdSketchChanged(false, _sdT('Sketch page deleted. Ctrl+Z brings it back.'));
+            if (_sdProto.ui) _sdProto.ui.viewport.focus({ preventScroll: true });
+            return true;
+        }
+        if (!boxEl || (t.closest && t.closest('.sd-sketch-chip') && name !== 'Delete')) return false;
+        var frameId = boxEl.closest('[data-node]').getAttribute('data-node');
+        var page = _sdSketchPage(frameId);
+        var b = _sdSketchBox(frameId, boxEl.getAttribute('data-box'));
+        if (!page || !b) return false;
+        if (name === 'Delete' || name === 'Backspace') {
+            page.boxes = page.boxes.filter(function (one) { return one !== b; });
+            _sdProto.sk.sel = null;
+            _sdSketchChanged(false, _sdT('Box deleted'));
+            var node = _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]');
+            if (node) node.focus({ preventScroll: true });
+            return true;
+        }
+        if (name === 'Escape') {
+            _sdSketchPick(null, null, false);
+            var fr = _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]');
+            if (fr) fr.focus({ preventScroll: true });
+            return true;
+        }
+        var step = event.shiftKey ? SD_SKETCH.grid * 4 : SD_SKETCH.grid;
+        var mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[name];
+        if (mv && !ctrl) {
+            b.x = Math.max(0, Math.min(SD_SKETCH.w - b.w, b.x + mv[0]));
+            b.y = Math.max(0, b.y + mv[1]);
+            _sdProto.sk.sel = { frame: frameId, box: b.id };
+            _sdSketchChanged(true);
+            return true;
+        }
+        if (name === 'Enter' || name === 'F2') return _sdSketchEdit(frameId, b, null);
+        // A letter starts the heading; the map's zoom keys stay its own.
+        if (name.length === 1 && ' +=-_0'.indexOf(name) === -1 && !ctrl && !event.altKey) return _sdSketchEdit(frameId, b, name);
+        return false;
+    }
+
+    // The heading typed into a box: an input over it, `seed` its first
+    // letter (null: the heading as it is). Enter or leaving it keeps it,
+    // Esc leaves it as it was.
+    function _sdSketchEdit(frameId, b, seed) {
+        _sdSketchPick(frameId, b.id, false);
+        var el = _sdSketchSelEl();
+        if (!el) return false;
+        var old = el.querySelector('.sd-sketch-heading');
+        if (old) old.hidden = true;
+        var input = _sdProtoEl('input', 'sd-sketch-input');
+        input.type = 'text';
+        input.maxLength = SD_SKETCH.text;
+        input.value = seed === null ? b.text : seed;
+        input.setAttribute('aria-label', _sdT('Heading of this box'));
+        input.placeholder = _sdT('Heading');
+        var done = false;
+        var finish = function (keep) {
+            if (done) return;
+            done = true;
+            var text = String(input.value || '').replace(/\s+/g, ' ').trim().slice(0, SD_SKETCH.text);
+            if (keep && text !== b.text) {
+                b.text = text;
+                _sdSketchChanged(false);
+            } else {
+                _sdSketchMount(true);
+            }
+        };
+        input.addEventListener('keydown', function (event) {
+            event.stopPropagation();
+            if (event.key === 'Enter') { event.preventDefault(); finish(true); }
+            else if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+        });
+        input.addEventListener('blur', function () { finish(true); });
+        el.appendChild(input);
+        input.focus({ preventScroll: true });
+        if (seed === null) input.select();
+        else input.setSelectionRange(input.value.length, input.value.length);
+        return true;
+    }
+
+    // The chip's menu: what the box is, the chosen one checked; "Read
+    // from the sketch" leaves it to the reader.
+    function _sdSketchChipMenu(chip) {
+        var boxEl = chip.closest('.sd-sketch-box');
+        var frameId = boxEl ? boxEl.closest('[data-node]').getAttribute('data-node') : '';
+        var b = boxEl ? _sdSketchBox(frameId, boxEl.getAttribute('data-box')) : null;
+        if (!b) return;
+        var reopen = _sdProto.menu && _sdProto.menu.chip === b.id;
+        _sdProtoMenuClose(false);
+        if (reopen) return;
+        _sdSketchPick(frameId, b.id, false);
+        chip = _sdSketchSelEl() ? _sdSketchSelEl().querySelector('.sd-sketch-chip') : chip;
+        var ui = _sdProto.ui;
+        var el = _sdProtoEl('div', 'sd-proto-menu sd-sketch-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('What this box is'));
+        var head = _sdProtoEl('div', 'sd-proto-menu-head', _sdT('What this box is'));
+        head.setAttribute('role', 'presentation');
+        el.appendChild(head);
+        var choices = [{ key: '', icon: 'bi-magic', text: function () { return _sdT('Read from the sketch'); } }].concat(SD_SKETCH_KINDS);
+        choices.forEach(function (k) {
+            var item = _sdProtoEl('button', 'sd-proto-menu-item');
+            item.type = 'button';
+            item.tabIndex = -1;
+            item.setAttribute('role', 'menuitemradio');
+            item.setAttribute('aria-checked', k.key === b.kind ? 'true' : 'false');
+            item.innerHTML = '<span class="bi ' + k.icon + ' sd-proto-icon" aria-hidden="true"></span>';
+            item.appendChild(_sdProtoEl('span', 'sd-proto-label', k.text()));
+            item.addEventListener('click', function () {
+                _sdProtoMenuClose(false);
+                if (b.kind !== k.key) {
+                    b.kind = k.key;
+                    _sdSketchChanged(false, _sdSketchBoxName(b));
+                } else {
+                    _sdSketchMount(true);
+                }
+            });
+            el.appendChild(item);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); _sdProtoMenuClose(true); return; }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) { event.preventDefault(); items[go].focus(); }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: chip, chip: b.id };
+        var r = chip.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var c = ui.stage.getBoundingClientRect();
+        var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var place = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = place.left + 'px';
+        el.style.top = place.top + 'px';
+        var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (first) first.focus({ preventScroll: true });
     }
 
     // ── The shortest click path ──
@@ -78078,6 +78765,11 @@ const StyleDesigner = (function () {
     // picked link that is not the frame's own nor one into it is let go.
     function _sdProtoFocused(id) {
         var l = _sdProto.link;
+        // A sketch box stays selected only while its frame is.
+        if (_sdProto.sk.sel && _sdProto.sk.sel.frame !== String(id)) {
+            _sdProto.sk.sel = null;
+            _sdSketchMount(false);
+        }
         // The page opened whole closes when another frame, or none, is selected.
         if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);
         // Another start, or none, ends the path and the wait for its page.
@@ -78673,6 +79365,9 @@ const StyleDesigner = (function () {
                 }
             }));
         });
+
+        // The sketch pages after the design's own.
+        _sdSketchMount(false);
 
         var slots = G.spread(l.edges.map(function (e) {
             var from = _sdProto.byId[e.from];
