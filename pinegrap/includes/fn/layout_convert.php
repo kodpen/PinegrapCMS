@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form');
+    return array('form item view', 'form list view', 'order form', 'photo gallery');
 }
 
 /**
@@ -735,7 +735,9 @@ function pg_layout_convert_types()
  * 'else': the flag the "otherwise" branch of a condition shows under,
  * 'keep' for one drawn as it is.
  * 'loop': a foreach: 'list' (the widget's list, its body the row's
- * wrapper).
+ * wrapper), or 'list:<row flag>' (one of the kinds of records the
+ * widget's one list holds: its body is shown in the rows the flag holds
+ * for; the loops of a map's kinds side by side are that one list).
  *
  * Optional: 'forms' => 'strip' (the layout's <form> tags go: the widget
  * draws its own form around the tree), 'flag_list' => true (a flag may
@@ -781,6 +783,9 @@ function pg_layout_piece_map($type)
 
         case 'order form':
             return _pg_lc_order_form_map($none);
+
+        case 'photo gallery':
+            return _pg_lc_photo_gallery_map($none);
 
         case 'form item view':
             return array(
@@ -867,6 +872,50 @@ function _pg_lc_order_form_map($none)
     );
 }
 
+// The photo gallery (widgets_photo_gallery.php): the widget's one list
+// holds the albums of the folder shown, then its photos; the layout's
+// albums loop and photos loop are that list, each body shown in its kind's
+// rows (pg_gal_row_flags()). The rest under pg_gal_flags().
+function _pg_lc_photo_gallery_map($none)
+{
+    return array(
+        'echo' => $none + array(
+            'h($album_name)' => 'token:__album_name',
+            'h($back_button_url)' => 'token:__back_url',
+            "h(\$album['name'])" => 'token:__gallery_item_name',
+            "h(\$album['url'])" => 'token:__gallery_item_url',
+            "h(\$album['image_url'])" => 'token:__gallery_item_image_url',
+            "number_format(\$album['number_of_photos'])" => 'token:__gallery_item_photo_count',
+            "pg_format_number(\$album['number_of_photos'], 0)" => 'token:__gallery_item_photo_count',
+            "h((\$album['number_of_photos'] > 1) ? lang(array('string' => '{var:1} Photos', 'vars' => array(pg_format_number(\$album['number_of_photos'], 0)))) : lang(array('string' => '{var:1} Photo', 'vars' => array(pg_format_number(\$album['number_of_photos'], 0)))))" => 'token:__gallery_item_count_label',
+            // A photo's address is its picture's too.
+            "h(\$photo['url'])" => 'token:__gallery_item_url',
+            "h(\$photo['name'])" => 'token:__gallery_item_name',
+            "h(\$photo['description'])" => 'token:__gallery_item_description',
+        ),
+        'if' => array(
+            // A branch holding only its kind's loop is that list's rows.
+            '$albums' => array('becomes' => 'flag', 'flag' => 'has_albums'),
+            '$photos' => array('becomes' => 'flag', 'flag' => 'has_photos'),
+            '!$photos' => array('becomes' => 'flag', 'flag' => 'no_photos'),
+            '!$albums and $photos' => array('becomes' => 'flag', 'flag' => 'only_photos'),
+            '!$albums and !$photos' => array('becomes' => 'flag', 'flag' => 'no_gallery_items'),
+            '$back_button_url' => array('becomes' => 'flag', 'flag' => 'in_album'),
+            "\$album['number_of_photos'] > 1" => array('becomes' => 'flag', 'flag' => 'gallery_item_many_photos'),
+        ),
+        'else' => array(
+            '$back_button_url' => 'not_in_album',
+            '!$photos' => 'has_photos',
+            '!$albums and !$photos' => 'has_gallery_items',
+        ),
+        'loop' => array(
+            '$albums as $album' => 'list:gallery_item_is_album',
+            '$photos as $photo' => 'list:gallery_item_is_photo',
+        ),
+        'flag_list' => true,
+    );
+}
+
 /**
  * A widget starter's row template: what its first loop area holds, or the
  * content of the loop area's one column (the layout's own loop body lays
@@ -940,6 +989,7 @@ function pg_layout_convert($type, $code, $ctx = array())
     $stack = array();     // open blocks: 'mode' (keep, skip, flag, capture, list), 'key', 'close', 'buf'
     $line = 1;
     $loop_seen = false;
+    $lists = array();     // the list loops met, in order: 'piece', 'line'
     $drop = function ($piece, $at, $code_) use (&$out) {
         $out['dropped'][] = array('piece' => trim((string)$piece), 'line' => (int)$at, 'code' => (string)$code_);
     };
@@ -1056,9 +1106,12 @@ function pg_layout_convert($type, $code, $ctx = array())
         if (preg_match('/^foreach\s*\((.+)\)\s*(:|\{)$/s', $src, $m)) {
             if (!$open_kept) { $stack[] = array('mode' => 'skip'); continue; }
             $key = $norm($m[1]);
-            if (isset($loops[$key]) && $loops[$key] === 'list' && !$loop_seen && !$in_tag()) {
+            $lv = (string)($loops[$key] ?? '');
+            $kind = (strpos($lv, 'list:') === 0) ? substr($lv, 5) : '';
+            if ((($lv === 'list' && !$loop_seen) || $kind !== '') && !$in_tag()) {
                 $loop_seen = true;
-                $write('<pg-loop>');
+                $lists[] = array('piece' => trim($m[1]), 'line' => $at);
+                $write($kind !== '' ? '<pg-loop data-row-flag="' . h($kind) . '">' : '<pg-loop>');
                 $stack[] = array('mode' => 'list', 'close' => '</pg-loop>');
             } else {
                 $drop($m[1], $at, 'loop');
@@ -1085,6 +1138,14 @@ function pg_layout_convert($type, $code, $ctx = array())
     $row = array_values((array)($ctx['row'] ?? array()));
     $nodes = _pg_lc_finish($nodes, $row, $map);
     foreach ((array)($map['media'] ?? array()) as $token => $flag) $nodes = _pg_lc_media($nodes, $token, $flag);
+    if ($lists) {
+        // The kinds' loops side by side are the one list; a loop elsewhere
+        // has no list of its own to be.
+        $nodes = _pg_lc_merge_loops($nodes);
+        $seen = 0;
+        $nodes = _pg_lc_first_loop($nodes, $seen);
+        for ($i = 1; $i < $seen; $i++) $drop($lists[count($lists) - $seen + $i]['piece'], $lists[count($lists) - $seen + $i]['line'], 'loop');
+    }
     if (_pg_lc_find_loop(array('children' => $nodes)) === null) {
         // A widget draws its records where its list stands: one at the end.
         $nodes[] = pg_di_mk('loop_area', array(), $row);
@@ -1219,7 +1280,10 @@ function _pg_lc_finish($nodes, $row, $map = array())
             continue;
         }
         if ($tag === 'pg-loop') {
-            $out[] = pg_di_mk('loop_area', array(), $kids);
+            // One kind of the list's records: shown in that kind's rows.
+            $kind = (string)_pg_lfc_attr($n, 'data-row-flag');
+            if ($kind !== '') foreach ($kids as $i => $k) $kids[$i] = _pg_lc_flag($k, $kind);
+            $out[] = pg_di_mk('loop_area', $kind !== '' ? array('_kinds' => true) : array(), $kids);
             continue;
         }
         if ($tag === 'pg-section') {
@@ -1306,4 +1370,46 @@ function _pg_lc_media_only($n, $token)
     if (($n['type'] ?? '') !== 'semantic' || trim((string)($n['props']['text'] ?? '')) !== '') return false;
     $kids = (array)($n['children'] ?? array());
     return count($kids) === 1 && _pg_lc_media_only($kids[0], $token);
+}
+
+// The loops of a list's kinds made one: a flag wrapper holding only such a
+// loop goes (its rows show only when the flag holds), and loops side by
+// side in one parent are joined, their rows in order.
+function _pg_lc_merge_loops($nodes)
+{
+    $out = array();
+    foreach ($nodes as $n) {
+        if (!empty($n['children'])) $n['children'] = _pg_lc_merge_loops($n['children']);
+        $kids = (array)($n['children'] ?? array());
+        if (($n['type'] ?? '') === 'semantic' && count($kids) === 1 && !empty($kids[0]['props']['_kinds'])
+            && (string)($n['props']['cssClass'] ?? '') === '' && empty($n['props']['_attrs'])
+            && array_keys((array)($n['props']['_bindings'] ?? array())) === array('eo_visible_if')) {
+            $n = $kids[0];
+        }
+        $last = count($out) - 1;
+        if (!empty($n['props']['_kinds']) && $last >= 0 && !empty($out[$last]['props']['_kinds'])) {
+            $out[$last]['children'] = array_merge((array)$out[$last]['children'], (array)$n['children']);
+            continue;
+        }
+        $out[] = $n;
+    }
+    return $out;
+}
+
+// The first loop area kept, every later one removed ($seen counts all).
+function _pg_lc_first_loop($nodes, &$seen)
+{
+    $out = array();
+    foreach ($nodes as $n) {
+        if (($n['type'] ?? '') === 'loop_area') {
+            $seen++;
+            unset($n['props']['_kinds']);
+            if ($seen > 1) continue;
+            $out[] = $n;
+            continue;
+        }
+        if (!empty($n['children'])) $n['children'] = _pg_lc_first_loop($n['children'], $seen);
+        $out[] = $n;
+    }
+    return $out;
 }

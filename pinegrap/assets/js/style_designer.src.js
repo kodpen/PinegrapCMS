@@ -49458,7 +49458,13 @@ const StyleDesigner = (function () {
             ['no_gallery_items',           _sdT('The album shown has no album and no photo')],
             ['has_albums',                 _sdT('The album shown has albums')],
             ['has_photos',                 _sdT('The album shown has photos')],
-            ['in_album',                   _sdT('An album below the gallery\'s own is open')]
+            ['in_album',                   _sdT('An album below the gallery\'s own is open')],
+            ['not_in_album',               _sdT('The gallery\'s own folder is shown')],
+            ['only_photos',                _sdT('The album shown has photos and no album')],
+            ['no_photos',                  _sdT('The album shown has no photo')],
+            ['gallery_item_is_album',      _sdT('Row: an album')],
+            ['gallery_item_is_photo',      _sdT('Row: a photo')],
+            ['gallery_item_many_photos',   _sdT('Row: an album of more than one photo')]
         ],
         folder_view: [
             ['has_folder_items',           _sdT('The folder has an entry the visitor may see')],

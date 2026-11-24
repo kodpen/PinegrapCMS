@@ -142,10 +142,43 @@ function test_photo_gallery_widget_flags()
 {
 	$album = array('__gallery_item_is_album' => '1');
 	$photo = array('__gallery_item_is_album' => '');
-	pg_assert_same(array('has_gallery_items' => true, 'no_gallery_items' => false, 'has_albums' => true, 'has_photos' => true, 'in_album' => false),
+	pg_assert_same(array('has_gallery_items' => true, 'no_gallery_items' => false, 'has_albums' => true, 'has_photos' => true, 'in_album' => false,
+		'not_in_album' => true, 'only_photos' => false, 'no_photos' => false),
 		pg_gal_flags(array($album, $photo), false), 'albums and photos');
-	pg_assert_same(array('has_gallery_items' => false, 'no_gallery_items' => true, 'has_albums' => false, 'has_photos' => false, 'in_album' => true),
+	pg_assert_same(array('has_gallery_items' => false, 'no_gallery_items' => true, 'has_albums' => false, 'has_photos' => false, 'in_album' => true,
+		'not_in_album' => false, 'only_photos' => false, 'no_photos' => true),
 		pg_gal_flags(array(), true), 'an empty album');
+	pg_assert_same(true, pg_gal_flags(array($photo), false)['only_photos'], 'photos and no album');
+	pg_assert_same(true, pg_gal_flags(array($album), false)['no_photos'], 'albums and no photo');
+}
+
+// A row's own flags: its kind, and an album of more than one photo.
+function test_photo_gallery_widget_row_flags()
+{
+	$rows = pg_gal_rows(array(array('id' => 7, 'name' => 'Summer', 'photo' => 'a.jpg', 'photos' => 3), array('id' => 8, 'name' => 'One', 'photo' => 'b.jpg', 'photos' => 1)),
+		array(array('id' => 20, 'name' => 'cover.png', 'description' => '')), '/gallery', '/');
+	pg_assert_same(array('gallery_item_is_album' => true, 'gallery_item_is_photo' => false, 'gallery_item_many_photos' => true), pg_gal_row_flags($rows[0]));
+	pg_assert_same(false, pg_gal_row_flags($rows[1])['gallery_item_many_photos'], 'one photo');
+	pg_assert_same(array('gallery_item_is_album' => false, 'gallery_item_is_photo' => true, 'gallery_item_many_photos' => false), pg_gal_row_flags($rows[2]));
+}
+
+// A row drawn from the list's nodes: what its flags do not hold goes, its
+// values filled and escaped once.
+function test_photo_gallery_widget_row_html()
+{
+	$nodes = array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'album', '_bindings' => array('eo_visible_if' => 'gallery_item_is_album')), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'span', 'cssClass' => '', 'text' => '^^__gallery_item_name^^ (^^__gallery_item_photo_count^^ Photo'), 'children' => array()),
+			array('type' => 'semantic', 'props' => array('tag' => 'span', 'cssClass' => '', 'text' => 's', '_bindings' => array('eo_visible_if' => 'gallery_item_many_photos')), 'children' => array()),
+		)),
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'photo', '_bindings' => array('eo_visible_if' => 'gallery_item_is_photo')), 'children' => array()),
+	);
+	$rows = pg_gal_rows(array(array('id' => 7, 'name' => 'Sun & sea', 'photo' => 'a.jpg', 'photos' => 3)), array(array('id' => 20, 'name' => 'c.png', 'description' => '')), '/g', '/');
+	$album = pg_gal_row_html($nodes, $rows[0]);
+	pg_assert_true(strpos($album, 'class="album"') !== false && strpos($album, 'class="photo"') === false, 'the album body alone');
+	pg_assert_true(strpos($album, 'Sun &amp; sea (3 Photo') !== false && strpos($album, '>s</span>') !== false, 'filled once, the plural kept');
+	$photo = pg_gal_row_html($nodes, $rows[1]);
+	pg_assert_true(strpos($photo, 'class="photo"') !== false && strpos($photo, 'class="album"') === false, 'the photo body alone');
 }
 
 function test_photo_gallery_widget_registered()
