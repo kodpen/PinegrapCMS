@@ -142,6 +142,7 @@ if (
     || $manage_erp
     || $manage_workspace
     || $manage_packing
+    || pg_waiting_user_is_staff(array('id' => $_POST['user_id'] ?? 0, 'role' => $user_role))
     || (count(get_items_user_can_edit('ad_regions', $_POST['user_id'])) > 0)
 ) {
     $login = 

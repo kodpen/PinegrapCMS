@@ -17,4 +17,5 @@ description: Share links on the screen (SL3): the item's mark, Share by link… 
 
 ## What does the conversation say?
 - `ws_share_link_note()` writes a `ws_message_system()` line in the message's own channel from `ws_share_link_make()` and from `ws_share_link_revoke($link, $now, $by)` when `$by` is given (the panel and the API pass it): "<who> shared <item> by link until <date>" / "<who> stopped sharing <item>" (`ws_share_link_line()`, pure).
+- Only a link still open when taken back gets the line; one that had expired or closed writes none (`ws_share_link_revoke_line()`, `workflow/bug-hunt-areas-channel-notes-share.md`).
 - Who: a person as `<@user:N>`, an application as the `@handle` of its agent in the channel (`ws_share_link_who()`). No agent is woken, no bell line. An end that passes writes nothing. The message is touched so open screens redraw its mark.

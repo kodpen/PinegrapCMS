@@ -23,6 +23,7 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
+- calls-next.md: Plan: Workspace calls after CL1–CL8: remembered devices, a window that grows, links in a new tab during a call, several screen shares, pop-out, raise hand, background removal
 - canvas-label-menu-cites.md: Plan (owner 2026-11-24): buttons that open the Artifact Canvas say "Edit in Artifact Canvas"; its "?" is the help link and shortcuts get their own icon; places citing a menu row draw its new icon
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
@@ -61,6 +62,7 @@
 - launch-journey-screens.md: Plan launch-journey, how its first screens are put together (SJ2, SJ3): the set-up card on the dashboard, the purpose choice as radio cards, the go-live check
 - launch-journey-steps.md: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the store, the set-up card and purpose, the go-live check, the first week and team paths, the agency summary, API, close-out
 - launch-journey.md: Plan (owner 2026-11-20, poll 204): a set-up path by the site's purpose, steps marked from the real settings, a go-live check, the first week, a team member's path, the agency summary, API; SJ1a to SJ7
+- launch-summary-files.md: Plan: the agency summary's customer page shows the steps still open, and a "What we need from you" line can ask for one file or several instead of text; LS1, LS2
 - legacy-editable-layouts.md: Plan legacy-editable, layouts: a System region becomes its widget in the run; a stock layout by carried settings, a layout file by a piece map keeping the theme's markup; what stays code
 - legacy-editable-regions.md: Plan legacy-editable, regions: one door through the move screen, the run's new page_parts step, Login, Cart and Comments in the run, the true canvas of every region left, designs moved earlier
 - legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
@@ -97,11 +99,6 @@
 - user-docs-2026-11-pages.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which existing pinegrap.com page, with the memory to write it from
 - user-docs-2026-11.md: Plan (owner 2026-11-23): pinegrap.com docs from #500 to 2026.11.0; features, help anchors, how-to pass and three new pages done; left the smaller changes and UD15
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
-- volunteer-shifts-features.md: Plan volunteer-shifts, features G1 to G16: programmes, profiles from the form, documents, shifts and roles, sign-up, waitlist, swaps, the unfilled call, check-in, hours, certificate, report
-- volunteer-shifts-screens-own.md: Plan volunteer-shifts, the volunteer's own pages (VS4, VS6, VS7) in the site's look and the scan page on a phone; the words the screens use
-- volunteer-shifts-screens.md: Plan volunteer-shifts, how its panel screens are put together (VS2, VS3, VS6): programmes, a programme in tabs with Set-up as folded rows, applications, volunteers, the shift board, hours
-- volunteer-shifts-steps.md: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, programmes, shifts and board, sign-up, calls, check-in and hours, certificate and report, API, close-out
-- volunteer-shifts.md: Plan (owner 2026-11-20, poll 202): volunteer programmes: profiles, dated documents, shifts with roles, sign-up and waitlist, the unfilled call, QR check-in, hours, certificate; VS1a to VS9
 - website-features-rules.md: The rules every step of the nine website-side plans keeps (plans/website-features.md): fewest existing files, schema, switches, numbered features in a step's PR body, looks, texts, tests
 - website-features-shared-files.md: The existing files that steps of more than one website-side plan touch (plans/website-features.md), each with its steps; two steps on the same file are never open together
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in

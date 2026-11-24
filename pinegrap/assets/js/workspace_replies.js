@@ -170,7 +170,9 @@
             head.appendChild(el('div', 'fw-semibold flex-grow-1', heading));
 
             if (canWrite) {
-                var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', addText, 'bi-plus-lg');
+                // The look's button spaces its icon with its own gap.
+                var add = h.button('pg-button pg-button-quiet pg-button-sm', '', 'bi-plus-lg');
+                add.appendChild(document.createTextNode(addText));
                 add.addEventListener('click', function () { form(null, scope); });
                 head.appendChild(add);
             }
@@ -202,7 +204,7 @@
             line.appendChild(text);
 
             if (composer.rich && composer.channel && composer.channel.can_post) {
-                var use = h.button('btn btn-sm btn-text theme-primary', '', 'bi-box-arrow-in-down-left', t('reply_use'));
+                var use = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-box-arrow-in-down-left', t('reply_use'));
                 use.addEventListener('click', function () {
                     h.hideOffcanvas(node, function () {
                         composer.rich.insertStored(0, item.text, item.labels || {});
@@ -216,11 +218,11 @@
                 return line;
             }
 
-            var edit = h.button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('edit'));
+            var edit = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', t('edit'));
             edit.addEventListener('click', function () { form(item, item.scope); });
             line.appendChild(edit);
 
-            var remove = h.button('btn btn-sm btn-text theme-danger', '', 'bi-trash', t('delete'));
+            var remove = h.button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-trash', t('delete'));
             remove.addEventListener('click', function () {
                 h.ask(t('reply_delete_ask', ';' + item.shortcut), t('delete'), true).then(function (yes) {
                     if (!yes) {
@@ -287,11 +289,11 @@
 
             h.clear(footer).classList.remove('d-none');
 
-            var back = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var back = h.button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             back.addEventListener('click', list);
             footer.appendChild(back);
 
-            var save = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'));
+            var save = h.button('pg-button pg-button-fill pg-button-sm', t('save'));
             footer.appendChild(save);
 
             save.addEventListener('click', function () {

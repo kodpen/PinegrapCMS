@@ -358,7 +358,7 @@ foreach ($qp_desks as $desk) {
         . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi bi-person-workspace"></span></span>'
         . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($desk['name']) . '</strong><div class="pg-text-meta">' . h(implode(', ', $names)) . '</div></div>'
         . '<span class="pg-text-2 text-nowrap">' . h($state) . '</span>'
-        . '<button type="submit" form="qp_desks_form" name="submit_desk_remove" value="' . (int) $desk['id'] . '" class="pg-button pg-button-danger pg-button-sm"' . (($desk['state'] === 'open') ? ' disabled' : '') . ' data-confirm-content="' . h(lang(array('string' => 'The desk "{var:1}" is removed. Numbers it served stay in the figures.', 'vars' => array($desk['name'])))) . '">' . h(lang('Remove')) . '</button>'
+        . '<button type="submit" form="qp_desks_form" name="submit_desk_remove" value="' . (int) $desk['id'] . '" class="pg-button pg-button-danger pg-button-sm"' . (pg_waiting_desk_removable($desk['state']) ? '' : ' disabled') . ' data-confirm-content="' . h(lang(array('string' => 'The desk "{var:1}" is removed. Numbers it served stay in the figures.', 'vars' => array($desk['name'])))) . '">' . h(lang('Remove')) . '</button>'
         . '</div>';
 }
 

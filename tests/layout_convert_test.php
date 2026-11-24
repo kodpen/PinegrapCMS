@@ -93,9 +93,9 @@ function test_lc_piece_map_names_the_first_family()
 		$map = pg_layout_piece_map($type);
 		pg_assert_true(is_array($map) && isset($map['echo'], $map['if'], $map['loop']), $type . ' has a piece map');
 	}
-	pg_assert_same(null, pg_layout_piece_map('photo gallery'), 'a type of a later family has none yet');
+	pg_assert_same(null, pg_layout_piece_map('catalog'), 'a type of a later family has none yet');
 	pg_assert_same(null, pg_layout_piece_map('custom form'), 'the custom form keeps its own converter');
-	pg_assert_same(array('form item view', 'form list view', 'order form'), pg_layout_convert_types());
+	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery'), pg_layout_convert_types());
 }
 
 function test_lc_row_template_from_the_starter()
@@ -164,7 +164,7 @@ function test_lc_unknown_code_and_values_are_dropped()
 
 function test_lc_unknown_type()
 {
-	$r = pg_layout_convert('photo gallery', '<p>x</p>', array());
+	$r = pg_layout_convert('catalog', '<p>x</p>', array());
 	pg_assert_same(false, $r['ok']);
 }
 
@@ -406,4 +406,78 @@ function test_lc_dropped_rows()
 	pg_assert_same('line 6 · the browse form · dropped', $rows[4]['text']);
 	pg_assert_same('line 7 · ' . str_repeat('x', 59) . '… · dropped', $rows[5]['text'], 'a long piece is cut');
 	pg_assert_same(array(), pg_layout_dropped_rows(array()));
+}
+
+// -- photo gallery ------------------------------------------------------------
+
+// The albums loop and the photos loop side by side are the widget's one
+// list, each body shown in its kind's rows; the wrappers saying "there are
+// albums" or "photos" around a loop alone go with it.
+function test_lc_photo_gallery_loops_are_one_list()
+{
+	$code = '<div class="grid"><?php if ($albums): ?><?php foreach ($albums as $album): ?><div class="album"><?=h($album[\'name\'])?></div><?php endforeach ?><?php endif ?>'
+		. '<?php if ($photos): ?><?php foreach ($photos as $photo): ?><div class="photo"><img src="<?=h($photo[\'url\'])?>"></div><?php endforeach ?><?php endif ?></div>';
+	$r = pg_layout_convert('photo gallery', $code, array());
+	pg_assert_same(array(), $r['dropped']);
+	$grid = $r['tree']['children'][0];
+	pg_assert_same(1, count($grid['children']), 'the grid holds the list alone');
+	$loop = $grid['children'][0];
+	pg_assert_same('loop_area', $loop['type']);
+	pg_assert_same(array('gallery_item_is_album', 'gallery_item_is_photo'), array_map(function ($n) { return $n['props']['_bindings']['eo_visible_if']; }, $loop['children']));
+	pg_assert_same(false, isset($loop['props']['_kinds']), 'no working mark left');
+	pg_assert_same(array('__gallery_item_url'), _test_lc_bound($r['tree'], 'src'));
+}
+
+// The stock template puts albums and photos under their own headings: two
+// lists the widget has not, so the second loop is dropped.
+function test_lc_photo_gallery_template()
+{
+	$r = pg_layout_convert('photo gallery', _test_lc_template('photo gallery'), array());
+	pg_assert_same(true, $r['ok']);
+	pg_assert_same(array(array('piece' => '$photos as $photo', 'line' => 26, 'code' => 'loop')), $r['dropped']);
+	pg_assert_same(1, count(_test_lc_of_type($r['tree'], 'loop_area')));
+	pg_assert_true(strpos(json_encode($r['tree']), '(^^__gallery_item_count_label^^)') !== false, 'the count in words');
+}
+
+// Every starting-site text of the photo gallery (11 over 12 pages): nothing
+// dropped, one list.
+function test_lc_photo_gallery_starting_site_texts()
+{
+	foreach (array('english_default', 'turkish_default') as $site) {
+		foreach (array(343, 994, 995, 996, 1049, 1050) as $id) {
+			$label = $site . '/' . $id;
+			$r = pg_layout_convert('photo gallery', _test_lc_site($site, $id), array());
+			pg_assert_same(true, $r['ok'], $label);
+			pg_assert_same(array(), $r['dropped'], $label . ': nothing dropped');
+			$json = json_encode($r['tree']);
+			pg_assert_same(false, strpos($json, '<?'), $label . ': no PHP');
+			pg_assert_same(false, (bool)preg_match('/pg-(vis|loop|row)|_kinds/', $json), $label . ': no marker left');
+			pg_assert_same(1, count(_test_lc_of_type($r['tree'], 'loop_area')), $label . ': one list');
+			pg_assert_contains('gallery_item_is_photo', _test_lc_flags($r['tree']), $label . ': the photo rows');
+		}
+	}
+	$flags = _test_lc_flags(pg_layout_convert('photo gallery', _test_lc_site('english_default', 343), array())['tree']);
+	foreach (array('has_albums', 'in_album', 'not_in_album', 'only_photos', 'no_gallery_items', 'has_gallery_items', 'gallery_item_is_album', 'gallery_item_many_photos') as $want) {
+		pg_assert_contains($want, $flags, 'flag ' . $want);
+	}
+	$flags = _test_lc_flags(pg_layout_convert('photo gallery', _test_lc_site('english_default', 1049), array())['tree']);
+	pg_assert_same(array('no_photos', 'has_photos', 'gallery_item_is_photo'), $flags, 'the photos-only widget layout');
+}
+
+// Converted rows drawn by the widget: an album shows its own body with
+// its count, a photo its own.
+function test_lc_photo_gallery_rows_through_the_widget()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
+	$r = pg_layout_convert('photo gallery', _test_lc_site('english_default', 343), array());
+	$loop = _test_lc_of_type($r['tree'], 'loop_area')[0];
+	$rows = pg_gal_rows(array(array('id' => 7, 'name' => 'Summer', 'photo' => 'a.jpg', 'photos' => 3)),
+		array(array('id' => 20, 'name' => 'b.jpg', 'description' => 'Beach')), '/gallery', '/');
+	$album = pg_gal_row_html($loop['children'], $rows[0]);
+	pg_assert_true(strpos($album, 'data-filter="Summer"') !== false && strpos($album, 'href="/gallery?folder_id=7"') !== false, 'the album and its address');
+	pg_assert_true(strpos($album, 'src="/a.jpg"') !== false && strpos($album, 'data-filter="Photos"') === false, 'its picture, no photo body');
+	pg_assert_true((bool)preg_match('/\(3 Photo\s*<\/span>\s*<span[^>]*>s<\/span>/', $album), 'the count and its plural');
+	$photo = pg_gal_row_html($loop['children'], $rows[1]);
+	pg_assert_true(strpos($photo, 'data-filter="Photos"') !== false && strpos($photo, 'data-title="Beach"') !== false, 'the photo body');
+	pg_assert_true(strpos($photo, 'src="/b.jpg"') !== false && strpos($photo, 'folder_id') === false, 'its picture alone');
 }

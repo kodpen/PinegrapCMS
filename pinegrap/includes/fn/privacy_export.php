@@ -74,6 +74,7 @@ function pg_privacy_export_sections()
         'journey_visits'     => lang('Visits tied to the contact'),
         'journey'            => lang('Journey'),
         'interest_score'     => lang('Interest score'),
+        'journey_browsers'   => lang('Browsers tied to the contact'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'ad_conversions'     => lang('Ad service events'),
@@ -1233,7 +1234,8 @@ function pg_privacy_export_collect(array $found)
     }
 
     // The visitor journey (lead_journey_store.php): the visits tied to the
-    // contact with their pages, the journey's own rows and the score.
+    // contact with their pages, the journey's own rows, the score and the
+    // browsers tied to it.
     if (function_exists('pg_lead_ready') && pg_lead_ready() && $contact_ids) {
         $journey_in = _pg_privacy_export_in('contact_id', $contact_ids);
 
@@ -1247,6 +1249,13 @@ function pg_privacy_export_collect(array $found)
         );
         $sections['interest_score'] = _pg_privacy_export_select(
             "SELECT contact_id, interest, fit, reasons, topics, hot, hot_at, returned_at, last_visit_at, scored_at FROM contact_scores WHERE " . $journey_in,
+            $contact_ids
+        );
+        // The browsers whose marketing yes ties them to the contact: when
+        // the yes was given, when tied, last seen. The key's hash names the
+        // cookie, not the person, and is left out.
+        $sections['journey_browsers'] = _pg_privacy_export_select(
+            "SELECT id, contact_id, consent_at, tied_at, last_seen_at, created_at FROM lead_browsers WHERE " . $journey_in . " ORDER BY id",
             $contact_ids
         );
     }

@@ -313,7 +313,8 @@
 - pick-pack-pack.md: Orders › Pack (pack.php): access, the order code and the address list, a scan's verdict and its words, the checked pack's label, marketplace accept, audit line and order.packed
 - pick-pack-rules.md: Pick and pack's pure rules (includes/fn/pick_pack.php): shelf address sort, wave rule filter and ship-by day, cancelled order leaving a wave, pick list totals, scan verdict codes, pack state
 - pick-pack-shelf-address.md: Shelf address (product_bins): the "Shelf" box on the stock card, Modify Selected's "Shelf address", shelf import columns, shelf in POST /products/{id}/inventory
-- pick-pack-short.md: Short picks (PP5, #11259): the "Short…" drawer, the count fix as a stock_moves count line, Finish the pack, pack_short alert, order.pack_short, the Packing dashboard card
+- pick-pack-short-count.md: Short pick's count fix (#11346): drawer switch asks the shelf figure, the location gets max(0, shelf − units held by paid unsent orders), the count movement note, the held query [decision: here]
+- pick-pack-short.md: Short picks (PP5, #11259): the "Short…" drawer, the count fix (pick-pack-short-count.md), Finish the pack, pack_short alert, order.pack_short, the Packing dashboard card
 - pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing [decision: here]
 - pick-pack-waves.md: Orders › Pick waves (view_pick_waves.php, pick_wave.php, print_pick_list.php): access, waiting addresses, Make a wave, ticks on a phone, close, delete, leavers, the order code
 - pick-pack.md: Pick and pack start file: shelf address, Orders › Pick waves, Orders › Pack barcode check, label on a checked pack, Short…, Packing card, API; K1-K16 with PRs, what is not built [decision: decisions-made-product-90.md]
@@ -494,7 +495,7 @@
 - walk-in-queue-lobby-kiosk.md: Walk-in queue lobby screen (queue_lobby.php) and kiosk (queue_kiosk.php), WQ6: signed display links, the board, the chime, the kiosk's cards, the Screens card on the Desks tab
 - walk-in-queue-notices.md: A walk-in queue number's three notices (WQ3): taken, ahead, called; each once by its bit; WhatsApp, SMS or e-mail; kind queue as a service message; the texts and their places
 - walk-in-queue-number-page.md: The walk-in queue's public queue.php (WQ3): taking a number, the person's page and its 15-second read, Leave the queue, staff's Add a number, the limit, the firewall entry
-- walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster [decision: here]
+- walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster
 - walk-in-queue-report.md: Walk-in queue Report tab (WQ7, queue_report.php): waits and handling, left and not here by desk, staff and service, arrivals by hour, Desks needed (Erlang C), Excel
 - walk-in-queue-rules.md: The walk-in queue's pure rules in includes/fn/walk_in_queue.php: the order, the number A-012, cap and closing, the estimate, Not here, the signed link token
 - walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge [decision: here]

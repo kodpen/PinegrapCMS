@@ -5,7 +5,7 @@ module: volunteer_shifts
 ---
 
 ## Where are the rules?
-- `includes/fn/volunteer_shifts.php`, no database, plain arrays, tested in `tests/volunteer_shifts_test.php` (VS1a of plan `volunteer-shifts`). The store, pages and jobs of the later steps call it.
+- `includes/fn/volunteer_shifts.php`, no database, plain arrays, tested in `tests/volunteer_shifts_test.php` (step VS1a, `volunteer-shifts.md`). The store, pages and jobs of the later steps call it.
 - Times are the site's wall-clock `YYYY-MM-DD HH:MM[:SS]` strings (DATETIME columns) compared as written, no time zone; `pg_volunteer_minutes()` turns one into minutes.
 
 ## Who fits a role on a shift?
@@ -32,4 +32,4 @@ module: volunteer_shifts
 ## How is the signed link's token made?
 - `pg_volunteer_link_token($id, $issued_at, $key)`: HMAC-SHA256 of `volunteer-link:<id>:<issued_at>` under `ENCRYPTION_KEY`, the per-feature pattern of `pg_booking_manage_token()`; no new secret. Only `pg_volunteer_link_token_hash()` (sha256) is stored; a new issue or an emptied hash withdraws the link (`pg_volunteer_link_token_valid()`).
 
-Related: docs/memory/plans/volunteer-shifts.md, docs/memory/plans/volunteer-shifts-steps.md
+Related: docs/memory/core/volunteer-overview.md, docs/memory/core/volunteer-shifts.md

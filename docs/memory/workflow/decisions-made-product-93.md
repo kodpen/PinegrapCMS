@@ -12,7 +12,7 @@ description: Decisions list, product part 93 (2026-11-20 on): plans from the own
 
 ## Should a body run its volunteers by shifts: sign-up, waitlist, calls for an unfilled shift, check-in and hours? (owner, 2026-11-20, agent channel poll 202, channel message 11057)
 - "Evet, plana girsin": profile and documents, the shift board, sign-up and swaps, the unfilled-shift call, check-in on the spot, hours and the certificate, report, events and API.
-- Not chosen: "Evet, önce vardiya ve yazılma" (shifts and sign-up first), "Hayır, gerek yok". The plan: `plans/volunteer-shifts.md`.
+- Not chosen: "Evet, önce vardiya ve yazılma" (shifts and sign-up first), "Hayır, gerek yok". Built: `core/volunteer-shifts.md`.
 
 ## Should every panel list keep named views of its filters, columns and order? (owner, 2026-11-20, agent channel poll 203, channel message 11082)
 - "Hayır, gerek yok": today's filters and column choice are enough. Not to be offered again without a new reason.

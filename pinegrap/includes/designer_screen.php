@@ -2843,6 +2843,8 @@ function pg_designer_publish_sheet()
         'result-live'     => lang('On the site now'),
         'result-draft'    => lang('Stayed drafts, off the site'),
         'result-kept'     => lang('Not saved: the changes stay in the editor'),
+        'anyway'          => lang('Publish anyway'),
+        'anyway-reason'   => lang('Why is it published without approval? The reason goes to the Site Log.'),
     );
     $spans = '';
     foreach ($texts as $k => $v) {

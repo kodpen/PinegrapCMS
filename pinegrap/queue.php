@@ -95,7 +95,7 @@ if (isset($qu_input['n'])) {
     }
 
     $qu_content = '<p class="pg-text-meta text-center mb-2">' . h($qu_status['place']) . '</p>'
-        . '<p class="pg-display-4 fw-bold text-center mb-5">' . h($qu_status['number']) . '</p>'
+        . '<p class="pg-display-4 fw-bold text-center mb-5" data-pg-queue-field="number">' . h($qu_status['number']) . '</p>'
         . '<div class="text-center mb-7" role="status" aria-live="polite">'
         . '<p class="h5 mb-2" data-pg-queue-field="headline">' . h($qu_status['headline']) . '</p>'
         . '<p class="mb-0" data-pg-queue-field="line">' . h($qu_status['line']) . '</p>'
@@ -146,6 +146,14 @@ if ($qu_action === 'take') {
 
     foreach (array_keys($qu_values) as $qu_key) {
         $qu_values[$qu_key] = is_scalar($_POST[$qu_key] ?? null) ? (string) $_POST[$qu_key] : '';
+    }
+
+    // A second press, or the form sent again, gets the number just taken.
+    $qu_again = $_SESSION['software']['queue_numbers'][$qu_place['id']] ?? null;
+    $qu_again = (is_array($qu_again) && (count($qu_again) === 2)) ? array_values($qu_again) : array(0, '');
+
+    if (($qu_join['error'] === '') && pg_waiting_take_repeated(pg_waiting_ticket_find($qu_again[0], $qu_again[1]), $qu_join['values']['service'], time())) {
+        go(pg_waiting_ticket_link($qu_page, (int) $qu_again[0], (string) $qu_again[1]));
     }
 
     if (pg_waiting_throttled()) {

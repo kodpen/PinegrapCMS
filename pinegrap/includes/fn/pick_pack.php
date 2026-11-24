@@ -1036,6 +1036,55 @@ function pg_pack_count_fixes($on, $found, array $missing, array $tracked)
 }
 
 /**
+ * The units of a product that paid orders waiting to be sent hold at a
+ * location: a short pick's count is the shelf less these. Each other
+ * address counts what its lines took from the stock; the short pack's own
+ * address counts only its units not yet scanned and not missing, as those
+ * scanned are in the box and those missing are not on the shelf.
+ *
+ * @param array $rows           pg_pack_held_rows(): 'ship_to_id',
+ *                              'location_id', 'units'
+ * @param int   $location_id    the location counted, 0 without locations
+ * @param int   $own_ship_to_id the short pack's address
+ * @param int   $own_off        the short pack's scanned and missing units
+ *                              of the product
+ * @return int
+ */
+function pg_pack_held_units(array $rows, $location_id, $own_ship_to_id, $own_off)
+{
+    $held = 0;
+
+    foreach ($rows as $row) {
+        if ((int) $row['location_id'] !== (int) $location_id) {
+            continue;
+        }
+
+        $units = max(0, (int) $row['units']);
+
+        if ((int) $row['ship_to_id'] === (int) $own_ship_to_id) {
+            $units = max(0, $units - max(0, (int) $own_off));
+        }
+
+        $held += $units;
+    }
+
+    return $held;
+}
+
+/**
+ * The count a short pick writes: the units found on the shelf less those
+ * held by orders waiting to be sent, never below 0.
+ *
+ * @param int $shelf units found on the shelf
+ * @param int $held  pg_pack_held_units()
+ * @return int
+ */
+function pg_pack_count_after($shelf, $held)
+{
+    return max(0, (int) $shelf - max(0, (int) $held));
+}
+
+/**
  * A short pack's missing lines as short texts, "Cap × 2", in product order.
  *
  * @param array  $missing    product_id => units (pg_pack_missing_decode())
@@ -1159,4 +1208,33 @@ function pg_pack_card_figures(array $waiting, array $packs, $today)
         'packed_today' => $packed_today,
         'packers' => $rows,
     );
+}
+
+/**
+ * Whether a "Packing only" user may open one label's document: only the
+ * active outbound label of an address whose pack is checked (packed) and
+ * was checked by that user, the label the Pack screen opens. Users who see
+ * orders pass the order screen's own gate and never reach this.
+ *
+ * @param array      $user  validate_user()'s row
+ * @param array      $label shipment_labels row
+ * @param array|null $pack  order_packs row of the label's address, null without one
+ * @return bool
+ */
+function pg_pack_label_user_can(array $user, array $label, $pack)
+{
+    if (((int) ($user['role'] ?? 4) !== 3) || empty($user['manage_packing']) || ((int) ($user['id'] ?? 0) <= 0)) {
+        return false;
+    }
+
+    if (!is_array($pack) || !empty($label['is_return']) || !empty($label['label_removed_at'])) {
+        return false;
+    }
+
+    $ship_to_id = (int) ($label['ship_to_id'] ?? 0);
+
+    return ($ship_to_id > 0)
+        && ((int) ($pack['ship_to_id'] ?? 0) === $ship_to_id)
+        && ((int) ($pack['status'] ?? 0) === 1)
+        && ((int) ($pack['packer_id'] ?? 0) === (int) $user['id']);
 }

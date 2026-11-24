@@ -143,3 +143,18 @@ function test_walk_in_queue_places_desk_needs_a_name_and_a_known_service()
 	pg_assert_true(pg_waiting_desk_input(array('desk_name' => 'Desk 1', 'desk_services' => array('s9')), $services)['error'] !== '');
 	pg_assert_true(pg_waiting_desk_input(array('desk_name' => ' ', 'desk_services' => array('s1')), $services)['error'] !== '');
 }
+
+function test_walk_in_queue_places_only_a_closed_desk_is_removed()
+{
+	// A paused desk still has its staff member and may have a number called
+	// to it: removed, that number stayed called to a desk that no longer
+	// exists, and nobody could finish it.
+	pg_assert_true(pg_waiting_desk_removable('closed'));
+	pg_assert_false(pg_waiting_desk_removable('paused'));
+	pg_assert_false(pg_waiting_desk_removable('open'));
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_places.php');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_queue_place.php');
+	pg_assert_contains("AND place_id = ? AND state = 'closed'", $module, 'the delete keeps the desk unless closed');
+	pg_assert_contains("pg_waiting_desk_removable(\$desk['state'])", $screen, 'Remove is offered only on a closed desk');
+}

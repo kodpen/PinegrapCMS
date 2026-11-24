@@ -249,9 +249,18 @@ function pg_notification_visible($notification, $rights)
 
 	// An operations alert (includes/fn/ops_alerts.php) is for whoever sees
 	// System Status and may open the screens it points at: backups, the
-	// scheduled jobs, the software update - manager and above.
+	// scheduled jobs, the software update - manager and above; one about the
+	// shop only while commerce is on (pg_ops_alert_visible()). One about the
+	// shop names orders, so an API caller needs orders:read for it, as for
+	// the order lines.
 	if ($action == 'ops') {
-		return ($rights['role'] < 3);
+		$code = (string) ($notification['order_total'] ?? '');
+
+		if (isset($rights['orders_read']) && !$rights['orders_read'] && pg_ops_alert_about_shop($code)) {
+			return false;
+		}
+
+		return pg_ops_alert_visible($code, $rights['role'], (defined('ECOMMERCE') && (ECOMMERCE === true)));
 	}
 
 	// An e-mail the mail queue gave up on (includes/fn/mail_queue.php): for
@@ -473,7 +482,8 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 
 	// The badge only needs enough to run the visibility ladder. Anything that
 	// has to render the notification asks for the whole row instead.
-	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id, notifications.form_id';
+	// order_total is an operations alert's code (pg_ops_alert_visible()).
+	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id, notifications.form_id, notifications.order_total';
 
 	// Rows addressed to somebody else are not even read.
 	$target_filter = '';
@@ -484,7 +494,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 	}
 
 	if (!pg_notification_reads_available()) {
-		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, form_id, readed') . " FROM notifications
+		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, form_id, order_total, readed') . " FROM notifications
 			WHERE readed = 0
 			ORDER BY timestamp DESC");
 	}
@@ -506,7 +516,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 // row addressed to somebody else passes it.
 function pg_notification_ladder_columns()
 {
-	return 'id, action, comment_id, form_id' . (pg_notification_targets_available() ? ', target_user_id, reference_id' : '');
+	return 'id, action, comment_id, form_id, order_total' . (pg_notification_targets_available() ? ', target_user_id, reference_id' : '');
 }
 
 /**
@@ -1023,11 +1033,12 @@ function pg_notification_display($notification, $reader_role = null)
 
 		if (isset($codes[$code])) {
 			$display['title'] = h($codes[$code]['label']);
-			$display['url']   = pg_ops_alert_reader_url($code, $reader_role);
-			// A sales watch row about a product opens that product.
-			if (((int) ($notification['product_id'] ?? 0) > 0) && (($codes[$code]['group'] ?? '') === 'sales')) {
-				$display['url'] = 'edit_product.php?id=' . (int) $notification['product_id'];
-			}
+			// A sales watch row about a product opens that product while it
+			// is there.
+			$product_id = (int) ($notification['product_id'] ?? 0);
+			$product_exists = ($product_id > 0) && (($codes[$code]['group'] ?? '') === 'sales')
+				&& ((int) db_value("SELECT COUNT(*) FROM products WHERE id = '" . $product_id . "'") > 0);
+			$display['url']   = pg_ops_alert_bell_url($code, $reader_role, $product_id, $product_exists);
 		} else {
 			$display['title'] = h(lang('Operations alert'));
 			$display['url']   = 'welcome.php';

@@ -232,7 +232,7 @@ function test_workspace_mail_pane_html()
 	$page = ws_mail_pane_page_html($pane, '/pg/', 'messages_mail.php?view=sent');
 	pg_assert_contains('<h2 class="h5 mb-1 text-break" tabindex="-1">Order &lt;late&gt;</h2>', $page, 'the same pane');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $page, 'Open in channel stays');
-	pg_assert_contains('<a class="btn btn-sm btn-text theme-secondary" href="messages_mail.php?view=sent" data-ws-mail-close>', $page, 'Close leads back to the list');
+	pg_assert_contains('<a class="pg-button pg-button-ghost pg-button-sm" href="messages_mail.php?view=sent" data-ws-mail-close>', $page, 'Close leads back to the list');
 
 	$missing = ws_mail_pane_page_html(null, '/pg/', 'messages_mail.php');
 	pg_assert_contains('<p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>', $missing, 'one it may not read');

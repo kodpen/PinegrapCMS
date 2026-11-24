@@ -349,8 +349,8 @@
 
         var row = el('div', 'ws-voice-rec');
         var time = el('span', 'ws-voice-rec-time', '0:00');
-        var discard = h.button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('voice_discard'));
-        var stop = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 ws-voice-rec-stop', '', 'bi-stop-fill', t('voice_stop'));
+        var discard = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-trash', t('voice_discard'));
+        var stop = h.button('pg-button pg-button-fill pg-button-sm ws-voice-rec-stop', '', 'bi-stop-fill', t('voice_stop'));
         var dot = el('span', 'ws-voice-rec-dot');
         var cap = el('span', 'ws-voice-rec-cap', '/ ' + clock(LIMIT));
 
@@ -661,14 +661,14 @@
         var locale = (h.cfg && h.cfg.locale) || '';
         var box = el('div', 'ws-voice');
         var audio = document.createElement('audio');
-        var play = h.button('btn btn-solid theme-primary ws-voice-play', '', 'bi-play-fill', t('voice_play'));
+        var play = h.button('pg-button pg-button-fill ws-voice-play', '', 'bi-play-fill', t('voice_play'));
         var main = el('div', 'ws-voice-main');
         var name = el('div', 'ws-voice-name', isVoice(file.name) ? t('voice_message') : file.name);
         var bar = el('div', 'ws-voice-bar');
         var fill = el('span', 'ws-voice-fill');
         var time = el('div', 'ws-voice-time', '0:00');
-        var speed = el('button', 'btn btn-sm btn-text theme-secondary ws-voice-speed');
-        var save = el('a', 'btn btn-sm btn-text theme-secondary');
+        var speed = el('button', 'pg-button pg-button-ghost pg-button-sm ws-voice-speed');
+        var save = el('a', 'pg-icon-button pg-icon-button-sm');
         var rate = storedSpeed();
         // Chrome's WebM recordings say nothing of their length: it is
         // measured by seeking to the end once (measure()).
@@ -707,7 +707,7 @@
         tools.appendChild(speed);
 
         if (options && options.reply) {
-            var answer = h.button('btn btn-sm btn-text theme-secondary ws-voice-reply', '', 'bi-mic', t('voice_reply'));
+            var answer = h.button('pg-icon-button pg-icon-button-sm ws-voice-reply', '', 'bi-mic', t('voice_reply'));
 
             answer.addEventListener('click', function () {
                 options.reply();

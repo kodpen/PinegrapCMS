@@ -7,7 +7,7 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 ## Where is it?
 - `volunteer.php` (root, in `waf_sensitive_scripts()`): `?v=<volunteer id>&t=<token>` opens that volunteer's page in look A (`output_header_secure()`); no-store, noindex, no referrer, no frame; 120 opens in five minutes an address (`pg_volunteer_page_throttled()`). A wrong, withdrawn or left link is one 404 card.
 - My Account: section `volunteering` and flag `has_volunteering` in `_pg_my_account_extras()` for a signed-in member whose contact has a profile not left (`pg_volunteer_account_ids()`); drawn in the site's look by `includes/fn/widgets_volunteering.php`. Its list `account.volunteering` and designer twins: `core/volunteer-account-list.md`.
-- Rules and store: `includes/fn/volunteer_signup.php`; markup: `includes/fn/volunteer_page_view.php`. Pure parts tested in `tests/volunteer_signup_test.php`. Built in step VS4 of plan `volunteer-shifts`.
+- Rules and store: `includes/fn/volunteer_signup.php`; markup: `includes/fn/volunteer_page_view.php`. Pure parts tested in `tests/volunteer_signup_test.php`. Built in step VS4 (`volunteer-shifts.md`).
 
 ## How is the link made?
 - The profile drawer's "Send sign-up link" (active or paused volunteers) issues a new token (`pg_volunteer_link_send()`), stores only its hash in `link_hash`, and e-mails the link; a link sent before stops working.
@@ -28,4 +28,4 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 - "Take this place" writes a waiting row with `swap_from` = the offered row. When the programme's `swap_approval` is off it finishes at once; else the shift's drawer shows "Asks to take a place" with Approve and Refuse (`pg_volunteer_swap_decide()`).
 - Finishing cancels the offered row, signs the taker and e-mails both. A waiting row with `swap_from` is no waitlist place; cancelling an offered place cancels the swap asked of it.
 
-Related: docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens-own.md
+Related: docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/volunteer-shifts-decisions.md

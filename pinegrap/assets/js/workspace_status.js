@@ -26,6 +26,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     var HEALTHS = ['on_track', 'at_risk', 'off_track'];
 
     var ICONS = {
@@ -125,7 +137,7 @@
         var el = h.el;
         var wrap = el('div', 'ws-checkin-form');
         var area = el('textarea', 'form-control form-control-sm');
-        var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('ci_send'), 'bi-send');
+        var send = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('ci_send'), 'bi-send');
         var row = el('div', 'ws-checkin-form-foot');
 
         area.rows = 2;
@@ -154,7 +166,7 @@
             return wrap;
         }
 
-        var change = h.button('btn btn-sm btn-text theme-secondary', t('ci_change'), 'bi-pencil');
+        var change = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('ci_change'), 'bi-pencil');
         var holder = el('div');
 
         wrap.hidden = true;
@@ -289,7 +301,7 @@
 
             // Pinegrap AI, only where it may read the channel.
             if (data.ai) {
-                var write = h.button('btn btn-sm btn-outline theme-secondary', t('st_ai'), 'bi-stars');
+                var write = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('st_ai'), 'bi-stars');
 
                 write.addEventListener('click', function () {
                     write.disabled = true;
@@ -308,11 +320,11 @@
                 textRow.appendChild(write);
             }
 
-            var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = h.button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
-            var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('st_send'), 'bi-send');
+            var send = lookButton(h, 'pg-button pg-button-fill pg-button-sm', t('st_send'), 'bi-send');
             send.addEventListener('click', function () {
                 send.disabled = true;
 

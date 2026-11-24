@@ -259,8 +259,8 @@ function ws_mail_pane_open($viewer, $conversation_id)
  */
 function ws_mail_pane_page_html($pane, $base, $close, $channels = true)
 {
-    $shut = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($close) . '" data-ws-mail-close>'
-        . '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Close')) . '</a>';
+    $shut = '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($close) . '" data-ws-mail-close>'
+        . '<i class="bi bi-x-lg" aria-hidden="true"></i>' . h(lang('Close')) . '</a>';
 
     if (!$pane) {
         return '<div class="ws-mail-pane-tools">' . $shut . '</div><p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>';
@@ -302,7 +302,7 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . '</div>'
         . ($room ? '' : '<div class="mt-1">' . ws_mail_pane_channel_pill((string) $pane['channel']['name'], $url) . '</div>')
         . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')
-        . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
+        . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($url) . '"><i class="bi bi-hash" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
 
     if (count($pane['items']) >= WS_MAIL_PANE_MAX) {
@@ -404,14 +404,14 @@ function ws_mail_pane_item_html($item, $base = '')
     // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()), Block
     // sender (mail_blocks.php, ws_mail_block_pane()) and Add to my calendar
     // (personal_plan_mail.php, ws_personal_plan_mail_pane()).
-    $tools = !empty($item['forward']) ? '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
-        . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>' : '';
+    $tools = !empty($item['forward']) ? '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-forward="' . (int) $item['id'] . '">'
+        . '<i class="bi bi-envelope-arrow-up" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>' : '';
     $tools .= (!empty($item['block']) && function_exists('ws_mail_block_item_html')) ? ws_mail_block_item_html($item) : '';
 
     // A mail whose invitation has its card carries the button there.
     if (!empty($item['calendar']) && !(function_exists('ws_mail_invitation_of') && ws_mail_invitation_of($item))) {
-        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0' . (($tools !== '') ? ' ms-3' : '') . '" data-ws-mail-calendar="' . (int) $item['id'] . '">'
-            . '<i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>' . h(lang('Add to my calendar')) . '</button>';
+        $tools .= '<button type="button" class="pg-button pg-button-ghost pg-button-sm' . (($tools !== '') ? ' ms-3' : '') . '" data-ws-mail-calendar="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-calendar-plus" aria-hidden="true"></i>' . h(lang('Add to my calendar')) . '</button>';
     }
 
     if ($tools !== '') {
@@ -449,7 +449,7 @@ function ws_mail_pane_body_html($item, $name, $base)
     if ($pictures) {
         $tools .= '<span class="ws-mail-pictures" data-ws-mail-pictures><i class="bi bi-image me-1" aria-hidden="true"></i>'
             . h(lang('Pictures from outside are not shown.'))
-            . ' <button type="button" class="btn btn-sm btn-text theme-primary px-1" data-ws-mail-show-pictures>' . h(lang('Show pictures')) . '</button></span>';
+            . ' <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-show-pictures>' . h(lang('Show pictures')) . '</button></span>';
     }
 
     // A picture on the site's own address is never loaded in the frame.

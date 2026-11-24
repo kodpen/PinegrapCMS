@@ -27,6 +27,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     var STATES = {
         pending: ['bi-hourglass-split', 'apv_pending'],
         approved: ['bi-check-circle-fill', 'apv_has_approved'],
@@ -136,7 +148,7 @@
             row.appendChild(badge);
 
             if (person.can_resend) {
-                var again = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
+                var again = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-envelope', t('apv_guest_resend'));
 
                 again.addEventListener('click', function () {
                     again.disabled = true;
@@ -164,8 +176,8 @@
         foot.appendChild(el('span', 'ws-grow', t('apv_count', approval.counts.approved, (approval.people || []).length)));
 
         if (approval.can_decide) {
-            var approve = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_approve'), 'bi-check2');
-            var reject = h.button('btn btn-sm btn-outline theme-warning', t('apv_reject'), 'bi-x-lg');
+            var approve = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('apv_approve'), 'bi-check2');
+            var reject = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('apv_reject'), 'bi-x-lg');
 
             var decide = function (note) {
                 approve.disabled = true;
@@ -229,14 +241,14 @@
         }
 
         if (approval.result_id) {
-            var result = h.button('btn btn-sm btn-text theme-secondary', t('apv_result'), 'bi-patch-check');
+            var result = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('apv_result'), 'bi-patch-check');
             result.addEventListener('click', function () { view.jumpTo(approval.result_id, true); });
             foot.appendChild(result);
         }
 
         if (approval.can_withdraw || approval.can_close) {
             var label = approval.can_withdraw ? t('apv_withdraw') : t('apv_close');
-            var shut = h.button('btn btn-sm btn-text theme-secondary', label, 'bi-slash-circle');
+            var shut = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', label, 'bi-slash-circle');
 
             shut.addEventListener('click', function () {
                 h.ask(approval.can_withdraw ? t('apv_withdraw_confirm') : t('apv_close_confirm'), label, true).then(function (yes) {
@@ -376,11 +388,11 @@
         outcome.appendChild(document.createTextNode(t('apv_result_help')));
         body.appendChild(outcome);
 
-        var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var cancel = h.button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
-        var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_send'), 'bi-send');
+        var send = lookButton(h, 'pg-button pg-button-fill pg-button-sm', t('apv_send'), 'bi-send');
         send.addEventListener('click', function () {
             send.disabled = true;
 
@@ -464,7 +476,7 @@
         var box = el('div', 'mb-5 ws-approval-guests');
         var list = el('div', 'ws-approval-guest-rows');
         var rows = [];
-        var add = h.button('btn btn-sm btn-text theme-secondary px-1', t('apv_guest_add'), 'bi-plus-lg');
+        var add = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('apv_guest_add'), 'bi-plus-lg');
 
         function row() {
             var line = el('div', 'row g-1 mb-1 align-items-center');
@@ -473,7 +485,7 @@
             var dropCell = el('div', 'col-1 text-end');
             var name = el('input', 'form-control form-control-sm');
             var mail = el('input', 'form-control form-control-sm');
-            var drop = h.button('btn btn-sm btn-text theme-secondary px-1', '', 'bi-x-lg', t('apv_guest_remove'));
+            var drop = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('apv_guest_remove'));
             var item = { name: name, mail: mail };
 
             name.type = 'text';

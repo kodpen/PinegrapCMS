@@ -732,6 +732,10 @@ if (function_exists('pg_page_schedule_run')) {
         log_activity(lang(array('string' => 'page ({var:1}) was taken off the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
     }
 
+    foreach ($page_schedule['held'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) waits for approval on a prototype link, so it stayed a draft at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
     foreach ($page_schedule['home'] as $page_schedule_name) {
         log_activity(lang(array('string' => 'page ({var:1}) is the home page, so it stayed on the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
     }
@@ -1205,6 +1209,16 @@ if (pg_site_push_ready() && pg_site_push_switch_on()) {
 if (function_exists('pg_booking_reminders_run')) {
 
     pg_booking_reminders_run(time());
+
+}
+
+// Prototype review reminders (pg_proto_answer_by_reminders_run() in
+// includes/fn/prototype_review_mails.php): once a day between 09:00 and 20:00
+// site time, the approver of a link whose "Answer by" date is tomorrow is
+// reminded of the pages still undecided. One setting read on other runs.
+if (function_exists('pg_proto_answer_by_reminders_run')) {
+
+    pg_proto_answer_by_reminders_run(time());
 
 }
 

@@ -81,9 +81,9 @@ function test_notification_links_form_submitted_folder()
 
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/notifications.php');
 	pg_assert_true(strpos($source, '$rights[\'manage_forms\'] && pg_notification_form_visible($notification, $rights))') !== false, 'ladder branch');
-	pg_assert_true(strpos($source, "'notifications.id, notifications.action, notifications.comment_id, notifications.form_id'") !== false, 'badge columns');
-	pg_assert_true(strpos($source, "'id, action, comment_id, form_id, readed'") !== false, 'badge columns before the reads table');
-	pg_assert_true(strpos($source, "'id, action, comment_id, form_id'") !== false, 'ladder columns');
+	pg_assert_true(strpos($source, "'notifications.id, notifications.action, notifications.comment_id, notifications.form_id, notifications.order_total'") !== false, 'badge columns');
+	pg_assert_true(strpos($source, "'id, action, comment_id, form_id, order_total, readed'") !== false, 'badge columns before the reads table');
+	pg_assert_true(strpos($source, "'id, action, comment_id, form_id, order_total'") !== false, 'ladder columns, with an alert\'s code');
 
 	$core = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
 	pg_assert_true(strpos($core, "'form_id'    => \$form_id") !== false, 'push queue row');

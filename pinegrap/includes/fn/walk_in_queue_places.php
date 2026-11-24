@@ -649,7 +649,19 @@ function pg_waiting_desk_add($place_id, $name, $services)
 }
 
 /**
- * A place's desk removed, only while it is not open.
+ * Whether a desk may be removed: only a closed one. A paused desk is still
+ * someone's for their shift and may have a number called to it. Pure.
+ *
+ * @param string $state the desk's state
+ * @return bool
+ */
+function pg_waiting_desk_removable($state)
+{
+    return $state === 'closed';
+}
+
+/**
+ * A place's desk removed, only while it is closed.
  *
  * @param int $place_id
  * @param int $desk_id
@@ -657,7 +669,7 @@ function pg_waiting_desk_add($place_id, $name, $services)
  */
 function pg_waiting_desk_remove($place_id, $desk_id)
 {
-    if (db_q("DELETE FROM waiting_desks WHERE id = ? AND place_id = ? AND state <> 'open'", array((int) $desk_id, (int) $place_id)) === false) {
+    if (db_q("DELETE FROM waiting_desks WHERE id = ? AND place_id = ? AND state = 'closed'", array((int) $desk_id, (int) $place_id)) === false) {
         return false;
     }
 

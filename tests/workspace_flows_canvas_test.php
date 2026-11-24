@@ -1036,6 +1036,7 @@ var K = {
     clear: function (node) { node.children = []; node.textContent = ''; return node; },
     icon: function (name) { return new FakeNode('i', 'bi ' + (name || '')); },
     button: function (className, label) { return new FakeNode('button', className, label); },
+    lookButton: function (className, label) { return new FakeNode('button', className, label); },
     fail: function (error) { failed.push(error && error.message); },
     toast: function () {},
     api: function (action) { calls.push(action); var next = answers.shift(); return next ? next() : new Promise(function () {}); }
@@ -2883,7 +2884,7 @@ function test_workspace_flows_canvas_kinds_have_line_icons()
 	pg_assert_true((bool) preg_match('/\n    var FLOW_ICONS = \{\n.*?\n    \};\n/s', $host, $icons), 'FLOW_ICONS is in workspace.js');
 	pg_assert_false(strpos($kinds[0] . $palette[0], "'bi-") !== false, 'no Bootstrap icon left on a kind');
 
-	foreach (array("cardFace(box, K.flowIcon(node.kind), t(kind.name))", "tile.appendChild(K.flowIcon(node.kind))", "K.flowIcon(item[0], 'me-1')") as $use) {
+	foreach (array("cardFace(box, K.flowIcon(node.kind), t(kind.name))", "tile.appendChild(K.flowIcon(node.kind))", "K.flowIcon(item[0], '')") as $use) {
 		pg_assert_contains($use, $flow, 'the canvas draws ' . $use);
 	}
 
@@ -4201,4 +4202,177 @@ JS
 	pg_assert_same(6, $result['map']['boxes'][0]['x'], 'a wide flow: the first box at the clear edge, the height centred');
 	pg_assert_true($result['map']['boxes'][0]['y'] > 6, 'centred in height');
 	pg_assert_same($result['map']['boxes'][0]['x'], $result['map']['view']['x'], 'the view starts where the first box does');
+}
+
+// The trial on the canvas (trialMarks()): the steps walked so far wear a
+// mark (a Wait "passed", a failed box failed, the rest done with their
+// outcome), the step in turn "next", and the arrows a walked box left on
+// are taken; nothing after the step in turn is marked.
+function test_workspace_flows_canvas_trial_marks()
+{
+	$result = ws_flows_canvas_test_node(
+		array('trialMarks'),
+		<<<'JS'
+var steps = [
+    { node_id: 's', kind: 'manual', status: 'done', outcome: 'next' },
+    { node_id: 'w', kind: 'delay', status: 'done', outcome: 'done' },
+    { node_id: 'c', kind: 'condition', status: 'done', outcome: 'no' },
+    { node_id: 'm', kind: 'email', status: 'failed', outcome: 'failed' },
+    { node_id: 'e', kind: 'end', status: 'done', outcome: '' }
+];
+var edges = [
+    { from: 's', to: 'w', on: 'next' },
+    { from: 'w', to: 'c', on: 'done' },
+    { from: 'c', to: 'x', on: 'yes' },
+    { from: 'c', to: 'm', on: 'no' },
+    { from: 'm', to: 'e', on: 'failed' },
+    { from: 'm', to: 'y', on: 'done' },
+    { from: 'm', to: 'z', on: 'always' }
+];
+var out = {};
+out.none = trialMarks(steps, 0, edges);
+out.three = trialMarks(steps, 3, edges);
+out.all = trialMarks(steps, 9, edges);
+out.empty = trialMarks(null, 2, edges);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('marks' => array('s' => array('state' => 'next', 'outcome' => '')), 'taken' => array()), $result['none'], 'nothing walked: the start is in turn');
+	pg_assert_same(array(
+		's' => array('state' => 'done', 'outcome' => 'next'),
+		'w' => array('state' => 'passed', 'outcome' => 'done'),
+		'c' => array('state' => 'done', 'outcome' => 'no'),
+		'm' => array('state' => 'next', 'outcome' => ''),
+	), $result['three']['marks'], 'three walked, a Wait passed, the e-mail in turn');
+	pg_assert_same(array(0, 1, 3), $result['three']['taken'], 'the arrows left on: the condition on no, never on yes');
+	pg_assert_same(array('state' => 'failed', 'outcome' => 'failed'), $result['all']['marks']['m'], 'a box that would fail');
+	pg_assert_same(array(0, 1, 3, 4), $result['all']['taken'], 'a failed box leaves on its failed arrow only, never on always');
+	pg_assert_same(array('state' => 'done', 'outcome' => ''), $result['all']['marks']['e'], 'the end walked');
+	pg_assert_same(array('marks' => array(), 'taken' => array()), $result['empty'], 'no answer yet: no marks');
+}
+
+// The trial's panel (trialSteps()): the steps walked in their Try's words,
+// the one in turn named, Next step walking one and To the end the rest;
+// at the end how the run would end, Start over and a message's Preview.
+// An outcome chosen for a person's box asks the walk again with it and
+// walks on from the box after it.
+function test_workspace_flows_canvas_trial_panel()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	preg_match('/^    var TRIAL_MARKS = .*?;$/ms', $source, $marks);
+	pg_assert_true(!empty($marks), 'TRIAL_MARKS is declared');
+
+	$result = ws_flows_canvas_test_node(
+		array('trialMarks', 'trialSteps', 'trialStep', 'trialBadge', 'walkTrial', 'loadTrial', 'previewStep'),
+		($marks[0] ?? '') . "\n" . <<<'JS'
+var sent = [];
+var TRIAL_HEADS = ['subject'];
+var KIND = { manual: { group: 'start', out: ['next'] }, task: { group: 'people', out: ['done', 'cancelled'] }, email: { group: 'message', out: ['done', 'failed'] }, end: { group: 'logic', out: [] } };
+var nodes = { s: { id: 's', kind: 'manual' }, t: { id: 't', kind: 'task' }, m: { id: 'm', kind: 'email' }, e: { id: 'e', kind: 'end' } };
+function nodeById(id) { return nodes[id] || null; }
+function kindOf(node) { return KIND[node.kind]; }
+function edgeNamed(node, on) { return kindOf(node).out.length > 1; }
+function outcomeText(node, on) { return 'on:' + on; }
+function runWord(status) { return 'state:' + status; }
+function field(label, control) { var wrap = el('div', 'mb-5', label); wrap.appendChild(control); return wrap; }
+document.createTextNode = function (text) { return new FakeNode('#text', '', text); };
+FakeNode.prototype.style = {};
+K.lookButton = function (className, label) { return new FakeNode('button', className, label); };
+K.select = function (options, value) { var node = new FakeNode('select'); node.value = value; node.options = options; return node; };
+K.ask = function (title) { sent.push('ask ' + title); return Promise.resolve(true); };
+K.api = function (action, data) { sent.push(action + ' ' + JSON.stringify(data)); var next = answers.shift(); return next ? next() : new Promise(function () {}); };
+function drawTrialViews() { state.trial.marked = trialMarks(state.trial.answer ? state.trial.answer.steps : null, state.trial.shown, state.graph.edges); K.clear(ui.side); ui.side.appendChild(trialSteps(state.trial)); }
+function find(node, test) { if (test(node)) { return node; } for (var i = 0; i < node.children.length; i++) { var found = find(node.children[i], test); if (found) { return found; } } return null; }
+function answer(outcome) {
+    return Promise.resolve({ trial: { record: null, state: 'done', skipped: ['x'], steps: [
+        { node_id: 's', kind: 'manual', name: 'Start', status: 'done', outcome: 'next', choices: [], said: 'Started by hand', refusal: '', texts: [], empty: [] },
+        { node_id: 't', kind: 'task', name: 'Call', status: 'done', outcome: outcome, choices: ['done', 'cancelled'], said: 'A task', refusal: '', texts: [], empty: [] },
+        { node_id: 'm', kind: 'email', name: 'Mail', status: 'done', outcome: 'done', choices: [], said: 'An e-mail', refusal: '', texts: [{ key: 'subject', text: 'Hello' }, { key: 'body', text: 'Hi' }], empty: ['node.x'] },
+        { node_id: 'e', kind: 'end', name: 'End', status: 'done', outcome: '', choices: [], said: '', refusal: '', texts: [], empty: [] }
+    ] } });
+}
+state = { flow: { id: 7 }, graph: { edges: [{ from: 's', to: 't', on: 'next' }, { from: 't', to: 'm', on: 'done' }, { from: 't', to: 'e', on: 'cancelled' }, { from: 'm', to: 'e', on: 'done' }] }, refocus: '',
+    trial: { record: { contact_id: 5, label: 'Ada' }, outcomes: {}, answer: null, shown: 0, busy: false, seq: 0, error: '', runs: [] } };
+(async function () {
+    var out = {};
+
+    answers.push(function () { return answer('done'); });
+    loadTrial(0);
+    out.loading = textOf(ui.side);
+    await settle();
+    out.first = { text: textOf(ui.side), buttons: buttonsOf(ui.side).map(textOf) };
+    find(ui.side, function (node) { return node.textContent === 'fl_trial_step'; }).click();
+    out.one = { text: textOf(ui.side), taken: state.trial.marked.taken, told: announced.slice() };
+    find(ui.side, function (node) { return node.textContent === 'fl_trial_all'; }).click();
+    out.end = { text: textOf(ui.side), buttons: buttonsOf(ui.side).map(textOf), taken: state.trial.marked.taken };
+    find(ui.side, function (node) { return node.textContent === 'fl_trial_preview'; }).click();
+    var choice = find(ui.side, function (node) { return node.tag === 'select'; });
+    choice.value = 'cancelled';
+    answers.push(function () { return answer('cancelled'); });
+    choice.listeners.change[0]();
+    await settle();
+    out.chosen = { shown: state.trial.shown, taken: state.trial.marked.taken, outcomes: state.trial.outcomes };
+    out.sent = sent;
+    console.log(JSON.stringify(out));
+})();
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_contains('fl_trial_loading', $result['loading'], 'the walk asked: a word while it comes');
+	pg_assert_contains('fl_trial_next Start', $result['first']['text'], 'nothing walked: the start is in turn');
+	pg_assert_same(array('fl_trial_step', 'fl_trial_all'), $result['first']['buttons'], 'Next step and To the end');
+	pg_assert_contains('Started by hand', $result['one']['text'], 'a walked step in its Try words');
+	pg_assert_contains('fl_trial_next Call', $result['one']['text'], 'the task in turn');
+	pg_assert_same(array(0), $result['one']['taken'], 'the start\'s arrow taken');
+	pg_assert_contains('fl_trial_walked', implode(' ', $result['one']['told']), 'the step walked is told');
+	pg_assert_contains('fl_trial_result state:done', $result['end']['text'], 'at the end: how the run would end');
+	pg_assert_contains('fl_trial_skipped 1', $result['end']['text'], 'and the boxes not reached');
+	pg_assert_same(array('fl_trial_preview', 'fl_trial_again'), $result['end']['buttons'], 'Preview for the e-mail, Start over');
+	pg_assert_same(array(0, 1, 3), $result['end']['taken'], 'the task on done, the e-mail on done');
+	pg_assert_contains('ask fl_trial_preview_for Mail Ada', implode("\n", $result['sent']), 'the preview names the record\'s person');
+	pg_assert_same(array('t' => 'cancelled'), $result['chosen']['outcomes'], 'the outcome chosen is kept');
+	pg_assert_same(2, $result['chosen']['shown'], 'walked on from the box after it');
+	pg_assert_same(array(0, 2), $result['chosen']['taken'], 'the task now leaves on cancelled');
+	pg_assert_contains('ws_flow_trial {"flow_id":7,"run_id":0,"contact_id":5,"outcomes":"{\"t\":\"cancelled\"}"}', implode("\n", $result['sent']), 'asked again with the record and the outcome');
+}
+
+// A live flow's counts over a box (countPills()): runs waiting now (amber),
+// passes done (plain) and failed (rose) in the days, a start's passes said
+// as runs started; nothing for a box no run reached.
+function test_workspace_flows_canvas_count_pills()
+{
+	$result = ws_flows_canvas_test_node(
+		array('countPills'),
+		<<<'JS'
+var out = {};
+out.box = countPills({ node: 'w', waiting: 12, passed: 116, failed: 0 }, false);
+out.start = countPills({ node: 's', waiting: 0, passed: 128, failed: 0 }, true);
+out.failed = countPills({ node: 'm', waiting: 0, passed: 113, failed: 3 }, false);
+out.none = countPills(null, false);
+out.empty = countPills({ node: 'x', waiting: 0, passed: 0, failed: 0 }, false);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('state' => 'waiting', 'n' => 12, 'tone' => 'amber', 'text' => 'fl_counts_waiting'),
+		array('state' => 'passed', 'n' => 116, 'tone' => 'gray', 'text' => 'fl_counts_passed'),
+	), $result['box'], 'waiting first, then passed; no failed pill at 0');
+	pg_assert_same(array(array('state' => 'passed', 'n' => 128, 'tone' => 'gray', 'text' => 'fl_counts_started')), $result['start'], 'a start says how many started');
+	pg_assert_same(array('state' => 'failed', 'n' => 3, 'tone' => 'rose', 'text' => 'fl_counts_failed'), $result['failed'][1], 'failed in rose');
+	pg_assert_same(array(), $result['none'], 'no line: no pills');
+	pg_assert_same(array(), $result['empty'], 'all at 0: no pills');
 }

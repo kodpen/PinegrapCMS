@@ -19,6 +19,7 @@ description: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, 
 ## What does the personal data erasure do?
 - Architect (2026-11-21, decision schema-47): erasure deletes the sign-up rows, so the person's hours leave the report; nothing is anonymised.
 - `pg_privacy_erase_tables()`: `volunteer_signups` and `volunteer_documents` by `volunteer_id`, `volunteers` by `id` or `contact_id`, all deleted. Scope key `volunteer_ids` (the profiles of the person's contacts) is built before the files, so the documents' `file_id`s join `file_ids` and the `files` entry deletes them from the disk.
+- Coming signed or waiting places are given up first, under the shift's lock, by `_pg_volunteer_signup_give_up()` (`_pg_privacy_erase_apply_volunteer_signups()`): the waitlist moves up, a swap asked ends. Before #11381 the deleted place stayed empty with the waitlist stuck.
 - `pg_contact_holders()`: `volunteers.contact_id`, merge `move` (both profiles stay), erase `find`.
 
 ## What does the export give?
@@ -29,4 +30,4 @@ description: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, 
 - Rule `volunteers` in `pg_privacy_rules_catalogue()`: profiles with `state = 'left'` and `left_at` before the period (3 years, 1-20, off by default; architect's yes, schema-47) go with their documents, files, shifts and hours (`pg_privacy_rule_one()`), the contact stays; no skip.
 - The passive contacts rule counts a profile not left, or left within the period, as activity (`_pg_privacy_rule_active()`): a sign-up changes neither the contact nor an order.
 
-Related: docs/memory/core/volunteer-document-file.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/privacy-retention-rules.md
+Related: docs/memory/core/volunteer-document-file.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/privacy-retention-rules.md

@@ -188,7 +188,7 @@ if (!$feed) {
                     ' . get_token_field() . '
                     <input type="hidden" name="feed_action" value="create">
                     ' . $options . '
-                    <button type="submit" class="btn btn-solid theme-primary mt-5"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Make my calendar address')) . '</button>
+                    <button type="submit" class="pg-button pg-button-fill mt-5"><i class="bi bi-link-45deg" aria-hidden="true"></i>' . h(lang('Make my calendar address')) . '</button>
                 </form>
             </div>
         </div>';
@@ -218,15 +218,15 @@ if (!$feed) {
                 <label class="form-label small fw-semibold" for="ws_ical_url">' . h(lang('Your calendar address')) . '</label>
                 <div class="input-group mb-3">
                     <input type="text" class="form-control font-monospace" id="ws_ical_url" value="' . h(ws_calendar_feed_url($token)) . '" readonly>
-                    <button type="button" class="btn btn-outline theme-secondary" id="ws_ical_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                    <button type="button" class="pg-button pg-button-quiet" id="ws_ical_copy"><i class="bi bi-clipboard" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                     <span class="visually-hidden" role="status" aria-live="polite" id="ws_ical_copy_status" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
                 </div>
                 <p class="small fg-secondary mb-5"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . h(lang('Keep it like a password: anyone who has it can read what it carries. If it got out, make a new address below.')) . '</p>
                 <div class="d-flex flex-wrap gap-3 mb-5">
                     ' . (($google !== '')
-                        ? '<a class="btn btn-sm btn-outline theme-primary" href="' . h($google) . '" target="_blank" rel="noopener noreferrer"><i class="bi bi-google me-1" aria-hidden="true"></i>' . h(lang('Add to Google Calendar')) . '</a>'
+                        ? '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($google) . '" target="_blank" rel="noopener noreferrer"><i class="bi bi-google" aria-hidden="true"></i>' . h(lang('Add to Google Calendar')) . '</a>'
                         : '') . '
-                    <a class="btn btn-sm btn-outline theme-primary" href="' . h(ws_calendar_feed_webcal_url($token)) . '"><i class="bi bi-apple me-1" aria-hidden="true"></i>' . h(lang('Open in Apple Calendar or Outlook')) . '</a>
+                    <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_calendar_feed_webcal_url($token)) . '"><i class="bi bi-apple" aria-hidden="true"></i>' . h(lang('Open in Apple Calendar or Outlook')) . '</a>
                 </div>';
 
     } else {
@@ -251,7 +251,7 @@ if (!$feed) {
                     ' . get_token_field() . '
                     <input type="hidden" name="feed_action" value="save">
                     ' . $options . '
-                    <button type="submit" class="btn btn-solid theme-primary mt-5">' . h(lang('Save')) . '</button>
+                    <button type="submit" class="pg-button pg-button-fill mt-5">' . h(lang('Save')) . '</button>
                 </form>
             </div>
         </div>';
@@ -262,12 +262,12 @@ if (!$feed) {
                 <h2 class="h6 mb-3">' . h(lang('The address')) . '</h2>
                 <p class="small fg-secondary">' . h(lang('A new address ends the old one at once: every calendar that reads it stops updating until the new one is added.')) . '</p>
                 <div class="d-flex flex-wrap gap-3">
-                    <button type="button" class="btn btn-sm btn-outline theme-secondary ws-ical-action" data-action="renew"
+                    <button type="button" class="pg-button pg-button-quiet pg-button-sm ws-ical-action" data-action="renew"
                         data-confirm="' . h(lang('The current address will stop working. Make a new one?')) . '">
-                        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>' . h(lang('Make a new address')) . '</button>
-                    <button type="button" class="btn btn-sm btn-outline theme-danger ws-ical-action" data-action="end"
+                        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>' . h(lang('Make a new address')) . '</button>
+                    <button type="button" class="pg-button pg-button-danger pg-button-sm ws-ical-action" data-action="end"
                         data-confirm="' . h(lang('The address will stop working and your calendars will no longer be updated. End the subscription?')) . '">
-                        <i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('End the subscription')) . '</button>
+                        <i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('End the subscription')) . '</button>
                 </div>
             </div>
         </div>';

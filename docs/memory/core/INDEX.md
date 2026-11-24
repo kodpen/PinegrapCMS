@@ -192,7 +192,7 @@
 - privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link [decision: decisions-made-product-95.md]
 - privacy-request-form.md: A person's own privacy request (P10, P10b, #10921): privacy_request.php, off for visitors by default, always from My Account; 48-hour proof link; 5 an address an hour; the switch
 - privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer [decision: here]
-- privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
+- privacy-retention-rules.md: Privacy centre retention rules (P6-P9): bounds, settings, dry run and yes, the nightly pass through the erase entries, skips and activity, privacy_rule audit lines
 - privacy-rule-site-chats.md: The Privacy centre's "Site chats" rule (off, 60 days) that replaced Chat's unread Chat Retention Period; what it picks and deletes, why the update deletes nothing [decision: here]
 - privacy-rules-card.md: Privacy centre › Inventory's Retention rules card (KV3b): switch rows with periods, each form's own period, the interval, Dry run with its effect lines and sample, the yes; anchor privacy-rules
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
@@ -248,10 +248,13 @@
 - volunteer-events.md: Volunteer shift events (VS8): applied, approved, shift signed up and unfilled, checked in, hours approved; where each is announced, after the shift lock; the catalogues
 - volunteer-hours.md: Volunteer check-in and hours (VS6): a place's QR poster, volunteer_check_in.php, the Hours tab's list of the day, "Did not come" after 30 minutes, hours approval, hours outside a shift
 - volunteer-messages.md: Volunteer passes of the general job (VS5): unfilled-shift call, day-before reminder, document notices; channels, 09-20 hours, SMS kind volunteer, Shift calls switch
+- volunteer-overview.md: Start file of the volunteer cluster: what volunteer shifts are, which decisions bind them, which memory file holds each part, how a new part is added
 - volunteer-programmes.md: Contacts › Volunteers (VS2): the programmes list, a programme's Set-up rows, applications from its form with Approve, the Volunteers tab and the profile drawer; who sees what
 - volunteer-report.md: A volunteer programme's Report tab (VS7): periods, places filled of needed and late cancels by week, approved hours by role and volunteer, active and left volunteers, the Excel workbook
 - volunteer-self-move.md: A volunteer's own "Pause my volunteering" and "Leave the programme" (VS8b, G3): one path with the coordinator's move, coming sign-ups given up as a cancel, one coordinator e-mail
 - volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token
+- volunteer-shifts-decisions.md: Volunteer shifts decisions: owner polls 202, 206, 207, 208, the architect's tables, place and screen parts, the words on screen, what binds the code, what was left out [decision: here]
+- volunteer-shifts.md: Volunteer shifts features G1 to G16 (Contacts › Volunteers, volunteer.php, check-in, hours, certificate, report, events, API): what each does, the file that holds it and the PR that built it [decision: decisions-made-product-93.md, decisions-made-schema-47.md]
 - volunteer-signup.md: A volunteer's own shifts (VS4): volunteer.php's signed link, My Account's volunteering section, Sign up, waitlist, Cancel to the cut-off, Offer my place and its swap approval, Send sign-up link
 - volunteer-store.md: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule [decision: here]
 - web-address-rule.md: Short link destination and auto dialog URL share pg_web_address_problem() on save; pg_address_opens_as_web() and its JS twin guard a stored address where it is printed

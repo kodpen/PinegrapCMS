@@ -1396,6 +1396,9 @@ function pg_page_bundle_check_item($item, $user)
     }
 
     $save['fields']['revision_source'] = 'bundle';
+    // The draft goes live with the bundle: a prototype link's approval hold
+    // on it is read by the save (pg_proto_approval_hold()).
+    $save['fields']['publish_from_draft'] = $draft_id;
     $dry = pg_designer_save_page($save['style_id'], $save['fields'], $user, true);
 
     if (empty($dry['ok'])) {
@@ -1506,7 +1509,9 @@ function pg_page_bundle_write_item($item, $bundle, $user)
             }
 
             if (!pg_page_draft_move($draft_id, false, 0, (int) $user['id'])) {
-                return $give_back(lang(array('string' => 'The draft "{var:1}" could not be put on the site.', 'vars' => array((string) $draft['page_name']))));
+                $held = pg_proto_approval_hold_message($draft_id, (string) $draft['page_name']);
+
+                return $give_back(($held !== '') ? $held : lang(array('string' => 'The draft "{var:1}" could not be put on the site.', 'vars' => array((string) $draft['page_name']))));
             }
 
             $state = pg_page_bundle_state_hash($draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
@@ -1529,6 +1534,7 @@ function pg_page_bundle_write_item($item, $bundle, $user)
         $latest = pg_page_revisions_ready() ? (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$live_id'") : 0;
 
         $save['fields']['revision_source'] = 'bundle';
+        $save['fields']['publish_from_draft'] = $draft_id;
         $saved = pg_designer_save_page($save['style_id'], $save['fields'], $user);
 
         if (empty($saved['ok'])) {

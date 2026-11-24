@@ -166,6 +166,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_tell.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_comments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_approval.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_verdicts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_review_mails.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/geo.php');

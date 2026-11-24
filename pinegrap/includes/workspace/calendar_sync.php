@@ -1648,7 +1648,7 @@ function ws_calsync_card($user_id)
             . (($confirm !== '') ? ' ws-calsync-confirm" data-confirm="' . h($confirm) . '"' : '"') . '>'
             . get_token_field() . '<input type="hidden" name="feed_action" value="' . h($action) . '">'
             . (($provider !== '') ? '<input type="hidden" name="calsync_provider" value="' . h($provider) . '">' : '')
-            . '<button type="submit" class="btn btn-sm ' . $classes . '"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($label) . '</button></form>';
+            . '<button type="submit" class="pg-button pg-button-sm ' . $classes . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button></form>';
     };
 
     $flash = isset($_GET['calsync_connect']) ? pg_connect_flash_take() : null;
@@ -1678,15 +1678,15 @@ function ws_calsync_card($user_id)
             $body .= '
                     <form method="post" action="connect.php" class="d-inline disable_shortcut">
                         ' . pg_connect_start_fields($provider, WS_CALSYNC_PURPOSE, 'workspace_calendar_feed.php?calsync_connect=1#ws-calendar-sync', 'person', $account ? (int) $account['id'] : 0) . '
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi ' . h($names[$provider]['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect your {var:1} account', 'vars' => $names[$provider]['account']))) . '</button>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm"><i class="bi ' . h($names[$provider]['icon']) . '" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect your {var:1} account', 'vars' => $names[$provider]['account']))) . '</button>
                     </form>';
         } else {
             $body .= '
-                    ' . $form('calsync_sync', 'btn-outline theme-secondary', 'bi-arrow-repeat', lang('Write now'));
+                    ' . $form('calsync_sync', 'pg-button-quiet', 'bi-arrow-repeat', lang('Write now'));
         }
 
         $body .= '
-                    ' . $form('calsync_stop', 'btn-outline theme-danger', 'bi-x-circle', lang('Stop writing'), lang('Your tasks will no longer be written and the Workspace tasks calendar will be removed from your account. Stop?')) . '
+                    ' . $form('calsync_stop', 'pg-button-danger', 'bi-x-circle', lang('Stop writing'), lang('Your tasks will no longer be written and the Workspace tasks calendar will be removed from your account. Stop?')) . '
                 </div>';
     } else {
         $body .= '
@@ -1699,12 +1699,12 @@ function ws_calsync_card($user_id)
 
             if ($account && ($account['status'] === 'active')) {
                 $body .= '
-                    ' . $form('calsync_start', 'btn-solid theme-primary', $names[$provider]['icon'], lang(array('string' => 'Write my tasks to {var:1}', 'vars' => $names[$provider]['name'])), '', $provider);
+                    ' . $form('calsync_start', 'pg-button-quiet', $names[$provider]['icon'], lang(array('string' => 'Write my tasks to {var:1}', 'vars' => $names[$provider]['name'])), '', $provider);
             } else {
                 $body .= '
                     <form method="post" action="connect.php" class="d-inline disable_shortcut">
                         ' . pg_connect_start_fields($provider, WS_CALSYNC_PURPOSE, 'workspace_calendar_feed.php?calsync_connect=1#ws-calendar-sync', 'person', $account ? (int) $account['id'] : 0) . '
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi ' . h($names[$provider]['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect your {var:1} account', 'vars' => $names[$provider]['account']))) . '</button>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm"><i class="bi ' . h($names[$provider]['icon']) . '" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect your {var:1} account', 'vars' => $names[$provider]['account']))) . '</button>
                     </form>';
             }
         }

@@ -5,7 +5,7 @@ module: volunteer_messages
 ---
 
 ## Where is it?
-- `includes/fn/volunteer_messages.php`, run by `job.php` through `pg_volunteer_job_run()` before the mail and SMS passes, only when `pg_volunteer_ready()`. Pure parts tested in `tests/volunteer_messages_test.php`. Built in #11250, step VS5 of plan `volunteer-shifts`.
+- `includes/fn/volunteer_messages.php`, run by `job.php` through `pg_volunteer_job_run()` before the mail and SMS passes, only when `pg_volunteer_ready()`. Pure parts tested in `tests/volunteer_messages_test.php`. Built in #11250, step VS5 (`volunteer-shifts.md`).
 - The board's "Call volunteers" (`pg_volunteer_shift_call()`) sends through the same `pg_volunteer_shift_call_send()`.
 
 ## When do calls and reminders go?

@@ -654,6 +654,45 @@ function ws_note_access_of($viewer_id, $note, $shares, $reach)
 }
 
 /**
+ * Whether the application Claude works through reaches a note its owner may
+ * read (access in the row): a channel's note only through its channel, which
+ * Claude must be allowed in whatever the owner's access; a person's note the
+ * owner owns or edits, or reads through a share by name or through a channel
+ * Claude is allowed in. Pure but for $allowed.
+ *
+ * @param int      $viewer_id the owner of the application
+ * @param array    $note      user_id, owner_channel_id, access
+ * @param array[]  $shares    ws_note_shares rows: user_id, channel_id
+ * @param callable $allowed   channel id => the owner reads it and Claude may
+ *                            be asked there
+ * @return bool
+ */
+function ws_note_claude_reach_of($viewer_id, $note, $shares, $allowed)
+{
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        return (bool) $allowed($owner_channel);
+    }
+
+    if ((string) ($note['access'] ?? '') !== 'view') {
+        return true;
+    }
+
+    foreach ((array) $shares as $share) {
+        if ((int) $share['user_id'] === (int) $viewer_id) {
+            return true;
+        }
+
+        if (((int) $share['channel_id'] > 0) && $allowed((int) $share['channel_id'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * A note the person may reach at least as far as asked.
  *
  * @param array  $viewer
@@ -2232,6 +2271,12 @@ function ws_note_share_channel($viewer, $note, $channel, $options = array())
  */
 function ws_note_unshare($viewer, $note, $share_id = 0)
 {
+    // A channel's note has no owner and no share but its card, which stays
+    // while the note does (ws_note_access_of()).
+    if (ws_note_channel_of($note) > 0) {
+        return array('ok' => false, 'error' => lang('A channel\'s note keeps its card in its channel.'));
+    }
+
     $owner = ((int) $note['user_id'] === (int) $viewer['id']);
 
     $share = ((int) $share_id > 0)
@@ -2928,13 +2973,48 @@ function ws_note_folder_id($note, $user_id = 0, $create = true)
  */
 function ws_note_readers($note)
 {
+    $shares = (array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
+    $channel_ids = array(ws_note_channel_of($note));
+
+    foreach ($shares as $share) {
+        $channel_ids[] = (int) $share['channel_id'];
+    }
+
+    $members = array();
+
+    foreach (array_unique(array_filter($channel_ids)) as $channel_id) {
+        $members[$channel_id] = array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $channel_id . "'"));
+    }
+
+    return ws_note_readers_of($note, $shares, $members);
+}
+
+/**
+ * ws_note_readers() on rows given. A channel's note is read by the members
+ * of its channel alone, its writer only while one of them; a person's note
+ * by its owner, the people it is shared with and the members of the
+ * channels it is shared in. Pure.
+ *
+ * @param array   $note    user_id, owner_channel_id
+ * @param array[] $shares  ws_note_shares rows: user_id, channel_id
+ * @param array   $members channel id => member user ids
+ * @return int[]
+ */
+function ws_note_readers_of($note, $shares, $members)
+{
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        return array_values(array_unique(array_filter(array_map('intval', (array) ($members[$owner_channel] ?? array())))));
+    }
+
     $ids = array((int) $note['user_id']);
 
-    foreach ((array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
+    foreach ((array) $shares as $share) {
         if ((int) $share['user_id'] > 0) {
             $ids[] = (int) $share['user_id'];
         } elseif ((int) $share['channel_id'] > 0) {
-            foreach ((array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $share['channel_id'] . "'") as $member) {
+            foreach ((array) ($members[(int) $share['channel_id']] ?? array()) as $member) {
                 $ids[] = (int) $member;
             }
         }
@@ -3341,23 +3421,15 @@ function ws_note_inbox_kinds()
  */
 function ws_note_notify_change($viewer, $note, $skip = 0)
 {
-    if (!ws_notes_inbox_ready()) {
+    // A channel's note tells nobody: its card shows who changed it.
+    if (!ws_notes_inbox_ready() || (ws_note_channel_of($note) > 0)) {
         return;
     }
 
-    $people = array((int) $note['user_id']);
-
-    foreach ((array) db_values("SELECT user_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id > 0") as $user_id) {
-        $people[] = (int) $user_id;
-    }
-
+    $shared = (array) db_values("SELECT user_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id > 0");
     $now = time();
 
-    foreach (array_unique($people) as $user_id) {
-        if (($user_id <= 0) || ($user_id === (int) $viewer['id']) || ($user_id === (int) $skip)) {
-            continue;
-        }
-
+    foreach (ws_note_change_told($note, $shared, (int) $viewer['id'], (int) $skip) as $user_id) {
         $existing = (int) db_value("SELECT id FROM ws_inbox
             WHERE user_id = '" . $user_id . "' AND kind = 'note_updated' AND note_id = '" . (int) $note['id'] . "' AND read_at = 0
             LIMIT 1");
@@ -3369,6 +3441,34 @@ function ws_note_notify_change($viewer, $note, $skip = 0)
 
         ws_notify($user_id, 'note_updated', array('note_id' => (int) $note['id'], 'actor_id' => (int) $viewer['id'], 'quiet' => true));
     }
+}
+
+/**
+ * Who is told that a note changed: its owner and the people it is shared
+ * with, but not the one who changed it nor the one skipped. A channel's note
+ * tells nobody, its writer neither: the card says who changed it. Pure.
+ *
+ * @param array $note      user_id, owner_channel_id
+ * @param int[] $shared    the user_id of its person shares
+ * @param int   $viewer_id who changed it
+ * @param int   $skip      somebody else not to tell
+ * @return int[]
+ */
+function ws_note_change_told($note, $shared, $viewer_id, $skip)
+{
+    if (ws_note_channel_of($note) > 0) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach (array_merge(array((int) $note['user_id']), array_map('intval', (array) $shared)) as $user_id) {
+        if (($user_id > 0) && ($user_id !== (int) $viewer_id) && ($user_id !== (int) $skip) && !in_array($user_id, $out, true)) {
+            $out[] = $user_id;
+        }
+    }
+
+    return $out;
 }
 
 /**

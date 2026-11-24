@@ -49458,7 +49458,13 @@ const StyleDesigner = (function () {
             ['no_gallery_items',           _sdT('The album shown has no album and no photo')],
             ['has_albums',                 _sdT('The album shown has albums')],
             ['has_photos',                 _sdT('The album shown has photos')],
-            ['in_album',                   _sdT('An album below the gallery\'s own is open')]
+            ['in_album',                   _sdT('An album below the gallery\'s own is open')],
+            ['not_in_album',               _sdT('The gallery\'s own folder is shown')],
+            ['only_photos',                _sdT('The album shown has photos and no album')],
+            ['no_photos',                  _sdT('The album shown has no photo')],
+            ['gallery_item_is_album',      _sdT('Row: an album')],
+            ['gallery_item_is_photo',      _sdT('Row: a photo')],
+            ['gallery_item_many_photos',   _sdT('Row: an album of more than one photo')]
         ],
         folder_view: [
             ['has_folder_items',           _sdT('The folder has an entry the visitor may see')],
@@ -85190,6 +85196,9 @@ const StyleDesigner = (function () {
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
+            // An administrator's reason for publishing a draft that waits
+            // for a prototype link's approval (pg_proto_approval_override_reason()).
+            if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -85485,6 +85494,7 @@ const StyleDesigner = (function () {
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
                          (l.approval ? '<span class="badge theme-primary me-1"><span class="bi bi-patch-check me-1" aria-hidden="true"></span>' + esc(_sdT('Asks for approval')) + '</span>' : '') +
+                         ((l.approval && l.review && l.review.changes > 0) ? '<span class="badge theme-warning me-1"><span class="bi bi-pencil me-1" aria-hidden="true"></span>' + esc(_sdT('Changes requested')) + '</span>' : '') +
                          (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
                          (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
             // A revoked link is listed only while its comments are kept:
@@ -85499,6 +85509,9 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            // A link asking approval: its pages approved as they are now.
+            var review = (l.approval && l.review) ? l.review : null;
+            if (review) facts.push(_sdT('Approved {var:1} of {var:2} pages', [String(review.approved), String(review.pages)]));
             if (l.approval && l.approver_name) facts.push(_sdT('Approver: {var}', l.approver_name));
             if (l.approval && l.answer_by) facts.push(_sdT('Answer by: {var}', l.answer_by));
             var showable = state.canShow && l.can_show && !revoked;
@@ -85901,9 +85914,12 @@ const StyleDesigner = (function () {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
         });
         // An open experiment's variant stays a draft; the server refuses it too.
-        var held = on ? [] : list.filter(_pgExperimentHeld);
+        // A draft waiting for approval goes only with an administrator's
+        // reason (the Publish sheet's "Publish anyway"), which the server checks.
+        var _stays = function (p) { return _pgExperimentHeld(p) && !p._approvalOverride; };
+        var held = on ? [] : list.filter(_stays);
         if (held.length) {
-            list = list.filter(function (p) { return !_pgExperimentHeld(p); });
+            list = list.filter(function (p) { return !_stays(p); });
             if (!list.length) { sdToast(esc(_pgHeldText(held[0])), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
@@ -86264,7 +86280,17 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         window.PgDesignerPublish.open({
             rows: _pgPublishRows,
-            publish: function (keys, hold, report) {
+            publish: function (keys, hold, report, reasons) {
+                // The reasons ride on the pages for this one save only.
+                var over = [];
+                Object.keys(reasons || {}).forEach(function (k) {
+                    var p = _pgPageByKey(k);
+                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                });
+                if (over.length) {
+                    var _report = report;
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },

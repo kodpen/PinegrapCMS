@@ -186,7 +186,7 @@
     }
 
     // One group of the go-live check: a heading and its gathered lines,
-    // each with "Fix", or "Nothing to fix".
+    // each with "Fix" or its own action, or "Nothing to fix".
     function golivegroup(title, rows, labels) {
         var el = pgDash.el;
         var group = el("section", "pg-dash-golive-group");
@@ -203,9 +203,11 @@
             line.appendChild(el("b", "", step.name));
             line.appendChild(el("span", "", step.line));
             var end = el("span", "pg-gather-line-end");
-            var fix = el("a", "pg-button pg-button-quiet pg-button-sm", labels.fix);
+            // A row may name its own action (run the SEO check) in place of "Fix".
+            var words = step.action || labels.fix;
+            var fix = el("a", "pg-button pg-button-quiet pg-button-sm", words);
             fix.href = step.url;
-            fix.setAttribute("aria-label", labels.fix + ": " + step.name);
+            fix.setAttribute("aria-label", words + ": " + step.name);
             end.appendChild(fix);
             line.appendChild(end);
             gather.appendChild(line);

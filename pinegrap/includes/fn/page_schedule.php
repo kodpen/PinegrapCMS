@@ -325,11 +325,12 @@ function pg_page_schedule_save_plan($page_id, $page, $restricted, $draft_plan, $
  *
  * @param int|null $now
  * @param int      $limit pages per direction
- * @return array published (names), unpublished (names), home (names kept on the site), cleared (count)
+ * @return array published (names), unpublished (names), home (names kept on the site),
+ *               held (names of drafts a prototype link holds until approved), cleared (count)
  */
 function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
 {
-    $out = array('published' => array(), 'unpublished' => array(), 'home' => array(), 'cleared' => 0);
+    $out = array('published' => array(), 'unpublished' => array(), 'home' => array(), 'held' => array(), 'cleared' => 0);
 
     if (!pg_page_schedule_ready() || !pg_page_draft_ready()) {
         return $out;
@@ -363,6 +364,10 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
             if ($column === 'publish_at') {
                 if ($draft && pg_page_draft_move($page_id, false, (int) $r['page_folder'], null)) {
                     $out['published'][] = (string) $r['page_name'];
+                } elseif ($draft && function_exists('pg_proto_approval_hold') && pg_proto_approval_hold($page_id)) {
+                    // A prototype link holds the draft until it is approved:
+                    // it stays a draft and its time is spent.
+                    $out['held'][] = (string) $r['page_name'];
                 } else {
                     $out['cleared']++;
                 }

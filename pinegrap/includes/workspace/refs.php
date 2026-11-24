@@ -821,7 +821,9 @@ function ws_ref_notes_open($viewer, $ids, $before = 0)
     }
 
     $rows = (array) db_items("SELECT id, user_id, title, LEFT(body, " . (int) WS_NOTE_LIST_BODY . ") AS body, created_at, updated_at"
-            . ((function_exists('ws_note_lock_ready') && ws_note_lock_ready()) ? ', locked' : '') . "
+            . ((function_exists('ws_note_lock_ready') && ws_note_lock_ready()) ? ', locked' : '')
+            // A channel's note takes its access from its channel alone.
+            . ((function_exists('ws_note_channel_owner_ready') && ws_note_channel_owner_ready()) ? ', owner_channel_id' : '') . "
         FROM ws_notes
         WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
         ORDER BY updated_at DESC, id DESC");

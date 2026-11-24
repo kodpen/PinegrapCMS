@@ -10,11 +10,11 @@ description: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the 
 
 - PA2 (M) done (#11329): the Share prototype dialog's approval fields and the API create route's (`designer/designer-prototype-share-links.md`); the viewer's "Review this page" and its door (the comment door's gates); the verdict's receipt mail; the bell line to the link's maker. Features: A1, A2, A3, A6 (receipt), A7 (bell).
 
-- PA3 (M) after PA2: round two in the viewer ("Show what changed" outlines from the node marks comment mode already draws, `designer/designer-prototype-comments-viewer.md`); the verdicts in the designer's Comments list and the dialog's links list. Features: A4, A7.
+- PA3 (M) done (#11364): round two in the viewer ("Show what changed" outlines from the node marks comment mode already draws, `designer/designer-prototype-comments-viewer.md`); the verdicts in the designer's Comments list and the dialog's links list. Features: A4, A7.
 
-- PA4 (M) after PA2: the approval hold beside `pg_experiment_variant_hold_message()` and `pg_page_bundle_hold()`, read where the server already refuses a held draft; a test listing every writer of a draft going live (`prototype-approval.md`) that fails for one without the hold; the held row "Waiting for approval" (`designer/designer-publish-sheet-held-row.md`); role 0's override with its reason in the Site Log. Features: A5.
+- PA4 (M) done (#11359): the approval hold beside `pg_experiment_variant_hold_message()` and `pg_page_bundle_hold()`, read where the server already refuses a held draft; a test listing every writer of a draft going live (`prototype-approval.md`) that fails for one without the hold; the held row "Waiting for approval" (`designer/designer-publish-sheet-held-row.md`); role 0's override with its reason in the Site Log. Features: A5.
 
-- PA5 (S) after PA2: the answer mail (from `pg_proto_comment_answer()`, hourly per link by a `waf_rate_exceeded()` counter as the bell's) and the "Answer by" reminder in the general job. Features: A6.
+- PA5 (S) done (#11377): the answer mail (from `pg_proto_comment_answer()`, hourly per link by a `waf_rate_exceeded()` counter as the bell's) and the "Answer by" reminder in the general job. Features: A6.
 
 - PA6 (S) after PA3: the three events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`), the guest's words quoted; the read-only API routes with their types, `php tools/check_api_schema.php`; the read-only MCP tools (verdicts, comments). Features: A8.
 

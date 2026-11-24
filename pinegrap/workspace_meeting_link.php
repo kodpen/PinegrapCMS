@@ -210,7 +210,7 @@ $copy_field = function ($id, $label, $value) {
                         <div class="form-control font-monospace text-break user-select-all" id="' . h($id) . '" aria-labelledby="' . h($id) . '_label">' . h($value) . '</div>
                     </div>
                     <div class="col-12 md:col-auto">
-                        <button type="button" class="btn btn-outline theme-secondary ws-meeting-copy" data-copy="' . h($id) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                        <button type="button" class="pg-button pg-button-quiet ws-meeting-copy" data-copy="' . h($id) . '"><i class="bi bi-clipboard" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                     </div>
                 </div>';
 };
@@ -255,8 +255,8 @@ if (!$bookable) {
                 <div class="d-flex flex-wrap align-items-center gap-5 mt-5">
                     <div class="d-inline-block p-3 bg-white rounded-3" id="ws_meeting_qr">' . pg_qr_svg($qr_text, 176, array('label' => lang('QR code for the link'), 'class' => 'd-block')) . '</div>
                     <div class="d-flex flex-column align-items-start gap-3">
-                        <a class="btn btn-sm btn-outline theme-primary" href="' . h($link_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('Open the page')) . '</a>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="' . h(pg_qr_svg_data_uri($qr_text, 600)) . '" download="meeting-link-qr.svg"><i class="bi bi-qr-code me-1" aria-hidden="true"></i>' . h(lang('Download the QR code')) . '</a>
+                        <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($link_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Open the page')) . '</a>
+                        <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_qr_svg_data_uri($qr_text, 600)) . '" download="meeting-link-qr.svg"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h(lang('Download the QR code')) . '</a>
                     </div>
                 </div>
             </div>
@@ -274,8 +274,8 @@ if (!$bookable) {
                     <div class="font-monospace small fg-secondary text-break mb-1">' . h(HOSTNAME_SETTING . PATH) . '</div>
                     ' . $liveform->output_field(array('type' => 'text', 'name' => 'name', 'id' => 'name', 'class' => 'form-control mb-3', 'maxlength' => pg_short_link_name_max(), 'required' => 'required')) . '
                     <div class="d-flex flex-wrap gap-3">
-                        <button type="submit" class="btn btn-solid theme-primary">' . h($short ? lang('Save') : lang('Make the short address')) . '</button>
-                        ' . ($short ? '<button type="submit" class="btn btn-outline theme-danger" form="ws_meeting_short_remove"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Remove')) . '</button>' : '') . '
+                        <button type="submit" class="pg-button pg-button-fill">' . h($short ? lang('Save') : lang('Make the short address')) . '</button>
+                        ' . ($short ? '<button type="submit" class="pg-button pg-button-danger" form="ws_meeting_short_remove"><i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Remove')) . '</button>' : '') . '
                     </div>
                 </form>
                 ' . ($short ? '<form method="post" action="workspace_meeting_link.php" id="ws_meeting_short_remove" class="disable_shortcut d-none" data-confirm="' . h(lang('The short address will stop working. Your meeting link stays as it is. Remove it?')) . '">
@@ -297,7 +297,7 @@ $meeting_card = '
                     <input type="hidden" name="meeting_action" value="meeting">
                     <label class="form-label small fw-semibold" for="meeting_url">' . h(lang('Meeting address')) . '</label>
                     ' . $liveform->output_field(array('type' => 'url', 'name' => 'meeting_url', 'id' => 'meeting_url', 'class' => 'form-control mb-3', 'maxlength' => '500', 'placeholder' => 'https://')) . '
-                    <button type="submit" class="btn btn-solid theme-primary">' . h(lang('Save')) . '</button>
+                    <button type="submit" class="pg-button pg-button-quiet">' . h(lang('Save')) . '</button>
                 </form>
             </div>
         </div>';

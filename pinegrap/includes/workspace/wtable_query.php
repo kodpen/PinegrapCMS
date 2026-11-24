@@ -467,7 +467,7 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
             $kept = $screen;
             unset($kept['typed'][$place]);
             $params = ws_wtable_query_params($kept) + ($totals_all ? array('totals' => 'all') : array());
-            $remove = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . (empty($params) ? '' : '&' . http_build_query($params))) . '#ws-wt-rows" title="' . h(lang('Remove condition')) . '" aria-label="' . h(lang('Remove condition')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>';
+            $remove = '<a class="pg-icon-button pg-icon-button-sm" href="' . h($table_url . (empty($params) ? '' : '&' . http_build_query($params))) . '#ws-wt-rows" title="' . h(lang('Remove condition')) . '" aria-label="' . h(lang('Remove condition')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>';
         }
 
         $out .= '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">'
@@ -508,8 +508,8 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
             <label class="small fg-secondary sm:ms-auto" for="ws-wt-query-sort">' . h(lang('Sort by')) . '</label>
             <select class="form-control form-control-sm w-auto" name="sort" id="ws-wt-query-sort">' . $sorts . '</select>
             <select class="form-control form-control-sm w-auto" name="dir" aria-label="' . h(lang('Direction')) . '">' . $dirs . '</select>
-            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-4"><i class="bi bi-funnel me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Apply')) . '</span></button>
-            ' . ($active ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . ($totals_all ? '&totals=all' : '')) . '#ws-wt-rows">' . h(lang('Clear')) . '</a>' : '') . '
+            <button type="submit" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-funnel" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Apply')) . '</span></button>
+            ' . ($active ? '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . ($totals_all ? '&totals=all' : '')) . '#ws-wt-rows">' . h(lang('Clear')) . '</a>' : '') . '
         </div>'
         . (($refusal !== '') ? '<div class="alert theme-warning small py-3 mt-3 mb-0" role="alert">' . h($refusal) . ' ' . h(lang('The rows show unfiltered.')) . '</div>' : '') . '
     </form>';

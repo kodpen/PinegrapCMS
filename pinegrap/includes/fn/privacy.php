@@ -1040,7 +1040,8 @@ function pg_privacy_erase_tables()
         )),
         // A volunteer goes whole: their shifts and hours, their documents
         // (whose files are in the scope's file_ids) and their profiles. A
-        // place they held on a shift to come is freed with the row.
+        // place they held on a shift to come goes to the waitlist first
+        // (_pg_privacy_erase_apply_volunteer_signups()).
         'volunteer_signups'            => array('find' => array('volunteer_id' => 'volunteer_ids'), 'action' => 'delete', 'fields' => array()),
         'volunteer_documents'          => array('find' => array('volunteer_id' => 'volunteer_ids'), 'action' => 'delete', 'fields' => array()),
         'volunteers'                   => array('find' => array('id' => 'volunteer_ids', 'contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
@@ -2086,6 +2087,48 @@ function _pg_privacy_erase_apply_waiting_tickets($where, array $fields, array $s
     db("UPDATE waiting_tickets SET state = 'left', done_at = '" . time() . "' WHERE (state IN ('waiting', 'called')) AND (" . $where . ")");
 
     _pg_privacy_erase_write('waiting_tickets', $where, $fields, $name);
+}
+
+/**
+ * A volunteer's places on shifts not started yet are given up first, each
+ * under its shift's lock as their own Cancel gives one up
+ * (_pg_volunteer_signup_give_up()): a swap asked of the place ends and the
+ * waitlist moves up, which deleting the row alone never did. Then every
+ * sign-up of the volunteer goes.
+ */
+function _pg_privacy_erase_apply_volunteer_signups($where, array $fields, array $scope, $name)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
+
+    $rows = (array) db_items("SELECT volunteer_signups.id, volunteer_signups.programme_id, volunteer_signups.shift_id, volunteer_signups.state, volunteer_shifts.start_time AS start
+        FROM volunteer_signups INNER JOIN volunteer_shifts ON volunteer_shifts.id = volunteer_signups.shift_id
+        WHERE (volunteer_signups.state IN ('signed', 'waiting')) AND (" . $where . ")");
+    $signed = array();
+
+    foreach (pg_volunteer_give_up_rows($rows, date('Y-m-d H:i:s')) as $row) {
+        $programme = pg_volunteer_programme_get((int) $row['programme_id']);
+        $lock = 'pg_volunteer_shift_' . (int) $row['shift_id'];
+
+        if (($programme === null) || ((int) db_value("SELECT GET_LOCK('" . escape($lock) . "', 5)") !== 1)) {
+            continue;
+        }
+
+        $shift = pg_volunteer_shift_get((int) $programme['id'], (int) $row['shift_id']);
+
+        foreach (($shift !== null) ? $shift['signups'] : array() as $signup) {
+            if ((int) $signup['id'] === (int) $row['id']) {
+                _pg_volunteer_signup_give_up($programme, $shift, $signup, $signed);
+            }
+        }
+
+        db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");
+    }
+
+    foreach ($signed as $place) {
+        pg_volunteer_announce('shift.signed_up', $place[0], $place[1]);
+    }
+
+    _pg_privacy_erase_write('volunteer_signups', $where, $fields, $name);
 }
 
 /**

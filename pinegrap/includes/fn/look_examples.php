@@ -474,6 +474,8 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
     $patterns[] = pg_look_examples_add_list_pattern();
+    $patterns[] = pg_look_examples_flow_trial_pattern();
+    $patterns[] = pg_look_examples_flow_counts_pattern();
     $patterns[] = pg_look_examples_menu_icon_pattern();
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
@@ -1322,6 +1324,73 @@ function pg_look_examples_add_list_pattern()
             . '<p class="wsf-palette-tip pg-text-meta">' . h(lang('Dropping an arrow\'s end on empty space opens this list too.')) . '</p>'
             . '</div></div>'
             . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: pointing at an arrow shows a "+" at its middle; a dashed "+" stands after a box with a free outcome. Either opens this list there: the search ("/" reaches it), "Often next" by the box before, then the groups as chips with their counts. The box chosen cuts the arrow in two; the boxes after it move one column right when there is no room. A on the canvas opens it at the arrow or box chosen.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's trial (board C1): the bar while the draft is tried,
+ * boxes marked as walked and in turn, the panel's steps with Next step and
+ * To the end.
+ *
+ * @return array the pattern's id, title, classes and markup
+ */
+function pg_look_examples_flow_trial_pattern()
+{
+    $badge = function ($state, $icon, $word) {
+        return '<span class="wsf-run-badge wsf-run-' . $state . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($word) . '</span>';
+    };
+    $button = function ($class, $icon, $label) {
+        return '<button type="button" class="pg-button pg-button-sm ' . $class . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>';
+    };
+
+    return array(
+        'id'      => 'pattern-flow-trial',
+        'title'   => lang('Try the flow'),
+        'classes' => array('.wsf-trial', '.wsf-run-badge', '.wsf-run-done', '.wsf-run-skipped', '.wsf-run-running', '.wsf-run-failed', '.pg-button-fill', '.pg-button-quiet', '.pg-button-ghost'),
+        'html'    => '<div class="d-flex flex-column gap-4 wsf-trial">'
+            . '<div class="d-flex flex-wrap align-items-center gap-3"><span class="small fw-semibold fg-primary"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang('Trial · nothing is sent')) . '</span>'
+            . $button('pg-button-fill', 'bi-x-lg', lang('End the trial')) . '</div>'
+            . '<div class="d-flex flex-wrap gap-2">' . $badge('done', 'bi-check-circle-fill', lang('Tried')) . $badge('skipped', 'bi-skip-forward', lang('Passed'))
+            . $badge('done', 'bi-check-circle-fill', lang('Yes')) . $badge('failed', 'bi-x-octagon-fill', lang('Would fail')) . $badge('running', 'bi-arrow-right-circle', lang('Next')) . '</div>'
+            . '<ol class="list-unstyled small mb-0">'
+            . '<li class="mb-3"><div class="d-flex align-items-center gap-2 mb-1">' . $badge('done', 'bi-check-circle-fill', lang('Tried')) . '<span class="fw-semibold">' . h(lang('Send an e-mail')) . '</span></div>'
+            . '<div>' . h(lang('To the record\'s contact')) . '</div>' . $button('pg-button-ghost mt-1', 'bi-envelope-open', lang('Preview')) . '</li>'
+            . '<li class="d-flex align-items-center gap-2 fg-secondary">' . $badge('running', 'bi-arrow-right-circle', lang('Next')) . '<span>' . h(lang('Task')) . '</span></li>'
+            . '</ol>'
+            . '<div class="d-flex flex-wrap gap-2">' . $button('pg-button-fill', 'bi-arrow-right', lang('Next step')) . $button('pg-button-quiet', 'bi-skip-end', lang('To the end')) . '</div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: Try in the bar walks the draft from its start with a record, read-only; the bar says nothing is sent and offers End the trial. The panel lists the steps walked in their Try words, the box in turn, Next step and To the end. On the canvas a walked box wears a tick (a Wait "Passed", a condition its outcome), the box in turn "Next"; the arrows taken are green, the others faint.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's counts: Counts and the days in the bar, the pills over
+ * a box (look A's .pg-pill as buttons), the list of a pill's runs.
+ *
+ * @return array id, title, classes, html
+ */
+function pg_look_examples_flow_counts_pattern()
+{
+    $pill = function ($tone, $label, $pressed) {
+        return '<button type="button" class="pg-pill pg-tone-' . $tone . ' wsf-count" aria-pressed="' . ($pressed ? 'true' : 'false') . '">' . h($label) . '</button>';
+    };
+    $days = function ($n, $pressed) {
+        return '<button type="button" class="pg-seg-item" aria-pressed="' . ($pressed ? 'true' : 'false') . '">' . h(lang(array('string' => 'Last {var:1} days', 'vars' => $n))) . '</button>';
+    };
+
+    return array(
+        'id'      => 'pattern-flow-counts',
+        'title'   => lang('Counts'),
+        'classes' => array('.wsf-counts', '.wsf-count', '.pg-pill', '.pg-tone-amber', '.pg-tone-gray', '.pg-tone-rose', '.pg-seg', '.wsf-run-item'),
+        'html'    => '<div class="d-flex flex-column gap-4">'
+            . '<div class="d-flex flex-wrap align-items-center gap-3"><button type="button" class="pg-button pg-button-quiet pg-button-sm fg-primary" aria-pressed="true"><i class="bi bi-bar-chart" aria-hidden="true"></i>' . h(lang('Counts')) . '</button>'
+            . '<div class="pg-seg" role="group">' . $days(7, false) . $days(30, true) . '</div></div>'
+            . '<div class="d-flex flex-wrap gap-2 wsf-counts-sample">' . $pill('amber', lang(array('string' => '{var:1} waiting', 'vars' => 12)), true)
+            . $pill('gray', lang(array('string' => '{var:1} passed', 'vars' => 116)), false) . $pill('rose', lang(array('string' => '{var:1} failed', 'vars' => 3)), false) . '</div>'
+            . '<ul class="list-unstyled mb-0 wsf-run-list"><li><button type="button" class="wsf-run-item"><span class="wsf-run-item-top"><span class="fw-semibold">Ayşe Demir</span><i class="bi bi-chevron-right ms-auto fg-secondary" aria-hidden="true"></i></span>'
+            . '<span class="wsf-run-item-line">' . h(lang(array('string' => 'Waits until {var:1}', 'vars' => '24.11.2026 15:40'))) . '</span></button></li></ul>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: Counts in the bar of a published flow, with the days beside it, puts pills over each box: runs waiting there now in amber, passes in the days plain, failures in rose; a start says how many started. A pill lists its runs in the panel, each opening the run, and Open all in Flow runs narrows the runs list to them.')) . '</p>',
     );
 }
 

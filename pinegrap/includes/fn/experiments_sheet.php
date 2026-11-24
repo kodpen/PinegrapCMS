@@ -808,6 +808,9 @@ function pg_experiment_sheet_publish_winner($experiment, $key, $user)
         // rest of its settings, which $fields carries as stored.
         $fields['tree_json'] = $tree;
         $fields['revision_source'] = 'publish';
+        // The variant's draft goes live: a prototype link's approval hold on
+        // it is read by the save (pg_proto_approval_hold()).
+        $fields['publish_from_draft'] = (int) $variant['draft_page_id'];
         $saved = pg_designer_save_page($live['page_style'], $fields, $user);
 
         if (!$saved['ok']) {
@@ -859,7 +862,9 @@ function pg_experiment_editor_page_state($experiment, $bundle, $page_name)
  * The visual editor's experiments block: whether the sheet can be opened
  * (ready: designers and administrators, after the upgrade), its address, and the
  * state of each open page by id (pg_experiment_editor_page_state()): an open
- * experiment's, or the release bundle's that holds the page as a draft.
+ * experiment's, or the release bundle's that holds the page as a draft, or
+ * a prototype link's that holds it until approved
+ * (pg_proto_approval_editor_state()).
  *
  * @param array $page_ids the editor's page ids
  * @param array $user
@@ -900,6 +905,17 @@ function pg_experiment_editor_config($page_ids, $user)
 
         foreach ($bundles as $id => $bundle) {
             $pages[(string) $id] = pg_experiment_editor_page_state(null, $bundle, isset($names[$id]) ? $names[$id] : '');
+        }
+    }
+
+    // A draft a prototype link holds until it is approved
+    // (pg_proto_approval_hold()): "Waiting for approval", with "Publish
+    // anyway" for an administrator.
+    $free = array_values(array_diff($ids, array_map('intval', array_keys($pages))));
+
+    if ($free && function_exists('pg_proto_approval_holds')) {
+        foreach (pg_proto_approval_holds($free) as $id => $hold) {
+            $pages[(string) $id] = pg_proto_approval_editor_state($hold, $hold['page_name'], ((string) $user['role'] === '0'));
         }
     }
 

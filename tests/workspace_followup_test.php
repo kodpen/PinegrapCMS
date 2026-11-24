@@ -269,6 +269,7 @@ function test_ws_contact_followup()
 
 	pg_assert_contains("empty(\$viewer['contacts'])", $source, 'only with the contacts right');
 	pg_assert_contains("ws_customer_exists('contact', \$contact_id)", $source, 'a contact that is there');
+	pg_assert_contains("ws_viewer_contacts_open(\$viewer, array((int) \$contact_id))", $source, 'a contact of the reader\'s contact groups for the user role, refused like a missing one');
 	pg_assert_contains("array(array('type' => 'contact', 'id' => (int) \$contact_id))", $source, 'the contact tagged');
 	pg_assert_contains("'channel_id' => 0", $source, 'on no channel');
 	pg_assert_contains("'assignees'  => array((int) \$viewer['id'])", $source, 'for the person asking');

@@ -12,7 +12,7 @@ module: prototype_verdicts
 ## What does the approver see?
 - Only on a link asking approval: `pg_proto_viewer_review()` adds `review` to the comment mode's settings (page label, the standing verdict of this link and page with `older`, limits, words); the shell draws "Review this page" beside Comment and a status line before it.
 - The box takes the comment box's place (`frameBox()`): two choices "Approve this page" and "Request changes" (radios drawn as the bar's button), Note (optional; needed for Request changes, refused under the field), Your name (the comment box's stored name), Send.
-- After a verdict the line reads "You approved this page on {date}" or "You asked for changes on {date}"; a verdict whose fingerprint is not the draft's now reads "Changed since your last review" (`reviewLine()`, pure). "Show what changed" is PA3.
+- After a verdict the line reads "You approved this page on {date}" or "You asked for changes on {date}"; a verdict whose fingerprint is not the draft's now reads "Changed since your last review" (`reviewLine()`, pure). "Show what changed" and the page list's marks: `prototype-approval-round-two.md`.
 - The address of the approver never reaches the viewer.
 
 ## What does the door do?
@@ -21,6 +21,6 @@ module: prototype_verdicts
 
 ## Who hears of a verdict?
 - Bell: `prototype_verdict` to the link's maker for every verdict (the comments' burst bounds a guest), reference the verdict, title the page's name; module `content`; opens the design at the Comments tab as the comment's line does.
-- Receipt: `pg_proto_verdict_receipt()` mails the approver's typed address, queued, from the site's address: the verdict, the page, the design, the day, the note, the link's address when the site key reads it back. Never the password; no address, no mail. The answer mail and the "Answer by" reminder are PA5.
+- Receipt: `pg_proto_verdict_receipt()` mails the approver's typed address, queued, from the site's address: the verdict, the page, the design, the day, the note, the link's address when the site key reads it back. Never the password; no address, no mail. The answer mail and the "Answer by" reminder: `prototype-approval-mails.md`.
 
 Related: docs/memory/designer/prototype-approval-store.md, docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/designer/designer-prototype-comments-door.md

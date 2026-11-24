@@ -13,9 +13,11 @@
  * The editor (style_designer.js) owns the pages and the save; it opens the
  * sheet with a bridge:
  *   rows()                 the pages, see defaults() for their shape
- *   publish(keys, hold, report)
+ *   publish(keys, hold, report, reasons)
  *                          keys: drafts to put on the site; hold: pages on
- *                          the site to leave out of the save; report(reply)
+ *                          the site to leave out of the save; reasons: key =>
+ *                          why an administrator publishes a draft waiting for
+ *                          a prototype link's approval anyway; report(reply)
  *                          once the save is over: the server's reply, or
  *                          null when it did not run (it returns whether the
  *                          sheet showed the result, see outcome())
@@ -31,17 +33,21 @@
 var PgDesignerPublish = (function () {
     'use strict';
 
-    // A row the sheet can check: not locked to this user, not a variant an
-    // experiment keeps a draft.
-    function selectable(r) {
-        return !!r && !r.locked && r.state !== 'held';
+    // A row the sheet can check: not locked to this user, not held (an
+    // experiment's variant, a bundle's draft, a draft waiting for approval)
+    // unless an administrator chose "Publish anyway" for it (`anyway`: key =>
+    // the reason typed so far).
+    function selectable(r, anyway) {
+        if (!r || r.locked) return false;
+        return r.state !== 'held' || !!(r.override && anyway && Object.prototype.hasOwnProperty.call(anyway, r.key));
     }
 
     // The keys checked when the sheet opens: every draft (a page waiting
     // for its publish time keeps waiting unless checked by hand) and every
     // page on the site that changed. A row is
     // { key, name, state: 'draft'|'scheduled'|'live'|'held', label, note, changed,
-    //   locked, home, active }.
+    //   locked, home, active, override }; `override`: a held draft this
+    //   person may publish anyway with a reason.
     function defaults(rows) {
         return (rows || []).filter(function (r) {
             return selectable(r) && (r.state === 'draft' || (r.state === 'live' && r.changed));
@@ -51,14 +57,23 @@ var PgDesignerPublish = (function () {
     // What "Publish selected" does with the checked keys: `publish` the
     // drafts to put on the site, `hold` the changed pages on the site left
     // out of the save, `save` whether there is anything to do. An unchecked
-    // draft is saved as it is, off the site.
-    function plan(rows, keys) {
+    // draft is saved as it is, off the site. A held draft checked with
+    // "Publish anyway" is published with its reason (`reasons`); without
+    // one, `missing` keeps the button off.
+    function plan(rows, keys, anyway) {
         var on = {};
         (keys || []).forEach(function (k) { on[k] = true; });
-        var out = { publish: [], hold: [], save: false };
+        var out = { publish: [], hold: [], save: false, reasons: {}, missing: false };
         (rows || []).forEach(function (r) {
-            if (!selectable(r)) return;
-            if (r.state === 'draft' || r.state === 'scheduled') {
+            if (!selectable(r, anyway)) return;
+            if (r.state === 'held') {
+                if (!on[r.key]) return;
+                var why = String(anyway[r.key] || '').trim();
+                if (!why) { out.missing = true; return; }
+                out.publish.push(r.key);
+                out.reasons[r.key] = why;
+                out.save = true;
+            } else if (r.state === 'draft' || r.state === 'scheduled') {
                 if (on[r.key]) { out.publish.push(r.key); out.save = true; }
             } else if (r.state === 'live' && r.changed) {
                 if (on[r.key]) out.save = true;
@@ -92,6 +107,7 @@ var PgDesignerPublish = (function () {
     var bridge = null;
     var current = [];   // the rows read when the sheet opened
     var checked = {};
+    var anyway = {};    // held rows an administrator publishes anyway: key => reason
     var saving = false;
 
     function el() { return document.getElementById('sdPublishSheet'); }
@@ -110,9 +126,11 @@ var PgDesignerPublish = (function () {
         box.type = 'checkbox';
         box.className = 'check m-0 flex-shrink-0';
         box.checked = !!checked[r.key];
-        box.disabled = !selectable(r);
+        box.disabled = !selectable(r, anyway);
         box.addEventListener('change', function () {
             if (box.checked) checked[r.key] = true; else delete checked[r.key];
+            // Unchecked, a draft published anyway is held again.
+            if (!box.checked && Object.prototype.hasOwnProperty.call(anyway, r.key)) { delete anyway[r.key]; draw(); return; }
             sync();
         });
         var name = document.createElement('span');
@@ -140,16 +158,54 @@ var PgDesignerPublish = (function () {
             item.appendChild(lk);
         }
         item.appendChild(state);
+        if (r.state === 'held' && r.override && !Object.prototype.hasOwnProperty.call(anyway, r.key)) {
+            var any = document.createElement('button');
+            any.type = 'button';
+            any.className = 'pg-button pg-button-quiet pg-button-sm text-nowrap';
+            any.textContent = text('anyway');
+            any.addEventListener('click', function (e) {
+                e.preventDefault();
+                anyway[r.key] = '';
+                checked[r.key] = true;
+                draw();
+                var f = el() && el().querySelector('[data-sdp-reason="' + r.key + '"]');
+                if (f) f.focus();
+            });
+            item.appendChild(any);
+        }
         return item;
+    }
+
+    // The reason asked under a held row published anyway.
+    function reasonEl(r) {
+        var wrap = document.createElement('div');
+        wrap.className = 'list-group-item bg-transparent pt-0 sd-publish-reason';
+        var id = 'sdp-reason-' + String(r.key).replace(/[^A-Za-z0-9_-]/g, '_');
+        var lab = document.createElement('label');
+        lab.className = 'form-label small fg-warning mb-1';
+        lab.setAttribute('for', id);
+        lab.textContent = text('anyway-reason');
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.id = id;
+        input.className = 'form-control form-control-sm';
+        input.maxLength = 500;
+        input.required = true;
+        input.setAttribute('data-sdp-reason', r.key);
+        input.value = anyway[r.key] || '';
+        input.addEventListener('input', function () { anyway[r.key] = input.value; sync(); });
+        wrap.appendChild(lab);
+        wrap.appendChild(input);
+        return wrap;
     }
 
     function sync() {
         var root = el();
         if (!root || !bridge) return;
         var rows = current;
-        var p = plan(rows, Object.keys(checked));
+        var p = plan(rows, Object.keys(checked), anyway);
         var go = root.querySelector('[data-sdp-act="publish"]');
-        if (go) go.disabled = !p.save;
+        if (go) go.disabled = !p.save || p.missing;
         var note = root.querySelector('[data-sdp-hold-note]');
         if (note) note.classList.toggle('d-none', !p.hold.length);
         var active = null;
@@ -167,7 +223,10 @@ var PgDesignerPublish = (function () {
         var list = root ? root.querySelector('[data-sdp-list]') : null;
         if (!list) return;
         list.textContent = '';
-        current.forEach(function (r) { list.appendChild(rowEl(r)); });
+        current.forEach(function (r) {
+            list.appendChild(rowEl(r));
+            if (Object.prototype.hasOwnProperty.call(anyway, r.key)) list.appendChild(reasonEl(r));
+        });
         sync();
     }
 
@@ -261,14 +320,14 @@ var PgDesignerPublish = (function () {
             var act = b.getAttribute('data-sdp-act');
             var rows = current;
             if (act === 'all') {
-                var all = rows.filter(selectable).map(function (r) { return r.key; });
+                var all = rows.filter(function (r) { return selectable(r, anyway); }).map(function (r) { return r.key; });
                 var every = all.every(function (k) { return checked[k]; });
                 checked = {};
                 if (!every) all.forEach(function (k) { checked[k] = true; });
                 draw();
             } else if (act === 'publish') {
-                var p = plan(rows, Object.keys(checked));
-                if (!p.save || saving) return;
+                var p = plan(rows, Object.keys(checked), anyway);
+                if (!p.save || p.missing || saving) return;
                 // The sheet stays open: the button shows the save, then the
                 // sheet lists where the pages went. A save that did not run
                 // (its reason is shown by the editor) gives the pick back.
@@ -282,7 +341,7 @@ var PgDesignerPublish = (function () {
                     return !!(root && root.open);
                 };
                 busy(true);
-                bridge.publish(p.publish, p.hold, report);
+                bridge.publish(p.publish, p.hold, report, p.reasons);
             } else if (act === 'done') {
                 closeThen(function () {});
             } else if (act === 'page-draft') {
@@ -302,6 +361,7 @@ var PgDesignerPublish = (function () {
         view(false);
         current = bridge.rows() || [];
         checked = {};
+        anyway = {};
         defaults(current).forEach(function (k) { checked[k] = true; });
         bind(root);
         draw();

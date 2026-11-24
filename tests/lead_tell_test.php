@@ -110,3 +110,16 @@ function test_lead_tell_scoring_pass_calls()
 	pg_assert_contains('pg_lead_alert_send($now);', $module, 'the alert at the end of a pass');
 	pg_assert_true(strpos($module, 'SELECT hot, last_visit_at, returned_at FROM contact_scores') < strpos($module, 'INSERT INTO contact_scores'), 'the old row is read before the write');
 }
+
+// The day's alert counts the contacts that became hot since the last one,
+// so a contact that turned hot while the next alert was not yet due is told
+// once and never left out; at most two days back.
+function test_lead_tell_alert_since_the_last_one()
+{
+	$now = 1800000000;
+
+	pg_assert_same($now - 86400, pg_lead_alert_since(0, $now), 'never sent: the last day');
+	pg_assert_same($now - 90000, pg_lead_alert_since($now - 90000, $now), 'sent 25 hours ago: since then, the hour between is not lost');
+	pg_assert_same($now - 172800, pg_lead_alert_since($now - 864000, $now), 'sent ten days ago: two days at most');
+	pg_assert_contains("hot_at > '\" . \$since . \"'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_tell.php'), 'a contact told at the last send is not told again');
+}

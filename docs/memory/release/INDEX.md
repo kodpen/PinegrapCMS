@@ -20,4 +20,5 @@
 - upgrade-bridge-rule.md: Upgrade bridge rule: code lands before the schema, so login, install lock and initialize_user() must run on the previous schema; gate and mandatory test. [decision: decisions-made-schema-12.md]
 - upgrade-changelog-rules.md: changelog.txt format (English, only plan-driven major features as [NEW], one [FIX]/[SECURITY]/[SCHEME] line per version); the detail goes to docs/memory.
 - upgrade-runner-behavior.md: How the upgrade runner reacts to failing statements, locks and fatals, and how the install screen runs one version per request, with heavy-table preflight.
+- upgrade-test-from-tag.md: Testing the open version as a real upgrade: install the last release from its git tag, upgrade it with today's files, compare the schema with a fresh install
 - version-numbering.md: Version numbers from 2026.11.0 on are year.month.patch (calendar versioning): what each part means, which number an open version takes, why three parts and no leading zero, step labels.
