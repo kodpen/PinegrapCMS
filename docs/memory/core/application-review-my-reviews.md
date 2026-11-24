@@ -35,4 +35,4 @@ module: application_my_reviews
 - The general job (`pg_application_reminders_run()`): for open and closed programmes, from 3 days before the current round's `ends_at` and again from 1 day before, each reviewer with open reviews (0, 1) gets one plain e-mail with the count and the link. Stage rule: `pg_application_reminder_stage()` on the latest `reminded_at` of their open rows; the last day's comes even when the 3 days' was missed.
 - Claimed by one conditional `UPDATE … SET reminded_at` per reviewer before the mail, so two runs never both send. Jurors get their own link.
 
-Related: docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-programme.md, docs/memory/plans/application-review-screens-review.md
+Related: docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-programme.md, docs/memory/core/application-review.md
