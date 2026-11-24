@@ -22,6 +22,6 @@ module: lead_journey_view
 - Inventory: the four tables, category `ip_cookie`, ground consent, retention `lead_journey` ("The journey's keep period (13 months)").
 
 ## How is the keep period kept?
-- `job.php` calls `pg_lead_trim_run(time())` every tick: deletes at most 2,000 rows a table of `lead_visits` (`started_at`), `contact_journey` (`at`) and `lead_browsers` (`last_seen_at`) before `pg_lead_keep_start()` (13 months; the setting comes with LJ3). `contact_scores` is not trimmed.
+- `job.php` calls `pg_lead_trim_run(time())` every tick: deletes at most 2,000 rows a table of `lead_visits` (`started_at`), `contact_journey` (`at`) and `lead_browsers` (`last_seen_at`) before `pg_lead_keep_start()` with `pg_lead_keep_months()` (13 months unless set, `visitors/lead-score.md`). `contact_scores` is not trimmed.
 
 Tests: `tests/lead_journey_view_test.php`.

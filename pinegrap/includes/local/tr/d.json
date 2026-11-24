@@ -1400,6 +1400,7 @@
     "Download your photos": "Fotoğraflarınızı indirin",
     "Download {var:1}": "{var:1} indir",
     "Downloaded": "İndirildi",
+    "Downloaded a file": "Bir dosya indirdi",
     "Downloaded {var:1}": "{var:1} dosyasını indirdi",
     "Downloading": "İndiriliyor",
     "Downloading the AI model: {var:1}%": "Yapay zekâ modeli indiriliyor: %{var:1}",

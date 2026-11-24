@@ -326,7 +326,7 @@ if (!$_POST) {
                             . pg_lead_journey_contact_card($id, $user)
                             . pg_customer_rhythm_contact_card($id, (string) $row['email_address'], $user)
                             . pg_feedback_contact_card($id, $row),
-                        pg_contact_form_picture_card(false, $image) . '
+                        pg_contact_form_picture_card(false, $image) . pg_lead_score_contact_card($id) . '
                                 <div class="card mb-7">
                                     <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Connected Account of this Contact') . '

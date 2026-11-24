@@ -1,0 +1,136 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the visitor journey's scores (includes/fn/lead_score.php): the
+ * settings made safe, the pricing and contact pages, the behaviour events of
+ * a journey, the fit score with free mail domains, and the interests from
+ * the folders of the pages seen.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_score.php');
+
+// 2026-11-20 12:00:00 UTC.
+define('LEAD_SCORE_TEST_NOW', 1795176000);
+
+function test_lead_score_settings_defaults_and_bounds()
+{
+	$defaults = pg_lead_score_settings('');
+	pg_assert_same(60, $defaults['threshold'], 'hot from 60 by default');
+	pg_assert_same(30, $defaults['half_life'], 'half-life 30 days');
+	pg_assert_same(13, $defaults['keep_months'], 'kept 13 months');
+	pg_assert_same(25, $defaults['weights']['form'], 'code weights');
+	pg_assert_same(array(), $defaults['pricing_pages'], 'no pages chosen');
+
+	$set = pg_lead_score_settings(json_encode(array(
+		'threshold' => 500,
+		'half_life' => 0,
+		'keep_months' => '6',
+		'weights' => array('form' => 40, 'unknown' => 9, 'download' => -5),
+		'pricing_pages' => array(3, '3', 0, -1, 'x', 7),
+	)));
+	pg_assert_same(100, $set['threshold'], 'threshold held at 100');
+	pg_assert_same(1, $set['half_life'], 'half-life at least a day');
+	pg_assert_same(6, $set['keep_months'], 'keep period read');
+	pg_assert_same(40, $set['weights']['form'], 'site weight');
+	pg_assert_same(0, $set['weights']['download'], 'never below 0');
+	pg_assert_true(!isset($set['weights']['unknown']), 'unknown kind dropped');
+	pg_assert_same(array(3, 7), $set['pricing_pages'], 'page ids cleaned');
+	pg_assert_same(60, pg_lead_score_settings('{broken')['threshold'], 'broken text gives defaults');
+}
+
+function test_lead_score_page_kind_guess_and_choice()
+{
+	pg_assert_same('pricing_page', pg_lead_score_page_kind('Fiyatlar', array(), array()), 'pricing guessed');
+	pg_assert_same('contact_page', pg_lead_score_page_kind('iletisim', array(), array()), 'contact guessed');
+	pg_assert_same('', pg_lead_score_page_kind('about', array(), array()), 'other page');
+	pg_assert_same('', pg_lead_score_page_kind('pricing', array('our-plans'), array()), 'a choice replaces the guess');
+	pg_assert_same('pricing_page', pg_lead_score_page_kind('our-plans', array('our-plans'), array()), 'chosen page');
+	pg_assert_same('contact_page', pg_lead_score_page_kind('contact', array('our-plans'), array()), 'the other kind still guessed');
+}
+
+function test_lead_score_events_of_a_journey()
+{
+	$day = 86400;
+	$now = LEAD_SCORE_TEST_NOW;
+	$rows = array(
+		array('kind' => 'visit', 'at' => $now - 2 * $day, 'pages' => array(array('home', 30), array('pricing', 40), array('pricing', 5))),
+		array('kind' => 'form', 'at' => $now - 2 * $day),
+		array('kind' => 'visit', 'at' => $now - 20 * $day, 'pages' => array(array('contact', 10))),
+		array('kind' => 'visit', 'at' => $now - 25 * $day, 'pages' => array()),
+		array('kind' => 'order', 'at' => $now - $day),
+		array('kind' => 'campaign_click', 'at' => $now - 3 * $day),
+	);
+
+	$events = pg_lead_score_events($rows);
+	$kinds = array_column($events, 'kind');
+	sort($kinds);
+
+	pg_assert_same(array('campaign_click', 'contact_page', 'form', 'pricing_page', 'return_7d'), $kinds, 'pricing once a visit, one quick return, no order');
+
+	foreach ($events as $event) {
+		if ($event['kind'] === 'return_7d') {
+			pg_assert_same($now - 20 * $day, $event['at'], 'the visit 5 days after the one before is the return');
+		}
+	}
+}
+
+function test_lead_score_fit_score()
+{
+	$full = pg_lead_fit_score(array('email' => 'Ayse@Firma.com.tr', 'company' => 'Firma', 'title' => 'Buyer', 'groups' => 2));
+	pg_assert_same(100, $full['score'], 'all four');
+	pg_assert_same(array('company_domain', 'company', 'title'), array_column($full['reasons'], 'kind'), 'top three reasons');
+
+	pg_assert_same(0, pg_lead_fit_score(array('email' => 'ayse@gmail.com'))['score'], 'free mail is no company');
+	pg_assert_same(0, pg_lead_fit_score(array('email' => 'not-an-address'))['score'], 'no domain');
+	pg_assert_same(40, pg_lead_fit_score(array('email' => 'a@kodpen.com', 'company' => '  '))['score'], 'blank company');
+	pg_assert_same(15, pg_lead_fit_score(array('email' => 'a@HOTMAIL.com', 'groups' => 1))['score'], 'a group');
+	pg_assert_true(pg_lead_free_mail_domain('Yandex.com.tr'), 'free list ignores case');
+}
+
+function test_lead_score_interest_topics()
+{
+	$day = 86400;
+	$now = LEAD_SCORE_TEST_NOW;
+	$folders = array(
+		'tractor-a' => array(4, 'Tractors'),
+		'tractor-b' => array(4, 'Tractors'),
+		'seed' => array(9, 'Seeds'),
+	);
+	$rows = array(
+		array('kind' => 'visit', 'at' => $now, 'pages' => array(array('tractor-a', 100), array('home', 900), array('seed', 2))),
+		array('kind' => 'visit', 'at' => $now - 30 * $day, 'pages' => array(array('tractor-b', 40), array('seed', 60))),
+		array('kind' => 'form', 'at' => $now),
+	);
+
+	$topics = pg_lead_interest_topics($rows, $folders, $now, 30);
+
+	pg_assert_same(array('Tractors', 'Seeds'), array_column($topics, 'name'), 'heaviest first, the root page counts nothing');
+	pg_assert_same(120.0, $topics[0]['weight'], '100 now and 40 faded by one half-life');
+	pg_assert_same(40.0, $topics[1]['weight'], 'at least 10 seconds a page, 60 halved');
+
+	$many = array();
+	for ($i = 1; $i <= 7; $i++) {
+		$many['p' . $i] = array($i, 'T' . $i);
+	}
+	$pages = array();
+	foreach (array_keys($many) as $page) {
+		$pages[] = array($page, 20);
+	}
+	pg_assert_same(5, count(pg_lead_interest_topics(array(array('kind' => 'visit', 'at' => $now, 'pages' => $pages)), $many, $now)), 'top five');
+}
+
+function test_lead_score_interest_points_by_kind()
+{
+	$score = pg_lead_interest_score(array(array('kind' => 'form', 'at' => LEAD_SCORE_TEST_NOW), array('kind' => 'download', 'at' => LEAD_SCORE_TEST_NOW)), LEAD_SCORE_TEST_NOW);
+	pg_assert_same(array('form' => 25.0, 'download' => 15.0), $score['points'], 'each kind with its points, most first');
+}

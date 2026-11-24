@@ -21,6 +21,6 @@ module: lead_journey
 ## How does the interest score work?
 - `pg_lead_score_weights()`: points by kind (`pricing_page` 10, `contact_page` 10, `return_7d` 10, `form` 25, `booking` 30, `campaign_click` 10, `download` 15); a site's weights (LJ3, Site Settings) override known kinds only, never below 0.
 - Each event fades by a half-life, 30 days by default (`pg_lead_score_decay()`): after one half-life half its points are left. A future time counts as now.
-- `pg_lead_interest_score()`: the sum, rounded and capped 0 to 100, with the top three reasons as kind codes and their points (ties by kind name). A return counts as `return_7d` when `pg_lead_is_quick_return()` sees a visit within 7 days of the one before.
+- `pg_lead_interest_score()`: the sum, rounded and capped 0 to 100, with the top three reasons as kind codes and their points (ties by kind name), and `points`: every kind's faded points. Events, fit, interests and the pass: `visitors/lead-score.md`. A return counts as `return_7d` when `pg_lead_is_quick_return()` sees a visit within 7 days of the one before.
 
 Related: docs/memory/visitors/lead-journey-store.md
