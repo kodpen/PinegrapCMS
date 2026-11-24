@@ -1777,15 +1777,16 @@ html[data-bs-theme="dark"] body .design-color {
    icon, on a tile (pg_menu_icon_tile()) in the colour of the row's category
    (data-pg-menu-tone, pg_menu_category_tone()): the icon in the tone, the
    tile a 13% tint of it with a 16% inner line. The current row's tile is
-   stronger. The panels carry the same tone for their entries' tiles. */
-#menu [data-pg-menu-tone="top"] { --pg-menu-tone: var(--pg-tone-blue); }
-#menu [data-pg-menu-tone="content"] { --pg-menu-tone: var(--pg-tone-teal); }
-#menu [data-pg-menu-tone="design"] { --pg-menu-tone: var(--pg-tone-rose); }
-#menu [data-pg-menu-tone="ecommerce"] { --pg-menu-tone: var(--pg-tone-amber); }
-#menu [data-pg-menu-tone="accounting"] { --pg-menu-tone: var(--pg-tone-lime); }
-#menu [data-pg-menu-tone="marketing"] { --pg-menu-tone: var(--pg-tone-violet); }
-#menu [data-pg-menu-tone="system"] { --pg-menu-tone: var(--pg-tone-gray); }
-#menu .pg-mi-tile {
+   stronger. The panels carry the same tone for their entries' tiles, and
+   Design examples' "Menu row icon" (.pg-look-mi) draws the same tiles. */
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="top"] { --pg-menu-tone: var(--pg-tone-blue); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="content"] { --pg-menu-tone: var(--pg-tone-teal); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="design"] { --pg-menu-tone: var(--pg-tone-rose); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="ecommerce"] { --pg-menu-tone: var(--pg-tone-amber); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="accounting"] { --pg-menu-tone: var(--pg-tone-lime); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="marketing"] { --pg-menu-tone: var(--pg-tone-violet); }
+:is(#menu, .pg-look-mi) [data-pg-menu-tone="system"] { --pg-menu-tone: var(--pg-tone-gray); }
+:is(#menu, .pg-look-mi) .pg-mi-tile {
   flex: none;
   display: inline-grid;
   place-items: center;
@@ -1803,7 +1804,7 @@ html[data-bs-theme="dark"] body .design-color {
   --pg-mi-tint: 26%;
   --pg-mi-line: 34%;
 }
-#menu .pg-mi-tile > svg {
+:is(#menu, .pg-look-mi) .pg-mi-tile > svg {
   width: 0.9375rem;
   height: 0.9375rem;
   overflow: visible;
@@ -1812,16 +1813,16 @@ html[data-bs-theme="dark"] body .design-color {
   font-size: 0.9375rem;
   line-height: 1;
 }
-#menu .pg-mi .pg-mi-f {
+:is(#menu, .pg-look-mi) .pg-mi .pg-mi-f {
   fill: currentColor;
   stroke: none;
 }
 /* A part that hides the line behind it (a frame's handles, the wheels):
    the tile's own colour over the menu's ground. */
-#menu .pg-mi .pg-mi-h {
+:is(#menu, .pg-look-mi) .pg-mi .pg-mi-h {
   fill: color-mix(in srgb, var(--pg-menu-tone) var(--pg-mi-tint), var(--pg-navbar-bg));
 }
-#menu .pg-mi .pg-mi-date {
+:is(#menu, .pg-look-mi) .pg-mi .pg-mi-date {
   fill: currentColor;
   stroke: none;
   font-family: inherit;
@@ -1829,7 +1830,7 @@ html[data-bs-theme="dark"] body .design-color {
   text-anchor: middle;
 }
 /* A live part (the Automation flows dot) shows only while it runs. */
-#menu .pg-mi [data-l] {
+:is(#menu, .pg-look-mi) .pg-mi [data-l] {
   opacity: 0;
 }
 
@@ -4954,6 +4955,11 @@ a.link-top-row {
 }
 .pg-look-narrow {
   max-width: 12rem;
+}
+/* Design examples' "Menu row icon": an item plays its icon's move on hover
+   and keyboard focus, as a menu row does. */
+.pg-look-mi-item {
+  cursor: default;
 }
 .pg-look-pad {
   padding: 20px;

@@ -1221,7 +1221,7 @@ $(document).ready(function () {
     initMenuDrawer();                 // Scrim, Escape, outside click, header menus
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuPanels();                 // Rows that open their entries inside the menu
-    initMenuClock();                  // Dashboard clock and Calendars day keep running
+    initMenuDay();                    // The Calendars icon's day moves on at the site's midnight
 
     function isMenuDrawerMode() {
         return MENU_DRAWER_ONLY || (window.innerWidth < MENU_DRAWER_BREAKPOINT);
@@ -2118,50 +2118,33 @@ $(document).ready(function () {
         autoMenuPanel(menu);
     }
 
-    // The Dashboard entry's icon is a clock and the Calendars entry's icon
-    // shows the day of the month (pg_menu_icon()). The server sets both from
-    // the site's time zone; from there they are moved on by how long this page
-    // has been open, not by the browser's clock, which may be in another zone.
-    function initMenuClock() {
-        var clock = document.querySelector('#menu svg[data-pg-clock]');
-        if (!clock) {
+    // The Calendars entry's icon shows the day of the month (pg_menu_icon()).
+    // The server sets it from the site's time zone with the time of day; from
+    // there it is moved on by how long this page has been open, not by the
+    // browser's clock, which may be in another zone.
+    function initMenuDay() {
+        var icon = document.querySelector('#menu svg[data-pg-day]');
+        var day = icon ? icon.querySelector('.pg-mi-date') : null;
+        var date = icon ? (icon.getAttribute('data-pg-day-date') || '').split('-') : [];
+        if (!day || (date.length !== 3)) {
             return;
         }
 
-        var hour = clock.querySelector('.pg-mi-hour');
-        var minute = clock.querySelector('.pg-mi-minute');
-        var day = document.querySelector('#menu svg[data-pg-day] .pg-mi-date');
-        var start = parseInt(clock.getAttribute('data-pg-clock'), 10) || 0;
-        var date = (clock.getAttribute('data-pg-clock-date') || '').split('-');
+        var start = parseInt(icon.getAttribute('data-pg-day'), 10) || 0;
         var opened = Date.now();
 
         function draw() {
-            // Seconds since the site's midnight on the day the page was drawn.
-            var now = start + Math.floor((Date.now() - opened) / 1000);
-            var seconds = now % 86400;
+            // Whole days since the day the page was drawn. UTC arithmetic,
+            // so a daylight-saving switch cannot shift the date.
+            var days = Math.floor((start + Math.floor((Date.now() - opened) / 1000)) / 86400);
+            var text = String(new Date(Date.UTC(+date[0], +date[1] - 1, +date[2] + days)).getUTCDate());
 
-            if (hour) {
-                hour.setAttribute('transform', 'rotate(' + ((seconds % 43200) / 120).toFixed(2) + ' 12 12)');
-            }
-            if (minute) {
-                minute.setAttribute('transform', 'rotate(' + ((seconds % 3600) / 10).toFixed(2) + ' 12 12)');
-            }
-
-            // Past midnight the calendar's day moves on with the clock. UTC
-            // arithmetic, so a daylight-saving switch cannot shift the date.
-            if (day && (date.length === 3)) {
-                var text = String(new Date(Date.UTC(+date[0], +date[1] - 1, +date[2] + Math.floor(now / 86400))).getUTCDate());
-
-                if (day.textContent !== text) {
-                    day.textContent = text;
-                }
+            if (day.textContent !== text) {
+                day.textContent = text;
             }
         }
 
-        draw();
-
-        // The minute hand turns a degree every ten seconds.
-        window.setInterval(draw, 10000);
+        window.setInterval(draw, 60000);
 
         // Timers are throttled in a background tab; catch up on return.
         document.addEventListener('visibilitychange', function () {

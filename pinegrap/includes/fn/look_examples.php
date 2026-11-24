@@ -473,6 +473,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_tools_dock_pattern($p);
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
+    $patterns[] = pg_look_examples_menu_icon_pattern();
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -1171,6 +1172,42 @@ function pg_look_examples_flow_box_pattern($p)
             . $box('wsf-group-values', 16, 178, 'bi-braces', lang('Constants'), lang('Shop links'), lang('Three values'), false, false, false)
             . '</div></div></div>'
             . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: a box is a card with its kind on a tile in its group\'s colour, then the kind, the title and what it does, each cut to the width with the whole text in its tooltip. The out port is a dot on the right edge; the in port shows on pointing. Chosen: the ring. A problem keeps its red line, a value box its dashed border; an arrow of a box with several outcomes carries the outcome on a pill. The List view, the run view and the read-only card draw the same box.')) . '</p>',
+    );
+}
+
+/**
+ * The main menu's row icon (pg_menu_icon(), pg_menu_icon_tile()): a tile in
+ * each category's colour with one of its rows' drawings. Pointing at an item
+ * or focusing it plays the icon's move, as on a menu row; the Automation
+ * flows item carries data-pg-flows-running, so its dot runs the connector.
+ *
+ * @return array array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_menu_icon_pattern()
+{
+    $rows = array(
+        array('top', 'flows', lang('Automation flows')),
+        array('content', 'calendars', lang('Calendars')),
+        array('design', 'design', lang('Page Design Studio')),
+        array('ecommerce', 'products', lang('Products')),
+        array('accounting', 'erp', lang('Resource planning (ERP)')),
+        array('marketing', 'communication', lang('Communication')),
+        array('system', 'tools', lang('System tools')),
+    );
+    $items = '';
+
+    foreach ($rows as $row) {
+        $tile = str_replace('pg-mi-tile me-3', 'pg-mi-tile', pg_menu_icon_tile(pg_menu_icon($row[1], '', ''), $row[0]));
+        $items .= '<span class="pg-look-tile pg-look-mi-item" tabindex="0"' . (($row[1] === 'flows') ? ' data-pg-flows-running' : '') . '>'
+            . $tile . '<span class="pg-text-meta">' . h($row[2]) . '</span></span>';
+    }
+
+    return array(
+        'id'      => 'pattern-menu-icon',
+        'title'   => lang('Menu row icon'),
+        'classes' => array('.pg-mi', '.pg-mi-tile', '[data-pg-menu-tone]', '[data-m]', '[data-l]', '[data-pg-flows-running]', '.pg-look-mi', '.pg-look-mi-item'),
+        'html'    => '<div class="pg-look-line pg-look-mi">' . $items . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the main menu: one line drawing on a tile in the colour of the row\'s category. Pointing at a row or focusing it plays its icon\'s one move, half a second; nothing loops but a live part, the running flow\'s dot. With less motion asked for, nothing moves.')) . '</p>',
     );
 }
 
