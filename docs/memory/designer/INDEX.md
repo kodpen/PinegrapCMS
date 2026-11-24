@@ -522,6 +522,7 @@
 - layout-editor-classic.md: The layout editor screen edit_page_layout.php (L5a, #3084) for a page not on a visual design: who reaches it, the layout_code action, hosted sites, where Edit Layout goes [decision: decisions-made-product-2.md]
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
+- layout-type-converter-catalog.md: A catalog page's layout file into the Catalog widget's design elements (LE8b): each piece, the map options it brought, the listing's new flags and tokens, the run's settings order, the starting sites
 - layout-type-converter-editor.md: LE6b: a file page's System region in the editor, the dropped pieces listed in the Region panel, Convert to design elements from the layout file (layout_code convert_type)
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
@@ -629,6 +630,7 @@
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
+- prototype-approval-events.md: Prototype review's events (PA6): prototype.approved, prototype.changes_requested, prototype.commented, the guest's words as data, the Workspace start events, the two read-only API routes and MCP tools
 - prototype-approval-fingerprints.md: Approve this page and Request changes on a prototype share link, pure rules (PA1a): draft and node fingerprints, what changed, a verdict's state, Answer by, mail timing
 - prototype-approval-hold.md: "Publish only after approval" on a prototype link (PA4): which link holds a draft, every writer of a draft going live reading the hold, role 0's Publish anyway with its reason in the Site Log
 - prototype-approval-mails.md: The approver's answer mail (at most one an hour per link) and the "Answer by" reminder of the general job (PA5): when each goes, what it counts, what it carries

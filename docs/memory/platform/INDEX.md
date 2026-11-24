@@ -128,6 +128,7 @@
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter [decision: decisions-made-data.md]
 - iys-settings-card.md: The İYS account's fields (on İYS's page of Connections since CX11d, includes/iys/settings.php): save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers [decision: decisions-made-customers.md, decisions-made-product-8.md]
+- job-abandoned-orders-lock.md: The general job's abandoned-order pass runs one at a time under its own cron_runs lock (job_order_abandoned), so two ticks never make two order_abandoned campaigns for one order
 - job-pass-time-claim.md: Window passes of the general job (booking reminders, store credit expiring notices) claim their config_text pass time with pg_config_text_claim(), so overlapping runs never both send
 - job-script-claims.md: Mailing job scripts (membership, ERP overdue, ERP accountant) take the cron_runs lock when started by crontab or by hand; which job scripts were left without one [decision: decisions-made-schema-24.md]
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required, visitor cookies cleared), and why the text parameters must be strings
@@ -208,6 +209,7 @@
 - restore-files-placement.md: The install-screen restore replaces data/files and data/layouts only when the disk holds the backup's files, and names files it could not write (pg_restore_place_folder())
 - router-no-functions-php.md: What runs before functions.php is loaded (router.php, the firewall's router phase, get_file.php), why lang() is unavailable there, and the waf_text() / get_file_text() wrappers.
 - scheduled-comment-claim.md: How job.php publishes scheduled comments: a conditional claim (pg_comment_schedule_claim_sql) so overlapping job runs never send the comment e-mails twice
+- scheduled-job-light-budgets.md: Which dispatched jobs cap their own time budget by pg_cron_time_left(), and why a light job that does not can shut the whole light lane for an hour
 - scheduled-job-resume.md: Resumable dispatched passes (#4744): tick budget inside job.php's time limit, pg_cron_due_again(), the _done completion markers the health screens read, minute locks
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
 - search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked [decision: decisions-made-product-18.md]

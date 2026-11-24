@@ -91,6 +91,7 @@
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - edit-submitted-form-id.md: edit_submitted_form.php reads, saves and deletes only the id it checked ($id from $_REQUEST, whole number), never $_POST['id'] or $_GET['id']
+- email-block-list-sign-in.md: A member (role 3) whose address is on the e-mail block list signs in by no path (password, API, passkey, provider, reset link, remembered device); staff are never refused
 - email-campaign-html-body.md: How an HTML campaign body is drawn from a page: an e-mail render with no session token and signed-out account widgets, the token cut as a guard, and no hard wrap of mail bodies
 - email-campaign-job-log-user.md: Which user email_campaign_job.php writes into its activity log lines: the manager of a web run, else UNKNOWN (no session read in a scheduled run)
 - email-campaign-schedule-label.md: The schedule label on My Campaign Profiles built from two whole keys, the send time as {var:4} at the end
@@ -206,7 +207,7 @@
 - request-lists-record-screens.md: Edit Page, Edit File, Edit Theme File and the Product Builder (add and edit) refuse a field posted as a list (name[]=x) before any write; pg_pb_list_fields() names the product form's own lists
 - request-lists-screen-parameters.md: One-value GET and POST parameters sent as a list (x[]=1) are dropped or read only as text on the screens a sandbox probe found; the tests that list them
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
-- reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
+- reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the password or the e-mail address changes, on the site, Edit User, the users list or the Workspace.
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle. [decision: decisions-made-access.md]
 - send-to-url-safety.md: What pg_send_to_url() refuses (control characters, '//' and '/\' starts, non-paths) and why it matches pg_safe_redirect_path() (PR #3563)

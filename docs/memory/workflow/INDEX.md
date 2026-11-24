@@ -46,6 +46,7 @@
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
 - bug-hunt-areas-main-menu-redraw.md: The bug hunt of the main menu after its redraw (MI1-MI3, MZ1), 2026-11-24: the rail's row names for a screen reader, the phone drawer's focus, what read clean
+- bug-hunt-areas-member-accounts.md: Bug hunt area 21, member accounts (2026-11-24): sign-up, sign-in, reset, e-mail change, blocked and deleted members; the four faults fixed, what read clean, what was left
 - bug-hunt-areas-migration-steps-11.md: Bug hunt of the 2026.11.0 migration steps (area 13, #11376): no fault; run twice, cut off at 57 points, paused, upgraded from a real 2026.4.10 install, tables of schema-46 to -49 matched
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
@@ -56,11 +57,15 @@
 - bug-hunt-areas-privacy-new-tables.md: Bug hunt of erasure, export, inventory, merge and keep periods over the 2026.11.0 tables (area 11, #11381): three faults fixed, what was read clean
 - bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
+- bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-rights-new-screens.md: Bug hunt of rights by role on the 2026.11.0 screens (volunteers, queue, pick and pack, Hot Contacts, launch journey, share links, prototype settings): two faults fixed in #11374
+- bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
+- bug-hunt-areas-site-search.md: Bug hunt of the visitor site search (area 20, 2026-11-24): four faults fixed in the hunt's PR, what was read clean, and the noindex question left as it is
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
+- bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
