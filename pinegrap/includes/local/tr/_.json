@@ -712,6 +712,7 @@
     "{var:1} SMS campaign(s) were deleted": "{var:1} SMS kampanyası silindi",
     "{var:1} SMS messages": "{var:1} SMS",
     "{var:1} Subtotal": "{var:1} Ara Toplam",
+    "{var:1} Subtotal:": "{var:1} Ara Toplam:",
     "{var:1} Tax": "{var:1} Vergi",
     "{var:1} The box waits and looks again at {var:2}.": "{var:1} Kutu bekliyor ve {var:2} tarihinde yeniden bakacak.",
     "{var:1} Total": "{var:1} Toplam",

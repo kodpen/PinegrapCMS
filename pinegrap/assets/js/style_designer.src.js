@@ -16338,6 +16338,9 @@ const StyleDesigner = (function () {
                    '<span class="fw-semibold">' + esc(_sdT('Yoga Workshop')) + '</span><br>' +
                    esc(_sdT('12 May 2026, 10:00 – 12:00')) + '</div>';
         },
+        '__cart_payment_periods_html': function () {
+            return _sdCartSectionHtml('payment_periods', {});
+        },
         // Mirrors _pg_cart_offline_payment_checkbox(). Canvas always previews
         // it so the designer can style/place the block; at runtime it is empty
         // for everyone except staff.
@@ -45421,6 +45424,12 @@ const StyleDesigner = (function () {
             ['__cart_today_total',         _sdT('Amount charged today (empty without a recurring row)')],
             ['__cart_recurring_total',     _sdT('Amount charged each period (empty without a recurring row)')],
             ['__has_recurring_items',      _sdT('Whether the cart has a recurring product (1 / empty)')]
+        ]},
+        { label: _sdT('Classic cart page'), tokens: [
+            ['__cart_payment_periods_html', _sdT('Recurring totals, one line per payment period (HTML)')],
+            ['__retrieve_order_url',        _sdT('Address that restores this cart later')],
+            ['__currency_symbol',           _sdT('Currency symbol')],
+            ['__currency_code',             _sdT('Currency code shown beside amounts (empty when the site shows none)')]
         ]}
     ];
 
@@ -45866,6 +45875,7 @@ const StyleDesigner = (function () {
             // item list are the safe spots.
             out.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
             out.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
+            out.push(['payment_periods',   _sdT('Recurring Totals (one line per payment period)')]);
         } else if (type === 'catalog_item_view') {
             out.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
             out.push(['product_lines',     _sdT('The group\'s products as lines (a list)')]);
@@ -47110,6 +47120,12 @@ const StyleDesigner = (function () {
                 + _sdCartQuickAddOptionHtml(32, _sdT('Greeting card') + ' - ' + _sdT('Written by hand') + ' (' + _sdMoney(2.5) + ')', 'quantity', 0, 1, true);
             return _sdCartQuickAddHtml(label, options, true, false, null, '', '#', '', '');
         }
+        if (section === 'payment_periods') {
+            // Mirrors pg_cart_payment_periods_html().
+            return '<table class="table pg-cart-payment-periods"><tbody><tr><th scope="row" class="text-end w-100">'
+                + esc(_sdT('{var:1} Subtotal:').replace('{var:1}', _sdT('Monthly'))) + '</th>'
+                + '<td class="text-end text-nowrap">' + _sdMoney(19.9) + '</td></tr></tbody></table>';
+        }
         return '';
     }
 
@@ -47121,6 +47137,7 @@ const StyleDesigner = (function () {
         if (!html) return null;
         var note = section === 'applied_offers' ? _sdT('The site lists the offers applied to the visitor\'s cart; nothing when none applies.')
             : section === 'pending_offers' ? _sdT('The site lists the gifts the visitor\'s cart has earned, each with its Add button; nothing when none.')
+            : section === 'payment_periods' ? _sdT('The site lists the cart\'s recurring amount for each payment period; nothing without a recurring product.')
             : _sdT('The site lists the products of the chosen group the visitor can buy now.');
         var box = doc.createElement('div');
         box.className = 'sd-section-binding-hint sd-section-sample';
@@ -49322,7 +49339,29 @@ const StyleDesigner = (function () {
         ],
         shopping_cart: [
             ['has_items',            _sdT('The cart has items')],
-            ['has_recurring_items',  _sdT('The cart has a recurring product')]
+            ['has_recurring_items',  _sdT('The cart has a recurring product')],
+            // A classic cart layout's two tables and its totals.
+            ['has_today_items',             _sdT('Something is charged today')],
+            ['has_today_non_donations',     _sdT('Something other than a donation is charged today')],
+            ['has_recurring_products',      _sdT('The cart has a recurring product, charged today or later')],
+            ['has_recurring_non_donations', _sdT('A recurring product is not a donation')],
+            ['has_discount',                _sdT('There is a discount')],
+            ['has_special_offer_code',      _sdT('The offer code box is shown')],
+            ['has_currency_code',           _sdT('A currency code is shown beside amounts')],
+            ['cart_item_today',                       _sdT('Row: charged today')],
+            ['cart_item_recurring',                   _sdT('Row: a recurring product')],
+            ['cart_item_recurring_only',              _sdT('Row: a recurring product first charged later')],
+            ['cart_item_donation',                    _sdT('Row: a donation')],
+            ['cart_item_not_donation',                _sdT('Row: not a donation')],
+            ['cart_item_added_by_offer',              _sdT('Row: added by an offer (quantity fixed)')],
+            ['cart_item_quantity_editable',           _sdT('Row: the visitor may change the quantity')],
+            ['cart_item_recurring_quantity_fixed',    _sdT('Row: among recurring charges, the quantity is not changed here')],
+            ['cart_item_recurring_quantity_editable', _sdT('Row: among recurring charges, the quantity is changed here')],
+            ['cart_item_recurring_donation',          _sdT('Row: among recurring charges, a donation whose amount is changed here')],
+            ['cart_item_recurring_amount',            _sdT('Row: among recurring charges, the amount is shown as text')],
+            ['cart_item_has_image',                   _sdT('Row: the product has an image')],
+            ['cart_item_out_of_stock',                _sdT('Row: the product is out of stock')],
+            ['cart_item_has_calendar_event',          _sdT('Row: a reservation for a calendar event')]
         ],
         search_results: [
             ['has_query',   _sdT('Something was searched')],

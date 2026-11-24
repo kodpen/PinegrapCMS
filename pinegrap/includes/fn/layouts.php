@@ -472,6 +472,29 @@ function pg_layout_widget_seed($page_type, array $row, array $field_names = arra
             $cfg['search_enabled'] = ($int('search') === 1);
             break;
 
+        case 'shopping cart':
+            // Words left empty on the page keep the widget's own.
+            foreach (array('update_button_label', 'checkout_button_label', 'shopping_cart_label') as $key) {
+                if (trim((string) ($row[$key] ?? '')) !== '') {
+                    $cfg[$key] = (string) $row[$key];
+                }
+            }
+            foreach (array('next_page_id_with_shipping', 'next_page_id_without_shipping', 'quick_add_product_group_id') as $key) {
+                if ($int($key) > 0) {
+                    $cfg[$key] = $int($key);
+                }
+            }
+            if ($int('quick_add_product_group_id') > 0) {
+                $cfg['quick_add_label'] = (string) ($row['quick_add_label'] ?? '');
+            }
+            // An empty label and message hide the offer code box, as on the
+            // classic page.
+            if ($row) {
+                $cfg['special_offer_code_label'] = (string) ($row['special_offer_code_label'] ?? '');
+                $cfg['special_offer_code_message'] = (string) ($row['special_offer_code_message'] ?? '');
+            }
+            break;
+
         case 'catalog detail':
             if ($int('next_page_id') > 0) {
                 $cfg['next_page_id'] = $int('next_page_id');
@@ -709,6 +732,14 @@ function pg_layout_widget_tree_apply(array $tree, array $seed)
  */
 function pg_layout_convert_state($type, $row)
 {
+    if ((string)$type === 'shopping cart') {
+        // The description the rows show, and the site's ship-to headings
+        // ('multi_recipient', put in the row by the caller).
+        return array(
+            'full_description' => (string)($row['product_description_type'] ?? '') !== 'short_description',
+            'multi_recipient'  => !empty($row['multi_recipient']),
+        );
+    }
     if ((string)$type !== 'form list view') return array();
     $on = function ($key) use ($row) {
         return !empty($row[$key]) && (int)$row[$key] === 1;
@@ -906,6 +937,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         'catalog detail' => array('catalog_detail_pages', ''),
         'form list view' => array('form_list_view_pages', " AND collection = 'a'"),
         'form item view' => array('form_item_view_pages', " AND collection = 'a'"),
+        'shopping cart'  => array('shopping_cart_pages', ''),
     );
     $out = array();
 
@@ -923,6 +955,12 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         if (isset($tables[$type])) {
             $found = db_item("SELECT * FROM " . $tables[$type][0] . " WHERE page_id = '" . $page_id . "'" . $tables[$type][1] . " LIMIT 1");
             $row = is_array($found) ? $found : array();
+        }
+
+        if ($type === 'shopping cart') {
+            // A heading per recipient: only a site that ships to several.
+            $row['multi_recipient'] = (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING)
+                && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient';
         }
 
         if (($type === 'form list view') && !empty($row['custom_form_page_id'])) {
