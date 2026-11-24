@@ -66,7 +66,9 @@ function test_remember_me_refuses_blocked_member()
 {
 	$body = member_accounts_test_body('includes/fn/auth.php', 'initialize_user');
 
-	pg_assert_contains('if ($token_user_id && pg_user_id_login_blocked($token_user_id)) {', $body, 'the remembered token is asked');
+	pg_assert_contains('$remembered_refusal = $token_user_id ? pg_auth_remembered_signin_refusal($token_user_id) : \'\';', $body, 'the remembered token is asked');
+	pg_assert_contains("if ((\$remembered_refusal === 'disabled') || (\$remembered_refusal === 'blocked')) {", $body, 'a blocked member is refused');
+	pg_assert_contains('pg_user_id_login_blocked($user_id)', member_accounts_test_body('includes/authentication.php', 'pg_auth_remembered_signin_refusal'), 'the panel side asks the block list');
 }
 
 // The fragment clears the link only when the stored address differs from
