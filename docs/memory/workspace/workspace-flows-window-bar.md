@@ -6,7 +6,7 @@ description: The flow window's top bar (drawBar(), flow-window FW1): the flow at
 ## What is on the bar, in order?
 - Left, the flow: the name (a field while the draft is edited, else text), the status pill (`statusPill()`: draft gray, live teal, paused amber), "Changes not published yet", the save state with a tick when saved; a reader sees "You can see this flow; only its owner changes it." in the save state's place.
 - Middle: the Canvas / List switch (`viewSwitch()`, `pg-seg`, `aria-pressed`, `data-refocus` `view-canvas` / `view-list`); List is the outline, its tooltip `fl_outline_help`; default List under 768 px.
-- Right: Problems (editors), Flow runs, Try (the owner editing, [[workspace-flows-trial-canvas]]), Run, Publish (the owner) or "Only the owner publishes…", ⋯. During a trial: "Trial · nothing is sent" and End the trial in their place. Undo, Redo and the data threads are on the canvas's bottom strip (FE2, `workspace-flows-canvas-tools.md`).
+- Right: Problems (editors), Flow runs, Counts with its days once pressed (a live flow, [[workspace-flows-counts-canvas]]), Try (the owner editing, [[workspace-flows-trial-canvas]]), Run, Publish (the owner) or "Only the owner publishes…", ⋯. During a trial: "Trial · nothing is sent" and End the trial in their place. Undo, Redo and the data threads are on the canvas's bottom strip (FE2, `workspace-flows-canvas-tools.md`).
 - ⋯ (`moreMenu()`): Pause (live) or Resume (paused, the owner), while the draft is edited; Share; Save as template; Delete.
 
 ## Which recipes and why?

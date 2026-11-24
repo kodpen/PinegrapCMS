@@ -403,6 +403,7 @@
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
         trial: null,        // the draft tried from its start (ws_flow_trial), nothing kept
+        counts: null,       // a live flow's counts over its boxes (ws_flow_counts), the pill chosen
         stash: null,        // what the run view put aside: the draft, selection, view, edit
         starting: false,    // a start is being asked or sent
         startToken: null,   // { flow, value } kept until a start is answered
@@ -1158,6 +1159,12 @@
         state.sketch = null;
         state.tries = null;
         state.trial = null;
+
+        if (state.counts) {
+            window.clearTimeout(state.counts.timer);
+        }
+
+        state.counts = null;
     }
 
     // The editor taken off the page: the run's looks and the timers stop,
@@ -1172,6 +1179,8 @@
         window.clearTimeout(state.settleTimer);
         window.clearTimeout(state.arriving);
         window.clearTimeout(state.saveTimer);
+        window.clearTimeout(state.counts ? state.counts.timer : 0);
+        state.counts = null;
         state.settleTimer = 0;
         state.arriving = 0;
         state.saveTimer = 0;
@@ -1889,6 +1898,7 @@
         closeSetup();
         endRun();
         endTrial();
+        endCounts();
         state.panel = '';
         state.flow = null;
         state.graph = graphOf(null);
@@ -2973,6 +2983,7 @@
         // The runs panel stays open while the same flow is shown again
         // (after Publish or Pause); another flow starts without it.
         if (!same) {
+            endCounts();
             state.panel = '';
             state.runs = { flow: flow.id, items: [], next: null, loading: false, error: '' };
         }
@@ -3310,6 +3321,7 @@
         }
 
         runsButton();
+        countsButton();
         tryButton();
         runButton(!publishing);
 
@@ -3738,6 +3750,7 @@
         paintTry(box, node);
         paintRun(box, node);
         paintTrial(box, node);
+        paintCounts(box, node);
     }
 
     // A box as the run shown left it: the tone, mark and word of its state,
@@ -7168,6 +7181,8 @@
             trialSide();
         } else if (state.run) {
             runSide();
+        } else if (countShown()) {
+            countsSide();
         } else if ((state.panel === 'runs') && (!selected || state.outline)) {
             runsSide();
         } else if (selected && (selected.type === 'node') && nodeById(selected.id) && !state.outline) {
@@ -14790,6 +14805,12 @@
         if (state.panel) {
             state.selected = null;
             markSelected();
+
+            // The button lists every run, never a count's narrowed list.
+            if (state.runs.filter) {
+                state.runs = { flow: state.flow.id, items: [], next: null, loading: false, error: '' };
+            }
+
             loadRuns(false);
         }
 
@@ -14817,7 +14838,7 @@
         list.loading = true;
         list.error = '';
 
-        K.api('ws_flow_runs_list', { flow_id: flow.id, before_id: more ? (list.next || 0) : 0 }).then(function (data) {
+        K.api('ws_flow_runs_list', Object.assign({ flow_id: flow.id, before_id: more ? (list.next || 0) : 0 }, list.filter ? { node: list.filter.node, state: list.filter.state, days: list.filter.days } : {})).then(function (data) {
             var runs = data.runs || [];
 
             list.items = more ? list.items.concat(runs) : runs;
@@ -14850,7 +14871,8 @@
 
         noteLastRun(run);
 
-        if (!state.flow || (list.flow !== run.flow_id)) {
+        // A list narrowed to a count is read as the server counts it.
+        if (!state.flow || (list.flow !== run.flow_id) || list.filter) {
             return;
         }
 
@@ -14873,6 +14895,24 @@
         }
     }
 
+    // Which count the runs list is narrowed to, and the way to every run.
+    function runsFilterLine(list) {
+        var line = el('p', 'small fg-secondary d-flex flex-wrap align-items-center gap-2');
+        var every = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_counts_every_run'));
+
+        line.appendChild(el('span', 'text-break', t('fl_counts_only', list.filter.label)));
+        every.setAttribute('data-refocus', 'runs-every');
+        every.addEventListener('click', function () {
+            state.runs = { flow: state.flow.id, items: [], next: null, loading: false, error: '' };
+            state.refocus = 'runs-title';
+            loadRuns(false);
+            drawSettings();
+        });
+        line.appendChild(every);
+
+        return line;
+    }
+
     function runsSide() {
         var list = state.runs;
         var head = el('div', 'wsf-side-title', t('fl_runs_title'));
@@ -14881,6 +14921,10 @@
         head.tabIndex = -1;
         head.setAttribute('data-refocus', 'runs-title');
         ui.side.appendChild(head);
+
+        if (list.filter) {
+            ui.side.appendChild(runsFilterLine(list));
+        }
 
         // A load that failed is not "has not run yet": the reason, and a
         // way to load the list again. The redraw shows "Loading…" at once,
@@ -14969,8 +15013,13 @@
         return K.api('ws_flow_run_get', { run_id: id }).then(function (data) {
             busy(false);
 
-            if ((seq !== state.openSeq) || state.run || !runsShown()) {
+            if ((seq !== state.openSeq) || state.run || !(runsShown() || countShown())) {
                 return;
+            }
+
+            // A run opened from a count's list goes back to it when closed.
+            if (countShown()) {
+                state.counts.back = true;
             }
 
             state.refocus = 'run-title';
@@ -15046,6 +15095,11 @@
 
         state.openSeq++;
         endRun();
+
+        if (!panel && state.counts && state.counts.back) {
+            panel = state.counts.chosen ? 'counts' : '';
+            state.counts.back = false;
+        }
 
         // The list asked for shows in the side panel only with nothing
         // selected; back to the flow, the box selected before comes back.
@@ -15897,6 +15951,433 @@
         return { node: wrap, picked: picked };
     }
 
+    // ── Counts: where a live flow's runs are, over its boxes ───────────
+
+    // The days the counts are read over: ended runs are kept 30 days
+    // (WS_FLOW_RUNS_KEEP), so no longer choice is offered.
+    var COUNTS_DAYS = [7, 30];
+    var COUNTS_FIRST = 30;
+    // How often the counts shown are read again.
+    var COUNTS_EVERY = 60000;
+
+    // A box's pills from its line of ws_flow_counts (null when no run
+    // reached it): runs waiting now, passes done and passes failed in the
+    // days, each only when there is one; a start's passes are runs started.
+    function countPills(line, start) {
+        var out = [];
+
+        if (!line) {
+            return out;
+        }
+
+        [['waiting', 'amber', 'fl_counts_waiting'], ['passed', 'gray', start ? 'fl_counts_started' : 'fl_counts_passed'], ['failed', 'rose', 'fl_counts_failed']].forEach(function (item) {
+            var n = +line[item[0]] || 0;
+
+            if (n > 0) {
+                out.push({ state: item[0], n: n, tone: item[1], text: item[2] });
+            }
+        });
+
+        return out;
+    }
+
+    // The runs of a pill in the side panel, unless a selection took it over.
+    function countShown() {
+        return !!(!state.run && (state.panel === 'counts') && state.counts && state.counts.chosen && (!state.selected || state.outline));
+    }
+
+    // Counts are read by whoever reads the flow's runs, on a flow with a
+    // live version, while neither a run nor a trial is shown.
+    function canCount() {
+        return !!(state.flow && (state.flow.version > 0) && !state.run && !state.trial && !state.embed);
+    }
+
+    // "Counts" in the bar, pressed while they are shown; beside it the days.
+    function countsButton() {
+        if (!canCount()) {
+            return;
+        }
+
+        var on = !!(state.counts && (state.counts.flow === state.flow.id));
+        var button = barButton(BAR_QUIET, '', 'bi-bar-chart');
+
+        button.appendChild(el('span', 'd-none xl:d-inline', t('fl_counts')));
+        button.title = t('fl_counts_help');
+        button.setAttribute('aria-label', t('fl_counts'));
+        button.setAttribute('data-refocus', 'counts');
+        pressedLook(button, on);
+        button.addEventListener('click', toggleCounts);
+        ui.bar.appendChild(button);
+
+        if (on) {
+            ui.bar.appendChild(countsDays());
+        }
+    }
+
+    // The days counted, as a segmented choice.
+    function countsDays() {
+        var group = el('div', 'pg-seg wsf-counts-days');
+
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', t('fl_counts_days'));
+
+        COUNTS_DAYS.forEach(function (days) {
+            var choice = barButton('pg-seg-item', t('fl_counts_days_n', days), '');
+
+            choice.setAttribute('aria-pressed', (state.counts.days === days) ? 'true' : 'false');
+            choice.setAttribute('data-refocus', 'counts-days-' + days);
+            choice.addEventListener('click', function () {
+                if (state.counts.days === days) {
+                    return;
+                }
+
+                state.counts.days = days;
+                state.counts.chosen = null;
+                state.refocus = 'counts-days-' + days;
+
+                if (state.panel === 'counts') {
+                    state.panel = '';
+                }
+
+                drawBar();
+                drawSettings();
+                loadCounts();
+            });
+            group.appendChild(choice);
+        });
+
+        return group;
+    }
+
+    function toggleCounts() {
+        if (state.counts) {
+            endCounts();
+            state.refocus = 'counts';
+            drawBar();
+            paintCountsAll();
+            drawSettings();
+            announce(t('fl_counts_hidden'));
+            return;
+        }
+
+        state.counts = { flow: state.flow.id, days: COUNTS_FIRST, data: null, error: '', seq: 0, timer: 0, chosen: null, list: null, back: false };
+        state.refocus = 'counts';
+        drawBar();
+        loadCounts();
+    }
+
+    // The counts put away: the timer stopped, their panel closed. Nothing
+    // is drawn.
+    function endCounts() {
+        var counts = state.counts;
+
+        if (!counts) {
+            return;
+        }
+
+        window.clearTimeout(counts.timer);
+        state.counts = null;
+
+        if (state.panel === 'counts') {
+            state.panel = '';
+        }
+    }
+
+    // The counts read again (ws_flow_counts), then every COUNTS_EVERY ms
+    // while they are shown; a look is skipped while the page is hidden or a
+    // run or trial covers the canvas. Only the last question asked is drawn.
+    function loadCounts() {
+        var counts = state.counts;
+        var seq;
+
+        if (!counts) {
+            return;
+        }
+
+        window.clearTimeout(counts.timer);
+        counts.timer = window.setTimeout(loadCounts, COUNTS_EVERY);
+
+        if (document.hidden || !canCount()) {
+            return;
+        }
+
+        seq = ++counts.seq;
+        K.api('ws_flow_counts', { flow_id: counts.flow, days: counts.days }).then(function (data) {
+            if ((state.counts !== counts) || (seq !== counts.seq)) {
+                return;
+            }
+
+            var lines = {};
+
+            ((data.counts && data.counts.boxes) || []).forEach(function (line) {
+                lines[line.node] = line;
+            });
+            counts.data = lines;
+            counts.error = '';
+            keepFocus(paintCountsAll);
+        }).catch(function (error) {
+            if ((state.counts !== counts) || (seq !== counts.seq)) {
+                return;
+            }
+
+            // Kept, so the pills read last stay; said once.
+            if (!counts.error) {
+                counts.error = (error && error.message) || t('error_generic');
+                K.fail(error);
+            }
+        });
+    }
+
+    function paintCountsAll() {
+        if (!ui.boxes) {
+            return;
+        }
+
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.pgc-node[data-node]'), function (box) {
+            var node = nodeById(box.getAttribute('data-node'));
+
+            if (node) {
+                paintCounts(box, node);
+            }
+        });
+    }
+
+    // The pills over a box: each a button listing its runs in the panel.
+    function paintCounts(box, node) {
+        var old = box.querySelector('.wsf-counts');
+        var counts = state.counts;
+
+        if (old) {
+            old.remove();
+        }
+
+        if (!counts || !counts.data || !canCount() || kindOf(node).pure) {
+            return;
+        }
+
+        var pills = countPills(counts.data[node.id], kindOf(node).group === 'start');
+
+        if (!pills.length) {
+            return;
+        }
+
+        var wrap = el('div', 'wsf-counts');
+
+        pills.forEach(function (pill) {
+            var label = t(pill.text, pill.n);
+            var button = el('button', 'pg-pill pg-tone-' + pill.tone + ' wsf-count', label);
+            var chosen = (state.panel === 'counts') && counts.chosen && (counts.chosen.node === node.id) && (counts.chosen.state === pill.state);
+
+            button.type = 'button';
+            button.setAttribute('aria-label', t('fl_counts_of', label, nameOf(node)));
+            button.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+            button.setAttribute('data-refocus', 'count-' + node.id + '-' + pill.state);
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                openCount(node, pill);
+            });
+            wrap.appendChild(button);
+        });
+
+        box.appendChild(wrap);
+    }
+
+    // A pill pressed: its runs in the panel, a page of 20 at a time; the
+    // same pill again closes them.
+    function openCount(node, pill) {
+        var counts = state.counts;
+        var chosen = counts.chosen;
+
+        if (chosen && (state.panel === 'counts') && (chosen.node === node.id) && (chosen.state === pill.state)) {
+            closeCount();
+            return;
+        }
+
+        counts.chosen = { node: node.id, state: pill.state, n: pill.n, label: t(pill.text, pill.n), days: counts.days };
+        counts.list = { items: [], next: null, loading: false, error: '' };
+        state.openSeq++;
+        state.panel = 'counts';
+        state.selected = null;
+        markSelected();
+        state.refocus = 'counts-title';
+        paintCountsAll();
+        drawSettings();
+        loadCountRuns(false);
+    }
+
+    function closeCount() {
+        var chosen = state.counts ? state.counts.chosen : null;
+
+        if (state.counts) {
+            state.counts.chosen = null;
+        }
+
+        state.panel = '';
+        paintCountsAll();
+        state.refocus = chosen ? 'count-' + chosen.node + '-' + chosen.state : '';
+        drawSettings();
+    }
+
+    // The runs of the count chosen; more: the next page.
+    function loadCountRuns(more) {
+        var counts = state.counts;
+        var chosen = counts && counts.chosen;
+        var list = counts && counts.list;
+
+        if (!chosen || !list || list.loading) {
+            return;
+        }
+
+        list.loading = true;
+        list.error = '';
+
+        K.api('ws_flow_runs_list', { flow_id: counts.flow, before_id: more ? (list.next || 0) : 0, node: chosen.node, state: chosen.state, days: chosen.days }).then(function (data) {
+            var runs = data.runs || [];
+
+            list.items = more ? list.items.concat(runs) : runs;
+            list.next = data.next || null;
+
+            if (more && runs.length) {
+                state.refocus = 'run-' + runs[0].id;
+            }
+        }).catch(function (error) {
+            list.error = (error && error.message) || t('error_generic');
+        }).then(function () {
+            list.loading = false;
+
+            if ((state.counts === counts) && (counts.list === list) && (state.panel === 'counts') && !state.run) {
+                keepFocus(drawSettings);
+            }
+        });
+    }
+
+    // What a run of the list did at the box: when its Wait looks again or
+    // since when it waits, when it passed or failed there.
+    function countRunLine(run) {
+        var at = run.at || {};
+
+        if (at.status === 'waiting') {
+            return at.wake_at ? t('fl_counts_wakes', when(at.wake_at)) : t('fl_counts_since', when(at.since));
+        }
+
+        return at.finished_at ? t((at.status === 'failed') ? 'fl_counts_failed_at' : 'fl_counts_passed_at', when(at.finished_at)) : '';
+    }
+
+    // The panel of a count: the box and the count, its runs (the record's
+    // name, or the run's number when it is about nobody the person reads),
+    // each opening the run; more, and all of them in Flow runs.
+    function countsSide() {
+        var counts = state.counts;
+        var chosen = counts.chosen;
+        var list = counts.list;
+        var node = nodeById(chosen.node);
+        var top = el('div', 'd-flex align-items-start gap-2 mb-3');
+        var heading = el('div', 'flex-grow-1 min-w-0');
+        var head = el('div', 'wsf-side-title', chosen.label);
+        var close = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_counts_close'));
+
+        head.id = 'wsf-counts-title';
+        head.tabIndex = -1;
+        head.setAttribute('data-refocus', 'counts-title');
+        heading.appendChild(el('div', 'small fg-secondary text-truncate', node ? nameOf(node) : ''));
+        heading.appendChild(head);
+        close.setAttribute('aria-label', t('fl_counts_close'));
+        close.title = t('fl_counts_close');
+        close.addEventListener('click', closeCount);
+        top.appendChild(heading);
+        top.appendChild(close);
+        ui.side.appendChild(top);
+
+        if (chosen.state !== 'waiting') {
+            ui.side.appendChild(el('p', 'small fg-secondary mb-2', t('fl_counts_days_n', chosen.days)));
+        }
+
+        if (!list.items.length) {
+            var line = el('p', 'small ' + (list.error ? 'fg-danger' : 'fg-secondary'), list.error || (list.loading ? t('loading') : t('fl_counts_none')));
+
+            if (list.error && !list.loading) {
+                var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'));
+
+                retry.setAttribute('data-refocus', 'counts-retry');
+                retry.addEventListener('click', function () {
+                    state.refocus = 'counts-title';
+                    loadCountRuns(false);
+                    drawSettings();
+                });
+                line.appendChild(retry);
+            }
+
+            ui.side.appendChild(line);
+            return;
+        }
+
+        var rows = el('ul', 'list-unstyled mb-3 wsf-run-list');
+
+        rows.setAttribute('aria-labelledby', head.id);
+        list.items.forEach(function (run) {
+            var item = el('button', 'wsf-run-item');
+            var row = el('span', 'wsf-run-item-top');
+            var said = countRunLine(run);
+
+            item.type = 'button';
+            item.disabled = !!state.opening[run.id];
+            item.setAttribute('data-refocus', 'run-' + run.id);
+            row.appendChild(el('span', 'fw-semibold text-truncate', run.about || t('fl_run_name', run.id)));
+            row.appendChild(K.icon('bi-chevron-right', 'ms-auto fg-secondary'));
+            item.appendChild(row);
+
+            if (said) {
+                item.appendChild(el('span', 'wsf-run-item-line', said));
+            }
+
+            item.addEventListener('click', function () {
+                openRun(run.id);
+            });
+            rows.appendChild(el('li')).appendChild(item);
+        });
+        ui.side.appendChild(rows);
+
+        var foot = el('div', 'd-flex flex-wrap align-items-center gap-2');
+
+        if (list.next) {
+            var more = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_runs_more'), 'bi-chevron-down');
+
+            more.setAttribute('data-refocus', 'counts-more');
+            more.disabled = list.loading;
+            more.addEventListener('click', function () {
+                more.disabled = true;
+                loadCountRuns(true);
+            });
+            foot.appendChild(more);
+        }
+
+        var all = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto', t('fl_counts_all'), 'bi-clock-history');
+
+        all.setAttribute('data-refocus', 'counts-all');
+        all.addEventListener('click', function () {
+            openCountInRuns(chosen);
+        });
+        foot.appendChild(all);
+        ui.side.appendChild(foot);
+    }
+
+    // "Open all in Flow runs": the runs list narrowed to the count, with
+    // the way back to every run.
+    function openCountInRuns(chosen) {
+        var node = nodeById(chosen.node);
+
+        state.openSeq++;
+        state.runs = { flow: state.flow.id, items: [], next: null, loading: false, error: '',
+            filter: { node: chosen.node, state: chosen.state, days: chosen.days, label: (node ? nameOf(node) + ' · ' : '') + chosen.label } };
+        state.counts.chosen = null;
+        state.panel = 'runs';
+        state.refocus = 'runs-title';
+        paintCountsAll();
+        loadRuns(false);
+        drawBar();
+        drawSettings();
+    }
+
     // ── The trial: the draft tried from its start ──────────────────────
 
     // How a box of the trial is marked on the canvas and in the panel: its
@@ -16664,7 +17145,7 @@
         // A link on a box (the task of a waiting box) and the last run's
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
-        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus, .wsf-several, .wsf-note-text, .wsf-note button, .wsf-frame-head input, .wsf-frame-head button',
+        ownClicks: '.pgc-node a[href], .wsf-counts button, .wsf-flag-canvas, .wsf-plus, .wsf-several, .wsf-note-text, .wsf-note button, .wsf-frame-head input, .wsf-frame-head button',
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,

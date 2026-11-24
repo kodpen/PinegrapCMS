@@ -1090,14 +1090,26 @@ function ws_handle_action($action, $request)
 
             // A small page, newest first: the side panel of the canvas.
             // node and state narrow it to the runs behind a box's count.
+            $node = (string) ($request['node'] ?? '');
+            $state = (string) ($request['state'] ?? '');
             $page = ws_flow_runs_list($viewer, $flow, array('before_id' => (int) ($request['before_id'] ?? 0), 'limit' => 20,
-                'node' => (string) ($request['node'] ?? ''), 'state' => (string) ($request['state'] ?? ''), 'days' => $request['days'] ?? null));
+                'node' => $node, 'state' => $state, 'days' => $request['days'] ?? null));
             $numbers = ws_flow_version_numbers($page['rows']);
             $results = ws_flow_runs_results($page['rows']);
+            // A count's list: each run with the box's pass and its record's name.
+            $at = ws_flow_runs_at_node($page['rows'], $node, $state);
+            $about = $at ? ws_flow_runs_about($viewer, $page['rows']) : array();
 
             return ws_action_ok(array(
-                'runs' => array_map(function ($run) use ($viewer, $numbers, $results) {
-                    return ws_action_flow_run_present($viewer, $run + array('result' => $results[(int) $run['id']]), $numbers[(int) $run['version_id']] ?? 0);
+                'runs' => array_map(function ($run) use ($viewer, $numbers, $results, $at, $about) {
+                    $shown = ws_action_flow_run_present($viewer, $run + array('result' => $results[(int) $run['id']]), $numbers[(int) $run['version_id']] ?? 0);
+
+                    if ($at) {
+                        $shown['at'] = $at[(int) $run['id']] ?? null;
+                        $shown['about'] = $about[(int) $run['id']] ?? '';
+                    }
+
+                    return $shown;
                 }, $page['rows']),
                 'next' => $page['next'],
             ));

@@ -24,7 +24,7 @@ description: The counts of a flow's boxes (ws_flow_counts(), FE11a): runs waitin
 ## Where is it reached?
 - Panel action `ws_flow_counts` (`flow_id`, `days`), in the panel's action list and `ws_flow_actions_without_workspace()`; it answers `counts`. Panel action `ws_flow_runs_list` passes `node`, `state` and `days`.
 - API: `GET /workspace/flows/{id}/counts` (`workspace.flow_runs.counts`, `workspace:read`, an MCP tool, `WorkspaceFlowCounts` / `WorkspaceFlowBoxCount`); `GET /workspace/flows/{id}/runs` takes `node`, `state`, `days`.
-- The canvas does not draw the counts yet: that is step FE11b (`plans/flows-editor-next-steps-3.md`).
+- The canvas draws them as pills over boxes: [[workspace-flows-counts-canvas]]; the panel's runs list of a count also carries `at` and `about` there.
 
 ## Where is it tested?
 - `tests/workspace_flow_counts_test.php`: days, the grouped read, the fold, the runs list narrowing, the rights from the source, the action and the route. `tests/automation_flows_api_test.php` counts 28 flow routes.

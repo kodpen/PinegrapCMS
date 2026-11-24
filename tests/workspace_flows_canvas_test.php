@@ -4344,3 +4344,35 @@ JS
 	pg_assert_same(array(0, 2), $result['chosen']['taken'], 'the task now leaves on cancelled');
 	pg_assert_contains('ws_flow_trial {"flow_id":7,"run_id":0,"contact_id":5,"outcomes":"{\"t\":\"cancelled\"}"}', implode("\n", $result['sent']), 'asked again with the record and the outcome');
 }
+
+// A live flow's counts over a box (countPills()): runs waiting now (amber),
+// passes done (plain) and failed (rose) in the days, a start's passes said
+// as runs started; nothing for a box no run reached.
+function test_workspace_flows_canvas_count_pills()
+{
+	$result = ws_flows_canvas_test_node(
+		array('countPills'),
+		<<<'JS'
+var out = {};
+out.box = countPills({ node: 'w', waiting: 12, passed: 116, failed: 0 }, false);
+out.start = countPills({ node: 's', waiting: 0, passed: 128, failed: 0 }, true);
+out.failed = countPills({ node: 'm', waiting: 0, passed: 113, failed: 3 }, false);
+out.none = countPills(null, false);
+out.empty = countPills({ node: 'x', waiting: 0, passed: 0, failed: 0 }, false);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('state' => 'waiting', 'n' => 12, 'tone' => 'amber', 'text' => 'fl_counts_waiting'),
+		array('state' => 'passed', 'n' => 116, 'tone' => 'gray', 'text' => 'fl_counts_passed'),
+	), $result['box'], 'waiting first, then passed; no failed pill at 0');
+	pg_assert_same(array(array('state' => 'passed', 'n' => 128, 'tone' => 'gray', 'text' => 'fl_counts_started')), $result['start'], 'a start says how many started');
+	pg_assert_same(array('state' => 'failed', 'n' => 3, 'tone' => 'rose', 'text' => 'fl_counts_failed'), $result['failed'][1], 'failed in rose');
+	pg_assert_same(array(), $result['none'], 'no line: no pills');
+	pg_assert_same(array(), $result['empty'], 'all at 0: no pills');
+}
