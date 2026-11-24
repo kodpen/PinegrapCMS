@@ -23,6 +23,24 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /** Tries a call makes when another desk took its person first. */
 const PG_WAITING_CALL_TRIES = 5;
 
+/** Seconds a call waits for another call at the same desk to end. */
+const PG_WAITING_DESK_LOCK_WAIT = 5;
+
+/**
+ * The name of a desk's call lock. GET_LOCK names belong to the whole
+ * database server, so the name carries the database. Pure but for the
+ * database's name.
+ *
+ * @param int $desk_id
+ * @return string at most 64 characters
+ */
+function pg_waiting_desk_lock_name($desk_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : '';
+
+    return 'pg_waiting_desk_' . md5($database) . '_' . (int) $desk_id;
+}
+
 /**
  * The user ids a place's staff list names: positive, once each. Pure.
  *
@@ -318,7 +336,10 @@ function pg_waiting_desk_waiting($place, $services = null, $now = null)
  * "Call next": the first in calling order among the desk's services is
  * taken with one conditional UPDATE; when another desk took that person
  * first, the next one is tried. The person is told with the desk's name
- * and those behind may now be few enough ahead to be told.
+ * and those behind may now be few enough ahead to be told. The desk's lock
+ * is held from the look at the desk to the call: two clicks (or the screen
+ * and the API) at one desk would otherwise both find it free and call two
+ * people to it.
  *
  * @param array    $place
  * @param array    $desk    an open desk
@@ -330,7 +351,35 @@ function pg_waiting_call_next($place, $desk, $user_id, $now = null)
 {
     $now = ($now === null) ? time() : (int) $now;
 
-    if (($desk['state'] !== 'open') || pg_waiting_desk_current($desk['id'])) {
+    if ($desk['state'] !== 'open') {
+        return null;
+    }
+
+    $lock = "'" . e(pg_waiting_desk_lock_name($desk['id'])) . "'";
+
+    if ((int) db_value("SELECT GET_LOCK(" . $lock . ", " . PG_WAITING_DESK_LOCK_WAIT . ")") !== 1) {
+        return null;
+    }
+
+    try {
+        return pg_waiting_call_next_locked($place, $desk, $user_id, $now);
+    } finally {
+        db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+    }
+}
+
+/**
+ * The body of pg_waiting_call_next(), run while the desk's lock is held.
+ *
+ * @param array $place
+ * @param array $desk
+ * @param int   $user_id
+ * @param int   $now
+ * @return array|null
+ */
+function pg_waiting_call_next_locked($place, $desk, $user_id, $now)
+{
+    if (pg_waiting_desk_current($desk['id'])) {
         return null;
     }
 

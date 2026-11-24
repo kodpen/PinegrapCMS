@@ -121,3 +121,25 @@ function test_walk_in_queue_desk_wiring()
 	pg_assert_contains('pg_waiting_desk_scope_allows($qd_scope', $screen, 'staff reach only their places');
 	pg_assert_contains('Pinegrap - Enterprise Website Platform', $screen);
 }
+
+function test_walk_in_queue_desk_call_lock_is_per_desk_and_database()
+{
+	$name = pg_waiting_desk_lock_name(12);
+
+	pg_assert_contains('_12', $name, 'the lock names the desk');
+	pg_assert_true($name !== pg_waiting_desk_lock_name(13), 'each desk has its own lock');
+	pg_assert_true(strlen($name) <= 64, 'GET_LOCK takes at most 64 characters');
+
+	// Two clicks of Call next at one desk ran side by side, both found the
+	// desk free and each called a person: the call holds the desk's lock and
+	// looks at the desk again inside it.
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_desk.php');
+	$call = substr($module, strpos($module, 'function pg_waiting_call_next('));
+	$call = substr($call, 0, strpos($call, "\n}\n"));
+	pg_assert_contains('GET_LOCK', $call);
+	pg_assert_contains('RELEASE_LOCK', $call);
+	pg_assert_true(strpos($call, 'GET_LOCK') < strpos($call, 'pg_waiting_call_next_locked('), 'the call runs inside the lock');
+	pg_assert_false(strpos($call, 'pg_waiting_desk_current(') !== false, 'the desk is not looked at before the lock');
+	$locked = substr($module, strpos($module, 'function pg_waiting_call_next_locked('));
+	pg_assert_contains('pg_waiting_desk_current(', substr($locked, 0, strpos($locked, "\n}\n")), 'the desk is looked at inside the lock');
+}
