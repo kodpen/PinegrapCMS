@@ -152,6 +152,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-107.md: How does a site connect to Figma? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-107.md: How does a design come from Canva? (owner, 2026-11-24)
 - decisions-made-product-107.md: What did the architect answer from the census, as technical calls?
+- decisions-made-product-108.md: Where are the rules and the earlier parts?
+- decisions-made-product-108.md: Which ten features come in levels? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-108.md: What keeps the designer simple and quick?
+- decisions-made-product-108.md: What is the architect's reading, not his words?
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -1199,6 +1203,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-chrome-measures.md: The Page Design Studio chrome's sizes beside its colour tokens: type, heights, gaps, corners, shadows, focus ring, changed dot, the Options panel's parts in order and each control's states
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows
 - designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
 - designer/designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows

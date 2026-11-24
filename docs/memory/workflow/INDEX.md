@@ -154,6 +154,7 @@
 - decisions-made-product-105.md: Decisions made, product part 105 (2026-11-24 on): the visual designer before the launch: design variables, the Prototype as a drawing board, Figma and Canva import, quick starts, more shaping options
 - decisions-made-product-106.md: Decisions made, product part 106 (2026-11-24 on): seven more designer features before the launch, their screens drawn first by the design session with nobody approving a sheet
 - decisions-made-product-107.md: Decisions made, product part 107 (2026-11-24 on): Figma is connected by a personal access token pasted on Connections; Canva is an upload of exported pictures, with no Canva connection
+- decisions-made-product-108.md: Decisions made, product part 108 (2026-11-24 on): ten more designer features in three levels, and the rule that every designer feature keeps the designer simple and quick
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
