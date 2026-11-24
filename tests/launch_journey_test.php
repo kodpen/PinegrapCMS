@@ -223,3 +223,81 @@ function test_launch_journey_first_week_ends()
 	pg_assert_false($week['open'], 'the week ends by itself');
 	pg_assert_same(0, $week['left']);
 }
+
+// The stored row: read whole from anything, changed without losing a later
+// step's keys, hidden steps cleared only when a closed card comes back.
+function test_launch_journey_stored_row()
+{
+	$empty = pg_launch_journey_stored_read('not json');
+	pg_assert_same(array('purpose' => '', 'suggested' => '', 'live_at' => 0, 'hidden' => array(), 'closed' => false), $empty);
+
+	$read = pg_launch_journey_stored_read('{"purpose":"spaceship","hidden":["team","maintenance","team","x"],"live_at":-5,"closed":1}');
+	pg_assert_same('', $read['purpose'], 'an unknown purpose is not kept');
+	pg_assert_same(array('team'), $read['hidden'], 'only card steps, once');
+	pg_assert_same(0, $read['live_at']);
+	pg_assert_true($read['closed']);
+
+	$json = pg_launch_journey_stored_change('{"summary_hash":"abc","hidden":["team"]}', array('purpose' => 'shop', 'hide' => 'backups', 'closed' => false));
+	$row = json_decode($json, true);
+	pg_assert_same('abc', $row['summary_hash'], 'a later key is kept');
+	pg_assert_same('shop', $row['purpose']);
+	pg_assert_same(array('team', 'backups'), $row['hidden'], 'an open card keeps its hidden steps');
+
+	$back = json_decode(pg_launch_journey_stored_change('{"hidden":["team"],"closed":true}', array('closed' => false)), true);
+	pg_assert_same(array(), $back['hidden'], 'brought back with every step');
+	pg_assert_false($back['closed']);
+
+	$ignored = json_decode(pg_launch_journey_stored_change('', array('purpose' => 'nope', 'hide' => 'maintenance')), true);
+	pg_assert_same('', $ignored['purpose']);
+	pg_assert_same(array(), $ignored['hidden']);
+}
+
+// What a request may change, and the template map.
+function test_launch_journey_requests_and_templates()
+{
+	pg_assert_same(array('purpose' => 'blog'), pg_launch_journey_request_changes(array('purpose' => 'blog')));
+	pg_assert_same(array('hide' => 'team'), pg_launch_journey_request_changes(array('hide' => 'team')));
+	pg_assert_same(array(), pg_launch_journey_request_changes(array('hide' => 'maintenance', 'purpose' => 'x')));
+	pg_assert_same(array('closed' => true), pg_launch_journey_request_changes(array('close' => 1)));
+
+	pg_assert_same('shop', pg_launch_journey_template_purpose('pinegrap-store'));
+	pg_assert_same('clinic', pg_launch_journey_template_purpose('pinegrap-clinic'));
+	pg_assert_same('', pg_launch_journey_template_purpose('pinegrap-zoo'), 'an unknown template leaves it to the dialog');
+
+	foreach (pg_launch_journey_purposes() as $purpose) {
+		pg_assert_true(isset(pg_launch_journey_purpose_cards()[$purpose]), 'a card for ' . $purpose);
+	}
+}
+
+// The card: blockers first, no "Not for this site" on a blocker or a step
+// done, a line for every step, the mail line naming each record, links to
+// a settings section or a screen.
+function test_launch_journey_card()
+{
+	$facts = launch_journey_test_facts(array('robots_text' => "User-agent: *\nDisallow: /\n", 'mail_dkim' => 'error', 'team_signed_in' => false));
+	$card = pg_launch_journey_card('shop', $facts, array());
+
+	pg_assert_same('search_open', $card['rows'][0]['key'], 'the blocker first');
+	pg_assert_false($card['rows'][0]['hide'], 'a blocker cannot be hidden');
+	pg_assert_same('blocked', $card['status']['key']);
+	pg_assert_false($card['finished']);
+
+	foreach ($card['rows'] as $row) {
+		pg_assert_true($row['line'] !== '', $row['key'] . ' line');
+		pg_assert_true(preg_match('~^(#settings/[a-z_]+/pgset-[a-z-]+|[a-z_]+\.php)$~', $row['url']) === 1, $row['key'] . ' link');
+		if ($row['done']) {
+			pg_assert_false($row['hide'], $row['key'] . ' done is not hidden');
+		}
+		if ($row['key'] === 'mail') {
+			pg_assert_same('warning', $row['level']);
+			pg_assert_true(strpos($row['line'], 'DKIM') !== false, 'the mail line names DKIM');
+		}
+		if ($row['key'] === 'team') {
+			pg_assert_true($row['hide'], 'a step to do may be hidden');
+		}
+	}
+
+	$done = pg_launch_journey_card('company', launch_journey_test_facts(), array());
+	pg_assert_true($done['finished'], 'every step done');
+	pg_assert_same('ready', $done['status']['key']);
+}

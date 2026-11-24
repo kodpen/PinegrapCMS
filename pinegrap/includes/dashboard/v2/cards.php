@@ -73,6 +73,7 @@ function pg_dashboard_v2_cards()
     $built[] = 'visitmap';
     $built[] = 'mail';
     $built[] = 'packing';
+    $built[] = 'launch';
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -89,6 +90,7 @@ function pg_dashboard_v2_cards()
     $cards = array(
 
         // General
+        'launch'     => $card(lang('Set up your site'), 'bi-rocket-takeoff', 'general', 'L', null, 'launch'),
         'ai'         => $card(lang('Assistant'), 'bi-stars', 'general', 'M', null, 'workspace'),
         'goals'      => $card(lang('My goals'), 'bi-bullseye', 'general', 'S', null, 'all'),
         'pipeline'   => $card(lang('Work line'), 'bi-funnel', 'general', 'L', 2, 'all'),
@@ -179,7 +181,7 @@ function pg_dashboard_v2_card_timing()
  */
 function pg_dashboard_v2_gates()
 {
-    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows', 'mail');
+    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows', 'mail', 'launch');
 }
 
 /**
@@ -196,6 +198,45 @@ function pg_dashboard_v2_gates()
 function pg_dashboard_v2_mail_gate($visible, $ready)
 {
     return (bool) $visible && (bool) $ready;
+}
+
+/**
+ * May the person see the set-up card: an administrator (role 0), while the
+ * card was not closed (Hide set-up, or every step done). Pure.
+ *
+ * @param int  $role
+ * @param bool $closed
+ * @return bool
+ */
+function pg_dashboard_v2_launch_gate($role, $closed)
+{
+    return ((int) $role === 0) && !$closed;
+}
+
+/**
+ * The drawn layout with the set-up card first while the person may see it
+ * and it is not in the layout, so it comes to an administrator by itself,
+ * whatever layout or preset they keep. Pure.
+ *
+ * @param array|null $stored  the layout's cards list, null when every card is drawn
+ * @param array      $visible id => card
+ * @return array|null
+ */
+function pg_dashboard_v2_launch_first($stored, $visible)
+{
+    if (!is_array($stored) || !isset($visible['launch'])) {
+        return $stored;
+    }
+
+    foreach ($stored as $entry) {
+        if (is_array($entry) && isset($entry['id']) && ($entry['id'] === 'launch')) {
+            return $stored;
+        }
+    }
+
+    array_unshift($stored, array('id' => 'launch', 'w' => 'L'));
+
+    return $stored;
 }
 
 /**
@@ -270,6 +311,9 @@ function pg_dashboard_v2_gate($gate, $user)
         case 'flows':
             // What the Flows screen asks, with the Workspace on or off.
             return pg_flows_user_may($user);
+        case 'launch':
+            // The set-up card is for administrators, while it was not closed.
+            return pg_dashboard_v2_launch_gate($role, pg_launch_journey_stored()['closed']);
         case 'mail':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
             $visible = pg_messages_mail_visible($user);

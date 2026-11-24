@@ -5,7 +5,7 @@
  * Site Settings > General as folded rows: each part's line of state, the
  * rows' order, Organization's three groups, the IP as a line, the outgoing
  * proxy's line and link, the value rows of other host names and HTTPS,
- * the pg-switch, Date format's line, and the names
+ * the pg-switches, Date format's line, and the names
  * that stay (card ids, field names, the save, the search words).
  *
  * @author      Erdal Güral (Kodpen)
@@ -115,7 +115,8 @@ function test_settings_general_fold_pane_is_rows()
 	pg_assert_contains('$pg_settings_cards[] = pg_settings_fold($general_rows);', $pane, 'the pane is one list of folded rows');
 	pg_assert_same(1, substr_count($pane, '$pg_settings_cards[]'), 'no card outside the rows');
 	pg_assert_same(0, substr_count($pane, 'class="switch"'), 'no old switch drawing');
-	pg_assert_same(1, substr_count($pane, 'class="pg-switch"'), 'Verbose database errors is a pg-switch');
+	pg_assert_same(2, substr_count($pane, 'class="pg-switch"'), 'Verbose database errors and Show the set-up card are pg-switches');
+	pg_assert_contains('id="launch_show" name="launch_show"', $pane, 'the set-up card switch');
 
 	foreach (array('Server & Domain', 'Date & Time', 'Proxy Address', 'Verbose Database Errors', 'Website IP Address') as $old) {
 		pg_assert_false(strpos($pane, "lang('" . $old . "')") !== false, 'no "' . $old . '" label');

@@ -22,7 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards.php');
 // change or go missing.
 function test_dashboard_v2_cards_has_the_thirty_ids()
 {
-	$ids = array('ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes', 'mail',
+	$ids = array('launch', 'ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes', 'mail',
 		'content', 'comments', 'files', 'visitors', 'visitmap', 'engagement', 'gsearch', 'ga',
 		'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars',
 		'shop', 'salesmap', 'ops', 'orders', 'offers', 'recovery', 'fx', 'packing', 'perf', 'subs');
@@ -65,4 +65,23 @@ function test_dashboard_v2_gate_by_role()
 	pg_assert_false(pg_dashboard_v2_gate('visitors', $member), 'visitors: member');
 	pg_assert_true(pg_dashboard_v2_gate('visitors', $visitors), 'visitors: right');
 	pg_assert_false(pg_dashboard_v2_gate('nope', $designer), 'unknown');
+}
+
+// The set-up card is an administrator's while it is not closed, and it
+// comes first in a stored layout that lacks it.
+function test_dashboard_v2_launch_gate_and_place()
+{
+	pg_assert_true(pg_dashboard_v2_launch_gate(0, false), 'administrator');
+	pg_assert_false(pg_dashboard_v2_launch_gate(0, true), 'closed');
+	pg_assert_false(pg_dashboard_v2_launch_gate(1, false), 'designer');
+
+	$visible = array('launch' => array(), 'goals' => array());
+	$first = pg_dashboard_v2_launch_first(array(array('id' => 'goals')), $visible);
+	pg_assert_same('launch', $first[0]['id'], 'put first');
+	pg_assert_same(2, count($first));
+
+	$kept = array(array('id' => 'goals'), array('id' => 'launch', 'w' => 'M'));
+	pg_assert_same($kept, pg_dashboard_v2_launch_first($kept, $visible), 'where the person put it');
+	pg_assert_same(null, pg_dashboard_v2_launch_first(null, $visible), 'every card drawn');
+	pg_assert_same(array(), pg_dashboard_v2_launch_first(array(), array('goals' => array())), 'not visible');
 }
