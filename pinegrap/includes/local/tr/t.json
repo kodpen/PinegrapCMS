@@ -1864,6 +1864,7 @@
     "The Roastery": "Kavurma Atölyesi",
     "The Rules": "Kurallar",
     "The SEO check could not be run.": "SEO denetimi çalıştırılamadı.",
+    "The SEO check has never run on this site": "Bu sitede SEO denetimi hiç çalışmadı",
     "The SEO score job recalculates the SEO score of every page, product and product group. It only reads database columns, so it is quick, but it has to cover the whole site because the duplicate title and duplicate description checks depend on every other record. Schedule it before the SEO structure analysis job.": "SEO skoru görevi; her sayfanın, ürünün ve ürün grubunun SEO skorunu yeniden hesaplar. Yalnızca veritabanı sütunlarını okuduğu için hızlıdır; ancak yinelenen başlık ve yinelenen açıklama denetimleri diğer tüm kayıtlara bağlı olduğundan sitenin tamamını taraması gerekir. Bu görevi SEO yapı inceleme görevinden önce çalışacak şekilde zamanlayın.",
     "The SEO score of these pages is stale or has never been calculated. Scores are refreshed automatically while browsing, by the nightly job, or with the Refresh SEO Scores button.": "Bu sayfaların SEO skoru bayat veya hiç hesaplanmamış. Skorlar gezinirken, gecelik işle veya SEO Skorlarını Yenile düğmesiyle otomatik tazelenir.",
     "The SEO score will be calculated after the next save or list visit.": "SEO skoru bir sonraki kayıtta veya liste ziyaretinde hesaplanacak.",

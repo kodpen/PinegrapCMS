@@ -121,7 +121,7 @@ function pg_dashboard_v2_card_launch($user, $period, $compare)
         'purposes' => $purposes,
         'labels'   => pg_dashboard_v2_launch_labels(),
         // The foot: "Ready to go live?" and its check, or the go-live time.
-        'golive'   => pg_launch_journey_golive_view($purpose, $facts, $stored['hidden']),
+        'golive'   => pg_launch_journey_golive_view($purpose, $facts, $stored['hidden'], (string) ($_SESSION['software']['token'] ?? '')),
         'live_at'  => ($stored['live_at'] > 0) ? get_absolute_time(array('timestamp' => $stored['live_at'], 'format' => 'plain_text', 'size' => 'short')) : '',
     ));
 }

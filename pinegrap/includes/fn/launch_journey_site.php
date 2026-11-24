@@ -222,6 +222,17 @@ function pg_launch_journey_facts($user, $purpose)
 
     $facts['maintenance'] = pg_maintenance_holds(pg_maintenance_settings()['on'], pg_maintenance_settings()['until'], $now);
 
+    // Broken internal links as the SEO check last stored them; this request
+    // crawls nothing. No page ever analyzed means the check never ran.
+    if (pg_schema_has('seo_issue') && pg_schema_has('page', 'seo_struct_checked_at')) {
+        $seo = db_item("SELECT
+            (SELECT COUNT(*) FROM seo_issue WHERE code = 'link_broken_internal') AS broken,
+            (SELECT MAX(seo_struct_checked_at) FROM page) AS checked");
+        if (is_array($seo)) {
+            $facts['broken_links'] = ((int) $seo['checked'] > 0) ? (int) $seo['broken'] : 'never';
+        }
+    }
+
     return $facts;
 }
 

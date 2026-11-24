@@ -2514,6 +2514,7 @@
     "Run now": "Şimdi çalıştır",
     "Run of {var:1}": "{var:1} çalıştırması",
     "Run on schedule": "Zamanlamayla çalıştır",
+    "Run the SEO check": "SEO denetimini çalıştır",
     "Run the database upgrade steps again": "Veritabanı yükseltme adımlarını yeniden çalıştır",
     "Run the installer and follow the steps on the screen.": "Kurulum dosyasını çalıştırın ve ekrandaki adımları izleyin.",
     "Run the live version of this flow": "Bu akışın yayındaki sürümünü çalıştır",

@@ -1106,6 +1106,7 @@
     "Interiors for homes, offices, hotels and restaurants, down to the door handles.": "Evler, ofisler, oteller ve restoranlar için kapı kollarına kadar iç mekânlar.",
     "Intermediate": "Orta Seviye",
     "Internal Links": "İç Bağlantılar",
+    "Internal links point nowhere on {var:1} page{suffix:1}": "{var:1} sayfada iç bağlantılar hiçbir yere gitmiyor",
     "Internal note. Customers never see it.": "İç not. Müşteriler asla görmez.",
     "Internship": "Staj",
     "Intersect": "Kesişim",
