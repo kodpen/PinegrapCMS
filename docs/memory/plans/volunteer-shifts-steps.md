@@ -21,7 +21,7 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS4b (S) after VS4 (done, #11251): the `account.volunteering` list and its designer twins, as `account.tickets` (`commerce/event-tickets-page.md`). Features: G7.
   - Built (#11251), `core/volunteer-account-list.md`.
 
-- VS4c (S) after VS4 (done, #PRNUM): "Upload a new one" on the volunteer's page; `core/volunteer-document-upload.md`. Features: G2.
+- VS4c (S) after VS4 (done, #11279): "Upload a new one" on the volunteer's page; `core/volunteer-document-upload.md`. Features: G2.
 
 - VS5 (M) after VS4 (done, #11250): the general job's passes: the unfilled call, the day-before reminder, the document notices; SMS and WhatsApp kind `volunteer`, a service message (poll 207); the profile's "Shift calls" switch turns the calls off. Features: G4, G10.
   - Built (#11250), `core/volunteer-messages.md`.
