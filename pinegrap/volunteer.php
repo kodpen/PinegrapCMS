@@ -6,10 +6,10 @@
  * (?v=<volunteer id>&t=<token>) without an account: that volunteer's
  * programme, their next shifts with Cancel, Offer my place or Keep my place,
  * the shifts they fit with Sign up, Join the waitlist or Take this place,
- * and their documents' dates. It also takes the buttons of the my_account
- * widget's "volunteering" section for a signed-in member (?p= one of the
- * member's own profiles) and sends them back with a notice
- * (includes/fn/volunteer_signup.php).
+ * their documents' dates and their "Shift calls" choice. It also takes the
+ * buttons of the my_account widget's "volunteering" section for a signed-in
+ * member (?p= one of the member's own profiles) and sends them back with a
+ * notice (includes/fn/volunteer_signup.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +20,7 @@
 include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_page_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_messages.php');
 
 // A personal answer: never kept by a cache, never indexed, never framed,
 // and the signed address is not handed to another site as a referrer.
@@ -38,10 +39,20 @@ if ($vo_throttled) {
 
 if ($vo_post) {
     validate_token_field();
-    pg_request_single_values(array('v', 't', 'p', 'shift', 'action', 'role', 'target', 'send_to'));
+    pg_request_single_values(array('v', 't', 'p', 'shift', 'action', 'role', 'target', 'send_to', 'calls', 'channel'));
 }
 
 $vo_input = $vo_post ? $_POST : $_GET;
+
+// One posted button of the page: the "Shift calls" choice, or an action on a
+// shift.
+$vo_act = function ($volunteer_id) {
+    if ((string) ($_POST['action'] ?? '') === 'calls') {
+        return pg_volunteer_calls_save($volunteer_id, !empty($_POST['calls']), (string) ($_POST['channel'] ?? ''));
+    }
+
+    return pg_volunteer_self_act($volunteer_id, (string) ($_POST['action'] ?? ''), (int) ($_POST['shift'] ?? 0), (string) ($_POST['role'] ?? ''), (int) ($_POST['target'] ?? 0));
+};
 $vo_title = lang('My volunteering');
 $vo_page = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/volunteer.php';
 $vo_linked = isset($vo_input['t']) ? pg_volunteer_link_find($vo_input['v'] ?? '', $vo_input['t']) : null;
@@ -60,7 +71,7 @@ if ($vo_linked === null) {
         exit;
     }
 
-    $vo_answer = pg_volunteer_self_act($vo_profile, (string) ($_POST['action'] ?? ''), (int) ($_POST['shift'] ?? 0), (string) ($_POST['role'] ?? ''), (int) ($_POST['target'] ?? 0));
+    $vo_answer = $vo_act($vo_profile);
     $vo_text = pg_volunteer_answer_text($vo_answer);
     include_once('liveform.class.php');
     $vo_notices = new liveform('my_account');
@@ -76,7 +87,7 @@ $vo_link = $vo_page . '?v=' . $vo_linked . '&t=' . (string) $vo_input['t'];
 $vo_content = '';
 
 if ($vo_post) {
-    $vo_answer = pg_volunteer_self_act($vo_linked, (string) ($_POST['action'] ?? ''), (int) ($_POST['shift'] ?? 0), (string) ($_POST['role'] ?? ''), (int) ($_POST['target'] ?? 0));
+    $vo_answer = $vo_act($vo_linked);
     go($vo_link . '&done=' . rawurlencode($vo_answer));
 }
 

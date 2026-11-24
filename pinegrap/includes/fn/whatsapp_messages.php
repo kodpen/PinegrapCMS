@@ -94,6 +94,21 @@ function pg_whatsapp_message_events()
             'fields'  => array('store', 'place', 'number', 'desk'),
             'service' => true,
         ),
+        // A volunteer programme's call for a short shift and the day-before
+        // reminder (volunteer_messages.php): service messages, sent only to
+        // a volunteer who chose WhatsApp.
+        'volunteer_call' => array(
+            'kind'    => 'volunteer',
+            'label'   => lang('Volunteers: a shift needs you'),
+            'fields'  => array('store', 'name', 'programme', 'shift', 'page'),
+            'service' => true,
+        ),
+        'volunteer_reminder' => array(
+            'kind'    => 'volunteer',
+            'label'   => lang('Volunteers: your shift is tomorrow'),
+            'fields'  => array('store', 'name', 'programme', 'shift', 'page'),
+            'service' => true,
+        ),
     );
 }
 
@@ -119,6 +134,9 @@ function pg_whatsapp_message_field_labels()
         'ahead'           => lang('People ahead'),
         'desk'            => lang('Desk'),
         'link'            => lang('Link to the number\'s page'),
+        'programme'       => lang('Volunteer programme'),
+        'shift'           => lang('Shift day and time'),
+        'page'            => lang('Link to the volunteer\'s page'),
     );
 }
 

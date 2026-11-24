@@ -1208,6 +1208,19 @@ if (function_exists('pg_booking_reminders_run')) {
 
 }
 
+// Volunteer programmes (pg_volunteer_job_run() in
+// includes/fn/volunteer_messages.php): between 09:00 and 20:00 site time the
+// call to volunteers who fit a short shift within its call days and the
+// day-before reminder, then the notices 30 and 7 days before a document's
+// end. Before the mail and SMS passes, so a message made now goes out in this
+// run. Nothing on a site without the volunteer tables.
+if (pg_volunteer_ready()) {
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_messages.php');
+    pg_volunteer_job_run(date('Y-m-d H:i:s'));
+
+}
+
 // Application review reminders (pg_application_reminders_run() in
 // includes/fn/application_my_reviews.php): three days and one day before a
 // round's end, each reviewer with entries left gets one e-mail. Before the

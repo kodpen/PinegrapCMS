@@ -42,6 +42,10 @@ function pg_volunteer_page_secure_classes()
         'quiet'  => 'pg-button pg-button-sm pg-button-quiet',
         'fill'   => 'pg-button pg-button-sm pg-button-fill',
         'danger' => 'pg-button pg-button-sm pg-button-danger',
+        'check'  => 'd-flex align-items-center gap-3 mb-0',
+        'switch' => 'pg-switch',
+        'label'  => '',
+        'select' => 'pg-input w-auto',
     );
 }
 
@@ -184,10 +188,46 @@ function pg_volunteer_page_html(array $views, array $form, array $classes)
             $html .= '</div>';
         }
 
+        $html .= pg_volunteer_calls_form_html($form, $c, $volunteer, $programme['call_channels']);
         $html .= '</div></section>';
     }
 
     return $html;
+}
+
+/**
+ * The volunteer's "Shift calls" switch with the channel chosen, as one POST
+ * form to volunteer.php; '' when the programme makes no calls. The
+ * day-before reminder goes whatever it says.
+ *
+ * @param array $form      action, hidden
+ * @param array $c         the classes
+ * @param array $volunteer id, calls, call_channel
+ * @param array $channels  the programme's call_channels
+ * @return string HTML
+ */
+function pg_volunteer_calls_form_html(array $form, array $c, array $volunteer, array $channels)
+{
+    if (!$channels) {
+        return '';
+    }
+
+    $words = array('email' => lang('E-mail'), 'sms' => lang('SMS'), 'whatsapp' => lang('WhatsApp'));
+    $id = 'vo_calls_' . (int) $volunteer['id'];
+    $options = '';
+
+    foreach ($channels as $channel) {
+        $options .= '<option value="' . h($channel) . '"' . (((string) $volunteer['call_channel'] === $channel) ? ' selected' : '') . '>' . h($words[$channel] ?? $channel) . '</option>';
+    }
+
+    return '<h3 class="h6 mt-5 mb-2">' . h(lang('Shift calls')) . '</h3>'
+        . '<form method="post" action="' . h($form['action']) . '" class="d-flex flex-wrap align-items-center gap-3">' . $form['hidden']
+        . '<input type="hidden" name="p" value="' . (int) $volunteer['id'] . '"><input type="hidden" name="action" value="calls">'
+        . '<span class="' . $c['check'] . '"><input class="' . $c['switch'] . '" type="checkbox" role="switch" name="calls" value="1" id="' . $id . '"' . (!empty($volunteer['calls']) ? ' checked' : '') . '>'
+        . '<label class="' . $c['label'] . '" for="' . $id . '">' . h(lang('Ask me when a shift still needs volunteers')) . '</label></span>'
+        . ((count($channels) > 1) ? '<select name="channel" class="' . $c['select'] . '" aria-label="' . h(lang('Channel')) . '">' . $options . '</select>' : '<input type="hidden" name="channel" value="' . h($channels[0]) . '">')
+        . '<button type="submit" class="' . $c['quiet'] . '">' . h(lang('Save')) . '</button></form>'
+        . '<p class="' . $c['meta'] . ' mt-2 mb-0">' . h(lang('The reminder the day before your shift comes either way.')) . '</p>';
 }
 
 /**
@@ -205,6 +245,7 @@ function pg_volunteer_answer_text($answer)
         'cancelled' => lang('Your place was cancelled.'),
         'offered'   => lang('Your place is offered to the other volunteers. You keep it until someone takes it.'),
         'kept'      => lang('You kept your place.'),
+        'calls_saved' => lang('Your shift calls choice was saved.'),
     );
 
     return isset($texts[$answer]) ? array($texts[$answer], true) : array(lang('This could not be done: the shift changed meanwhile. Please check it and try again.'), false);

@@ -19,7 +19,7 @@ module: volunteer_shifts
 - `pg_volunteer_waitlist_pass($count, $signups)`: the free places go to `waiting` rows by `created`, then id; a row with `fits` false is passed over. With two waiting and one place, only the first moves.
 
 ## Whom does the unfilled call pick?
-- `pg_volunteer_call_pick()`: only while the role is short and `pg_volunteer_call_due()` (not started, within 3 days, `PG_VOLUNTEER_CALL_DAYS`); a volunteer who fits, has `calls` on, is not `called` for this shift and has no sign-up on it. The hour it goes out ("never at night") is the job's (VS5).
+- `pg_volunteer_call_pick()`: only while the role is short and `pg_volunteer_call_due()` (not started, within 3 days, `PG_VOLUNTEER_CALL_DAYS`); a volunteer who fits, has `calls` on, is not `called` for this shift and has no sign-up on it. It goes out only between 09:00 and 20:00 (`core/volunteer-messages.md`).
 
 ## Show-up rate, hours and notices?
 - `pg_volunteer_show_up_rate()`: whole percent `came` of `came` + `no_show` over the last 10 (`PG_VOLUNTEER_SHOW_UP_SHIFTS`); cancels not counted; null with none.
