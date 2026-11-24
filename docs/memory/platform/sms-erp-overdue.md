@@ -4,7 +4,7 @@ description: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind remi
 ---
 
 ## What is sent, and when?
-- Event `erp_overdue` in `pg_sms_message_events()` (kind `reminder`, not commercial, no İYS consent): fields `^^store^^`, `^^account^^` (account title), `^^count^^` (documents in this run), `^^total^^` (their open base amount, `erp_money_out()`). Off until switched on (Settings › Communication › SMS Messages).
+- Event `erp_overdue` in `pg_sms_message_events()` (kind `reminder`, not commercial, no İYS consent): fields `^^store^^`, `^^account^^` (account title), `^^count^^` (documents in this run), `^^total^^` (their open base amount, `erp_money_out()`). Off until switched on (Settings › Communication › SMS messages).
 - Queued by `erp_overdue_notify_customers()` → `erp_overdue_sms_queue()` (`includes/erp/notify.php`) in the overdue digest run, one text per account, at the first notice and again at the second (`erp_overdue_sms_stage()`: `second` when any of the account's documents was announced before). The stamps `overdue_notified_at` / `overdue_second_notified_at` already make each stage run once; no SMS column.
 - The e-mail store switch `ERP_OVERDUE_NOTIFY_CUSTOMER` does not gate it: the SMS event is its own opt-in. The account switch `overdue_notify_customer` does. An account without an e-mail address is still texted. Documents with no account (account_id 0) are not.
 

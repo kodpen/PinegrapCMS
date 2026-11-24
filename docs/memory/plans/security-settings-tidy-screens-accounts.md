@@ -14,7 +14,7 @@ description: Plan security-settings-tidy, its second screen: the Accounts and si
 - Two-step verification: Required for [Fields, select], "Sign in with a passkey alone"; the encryption key line where it is missing.
 - Devices: "Limit devices per account", Max devices, "Refuse new sign-ins when the limit is full", all drawn while off.
 - Sign in with Google, Microsoft and Apple: three [Connect row]s: the provider's pill ("Ready", "Not set up"), its sentence, its switch, "Set up in Connections" quiet; under them the line on the rules every provider follows.
-- Forms and spam: "CAPTCHA", "Check visitors against StopForumSpam", the form submission limits' three boxes with "the allowed list" linked, Blocked e-mail addresses; a line names the chat's own puzzle, under Communication › Chat, linking its row.
+- Forms and spam: "CAPTCHA", "Check visitors against StopForumSpam", the form submission limits' three boxes with "the allowed list" linked, Blocked e-mail addresses; a line names the chat's own puzzle, under Communication › Chat on the site (`pgset-chat-site`), linking its row.
 - Registration and membership: the contact groups and e-mail addresses, Member ID label; "Send an expiration warning to members" and under it, always drawn, Subject, Page, Days before; its line says the membership job must run.
 - Audit trail: Keep lines for, "Open it" quiet. Deleting many at once: the switch and one line on where it applies. Encryption key: "Reset the encryption key" and its warning.
 - Under 576 px: rows full width, a connect row's switch and button under its sentence. Foot: Save the fill, one only.
