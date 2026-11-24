@@ -33,7 +33,7 @@ function api_queue_rehearsal_test_body($file, $function)
 
 	$end = strpos($source, "\nfunction ", $start + 10);
 
-	return substr($source, $start, ($end === false) ? null : ($end - $start));
+	return substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
 }
 
 // The refusals of the hours, the cap and the closing time are read by one
