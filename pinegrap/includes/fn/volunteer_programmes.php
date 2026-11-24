@@ -730,7 +730,8 @@ function pg_volunteer_people(array $programme, array $states, $volunteer_id = 0)
 /**
  * Moves a volunteer to a state when the move is allowed and nobody moved
  * them first; Approve also stamps who and when and sends the welcome
- * e-mail from the programme's text.
+ * e-mail from the programme's text; Mark as left gives up their coming
+ * shift places (pg_volunteer_left_release()).
  *
  * @param array  $programme
  * @param array  $volunteer pg_volunteer_people() row
@@ -753,6 +754,12 @@ function pg_volunteer_move(array $programme, array $volunteer, $to, $user_id)
 
     if ($volunteer['state'] === 'applied') {
         pg_volunteer_announce('volunteer.approved', (int) $volunteer['id']);
+    }
+
+    // A volunteer who left gives up their coming places to the waitlist.
+    if ($to === 'left') {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
+        pg_volunteer_left_release($programme, (int) $volunteer['id']);
     }
 
     if (($volunteer['state'] === 'applied') && validate_email_address((string) $volunteer['email_address'])) {

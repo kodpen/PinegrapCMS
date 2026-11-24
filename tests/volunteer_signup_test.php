@@ -120,3 +120,19 @@ function test_volunteer_page_is_sensitive()
 	pg_assert_true(strpos($page, 'validate_token_field();') < strpos($page, 'pg_volunteer_self_act('), 'every write checks the form token first');
 	pg_assert_contains('in_array($vo_profile, $vo_ids, true)', $page, 'a member acts on their own profiles only');
 }
+
+function test_volunteer_left_frees_coming_places()
+{
+	$rows = array(
+		array('id' => 1, 'shift_id' => 5, 'state' => 'signed', 'start' => '2026-12-10 09:00:00'),
+		array('id' => 2, 'shift_id' => 6, 'state' => 'waiting', 'start' => '2026-12-11 09:00:00'),
+		array('id' => 3, 'shift_id' => 7, 'state' => 'signed', 'start' => '2026-12-01 08:00:00'),
+		array('id' => 4, 'shift_id' => 8, 'state' => 'cancelled', 'start' => '2026-12-12 09:00:00'),
+		array('id' => 5, 'shift_id' => null, 'state' => 'signed', 'start' => null),
+	);
+
+	pg_assert_same(array(1, 2), array_column(pg_volunteer_left_frees($rows, '2026-12-01 10:00:00'), 'id'), 'signed and waiting places of shifts to come; a started shift, a cancel and hours outside a shift stay');
+	pg_assert_contains('pg_volunteer_left_release(', pg_test_function_source('pg_volunteer_move'), 'Mark as left gives the places up');
+	pg_assert_contains('_pg_volunteer_cancel_write(', pg_test_function_source('pg_volunteer_left_release'), 'each freed place runs the waitlist as a cancel does');
+	pg_assert_contains('_pg_volunteer_cancel_write(', pg_test_function_source('pg_volunteer_self_act'));
+}
