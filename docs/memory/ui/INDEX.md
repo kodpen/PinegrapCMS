@@ -454,7 +454,7 @@
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie [decision: decisions-made-product-21.md]
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
-- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
+- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours, old btn btn- / nav-tabs panel markup and old Workspace fields may only fall against its baseline; what it skips, --update
 - look-commerce-settings-screens.md: Site Settings categories Commerce, Accounting and Bookings in look A (S5a, #10426): buttons by rank, group headings, the stock and staff hours tables, what stayed
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
 - look-design-examples-patterns.md: The Patterns group of the Design examples screen: settings pane, connect row, empty list, starting-point sheet, numbered steps drawer, form drawer, Workspace parts, e-mail parts; their order and frame
