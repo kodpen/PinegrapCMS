@@ -14,7 +14,9 @@
  * an agent by its application) and when, and "Versions" with their count
  * at its end. Its menu: Read, Edit, Versions, Open on the notes screen
  * and, for the owner, the channel's edit switch ("People who may post here can
- * edit", ws_note_channel_edit).
+ * edit", ws_note_channel_edit) and "Move to this channel" (ws_note_move): the
+ * note becomes the channel's. A channel's note offers "Copy to my notes"
+ * (ws_note_copy_mine), the way back.
  *
  * Edit is a window over the channel with the note's writing box; a stale
  * save says who changed the note meanwhile and offers their version or
@@ -31,7 +33,8 @@
  * note" at its end, then one row per note (title, "Changed by <name> ·
  * <time>"), the latest change first, read a page at a time
  * (ws_channel_notes). A row opens the note; its menu holds Open, Versions,
- * Export and, for its writer and the channel's managers, Delete.
+ * Copy to my notes, Export and, for its writer and the channel's managers,
+ * Delete.
  *
  * assets/js/workspace.js calls card() from noteCardNode() and write() from
  * the attach menu, lending its helpers through window.PGWsKit and the
@@ -134,8 +137,9 @@
     // The card menu's items a reader gets, in order: everyone reads it and
     // sees its versions; a person's note opens on the notes screen (a
     // channel's note is on nobody's); Edit for who may change it; the
-    // channel's edit switch for its owner on the channel's own share (a
-    // group's share is the group's). Pure.
+    // channel's edit switch and Move to this channel for its owner on the
+    // channel's own share (a group's share is the group's); Copy to my
+    // notes on a channel's note. Pure.
     function menuItems(card) {
         var items = ['read'];
 
@@ -150,16 +154,20 @@
         }
 
         if (card && card.access === 'owner' && (card.channel_id > 0) && !card.via_group) {
-            items.push('channel_edit');
+            items.push('channel_edit', 'move');
+        }
+
+        if (card && card.owned) {
+            items.push('copy');
         }
 
         return items;
     }
 
-    // A row menu's items in the Notes tab, in order: Open, Versions, Export
-    // when the screen can export, Delete for who may. Pure.
+    // A row menu's items in the Notes tab, in order: Open, Versions, Copy to
+    // my notes, Export when the screen can export, Delete for who may. Pure.
     function rowItems(note, canExport) {
-        var items = ['open', 'versions'];
+        var items = ['open', 'versions', 'copy'];
 
         if (canExport) {
             items.push('export');
@@ -577,6 +585,31 @@
         }).catch(kit.fail);
     }
 
+    // Move to this channel: the owner's note becomes the channel's, after a
+    // question, since it leaves their notes and every other share.
+    function moveHere(kit, hooks, card) {
+        kit.ask(kit.t('cn_move_confirm'), kit.t('cn_move')).then(function (yes) {
+            if (!yes) {
+                return;
+            }
+
+            kit.api('ws_note_move', { note_id: card.id, channel_id: card.channel_id }).then(function () {
+                kit.toast(kit.t('cn_moved'), 'success');
+
+                if (hooks.sync) {
+                    hooks.sync();
+                }
+            }).catch(kit.fail);
+        });
+    }
+
+    // Copy to my notes: a channel's note copied into the reader's own.
+    function copyMine(kit, noteId) {
+        kit.api('ws_note_copy_mine', { note_id: noteId }).then(function () {
+            kit.toast(kit.t('cn_copied'), 'success');
+        }).catch(kit.fail);
+    }
+
     // Draws the note's first line as a small meta line when it is the
     // "Written up to …" line. The line is the first text block's first line
     // (up to its <br>), or the text's own first line when the note is one
@@ -729,12 +762,14 @@
                 edit: { icon: 'bi-pencil-square', label: kit.t('notes_card_edit'), action: function () { edit(kit, hooks, card); } },
                 versions: { icon: 'bi-clock-history', label: kit.t('cn_versions'), action: function () { versions(kit, hooks, card); } },
                 open: { icon: 'bi-box-arrow-up-right', label: kit.t('cn_open_notes'), action: function () { hooks.notes(card.id); } },
-                channel_edit: { icon: 'bi-people', label: kit.t('cn_channel_edit'), checked: !!card.channel_edit, action: function () { channelEdit(kit, hooks, card); } }
+                channel_edit: { icon: 'bi-people', label: kit.t('cn_channel_edit'), checked: !!card.channel_edit, action: function () { channelEdit(kit, hooks, card); } },
+                move: { icon: 'bi-box-arrow-in-down', label: kit.t('cn_move'), action: function () { moveHere(kit, hooks, card); } },
+                copy: { icon: 'bi-copy', label: kit.t('cn_copy_mine'), action: function () { copyMine(kit, card.id); } }
             };
 
             event.stopPropagation();
             hooks.menu(more, place.left, place.bottom + 4, menuItems(card).map(function (name) {
-                return (name === 'channel_edit') ? ['-', actions[name]] : [actions[name]];
+                return ((name === 'channel_edit') || (name === 'copy')) ? ['-', actions[name]] : [actions[name]];
             }).reduce(function (all, part) { return all.concat(part); }, []));
         });
         top.appendChild(more);
@@ -852,6 +887,7 @@
             var actions = {
                 open: { icon: 'bi-eye', label: kit.t('cn_open'), action: function () { hooks.read(note.id); } },
                 versions: { icon: 'bi-clock-history', label: kit.t('cn_versions'), action: function () { versions(kit, hooks, note); } },
+                copy: { icon: 'bi-copy', label: kit.t('cn_copy_mine'), action: function () { copyMine(kit, note.id); } },
                 'export': { icon: 'bi-filetype-md', label: kit.t('notes_export_md'), action: function () { window.location.href = url + '?note=' + note.id; } },
                 'delete': { icon: 'bi-trash', label: kit.t('notes_delete'), danger: true, action: function () { remove(note); } }
             };

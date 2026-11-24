@@ -259,7 +259,7 @@ function test_workspace_agent_instructions_note_lines()
 	pg_assert_true(strpos($text, $block) > strpos($text, implode("\n", ws_agent_instructions_writing_lines())), 'after the writing lines');
 	pg_assert_true(strpos($text, $block) < strpos($text, "\nNever:"), 'before the never-list');
 
-	foreach (array('POST /workspace/channels/{id}/notes', 'GET /workspace/notes/{id}', 'POST /workspace/notes/{id}', '"revision"', '409 changed_meanwhile', 'first line', 'never post it again') as $part) {
+	foreach (array('POST /workspace/channels/{id}/notes', 'GET /workspace/notes/{id}', 'POST /workspace/notes/{id}', '"revision"', '409 changed_meanwhile', 'first line', 'never post it again', 'POST /workspace/notes/{id}/move', 'GET /workspace/channels/{id}/notes') as $part) {
 		pg_assert_contains($part, $block, 'the block says: ' . $part);
 	}
 

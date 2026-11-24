@@ -263,7 +263,7 @@ console.log(JSON.stringify({
 		return;
 	}
 
-	pg_assert_same(array('read', 'edit', 'versions', 'open', 'channel_edit'), $result['owner'], 'the owner gets every item and the channel\'s edit switch');
+	pg_assert_same(array('read', 'edit', 'versions', 'open', 'channel_edit', 'move'), $result['owner'], 'the owner gets every item, the channel\'s edit switch and Move to this channel');
 	pg_assert_same(array('read', 'edit', 'versions', 'open'), $result['ownerGroup'], 'a note group\'s share has no switch: it is the group\'s');
 	pg_assert_same(array('read', 'edit', 'versions', 'open'), $result['ownerNoChannel'], 'no channel share, no switch');
 	pg_assert_same(array('read', 'edit', 'versions', 'open'), $result['editor'], 'who may edit gets Edit, not the switch');
@@ -319,8 +319,8 @@ console.log(JSON.stringify({
 	}
 
 	pg_assert_same(array('cn_written_by(Ayşe)', 'Changed by Build bot · now'), $result['foot'], '"Written by" the writer, then who changed it');
-	pg_assert_same(array('read', 'edit', 'versions'), $result['poster'], 'who may post edits it; no notes screen, no switch');
-	pg_assert_same(array('read', 'versions'), $result['reader'], 'a reader reads it and its versions');
+	pg_assert_same(array('read', 'edit', 'versions', 'copy'), $result['poster'], 'who may post edits it; no notes screen, no switch, no move; Copy to my notes');
+	pg_assert_same(array('read', 'versions', 'copy'), $result['reader'], 'a reader reads it and its versions, and copies it to their notes');
 }
 
 // The Notes tab: when it shows, a row's menu and its meta line.
@@ -347,9 +347,9 @@ console.log(JSON.stringify({
 	}
 
 	pg_assert_same(array(true, false, true, false), $result['shown'], 'shown once the channel has a note, or while it is the open tab');
-	pg_assert_same(array('open', 'versions', 'export', 'delete'), $result['deleter'], 'Open, Versions, Export, Delete for who may delete');
-	pg_assert_same(array('open', 'versions', 'export'), $result['reader'], 'no Delete for anybody else');
-	pg_assert_same(array('open', 'versions'), $result['noExport'], 'no Export where the screen has no export address');
+	pg_assert_same(array('open', 'versions', 'copy', 'export', 'delete'), $result['deleter'], 'Open, Versions, Copy to my notes, Export, Delete for who may delete');
+	pg_assert_same(array('open', 'versions', 'copy', 'export'), $result['reader'], 'no Delete for anybody else');
+	pg_assert_same(array('open', 'versions', 'copy'), $result['noExport'], 'no Export where the screen has no export address');
 	pg_assert_same('cn_changed_by(@mehmet) · 5 min', $result['meta'], '"Changed by <name> · <time>"');
 	pg_assert_same('5 min', $result['metaTime'], 'nobody named: the time alone');
 }
@@ -370,5 +370,21 @@ function test_workspace_channel_notes_js_tab_wiring()
 
 	foreach (array('cn_written_by', 'cn_changed_by', 'cn_tab', 'cn_tab_count', 'cn_search', 'cn_open', 'cn_none', 'cn_none_found', 'cn_older', 'cn_delete_confirm') as $key) {
 		pg_assert_contains("'" . $key . "'", $notes, 'the string ' . $key . ' is sent to the screen');
+	}
+}
+
+// Move to this channel and Copy to my notes call their panel actions, which
+// the panel's action table routes.
+function test_workspace_channel_notes_js_move_copy()
+{
+	$script = workspace_channel_notes_js_test_source();
+	$panel = workspace_channel_notes_js_test_source('includes/panel/actions.php');
+
+	pg_assert_contains("kit.api('ws_note_move', { note_id: card.id, channel_id: card.channel_id })", $script, 'Move to this channel moves the card\'s note into its channel');
+	pg_assert_contains("kit.t('cn_move_confirm')", $script, 'after a question');
+	pg_assert_contains("kit.api('ws_note_copy_mine', { note_id: noteId })", $script, 'Copy to my notes');
+
+	foreach (array('ws_note_move', 'ws_note_copy_mine', 'ws_channel_notes') as $action) {
+		pg_assert_contains("'" . $action . "'", $panel, $action . ' is in the panel\'s action table');
 	}
 }

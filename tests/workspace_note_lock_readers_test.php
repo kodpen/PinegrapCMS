@@ -34,6 +34,7 @@ function workspace_note_lock_readers()
 		'includes/workspace/api_claude.php'         => 'ws_note_locked_by_owner(',
 		'includes/workspace/api_resources.php'      => 'ws_api_note_locked_stop(',
 		'includes/workspace/api_note_groups.php'    => 'ws_api_note_locked_stop(',
+		'includes/workspace/api_channel_notes.php'  => 'ws_api_note_locked_stop(',
 		'includes/workspace/blocks.php'             => 'ws_note_lock_closed(',
 		'includes/workspace/conversation_timeline.php' => 'ws_note_lock_closed(',
 		'includes/workspace/notes.php'              => 'ws_note_lock_present(',

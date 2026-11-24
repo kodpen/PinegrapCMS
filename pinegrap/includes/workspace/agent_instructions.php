@@ -379,16 +379,18 @@ function ws_agent_instructions_writing_lines()
 
 /**
  * The part of the text that says where a plan or a long explanation goes:
- * a note shared in the channel, changed in place with its revision, never
- * posted again as new messages. It names only the API's note routes. Pure.
+ * a note of the channel's, changed in place with its revision, never posted
+ * again as new messages; one written before among the owner's own notes is
+ * moved to its channel. It names only the API's note routes. Pure.
  *
  * @return string[]
  */
 function ws_agent_instructions_note_lines()
 {
     return array(
-        'A plan or a long explanation (more than a few paragraphs, or a text you will keep up to date) is a note shared in the channel, not a message:',
-        '- Write it once with POST /workspace/channels/{id}/notes with {"title": "...", "body": "..."} (Markdown; headings are drawn in a note). Add "channel_edit": true when the channel\'s people should change it too. The answer gives note_id and "revision". Its card in the channel always shows the note as it is now.',
+        'A plan or a long explanation (more than a few paragraphs, or a text you will keep up to date) is a note of the channel, not a message:',
+        '- Write it once with POST /workspace/channels/{id}/notes with {"title": "...", "body": "..."} (Markdown; headings are drawn in a note). The note belongs to the channel: whoever may post there can change it, the channel\'s Notes tab lists it (GET /workspace/channels/{id}/notes), and it does not fill your owner\'s own notes. The answer gives note_id and "revision". Its card in the channel always shows the note as it is now.',
+        '- A note you wrote earlier among your owner\'s own notes and shared in a channel goes to that channel with POST /workspace/notes/{id}/move and {"channel_id": ...}, one call per note.',
         '- Its first line says up to which PR or message it is written, for example "Written up to [#12](https://github.com/o/r/pull/12)" or "Written up to <#message:ID>". Change that line with every update.',
         '- Change it in place, never post it again as new messages: GET /workspace/notes/{id} gives its body and "revision"; send the whole new body with that revision to POST /workspace/notes/{id}. A 409 changed_meanwhile answer means somebody changed it since you read it: read it again, merge, send again. Nothing was written.',
         '- A request is still closed with the answer route: answer in one short line that points at the note\'s card with <#message:ID>.',

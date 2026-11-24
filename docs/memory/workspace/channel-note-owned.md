@@ -23,7 +23,10 @@ description: A channel's note (ws_notes.owner_channel_id): access from the chann
 - `WS_NOTE_CHANNEL_LIMIT` 2000 per channel: "A channel can keep at most {var:1} notes." It does not count in the writer's `WS_NOTE_LIMIT`.
 - Its card still hangs on a `ws_note_shares` row (channel, message_id, `can_edit` 0): the message has no other link to the note. The row gives no access; `channel_edit` of the write is ignored, and Write a note no longer offers the switch. Deleting the card's message leaves the note in the Notes tab.
 
+## How does a person's note become the channel's, and back?
+- "Move to this channel" and "Copy to my notes": `channel-note-move.md`.
+
 ## When is it deleted?
 - With its channel: `ws_threads_purge()` (a discussion is the only channel deleted) calls `ws_note_channel_purge()`, which runs `ws_note_delete_rows()` for each, as `ws_note_delete()` does after its check.
 
-Related: docs/memory/plans/channel-notes-own.md, docs/memory/workspace/channel-notes-written.md
+Related: docs/memory/workspace/channel-notes-written.md, docs/memory/workspace/channel-notes-tab.md
