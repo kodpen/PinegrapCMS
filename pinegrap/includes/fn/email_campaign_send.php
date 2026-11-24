@@ -88,6 +88,148 @@ function pg_email_campaign_claim_token()
 }
 
 /**
+ * Which opt-out reading a commercial campaign recipient gets at the send.
+ * 'contact': a recipient picked from the contacts is sent only while a
+ * contact with its address is opted in. 'address': an automatic campaign's
+ * recipient stored without a contact (the contact named by the action was
+ * gone when the campaign was made) is refused when contacts with the address
+ * exist and none is opted in. '': an address the sender typed in ("Also
+ * send message to the following e-mail address") is sent as entered. Pure.
+ *
+ * @param string     $campaign_type  manual or automatic
+ * @param int|string $contact_id     email_recipients.contact_id
+ * @return string
+ */
+function pg_email_campaign_opt_out_rule($campaign_type, $contact_id)
+{
+    if ((int) $contact_id > 0) {
+        return 'contact';
+    }
+
+    return ($campaign_type === 'automatic') ? 'address' : '';
+}
+
+/**
+ * Whether an address read by its contacts is refused: some contact has it
+ * and none of them is opted in. Pure.
+ *
+ * @param int $contacts    contacts with the address
+ * @param int $opted_in    of them, opted in
+ * @return bool
+ */
+function pg_email_campaign_address_refused($contacts, $opted_in)
+{
+    return ((int) $contacts > 0) && ((int) $opted_in === 0);
+}
+
+/**
+ * Whether a recipient left the campaign's lists since the campaign was made:
+ * it unticked an included subscription group (an opt_in row of 0) and takes
+ * mail from no included group any more. A recipient with no refusal recorded
+ * (its group deleted, or removed from it by staff) is left to the global
+ * opt-in. Pure.
+ *
+ * @param int $opted_out  included subscription groups the address unticked
+ * @param int $still_in   included groups the address still takes mail from
+ * @return bool
+ */
+function pg_email_campaign_left_lists($opted_out, $still_in)
+{
+    return ((int) $opted_out > 0) && ((int) $still_in === 0);
+}
+
+/**
+ * The SELECT behind pg_email_campaign_left_lists(): opted_out and still_in
+ * of one address in one campaign's included groups. A group is still taken
+ * as the pick reads it (pg_email_campaign_recipient_query()): a member
+ * contact with the address, opted in, and for a subscription group an
+ * opt_in row of 1 or none. Pure.
+ *
+ * @param int    $campaign_id
+ * @param string $email_address
+ * @return string
+ */
+function pg_email_campaign_list_counts_query($campaign_id, $email_address)
+{
+    $campaign_id = (int) $campaign_id;
+    $address = e((string) $email_address);
+    $groups = "FROM contact_groups_email_campaigns_xref
+            INNER JOIN contact_groups ON contact_groups.id = contact_groups_email_campaigns_xref.contact_group_id";
+    $where = "(contact_groups_email_campaigns_xref.email_campaign_id = '" . $campaign_id . "')
+                AND (contact_groups_email_campaigns_xref.type = 'included')";
+
+    return "SELECT
+        (SELECT COUNT(*)
+            " . $groups . "
+            INNER JOIN contacts ON contacts.email_address = '" . $address . "'
+            INNER JOIN opt_in ON (opt_in.contact_id = contacts.id) AND (opt_in.contact_group_id = contact_groups.id)
+            WHERE
+                " . $where . "
+                AND (contact_groups.email_subscription = 1)
+                AND (opt_in.opt_in = 0)) AS opted_out,
+        (SELECT COUNT(*)
+            " . $groups . "
+            INNER JOIN contacts_contact_groups_xref ON contacts_contact_groups_xref.contact_group_id = contact_groups.id
+            INNER JOIN contacts ON (contacts.id = contacts_contact_groups_xref.contact_id) AND (contacts.email_address = '" . $address . "')
+            LEFT JOIN opt_in ON (opt_in.contact_id = contacts.id) AND (opt_in.contact_group_id = contact_groups.id)
+            WHERE
+                " . $where . "
+                AND (contacts.opt_in = 1)
+                AND ((contact_groups.email_subscription != 1) OR (opt_in.opt_in IS NULL) OR (opt_in.opt_in = 1))) AS still_in";
+}
+
+/**
+ * Whether a commercial campaign recipient opted out since the campaign was
+ * made, so it is dropped rather than sent: the global opt-in read as
+ * pg_email_campaign_opt_out_rule() says, then the campaign's own lists.
+ * The caller asks only for a commercial campaign; transactional ones reach
+ * opted-out contacts.
+ *
+ * @param int        $campaign_id
+ * @param string     $campaign_type  manual or automatic
+ * @param int|string $contact_id
+ * @param string     $email_address
+ * @return bool
+ */
+function pg_email_campaign_recipient_opted_out($campaign_id, $campaign_type, $contact_id, $email_address)
+{
+    $rule = pg_email_campaign_opt_out_rule($campaign_type, $contact_id);
+
+    if ($rule === '') {
+        return false;
+    }
+
+    // Any contact with the address counts, not only the one stored: the
+    // original contact might have been deleted or merged since.
+    $counts = db_item(
+        "SELECT COUNT(*) AS contacts, COALESCE(SUM(opt_in = '1'), 0) AS opted_in
+        FROM contacts
+        WHERE email_address = '" . e((string) $email_address) . "'");
+    $contacts = $counts ? (int) $counts['contacts'] : 0;
+    $opted_in = $counts ? (int) $counts['opted_in'] : 0;
+
+    if (($rule === 'contact') && ($opted_in === 0)) {
+        return true;
+    }
+
+    if (($rule === 'address') && pg_email_campaign_address_refused($contacts, $opted_in)) {
+        return true;
+    }
+
+    // A recipient picked from the campaign's groups who unticked them on the
+    // e-mail preferences screen after the campaign was scheduled.
+    if ($rule === 'contact') {
+        $lists = db_item(pg_email_campaign_list_counts_query($campaign_id, $email_address));
+
+        if ($lists && pg_email_campaign_left_lists($lists['opted_out'], $lists['still_in'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The email() properties of one campaign message. The purpose travels with
  * them: email() adds List-Unsubscribe and List-Unsubscribe-Post (RFC 8058)
  * only to a campaign whose purpose is commercial. The caller adds
