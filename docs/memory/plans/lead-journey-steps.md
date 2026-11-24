@@ -14,7 +14,7 @@ description: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and
 - LJ4b (S) done (#11291), after LJ4: the Hot contacts view on the contacts list (`lead-journey-screens.md`), its empty line, Open and "Remind me" (the follow-up), the alert's bell link to that view; the contact group conditions by interest score range and by topic (`includes/fn/audiences.php`, J9). Features: J9, J11.
 - LJ4c (S) done (#11301), after LJ4b: the Hot contacts view's "Followed by" column, the people holding an open follow-up task tagged with the contact, read in one batch, shown only with the Workspace on; no assignee column on contacts, no schema change (`visitors/lead-hot-contacts-followed-by.md`). Feature: J11.
 - LJ5 (M) done (#11116), after LJ2: first and last touch, the Lead sources report and its Excel. Feature: J12.
-- LJ6 (S) after LJ4c and LJ5: the API routes and types (`php tools/check_api_schema.php`), the MCP read tool; a hot contact's answer carries `followed_by`, the same people as the column (user ids, null with the Workspace off). Feature: J15.
+- LJ6 (S) done (#11315), after LJ4c and LJ5: the API routes and types (`php tools/check_api_schema.php`), the MCP read tool; a hot contact's answer carries `followed_by`, the same people as the column (user ids, null with the Workspace off). Feature: J15.
 - LJ7 (S) close-out: every J number checked against the code with its PR; `visitors/lead-journey.md` written, `visitors/visitor-channel-rule.md` and `core/contact-holders.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?

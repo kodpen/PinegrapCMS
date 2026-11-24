@@ -23,6 +23,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/customers.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/leads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/contact_groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
 
@@ -117,7 +118,7 @@ function test_api_customers_every_route_applies_the_group_rule()
 		);
 	}
 
-	pg_assert_same(16, $found, 'list, get, wishlist, consents, subscriptions and their three moves, credit with its issue and void, allow mail, create, update and both deletes');
+	pg_assert_same(19, $found, 'list, get, hot, journey, score, wishlist, consents, subscriptions and their three moves, credit with its issue and void, allow mail, create, update and both deletes');
 
 	pg_assert_contains('api_customer_owner_filter(', api_customers_test_function_source('api_customer_reachable_or_fail'), 'the record loader');
 	pg_assert_contains('api_customer_create_group(', api_customers_test_function_source('api_customer_create_group_or_fail'), 'the create\'s group');
