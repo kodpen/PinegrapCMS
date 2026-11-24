@@ -906,7 +906,17 @@ function ws_recurrence_save($viewer, $task, $data, $before = null)
             return array('ok' => false, 'error' => lang('The repeat could not be saved.'), 'field' => 'recurrence', 'changed' => false);
         }
 
-        db("UPDATE ws_tasks SET recurrence_id = '" . $series_id . "', updated_at = '" . $now . "' WHERE id = '" . (int) $task['id'] . "'");
+        // Two saves of the same task at once both read no running series and
+        // both insert one: only the first to tie it to the task keeps its
+        // series, the other is taken back, or each would hand out copies.
+        db("UPDATE ws_tasks SET recurrence_id = '" . $series_id . "', updated_at = '" . $now . "'
+            WHERE " . ws_recurrence_attach_where($task['id'], $task['recurrence_id'] ?? 0));
+
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            db("DELETE FROM ws_task_recurrences WHERE id = '" . $series_id . "'");
+
+            return array('ok' => true, 'error' => '', 'field' => '', 'changed' => false);
+        }
 
         if ($lead_sql !== '') {
             db("UPDATE ws_task_recurrences SET " . ltrim($lead_sql, ', ') . " WHERE id = '" . $series_id . "'");
@@ -991,6 +1001,19 @@ function ws_recurrence_moved($viewer, $before, $task, $following)
     }
 
     return true;
+}
+
+/**
+ * The WHERE that ties a new series to its task only while the task still
+ * holds the series it was read with (none, or an ended one). Pure.
+ *
+ * @param int      $task_id
+ * @param int|null $read_series_id the task's recurrence_id as it was read
+ * @return string
+ */
+function ws_recurrence_attach_where($task_id, $read_series_id)
+{
+    return "id = '" . (int) $task_id . "' AND COALESCE(recurrence_id, 0) = '" . (int) $read_series_id . "'";
 }
 
 /**
