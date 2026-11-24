@@ -9,7 +9,7 @@ priority: 6
 - Steps `[plan:launch-summary-files] LS<n> — <topic>`; both write `launch_summary.php` and `includes/fn/launch_summary.php`, so LS2 starts after LS1 landed. The table: `ui/launch-summary-lines.md`.
 
 ## What does each step build?
-- LS1 Open steps on the customer's page. Above the list "{done} of {all} steps done"; the done steps as today, then the steps not done with a "Waiting" pill, in the set-up card's order. Never the reason, the blocker's text or a setting's value; a step hidden on the card is not listed. `pg_launch_summary_done_steps()` gains a pure sibling for all steps with their state; tests.
+- LS1 (done, PR #11399) Open steps on the customer's page. Above the list "{done} of {all} steps done"; the done steps as today, then the steps not done with a "Waiting" pill, in the set-up card's order. Never the reason, the blocker's text or a setting's value; a step hidden on the card is not listed. `pg_launch_summary_done_steps()` gains a pure sibling for all steps with their state; tests.
 - LS2 A line that asks for files. The migration step adds `answer_kind` to `launch_summary_lines` with `install_add_column()` (0 text, 1 one file, 2 several files; existing rows 0). In the drawer every line has an "Answer" select: Text, One file, Several files. On the customer's page a file line draws a file field (several: `multiple`) and the list of what was sent, each with its name, size and a remove; no textarea.
 
 ## What are the rules of an upload?
