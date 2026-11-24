@@ -17,8 +17,12 @@
  *   and an answer box while the thread is open.
  * - A pin whose node the frame does not find on the drawn page is listed
  *   under "Not on the page any more".
+ * - On a link asking approval, "Review this page" opens a box in the comment
+ *   box's place: Approve this page or Request changes, a note (needed to
+ *   request changes) and the name, sent to the same door with a verdict.
+ *   The bar then names the verdict that stands and its day.
  *
- * place(), pinId(), missing(), threads() and unsent() are pure (tests/
+ * place(), pinId(), missing(), threads(), unsent() and reviewLine() are pure (tests/
  * prototype_comment_mode_test.php); init() runs the mode in a browser.
  * Served minified as assets/js/pg_proto_comments.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -96,6 +100,17 @@
     // box is then not replaced by another click.
     function unsent(value) {
         return typeof value === 'string' && value.trim() !== '';
+    }
+
+    // The bar's line for the verdict that stands on the page drawn: '' for
+    // none, "Changed since your last review" when the draft moved since,
+    // else the verdict with its day ({date}).
+    function reviewLine(verdict, strings, day) {
+        if (!verdict || typeof verdict !== 'object' || !strings) return '';
+        if (verdict.older) return String(strings.changed || '');
+        if (verdict.verdict === 'approved') return String(strings.approved || '').replace('{date}', day);
+        if (verdict.verdict === 'changes_requested') return String(strings.requested || '').replace('{date}', day);
+        return '';
     }
 
     /* ---------------------------------------------------------------------
@@ -269,6 +284,16 @@
             return li;
         }
 
+        // A form's Send button.
+        function sendButton(label) {
+            var go = el('button', 'btn btn-sm btn-solid theme-primary');
+            go.type = 'submit';
+            go.appendChild(el('span', 'bi bi-send me-1'));
+            go.firstChild.setAttribute('aria-hidden', 'true');
+            go.appendChild(el('span', 'pg-btn-label', label));
+            return go;
+        }
+
         // The form: Name and Comment (or Answer), Send. `parent` is the
         // thread answered, 0 for a new comment at `spot`.
         function form(parent, spot) {
@@ -286,11 +311,7 @@
             text.required = true;
             var error = el('div', 'fg-danger small mb-2 d-none');
             error.setAttribute('role', 'alert');
-            var go = el('button', 'btn btn-sm btn-solid theme-primary');
-            go.type = 'submit';
-            go.appendChild(el('span', 'bi bi-send me-1'));
-            go.firstChild.setAttribute('aria-hidden', 'true');
-            go.appendChild(el('span', 'pg-btn-label', parent ? S.answerSend : S.send));
+            var go = sendButton(parent ? S.answerSend : S.send);
             var nameField = field('pg-pc-name', S.name, name);
             var textField = field('pg-pc-text', parent ? S.answer : S.comment, text);
             f.appendChild(nameField.wrap);
@@ -492,9 +513,161 @@
         frame.addEventListener('load', send);
         rebuild();
         paint();
+        if (cfg.review) review(cfg.review);
+
+        // "Review this page" on a link asking approval: a box in the comment
+        // box's place with the two choices, a note (needed to request
+        // changes), the name kept in this browser and Send.
+        function review(R) {
+            var opener = document.getElementById('pg-proto-review');
+            var state = document.getElementById('pg-proto-review-state');
+            var RS = R.strings || {};
+            if (!opener) return;
+
+            function day(unix) {
+                var d = new Date(unix * 1000);
+                try { return d.toLocaleDateString(cfg.lang || undefined, { dateStyle: 'medium' }); } catch (e) { return d.toLocaleDateString(); }
+            }
+
+            function paintState() {
+                var v = R.verdict;
+                var line = reviewLine(v, RS, (v && v.created_at > 0) ? day(v.created_at) : '');
+                if (state) {
+                    state.textContent = line;
+                    state.title = line;
+                }
+            }
+
+            function show() {
+                var r = opener.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+                open = { place: null, thread: 0, vx: Math.max(0, r.left - fr.left), vy: 0, review: true };
+                var body = frameBox(RS.review + (R.page ? ': ' + R.page : ''));
+                var f = el('form', 'pg-proto-form');
+                f.noValidate = true;
+                var group = el('div', 'pg-proto-choices');
+                group.setAttribute('role', 'radiogroup');
+                group.setAttribute('aria-label', RS.review);
+                var picked = '';
+                var choices = [['approved', RS.approve, 'bi-check-lg'], ['changes_requested', RS.changes, 'bi-pencil']];
+                var buttons = choices.map(function (c) {
+                    // A choice looks as the bar's button that opened the box.
+                    var b = el('button', opener.className);
+                    b.type = 'button';
+                    b.setAttribute('role', 'radio');
+                    b.setAttribute('aria-checked', 'false');
+                    b.setAttribute('data-verdict', c[0]);
+                    b.appendChild(el('span', 'bi ' + c[2] + ' me-1'));
+                    b.firstChild.setAttribute('aria-hidden', 'true');
+                    b.appendChild(document.createTextNode(c[1]));
+                    group.appendChild(b);
+                    return b;
+                });
+                var choiceNote = el('div', 'fg-danger small mb-2 d-none');
+                choiceNote.id = 'pg-pr-choice-note';
+                var note = el('textarea', 'form-control form-control-sm');
+                note.rows = 3;
+                note.maxLength = R.noteMax || 1000;
+                var name = el('input', 'form-control form-control-sm');
+                name.type = 'text';
+                name.maxLength = R.nameMax || 60;
+                name.autocomplete = 'name';
+                name.required = true;
+                name.value = rememberedName();
+                var noteField = field('pg-pr-note', RS.noteOptional, note);
+                var nameField = field('pg-pr-name', S.name, name);
+                var error = el('div', 'fg-danger small mb-2 d-none');
+                error.setAttribute('role', 'alert');
+                var go = sendButton(S.send);
+                f.appendChild(group);
+                f.appendChild(choiceNote);
+                f.appendChild(noteField.wrap);
+                f.appendChild(nameField.wrap);
+                f.appendChild(error);
+                var foot = el('div', 'd-flex justify-content-end');
+                foot.appendChild(go);
+                f.appendChild(foot);
+                body.appendChild(f);
+
+                function again() {
+                    if (box && open) position(open.vx, open.vy);
+                }
+
+                buttons.forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        picked = b.getAttribute('data-verdict');
+                        buttons.forEach(function (o) {
+                            var on = (o === b);
+                            o.setAttribute('aria-checked', on ? 'true' : 'false');
+                            o.classList.toggle('btn-solid', on);
+                            o.classList.toggle('btn-outline', !on);
+                        });
+                        choiceNote.classList.add('d-none');
+                        noteField.wrap.querySelector('label').textContent = (picked === 'changes_requested') ? RS.note : RS.noteOptional;
+                        note.required = (picked === 'changes_requested');
+                        again();
+                    });
+                });
+
+                f.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (sending) return;
+                    var n = name.value.trim(), t = note.value.trim();
+                    clear(name, nameField.note);
+                    clear(note, noteField.note);
+                    choiceNote.classList.add('d-none');
+                    error.classList.add('d-none');
+                    if (!picked) { choiceNote.textContent = RS.choose; choiceNote.classList.remove('d-none'); }
+                    if (picked === 'changes_requested' && !t) refuse(note, noteField.note, RS.noteNeeded);
+                    if (!n) refuse(name, nameField.note, S.nameNeeded);
+                    if (!picked || !n || (picked === 'changes_requested' && !t)) { again(); return; }
+                    var data = new FormData();
+                    data.append('l', String(cfg.link));
+                    data.append('page_id', String(cfg.page));
+                    data.append('token', String(cfg.token));
+                    data.append('verdict', picked);
+                    data.append('name', n);
+                    data.append('note', t);
+                    sending = true;
+                    go.disabled = true;
+                    fetch(cfg.door, { method: 'POST', body: data, credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                        .then(function (res) { return res.json().catch(function () { return {}; }); })
+                        .then(function (answer) {
+                            sending = false;
+                            go.disabled = false;
+                            if (!answer || !answer.verdict) {
+                                error.textContent = (answer && answer.message) || S.failed;
+                                error.classList.remove('d-none');
+                                again();
+                                return;
+                            }
+                            keepName(n);
+                            R.verdict = answer.verdict;
+                            paintState();
+                            close();
+                        })
+                        .catch(function () {
+                            sending = false;
+                            go.disabled = false;
+                            error.textContent = S.network;
+                            error.classList.remove('d-none');
+                            again();
+                        });
+                });
+
+                position(open.vx, open.vy);
+                send();
+                buttons[0].focus();
+            }
+
+            opener.addEventListener('click', function () {
+                if (open && open.review) { close(); return; }
+                if (!holding()) show();
+            });
+            paintState();
+        }
     }
 
-    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, init: init };
+    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, reviewLine: reviewLine, init: init };
 
     // The viewer prints its settings as JSON beside the script.
     if (typeof document !== 'undefined') {

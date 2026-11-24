@@ -118,3 +118,158 @@ function test_prototype_approval_link_summary_shows_the_settings_without_the_add
 	pg_assert_false($summary['approval'], 'a row read before the step');
 	pg_assert_same('', $summary['answer_by']);
 }
+
+// A link row asking approval, as the store keeps it.
+function prototype_approval_link_test_row($over = array())
+{
+	return array_merge(array(
+		'id' => 4, 'style_id' => 2, 'created_by' => 7, 'allow_comments' => 1, 'approval' => 1, 'publish_rule' => 0,
+		'approver_name' => 'Ada', 'approver_email' => 'ada@example.com', 'answer_by' => null,
+	), $over);
+}
+
+function test_prototype_approval_link_verdict_public_reads_an_older_version()
+{
+	$row = array('id' => 9, 'verdict' => 'approved', 'author_name' => 'Ada', 'note' => '', 'fingerprint' => str_repeat('a', 40), 'created_at' => 100, 'link_id' => 4);
+
+	pg_assert_same(array('id' => 9, 'verdict' => 'approved', 'older' => false, 'name' => 'Ada', 'note' => '', 'created_at' => 100), pg_proto_verdict_public($row, str_repeat('a', 40)));
+	pg_assert_true(pg_proto_verdict_public($row, str_repeat('b', 40))['older'], 'the draft moved since');
+}
+
+function test_prototype_approval_link_viewer_review_only_for_a_link_asking_approval()
+{
+	pg_assert_same(null, pg_proto_viewer_review_data(prototype_approval_link_test_row(array('approval' => 0)), 'Home', null, ''));
+
+	$data = pg_proto_viewer_review_data(prototype_approval_link_test_row(), 'Home', null, str_repeat('a', 40));
+	pg_assert_same('Home', $data['page']);
+	pg_assert_same(null, $data['verdict'], 'not reviewed yet');
+	pg_assert_same(60, $data['nameMax']);
+	pg_assert_same(1000, $data['noteMax']);
+	pg_assert_false(isset($data['approver_email']), 'the address never goes to the viewer');
+	pg_assert_false(strpos(json_encode($data), 'ada@example.com') !== false);
+
+	foreach (array('review', 'approve', 'changes', 'note', 'noteOptional', 'noteNeeded', 'choose', 'approved', 'requested', 'changed') as $key) {
+		pg_assert_true(isset($data['strings'][$key]) && $data['strings'][$key] !== '', 'string ' . $key);
+	}
+
+	$standing = array('id' => 3, 'verdict' => 'changes_requested', 'author_name' => 'Ada', 'note' => 'Bigger logo', 'fingerprint' => str_repeat('a', 40), 'created_at' => 50);
+	$data = pg_proto_viewer_review_data(prototype_approval_link_test_row(), 'Home', $standing, str_repeat('a', 40));
+	pg_assert_same('changes_requested', $data['verdict']['verdict']);
+	pg_assert_false($data['verdict']['older']);
+}
+
+function test_prototype_approval_link_door_routes_a_verdict_after_the_gates()
+{
+	$door = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype_comment.php');
+	$gates = strpos($door, '$pg_pc_refusal = pg_proto_comment_door($pg_pc_facts);');
+	$ping = strpos($door, 'if (pg_proto_comment_is_ping($_POST))');
+	$verdict = strpos($door, 'if (pg_proto_verdict_is_post($_POST))');
+	$comment = strpos($door, '$pg_pc_checked = pg_proto_comment_check(');
+
+	pg_assert_true($gates !== false && $ping !== false && $verdict !== false && $comment !== false);
+	pg_assert_true($gates < $ping && $ping < $verdict && $verdict < $comment, 'gates, ping, verdict, then a comment');
+	pg_assert_true(pg_proto_verdict_is_post(array('verdict' => 'approved')));
+	pg_assert_false(pg_proto_verdict_is_post(array('text' => 'Hi')));
+	pg_assert_same(403, pg_proto_comment_error_status('approval_off'));
+	pg_assert_same(400, pg_proto_comment_error_status('note'));
+
+	foreach (array('approval_off', 'verdict', 'note') as $code) {
+		pg_assert_true(pg_proto_comment_error_message($code) !== lang('Sorry, we could not accept your request.'), $code . ' has its sentence');
+	}
+
+	// A link asking nothing is refused before a field is read.
+	$taken = pg_proto_verdict_take(prototype_approval_link_test_row(array('approval' => 0)), 11, array('verdict' => 'approved', 'name' => 'Ada'), time());
+	pg_assert_same('approval_off', $taken['error']);
+	pg_assert_same(403, $taken['status']);
+}
+
+function test_prototype_approval_link_bell_line_words_and_place()
+{
+	$words = pg_proto_verdict_bell_words('approved', 'Home', 'Ada');
+	pg_assert_same(lang('Prototype page approved'), $words['short']);
+	pg_assert_contains('Ada', $words['title']);
+	pg_assert_contains('Home', $words['title']);
+
+	$words = pg_proto_verdict_bell_words('changes_requested', 'Home', 'Ada');
+	pg_assert_same(lang('Changes requested on a prototype'), $words['short']);
+
+	$words = pg_proto_verdict_bell_words('approved', '', '');
+	pg_assert_same($words['short'], $words['title'], 'a deleted verdict and page');
+
+	include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+	pg_assert_same('content', pg_notification_module('prototype_verdict'));
+	pg_assert_same(false, pg_notification_visible(array('action' => 'prototype_verdict', 'target_user_id' => 0), array('id' => 3, 'role' => 0)), 'never unaddressed');
+	pg_assert_same(true, pg_notification_visible(array('action' => 'prototype_verdict', 'target_user_id' => 3), array('id' => 3, 'role' => 1)), 'the maker\'s');
+	pg_assert_same(false, pg_proto_verdict_bell(prototype_approval_link_test_row(array('created_by' => 0)), array('id' => 1), 'Home'), 'no maker, no line');
+}
+
+function test_prototype_approval_link_receipt_carries_the_address_never_the_password()
+{
+	$row = array('verdict' => 'changes_requested', 'author_name' => 'Ada', 'note' => "Bigger logo\nand blue");
+	$mail = pg_proto_verdict_receipt_words($row, 'Home', 'Shop', '2027-03-10', 'https://example.com/prototype.php?link=abc');
+
+	pg_assert_contains('Home', $mail['subject']);
+	pg_assert_contains('Ada', $mail['body']);
+	pg_assert_contains("Bigger logo\nand blue", $mail['body']);
+	pg_assert_contains('https://example.com/prototype.php?link=abc', $mail['body']);
+
+	$mail = pg_proto_verdict_receipt_words(array('verdict' => 'approved', 'author_name' => 'Ada', 'note' => ''), 'Home', 'Shop', '2027-03-10', '');
+	pg_assert_false(strpos($mail['body'], lang('Your note:')) !== false, 'no note, no heading');
+	pg_assert_false(strpos($mail['body'], lang('To look at the prototype again:')) !== false, 'no address to give');
+
+	pg_assert_false(pg_proto_verdict_receipt(prototype_approval_link_test_row(array('approver_email' => '')), array('verdict' => 'approved'), 'Home'), 'no address, no mail');
+	pg_assert_false(pg_proto_verdict_receipt(prototype_approval_link_test_row(array('approver_email' => 'nope')), array('verdict' => 'approved'), 'Home'));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_verdicts.php');
+	pg_assert_false(strpos($source, 'password_hash') !== false, 'the receipt never reads a password');
+}
+
+function test_prototype_approval_link_shell_draws_review_only_with_its_settings()
+{
+	$view = array(
+		'design' => 'Shop', 'pages' => array(array('id' => 11, 'name' => 'home', 'title' => 'Home')), 'current' => 11,
+		'frame_url' => 'prototype.php?frame=1', 'viewer' => 'prototype.php?link=x', 'software' => '/pinegrap',
+		'comments' => array('door' => 'd', 'link' => 4, 'page' => 11, 'token' => 't', 'comments' => array(), 'strings' => array()),
+	);
+
+	$html = pg_proto_shell_html($view);
+	pg_assert_false(strpos($html, 'id="pg-proto-review"') !== false, 'no review on a link asking nothing');
+
+	$view['comments']['review'] = pg_proto_viewer_review_data(prototype_approval_link_test_row(), 'Home', null, '');
+	$html = pg_proto_shell_html($view);
+	pg_assert_contains('id="pg-proto-review"', $html);
+	pg_assert_contains('id="pg-proto-review-state"', $html);
+	pg_assert_contains(h(lang('Review this page')), $html);
+}
+
+function test_prototype_approval_link_viewer_bar_line()
+{
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$out = array();
+	$status = 1;
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return;
+	}
+
+	$script = "var window = {};\n" . file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_proto_comments.js') . "\n"
+		. 'var S = { approved: "A {date}", requested: "R {date}", changed: "C" }, L = window.PGProtoComments.reviewLine;'
+		. 'console.log(JSON.stringify([L(null, S, "d"), L({ verdict: "approved", older: false }, S, "d"), L({ verdict: "changes_requested", older: false }, S, "d"), L({ verdict: "approved", older: true }, S, "d"), L({ verdict: "x" }, S, "d")]));';
+	$file = @tempnam(sys_get_temp_dir(), 'pgpr');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+
+	pg_assert_same(0, $status);
+	pg_assert_same(array('', 'A d', 'R d', 'C', ''), json_decode(implode("\n", $out), true));
+}

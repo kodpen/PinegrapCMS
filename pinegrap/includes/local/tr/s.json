@@ -2317,6 +2317,7 @@
     "Sent once to a new conversation's customer, at most once a day to an address.": "Yeni bir konuşmanın müşterisine bir kez, aynı adrese günde en çok bir kez gönderilir.",
     "Sent once to the customer of a new conversation, from the mailbox's address and the way answers are sent; not to a sender the checking server found forged, and at most once a day to the same address.": "Yeni bir konuşmanın müşterisine bir kez, kutunun adresinden ve yanıtların gönderildiği yoldan gönderilir; denetleyen sunucunun sahte bulduğu gönderene gönderilmez ve aynı adrese günde en çok bir kez gider.",
     "Sent one before?": "Daha önce gönderdiniz mi?",
+    "Sent the answers and a reminder": "Yanıtlar ve bir hatırlatma gönderilir",
     "Sent the form {var:1}": "{var:1} formunu gönderdi",
     "Sent to": "Gönderildiği adres",
     "Sent to #{var:1}. Claude answers there in a few minutes.": "#{var:1} kanalına gönderildi. Claude birkaç dakika içinde orada yanıtlar.",
