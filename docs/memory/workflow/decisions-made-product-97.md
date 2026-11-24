@@ -15,4 +15,4 @@ description: Decisions list, product part 97 (2026-11-21 on): with "Allow AI tra
 ## How does a training crawler pass? (architect, 2026-11-21)
 - It is taken off the bad-bot match only: it gets no good-bot privilege and no skipped check, so a request that only claims the name gains nothing a plain visitor does not have. The other firewall rules (attack patterns, bans, limits) stay.
 - The two kinds stay apart (`waf/waf-ai-bots-ranges.md`): user fetchers and AI search indexers keep their own switch and their range check; this switch does not touch them.
-- The step that brings it corrects `waf/waf-ai-bots-ranges.md` and the "Bots" row of the Firewall settings plan (`plans/security-settings-tidy.md`).
+- Brought by #11023: `waf/waf-ai-training-crawlers.md`; the Bots row says whether training crawlers pass (`ui/settings-firewall.md`).

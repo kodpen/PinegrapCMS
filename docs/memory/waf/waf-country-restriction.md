@@ -4,7 +4,7 @@ description: Firewall country restriction (waf_handle_country()): place in waf_r
 ---
 
 ## What does it do?
-- Settings › Firewall › Country Restriction. `config.waf_country_mode`: `off` (default), `allow` (only the listed countries get in), `block` (the listed ones are refused). `waf_country_list`: two-letter codes plus `T1` (Tor, only Cloudflare reports it), read by `waf_country_codes()`; the decision is `waf_country_refused()`.
+- Site Settings › Firewall and HTTPS › Countries (Restriction as a segmented control). `config.waf_country_mode`: `off` (default), `allow` (only the listed countries get in), `block` (the listed ones are refused). `waf_country_list`: two-letter codes plus `T1` (Tor, only Cloudflare reports it), read by `waf_country_codes()`; the decision is `waf_country_refused()`.
 - Runs only while the firewall is on; 403 in Block mode, `would-block` in Monitor. Log rule `geo-country`, category `country`, detail `<code> (<source>)` or `unknown`.
 - Not an offence (no `waf_register_offence()`): the visitor attacked nothing, and counting it would ban them twice.
 

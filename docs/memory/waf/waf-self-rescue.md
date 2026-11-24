@@ -13,7 +13,7 @@ module: waf_rescue
 - The script answers 404 to anything but `PHP_SAPI === 'cli'`, checked before `init.php` loads; unlike `waf_ranges_job.php` it is not reachable through the general job (`PG_CRON_DISPATCH`) or by a manager.
 - The single-ban e-mail names the command with the banned subject (`pg_waf_unban_command()`, `waf-ban-notice.md`).
 
-## What does Settings › Firewall refuse?
+## What does Site Settings › Firewall and HTTPS refuse?
 - A save whose block entries cover `waf_client_ip()` while no allow entry as submitted does (`pg_waf_own_address_blocks()`): "Nothing was saved", the covering entries named, checked before anything is written, like the country guard. Matching is `waf_ip_matches()`, so wildcards, CIDR, `*.*.*.*` (covers IPv6 too) and `::/0` count.
 
 ## Does the sign-in lock honour the allow list?

@@ -19,7 +19,7 @@ module: waf_notice
 - State per rule (ban times and subjects of the last hour, at most 100, and the burst time) in `data/temp/waf_ban_notice_state.json`, read and written under one `flock()`. A cache: losing it costs at most one more e-mail.
 
 ## Where is a ban linked to its log?
-- `pg_waf_ban_log_url()`: `view_waf_log.php?range=7&search=…`; an address is searched as is, a range by the part its prefix keeps (`pg_waf_ban_log_search()`: `2001:db8:1:2::/64` → `2001:db8:1:2:`, `/24` → three octets and a dot). Used by the Automatic Temporary Bans badges in Settings › Firewall (`includes/settings/prep.php`) and the Active Automatic Bans table of `view_waf_log.php`.
+- `pg_waf_ban_log_url()`: `view_waf_log.php?range=7&search=…`; an address is searched as is, a range by the part its prefix keeps (`pg_waf_ban_log_search()`: `2001:db8:1:2::/64` → `2001:db8:1:2:`, `/24` → three octets and a dot). Used by the bans drawer's addresses in Firewall and HTTPS › Addresses (`includes/settings/prep.php`) and the Active Automatic Bans table of `view_waf_log.php`.
 
 ## How is it tested?
 - `tests/waf_ban_notice_test.php`: line round trip and rejects, the plan (alone, burst across runs and in one run, pruning, caps), the log search and both mail bodies' escaping.
