@@ -1,6 +1,6 @@
 ---
 name: layout-type-converter-catalog-detail
-description: A catalog detail page's layout file into the Catalog Detail widget (LE8c): each piece, the record and cross_sell options, the widget's new flags, tokens, sections and sidebar forms
+description: A catalog detail page's layout file into the Catalog Detail widget (LE8c, #11436): each piece, the record and cross_sell options, the widget's new flags, tokens, sections and sidebar forms
 module: layout_convert
 ---
 
