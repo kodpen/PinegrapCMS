@@ -6965,6 +6965,7 @@
     "Answer by cannot be in the past.": "Son yanıt tarihi geçmişte olamaz.",
     "Answer by cannot be later than the day the link runs out.": "Son yanıt tarihi bağlantının süresinin dolduğu günden sonra olamaz.",
     "Answer by must be a date.": "Son yanıt tarihi bir tarih olmalıdır.",
+    "Answer by {var:1}: the prototype of {var:2}": "Son yanıt günü {var:1}: {var:2} prototipi",
     "Answer by: {var}": "Son yanıt tarihi: {var}",
     "Answer goes to": "Yanıtın gideceği yer",
     "Answer in review": "Yanıt inceleniyor",

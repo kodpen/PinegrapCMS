@@ -21,6 +21,6 @@ module: prototype_verdicts
 
 ## Who hears of a verdict?
 - Bell: `prototype_verdict` to the link's maker for every verdict (the comments' burst bounds a guest), reference the verdict, title the page's name; module `content`; opens the design at the Comments tab as the comment's line does.
-- Receipt: `pg_proto_verdict_receipt()` mails the approver's typed address, queued, from the site's address: the verdict, the page, the design, the day, the note, the link's address when the site key reads it back. Never the password; no address, no mail. The answer mail and the "Answer by" reminder are PA5.
+- Receipt: `pg_proto_verdict_receipt()` mails the approver's typed address, queued, from the site's address: the verdict, the page, the design, the day, the note, the link's address when the site key reads it back. Never the password; no address, no mail. The answer mail and the "Answer by" reminder: `prototype-approval-mails.md`.
 
 Related: docs/memory/designer/prototype-approval-store.md, docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/designer/designer-prototype-comments-door.md

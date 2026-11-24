@@ -1208,6 +1208,16 @@ if (function_exists('pg_booking_reminders_run')) {
 
 }
 
+// Prototype review reminders (pg_proto_answer_by_reminders_run() in
+// includes/fn/prototype_review_mails.php): once a day between 09:00 and 20:00
+// site time, the approver of a link whose "Answer by" date is tomorrow is
+// reminded of the pages still undecided. One setting read on other runs.
+if (function_exists('pg_proto_answer_by_reminders_run')) {
+
+    pg_proto_answer_by_reminders_run(time());
+
+}
+
 // Volunteer programmes (pg_volunteer_job_run() in
 // includes/fn/volunteer_messages.php): between 09:00 and 20:00 site time the
 // call to volunteers who fit a short shift within its call days and the
