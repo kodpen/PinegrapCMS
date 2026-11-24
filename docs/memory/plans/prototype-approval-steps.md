@@ -14,7 +14,7 @@ description: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the 
 
 - PA4 (M) after PA2: the approval hold beside `pg_experiment_variant_hold_message()` and `pg_page_bundle_hold()`, read where the server already refuses a held draft; a test listing every writer of a draft going live (`prototype-approval.md`) that fails for one without the hold; the held row "Waiting for approval" (`designer/designer-publish-sheet-held-row.md`); role 0's override with its reason in the Site Log. Features: A5.
 
-- PA5 (S) done (#PRNUM): the answer mail (from `pg_proto_comment_answer()`, hourly per link by a `waf_rate_exceeded()` counter as the bell's) and the "Answer by" reminder in the general job. Features: A6.
+- PA5 (S) done (#11377): the answer mail (from `pg_proto_comment_answer()`, hourly per link by a `waf_rate_exceeded()` counter as the bell's) and the "Answer by" reminder in the general job. Features: A6.
 
 - PA6 (S) after PA3: the three events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`), the guest's words quoted; the read-only API routes with their types, `php tools/check_api_schema.php`; the read-only MCP tools (verdicts, comments). Features: A8.
 
