@@ -12,7 +12,7 @@ description: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the 
 
 - PA3 (M) after PA2: round two in the viewer ("Show what changed" outlines from the node marks comment mode already draws, `designer/designer-prototype-comments-viewer.md`); the verdicts in the designer's Comments list and the dialog's links list. Features: A4, A7.
 
-- PA4 (M) after PA2: the approval hold beside `pg_experiment_variant_hold_message()` and `pg_page_bundle_hold()`, read where the server already refuses a held draft; a test listing every writer of a draft going live (`prototype-approval.md`) that fails for one without the hold; the held row "Waiting for approval" (`designer/designer-publish-sheet-held-row.md`); role 0's override with its reason in the Site Log. Features: A5.
+- PA4 (M) done (#11359): the approval hold beside `pg_experiment_variant_hold_message()` and `pg_page_bundle_hold()`, read where the server already refuses a held draft; a test listing every writer of a draft going live (`prototype-approval.md`) that fails for one without the hold; the held row "Waiting for approval" (`designer/designer-publish-sheet-held-row.md`); role 0's override with its reason in the Site Log. Features: A5.
 
 - PA5 (S) after PA2: the answer mail (from `pg_proto_comment_answer()`, hourly per link by a `waf_rate_exceeded()` counter as the bell's) and the "Answer by" reminder in the general job. Features: A6.
 

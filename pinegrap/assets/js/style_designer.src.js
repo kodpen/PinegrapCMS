@@ -85112,6 +85112,9 @@ const StyleDesigner = (function () {
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
+            // An administrator's reason for publishing a draft that waits
+            // for a prototype link's approval (pg_proto_approval_override_reason()).
+            if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -85823,9 +85826,12 @@ const StyleDesigner = (function () {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
         });
         // An open experiment's variant stays a draft; the server refuses it too.
-        var held = on ? [] : list.filter(_pgExperimentHeld);
+        // A draft waiting for approval goes only with an administrator's
+        // reason (the Publish sheet's "Publish anyway"), which the server checks.
+        var _stays = function (p) { return _pgExperimentHeld(p) && !p._approvalOverride; };
+        var held = on ? [] : list.filter(_stays);
         if (held.length) {
-            list = list.filter(function (p) { return !_pgExperimentHeld(p); });
+            list = list.filter(function (p) { return !_stays(p); });
             if (!list.length) { sdToast(esc(_pgHeldText(held[0])), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
@@ -86186,7 +86192,17 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         window.PgDesignerPublish.open({
             rows: _pgPublishRows,
-            publish: function (keys, hold, report) {
+            publish: function (keys, hold, report, reasons) {
+                // The reasons ride on the pages for this one save only.
+                var over = [];
+                Object.keys(reasons || {}).forEach(function (k) {
+                    var p = _pgPageByKey(k);
+                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                });
+                if (over.length) {
+                    var _report = report;
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
