@@ -121,3 +121,18 @@ function test_api_notifications_scope_panel_rights_unchanged()
 
 	pg_assert_same(array(), api_notifications_scope_test_visible_ids($rights), 'no e-commerce right');
 }
+
+// An alert about the shop names orders (a pack closed short, parcels, the
+// sales watch): like the order lines, it needs orders:read; a software alert
+// does not.
+function test_api_notifications_scope_shop_alert_needs_orders_read()
+{
+	$owner = array('id' => 7, 'role' => 1);
+	$with = api_notifications_rights($owner, array('account:read', 'orders:read'));
+	$without = api_notifications_rights($owner, array('account:read'));
+
+	pg_assert_true(pg_notification_visible(array('action' => 'ops', 'order_total' => 'pack_short'), $with), 'a pack closed short with orders:read');
+	pg_assert_false(pg_notification_visible(array('action' => 'ops', 'order_total' => 'pack_short'), $without), 'a pack closed short without it');
+	pg_assert_false(pg_notification_visible(array('action' => 'ops', 'order_total' => 'orders_stopped'), $without), 'a sales watch alert without it');
+	pg_assert_true(pg_notification_visible(array('action' => 'ops', 'order_total' => 'backup_failed'), $without), 'a software alert without it');
+}

@@ -230,19 +230,15 @@ function test_sales_watch_price_settings_defaults()
 	pg_assert_same(0.5, $settings['price_share']);
 }
 
-// The bell row of a price error opens the product it names; one without a
-// product opens the code's own screen.
+// The bell row of a price error opens the product it names while it is
+// there; one without a product, or whose product was deleted, opens the
+// code's own screen (pg_ops_alert_bell_url(), asked by the bell's display).
 function test_sales_watch_price_bell_links_product()
 {
-	require_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+	pg_assert_same('edit_product.php?id=42', pg_ops_alert_bell_url('price_error', 0, 42, true, false));
+	pg_assert_same('view_products.php', pg_ops_alert_bell_url('price_error', 0, 0, false, false));
+	pg_assert_same('view_products.php', pg_ops_alert_bell_url('price_error', 0, 42, false, false));
 
-	$row = array('action' => 'ops', 'order_total' => 'price_error', 'title' => 'P1: 9 sold', 'product_id' => 42);
-	$display = pg_notification_display($row, 0);
-
-	pg_assert_same('edit_product.php?id=42', $display['url']);
-
-	$row['product_id'] = 0;
-	$display = pg_notification_display($row, 0);
-
-	pg_assert_same('view_products.php', $display['url']);
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+	pg_assert_contains('pg_ops_alert_bell_url($code, $reader_role, $product_id, $product_exists)', $source, 'the bell asks it');
 }
