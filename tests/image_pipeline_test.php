@@ -79,12 +79,12 @@ function test_image_display_size_applies_orientation()
 		pg_assert_same(array(60, 120), pg_image_display_size($path), 'a phone portrait is taller than wide');
 
 		// An Exif block whose orientation cannot be read: the stored size,
-		// not nothing, so the cache still has a size.
+		// not nothing, so the cache still has a size. Some exif builds read
+		// such a block as orientation 1; the answer is the same either way.
 		$bytes = file_get_contents($path);
 		file_put_contents($path, str_replace('II' . pack('v', 42), 'XX' . pack('v', 42), $bytes));
 
-		pg_assert_same(array(0, 0), pg_image_oriented_size($path), 'no oriented size');
-		pg_assert_same(array(120, 60), pg_image_display_size($path), 'the stored size instead');
+		pg_assert_same(array(120, 60), pg_image_display_size($path), 'the stored size');
 
 		file_put_contents($path, 'not a picture');
 		pg_assert_same(array(0, 0), pg_image_display_size($path), 'not a picture');
