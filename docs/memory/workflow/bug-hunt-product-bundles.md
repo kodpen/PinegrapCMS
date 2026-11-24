@@ -14,7 +14,7 @@ module: bundles
 - "Discount on the Sum (%)" typed as `10%` or `% 10` was saved as no discount; one per cent sign is now read.
 
 ## Which issues did it open?
-- #10682: two orders can both take the last bundle (or unit); no lock between the submit check and the take. Decided (`decisions-made-product-86.md`): an oversold warning, built in `order-oversold-warning.md` (PR #11077); holding units is `plans/stock-holds.md`.
+- #10682: two orders can both take the last bundle (or unit); no lock between the submit check and the take. Decided (`decisions-made-product-86.md`): an oversold warning, built in `order-oversold-warning.md` (PR #11077); holding units is `commerce/stock-holds.md`.
 - #10683 needs no decision; a separate worker fixes it in `ecommerce.php`. #10682 and #10684 wait for the owner (polls 172 and 171): architect 2026-11-20, agent channel message 10458.
 
 ## What is a known limit?
