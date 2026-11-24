@@ -24,7 +24,8 @@ module: volunteer_board, volunteer_board_view
 
 ## What does a shift's drawer do?
 - Lists each role with its pill and the names signed up, waitlist rows and offered places marked; a swap waiting for approval has Approve and Refuse (`core/volunteer-signup.md`).
-- Call volunteers: for each short role `pg_volunteer_call_pick()` over the active volunteers (skills, completed courses through `user.user_contact`, documents, free hours, their signed shifts nearby); asks only within the call days. Sends the programme's Call message by each volunteer's channel and adds the ids to the shift's `called`, so nobody is asked twice; only between 09:00 and 20:00 (`core/volunteer-messages.md`). The hint says how many.
+- Call volunteers: for each short role the programme still has `pg_volunteer_call_pick()` over the active volunteers (skills, completed courses through `user.user_contact`, documents, free hours, their signed shifts nearby); asks only within the call days. Sends the programme's Call message by each volunteer's channel and adds the ids to the shift's `called`, so nobody is asked twice; only between 09:00 and 20:00 (`core/volunteer-messages.md`). The hint says how many.
+- A role removed in Set-up after its shifts were made calls nobody, since no volunteer can take its place (#11338).
 - Remove (danger): the confirm says how many are told; deletes the shift and its sign-ups and e-mails the signed and waiting volunteers. A shift with a check-in or approved hours stays (button off).
 
 Related: docs/memory/core/volunteer-programmes.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md

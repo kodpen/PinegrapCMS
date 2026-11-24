@@ -11,7 +11,7 @@ module: volunteer_messages
 ## When do calls and reminders go?
 - Only between 09:00 and 20:00 site time (`pg_volunteer_send_hour()`, `PG_VOLUNTEER_SEND_FROM` / `_TO`): never at night, also from the board's button, whose drawer then says the call goes by itself later (`pg_volunteer_call_hint()`).
 - Call: each open programme with a call channel, shifts not started within its call days (`pg_volunteer_call_due()`); the ids go into the shift's `called` by one UPDATE conditional on the list read, then the messages, so two runs never ask anyone twice. A full role asks nobody.
-- Reminder: shifts of open programmes starting tomorrow or later today (`pg_volunteer_reminder_due()`); `reminded_at` is claimed first, then every signed volunteer not left is told, calls on or off.
+- Reminder: shifts starting tomorrow or later today (`pg_volunteer_reminder_due()`), also of a paused programme, whose shifts still run (#11338; before, a paused programme's volunteers got none); `reminded_at` is claimed first, then every signed volunteer not left is told, calls on or off.
 - At most 200 shifts or documents a pass (`PG_VOLUNTEER_PASS_ROWS`), nearest first.
 
 ## By which channel?
@@ -21,6 +21,7 @@ module: volunteer_messages
 
 ## What do the document notices do?
 - A document of a volunteer not left, ending within 30 days, gets the 30-day and the 7-day notice once each (`pg_volunteer_document_notice()`), by e-mail to the volunteer and to each coordinator of the programme. Bits in `notice_sent`: 1 for 30, 2 for 7; the 7-day notice sets both. The bit is claimed before sending: a dying pass loses a notice, never doubles it.
+- A document whose kind has a newer one valid longer is told about no more (#11338; before, the old one's notices went on after the volunteer brought the new one).
 
 ## Where is the Shift calls switch?
 - On the volunteer's page (signed link and My Account's section): "Shift calls", a switch "Ask me when a shift still needs volunteers" and the channel among the programme's (a list only with two or more); action `calls` posted to `volunteer.php`, saved by `pg_volunteer_calls_save()`. Shown only when the programme has a call channel. Off stops calls, never the reminder.

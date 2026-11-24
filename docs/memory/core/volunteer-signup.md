@@ -20,11 +20,13 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 
 ## How is a place written?
 - Every action runs under `GET_LOCK('pg_volunteer_shift_<id>')` and checks the choice again (`pg_volunteer_self_act()`), so a role never goes over its count. A cancelled row of the same volunteer is used again (the unique shift-volunteer key).
+- Mark as left (`core/volunteer-programmes.md`) frees the volunteer's places on shifts not started as cancels (`pg_volunteer_left_release()`, #11338; before, the place stayed taken).
 - Cancelling a signed place runs the waitlist pass for its role (`pg_volunteer_waitlist_write()`): the first waiting who still fit become signed and get an e-mail.
 - My Account's buttons post to `volunteer.php` with `p` (one of the member's own profiles) and `send_to`; the answer is a `my_account` liveform notice.
 
 ## How does a swap work?
 - "Take this place" writes a waiting row with `swap_from` = the offered row. When the programme's `swap_approval` is off it finishes at once; else the shift's drawer shows "Asks to take a place" with Approve and Refuse (`pg_volunteer_swap_decide()`).
+- Approve checks again that the taker fits the role (active, documents, not busy elsewhere), else says "The volunteer asking no longer fits this role on this shift…"; Refuse clears a request also when its offered place is gone with an erased volunteer (#11338).
 - Finishing cancels the offered row, signs the taker and e-mails both. A waiting row with `swap_from` is no waitlist place; cancelling an offered place cancels the swap asked of it.
 
 Related: docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens-own.md
