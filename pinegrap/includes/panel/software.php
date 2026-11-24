@@ -136,6 +136,12 @@ function pg_panel_software_backup($request, $action)
                 exit();
             }
 
+            // Until the check step finds every part in, the folder is listed
+            // as incomplete: a tab closed while the files are copied leaves a
+            // dump beside half of the files, or, when an existing backup is
+            // replaced, beside the files of the old one.
+            pg_backup_folder_writing($backup_location . $backup_folder_name, true);
+
             //return success json output
             $response = array(
                 'status' => 'success',
@@ -160,7 +166,8 @@ function pg_panel_software_backup($request, $action)
 
                 //if mysql error and backup folder is empty, delete it.
                 if (is_dir($backup_location . $backup_folder_name) && count(glob($backup_location . $backup_folder_name . '/*')) === 0) {
-                    rmdir($backup_location . $backup_folder_name);
+                    pg_backup_folder_writing($backup_location . $backup_folder_name, false);
+                    @rmdir($backup_location . $backup_folder_name);
                 }
 
                 log_activity(lang(array('string' => 'The database dump for the software backup failed: {var:1}', 'vars' => array($backups_error_message))), $_SESSION['sessionusername']);
@@ -303,7 +310,8 @@ function pg_panel_software_backup($request, $action)
 
                 if (file_exists($backup_location . $backup_folder_name . '/sql.sql')) {
                     if (file_exists($backup_location . $backup_folder_name . '/files')) {
-                        if (file_exists($backup_location . $backup_folder_name . '/layouts')) {
+                        if (file_exists($backup_location . $backup_folder_name . '/layouts')
+                            && pg_backup_folder_writing($backup_location . $backup_folder_name, false)) {
                             $liveform_backups = new liveform('backups');
 
                             log_activity(lang(array('string' => 'Backup ({var:1}) created.', 'vars' => array($backup_folder_name))), $_SESSION['sessionusername']);
