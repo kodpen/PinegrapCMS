@@ -134,3 +134,15 @@ function test_volunteer_shift_people_told()
 		array('volunteer_id' => 4, 'state' => 'signed'),
 	)));
 }
+
+function test_volunteer_shift_call_skips_a_removed_role()
+{
+	$programme = array('roles' => array('r1' => array('name' => 'Driver', 'skills' => array('Driving'))), 'call_days' => 3);
+	$shift = array('id' => 7, 'start' => '2026-12-03 09:00:00', 'end' => '2026-12-03 12:00:00', 'roles' => array('r1' => 1, 'r9' => 2), 'filled' => array(), 'signups' => array());
+	$person = function ($id, array $skills) {
+		return array('id' => $id, 'state' => 'active', 'skills' => $skills, 'trainings' => array(), 'documents' => array(), 'hours' => array(), 'shifts' => array(), 'calls' => true, 'called' => false);
+	};
+	$people = array(1 => $person(1, array('Driving')), 2 => $person(2, array()));
+
+	pg_assert_same(array(1), pg_volunteer_shift_call_ids($programme, $shift, $people, '2026-12-01 10:00:00'), 'a role the programme no longer has calls nobody: nobody could take its place');
+}
