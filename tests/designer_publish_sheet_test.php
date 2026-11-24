@@ -84,7 +84,7 @@ function test_designer_publish_sheet_plan_defaults()
 		return;
 	}
 
-	pg_assert_same(array('publish' => array('c', 'g'), 'hold' => array(), 'save' => true), $got, 'the default selection');
+	pg_assert_same(array('publish' => array('c', 'g'), 'hold' => array(), 'save' => true, 'reasons' => array(), 'missing' => false), $got, 'the default selection');
 }
 
 // An unchecked changed page on the site is held out of the save; a checked
@@ -102,9 +102,44 @@ function test_designer_publish_sheet_plan_choices()
 		return;
 	}
 
-	pg_assert_same(array('publish' => array('d'), 'hold' => array('b'), 'save' => true), $got[0], 'a scheduled page checked, the changed page unchecked');
-	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => false), $got[1], 'nothing checked: nothing to do');
-	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => true), $got[2], 'an unchanged live page checked saves the design');
+	pg_assert_same(array('publish' => array('d'), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'missing' => false), $got[0], 'a scheduled page checked, the changed page unchecked');
+	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => false, 'reasons' => array(), 'missing' => false), $got[1], 'nothing checked: nothing to do');
+	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'missing' => false), $got[2], 'an unchanged live page checked saves the design');
+}
+
+// A draft waiting for approval: held, unless an administrator checked it
+// with "Publish anyway" and a reason; without a reason the button stays off.
+function test_designer_publish_sheet_plan_publish_anyway()
+{
+	$got = designer_publish_sheet_test_eval('(function () {'
+		. 'var held = [{ key: "w", name: "Spring", state: "held", changed: false, override: true },'
+		. '{ key: "x", name: "Variant", state: "held", changed: false }];'
+		. 'return ['
+		. 'PgDesignerPublish.defaults(held),'
+		. 'PgDesignerPublish.plan(held, ["w", "x"]),'
+		. 'PgDesignerPublish.plan(held, ["w", "x"], { w: "  " , x: "no" }),'
+		. 'PgDesignerPublish.plan(held, ["w"], { w: " Client said yes " }),'
+		. 'PgDesignerPublish.plan(held, [], { w: "Client said yes" })'
+		. '];})()');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(), $got[0], 'held rows never come checked');
+	pg_assert_same(array(), $got[1]['publish'], 'without Publish anyway nothing goes');
+	pg_assert_true($got[2]['missing'], 'a reason is needed');
+	pg_assert_false($got[2]['save'], 'nothing to do without the reason');
+	pg_assert_same(array(), $got[2]['publish'], 'a row the person may not override stays held');
+	pg_assert_same(array('w'), $got[3]['publish']);
+	pg_assert_same(array('w' => 'Client said yes'), $got[3]['reasons']);
+	pg_assert_true($got[3]['save'], 'published with the reason');
+	pg_assert_same(array(), $got[4]['publish'], 'unchecked, it stays held');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains('rec.approval_override = p._approvalOverride;', $js, 'the reason goes with the page');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_contains("'anyway'          => lang('Publish anyway'),", $screen, 'the button text');
 }
 
 // The editor's side: Publish opens the sheet, a held page is sent as
@@ -162,7 +197,7 @@ function test_designer_publish_sheet_outcome()
 function test_designer_publish_sheet_save_feedback_wiring()
 {
 	$sheet = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_designer_publish.js');
-	pg_assert_contains('bridge.publish(p.publish, p.hold, report)', $sheet, 'the sheet passes its report to the save');
+	pg_assert_contains('bridge.publish(p.publish, p.hold, report, p.reasons)', $sheet, 'the sheet passes its report to the save');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains('if (keys.length) _pgSetDraft(keys, false, hold, report);', $js, 'the drafts go on the site with the report');
