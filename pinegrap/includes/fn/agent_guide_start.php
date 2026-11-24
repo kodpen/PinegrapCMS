@@ -44,6 +44,7 @@ function pg_agent_guide_start_sections() {
 			'lines'   => array(
 				'A tool\'s name is its API route id with dots as underscores: *_list finds records and their ids, *_get reads one, the rest write.',
 				'The site itself (currency, modules on, upload limits): {tool:meta.read}.',
+				'Whether the site is ready to go live, and what is missing first: {tool:launch.read}.',
 				'A page\'s look or layout: read it with {tool:design.pages.get}, then propose operations with {tool:design.proposals.create}; a designer applies them.',
 				'A form or collection record: read {tool:forms.fields}, then {tool:forms.submission_create}.',
 				array('module' => 'workspace', 'text' => 'Any other record change a person should apply: {tool:workspace.changes.propose}.')

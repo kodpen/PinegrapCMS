@@ -4199,6 +4199,19 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'launch.read',
+			'method'  => 'GET',
+			'path'    => '/launch',
+			'scope'   => 'system:read',
+			'handler' => 'api_launch_read',
+			'returns' => 'LaunchJourney',
+			'summary' => 'What is missing before the site goes live',
+			'description' => 'The set-up steps for the site\'s purpose, each read now from the setting that decides it: state done, todo or unknown (could not be read, never a blocker), level blocker, warning or none, a stable reason code and a line for a person. blockers and warnings are the go-live check; go_live_changes names what the panel\'s Go live turns off itself (maintenance, robots). Read only: going live is a person\'s press in the panel.',
+			'details' => 'hidden marks a step set to Not for this site; a hidden step that blocks still blocks. purpose is other while purpose_chosen is false. live_at is the first go-live, null before it.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'reports.sales',
 			'method'  => 'GET',
 			'path'    => '/reports/sales',

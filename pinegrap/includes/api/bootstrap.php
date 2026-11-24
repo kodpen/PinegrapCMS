@@ -55,6 +55,7 @@ require_once($pg_api_directory . '/resources/seo.php');
 require_once($pg_api_directory . '/resources/content_review.php');
 require_once($pg_api_directory . '/resources/privacy.php');
 require_once($pg_api_directory . '/resources/system.php');
+require_once($pg_api_directory . '/resources/launch.php');
 require_once($pg_api_directory . '/resources/reports.php');
 require_once($pg_api_directory . '/resources/page_clicks.php');
 require_once($pg_api_directory . '/resources/products.php');
