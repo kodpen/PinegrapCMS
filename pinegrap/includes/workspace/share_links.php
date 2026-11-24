@@ -25,6 +25,10 @@
  * The recurring job deletes the rows that ended WS_SHARE_LINK_KEEP ago
  * (ws_share_links_sweep()).
  *
+ * The address (workspace_share.php) asks ws_share_link_answer() what to
+ * send: the file, or one 404 for every fault. An open is counted once a
+ * minute a link at most (ws_share_link_count_open()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -46,6 +50,9 @@ define('WS_SHARE_LINK_MAX_OPEN', 200);
 
 /** How long a row is kept after its link ended, in seconds. */
 define('WS_SHARE_LINK_KEEP', 30 * 86400);
+
+/** Seconds between two opens of one link that are counted. */
+define('WS_SHARE_LINK_OPEN_EVERY', 60);
 
 /**
  * Is the table there (2026.11.0, 11.0.273)?
@@ -240,6 +247,40 @@ function ws_share_link_made_by($link, $maker)
 function ws_share_links_sweep_before($now)
 {
     return (int) $now - WS_SHARE_LINK_KEEP;
+}
+
+/**
+ * Is an open of the link counted now: the first, or the first a minute after
+ * the last one counted? Pure.
+ *
+ * @param array $link ws_share_links row
+ * @param int   $now
+ * @return bool
+ */
+function ws_share_link_open_counts($link, $now)
+{
+    $opened = (int) ($link['opened_at'] ?? 0);
+
+    return ($opened <= 0) || ($opened <= (int) $now - WS_SHARE_LINK_OPEN_EVERY);
+}
+
+/**
+ * How the address sends a file by its name: its type, shown in the page
+ * (a picture, sound, video, PDF) or downloaded (anything else, and anything
+ * a browser could run, as HTML or SVG), the rule the guest page keeps.
+ * Pure.
+ *
+ * @param string $name the name the message shows
+ * @return array mime, disposition
+ */
+function ws_share_link_file_headers($name)
+{
+    $type = ws_file_type((string) $name);
+
+    return array(
+        'mime'        => (string) $type['mime'],
+        'disposition' => pg_http_content_disposition((string) $name, !empty($type['inline'])),
+    );
 }
 
 /* ---------------------------------------------------------------------------
@@ -637,4 +678,81 @@ function ws_share_links_sweep($limit = 500)
     }
 
     return count($ids);
+}
+
+
+/**
+ * Counts an open of a link: opened_at and one more open, once a minute a
+ * link at most. The minute is asked in the UPDATE itself, so two opens at
+ * once count one.
+ *
+ * @param array $link
+ * @param int|null $now
+ * @return bool whether this open was counted
+ */
+function ws_share_link_count_open($link, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    if (!ws_share_link_open_counts($link, $now)) {
+        return false;
+    }
+
+    db("UPDATE ws_share_links SET opened_at = '" . $now . "', opens = opens + 1
+        WHERE id = '" . (int) $link['id'] . "' AND opened_at <= '" . ($now - WS_SHARE_LINK_OPEN_EVERY) . "'");
+
+    return mysqli_affected_rows(db::$con) > 0;
+}
+
+/**
+ * What the address answers for a token: the file of an open link, or null
+ * for every fault (a bad shape, unknown, ended, taken back, closed, a kind
+ * the address does not answer yet, the bytes gone), which is one 404. A
+ * token no row has counts against the address, as a wrong guest or approval
+ * link does; a link that ended is nobody's guess.
+ *
+ * @param mixed $token
+ * @return array|null link, path, name, mime, disposition
+ */
+function ws_share_link_answer($token)
+{
+    if (!ws_enabled() || !ws_share_links_ready()) {
+        return null;
+    }
+
+    $token = is_string($token) ? $token : '';
+    $found = ws_share_link_find($token);
+
+    if (!$found) {
+        if ($token !== '') {
+            ws_guest_offence();
+        }
+
+        return null;
+    }
+
+    $link = $found['link'];
+    $message = $found['message'];
+
+    if (($found['state'] !== 'open') || ((string) $link['kind'] !== 'file') || !is_array($message)) {
+        return null;
+    }
+
+    // MySQL 8 reserves STORED: the stored name is read as stored_name.
+    $stored = (string) db_value("SELECT name AS stored_name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
+    $name = (string) $message['file_name'];
+
+    if (($stored === '') || pg_file_withheld($stored) || pg_file_withheld($name)) {
+        return null;
+    }
+
+    // The local file, or a copy of one moved to the object store: the
+    // store's address is never shown outside.
+    $path = pg_file_reader_path(pg_basename($stored));
+
+    if (($path === '') || !is_file($path)) {
+        return null;
+    }
+
+    return array('link' => $link, 'path' => $path, 'name' => $name) + ws_share_link_file_headers($name);
 }

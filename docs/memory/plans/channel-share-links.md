@@ -28,7 +28,7 @@ priority: 6
 
 ## Which steps?
 - SL1 (M), done (#11201): the table, `includes/workspace/share_links.php` (make, find, state, take back, a sweep of rows ended 30 days ago in the recurring job), the routes and tools, tests.
-- SL2 (M): `workspace_share.php` for pictures and files, the headers, the limit, the 404, the count.
+- SL2 (M), done (#11243): `workspace_share.php` for pictures and files, the headers, the limit, the 404, the count.
 - SL3 (M): the item's mark and menu, the dialog, the system line.
 - SL4 (M): the head's share mark and menu, Channel info's Sharing part.
 - SL5 (M): a channel's note and its Markdown, after CN1 of `plans/channel-notes-own.md`.
