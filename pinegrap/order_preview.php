@@ -48,6 +48,13 @@ if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'order 
     output_error(lang('An order preview page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// The payment service's own message may have completed the order before
+// the visitor came back: init.php has let go of it, and the return leads
+// to its receipt instead of checking out a new, empty order.
+if ($is_gateway_return) {
+    pg_payment_return_receipt('order_preview', $_GET['mode'] ?? '');
+}
+
 initialize_order();
 
 // A changed "Use my store credit" choice (or its Update button) shows the

@@ -1420,6 +1420,91 @@ function pg_payment_return_method($mode)
 }
 
 /**
+ * The order a driver's return was started for: the order id the driver kept
+ * in its session state when it sent the visitor away (Stripe, PayPal
+ * Checkout). Pure.
+ *
+ * @param mixed $mode   the request's mode parameter
+ * @param mixed $states $_SESSION['ecommerce']['payment_state'], key => state
+ * @return int 0 when the mode is no driver's return or its state names no order
+ */
+function pg_payment_return_state_order_id($mode, $states)
+{
+    $key = is_scalar($mode) ? array_search((string) $mode, pg_payment_return_modes(), true) : false;
+
+    if (($key === false) || !is_array($states) || !isset($states[$key]) || !is_array($states[$key])) {
+        return 0;
+    }
+
+    $order_id = isset($states[$key]['order_id']) && is_scalar($states[$key]['order_id']) ? (string) $states[$key]['order_id'] : '';
+
+    return (preg_match('/^[1-9][0-9]{0,18}$/', $order_id) === 1) ? (int) $order_id : 0;
+}
+
+/**
+ * Whether a payment return leads straight to the receipt: the service's own
+ * message completed the order the return was started for, so init.php has
+ * already let go of it and the session holds no order or another one. Pure.
+ *
+ * @param int    $state_order_id   pg_payment_return_state_order_id()
+ * @param int    $session_order_id $_SESSION['ecommerce']['order_id'], 0 for none
+ * @param string $status           that order's status, '' when there is none
+ * @return bool
+ */
+function pg_payment_return_shows_receipt($state_order_id, $session_order_id, $status)
+{
+    return ((int) $state_order_id > 0)
+        && ((int) $session_order_id !== (int) $state_order_id)
+        && in_array((string) $status, array('complete', 'exported'), true);
+}
+
+/**
+ * Leads a payment return to the receipt when the service's message completed
+ * the order first (pg_payment_return_shows_receipt()), and ends the request.
+ * Otherwise returns, and the checkout finishes the return as before. Without
+ * it a new, empty order was opened and checked out: the visitor who had paid
+ * saw an error and an empty cart in place of the receipt.
+ *
+ * @param string $type_value order_preview or express_order
+ * @param mixed  $mode       the request's mode parameter
+ * @return void
+ */
+function pg_payment_return_receipt($type_value, $mode)
+{
+    $states = $_SESSION['ecommerce']['payment_state'] ?? array();
+    $order_id = pg_payment_return_state_order_id($mode, $states);
+
+    if ($order_id <= 0) {
+        return;
+    }
+
+    $status = (string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'");
+
+    if (!pg_payment_return_shows_receipt($order_id, (int) ($_SESSION['ecommerce']['order_id'] ?? 0), $status)) {
+        return;
+    }
+
+    $key = array_search((string) $mode, pg_payment_return_modes(), true);
+    unset($_SESSION['ecommerce']['payment_state'][$key]);
+
+    log_activity(pg_log_lang(array('string' => 'The visitor came back from {var:1} after its message had completed order #{var:2}: the receipt was shown.', 'vars' => array(pg_payment_log_name($key), $order_id))));
+
+    $_SESSION['ecommerce']['completed_order_id'] = $order_id;
+
+    include_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
+    $liveform = new liveform($type_value);
+    $liveform->remove_form();
+
+    $page_id = (isset($_GET['page_id']) && is_string($_GET['page_id'])) ? $_GET['page_id'] : '';
+    $page = mysqli_fetch_assoc(db_q(pg_order_checkout_page_sql($type_value), array($page_id)));
+    $next_page_url = URL_SCHEME . HOSTNAME . PATH . get_page_name(is_array($page) ? $page['next_page_id'] : '');
+    $next_page_url .= (strpos($next_page_url, '?') === false ? '?' : '&') . 'order_id=' . $order_id;
+
+    header('Location: ' . $next_page_url);
+    exit();
+}
+
+/**
  * The card driver of the Payment Gateway value when the card is typed into
  * the service's own fields (the 'hosted_fields' capability): the checkout
  * then draws no card inputs and posts the service's token instead.
