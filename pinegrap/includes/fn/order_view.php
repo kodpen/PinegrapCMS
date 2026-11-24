@@ -823,6 +823,51 @@ function pg_order_print_totals(array $order)
 }
 
 /**
+ * The lines of the customer's printed invoice (order_invoice_print.php),
+ * split the way the checkout split them: lines charged with the order, whose
+ * totals make up orders.subtotal, and recurring lines whose payments start
+ * after the order date, which the stored subtotal leaves out. Listed in one
+ * table, the line totals came to more than the subtotal printed under them.
+ * Pure.
+ *
+ * @param array $items          order_items rows: price, quantity (minor units),
+ *                              recurring, recurring_start_date, start (the
+ *                              product's start days)
+ * @param int   $order_date     orders.order_date (unix time)
+ * @param bool  $clearcommerce  the ClearCommerce gateway charges every
+ *                              recurring line itself
+ * @return array charged (rows), later (rows with 'starts', Y-m-d), subtotal
+ *               (minor units of the charged rows); every row gets 'line_total'
+ */
+function pg_order_print_lines(array $items, $order_date, $clearcommerce = false)
+{
+    $order_day = date('Y-m-d', (int) $order_date);
+    $split = array('charged' => array(), 'later' => array(), 'subtotal' => 0);
+
+    foreach ($items as $item) {
+        $item['line_total'] = (int) ($item['price'] ?? 0) * (int) ($item['quantity'] ?? 0);
+        $recurring = !empty($item['recurring']);
+        $start_date = (string) ($item['recurring_start_date'] ?? '');
+        $start_days = (int) ($item['start'] ?? 0);
+
+        if (pg_order_line_charged_today($recurring, $start_date, $start_days, $order_day, $clearcommerce)) {
+            $split['charged'][] = $item;
+            $split['subtotal'] += $item['line_total'];
+            continue;
+        }
+
+        if (($start_date === '') || ($start_date === '0000-00-00')) {
+            $start_date = date('Y-m-d', strtotime($order_day . ' +' . max(0, $start_days) . ' days'));
+        }
+
+        $item['starts'] = $start_date;
+        $split['later'][] = $item;
+    }
+
+    return $split;
+}
+
+/**
  * How far one address of an order has gone: 'delivered' when its delivery
  * date is today or before or every parcel is delivered; 'shipped' when its
  * ship date is today or before, it has a parcel, or every line that keeps a
