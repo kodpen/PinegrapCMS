@@ -332,6 +332,10 @@
     // Where the boxes copied (Ctrl+C, Copy) are kept in the browser, so they
     // may be pasted into another flow.
     var CLIP_KEY = 'pg_flow_clip';
+    // The map card (px), its clear edge, the boxes from which it shows by
+    // itself, and where its choice is kept.
+    var MAP = { w: 172, h: 104, pad: 6, boxes: 12 };
+    var MAP_KEY = 'pg_wsf_map';
     // How long the pointer rests on an arrow before its "+" shows (ms).
     var PLUS_REST = 250;
 
@@ -1028,6 +1032,7 @@
 
         state.outline = !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
         state.threads = threadsShown();
+        state.mapChoice = mapChosen();
         layout(root);
         bindCanvas();
         bindWindow();
@@ -1427,6 +1432,18 @@
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.empty);
         ui.stage.appendChild(ui.strip);
+        // The map at the bottom left (drawMap()): the whole flow small, the
+        // part on screen framed; a drag on it moves the canvas.
+        ui.map = el('div', 'wsf-map d-none');
+        ui.map.setAttribute('role', 'img');
+        ui.map.setAttribute('aria-label', t('fl_map'));
+        ui.mapBoxes = el('div', 'wsf-map-boxes');
+        ui.mapView = el('div', 'wsf-map-view');
+        ui.map.appendChild(ui.mapBoxes);
+        ui.map.appendChild(ui.mapView);
+        ui.map.addEventListener('pointerdown', mapPress);
+        ui.map.addEventListener('pointermove', mapMove);
+        ui.stage.appendChild(ui.map);
         drawStrip();
     }
 
@@ -1455,16 +1472,34 @@
         ui.strip.appendChild(stripButton('fl_zoom_in', 'bi-plus-lg', function () { zoomBy(1.2); }));
         ui.strip.appendChild(stripButton('fl_fit', 'bi-arrows-fullscreen', function () { fit(); }));
 
+        ui.tidy = null;
+        ui.mapButton = null;
+
         // The threads are drawn on the canvas only; the list says in words
         // what each box reads.
         if (!state.embed && state.flow) {
             ui.strip.appendChild(stripDivider());
+
+            if (addable()) {
+                ui.tidy = K.lookButton('pg-button pg-button-ghost pg-button-sm wsf-tidy', t('fl_tidy'), 'bi-magic');
+                ui.tidy.title = t('fl_tidy_hint');
+                ui.tidy.setAttribute('data-refocus', 'tidy');
+                ui.tidy.addEventListener('click', tidy);
+                ui.strip.appendChild(ui.tidy);
+            }
+
             ui.strip.appendChild(threadsButton());
+
+            if (addable()) {
+                ui.strip.appendChild(stripButton('fl_note_add', 'bi-sticky', addNote));
+            }
+
+            ui.mapButton = stripButton('fl_map', 'bi-map', mapToggle);
+            ui.mapButton.setAttribute('data-refocus', 'map');
+            ui.strip.appendChild(ui.mapButton);
         }
 
-        if (addable()) {
-            ui.strip.appendChild(stripButton('fl_note_add', 'bi-sticky', addNote));
-        }
+        drawMap();
     }
 
     function stripButton(key, iconName, action) {
@@ -3625,6 +3660,7 @@
         drawPalette();
         markSelected();
         markProblems();
+        mapLater();
     }
 
     // A box of the core (box()): its ports, focus and name are the core's;
@@ -7814,7 +7850,11 @@
 
     // The boxes a frame holds: those whose middle lies in its rectangle.
     function frameInside(frame) {
-        return state.graph.nodes.filter(function (node) {
+        return framedIn(frame, state.graph.nodes);
+    }
+
+    function framedIn(frame, nodes) {
+        return nodes.filter(function (node) {
             var mx = node.x + BOX_W / 2;
             var my = node.y + BOX_H / 2;
 
@@ -8022,6 +8062,208 @@
         var bottom = Math.max.apply(null, nodes.map(function (node) { return node.y + BOX_H; })) + FRAME_PAD.bottom;
 
         return { x: coord(left), y: coord(top), w: Math.round(right - left), h: Math.round(bottom - top) };
+    }
+
+    // Tidy on the strip: the boxes placed again by the server's layout
+    // (ws_flow_tidy(): columns by the longest way in), or only the boxes
+    // chosen when there are several; frames drawn again round their boxes,
+    // notes left. One undo step; the whole flow is fitted after.
+    function tidy() {
+        var flow = state.flow;
+        var button = ui.tidy;
+        var chosen = canvas.chosen();
+
+        if (!addable() || state.tidying) {
+            return;
+        }
+
+        state.tidying = true;
+        button.disabled = true;
+        K.api('ws_flow_tidy', { flow_id: flow.id, graph: draftOf(), chosen: chosen }).then(function (data) {
+            if ((state.flow !== flow) || !addable()) {
+                return;
+            }
+
+            if (!tidyPlaces(state.graph, data.places || {})) {
+                announce(t('fl_tidy_none'));
+                return;
+            }
+
+            changed(true);
+
+            if (chosen.length < 2) {
+                fit();
+            }
+
+            announce(t('fl_tidied'));
+        }).catch(function (error) {
+            K.toast(error.message, 'danger');
+        }).then(function () {
+            state.tidying = false;
+            button.disabled = false;
+        });
+    }
+
+    // Tidy's places (id => [x, y]) put on the boxes of graph: each frame
+    // drawn again round the boxes it held before, its name and fold kept; a
+    // frame holding none stays. Answers how many boxes moved.
+    function tidyPlaces(graph, places) {
+        var held = graph.frames.map(function (frame) { return framedIn(frame, graph.nodes); });
+        var moved = 0;
+
+        graph.nodes.forEach(function (node) {
+            var place = places[node.id];
+
+            if (place && ((node.x !== place[0]) || (node.y !== place[1]))) {
+                node.x = coord(place[0]);
+                node.y = coord(place[1]);
+                moved++;
+            }
+        });
+
+        graph.frames.forEach(function (frame, index) {
+            if (held[index].length) {
+                Object.assign(frame, frameRound(held[index]));
+            }
+        });
+
+        return moved;
+    }
+
+    // The map's choice kept in this browser: 'on', 'off', or '' to show it
+    // from MAP.boxes boxes up.
+    function mapChosen() {
+        try {
+            var kept = window.localStorage.getItem(MAP_KEY);
+
+            return ((kept === 'on') || (kept === 'off')) ? kept : '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    function mapShown() {
+        if (!ui.map || state.embed || state.outline || !state.flow || !state.graph) {
+            return false;
+        }
+
+        return state.mapChoice ? (state.mapChoice === 'on') : (state.graph.nodes.length >= MAP.boxes);
+    }
+
+    // Map on the strip: the map shown or hidden, the choice kept.
+    function mapToggle() {
+        state.mapChoice = mapShown() ? 'off' : 'on';
+
+        try {
+            window.localStorage.setItem(MAP_KEY, state.mapChoice);
+        } catch (error) {
+            // Not kept: the map follows the count of boxes next time.
+        }
+
+        drawMap();
+    }
+
+    // The map drawn once the view or the boxes settle (one frame later).
+    function mapLater() {
+        if (ui.map && !state.mapFrame) {
+            state.mapFrame = window.requestAnimationFrame ? window.requestAnimationFrame(drawMap) : window.setTimeout(drawMap, 16);
+        }
+    }
+
+    function drawMap() {
+        state.mapFrame = 0;
+
+        if (!ui.map) {
+            return;
+        }
+
+        var shown = mapShown();
+
+        ui.map.classList.toggle('d-none', !shown);
+
+        if (ui.mapButton) {
+            ui.mapButton.setAttribute('aria-pressed', shown ? 'true' : 'false');
+        }
+
+        if (!shown) {
+            return;
+        }
+
+        var rect = ui.viewport.getBoundingClientRect();
+        var away = state.foldedAway || {};
+        var drawn = mapDrawing(state.graph.nodes.filter(function (node) { return !away[node.id]; }), state.view, { w: rect.width, h: rect.height });
+
+        K.clear(ui.mapBoxes);
+        drawn.boxes.forEach(function (box) {
+            var block = el('span', 'wsf-map-box');
+
+            placeDecor(block, box);
+            ui.mapBoxes.appendChild(block);
+        });
+        placeDecor(ui.mapView, drawn.view);
+        ui.map.mapDrawing = drawn;
+    }
+
+    // The map's drawing: the boxes and the part of the canvas the viewport
+    // shows (port: its width and height in px at view v) scaled into the
+    // card, MAP.pad px clear; a canvas point p is at { x: x + p.x * k,
+    // y: y + p.y * k } on the card.
+    function mapDrawing(nodes, v, port) {
+        var seen = { x: -v.x / v.k, y: -v.y / v.k, w: port.w / v.k, h: port.h / v.k };
+        var left = seen.x;
+        var top = seen.y;
+        var right = seen.x + seen.w;
+        var bottom = seen.y + seen.h;
+
+        nodes.forEach(function (node) {
+            left = Math.min(left, node.x);
+            top = Math.min(top, node.y);
+            right = Math.max(right, node.x + BOX_W);
+            bottom = Math.max(bottom, node.y + BOX_H);
+        });
+
+        var k = Math.min((MAP.w - 2 * MAP.pad) / Math.max(1, right - left), (MAP.h - 2 * MAP.pad) / Math.max(1, bottom - top));
+        var x = (MAP.w - (right - left) * k) / 2 - left * k;
+        var y = (MAP.h - (bottom - top) * k) / 2 - top * k;
+        var at = function (item) {
+            return { x: Math.round(x + item.x * k), y: Math.round(y + item.y * k), w: Math.max(2, Math.round(item.w * k)), h: Math.max(2, Math.round(item.h * k)) };
+        };
+
+        return {
+            k: k,
+            x: x,
+            y: y,
+            boxes: nodes.map(function (node) { return at({ x: node.x, y: node.y, w: BOX_W, h: BOX_H }); }),
+            view: at(seen)
+        };
+    }
+
+    // A press or drag on the map puts the point under the pointer in the
+    // middle of the canvas.
+    function mapPress(event) {
+        if ((event.button !== 0) || !ui.map.mapDrawing) {
+            return;
+        }
+
+        event.preventDefault();
+        ui.map.setPointerCapture(event.pointerId);
+        mapMove(event);
+    }
+
+    function mapMove(event) {
+        var drawn = ui.map.mapDrawing;
+
+        if (!drawn || !ui.map.hasPointerCapture || !ui.map.hasPointerCapture(event.pointerId)) {
+            return;
+        }
+
+        var card = ui.map.getBoundingClientRect();
+        var port = ui.viewport.getBoundingClientRect();
+        var v = state.view;
+
+        v.x = port.width / 2 - (event.clientX - card.left - ui.map.clientLeft - drawn.x) / drawn.k * v.k;
+        v.y = port.height / 2 - (event.clientY - card.top - ui.map.clientTop - drawn.y) / drawn.k * v.k;
+        applyView();
     }
 
     // A note's or frame's × (a frame's boxes stay); one undo step.
@@ -12609,6 +12851,7 @@
         }
 
         saver.changed();
+        mapLater();
 
         // A change that folds (typing, an arrow-key move) is recorded once
         // the changes pause; one that is its own step first records what
@@ -15881,6 +16124,8 @@
             if (next) {
                 state.view = next;
             }
+
+            mapLater();
 
             return state.view;
         },

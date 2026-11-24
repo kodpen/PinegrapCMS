@@ -3687,6 +3687,7 @@ function layout(root) {
 }
 function bindCanvas() { log.push('bindCanvas'); }
 function threadsShown() { return true; }
+function mapChosen() { return ''; }
 function open(id) { opened.push(id); state.flow = { id: id, access: 'edit' }; return Promise.resolve(true); }
 function nodeById(id) { return { id: id }; }
 function select(selected) { log.push('select ' + selected.id); }
@@ -4154,4 +4155,50 @@ JS
 	pg_assert_same(array(0, 0), array($result['other']['nodes'][0]['x'], $result['other']['nodes'][0]['y']), 'an empty flow: at the same place');
 	pg_assert_same(array(array('from' => 'manual_1', 'to' => 'email_1', 'on' => 'next'), array('from' => 'email_1', 'to' => 'task_1', 'on' => 'failed')), $result['other']['edges'], 'the arrows follow the new ids');
 	pg_assert_same(array(array(array('email_1', 804, 0), array('condition_1', 1092, 0)), '{{node.email_1.status}}', array(array('from' => 'email_1', 'to' => 'condition_1', 'on' => 'done'))), $result['two'], 'duplicated: dx to the right, a condition\'s value follows too');
+}
+
+// Tidy's places put on the boxes (FE9, tidyPlaces()): the boxes moved are
+// counted, each frame drawn again round the boxes it held, a frame holding
+// none left; the map's drawing (mapDrawing()) holds the boxes and the part
+// on screen inside the 172 by 104 card.
+function test_workspace_flows_canvas_tidy_and_map()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$consts = '';
+
+	foreach (array('BOX_W', 'BOX_H', 'FRAME_PAD', 'MAP') as $name) {
+		preg_match('/^    var ' . $name . ' = .*?;$/ms', $source, $found);
+		pg_assert_true(!empty($found), $name . ' is declared');
+		$consts .= ($found[0] ?? '') . "\n";
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('tidyPlaces', 'framedIn', 'frameRound', 'coord', 'snap', 'clamp', 'mapDrawing'),
+		"var GRID = 16;\nvar FL = {};\n" . $consts . <<<'JS'
+var out = {};
+var graph = {
+    nodes: [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 400, y: 0 }, { id: 'c', x: 800, y: 400 }],
+    frames: [{ id: 'f1', name: 'Mine', folded: true, x: -24, y: -48, w: 640, h: 200 }, { id: 'f2', name: '', folded: false, x: 5000, y: 5000, w: 100, h: 100 }]
+};
+out.moved = tidyPlaces(graph, { a: [96, 96], b: [384, 96], c: [800, 400], gone: [0, 0] });
+out.nodes = graph.nodes.map(function (node) { return [node.id, node.x, node.y]; });
+out.frames = graph.frames;
+var drawn = mapDrawing([{ x: 0, y: 0 }, { x: 2000, y: 1000 }], { x: 0, y: 0, k: 1 }, { w: 800, h: 600 });
+out.map = { boxes: drawn.boxes, view: drawn.view, inside: drawn.boxes.concat([drawn.view]).every(function (r) { return (r.x >= 0) && (r.y >= 0) && (r.x + r.w <= MAP.w) && (r.y + r.h <= MAP.h); }) };
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(2, $result['moved'], 'two boxes moved; one already in place, a gone id ignored');
+	pg_assert_same(array(array('a', 96, 96), array('b', 384, 96), array('c', 800, 400)), $result['nodes'], 'the places put on the boxes');
+	pg_assert_same(array('id' => 'f1', 'name' => 'Mine', 'folded' => true, 'x' => 80, 'y' => 48, 'w' => 532, 'h' => 144), $result['frames'][0], 'the frame round its two boxes again (its corner on the grid), name and fold kept');
+	pg_assert_same(array('id' => 'f2', 'name' => '', 'folded' => false, 'x' => 5000, 'y' => 5000, 'w' => 100, 'h' => 100), $result['frames'][1], 'an empty frame stays');
+	pg_assert_true($result['map']['inside'], 'every block and the frame of the view inside the card');
+	pg_assert_same(6, $result['map']['boxes'][0]['x'], 'a wide flow: the first box at the clear edge, the height centred');
+	pg_assert_true($result['map']['boxes'][0]['y'] > 6, 'centred in height');
+	pg_assert_same($result['map']['boxes'][0]['x'], $result['map']['view']['x'], 'the view starts where the first box does');
 }

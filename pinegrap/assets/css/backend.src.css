@@ -28361,6 +28361,40 @@ html.ws-flow-layer-on body {
   transform: translateX(-50%);
   white-space: nowrap;
 }
+/* The map (drawMap()): a 172 by 104 px card at the canvas's bottom left,
+   the flow's boxes as small blocks, the part on screen framed. */
+.wsf-map {
+  position: absolute;
+  z-index: 4;
+  bottom: 16px;
+  left: 16px;
+  width: 172px;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-sm);
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  cursor: pointer;
+  touch-action: none;
+  pointer-events: auto;
+}
+.wsf-map-boxes {
+  position: absolute;
+  inset: 0;
+}
+.wsf-map-box,
+.wsf-map-view {
+  position: absolute;
+  border-radius: 2px;
+}
+.wsf-map-box {
+  background: color-mix(in srgb, var(--pg-fg-2) 40%, transparent);
+}
+.wsf-map-view {
+  border: 1.5px solid var(--pg-primary);
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+}
 .wsf-strip-divider {
   width: 1px;
   height: 20px;
