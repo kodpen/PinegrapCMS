@@ -24,6 +24,6 @@ module: lead_touch
 - Excel: `pg_xlsx_write_plain()`, the table as shown, revenue as a money cell.
 
 ## What is not done here?
-- `GET /reports/lead-sources` and the MCP tool come with LJ6; a contact merge moves both contacts' rows to the survivor, so it may hold two of a kind.
+- `GET /reports/lead-sources` (LJ6, #11315): `api/api-lead-journey.md`. A contact merge moves both contacts' rows to the survivor, so it may hold two of a kind.
 
 Tests: `tests/lead_touch_test.php`. Related: docs/memory/visitors/lead-journey-view.md

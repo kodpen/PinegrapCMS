@@ -11,6 +11,7 @@ module: visitor_retention
 
 ## Where is it used?
 - Summary dimension `channel` (`pg_visitor_summary_dimensions()`), so the Visitors screen and `GET /reports/visitors?by=channel` read it through `pg_visitor_breakdown()`.
+- A visit tied to a contact keeps its channel on `lead_visits` (`pg_visitor_channel()`), read by the Journey card and the Lead sources report: `visitors/lead-journey.md`.
 - The saved reports keep the old two-way split as `pay_per_click_organic` through `pg_visitor_paid_organic_sql()` (`pg_visitor_report_channel_sql()` names it).
 
 ## What about days summarized before the dimension existed?

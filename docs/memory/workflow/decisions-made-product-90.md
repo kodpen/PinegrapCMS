@@ -24,6 +24,6 @@ description: Decisions list, product part 90 (2026-11-20 on): plans from the own
 ## Should visits be tied to a known person, with an interest score and lead sources? (owner, 2026-11-20, agent channel poll 183, channel message 10612)
 - "Evet, plana girsin": visits tied to a contact with consent, the person's journey, a decaying interest score and interests, `contact.hot` / `contact.returned`, first and last touch per channel, campaign and content, KVKK, API.
 - Not chosen: "Evet, önce yalnız yolculuk ve kaynak ölçümü" (journey and source measuring first), "Hayır, gerek yok".
-- The plan: `plans/lead-journey.md`.
+- Built and closed out: `visitors/lead-journey.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/customer-rhythm.md, docs/memory/commerce/delivery-tower.md, docs/memory/commerce/pick-pack.md, docs/memory/plans/lead-journey.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/customer-rhythm.md, docs/memory/commerce/delivery-tower.md, docs/memory/commerce/pick-pack.md, docs/memory/visitors/lead-journey.md
