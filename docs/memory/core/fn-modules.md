@@ -453,6 +453,7 @@ description: Generated from the module field of the memory files: each includes/
 - `volunteer_board_view`: [[volunteer-board]]
 - `volunteer_certificate`: [[volunteer-certificate]]
 - `volunteer_documents`: [[volunteer-document-upload]]
+- `volunteer_events`: [[volunteer-events]]
 - `volunteer_hours`: [[volunteer-hours]]
 - `volunteer_hours_view`: [[volunteer-hours]]
 - `volunteer_messages`: [[volunteer-messages]]
