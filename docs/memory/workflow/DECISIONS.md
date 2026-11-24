@@ -138,6 +138,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-104.md: Does the Claude plugin bundle come before the launch? (owner, 2026-11-24, agent channel)
 - decisions-made-product-104.md: Does the mobile API work go on? (owner, 2026-11-24, agent channel)
 - decisions-made-product-104.md: What else did he ask for then?
+- decisions-made-product-105.md: Where are the rules and the earlier parts?
+- decisions-made-product-105.md: What does the designer get before the launch? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-105.md: How is a drawing read? (owner, 2026-11-24, his choice of three)
+- decisions-made-product-105.md: What does the Canva import bring? (owner, 2026-11-24, his choice of three)
+- decisions-made-product-105.md: Which of it is before the launch? (owner, 2026-11-24, all four ticked)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
