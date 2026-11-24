@@ -4296,6 +4296,7 @@
     "Some servers refuse PATCH and DELETE before the call reaches the site. So an update is a POST, and an endpoint that takes PATCH as well says so; a delete has a POST twin, its address followed by /delete, listed beside it, or its description names the POST address. A POST may also carry X-HTTP-Method-Override: PATCH, PUT or DELETE.": "Bazı sunucular PATCH ve DELETE isteklerini siteye ulaşmadan reddeder. Bu yüzden güncelleme bir POST'tur ve PATCH'i de kabul eden uç nokta bunu belirtir; silmenin yanında listelenen bir POST ikizi vardır (adresinin sonuna /delete eklenmiş hâli) ya da açıklaması POST adresini belirtir. Bir POST ayrıca X-HTTP-Method-Override: PATCH, PUT veya DELETE taşıyabilir.",
     "Some strong language": "Yer yer argo içerir",
     "Some strong light effects": "Bazı güçlü ışık efektleri",
+    "Some things must still be fixed. Confirm to go live anyway.": "Düzeltilmesi gereken şeyler var. Yine de yayına almak için onaylayın.",
     "Some values were not saved because they are longer than the field allows": "Bazı değerler alanın izin verdiğinden uzun olduğu için kaydedilmedi",
     "Some wear": "Biraz yıpranmış",
     "Somebody cancelled a run of a workspace flow: the run, as the other run events carry it, and cancelled_by, who did it. The runs of a deleted flow, which end with it, are not announced": "Birisi bir çalışma alanı akışının çalıştırmasını iptal etti: diğer çalıştırma olaylarının taşıdığı haliyle çalıştırma ve iptal edeni belirten cancelled_by. Silinen bir akışla birlikte sona eren çalıştırmaları bildirilmez",

@@ -301,3 +301,63 @@ function test_launch_journey_card()
 	pg_assert_true($done['finished'], 'every step done');
 	pg_assert_same('ready', $done['status']['key']);
 }
+
+// "Go live" takes the catch-all "Disallow: /" out of the robots extras and
+// keeps every other rule; a group left empty loses its User-agent lines so
+// they do not join the next group.
+function test_launch_journey_robots_opened()
+{
+	pg_assert_same('', pg_launch_journey_robots_opened("User-agent: *\nDisallow: /\n"));
+	pg_assert_same("User-agent: *\nDisallow: /cart", pg_launch_journey_robots_opened("User-agent: *\nDisallow: /\nDisallow: /cart"));
+
+	$text = "# keep\nUser-agent: *\nDisallow: /\n\nUser-agent: BadBot\nDisallow: /";
+	$opened = pg_launch_journey_robots_opened($text);
+	pg_assert_false(pg_robots_catch_all_closed($opened), 'the catch-all is open');
+	pg_assert_same("# keep\n\nUser-agent: BadBot\nDisallow: /", $opened, 'another bot\'s group stays');
+
+	pg_assert_same("User-agent: Googlebot\nDisallow: /", pg_launch_journey_robots_opened("User-agent: Googlebot\nDisallow: /"), 'only the catch-all');
+}
+
+// The go-live check's dialog: blockers and warnings as rows, the changes
+// "Go live" makes itself only when they apply, and the blockers it leaves.
+function test_launch_journey_golive_view()
+{
+	$facts = launch_journey_test_facts(array(
+		'maintenance' => true,
+		'robots_text' => "User-agent: *\nDisallow: /\n",
+		'gateway_mode' => 'test',
+		'payments' => array(array('driver' => 'iyzico', 'settings' => array())),
+		'backup' => 'fail',
+	));
+	$view = pg_launch_journey_golive_view('shop', $facts, array());
+
+	pg_assert_same(array('maintenance', 'payment_live', 'search_open'), launch_journey_test_keys($view['must']), 'maintenance first');
+	pg_assert_same(array('backups'), launch_journey_test_keys($view['worth']));
+	pg_assert_same(2, count($view['changes']), 'both changes named');
+	pg_assert_same(array('payment_live'), launch_journey_test_keys($view['left']), 'a payment mode is never changed');
+
+	foreach (array_merge($view['must'], $view['worth']) as $row) {
+		pg_assert_true(($row['name'] !== '') && ($row['line'] !== '') && ($row['url'] !== ''), $row['key'] . ' drawn');
+	}
+
+	$clean = pg_launch_journey_golive_view('company', launch_journey_test_facts(), array());
+	pg_assert_same(array(), $clean['must']);
+	pg_assert_same(array(), $clean['changes'], 'nothing to change');
+	pg_assert_same(array(), $clean['left']);
+
+	// The home page's noindex is not changed by "Go live": it stays a blocker left.
+	$noindex = pg_launch_journey_golive_view('company', launch_journey_test_facts(array('home_noindex' => true)), array());
+	pg_assert_same(array('search_open'), launch_journey_test_keys($noindex['left']));
+	pg_assert_same(array(), $noindex['changes']);
+}
+
+// With a blocker left "Go live" needs "I know, go live anyway".
+function test_launch_journey_golive_allowed()
+{
+	$left = array(array('key' => 'mail'));
+
+	pg_assert_true(pg_launch_journey_golive_allowed(array(), array()));
+	pg_assert_false(pg_launch_journey_golive_allowed($left, array()));
+	pg_assert_false(pg_launch_journey_golive_allowed($left, array('anyway' => 0)));
+	pg_assert_true(pg_launch_journey_golive_allowed($left, array('anyway' => 1)));
+}

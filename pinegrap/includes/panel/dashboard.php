@@ -28,7 +28,8 @@
  *                                new dashboard (includes/dashboard/v2/
  *                                personal.php)
  *   launch_journey_save          the set-up card's purpose, a step not for
- *                                this site, or Hide set-up (administrators)
+ *                                this site, Hide set-up, or Go live
+ *                                (administrators)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
  *                                name
@@ -539,6 +540,17 @@ function pg_panel_launch_journey_save($request, $action)
 
     if ((int) $user['role'] !== 0) {
         respond(array('status' => 'error', 'message' => lang('Only an administrator can change the set-up.')));
+    }
+
+    // "Go live" reads the go-live check again and makes its own changes.
+    if (!empty($request['go_live'])) {
+        $refused = pg_launch_journey_go_live($user, $request);
+
+        if ($refused !== '') {
+            respond(array('status' => 'error', 'message' => $refused));
+        }
+
+        respond(array('status' => 'success'));
     }
 
     $changes = pg_launch_journey_request_changes($request);
