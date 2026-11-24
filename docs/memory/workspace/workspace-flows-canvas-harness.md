@@ -5,7 +5,7 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 
 ## What is it?
 - `tests/js/flows_canvas.js` serves workspace_flows.php as the panel prints it (Bootstrap 6 CSS, `pg_bs6_bridge.js`, `pg_ui.js`, backend.src.css, `#ws-config`, the `SCREEN_BUNDLES` from their sources, with `--min` the built ones) and drives headless Chromium over the DevTools protocol through a pipe. Node built-ins only, no packages.
-- workspace.js runs for real (its kit, the `#ws-ask` dialog, toasts, menus); only api.php stands in: `flows_canvas_store.js`, fixtures draft (default), problems, threads, big, empty; the server's words, 409 on `draft_rev`, start tokens.
+- workspace.js runs for real (its kit, the `#ws-ask` dialog, toasts, menus); only api.php stands in: `flows_canvas_store.js`, fixtures draft (default), problems, threads, big, wait, mail (an e-mail box), empty; the server's words, 409 on `draft_rev`, start tokens.
 - `flows_canvas_server.php`, one PHP process: the texts `ws_screen_config()` merges, `pg_js_bundles()`, the part of `ws_flow_js_config()` that reads no database; every graph saved goes through `ws_flow_graph_normalize()` and `ws_flow_graph_check()`, so the problems are the server's (`ws_flow_problems()` reads the database).
 - `flows_canvas_page.js`: the `window.PGHarness` probes; toasts kept, keepalive requests marked by a header. A browser context and a store per scenario.
 - The screen without `?flow=` shows the flow list (#3172), not a flow: `h.open()` opens the list and clicks its first row, `h.open('?flow=8')` opens by address, `h.openList()` stays on the list; another flow is opened by the page's back arrow (`#ws-view-back`) and its row (`openOther()`). The list is `.wsf-flow-row .wsf-flow-open`, drawn again only while it is shown.
@@ -19,8 +19,9 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 - Then connect by port, C and the side panel, outcomes, Delete, undo, threads, outline, phone, autosave, 409, keepalive, the 60 000-byte limit, Ctrl+S, Retry, back to the list (#9127); palette, Change, rail, the chosen box's card, the name's window and the problems' list, the phone sheet and Add a box page, Publish, Pause, read-only, ⋯, no flow, New flow, Run, runs list, polling.
 
 ## What does it give?
-- 2026-11-13: 38 of 38 (#9196, Chromium 153); zoom checks allow 1e-5, the computed matrix keeps six digits. 2026-11-01: 30 of 30 also on Chrome 156, Windows 11.
-- 2026-11-22: 40 of 40 (FE2): the palette scenarios open the card with "+" first; two checks FE1 left behind (the tooltip ends with the problem, a List-view box on the grid) follow the code.
+- 2026-11-13: 38 of 38 (#9196, Chromium 153); zoom checks allow 1e-5, the computed matrix keeps six digits.
+- 2026-11-22: 40 of 40 (FE2): the palette scenarios open the card with "+" first.
+- 2026-11-24: 41 of 41 (FE5): the box panel's fields (`workspace-flows-panel-fields.md`).
 
 ## Why does a scenario switch touch emulation itself?
 - Touch emulation turns `(pointer: coarse)` on: the panel's tap targets grow to `--pg-tap` (44px) and the canvas moves a few px. `page.touches()` on a page that is not a touch screen turns it on only for the gesture, so a measure taken before and after it is in another layout. A scenario that compares positions around a gesture calls `h.touchScreen(true)` before its first measure and `h.touchScreen(false)` after its last (pinch, #4418: on Windows the pinch point moved 3 px).
