@@ -22,7 +22,7 @@ priority: 6
 - Drawn only when opened; the second picture loads after the first is seen.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- CL1 (M) The reader, pure: two trees in, changes out (added, removed, moved, words, picture, link, look), each with its sentence and place. Done (#PRNUM).
+- CL1 (M) The reader, pure: two trees in, changes out (added, removed, moved, words, picture, link, look), each with its sentence and place. Done (#11539).
 - CL2 (M) after CL1 and DD17: the Look tab: two frames, the slider, side by side, the width chooser.
 - CL3 (S) after CL2: "What changed" joined to the pictures; the rows that open it (the Publish sheet's row once PC4 of the publish check plan has landed).
 - CL4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.

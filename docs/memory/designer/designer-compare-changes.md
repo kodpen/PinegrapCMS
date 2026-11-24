@@ -4,7 +4,7 @@ description: Compare's change reader (pg_compare_changes.js, PgCompareChanges): 
 ---
 
 ## Where does it live, and what does it read?
-- `pinegrap/assets/js/pg_compare_changes.js`, `window.PgCompareChanges` (CL1 of plan `designer-compare-live`, #PRNUM). Pure: no DOM, no request; not loaded by any screen yet. The Look tab's part loads it on first use and puts it in that part's bundle (`pg_js_bundles()`, `pg_designer_parts()`).
+- `pinegrap/assets/js/pg_compare_changes.js`, `window.PgCompareChanges` (CL1 of plan `designer-compare-live`, #11539). Pure: no DOM, no request; not loaded by any screen yet. The Look tab's part loads it on first use and puts it in that part's bundle (`pg_js_bundles()`, `pg_designer_parts()`).
 - `read(before, after, texts)`: the live tree and the draft, each a node, a list of nodes or their JSON text. Answers `{ state, changes }`; `state` is `changed`, `same` ("Nothing has changed"), `new` (no live tree: the page was never on the site, draft shown alone) or `unreadable` (a side that is no tree, or no draft).
 
 ## How are elements matched?
