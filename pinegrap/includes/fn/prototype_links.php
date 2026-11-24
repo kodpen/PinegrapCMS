@@ -259,6 +259,91 @@ function pg_proto_link_plan($input, $draft_ids, $durations, $now)
 }
 
 /**
+ * Adds what a new link asks of an approver to a plan pg_proto_link_plan()
+ * accepted: "Ask for approval" off leaves the link asking nothing; on, it
+ * needs the approver's name (one line, 1 to 60 characters), takes an
+ * optional e-mail address, an optional "Answer by" day no later than the
+ * link's expiry (pg_proto_answer_by_check()) and "Publish only after
+ * approval", and turns "Allow comments" on. Pure.
+ *
+ * @param array $plan  pg_proto_link_plan()'s answer
+ * @param array $input approval, approver_name, approver_email, answer_by,
+ *                     publish_rule
+ * @param int   $now
+ * @return array the plan, its link with approval and publish_rule (0/1),
+ *               approver_name, approver_email, answer_by ('' for none); or
+ *               refused (error approval, approver_name, approver_email,
+ *               answer_by, answer_by_past, answer_by_after_expiry,
+ *               publish_rule)
+ */
+function pg_proto_link_plan_approval($plan, $input, $now)
+{
+    if (!is_array($plan) || empty($plan['ok'])) {
+        return $plan;
+    }
+
+    $input = is_array($input) ? $input : array();
+    $fail = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'link' => null);
+    };
+    $link = $plan['link'];
+    $link['approval'] = 0;
+    $link['publish_rule'] = 0;
+    $link['approver_name'] = '';
+    $link['approver_email'] = '';
+    $link['answer_by'] = '';
+
+    $approval = pg_proto_link_flag(isset($input['approval']) ? $input['approval'] : null);
+
+    if ($approval === null) {
+        return $fail('approval', 'approval');
+    }
+
+    if ($approval === 0) {
+        $plan['link'] = $link;
+
+        return $plan;
+    }
+
+    $name = pg_proto_comment_plain(isset($input['approver_name']) ? $input['approver_name'] : '', false);
+
+    if (($name === null) || ($name === '') || (mb_strlen($name, 'UTF-8') > 60)) {
+        return $fail('approver_name', 'approver_name');
+    }
+
+    $email = isset($input['approver_email']) ? $input['approver_email'] : '';
+    $email = is_string($email) ? trim($email) : null;
+
+    if (($email === null) || (($email !== '') && ((strlen($email) > 255) || (filter_var($email, FILTER_VALIDATE_EMAIL) === false)))) {
+        return $fail('approver_email', 'approver_email');
+    }
+
+    $answer_by = isset($input['answer_by']) ? $input['answer_by'] : '';
+    $checked = pg_proto_answer_by_check(($answer_by === null) ? '' : $answer_by, (int) $link['expires_at'], $now);
+
+    if ($checked['error'] !== '') {
+        return $fail(($checked['error'] === 'date') ? 'answer_by' : 'answer_by_' . $checked['error'], 'answer_by');
+    }
+
+    $rule = pg_proto_link_flag(isset($input['publish_rule']) ? $input['publish_rule'] : null);
+
+    if ($rule === null) {
+        return $fail('publish_rule', 'publish_rule');
+    }
+
+    $link['approval'] = 1;
+    $link['publish_rule'] = $rule;
+    $link['approver_name'] = $name;
+    $link['approver_email'] = $email;
+    $link['answer_by'] = $checked['date'];
+    // Approval is given in the viewer's comment mode.
+    $link['allow_comments'] = 1;
+    $plan['link'] = $link;
+
+    return $plan;
+}
+
+/**
  * A switch as a form, a JSON body or the API router hands it: 1 or 0, null
  * for anything else. Not sent (null, '') is off.
  *
@@ -307,6 +392,30 @@ function pg_proto_link_error_message($code)
 
         case 'allow_comments':
             return lang('Allow comments must be on or off.');
+
+        case 'approval':
+            return lang('Ask for approval must be on or off.');
+
+        case 'publish_rule':
+            return lang('Publish only after approval must be on or off.');
+
+        case 'approver_name':
+            return lang('Write the approver\'s name, at most 60 characters.');
+
+        case 'approver_email':
+            return lang('Write a valid e-mail address, or leave it empty.');
+
+        case 'answer_by':
+            return lang('Answer by must be a date.');
+
+        case 'answer_by_past':
+            return lang('Answer by cannot be in the past.');
+
+        case 'answer_by_after_expiry':
+            return lang('Answer by cannot be later than the day the link runs out.');
+
+        case 'approval_ready':
+            return lang('This site has not been upgraded to the version that asks for approval.');
     }
 
     return lang('Sorry, we could not accept your request.');
@@ -531,6 +640,10 @@ function pg_proto_link_summary($row, $now)
         'state' => ($state === 'ok') ? 'open' : $state,
         // A row read before the step that added the column has none.
         'comments' => !empty($row['allow_comments']),
+        'approval' => !empty($row['approval']),
+        'publish_rule' => !empty($row['approval']) && !empty($row['publish_rule']),
+        'approver_name' => !empty($row['approval']) && isset($row['approver_name']) ? (string) $row['approver_name'] : '',
+        'answer_by' => (!empty($row['approval']) && isset($row['answer_by']) && preg_match('/^\d{4}-\d{2}-\d{2}$/D', (string) $row['answer_by']) && ((string) $row['answer_by'] !== '0000-00-00')) ? (string) $row['answer_by'] : '',
     );
 }
 
@@ -1223,8 +1336,19 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
         $comments = false;
     }
 
+    // The approval settings, only where their columns are (11.0.276); a
+    // bundle's link asks no approval.
+    $approval_cols = '';
+    $approval_vals = '';
+
+    if (!empty($link['approval']) && ($bundle_id === 0) && $comments && function_exists('pg_proto_approval_ready') && pg_proto_approval_ready()) {
+        $approval_cols = ', approval, publish_rule, approver_name, approver_email, answer_by';
+        $approval_vals = ", '1', '" . (empty($link['publish_rule']) ? 0 : 1) . "', '" . e((string) $link['approver_name']) . "', '"
+            . e((string) $link['approver_email']) . "', " . (((string) $link['answer_by'] !== '') ? "'" . e((string) $link['answer_by']) . "'" : 'NULL');
+    }
+
     db("INSERT INTO prototype_links
-            (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at" . ($comments ? ', allow_comments' : '') . (($bundle_id > 0) ? ', bundle_id' : '') . ")
+            (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at" . ($comments ? ', allow_comments' : '') . (($bundle_id > 0) ? ', bundle_id' : '') . $approval_cols . ")
         VALUES (
             '" . (int) $style_id . "',
             '" . (int) $link['start_page_id'] . "',
@@ -1235,7 +1359,7 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
             " . (($hash === null) ? 'NULL' : "'" . e($hash) . "'") . ",
             '" . (int) $link['expires_at'] . "',
             '" . (int) $user_id . "',
-            '" . time() . "'" . ($comments ? ", '1'" : '') . (($bundle_id > 0) ? ", '" . $bundle_id . "'" : '') . ")");
+            '" . time() . "'" . ($comments ? ", '1'" : '') . (($bundle_id > 0) ? ", '" . $bundle_id . "'" : '') . $approval_vals . ")");
 
     $row = pg_proto_link_get((int) mysqli_insert_id(db::$con));
 
@@ -1832,6 +1956,13 @@ function pg_proto_links_panel($sub, $request, $user)
             'password' => isset($request['password']) ? $request['password'] : '',
             'allow_comments' => (isset($request['allow_comments']) && pg_proto_comments_ready()) ? $request['allow_comments'] : 0,
         ), $draft_ids, array_keys(pg_proto_link_durations()), $now);
+        $plan = pg_proto_link_plan_approval($plan, pg_proto_approval_ready() ? array(
+            'approval' => isset($request['approval']) ? $request['approval'] : 0,
+            'approver_name' => isset($request['approver_name']) ? $request['approver_name'] : '',
+            'approver_email' => isset($request['approver_email']) ? $request['approver_email'] : '',
+            'answer_by' => isset($request['answer_by']) ? $request['answer_by'] : '',
+            'publish_rule' => isset($request['publish_rule']) ? $request['publish_rule'] : 0,
+        ) : array(), $now);
 
         if (!$plan['ok']) {
             return array('status' => 'error', 'message' => pg_proto_link_error_message($plan['error']), 'field' => $plan['field']);
@@ -1886,5 +2017,7 @@ function pg_proto_links_panel($sub, $request, $user)
         'can_show' => (pg_proto_link_seal('probe') !== ''),
         // "Allow comments" is offered once the site keeps comments.
         'comments_ready' => pg_proto_comments_ready(),
+        // "Ask for approval" is offered once the site keeps verdicts.
+        'approval_ready' => pg_proto_comments_ready() && pg_proto_approval_ready(),
     );
 }
