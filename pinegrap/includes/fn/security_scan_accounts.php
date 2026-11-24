@@ -246,7 +246,7 @@ function pg_security_settings_env()
     return array(
         'windows' => (DIRECTORY_SEPARATOR === '\\'),
         'folders' => $folders,
-        'allow_url_include' => ini_get('allow_url_include'),
+        'allow_url_include' => ini_get('allow_url_include'),  // phpcs:ignore PHPCompatibility.IniDirectives.RemovedIniDirectives.allow_url_includeDeprecated -- read to report it on; ini_get() answers false where PHP no longer knows it
         'display_errors' => ini_get('display_errors'),
         'php_version' => PHP_VERSION,
         'php2shell' => $status['state'],
