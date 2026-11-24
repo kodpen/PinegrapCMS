@@ -2226,8 +2226,10 @@ body:not(.toolbar) .software-content > #footer {
 }
 /* The rail's rules skip a drawer-only screen (.menu-drawer-only, below):
    its menu is the drawer at every width. :where() keeps their weight. */
+/* Hidden from sight only: visibility or display would take the label out
+   of the row's name, and a row with a count would be read as its number. */
 :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .list-group-text {
-  visibility: hidden;
+  opacity: 0;
 }
 
 /* A count on a menu entry (the ERP's overdue receivables). Expanded, it sits
@@ -2879,7 +2881,7 @@ body:not(.toolbar) .software-content > #footer {
   /* The drawer is always full width while open, so labels never hide down here
      regardless of the saved desktop rail state. */
   #menu:not(.expanded) .list-group .list-group-item .list-group-text {
-    visibility: visible;
+    opacity: 1;
   }
   /* And a count goes back into the line with them, before the arrow. */
   #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
