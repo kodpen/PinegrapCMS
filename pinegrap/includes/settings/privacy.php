@@ -202,6 +202,143 @@ $privacy_parts['cookies'] = array('html' => '
                             </div>
                         </div>') + pg_privacy_fold_cookies((bool) $cookie_consent);
 
+// ── Interest score ──
+// The visitor journey's scores (includes/fn/lead_score.php): from which
+// score a contact is hot, the points each act gives, the pages that count
+// as pricing and contact, and under Advanced the half-life and the keep
+// period. Drawn once the journey's tables exist; privacy.save.php writes
+// them to config_text 'lead_score' only when this card was posted.
+if (pg_schema_has('contact_scores', 'interest') && pg_schema_has('config_text')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_score.php');
+
+    $lead_settings = pg_lead_score_settings(pg_config_text('lead_score'));
+    $lead_defaults = pg_lead_score_settings(array());
+    $lead_pages = (array) db_items("SELECT page_id, page_name FROM page ORDER BY page_name");
+
+    // A number field with its unit after it; data-pg-default is the value
+    // Back to the defaults puts back.
+    $lead_number = function ($name, $value, $default, $unit, $max_length, $label_id = '') {
+        return '<label class="form-control form-adorn form-adorn-end">
+                    <span class="form-adorn-text" aria-hidden="true">' . h($unit) . '</span>
+                    <input type="text" required name="' . $name . '" id="' . $name . '" class="form-ghost text-end" value="' . (int) $value . '" data-pg-default="' . (int) $default . '" size="5" maxlength="' . (int) $max_length . '" inputmode="numeric"' . (($label_id !== '') ? ' aria-labelledby="' . $label_id . '"' : '') . '/>
+                </label>';
+    };
+
+    $lead_page_select = function ($name, array $chosen, $label) use ($lead_pages) {
+        $options = '';
+
+        foreach ($lead_pages as $lead_page) {
+            $options .= '<option value="' . (int) $lead_page['page_id'] . '"' . (in_array((int) $lead_page['page_id'], $chosen, true) ? ' selected="selected"' : '') . '>' . h($lead_page['page_name']) . '</option>';
+        }
+
+        return '<select multiple data-pg-combobox data-pg-default="" name="' . $name . '[]" id="' . $name . '" class="form-control" data-placeholder="' . h($label) . '">' . $options . '</select>';
+    };
+
+    $lead_act_rows = '';
+
+    foreach ($lead_settings['weights'] as $lead_kind => $lead_points) {
+        $lead_act_rows .= '
+                                                <div class="pg-card-inner-row">
+                                                    <span class="flex-grow-1" id="lead_score_act_' . $lead_kind . '">' . h(pg_lead_score_reason_text($lead_kind)) . '</span>
+                                                    <span class="pg-f-xs">' . $lead_number('lead_score_weight_' . $lead_kind, $lead_points, $lead_defaults['weights'][$lead_kind], lang('points'), 3, 'lead_score_act_' . $lead_kind) . '</span>
+                                                </div>';
+    }
+
+    $privacy_parts['interest-score'] = array('html' => '
+                        <div id="pgset-interest-score" class="pg-set-card" data-pg-lead-score>
+                            <input type="hidden" name="lead_score_card" value="1"/>
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Interest score')) . '
+                                </div>
+                                <div class="card-body">
+                                    <p class="pg-field-help mt-0">' . h(lang('Scores how interested each contact is from the pages they open and what they do, and marks them hot from the score below. Only visitors who said yes to marketing cookies in the cookie notice are followed.')) . '</p>
+                                    <div class="row gy-5">
+                                        <div class="pg-f-xs">
+                                            <label for="lead_score_threshold" class="form-label">' . h(lang('Hot from')) . '</label>
+                                            ' . $lead_number('lead_score_threshold', $lead_settings['threshold'], $lead_defaults['threshold'], lang('of 100'), 3) . '
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-label">' . h(lang('What counts')) . '</div>
+                                            <div class="pg-card-inner">' . $lead_act_rows . '
+                                            </div>
+                                            <div class="form-text">' . h(lang('Points fade with time; a contact\'s score is the sum, at most 100.')) . '</div>
+                                        </div>
+                                        <div class="pg-f-md">
+                                            <label for="lead_score_pricing_pages" class="form-label">' . h(lang('Pricing pages')) . '</label>
+                                            ' . $lead_page_select('lead_score_pricing_pages', $lead_settings['pricing_pages'], lang('Choose the pages')) . '
+                                        </div>
+                                        <div class="pg-f-md">
+                                            <label for="lead_score_contact_pages" class="form-label">' . h(lang('Contact pages')) . '</label>
+                                            ' . $lead_page_select('lead_score_contact_pages', $lead_settings['contact_pages'], lang('Choose the pages')) . '
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text mt-0">' . h(lang('With no page chosen, a page named pricing, fiyat, contact or iletisim counts.')) . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <details>
+                                                <summary class="form-text">' . h(lang('Advanced')) . '</summary>
+                                                <div class="row gy-5 mt-0">
+                                                    <div class="pg-f-xs">
+                                                        <label for="lead_score_half_life" class="form-label">' . h(lang('Points halve in')) . '</label>
+                                                        ' . $lead_number('lead_score_half_life', $lead_settings['half_life'], $lead_defaults['half_life'], lang('day(s)'), 3) . '
+                                                    </div>
+                                                    <div class="pg-f-xs">
+                                                        <label for="lead_score_keep_months" class="form-label">' . h(lang('Keep the journey for')) . '</label>
+                                                        ' . $lead_number('lead_score_keep_months', $lead_settings['keep_months'], $lead_defaults['keep_months'], lang('month(s)'), 2) . '
+                                                    </div>
+                                                </div>
+                                            </details>
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-lead-score-defaults>' . h(lang('Back to the defaults')) . '</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>') + pg_privacy_fold_interest($visitor_tracking_checked !== '', (bool) $cookie_consent, $lead_settings['threshold']);
+
+    // Back to the defaults fills the fields with the code's values; the
+    // pane's Save writes them. Bound once on the document: the pane's
+    // markup is replaced on every visit.
+    $pg_settings_scripts[] = '
+    <script>
+        (function () {
+            if (window.pgLeadScoreDefaultsBound) {
+                return;
+            }
+
+            window.pgLeadScoreDefaultsBound = true;
+
+            document.addEventListener("click", function (event) {
+                var button = event.target.closest("[data-pg-lead-score-defaults]");
+                var card = button ? button.closest("[data-pg-lead-score]") : null;
+
+                if (!card) {
+                    return;
+                }
+
+                card.querySelectorAll("input[data-pg-default]").forEach(function (input) {
+                    input.value = input.getAttribute("data-pg-default");
+                    input.dispatchEvent(new Event("change", {bubbles: true}));
+                });
+
+                card.querySelectorAll("select[data-pg-default]").forEach(function (select) {
+                    if (window.pgCombobox && window.pgCombobox.set) {
+                        window.pgCombobox.set(select, []);
+                        return;
+                    }
+
+                    Array.prototype.forEach.call(select.options, function (option) {
+                        option.selected = false;
+                    });
+                    jQuery(select).trigger("change");
+                });
+            });
+        })();
+    </script>';
+}
+
 // ── Legal Documents ──
 // The pre-information form and the distance sales contract, filled from the
 // order. Drawn once the schema has its fields; the save writes them only then.

@@ -384,6 +384,84 @@ function pg_lead_score_reason_text($kind)
 }
 
 /**
+ * The contacts list's Score cell: the interest score, with a "Hot" pill
+ * from the site's threshold on; empty for a contact not scored. Pure but
+ * for lang().
+ *
+ * @param mixed $interest contact_scores.interest, null without a row
+ * @param int   $threshold
+ * @return string HTML
+ */
+function pg_lead_score_list_cell($interest, $threshold)
+{
+    if (($interest === null) || ($interest === '')) {
+        return '';
+    }
+
+    $interest = (int) $interest;
+
+    return (($interest >= (int) $threshold) ? '<span class="pg-pill pg-tone-rose me-2">' . h(lang('Hot')) . '</span>' : '')
+        . $interest;
+}
+
+/**
+ * The interest score settings as Site Settings posted them (the
+ * "Interest score" row): each value checked against its bounds, a field out
+ * of them named with its message. Pure but for lang().
+ *
+ * @param array $post the posted fields: lead_score_threshold,
+ *                    lead_score_weight_<kind>, lead_score_pricing_pages,
+ *                    lead_score_contact_pages, lead_score_half_life,
+ *                    lead_score_keep_months
+ * @return array settings (pg_lead_score_settings()'s shape), errors (field => message)
+ */
+function pg_lead_score_settings_input(array $post)
+{
+    $errors = array();
+    $number = function ($field, $min, $max, $message) use ($post, &$errors) {
+        $value = trim((string) ($post[$field] ?? ''));
+
+        if (!preg_match('/^\d{1,4}$/', $value) || ((int) $value < $min) || ((int) $value > $max)) {
+            $errors[$field] = $message;
+            return $min;
+        }
+
+        return (int) $value;
+    };
+
+    $weights = array();
+
+    foreach (array_keys(pg_lead_score_weights()) as $kind) {
+        $weights[$kind] = $number('lead_score_weight_' . $kind, 0, 100, lang('Give each act 0 to 100 points.'));
+    }
+
+    $data = array(
+        'threshold' => $number('lead_score_threshold', 1, 100, lang('Hot from a score of 1 to 100.')),
+        'weights' => $weights,
+        'pricing_pages' => (isset($post['lead_score_pricing_pages']) && is_array($post['lead_score_pricing_pages'])) ? $post['lead_score_pricing_pages'] : array(),
+        'contact_pages' => (isset($post['lead_score_contact_pages']) && is_array($post['lead_score_contact_pages'])) ? $post['lead_score_contact_pages'] : array(),
+        'half_life' => $number('lead_score_half_life', 1, 365, lang('Points halve in 1 to 365 days.')),
+        'keep_months' => $number('lead_score_keep_months', 1, 36, lang('Keep the journey 1 to 36 months.')),
+    );
+
+    return array('settings' => pg_lead_score_settings($data), 'errors' => $errors);
+}
+
+/**
+ * The text config_text 'lead_score' keeps for the settings: '' when they
+ * are the defaults, so a later change of a default reaches the site. Pure.
+ *
+ * @param array $settings pg_lead_score_settings()'s shape
+ * @return string
+ */
+function pg_lead_score_settings_text(array $settings)
+{
+    $settings = pg_lead_score_settings($settings);
+
+    return ($settings === pg_lead_score_settings(array())) ? '' : (string) json_encode($settings);
+}
+
+/**
  * The site's interest score settings, read once per request.
  *
  * @return array pg_lead_score_settings()

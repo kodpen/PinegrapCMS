@@ -789,12 +789,14 @@ function pg_contact_list_search_columns($filter, $shows_groups, $groups)
 }
 
 /**
- * The SELECT list of a list row.
+ * The SELECT list of a list row; with the scores, the interest score of
+ * the joined contact_scores row (pg_contact_list_source()).
  *
  * @param string $filter
+ * @param bool   $scores whether the list shows the Score column
  * @return string
  */
-function pg_contact_list_select($filter)
+function pg_contact_list_select($filter, $scores = false)
 {
     $select = 'contacts.image, contacts.file_id, contacts.id, contacts.first_name, contacts.last_name, contacts.company,
         contacts.business_phone, contacts.home_phone, contacts.mobile_phone, contacts.email_address, contacts.opt_in, ';
@@ -816,7 +818,8 @@ function pg_contact_list_select($filter)
         contact_user.user_id as user_id,
         contact_user.user_username as user_username,
         contact_user.user_role as user_role,
-        contacts.timestamp';
+        contacts.timestamp' . ($scores ? ',
+        contact_scores.interest as lead_interest' : '');
 }
 
 /**
@@ -827,11 +830,15 @@ function pg_contact_list_select($filter)
  * instead of the phones, e-mail, user and opt-in; the duplicates view leads
  * with the e-mail address and always shows the groups.
  *
+ * The main views can show the interest score ("Score"), hidden until the
+ * user turns it on in the columns menu.
+ *
  * @param string $filter       pg_contact_list_filter_name()'s answer
  * @param bool   $shows_groups whether the groups are shown (the toggle)
+ * @param bool   $scores       whether the list reads the scores (pg_contact_list_shows_scores())
  * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_contact_list_columns($filter, $shows_groups)
+function pg_contact_list_columns($filter, $shows_groups, $scores = false)
 {
     $prefix = pg_contact_list_address_prefix($filter);
     $duplicates = ($filter == 'all_duplicate_contacts');
@@ -862,6 +869,10 @@ function pg_contact_list_columns($filter, $shows_groups)
         $columns['email'] = array('heading' => lang('Email'), 'width' => '14rem', 'sort' => 'contacts.email_address');
         $columns['user'] = array('heading' => lang('User'), 'width' => '9rem', 'sort' => 'contact_user.user_username');
         $columns['opt_in'] = array('heading' => lang('Opt-In'), 'kind' => 'check', 'sort' => 'contacts.opt_in');
+
+        if ($scores) {
+            $columns['score'] = array('heading' => lang('Score'), 'width' => '7rem', 'kind' => 'number', 'sort' => 'contact_scores.interest', 'hidden' => true);
+        }
     }
 
     if ($shows_groups || $duplicates) {
@@ -886,6 +897,20 @@ function pg_contact_list_phone_columns()
         'home_phone' => array('heading' => lang('Home Phone'), 'width' => '10rem', 'sort' => 'contacts.home_phone'),
         'mobile_phone' => array('heading' => lang('Mobile Phone'), 'width' => '10rem', 'sort' => 'contacts.mobile_phone'),
     );
+}
+
+/**
+ * Whether the list reads the interest scores: the main views (not an
+ * address view, not the duplicates), once the visitor journey's tables are
+ * in place.
+ *
+ * @param string $filter
+ * @return bool
+ */
+function pg_contact_list_shows_scores($filter)
+{
+    return ($filter != 'all_duplicate_contacts') && (pg_contact_list_address_prefix($filter) === '')
+        && function_exists('pg_schema_has') && pg_schema_has('contact_scores', 'interest');
 }
 
 /**
@@ -928,16 +953,23 @@ function pg_contact_list_source($user, $params)
     $shows_groups = pg_contact_list_shows_groups($filter);
     $duplicates = ($filter == 'all_duplicate_contacts');
     $quick_edit = pg_contact_quick_edit_columns($filter, pg_contact_quick_group_options($user));
+    $scores = pg_contact_list_shows_scores($filter);
+
+    if ($scores) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_score.php');
+    }
 
     return pg_list_table_source(array(
         'list' => 'view_contacts',
-        'columns' => pg_contact_list_editable_columns(pg_contact_list_columns($filter, $shows_groups), $quick_edit),
-        'from' => $list['tables'],
+        'columns' => pg_contact_list_editable_columns(pg_contact_list_columns($filter, $shows_groups, $scores), $quick_edit),
+        // One scores row a contact at most (its key), so the join adds no row.
+        'from' => $list['tables'] . ($scores ? '
+            LEFT JOIN contact_scores ON contact_scores.contact_id = contacts.id' : ''),
         'where' => $list['condition'],
         'params' => $list['params'],
         'id' => 'contacts.id',
         'id_order' => 'asc',
-        'select' => pg_contact_list_select($filter),
+        'select' => pg_contact_list_select($filter, $scores),
         // The group join gives a contact one row per group.
         'group' => true,
         'search' => array('columns' => pg_contact_list_search_columns($filter, $shows_groups, $groups), 'labels' => array()),
@@ -1251,6 +1283,11 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name,
         }
     } else {
         $cells['opt_in'] = pg_list_cell($contact['opt_in'] ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center');
+
+        if (array_key_exists('lead_interest', $contact)) {
+            $settings = pg_lead_settings();
+            $cells['score'] = pg_list_cell(pg_lead_score_list_cell($contact['lead_interest'], $settings['threshold']), 'align-middle text-end');
+        }
     }
 
     $cells['groups'] = pg_list_cell($group_names);

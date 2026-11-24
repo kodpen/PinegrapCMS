@@ -161,6 +161,47 @@ function test_lead_score_interest_topics_product_category()
 	pg_assert_same(array(), pg_lead_interest_items(array(array('kind' => 'visit', 'at' => $now - $day, 'pages' => array(array('home', 5), array('x', 5, 'order', 3))))), 'an unknown item type is not looked up');
 }
 
+function test_lead_score_list_cell()
+{
+	pg_assert_same('', pg_lead_score_list_cell(null, 60), 'not scored: empty');
+	pg_assert_same('42', pg_lead_score_list_cell('42', 60), 'the figure alone below the threshold');
+	pg_assert_true(strpos(pg_lead_score_list_cell(60, 60), 'pg-pill') !== false, 'hot from the threshold on');
+	pg_assert_same('0', pg_lead_score_list_cell(0, 60), 'a scored contact with no interest shows 0');
+}
+
+function test_lead_score_settings_input()
+{
+	$post = array(
+		'lead_score_threshold' => '70',
+		'lead_score_pricing_pages' => array('4', '4', 'x', '9'),
+		'lead_score_half_life' => '14',
+		'lead_score_keep_months' => '6',
+	);
+	foreach (pg_lead_score_weights() as $kind => $points) {
+		$post['lead_score_weight_' . $kind] = (string) $points;
+	}
+	$post['lead_score_weight_form'] = '40';
+
+	$input = pg_lead_score_settings_input($post);
+	pg_assert_same(array(), $input['errors'], 'all in bounds');
+	pg_assert_same(70, $input['settings']['threshold']);
+	pg_assert_same(40, $input['settings']['weights']['form']);
+	pg_assert_same(array(4, 9), $input['settings']['pricing_pages'], 'page ids once, nothing else');
+	pg_assert_same(array(), $input['settings']['contact_pages'], 'no page chosen');
+	pg_assert_same(14, $input['settings']['half_life']);
+	pg_assert_same(6, $input['settings']['keep_months']);
+
+	$bad = pg_lead_score_settings_input(array('lead_score_threshold' => '0', 'lead_score_weight_form' => '101', 'lead_score_half_life' => 'abc', 'lead_score_keep_months' => '37') + $post);
+	pg_assert_same(array('lead_score_weight_form', 'lead_score_threshold', 'lead_score_half_life', 'lead_score_keep_months'), array_keys($bad['errors']), 'each field out of bounds is named');
+}
+
+function test_lead_score_settings_text()
+{
+	pg_assert_same('', pg_lead_score_settings_text(pg_lead_score_settings(array())), 'the defaults store nothing');
+	$text = pg_lead_score_settings_text(array('threshold' => 80));
+	pg_assert_same(80, pg_lead_score_settings($text)['threshold'], 'read back as written');
+}
+
 function test_lead_score_interest_points_by_kind()
 {
 	$score = pg_lead_interest_score(array(array('kind' => 'form', 'at' => LEAD_SCORE_TEST_NOW), array('kind' => 'download', 'at' => LEAD_SCORE_TEST_NOW)), LEAD_SCORE_TEST_NOW);
