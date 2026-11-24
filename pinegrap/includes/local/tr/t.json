@@ -8429,6 +8429,7 @@
     "The visit requests, the dome shows, the telescope nights, the conversations and the news are kept here. Open a request and press Change Status when you confirm it; what you write under it reaches the teacher by e-mail. Call a telescope night off on its own page, before the visitors set out.": "Ziyaret talepleri, kubbe gösterileri, teleskop geceleri, yazışmalar ve haberler burada tutulur. Bir talebi onaylarken açıp Durumu Değiştir'e basın; altına yazdığınız öğretmene e-postayla ulaşır. Bir teleskop gecesini, ziyaretçiler yola çıkmadan kendi sayfasında iptal edin.",
     "The visit: opening hours day by day, a page per branch with what it offers, getting here and access.": "Ziyaret: gün gün açılış saatleri, sunduklarıyla her şubeye bir sayfa, ulaşım ve erişim.",
     "The visit: opening hours, admission as words, getting there, access and facilities, and a timed entry slot booked online.": "Ziyaret: çalışma saatleri, yazıyla giriş ücretleri, ulaşım, erişilebilirlik ve olanaklar, çevrim içi ayrılan saatli giriş.",
+    "The visitor came back from {var:1} after its message had completed order #{var:2}: the receipt was shown.": "Ziyaretçi, {var:1} bildirimi #{var:2} numaralı siparişi tamamladıktan sonra geri döndü: makbuz gösterildi.",
     "The visitor came from a calendar": "Ziyaretçi bir takvimden geldi",
     "The visitor came from a page with a back link": "Ziyaretçi geri bağlantısı olan bir sayfadan geldi",
     "The visitor can add a comment (the form is shown)": "Ziyaretçi yorum ekleyebilir (form gösterilir)",
