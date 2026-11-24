@@ -5604,7 +5604,12 @@
     list-style: none;
   }
 
-  .pg-dash-launch-side {
+  /* The list row's side is an unread dot's 8 px; here it holds "Do it"
+     and its menu. */
+  .pg-list-row > .pg-dash-launch-side {
+    width: auto;
+    padding-top: 0;
+    align-self: center;
     display: flex;
     align-items: center;
     gap: .25rem;
