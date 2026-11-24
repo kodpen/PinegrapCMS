@@ -1,6 +1,6 @@
 ---
 name: legacy-earlier-designs
-description: The "Designs moved earlier" card on the move screen (LE11): each Legacy design's fully editable pages, its dry run drawer, its run of the page_parts and types steps only, a design moved before the frame split
+description: The "Designs moved earlier" card (LE11): fully editable pages per Legacy design, its dry run drawer, its run of page_parts and types only, a design moved before the frame split
 module: legacy_earlier_designs
 ---
 
