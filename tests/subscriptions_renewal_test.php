@@ -747,6 +747,91 @@ function test_subscription_renewal_confirmed_last_payment_ends_the_row()
 	pg_assert_true(in_array('write_order', $calls, true));
 }
 
+function test_subscription_renewal_held_failure_goes_on_the_ladder()
+{
+	$now = mktime(12, 0, 0, 4, 2, 2027);
+	$failed = array('success' => false, 'error' => 'Your card was declined.', 'transaction_id' => 'pi_9');
+
+	// Held by a confirmation link the customer failed: the first ladder step.
+	$store = subscriptions_renewal_test_row(array('status' => 'past_due', 'next_charge_at' => '0', 'retry_count' => '0'));
+	$calls = array();
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+	$io = subscriptions_renewal_test_io($store, $calls, $failed);
+
+	pg_assert_same('failed', pg_subscription_renewal_held_failed('stripe', 7, $failed, $now, $io));
+	pg_assert_same('past_due', $store['status']);
+	pg_assert_same(1, (int) $store['retry_count']);
+	pg_assert_same('2027-04-03', date('Y-m-d', (int) $store['next_charge_at']), 'retried a day later');
+	pg_assert_same(array('event', 'renewal_failed', 0, 0, 'Your card was declined.', ''), $calls[count($calls) - 2]);
+	pg_assert_same(0, subscriptions_renewal_test_charges($calls), 'nothing is charged');
+	pg_assert_same('subscription_failed', $GLOBALS['subscriptions_renewal_test_mails'][0]['action']);
+
+	// The second delivery finds the row on the ladder, no longer held.
+	pg_assert_same('nothing', pg_subscription_renewal_held_failed('stripe', 7, $failed, $now, $io));
+
+	// A pending charge that fails: active moves to past_due.
+	$pending = subscriptions_renewal_test_row(array('next_charge_at' => '0'));
+	$calls = array();
+	pg_assert_same('failed', pg_subscription_renewal_held_failed('stripe', 7, $failed, $now, subscriptions_renewal_test_io($pending, $calls, $failed)));
+	pg_assert_same('past_due', $pending['status']);
+
+	// Held after the ladder's last retry: the failure ends it.
+	$last = subscriptions_renewal_test_row(array('status' => 'past_due', 'next_charge_at' => '0', 'retry_count' => '3'));
+	$calls = array();
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+	pg_assert_same('failed', pg_subscription_renewal_held_failed('stripe', 7, $failed, $now, subscriptions_renewal_test_io($last, $calls, $failed)));
+	pg_assert_same('ended', $last['status']);
+	pg_assert_same('subscription_cancelled', $GLOBALS['subscriptions_renewal_test_mails'][0]['action']);
+
+	// Only a held row of that driver, and a busy row is tried again.
+	$active = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('nothing', pg_subscription_renewal_held_failed('stripe', 7, $failed, $now, subscriptions_renewal_test_io($active, $calls, $failed)), 'the cron\'s own failure');
+	$held = subscriptions_renewal_test_row(array('next_charge_at' => '0'));
+	pg_assert_same('nothing', pg_subscription_renewal_held_failed('iyzico', 7, $failed, $now, subscriptions_renewal_test_io($held, $calls, $failed)), 'another driver');
+	pg_assert_same('busy', pg_subscription_renewal_held_failed('stripe', 7, $failed, $now, subscriptions_renewal_test_io($held, $calls, $failed, false)));
+	pg_assert_same('0', $held['next_charge_at']);
+}
+
+function test_subscription_renewal_held_rows_end_after_seven_days()
+{
+	pg_assert_same(7, pg_subscription_renewal_hold_days());
+
+	$sql = pg_subscription_renewal_held_sql();
+	pg_assert_contains('next_charge_at = 0', $sql);
+	foreach (array('confirm_needed', 'renewal_pending', 'renewal_unclear') as $kind) {
+		pg_assert_contains("'" . $kind . "'", $sql, 'measured from the hold\'s event');
+	}
+
+	$now = mktime(12, 0, 0, 4, 9, 2027);
+	$plan = pg_subscription_renewal_hold_end_plan(subscriptions_renewal_test_row(array('status' => 'past_due', 'next_charge_at' => '0')), $now);
+	pg_assert_same('ended', $plan['status']);
+	pg_assert_same(0, $plan['fields']['next_charge_at']);
+	pg_assert_same($now, $plan['fields']['ended_at']);
+	pg_assert_same('renewal_failed', $plan['event'], 'as the ladder\'s last step');
+	pg_assert_same('subscription_cancelled', pg_subscription_mail_action($plan['event'], 'past_due', 'ended'));
+	pg_assert_same('subscription.failed', pg_subscription_webhook_event($plan['event'], 'past_due', 'ended'));
+
+	// A held row ends under the lock, with the cancelled mail.
+	$store = subscriptions_renewal_test_row(array('next_charge_at' => '0'));
+	$calls = array();
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+	pg_assert_same('ended', pg_subscription_renewal_hold_end_row(7, $now, subscriptions_renewal_test_io($store, $calls, array())));
+	pg_assert_same('ended', $store['status']);
+	pg_assert_same(array('lock', 'save'), array_slice($calls, 0, 2));
+	pg_assert_same(0, subscriptions_renewal_test_charges($calls));
+	pg_assert_same('subscription_cancelled', $GLOBALS['subscriptions_renewal_test_mails'][0]['action']);
+
+	// Settled meanwhile (no longer held), or held by another run: left alone.
+	$moved = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('skipped', pg_subscription_renewal_hold_end_row(7, $now, subscriptions_renewal_test_io($moved, $calls, array())));
+	pg_assert_same('active', $moved['status']);
+	$held = subscriptions_renewal_test_row(array('next_charge_at' => '0'));
+	pg_assert_same('skipped', pg_subscription_renewal_hold_end_row(7, $now, subscriptions_renewal_test_io($held, $calls, array(), false)));
+	pg_assert_same('active', $held['status']);
+}
+
 function test_subscription_renewal_confirmed_flags_a_payment_no_order_holds()
 {
 	$now = mktime(12, 0, 0, 4, 2, 2027);

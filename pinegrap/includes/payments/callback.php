@@ -386,6 +386,26 @@ function pg_payment_callback_renewal($key, $answer)
 }
 
 /**
+ * Answers a failed renewal a service reports (pg_subscription_renewal_held_failed())
+ * and ends the request. Busy is answered 503, so the service sends it again.
+ *
+ * @param string $key
+ * @param array  $answer notify()'s answer with raw.renewal_failed
+ * @return void
+ */
+function pg_payment_callback_renewal_failed($key, $answer)
+{
+    $result = pg_subscription_renewal_held_failed($key, (int) $answer['raw']['subscription_id'], $answer, time());
+
+    if ($result === 'failed') {
+        $source = $answer['log'] ? $answer['log'][0] : pg_log_lang(array('string' => 'A subscription renewal was reported'));
+        log_activity(pg_log_lang(array('string' => '{var:1}. The held renewal went on the retry ladder.', 'vars' => array($source))), 'SYSTEM');
+    }
+
+    pg_payment_callback_answer(($result === 'busy') ? 503 : 200, array('status' => $result));
+}
+
+/**
  * Answers one message: payment_callback.php?driver=<key>.
  *
  * @return void
@@ -418,6 +438,10 @@ function pg_payment_callback_receive()
     // A subscription's renewal names no order: the renewal writer takes it.
     if ($answer['success'] && isset($answer['raw']['subscription_id'])) {
         pg_payment_callback_renewal($key, $answer);
+    }
+
+    if (!$answer['success'] && !empty($answer['raw']['renewal_failed']) && isset($answer['raw']['subscription_id'])) {
+        pg_payment_callback_renewal_failed($key, $answer);
     }
     $order = $answer['success'] ? pg_payment_notify_order($answer) : null;
     $outcome = pg_payment_notify_outcome($key, $answer, $order, defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '');

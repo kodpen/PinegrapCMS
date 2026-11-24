@@ -17,7 +17,7 @@ module: subscriptions
 - `pg_subscription_renewal_confirmed()` answers `unrecorded` for a row of that driver that is not held and whose renewals hold no such payment (io `recorded`: a `renewed` event with the pi id, or a renewal order with it as `transaction_id`). `pg_payment_callback_renewal()` logs it and sends a `payment_notice` alert; nothing is written. Otherwise `nothing`, as before.
 - Symptom fixed: a row cancelled while it waited for the customer's confirmation, then confirmed on Stripe's page, took the money with no order and no log line.
 - The cron's own paid charge is never flagged: its order is written before the lock is let go, and the message waits for that lock.
-- A held row that never gets an outcome still never ends: issue #11427.
+- A held row that never gets an outcome: `subscriptions-held-renewal.md`.
 
 ## Tested?
 - `tests/subscriptions_test.php`, `tests/payment_stripe_webhook_test.php`, `tests/subscriptions_renewal_test.php` (stand-in io and source checks). No database, no Stripe test-mode run.

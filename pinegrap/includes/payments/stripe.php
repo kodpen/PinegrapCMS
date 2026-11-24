@@ -1498,7 +1498,7 @@ function pg_payment_stripe_log_amount($amount, $currency)
 
 /**
  * A message Stripe sent to payment_callback.php?driver=stripe. Only a
- * message signed with the endpoint's secret is read. Three events are
+ * message signed with the endpoint's secret is read. Four events are
  * answered; the callback decides what the store does with each (it never
  * changes the order):
  *
@@ -1508,6 +1508,11 @@ function pg_payment_stripe_log_amount($amount, $currency)
  *                             subscription's renewal (metadata
  *                             subscription_id, order_reference
  *                             'subscription-<id>', raw.subscription_id)
+ *   payment_intent.payment_failed
+ *                             a subscription's renewal failed (metadata
+ *                             subscription_id, not authentication_required):
+ *                             a failure with raw.renewal_failed, acknowledged
+ *                             as not used once the renewal writer took it
  *   charge.refunded           refunded: money was given back on Stripe's
  *                             screen (amount: everything refunded so far)
  *   charge.dispute.created    pending: the card holder disputes the payment
@@ -1593,6 +1598,31 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
                 'card_ref'        => pg_payment_stripe_intent_card_ref($object),
                 'log'             => array(pg_log_lang(array('string' => 'Stripe reports that payment {var:1} of {var:2} succeeded', 'vars' => array($text('id'), pg_payment_stripe_log_amount($amount, $currency))))),
                 'raw'             => $raw,
+            );
+
+        case 'payment_intent.payment_failed':
+            $order_id = (isset($object['metadata']['order_id']) && is_scalar($object['metadata']['order_id'])) ? trim((string) $object['metadata']['order_id']) : '';
+            $subscription_id = (isset($object['metadata']['subscription_id']) && is_scalar($object['metadata']['subscription_id'])) ? trim((string) $object['metadata']['subscription_id']) : '';
+            $error = (isset($object['last_payment_error']) && is_array($object['last_payment_error'])) ? $object['last_payment_error'] : array();
+            $code = (isset($error['code']) && is_string($error['code'])) ? $error['code'] : '';
+            $message = (isset($error['message']) && is_string($error['message'])) ? trim($error['message']) : '';
+
+            // Only a renewal's failure is read. authentication_required is the
+            // off-session refusal that started the confirmation the row now
+            // waits for, never its outcome.
+            if (($order_id !== '') || (preg_match('/^[1-9][0-9]{0,9}$/', $subscription_id) !== 1)
+                || (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) !== 1) || ($code === 'authentication_required')) {
+                return $ignored;
+            }
+
+            // A failure answer acknowledged as not used: the callback hands it
+            // to the renewal writer first, which takes it only for a held row.
+            return array(
+                'success'        => false,
+                'error'          => ($message !== '') ? $message : lang('The payment was not accepted.'),
+                'transaction_id' => $text('id'),
+                'log'            => array(pg_log_lang(array('string' => 'Stripe reports that payment {var:1} for subscription {var:2} failed ({var:3})', 'vars' => array($text('id'), $subscription_id, ($code !== '') ? $code : pg_log_lang(array('string' => 'none given')))))),
+                'raw'            => $raw + array('ignored' => true, 'subscription_id' => $subscription_id, 'renewal_failed' => true, 'code' => $code),
             );
 
         case 'charge.refunded':
