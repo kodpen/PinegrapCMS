@@ -474,6 +474,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
     $patterns[] = pg_look_examples_add_list_pattern();
+    $patterns[] = pg_look_examples_flow_trial_pattern();
     $patterns[] = pg_look_examples_menu_icon_pattern();
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
@@ -1322,6 +1323,42 @@ function pg_look_examples_add_list_pattern()
             . '<p class="wsf-palette-tip pg-text-meta">' . h(lang('Dropping an arrow\'s end on empty space opens this list too.')) . '</p>'
             . '</div></div>'
             . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: pointing at an arrow shows a "+" at its middle; a dashed "+" stands after a box with a free outcome. Either opens this list there: the search ("/" reaches it), "Often next" by the box before, then the groups as chips with their counts. The box chosen cuts the arrow in two; the boxes after it move one column right when there is no room. A on the canvas opens it at the arrow or box chosen.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's trial (board C1): the bar while the draft is tried,
+ * boxes marked as walked and in turn, the panel's steps with Next step and
+ * To the end.
+ *
+ * @return array the pattern's id, title, classes and markup
+ */
+function pg_look_examples_flow_trial_pattern()
+{
+    $badge = function ($state, $icon, $word) {
+        return '<span class="wsf-run-badge wsf-run-' . $state . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($word) . '</span>';
+    };
+    $button = function ($class, $icon, $label) {
+        return '<button type="button" class="pg-button pg-button-sm ' . $class . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>';
+    };
+
+    return array(
+        'id'      => 'pattern-flow-trial',
+        'title'   => lang('Try the flow'),
+        'classes' => array('.wsf-trial', '.wsf-run-badge', '.wsf-run-done', '.wsf-run-skipped', '.wsf-run-running', '.wsf-run-failed', '.pg-button-fill', '.pg-button-quiet', '.pg-button-ghost'),
+        'html'    => '<div class="d-flex flex-column gap-4 wsf-trial">'
+            . '<div class="d-flex flex-wrap align-items-center gap-3"><span class="small fw-semibold fg-primary"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang('Trial · nothing is sent')) . '</span>'
+            . $button('pg-button-fill', 'bi-x-lg', lang('End the trial')) . '</div>'
+            . '<div class="d-flex flex-wrap gap-2">' . $badge('done', 'bi-check-circle-fill', lang('Tried')) . $badge('skipped', 'bi-skip-forward', lang('Passed'))
+            . $badge('done', 'bi-check-circle-fill', lang('Yes')) . $badge('failed', 'bi-x-octagon-fill', lang('Would fail')) . $badge('running', 'bi-arrow-right-circle', lang('Next')) . '</div>'
+            . '<ol class="list-unstyled small mb-0">'
+            . '<li class="mb-3"><div class="d-flex align-items-center gap-2 mb-1">' . $badge('done', 'bi-check-circle-fill', lang('Tried')) . '<span class="fw-semibold">' . h(lang('Send an e-mail')) . '</span></div>'
+            . '<div>' . h(lang('To the record\'s contact')) . '</div>' . $button('pg-button-ghost mt-1', 'bi-envelope-open', lang('Preview')) . '</li>'
+            . '<li class="d-flex align-items-center gap-2 fg-secondary">' . $badge('running', 'bi-arrow-right-circle', lang('Next')) . '<span>' . h(lang('Task')) . '</span></li>'
+            . '</ol>'
+            . '<div class="d-flex flex-wrap gap-2">' . $button('pg-button-fill', 'bi-arrow-right', lang('Next step')) . $button('pg-button-quiet', 'bi-skip-end', lang('To the end')) . '</div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: Try in the bar walks the draft from its start with a record, read-only; the bar says nothing is sent and offers End the trial. The panel lists the steps walked in their Try words, the box in turn, Next step and To the end. On the canvas a walked box wears a tick (a Wait "Passed", a condition its outcome), the box in turn "Next"; the arrows taken are green, the others faint.')) . '</p>',
     );
 }
 

@@ -402,6 +402,7 @@
         scheduled: null,    // the scheduled actions the list ends with: refused (count)
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
+        trial: null,        // the draft tried from its start (ws_flow_trial), nothing kept
         stash: null,        // what the run view put aside: the draft, selection, view, edit
         starting: false,    // a start is being asked or sent
         startToken: null,   // { flow, value } kept until a start is answered
@@ -1156,6 +1157,7 @@
         state.marks = null;
         state.sketch = null;
         state.tries = null;
+        state.trial = null;
     }
 
     // The editor taken off the page: the run's looks and the timers stop,
@@ -1886,6 +1888,7 @@
     function clearScreen() {
         closeSetup();
         endRun();
+        endTrial();
         state.panel = '';
         state.flow = null;
         state.graph = graphOf(null);
@@ -2964,6 +2967,7 @@
         window.clearTimeout(state.saveTimer);
         closeSetup();
         endRun();
+        endTrial();
         state.openSeq++;
 
         // The runs panel stays open while the same flow is shown again
@@ -3276,7 +3280,7 @@
         // Somebody who only reads the flow has no save state: the bar says
         // in its place why nothing can be changed. A run shown says so in
         // its own bar above the canvas.
-        if (!state.edit && !state.run) {
+        if (!state.edit && !state.run && !state.trial) {
             ui.bar.appendChild(el('span', 'small fg-secondary', t('fl_read_only')));
         }
 
@@ -3286,6 +3290,19 @@
 
         ui.sideProblems = null;
 
+        // While the draft is tried, the bar says so and how to end it;
+        // nothing else is done with the flow meanwhile.
+        if (state.trial) {
+            trialBar();
+            ui.publish = null;
+
+            if (state.pop) {
+                openPop(state.pop);
+            }
+
+            return;
+        }
+
         if (state.edit) {
             ui.problemButton = barButton(BAR_QUIET, '', '');
             ui.bar.appendChild(barWindow('problems', ui.problemButton, t('fl_problems_list'), showProblems));
@@ -3293,6 +3310,7 @@
         }
 
         runsButton();
+        tryButton();
         runButton(!publishing);
 
         // Only the owner publishes: a published flow runs with the owner's
@@ -3719,6 +3737,7 @@
         paintMark(box, box.querySelector('.wsf-node-head'), node);
         paintTry(box, node);
         paintRun(box, node);
+        paintTrial(box, node);
     }
 
     // A box as the run shown left it: the tone, mark and word of its state,
@@ -3854,6 +3873,11 @@
             var step = state.run ? stepOf(edge.from) : null;
 
             if (step && (step.status === 'done') && step.outcome && ((step.outcome === edge.on) || (edge.on === 'always'))) {
+                group.classList.add('wsf-edge-taken');
+            }
+
+            // In a trial, an arrow a walked box left on.
+            if (state.trial && state.trial.marked && (state.trial.marked.taken.indexOf(index) !== -1)) {
                 group.classList.add('wsf-edge-taken');
             }
 
@@ -7133,14 +7157,16 @@
         }
 
         K.clear(ui.side);
-        ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run));
+        ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run && !state.trial));
         ui.app.classList.remove('wsf-side-open');
 
         if (!state.flow) {
             return;
         }
 
-        if (state.run) {
+        if (state.trial) {
+            trialSide();
+        } else if (state.run) {
             runSide();
         } else if ((state.panel === 'runs') && (!selected || state.outline)) {
             runsSide();
@@ -14488,6 +14514,38 @@
         return nodes.filter(function (node) { return !kindOf(node).pure; }).concat(nodes.filter(function (node) { return kindOf(node).pure; }));
     }
 
+    // The marks of a trial on the canvas (ws_flow_trial's steps, of which
+    // the first `shown` are walked): each walked box done with its outcome,
+    // a Wait passed, a box that would fail failed; the step in turn next.
+    // The arrows a walked box left on are taken: its outcome's, and always
+    // unless it failed. Pure.
+    function trialMarks(steps, shown, edges) {
+        var marks = {};
+        var taken = [];
+        var list = steps || [];
+        var walked = Math.min(Math.max(0, shown || 0), list.length);
+
+        list.slice(0, walked).forEach(function (step) {
+            var failed = step.status === 'failed';
+
+            marks[step.node_id] = { state: failed ? 'failed' : ((step.kind === 'delay') ? 'passed' : 'done'), outcome: step.outcome || '' };
+        });
+
+        if (steps && (walked < list.length)) {
+            marks[list[walked].node_id] = { state: 'next', outcome: '' };
+        }
+
+        (edges || []).forEach(function (edge, index) {
+            var mark = marks[edge.from];
+
+            if (mark && (mark.state !== 'next') && mark.outcome && ((edge.on === mark.outcome) || ((edge.on === 'always') && (mark.state !== 'failed')))) {
+                taken.push(index);
+            }
+        });
+
+        return { marks: marks, taken: taken };
+    }
+
     // A run's flag (assets/js/workspace_flow_flag.js, in the workspace
     // bundle so the run's card in a channel draws the same one).
     function runFlag(run, options) {
@@ -14938,6 +14996,7 @@
 
         state.openSeq++;
         settle();
+        endTrial();
 
         if (!state.stash) {
             state.stash = { graph: state.graph, selected: state.selected, view: { x: state.view.x, y: state.view.y, k: state.view.k }, edit: state.edit };
@@ -15744,13 +15803,15 @@
     // The optional customer of a run, asked under Run's question: a search
     // among the contacts the person reads (ws_ref_search), one picked at a
     // time. The server checks the pick again (ws_flow_run_contact_check()).
-    function customerPicker() {
+    // options: help, the line under the search; onPick(found), told of each
+    // pick (the trial's record).
+    function customerPicker(options) {
         var picked = { id: 0 };
         var wrap = el('div', 'wsf-run-customer');
         var id = 'wsf-run-customer-' + Date.now();
         var label = el('label', 'form-label small fw-semibold mb-1', t('fl_run_customer'));
         var input = el('input', 'form-control form-control-sm');
-        var help = el('div', 'form-text', t('fl_run_customer_help'));
+        var help = el('div', 'form-text', (options && options.help) || t('fl_run_customer_help'));
         var list = el('div', 'list-group mt-1 d-none');
         var chip = el('div', 'd-flex align-items-center gap-2 mt-1 d-none');
         var serial = 0;
@@ -15786,6 +15847,10 @@
             chip.appendChild(el('span', 'fw-semibold', found.label));
             chip.appendChild(clear);
             clear.focus();
+
+            if (options && options.onPick) {
+                options.onPick(found);
+            }
         }
 
         input.addEventListener('input', K.debounce(function () {
@@ -15830,6 +15895,470 @@
         });
 
         return { node: wrap, picked: picked };
+    }
+
+    // ── The trial: the draft tried from its start ──────────────────────
+
+    // How a box of the trial is marked on the canvas and in the panel: its
+    // tone (a run state's), its mark and its word.
+    var TRIAL_MARKS = {
+        done: ['done', 'bi-check-circle-fill', 'fl_trial_walked'],
+        passed: ['skipped', 'bi-skip-forward', 'fl_trial_passed'],
+        failed: ['failed', 'bi-x-octagon-fill', 'fl_trial_failed'],
+        next: ['running', 'bi-arrow-right-circle', 'fl_trial_next']
+    };
+
+    // The texts of a message read as its heading in a preview.
+    var TRIAL_HEADS = ['subject', 'fallback_subject', 'title'];
+
+    // Try is the flow owner's while they edit the draft, as a box's Try
+    // tab is: the server looks at every box with the owner's rights.
+    function canTry() {
+        return !!(state.flow && state.edit && state.flow.manage && !state.run && !state.trial && !state.embed && state.graph);
+    }
+
+    // "Try" in the bar, beside Run.
+    function tryButton() {
+        if (!canTry()) {
+            return;
+        }
+
+        var button = barButton(BAR_QUIET, t('fl_trial'), 'bi-play-circle');
+
+        button.title = t('fl_trial_help');
+        button.setAttribute('data-refocus', 'trial');
+        button.addEventListener('click', startTrial);
+        ui.bar.appendChild(button);
+    }
+
+    // The bar while the draft is tried: that nothing is sent, and the way
+    // back to editing it.
+    function trialBar() {
+        var note = el('span', 'small fw-semibold fg-primary wsf-trial-note');
+        var end = barButton(BAR_FILL, t('fl_trial_end'), 'bi-x-lg');
+
+        note.appendChild(K.icon('bi-eye', 'me-1'));
+        note.appendChild(document.createTextNode(t('fl_trial_on')));
+        end.setAttribute('data-refocus', 'trial-end');
+        end.addEventListener('click', closeTrial);
+        ui.bar.appendChild(note);
+        ui.bar.appendChild(end);
+    }
+
+    // The trial begins once the draft is saved, as the server walks the
+    // draft it keeps; the canvas is read-only until it ends.
+    function startTrial() {
+        var flow = state.flow;
+
+        if (!canTry()) {
+            return;
+        }
+
+        settle();
+        flush().then(function () {
+            if ((state.flow !== flow) || !canTry()) {
+                return;
+            }
+
+            state.trial = { flow: flow.id, edit: state.edit, record: null, outcomes: {}, answer: null, marked: trialMarks(null, 0, []), shown: 0, busy: false, seq: 0, error: '', runs: [] };
+            state.edit = false;
+            state.selected = null;
+            state.panel = '';
+            canvas.cancel();
+            ui.app.classList.add('wsf-trial', 'wsf-readonly');
+            state.refocus = 'trial-title';
+            drawBar();
+            drawAll();
+            announce(t('fl_trial_on'));
+            loadTrial(0);
+            loadTrialRuns();
+        }).catch(K.fail);
+    }
+
+    // The trial ends without drawing anything (another flow, a run shown);
+    // gives what it was, null when none was on.
+    function endTrial() {
+        var trial = state.trial;
+
+        if (!trial) {
+            return null;
+        }
+
+        state.trial = null;
+        state.edit = trial.edit;
+
+        if (ui.app) {
+            ui.app.classList.remove('wsf-trial');
+            ui.app.classList.toggle('wsf-readonly', !state.edit);
+        }
+
+        return trial;
+    }
+
+    // "End the trial": back to the draft, Try focused.
+    function closeTrial() {
+        if (!endTrial()) {
+            return;
+        }
+
+        state.refocus = 'trial';
+        drawBar();
+        drawAll();
+        announce(t('fl_trial_ended_note'));
+    }
+
+    // The walk asked of the server again (ws_flow_trial) with the record and
+    // the outcomes chosen; `shown` steps are walked once it answers. Only
+    // the last question asked is drawn.
+    function loadTrial(shown) {
+        var trial = state.trial;
+        var seq = ++trial.seq;
+        var record = trial.record || {};
+
+        trial.busy = true;
+        trial.error = '';
+        keepFocus(drawTrialViews);
+
+        K.api('ws_flow_trial', { flow_id: state.flow.id, run_id: record.run_id || 0, contact_id: record.contact_id || 0, outcomes: JSON.stringify(trial.outcomes) }).then(function (data) {
+            if ((state.trial !== trial) || (seq !== trial.seq)) {
+                return;
+            }
+
+            trial.busy = false;
+            trial.answer = data.trial || { steps: [], skipped: [], state: 'failed' };
+            trial.shown = Math.min(shown, trial.answer.steps.length);
+            keepFocus(drawTrialViews);
+        }).catch(function (error) {
+            if ((state.trial !== trial) || (seq !== trial.seq)) {
+                return;
+            }
+
+            trial.busy = false;
+            trial.answer = null;
+            trial.error = (error && error.message) || t('error_generic');
+            keepFocus(drawTrialViews);
+        });
+    }
+
+    // The flow's last five runs, offered first as the trial's record.
+    function loadTrialRuns() {
+        var trial = state.trial;
+
+        if (!(state.flow.version > 0)) {
+            return;
+        }
+
+        K.api('ws_flow_runs_list', { flow_id: state.flow.id, before_id: 0 }).then(function (data) {
+            if (state.trial === trial) {
+                trial.runs = (data.runs || []).slice(0, 5);
+                keepFocus(drawSettings);
+            }
+        }).catch(function () {});
+    }
+
+    // The marks, the arrows taken and the panel as the trial now stands.
+    function drawTrialViews() {
+        var trial = state.trial;
+
+        if (!trial) {
+            return;
+        }
+
+        trial.marked = trialMarks(trial.answer ? trial.answer.steps : null, trial.shown, state.graph.edges);
+
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.pgc-node[data-node]'), function (box) {
+            var node = nodeById(box.getAttribute('data-node'));
+
+            if (node) {
+                fillBox(box, node);
+            }
+        });
+
+        drawEdges();
+        drawSettings();
+    }
+
+    // A box as the trial left it: the tone, mark and word of its mark (a
+    // condition's outcome in place of the word). paintRun() has taken the
+    // last ones off.
+    function paintTrial(box, node) {
+        var mark = (state.trial && state.trial.marked) ? state.trial.marked.marks[node.id] : null;
+
+        if (!mark) {
+            return;
+        }
+
+        var badge = trialBadge(node, mark);
+
+        box.classList.add('wsf-run-' + TRIAL_MARKS[mark.state][0]);
+        box.querySelector('.wsf-node-head').appendChild(badge);
+        box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + badge.textContent + '.');
+    }
+
+    // A trial's mark as a mark and a word, never the colour alone: a box
+    // with outcomes of its own says the one it left on.
+    function trialBadge(node, mark) {
+        var look = TRIAL_MARKS[mark.state];
+        var named = (mark.state === 'done') && mark.outcome && node && edgeNamed(node, mark.outcome);
+        var badge = el('span', 'wsf-run-badge wsf-run-' + look[0]);
+
+        badge.appendChild(K.icon(look[1]));
+        badge.appendChild(document.createTextNode(named ? outcomeText(node, mark.outcome) : t(look[2])));
+
+        return badge;
+    }
+
+    // The trial's panel: the record, then the steps walked, the one in
+    // turn, Next step and To the end.
+    function trialSide() {
+        var trial = state.trial;
+        var head = el('div', 'wsf-side-title', t('fl_trial_title'));
+
+        head.tabIndex = -1;
+        head.setAttribute('data-refocus', 'trial-title');
+        ui.side.appendChild(head);
+        ui.side.appendChild(el('p', 'small fg-secondary mb-4', t('fl_trial_lead')));
+        ui.side.appendChild(trialRecord(trial));
+        ui.side.appendChild(trialSteps(trial));
+    }
+
+    // Who the trial is about: the record chosen, the last runs' records
+    // first, a contact search after them.
+    function trialRecord(trial) {
+        var wrap = el('section', 'wsf-trial-record mb-5');
+        var current = el('div', 'd-flex align-items-center gap-2 small mb-3');
+        var record = trial.record;
+
+        wrap.appendChild(el('div', 'small fw-semibold mb-1', t('fl_trial_record')));
+        current.appendChild(K.icon(record ? (record.run_id ? 'bi-clock-history' : 'bi-person-vcard') : 'bi-dash-circle'));
+        current.appendChild(el('span', 'flex-grow-1 text-break', record ? record.label : t('fl_trial_record_none')));
+
+        if (record) {
+            var clear = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_trial_record_clear'));
+
+            clear.setAttribute('data-refocus', 'trial-record');
+            clear.addEventListener('click', function () {
+                chooseRecord(null);
+            });
+            current.appendChild(clear);
+        }
+
+        wrap.appendChild(current);
+
+        if (trial.runs.length) {
+            var runs = el('div', 'd-flex flex-wrap gap-2 mb-3');
+
+            runs.setAttribute('role', 'group');
+            runs.setAttribute('aria-label', t('fl_trial_recent'));
+            wrap.appendChild(el('div', 'small fg-secondary mb-1', t('fl_trial_recent')));
+            trial.runs.forEach(function (run) {
+                var label = t('fl_try_run_item', run.id, runWord(run.status));
+                var pick = K.lookButton('pg-button pg-button-quiet pg-button-sm', label);
+
+                pick.title = t('fl_run_at', when(run.started_at));
+                pick.setAttribute('data-refocus', 'trial-run-' + run.id);
+                pressedLook(pick, !!(record && (record.run_id === run.id)));
+                pick.addEventListener('click', function () {
+                    chooseRecord({ run_id: run.id, label: label });
+                });
+                runs.appendChild(pick);
+            });
+            wrap.appendChild(runs);
+        }
+
+        wrap.appendChild(customerPicker({
+            help: t('fl_trial_customer_help'),
+            onPick: function (found) {
+                if (found) {
+                    chooseRecord({ contact_id: found.id, label: found.label });
+                }
+            }
+        }).node);
+
+        return wrap;
+    }
+
+    // Another record starts the trial over: the outcomes chosen were for
+    // the walk of the one before.
+    function chooseRecord(record) {
+        state.trial.record = record;
+        state.trial.outcomes = {};
+        state.refocus = 'trial-title';
+        loadTrial(0);
+    }
+
+    // The steps walked, each in its Try's words; the one in turn named;
+    // then Next step and To the end, or how the run would end.
+    function trialSteps(trial) {
+        var wrap = el('section', 'wsf-trial-steps');
+        var answer = trial.answer;
+        var steps = answer ? answer.steps : [];
+        var tools = el('div', 'd-flex flex-wrap gap-2 mt-3');
+        var line = el('p', 'small mb-0');
+
+        line.setAttribute('aria-live', 'polite');
+        wrap.appendChild(el('div', 'small fw-semibold mb-1', t('fl_trial_steps')));
+
+        if (trial.error) {
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'));
+
+            line.className = 'small fg-danger mb-0';
+            line.textContent = trial.error;
+            retry.setAttribute('data-refocus', 'trial-retry');
+            retry.addEventListener('click', function () {
+                loadTrial(trial.shown);
+            });
+            line.appendChild(retry);
+            wrap.appendChild(line);
+
+            return wrap;
+        }
+
+        if (!answer) {
+            line.className = 'small fg-secondary mb-0';
+            line.textContent = t('fl_trial_loading');
+            wrap.appendChild(line);
+
+            return wrap;
+        }
+
+        var list = el('ol', 'list-unstyled mb-0 wsf-trial-list');
+
+        steps.slice(0, trial.shown).forEach(function (step, index) {
+            list.appendChild(trialStep(trial, step, index));
+        });
+
+        if (trial.shown < steps.length) {
+            var next = steps[trial.shown];
+            var item = el('li', 'd-flex align-items-center gap-2 small fg-secondary wsf-trial-step');
+
+            item.appendChild(trialBadge(nodeById(next.node_id), { state: 'next', outcome: '' }));
+            item.appendChild(el('span', 'text-break', next.name || next.label));
+            list.appendChild(item);
+        }
+
+        wrap.appendChild(list);
+
+        var done = trial.shown >= steps.length;
+        var step = K.lookButton('pg-button pg-button-fill pg-button-sm', t('fl_trial_step'), 'bi-arrow-right');
+        var all = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_trial_all'), 'bi-skip-end');
+
+        step.setAttribute('data-refocus', 'trial-step trial-again');
+        all.setAttribute('data-refocus', 'trial-all trial-again');
+        step.disabled = done || trial.busy;
+        all.disabled = done || trial.busy;
+        step.addEventListener('click', function () {
+            walkTrial(trial.shown + 1);
+        });
+        all.addEventListener('click', function () {
+            walkTrial(steps.length);
+        });
+
+        if (!done) {
+            tools.appendChild(step);
+            tools.appendChild(all);
+        } else {
+            var again = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_trial_again'), 'bi-arrow-counterclockwise');
+
+            line.textContent = t('fl_trial_result', runWord(answer.state)) + ((answer.skipped || []).length ? ' ' + t('fl_trial_skipped', answer.skipped.length) : '');
+            again.setAttribute('data-refocus', 'trial-again trial-step');
+            again.addEventListener('click', function () {
+                walkTrial(0);
+            });
+            wrap.appendChild(line);
+            tools.appendChild(again);
+        }
+
+        wrap.appendChild(tools);
+
+        return wrap;
+    }
+
+    // One step walked: its mark, its box's name, what it would do, why it
+    // would fail, the values it lacks; the outcome a person would choose,
+    // to change; Preview for a message.
+    function trialStep(trial, step, index) {
+        var node = nodeById(step.node_id);
+        var mark = trial.marked.marks[step.node_id] || { state: (step.status === 'failed') ? 'failed' : 'done', outcome: step.outcome };
+        var item = el('li', 'small mb-3 wsf-trial-step');
+        var top = el('div', 'd-flex align-items-center gap-2 mb-1');
+
+        top.appendChild(trialBadge(node, mark));
+        top.appendChild(el('span', 'fw-semibold text-break', step.name || step.label));
+        item.appendChild(top);
+
+        if (step.said) {
+            item.appendChild(el('div', 'text-break', step.said));
+        }
+
+        if (step.refusal) {
+            item.appendChild(el('div', 'fg-danger text-break', t('fl_try_fails', step.refusal)));
+        }
+
+        if ((step.empty || []).length) {
+            item.appendChild(el('div', 'fg-secondary', t('fl_try_empty', step.empty.join(', '))));
+        }
+
+        if ((step.choices || []).length > 1) {
+            var choice = K.select(step.choices.map(function (on) { return [on, outcomeText(node, on)]; }), step.outcome);
+            var chosen = field(t('fl_trial_outcome'), choice, t('fl_trial_outcome_help'));
+
+            chosen.classList.remove('mb-5');
+            chosen.classList.add('mt-2');
+            choice.setAttribute('data-refocus', 'trial-choice-' + step.node_id);
+            choice.addEventListener('change', function () {
+                trial.outcomes[step.node_id] = choice.value;
+                state.refocus = 'trial-choice-' + step.node_id;
+                loadTrial(index + 1);
+            });
+            item.appendChild(chosen);
+        }
+
+        if (node && (kindOf(node).group === 'message') && (step.texts || []).length) {
+            var preview = K.lookButton('pg-button pg-button-ghost pg-button-sm mt-1', t('fl_trial_preview'), 'bi-envelope-open');
+
+            preview.addEventListener('click', function () {
+                previewStep(trial, step);
+            });
+            item.appendChild(preview);
+        }
+
+        return item;
+    }
+
+    // Next step and To the end walk on; 0 starts over. The steps walked
+    // are told to screen readers.
+    function walkTrial(shown) {
+        var trial = state.trial;
+        var steps = trial.answer ? trial.answer.steps : [];
+        var from = trial.shown;
+
+        trial.shown = Math.min(Math.max(0, shown), steps.length);
+        state.refocus = (trial.shown >= steps.length) ? 'trial-again' : 'trial-step';
+        keepFocus(drawTrialViews);
+        announce(steps.slice(from, trial.shown).map(function (step) {
+            return t('fl_run_pair', step.name || step.label, step.refusal ? t('fl_trial_failed') : t('fl_trial_walked'));
+        }).join('. ') || t('fl_trial_on'));
+    }
+
+    // A message as its person would get it: its heading, then its words,
+    // filled with the record's values; what only a real send knows is
+    // named under it.
+    function previewStep(trial, step) {
+        var card = el('div', 'border rounded-4 p-4 wsf-trial-preview');
+
+        (step.texts || []).forEach(function (text) {
+            var shown = el('div', (TRIAL_HEADS.indexOf(text.key) !== -1) ? 'fw-semibold mb-2 text-break' : 'mb-2 text-break', text.text);
+
+            shown.style.whiteSpace = 'pre-wrap';
+            card.appendChild(shown);
+        });
+
+        if ((step.empty || []).length) {
+            card.appendChild(el('div', 'small fg-secondary', t('fl_try_empty', step.empty.join(', '))));
+        }
+
+        K.ask(trial.record ? t('fl_trial_preview_for', step.name || step.label, trial.record.label) : t('fl_trial_preview_title', step.name || step.label), t('fl_trial_preview_close'), false, card, { info: true });
     }
 
     // Run: asked first, then started once. A second click while it is asked

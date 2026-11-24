@@ -2296,6 +2296,7 @@
     "No record to send: the run would send no e-mail.": "Gönderilecek kayıt yok: koşu e-posta göndermezdi.",
     "No record was read.": "Hiçbir kayıt okunmadı.",
     "No record with the site key was found under the selector.": "Seçicinin altında site anahtarını taşıyan bir kayıt bulunamadı.",
+    "No record: the start gives no values.": "Kayıt yok: başlangıç değer vermez.",
     "No records found.": "Kayıt bulunamadı.",
     "No records tagged.": "Etiketlenmiş kayıt yok.",
     "No records were found in the feed.": "Beslemede kayıt bulunamadı.",
