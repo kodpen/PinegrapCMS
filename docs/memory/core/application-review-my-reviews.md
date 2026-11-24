@@ -26,7 +26,7 @@ module: application_my_reviews
 
 ## How are scores saved?
 - `my_reviews.js` posts the form with `autosave=1` on each change (notes after 1.2 s); the answer is JSON and a session or token refusal is JSON too. A save sets status 1 and `scores` (criterion id => {score, note}).
-- Send needs every criterion scored: status 2, `total` = weighted sum × 100, `submitted_at`, an `audit_log` line `score` on `application_entry`, the round's scores recombined (`application-review-ranking.md`); then the next open entry opens.
+- Send needs every criterion scored: status 2, `total` = weighted sum × 100, `submitted_at`, an `audit_log` line `score` on `application_entry`, the round's scores recombined (`application-review-ranking.md`), `application.scored` announced (`application-review-report.md`); then the next open entry opens.
 
 ## What does "I know this applicant" do?
 - A reason is required (500 chars): status 3, `conflict_reason`, scores cleared, `audit_log` line `conflict`. Then only that entry is given out again from the round's plan (`pg_application_assignment_read()`), so the fewest-loaded pool member without it gets it; nobody free leaves it short for the managers' Reviewers tab.

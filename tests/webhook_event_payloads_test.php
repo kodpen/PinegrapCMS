@@ -68,6 +68,9 @@ function webhook_payloads_test_builders()
 				'reason' => 'damaged', 'items' => array(array('order_item_id' => 9, 'quantity' => 1)),
 			), '1001');
 		},
+		'pg_application_event_payload' => function () {
+			return pg_application_event_payload(array('id' => 8, 'form_id' => 22, 'page_id' => 14, 'reference_code' => 'K4M9QZ', 'category' => '', 'round' => 1, 'score_raw' => 0, 'decision' => 0), array('id' => 3, 'name' => 'A'));
+		},
 		'pg_cart_quote_event_payload' => function () {
 			return pg_cart_quote_event_payload(array('id' => 5, 'status' => 'open', 'contact_id' => 2, 'order_id' => 0, 'valid_until' => 0), array(array('product_id' => 3, 'quantity' => 2)), 1000);
 		},

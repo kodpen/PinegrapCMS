@@ -12,6 +12,7 @@ module: application_decisions
 - A row's select (No decision, Accepted, Rejected, Waitlisted; "Declined the place" only on an accepted entry) and "Save the chosen decisions", or the ticked rows with Accept, Reject, Waitlist.
 - `pg_application_decision_allowed()`: any change to none or the three; declined (4) only from accepted (1); a declined entry never changes again, its select is disabled.
 - A change writes `decision`, `decided_at`, `decided_by`, sets `mailed_at` 0 (declined keeps it) and an `audit_log` line `decision` on the entry, conditional on the decision read, so two managers never both change it.
+- Each change, and the waitlist call's acceptance, is announced as `application.decided` (`application-review-report.md`).
 
 ## How does the waitlist call work?
 - Set-up › Decision e-mails has the switch "When an accepted applicant declines, accept the next on the waitlist by itself" (`waitlist_auto`).

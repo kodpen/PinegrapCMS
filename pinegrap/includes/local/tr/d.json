@@ -877,6 +877,7 @@
     "Development Mode toggle failed": "Geliştirme Modu değiştirilemedi",
     "Development Mode updated to {var:1}.": "Geliştirme Modu {var:1} olarak güncellendi.",
     "Develops new plays with writers and directs in the Studio.": "Yazarlarla yeni oyunlar geliştirir ve Stüdyo'da yönetir.",
+    "Deviation": "Sapma",
     "Device": "Cihaz",
     "Device (browser and system)": "Cihaz (tarayıcı ve sistem)",
     "Device (loop_area)": "Cihaz (loop_area)",

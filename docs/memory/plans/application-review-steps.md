@@ -20,7 +20,7 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 
 - AR6 (M) after AR5. Done (#11149, `core/application-review-decisions.md`): decisions, the decision e-mails with their preview, the result on the submitter's view, the waitlist call. Features: V14.
 
-- AR7 (S) after AR6: the report and Excel, the API routes with their types, `php tools/check_api_schema.php`, the two events through `pg_announce()` and their catalogues, the MCP tools. Features: V15, V16.
+- AR7 (S) after AR6. Done (#11222, `core/application-review-report.md`): the report and Excel, the API routes with their types, `php tools/check_api_schema.php`, the two events through `pg_announce()` and their catalogues, the MCP tools. Features: V15, V16.
 
 - AR8 (S) close-out: every V number checked against the code with its PR; `core/application-review.md` written; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
