@@ -12,7 +12,7 @@ description: dkim.key never leaves the server through the panel (no view, archiv
 - `pg_file_withheld($name)` in `includes/fn/files.php`.
 - No content: `explorer_file_get` sends `viewable = false` and no `content`; `edit_file.php` drops `.key` from its viewable formats for that file.
 - No archive: `pg_explorer_zip_add_folder()` skips it, `explorer_zip_create` refuses it with "Access denied for …" (the archive is an ordinary file `get_file.php` serves).
-- No copy and no rename: `explorer_paste` (copy) and `pg_explorer_copy_folder()` refuse or skip it; `explorer_rename`, `explorer_file_save` and `edit_file.php` (Save, Duplicate) refuse a new name with "Access denied". Under another name `get_file.php` would serve it, and the mailer reads it by this name. Moving it to another folder is still allowed (the name stays).
+- No copy and no rename: `explorer_paste` (copy) and `pg_explorer_copy_folder()` refuse or skip it; `explorer_rename`, `explorer_file_save`, `edit_file.php` (Save, Duplicate) and Edit Design File or its list's quick edit (`pg_design_file_form_refusal()`) refuse a new name with "Access denied". Under another name `get_file.php` would serve it, and the mailer reads it by this name. Moving it to another folder is still allowed (the name stays).
 - No channel copy (#620): the Workspace picker (`includes/workspace/library.php`) lists it with the reason "the key that signs the site's mail stays on the server", and `ws_library_file()` refuses it, so neither the writing box's paperclip nor the file manager's "Send to a channel" posts a copy. A channel keeps its copy under another name, which `get_file.php` serves to the channel.
 - No content and no overwrite: the visual designer's `designer_file` read and save (`includes/panel/designer.php`) refuse it with "Access denied" (#8527).
 - A new door that gives the bytes, archives, copies or renames a file asks `pg_file_withheld($name)` first; `tests/file_withheld_test.php` checks the function and that each door asks it.
@@ -20,7 +20,7 @@ description: dkim.key never leaves the server through the panel (no view, archiv
 ## Who may give a file that name?
 - Staff (roles 0-2) only: `pg_file_name_reserved($name, $role)`, asked at the end of `prepare_file_name()` on the name as it is stored (after `pg_ascii_file_name()` and the trailing-dot drop, case-insensitive). A basic user (role 3) or anyone without a session (a public form upload, the external API, a job) gets `file`. A new door that builds a stored name without `prepare_file_name()` asks it itself, never on the name as sent.
 - Why: the mailer signs with whatever `FILE_DIRECTORY_PATH/dkim.key` exists (`includes/fn/mail.php`), and E-mail sending's DKIM card (`includes/settings/mail_sending.php`) shows that record's description as the TXT record to publish, so a planted key could end up in DNS.
-- Symptom fixed in #620: the rule compared the name as sent and case-sensitively, so `dkım.key` (ı becomes i) and, on Windows, `DKIM.KEY` or `dkim.key.` were stored as the signing key.
+- Fixed in #620: the rule compared the name as sent, case-sensitively, so `dkım.key` and, on Windows, `DKIM.KEY` or `dkim.key.` became the key.
 - Archive extraction checks the stored name again for every role (`pg_explorer_unsafe_archive_name()`, `backup-upload-extraction.md`).
 
 ## What is not covered?
