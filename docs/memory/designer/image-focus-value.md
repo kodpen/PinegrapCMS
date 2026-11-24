@@ -6,7 +6,7 @@ module: image_focus
 
 ## Where does the value live?
 - Image element: `objectPosition` (every screen, as before), `objectPositionTablet`, `objectPositionPhone`. A background picture: inside its node's `style` attribute (`background-position`, plus the custom properties below), so every writer that prints the style already follows.
-- Functions: `includes/fn/image_focus.php` (`pg_focus_*()`), twins `_sdFocus*()` beside `_sdImgDim()` in `style_designer.src.js`. Test: `tests/designer_image_focus_test.php` runs both on the same cases (PR #IF1PR).
+- Functions: `includes/fn/image_focus.php` (`pg_focus_*()`), twins `_sdFocus*()` beside `_sdImgDim()` in `style_designer.src.js`. Test: `tests/designer_image_focus_test.php` runs both on the same cases (PR #11523).
 
 ## How is a value read and written?
 - `pg_focus_parse()` reads `30% 20%`, one percentage (y 50 %), `0`, and the words left, center, right, top, bottom in either order (`top center` = `50% 0%`, `left 20%`). Clamped to 0..100. A length (`10px`), three parts or a vertical word before a number (`top 20%`) is null.
