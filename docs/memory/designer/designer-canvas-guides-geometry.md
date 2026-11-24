@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-guides-geometry
-description: The canvas guides' pure geometry (CG1, window.PGCanvasGuides): distances between two boxes, a parent's inner distances, the spacing scale's nearest step, the column under a pointer, equal sibling gaps
+description: The canvas guides' pure geometry (CG1 #11517, window.PGCanvasGuides): distances between two boxes, a parent's inner distances, the spacing scale's nearest step, the column under a pointer, equal sibling gaps
 ---
 
 ## What is it?
@@ -20,4 +20,4 @@ description: The canvas guides' pure geometry (CG1, window.PGCanvasGuides): dist
 - `gaps(boxes, axis, zoom)`: neighbour gaps sorted by place with `between` (indexes); overlapping boxes give none. `equalGaps(boxes, value, axis, zoom, tol)`: gaps within 0.5 page px of `value`. `snap(value, targets, threshold=4)`: where a handle holds.
 
 ## Where is it tested?
-- `tests/designer_canvas_guides_test.php` (Node, skipped without it): both box shapes, apart, touching, diagonal, nested and crossing boxes, zoom, inner distances LTR/RTL, every scale step and tie, drag steps, columns LTR/RTL and spans, gaps, equal gaps and snapping.
+- `tests/designer_canvas_guides_test.php` (#11517; Node, skipped without it): both box shapes, apart, touching, diagonal, nested and crossing boxes, zoom, inner distances LTR/RTL, every scale step and tie, drag steps, columns LTR/RTL and spans, gaps, equal gaps and snapping.
