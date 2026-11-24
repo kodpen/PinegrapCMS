@@ -27,8 +27,8 @@ function _volunteer_account_list_test_signup($shift, $start, $state, $offered = 
 
 function _volunteer_account_list_test_views()
 {
-	$food = array('id' => 1, 'name' => 'Food bank', 'roles' => array('r1' => array('name' => 'Driver')));
-	$park = array('id' => 2, 'name' => 'Park clean-up', 'roles' => array());
+	$food = array('id' => 1, 'name' => 'Food bank', 'roles' => array('r1' => array('name' => 'Driver')), 'call_channels' => array());
+	$park = array('id' => 2, 'name' => 'Park clean-up', 'roles' => array(), 'call_channels' => array());
 
 	return array(
 		array('programme' => $food, 'mine' => array(
