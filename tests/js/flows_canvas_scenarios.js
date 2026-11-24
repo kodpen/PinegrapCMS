@@ -1234,6 +1234,61 @@ module.exports = [
     },
 
     {
+        name: 'a box added where it goes: the "+" of an arrow opens the add list, the box cuts the arrow and the boxes after it move over in one undo step; an arrow\'s end dropped on the canvas opens it too',
+        run: async (h) => {
+            await h.open();
+            h.same('a dashed "+" after the box with a free outcome only', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-out-plus'), (plus) => plus.getAttribute('aria-label'))), [h.t('fl_add_after', 'Send the welcome pack')]);
+            await h.click(ARROW(1));
+            h.ok('the arrow chosen shows its "+"', await h.page(() => !document.querySelector('#ws-root .wsf-edge-plus').classList.contains('d-none')));
+            await h.click({ css: '#ws-root .wsf-edge-plus' });
+
+            const list = await h.page(() => [
+                !document.querySelector('#wsf-add-pop').classList.contains('d-none'),
+                document.activeElement.classList.contains('wsf-add-search'),
+                Array.prototype.map.call(document.querySelectorAll('#wsf-add-pop .wsf-add-item'), (row) => row.getAttribute('data-add-kind')),
+                document.querySelectorAll('#wsf-add-pop .wsf-add-chip').length > 0,
+                Math.round(document.querySelector('#wsf-add-pop').getBoundingClientRect().width)
+            ]);
+
+            h.same('a 280 px list, its search focused, after a task: Wait, Condition, an e-mail, then the groups', list, [true, true, ['delay', 'condition', 'email'], true, 280]);
+            await h.click({ css: '#wsf-add-pop [data-add-kind="delay"]' });
+            await h.waitFor('the new box, selected', (harness) => harness.state().selected && (harness.state().selected.id === 'delay_1'), 3000);
+            h.same('the arrow cut in two, the end moved one column right', [(await h.probe('box', 'delay_1')).x, (await h.probe('box', 'end_1')).x, (await h.probe('box', 'task_2')).x], [624, 928, 320]);
+            h.ok('the list closed', await h.page(() => document.querySelector('#wsf-add-pop').classList.contains('d-none')));
+
+            let save = await saveNumber(h, 1);
+
+            h.same('saved cut', arrows(save.data.graph), ['manual_1>task_1:next', 'task_1>delay_1:done', 'delay_1>end_1:done']);
+            await h.key('z', 'Control');
+            h.same('one undo takes it all back', [(await h.probe('boxes')).length, (await h.probe('edges')).length, (await h.probe('box', 'end_1')).x], [4, 2, 640]);
+
+            const empty = await h.probe('empty');
+
+            await h.drag(PORT('task_2', 'out'), empty);
+            h.ok('an arrow\'s end let go on the canvas opens the list', await h.page(() => !document.querySelector('#wsf-add-pop').classList.contains('d-none') && document.activeElement.classList.contains('wsf-add-search')));
+            await h.type(h.t('fl_kind_condition').slice(0, 4));
+            await h.key('Enter');
+            await h.waitFor('the box joined', (harness) => harness.state().selected && (harness.state().selected.id === 'condition_1'), 3000);
+            save = await saveNumber(h, 2);
+            h.ok('joined on the free outcome', arrows(save.data.graph).indexOf('task_2>condition_1:done') !== -1, arrows(save.data.graph));
+            await h.key('a');
+            h.ok('A opens the list after the box chosen', await h.page(() => !document.querySelector('#wsf-add-pop').classList.contains('d-none')));
+            await h.key('Escape');
+            h.ok('Esc closes it, the box keeps the focus', await h.page(() => document.querySelector('#wsf-add-pop').classList.contains('d-none') && (document.activeElement.getAttribute('data-node') === 'condition_1')));
+            await h.key('/');
+            h.ok('/ reaches the search of the boxes', await h.page(() => document.activeElement.classList.contains('wsf-palette-search')));
+            await h.key('Escape');
+            await h.moveTo({ css: ARROW(0) });
+            await h.eventually('an arrow pointed at a moment shows its "+"', (harness) => !document.querySelector('#ws-root .wsf-edge-plus').classList.contains('d-none'), 2000);
+            await h.click({ css: '#ws-root .wsf-edge-plus' });
+            h.same('after the start: Wait, Condition, an e-mail', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-add-pop .wsf-add-item'), (row) => row.getAttribute('data-add-kind'))), ['delay', 'condition', 'email']);
+            await h.click({ css: '#wsf-add-pop [data-add-group="message"]' });
+            h.ok('a group\'s chip shows its boxes', await h.page(() => (document.querySelector('#wsf-add-pop [data-add-group="message"]').getAttribute('aria-pressed') === 'true') && !!document.querySelector('#wsf-add-pop [data-add-kind="post"]')));
+            h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
+        }
+    },
+
+    {
         name: 'the problems the server finds are listed, each leading to its box; an arrow it names is outlined',
         fixture: 'problems',
         run: async (h) => {

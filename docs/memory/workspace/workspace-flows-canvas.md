@@ -29,8 +29,8 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Unsaveable changes are dropped on a switch after `ask()` only. A 409 shows "Load it again".
 
 ## Focus and keys?
-- `state.refocus`: `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws, then focuses the control redrawn in place, else its box (`box-<id>`), outline heading, the run's title or the run bar's Close.
-- Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: Settings' first field; + − 0; Esc; F6 between the areas. Undo: `workspace-flows-undo.md`.
+- `state.refocus`: `data-refocus` keys, spaced fallbacks. `keepFocus()` redraws, then focuses the control redrawn in place, else its box (`box-<id>`), outline heading, the run's title or the run bar's Close.
+- Tab in arrow order; arrows move 16 (Shift 64) C "Connect to…"; A, /: `-add-here.md`; Delete; Enter: Settings' first field; + − 0; Esc; F6 between the areas. Undo: `workspace-flows-undo.md`.
 
 ## What is the outline view?
 - The bar's List choice, default under 768 px: boxes in arrow order; a box's heading opens its settings and "Connect to…" (the selected box, `outlineOpen()`), one at a time; the hidden canvas redraws when shown. All forms at once was 686 controls at 97 boxes (#3497).

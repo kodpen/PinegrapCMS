@@ -27806,7 +27806,8 @@ html.ws-flow-layer-on body {
 }
 .wsf-palette-rail,
 .wsf-palette-panel,
-.wsf-strip {
+.wsf-strip,
+.wsf-add-pop {
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: 13px;
   background: var(--pg-surface-float);
@@ -28002,6 +28003,85 @@ html.ws-flow-layer-on body {
   padding: 10px 16px 12px;
   border-top: 1px solid var(--pg-border-color-translucent);
   color: var(--pg-fg-3);
+}
+/* The add list at a place (openAdd(), board B1): a 280 px card under the
+   arrow's "+" or the box's, the search with its "/" key, "Often next", the
+   groups as chips with their counts, the rows of the chip pressed. */
+.wsf-add-pop {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  max-height: 420px;
+  overflow: hidden;
+}
+.wsf-add-find {
+  position: relative;
+  flex-shrink: 0;
+  margin: 12px 12px 6px;
+}
+.wsf-add-find .wsf-add-search {
+  padding-right: 32px;
+}
+.wsf-add-key {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.wsf-add-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 8px;
+  overflow-y: auto;
+}
+.wsf-add-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 12px 6px;
+}
+.wsf-add-chip[aria-pressed="true"] {
+  color: var(--pg-accent);
+}
+.wsf-add-chip .wsf-palette-count {
+  margin-left: 2px;
+}
+.wsf-add-none {
+  margin: 4px 16px;
+}
+/* The "+" on an arrow (pointed at or chosen) and the dashed one after a
+   box with a free outcome: 20 px rounds on the canvas, at its zoom. */
+.wsf-plus {
+  position: absolute;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--pg-accent);
+  border-radius: 50%;
+  background: var(--pg-surface-float);
+  color: var(--pg-accent);
+  font-size: var(--pg-text-meta);
+  line-height: 1;
+}
+.wsf-out-plus {
+  border-style: dashed;
+  color: var(--pg-fg-3);
+  border-color: var(--pg-fg-3);
+}
+.wsf-plus:hover,
+.wsf-plus:focus-visible {
+  background: var(--pg-accent);
+  color: var(--pg-on-accent);
+  border-color: var(--pg-accent);
+}
+.wsf-app.wsf-outlined .wsf-add-pop {
+  display: none;
 }
 /* The bottom strip (drawStrip()): centred 16 px over the canvas's bottom,
    44 px high; Undo and Redo, the zoom and Fit, the data threads. */
