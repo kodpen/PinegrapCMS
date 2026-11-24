@@ -41,7 +41,12 @@ $result = array('asked' => 0, 'changed' => 0, 'delivered' => 0, 'failed' => 0);
 // E-commerce switched off is not a failure: the run is recorded so the
 // scheduled-task health indicator stays green, and nothing else happens.
 if (defined('ECOMMERCE') && (ECOMMERCE === true)) {
-    $result = pg_shipment_tracking_run();
+    // Capped by what is left of the general job's time limit when dispatched
+    // (pg_cron_time_left()): a host runner that stops job.php at its limit
+    // kills the run outright, and its lock then kept every light job out for
+    // an hour. The place is kept after every parcel, so a shorter run loses
+    // nothing.
+    $result = pg_shipment_tracking_run(pg_cron_time_left(PG_SHIPMENT_TRACKING_SECONDS));
 }
 
 if (function_exists('pg_cron_ran')) {

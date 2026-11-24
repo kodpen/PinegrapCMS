@@ -127,6 +127,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-101.md: Where are the rules and the earlier parts?
 - decisions-made-product-101.md: Does the customer's page show the steps that are not done? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-101.md: Can a line ask the customer for files? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-102.md: Where are the rules and the earlier parts?
+- decisions-made-product-102.md: Does the software scan itself for security faults? (owner, 2026-11-24, agent channel messages 12839 and 12847)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -731,6 +733,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
 - decisions-made-schema-50.md: Where are the rules and the earlier parts?
 - decisions-made-schema-50.md: Does launch_summary_lines get a column for the answer's kind? (owner, 2026-11-24, in the architect's window)
+- decisions-made-schema-51.md: Where are the rules and the earlier parts?
+- decisions-made-schema-51.md: Does the Security Scan get a table? (owner, 2026-11-24, agent channel message 12847)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
@@ -1204,6 +1208,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
 - designer/page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
 - designer/page-tab-link-counts.md: A page tab's tip on the Page Design Studio's page strip lists its outgoing, incoming and broken link counts, counted from the Prototype view's own data (tabCounts()); when, words, what shows none
+- designer/prototype-approval.md: Prototype approval start file: a share link asking Approve this page or Request changes, sealed to the draft; which file covers each part, A1 to A8 checked with their PRs
 - designer/prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up
 - designer/prototype-badge-list.md: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel
 - designer/prototype-comments-place.md: Where the Prototype comments button and list sit (PN6): the canvas bar's Prototype mode, the Prototype view's Comments tab beside Links, the View menu's item, a row's frame, Open in the editor
@@ -1619,6 +1624,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key
 - workspace/workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number
 - workspace/workflow-tables-bin.md: The bin of workflow tables (11.0.178, #8412): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
+- workspace/workflow-tables-data-bulk-delete.md: The bulk Delete of the Data list's selection bar (WL10 #11404): the button, its confirm dialog, the per-table right, the result notice and the tests
 - workspace/workflow-tables-lookup.md: Lookup columns of workflow tables (type lookup, wtable_lookup.php, PR #8574): a column of the linked row, worked out on read for whoever reads, never stored
 - workspace/workflow-tables-relational.md: Workflow tables that behave like SQL tables: the owner's aim, the note of each part (keys, links, lookups, rollups, lists, type changes and more), the rules every new part keeps
 - workspace/workflow-tables-rollup.md: Rollup columns of workflow tables (type rollup, wtable_rollup.php, PR #8584): count, sum, average, smallest or largest over the rows of another table that link to the row, worked out on read

@@ -36,16 +36,21 @@
 - bug-hunt-areas-backend-sweep-3.md: Third pass of the owner's whole-backend sweep of 2026-11-22: scheduled jobs, site pages, dark theme, API answers, untranslated texts; what it fixed or reported, what read clean [decision: decisions-made-product-99.md]
 - bug-hunt-areas-backend-sweep-4.md: Fourth whole-backend sweep (2026-11-22): SQL error log while crawling, static scans, array and unknown-id probes, root files; fixed checkout recipient id, Visitors grouping, System Informations
 - bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean [decision: here]
+- bug-hunt-areas-backup-restore.md: Bug hunt 24, making, listing, downloading and restoring a backup: two faults fixed (newer-version restore, unfinished folder listed as good), what was read clean
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
+- bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
 - bug-hunt-areas-connections-merges.md: The bug hunt in Connections after the CX11 merges (area connections-merges): Claude's, the chat services' and the MCP connectors' pages; the faults fixed and what was read clean
+- bug-hunt-areas-csv-import-export.md: The bug hunt of the panel's CSV imports and exports (area 27, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
+- bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question
 - bug-hunt-areas-main-menu-redraw.md: The bug hunt of the main menu after its redraw (MI1-MI3, MZ1), 2026-11-24: the rail's row names for a screen reader, the phone drawer's focus, what read clean
+- bug-hunt-areas-member-accounts.md: Bug hunt area 21, member accounts (2026-11-24): sign-up, sign-in, reset, e-mail change, blocked and deleted members; the four faults fixed, what read clean, what was left
 - bug-hunt-areas-migration-steps-11.md: Bug hunt of the 2026.11.0 migration steps (area 13, #11376): no fault; run twice, cut off at 57 points, paused, upgraded from a real 2026.4.10 install, tables of schema-46 to -49 matched
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
@@ -54,14 +59,20 @@
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-price-rounding.md: The bug hunt of price rounding (area 17, 2026-11-24): money in checkout, cart, offers, tax, shipping, refunds, the payment request and the ERP; four faults fixed, what was read clean
 - bug-hunt-areas-privacy-new-tables.md: Bug hunt of erasure, export, inventory, merge and keep periods over the 2026.11.0 tables (area 11, #11381): three faults fixed, what was read clean
+- bug-hunt-areas-private-content-access.md: The bug hunt in private content access (area 26, #11408): pages, folders and files for members or groups; the faults fixed and what was read clean
 - bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
+- bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-rights-new-screens.md: Bug hunt of rights by role on the 2026.11.0 screens (volunteers, queue, pick and pack, Hot Contacts, launch journey, share links, prototype settings): two faults fixed in #11374
+- bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
+- bug-hunt-areas-site-search.md: Bug hunt of the visitor site search (area 20, 2026-11-24): four faults fixed in the hunt's PR, what was read clean, and the noindex question left as it is
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
+- bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
+- bug-hunt-areas-workspace-tasks-time.md: Bug hunt 28, Workspace tasks and time (2026-11-24, PR #11413): timer in two tabs and over midnight, a task changed while its timer runs, totals, who edits another's time, a repeat made twice
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
 - bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean [decision: here]
@@ -114,6 +125,7 @@
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-100.md: Decisions list, product part 100 (2026-11-24 on): Claude's routine address and token and the MCP servers move from the Assistants and agents tab to Connections, a leading line stays
 - decisions-made-product-101.md: Decisions made, product part 101 (2026-11-24 on): the agency summary's customer page also shows the steps not done, and a line can ask the customer for files instead of text
+- decisions-made-product-102.md: Decisions made, product part 102 (2026-11-24 on): a rule-based Security Scan joined to the firewall's screen and card, with a manual run and a full test round; not an antivirus
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
@@ -257,6 +269,7 @@
 - decisions-made-schema-49.md: Decisions list, schema part 49 (2026-11-24 on): the agreed columns of prototype approval (PA1b): five on prototype_links, the table prototype_verdicts, no contact id, no retention rule
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-50.md: Decisions list, schema part 50 (2026-11-24 on): one column answer_kind on launch_summary_lines for a line that asks for files; no new table
+- decisions-made-schema-51.md: Decisions list, schema part 51 (2026-11-24 on): the table security_finding of the Security Scan; the owner left the schema to the architect
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)

@@ -324,12 +324,14 @@ function ws_task_time_detail($viewer, $task, $assignees)
 
     $people = ws_people($ids);
     $entries = array();
-    $total = 0;
 
     foreach ($rows as $row) {
         $entries[] = ws_task_time_present($viewer, $row, $people);
-        $total += (int) $row['minutes'];
     }
+
+    // The whole task's time, as its card and the lists count it
+    // (ws_task_time_totals()): the list above stops at 200 rows.
+    $total = (int) (ws_task_time_totals(array($task['id']))[(int) $task['id']] ?? 0);
 
     $running = ws_task_time_running($viewer['id']);
     $manager = ws_task_time_is_manager($viewer);
@@ -421,21 +423,71 @@ function ws_task_time_start($viewer, $task)
         return array('ok' => false, 'error' => lang('The time could not be saved.'), 'id' => 0, 'stopped' => $stopped);
     }
 
+    // Two tabs that start at the same moment both read no running timer and
+    // both insert one: the older ones are stopped and kept, so one runs.
+    $others = (array) db_items("SELECT * FROM ws_task_time WHERE user_id = '" . (int) $viewer['id'] . "' AND minutes = 0 AND started_at > 0 AND id <> '" . $id . "'");
+
+    foreach (ws_task_time_extra_running($others, $id) as $row) {
+        ws_task_time_close($row);
+    }
+
     return array('ok' => true, 'error' => '', 'id' => $id, 'stopped' => $stopped);
 }
 
 /**
- * Stops the person's running timer, wherever it runs.
+ * The running rows of a person to stop once a new timer runs: every one
+ * but the new one. Pure.
+ *
+ * @param array $rows    ws_task_time rows
+ * @param int   $keep_id the timer just started
+ * @return array
+ */
+function ws_task_time_extra_running($rows, $keep_id)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (((int) $row['id'] !== (int) $keep_id) && ((int) $row['minutes'] === 0) && ((int) $row['started_at'] > 0)) {
+            $out[] = $row;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * May a Stop sent from a task's drawer stop the running timer? Only while it
+ * runs on that task: a tab drawn before the timer moved to another task
+ * would otherwise stop that one. No task named (the /timer command) stops it
+ * wherever it runs. Pure.
+ *
+ * @param array|null $running ws_task_time_running()
+ * @param int        $task_id the task the Stop was pressed on, 0 for any
+ * @return bool
+ */
+function ws_task_time_stops_here($running, $task_id)
+{
+    return is_array($running) && (((int) $task_id <= 0) || ((int) $running['task_id'] === (int) $task_id));
+}
+
+/**
+ * Stops the person's running timer, wherever it runs, or only on the task
+ * named (ws_task_time_stops_here()).
  *
  * @param array $viewer
+ * @param int   $task_id the task the Stop was pressed on, 0 for any
  * @return array ok, error, minutes, task_id
  */
-function ws_task_time_stop($viewer)
+function ws_task_time_stop($viewer, $task_id = 0)
 {
     $running = ws_task_time_ready() ? ws_task_time_running($viewer['id']) : null;
 
     if (!$running) {
         return array('ok' => false, 'error' => lang('No timer of yours is running.'), 'minutes' => 0, 'task_id' => 0);
+    }
+
+    if (!ws_task_time_stops_here($running, $task_id)) {
+        return array('ok' => false, 'error' => lang('Your timer runs on another task now.'), 'minutes' => 0, 'task_id' => (int) $running['task_id']);
     }
 
     return array('ok' => true, 'error' => '', 'minutes' => ws_task_time_close($running), 'task_id' => (int) $running['task_id']);

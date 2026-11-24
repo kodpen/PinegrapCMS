@@ -4,8 +4,8 @@
  *
  * The agency summary's page for the customer, opened from the signed link
  * the agency copies from the dashboard's set-up card
- * (includes/fn/launch_summary.php): the site's name, the set-up steps that
- * are done, and each "What we need from you" line with the customer's text
+ * (includes/fn/launch_summary.php): the site's name, the set-up steps (the
+ * done ones, then the ones still waiting), and each "What we need from you" line with the customer's text
  * answer and its Send button.
  *
  *   GET  launch_summary.php?t=<token>   the summary
@@ -76,19 +76,26 @@ if ($ls_post) {
     go($ls_page . '#line-' . $ls_line);
 }
 
-// The steps' states only: the card's rows judged now, of which the done
-// ones' names are shown.
+// The steps' states only: the card's rows judged now, of which only the
+// names and whether each is done are shown.
 $ls_stored = pg_launch_journey_stored();
 $ls_purpose = ($ls_stored['purpose'] !== '') ? $ls_stored['purpose'] : 'other';
 $ls_card = pg_launch_journey_card($ls_purpose, pg_launch_journey_facts(array('id' => 0), $ls_purpose), $ls_stored['hidden']);
-$ls_done = pg_launch_summary_done_steps($ls_card['rows']);
+$ls_all = pg_launch_summary_steps($ls_card['rows']);
+$ls_done = count(pg_launch_summary_done_steps($ls_card['rows']));
 $ls_site = (defined('ORGANIZATION_NAME') && ORGANIZATION_NAME !== '') ? (string) ORGANIZATION_NAME : (string) HOSTNAME_SETTING;
 
 $ls_steps = '';
-foreach ($ls_done as $ls_name) {
-    $ls_steps .= '<li class="pg-list-row"><span class="pg-icon-tile pg-tone-teal" aria-hidden="true"><i class="bi bi-check2"></i></span>'
-        . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($ls_name) . '</span>'
-        . '<span class="pg-pill pg-tone-teal">' . h(lang('Done')) . '</span></div></div></li>';
+foreach ($ls_all as $ls_step) {
+    $ls_steps .= '<li class="pg-list-row">'
+        . ($ls_step['done']
+            ? '<span class="pg-icon-tile pg-tone-teal" aria-hidden="true"><i class="bi bi-check2"></i></span>'
+            : '<span class="pg-icon-tile pg-tone-gray" aria-hidden="true"><i class="bi bi-hourglass-split"></i></span>')
+        . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($ls_step['name']) . '</span>'
+        . ($ls_step['done']
+            ? '<span class="pg-pill pg-tone-teal">' . h(lang('Done')) . '</span>'
+            : '<span class="pg-pill pg-tone-gray">' . h(lang('Waiting')) . '</span>')
+        . '</div></div></li>';
 }
 
 $ls_lines = '';
@@ -109,8 +116,9 @@ foreach (pg_launch_summary_lines() as $ls_row) {
 }
 
 $ls_body = '<section class="pg-card p-5 mb-5">'
-    . '<h2 class="pg-title-section mb-3">' . h(lang('Set-up steps done')) . '</h2>'
-    . ($ls_steps !== '' ? '<ul class="list-unstyled mb-0">' . $ls_steps . '</ul>' : '<p class="pg-text-2 mb-0">' . h(lang('No set-up step is done yet.')) . '</p>')
+    . '<h2 class="pg-title-section mb-1">' . h(lang('Set-up steps')) . '</h2>'
+    . '<p class="pg-text-2 mb-3">' . h(lang(array('string' => '{var:1} of {var:2} steps done', 'vars' => array($ls_done, count($ls_all))))) . '</p>'
+    . ($ls_steps !== '' ? '<ul class="list-unstyled mb-0">' . $ls_steps . '</ul>' : '')
     . '<h2 class="pg-title-section mt-6 mb-1">' . h(lang('What we need from you')) . '</h2>'
     . '<p class="pg-text-2 mb-3">' . h(lang('Write your answer under each line and send it; you can change it later.')) . '</p>'
     . ($ls_lines !== '' ? '<ul class="list-unstyled mb-0">' . $ls_lines . '</ul>' : '<p class="pg-text-2 mb-0">' . h(lang('Nothing is needed from you right now.')) . '</p>')

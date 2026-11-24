@@ -421,6 +421,7 @@ if (!$_POST) {
     // loops through all rows of data in CSV file
     while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
         $row_number++;
+        $row = pg_products_import_unguard_row($row);
 
         // If product name is not blank, do something with the rows data.
         if ($row[$name_key]) {

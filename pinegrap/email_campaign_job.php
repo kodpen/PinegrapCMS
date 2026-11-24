@@ -88,24 +88,13 @@ db(
 // since the campaign was created; the caller deletes that recipient.
 function email_campaign_job_prepare($email_recipient)
 {
-    // If this is a commercial campaign and this contact is not the manually entered email
-    // address (i.e. "Also send message to the following e-mail address"), and we can't find
-    // and opted-in contact for this recipient's email address, then delete this recipient,
-    // and skip to the next.  This is necessary because a campaign might have been created and
-    // scheduled in the future, and then a contact might have opted-out after the campaign was
-    // created.  We look for any contact with the same email that is opted-in, because
-    // the original contact might have been deleted or merged.
-
+    // A commercial recipient who opted out since the campaign was created
+    // (globally, or from the campaign's own lists) is dropped: a campaign
+    // might have been scheduled in the future, and the contact opted out in
+    // the meantime (pg_email_campaign_recipient_opted_out()).
     if (
         ($email_recipient['purpose'] == 'commercial')
-        and $email_recipient['contact_id']
-        and !db_value(
-            "SELECT id
-            FROM contacts
-            WHERE
-                (email_address = '" . e($email_recipient['email_address']) . "')
-                AND (opt_in = '1')
-            LIMIT 1")
+        && pg_email_campaign_recipient_opted_out($email_recipient['email_campaign_id'], $email_recipient['type'], $email_recipient['contact_id'], $email_recipient['email_address'])
     ) {
         return null;
     }
@@ -295,7 +284,9 @@ if (!pg_email_retry_ready()) {
             $sql_calendar_event_locks = ", calendar_events WRITE, products WRITE, remaining_reservation_spots WRITE, calendar_events_calendar_event_locations_xref WRITE, calendar_event_locations WRITE";
         }
 
-        $query = "LOCK TABLES email_recipients WRITE, email_campaigns WRITE, contacts WRITE, log WRITE" . $sql_calendar_event_locks;
+        // The campaign's groups are read for the opt-out check
+        // (pg_email_campaign_recipient_opted_out()).
+        $query = "LOCK TABLES email_recipients WRITE, email_campaigns WRITE, contacts WRITE, log WRITE, contact_groups_email_campaigns_xref READ, contact_groups READ, opt_in READ, contacts_contact_groups_xref READ" . $sql_calendar_event_locks;
         $result = mysqli_query(db::$con, $query);
 
         // Never send without the lock: without it a concurrent job could deliver to

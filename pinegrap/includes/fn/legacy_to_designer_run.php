@@ -1110,9 +1110,10 @@ function pg_ltd_type_widget($target, $facts, $starters)
 
 /**
  * The widget a page type target drawn by its own layout file becomes
- * ('convert' with 'file'): its settings (the kind, pg_layout_widget_seed()'s
- * and what the layout sets, its empty message) and the layout converted
- * into the widget's design elements (pg_layout_convert()), the records
+ * ('convert' with 'file'): its settings (the kind, what the layout sets,
+ * its empty message or its search, then pg_layout_widget_seed()'s) and
+ * the layout converted into the widget's design elements
+ * (pg_layout_convert()), the records
  * drawn by the kind's posted starter's row. Null when no starter of the
  * kind was kept or the layout drops a piece: the page keeps its System
  * region.
@@ -1132,7 +1133,9 @@ function pg_ltd_type_file_widget($target, $facts, $code, $starters)
     if ($kind === '' || !isset($starters[$kind]) || !is_array($starters[$kind])) return null;
     $r = pg_layout_type_file_convert($facts, $code, $starters[$kind]);
     if (!$r['ok'] || $r['dropped']) return null;
-    return array('cfg' => array('regionType' => $kind) + (array)($facts['cfg'] ?? array()) + $r['cfg'], 'tree' => $r['tree']);
+    // What the layout sets wins, as in the editor's Convert: a classic
+    // layout's own search form searches whatever the page's search setting.
+    return array('cfg' => array('regionType' => $kind) + $r['cfg'] + (array)($facts['cfg'] ?? array()), 'tree' => $r['tree']);
 }
 
 /**

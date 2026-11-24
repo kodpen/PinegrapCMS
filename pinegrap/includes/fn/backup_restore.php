@@ -972,6 +972,52 @@ function pg_restore_begin($folder, $database, $host)
 
 
 /**
+ * Whether a backup was written by a newer version of the software than the
+ * one restoring it. The loaded config row carries the version its site ran;
+ * the older code has no migration back down and does not know the newer
+ * columns, and the installer then finds a database version that is not in its
+ * package and offers no upgrade, so such a backup is refused before its
+ * tables replace the site's. An empty or missing version is not refused: a
+ * dump of a site from before the column held one is restored as before.
+ *
+ * No database access.
+ *
+ * @param string|null $backup_version   config.version of the loaded backup
+ * @param string      $software_version the version of this software
+ * @return bool
+ */
+function pg_restore_version_newer($backup_version, $software_version)
+{
+    $backup_version = trim((string) $backup_version);
+    $software_version = trim((string) $software_version);
+
+    if (($backup_version === '') || ($software_version === '')) {
+        return false;
+    }
+
+    return version_compare($backup_version, $software_version, '>');
+}
+
+
+/**
+ * The config.version of the tables a restore loaded, before they are put in
+ * place. Null when the loaded config table cannot be read or has no row.
+ *
+ * @return string|null
+ */
+function pg_restore_loaded_version()
+{
+    $table = str_replace('`', '``', pg_restore_prefix_new() . 'config');
+
+    $result = @mysqli_query(db::$con, 'SELECT `version` FROM `' . $table . '` LIMIT 1');
+
+    $row = $result ? mysqli_fetch_row($result) : null;
+
+    return $row ? (string) $row[0] : null;
+}
+
+
+/**
  * A CREATE TABLE without its partitioning, or null when it has none.
  *
  * The visitors table is split into months where the server can partition it

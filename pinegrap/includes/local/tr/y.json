@@ -1407,6 +1407,7 @@
     "Your tickets for order #{var:1}": "#{var:1} numaralı siparişinizin biletleri",
     "Your time of arrival, a berth near the showers, a crew change or a boat in need of repair.": "Varış saatiniz, duşlara yakın bir bağlama yeri, bir ekip değişikliği ya da onarım gereken bir tekne.",
     "Your timer is running on {var:1}. Starting it here stops that one.": "Sayacınız {var:1} üzerinde çalışıyor. Burada başlatmak onu durdurur.",
+    "Your timer runs on another task now.": "Zamanlayıcınız artık başka bir görevde çalışıyor.",
     "Your timer runs on {var:1}: {var:2} so far.": "Sayacınız {var:1} üzerinde çalışıyor: şimdiye kadar {var:2}.",
     "Your tip": "İpucunuz",
     "Your topic": "Konunuz",

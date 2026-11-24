@@ -10,7 +10,7 @@ description: SH5: icon-only toolbar buttons and menu toggles of the old panel sc
 
 ## How is a pressed or disabled icon button drawn?
 - Pressed: `aria-pressed="true"`, `aria-expanded="true"` or `.is-active` (never `.active`: the recipe does not read it). The advanced filters toggle of Submitted Forms sets ` is-active`.
-- Disabled: the recipe has no disabled look, so a disabled icon button adds `opacity-50` (settings screen's first and last category).
+- Disabled: the recipe fades `:disabled` and `.disabled` to 0.5 with no hover, as `.pg-button`, and a `.pg-seg-item` the same (hunt 16, 2026-11-24); before, the settings screen's first and last category added `opacity-50` by hand.
 
 ## What was left as it was?
 - Button ranks (one filled button per view, a card's own actions one rank), Marketplace Settings among them: SH10, not an icon-button change. Architect (2026-11-15).

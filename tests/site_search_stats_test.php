@@ -122,7 +122,7 @@ function test_site_search_is_counted_where_searches_and_clicks_happen()
 	pg_assert_contains("if (\$query !== '') pg_site_search_count(\$query, \$total);", $widgets, 'the widget counts its first results page');
 	pg_assert_contains('pg_site_search_click_script_for($query,', $widgets, 'the widget carries the click script');
 
-	pg_assert_contains('pg_site_search_count($query, count($featured_items) + count($catalog_items) + count($results));',
+	pg_assert_contains('pg_site_search_count($query, pg_search_legacy_result_count(SEARCH_TYPE, $featured_items, $catalog_items, $pages, $results));',
 		site_search_stats_test_source('get_search_results.php'), 'the legacy page counts');
 
 	$beacon = site_search_stats_test_source('page_view.php');

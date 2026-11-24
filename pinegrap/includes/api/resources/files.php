@@ -120,9 +120,13 @@ function api_file_present($row) {
 // in the field's upload folder, which may be a public one, yet get_file.php
 // serves it only to people who may see its record; the editor's file and image
 // lists leave it out for the same reason, so the API does too.
+//
+// The folder's access is the resolved one (pg_files_public_sql()): a folder
+// that inherits public access counts, a public folder in the Recycle Bin does
+// not.
 function api_files_public_clause() {
 
-	return "(folder.folder_access_control_type = 'public') AND (files.attachment = '0')";
+	return pg_files_public_sql();
 
 }
 

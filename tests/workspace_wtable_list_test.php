@@ -319,7 +319,7 @@ function test_ws_wtable_list_screen_is_wired()
 	pg_assert_contains('ws_wtable_list_pick($reached, $scope, $channels)', $screen, 'so does the scope');
 	pg_assert_contains("'channels' => \$channels,", $screen, 'and the Where column');
 	pg_assert_contains('pg_list_table_printed(', $screen, 'the list is printed whole');
-	pg_assert_contains('pg_list_table_html($list[\'source\'], $list[\'page\'], lang(\'Data\'))', $screen, 'the list is named for readers');
+	pg_assert_contains('pg_list_table_html($list[\'source\'], $list[\'page\'], lang(\'Data\'), $bulk_delete)', $screen, 'the list is named for readers');
 	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $screen, 'the list\'s script is served');
 	pg_assert_contains("(\$table ? '' : ' pg-measure-list')", $screen, 'only the list wears the list measure');
 	pg_assert_contains('$toolbar = ws_wtable_list_bar($list_name, $scope_items, $deleted_link);', $screen, 'the list\'s one-line bar');

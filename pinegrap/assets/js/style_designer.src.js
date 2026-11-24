@@ -17109,6 +17109,7 @@ const StyleDesigner = (function () {
             __mpn: 'LS-2026-M', __gtin: '8690000010019', __brand: _sdT('Cooper Studio'), __manufacturer: _sdT('Cooper Studio'),
             __weight: '0.35', __shippable: '1', __taxable: '1',
             __category_id: '12', __category_name: _sdT('Shirts'), __active_cat_id: '12', __active_cat_name: _sdT('Shirts'),
+            __active_cat_description: _sdT('Shirts in linen and cotton for every season.'), __active_cat_code: '',
             __featured: '1', __is_new: '1', __has_variants: '1', __variant_count: '3', __has_children: '0', __has_breadcrumb: '1',
             __custom_field_1: _sdT('Linen'), __custom_field_2: _sdT('Relaxed fit'), __custom_field_3: 'M', __custom_field_4: _sdT('Natural'),
             __reward_points: '45', __seo_score: '82', __is_bundle: '0', __ai_generated: '',
@@ -43328,7 +43329,7 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__variant_picker',
+        '__price_range', '__active_cat_description', '__active_cat_code', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
@@ -44180,6 +44181,10 @@ const StyleDesigner = (function () {
         { label: _sdT('Drill-down / Page'), tokens: [
             ['__active_cat_id',   _sdT('Active category ID')],
             ['__active_cat_name', _sdT('Active category name')],
+            ['__active_cat_description', _sdT('Active category\'s full description (while browsing)')],
+            ['__active_cat_code', _sdT('Active category\'s code field (while browsing)')],
+            ['__search_query',    _sdT('The words searched')],
+            ['__result_count',    _sdT('Number of groups and products listed')],
             ['__has_children',    _sdT('Whether there is a subgroup (0/1)')],
             ['__has_breadcrumb',  _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]},
@@ -49255,7 +49260,18 @@ const StyleDesigner = (function () {
             ['no_rating',  _sdT('Row: the product has no rating yet')],
             ['is_bundle',         _sdT('Row: the product is a bundle')],
             ['has_bundle_saving', _sdT('Row: the bundle costs less than its products bought one by one')],
+            ['catalog_item_has_image',             _sdT('Row: the product or group has a picture')],
+            ['catalog_item_has_short_description', _sdT('Row: the product or group has a short description')],
+            ['catalog_item_has_price',             _sdT('Row: the product or group has a price')],
             // Outside the card only (the listing's surround).
+            ['has_items',      _sdT('A group or product is listed')],
+            ['no_items',       _sdT('No group or product is listed')],
+            ['has_query',      _sdT('Something was searched')],
+            ['no_query',       _sdT('Nothing was searched (a group is browsed)')],
+            ['many_results',   _sdT('More than one group or product is listed')],
+            ['one_result',     _sdT('One group or product is listed')],
+            ['has_currency_choice', _sdT('The visitor can choose a currency')],
+            ['no_currency_choice',  _sdT('The visitor cannot choose a currency')],
             ['has_prev_page',  _sdT('A previous page exists')],
             ['has_next_page',  _sdT('A next page exists')],
             ['has_more_pages', _sdT('The list runs over more than one page')]

@@ -16,4 +16,4 @@ module: config_text
 
 ## What is not covered here?
 - The ended-card pass of `pg_credit_mails_run()` closes each card with its own conditional UPDATE (`pg_credit_expire_card()`), which was already safe.
-- Abandoned-order campaigns in `job.php` and the ERP overdue digest (`erp_overdue_check()`) pick their rows without a claim too; they are separate fixes.
+- Abandoned-order campaigns in `job.php` pick their orders without a claim; the pass takes a lock of its own instead (`job-abandoned-orders-lock.md`). The ERP overdue digest is covered by its script's lock (`job-script-claims.md`).

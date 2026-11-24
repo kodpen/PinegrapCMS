@@ -41,6 +41,14 @@ function pg_products_import_is_spreadsheet($file_name)
     return in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'));
 }
 
+// A row read from the file with the formula guard of the products export
+// taken off every cell (pg_csv_formula_unguard()), so an unchanged export
+// imports back as stored: '+90 532 becomes +90 532, '-5 becomes -5.
+function pg_products_import_unguard_row($row)
+{
+    return array_map('pg_csv_formula_unguard', (array) $row);
+}
+
 // Turn an uploaded spreadsheet into a CSV file and return its path.
 //
 // $sheet is the worksheet to read, 0 for the first: a workbook with more

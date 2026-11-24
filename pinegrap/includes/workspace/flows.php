@@ -124,6 +124,12 @@ function ws_flow_kinds()
         $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
     }
 
+    // Runs split at random by shares, each arm an outcome (flow_split.php).
+    if (function_exists('ws_flow_split_outcomes')) {
+        $kinds['split'] = array('label' => lang('Split'), 'trigger' => false, 'outcomes' => ws_flow_split_outcomes(), 'step' => false,
+            'outputs' => array(array('key' => 'arm', 'type' => 'text', 'label' => lang('Arm taken'))));
+    }
+
     // A wait before the boxes after it (flow_runs.php).
     if (function_exists('ws_flow_delay_normalize')) {
         $kinds['delay'] = array('label' => lang('Wait'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
@@ -383,8 +389,9 @@ function ws_flow_workspace_problems($workspace_on, $graph)
 
 /**
  * The outcomes an arrow may leave this box on: its kind's
- * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
- * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
+ * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box and a Split box,
+ * whose settings say which (a classifying box's named outcomes,
+ * flow_ai_box.php; a split's arms, flow_split.php). Pure.
  *
  * @param array $kind ws_flow_kinds() entry
  * @param array $node the box (kind, config)
@@ -394,6 +401,11 @@ function ws_flow_node_arrow_outcomes($kind, $node)
 {
     if (((string) ($node['kind'] ?? '') === 'ai') && function_exists('ws_step_ai_arrow_outcomes')) {
         return ws_step_ai_arrow_outcomes(ws_step_ai_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
+    }
+
+    // A Split box leaves on each of its arms.
+    if (((string) ($node['kind'] ?? '') === 'split') && function_exists('ws_flow_split_arrow_outcomes')) {
+        return ws_flow_split_arrow_outcomes(ws_flow_split_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
     }
 
     return ws_flow_arrow_outcomes($kind);
@@ -636,6 +648,9 @@ function ws_flow_config_normalize($kind, $config)
 
         case 'condition':
             return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
+
+        case 'split':
+            return function_exists('ws_flow_split_normalize') ? ws_flow_split_normalize($config) : array();
 
         case 'delay':
             return function_exists('ws_flow_delay_normalize') ? ws_flow_delay_normalize($config) : array();
@@ -1390,6 +1405,12 @@ function ws_flow_graph_check($graph)
 
         if ($node['kind'] === 'condition') {
             foreach (ws_flow_condition_problems($node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if ($node['kind'] === 'split') {
+            foreach (ws_flow_split_problems($node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -3605,6 +3626,15 @@ function ws_flow_js_strings()
         'fl_lead_help'        => lang('Starts after a form is submitted. A channel the customer already has is used; otherwise one is opened with the New customer template, at most 20 an hour.'),
         'fl_lead_people'      => lang('People put in a channel it opens'),
         'fl_kind_condition'   => lang('Condition'),
+        'fl_kind_split'       => lang('Split'),
+        'fl_split_arms'       => lang('Arms'),
+        'fl_split_arm_add'    => lang('Add an arm'),
+        'fl_split_arm_n'      => ws_js_template('Arm {var:1}', 1),
+        'fl_split_arm_remove' => ws_js_template('Remove the arm {var:1}', 1),
+        'fl_split_share_n'    => ws_js_template('Share of {var:1} in percent', 1),
+        'fl_split_arm_share'  => ws_js_template('{var:1} {var:2}%', 2),
+        'fl_split_total'      => ws_js_template('Together {var:1}% of 100%', 1),
+        'fl_split_help'       => lang('Each run takes one arm at random by its share and keeps it. Each arm is an arrow of its own; its name is the value Arm taken.'),
         'fl_kind_schedule'    => lang('At a time'),
         'fl_kind_event'       => lang('When something happens'),
         'fl_kind_join'        => lang('When somebody joins a channel'),

@@ -120,6 +120,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             break;
 
+        case 'table_bulk_delete':
+            // The selection bar's Delete: the single delete for each chosen
+            // table, under the person's right on that table.
+            $bulk = ws_wtable_list_bulk_delete($viewer, ws_wtable_list_bulk_ids($_POST['wt_tables'] ?? null));
+
+            foreach ($bulk['deleted'] as $deleted_table) {
+                log_activity(lang(array('string' => 'workspace table ({var:1}) was deleted', 'vars' => $deleted_table['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
+            }
+
+            $texts = ws_wtable_list_bulk_delete_texts(count($bulk['deleted']), $bulk['left'], $bulk['unreached'], ws_wtable_bin_ready() ? ws_wtable_bin_days() : 0);
+
+            if ($texts['notice'] !== '') {
+                $liveform->add_notice(h($texts['notice']));
+            } else {
+                $liveform->add_error(h($texts['error']));
+            }
+
+            // Back to the list, in the scope it was sent from (target).
+            $back_scope = ws_wtable_list_scope($field('target'), true);
+            $back = $self_url . (($back_scope === 'all') ? '' : '?scope=' . rawurlencode($back_scope));
+            break;
+
         case 'table_restore':
             // A table of the person's own back from the bin, whole.
             $binned = ws_wtable_binned((int) ($_POST['wt_table'] ?? 0));
@@ -799,6 +821,8 @@ if (!$table) {
     $binned = ws_wtables_binned($viewer);
     $deleted_view = ws_wtable_bin_ready() && (($_GET['view'] ?? '') === 'deleted');
 
+    $bulk_delete = '';
+
     if ($deleted_view) {
         $list_name = WS_WTABLE_LIST_DELETED;
         $list_rows = array();
@@ -837,6 +861,12 @@ if (!$table) {
             }
         }
 
+        // The selection bar's Delete, when the person owns a table here;
+        // each chosen table is checked again on its own when it is sent.
+        $bulk_delete = $confirms
+            ? '<button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-bulk-delete" disabled><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button>'
+            : '';
+
         $list = pg_list_table_printed(array(
             'list'    => $list_name,
             'columns' => $list_columns,
@@ -857,7 +887,7 @@ if (!$table) {
             ? ws_empty_screen_html('amber', 'bi-table', ($scope === 'shared') ? lang('Nothing is shared with you yet') : lang('No table yet'),
                 lang('A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.'),
                 '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>')
-            : pg_list_table_html($list['source'], $list['page'], lang('Data'));
+            : pg_list_table_html($list['source'], $list['page'], lang('Data'), $bulk_delete);
     }
 
     // The scopes with their counts, each an address; in the deleted view
@@ -928,6 +958,28 @@ if (!$table) {
             ' . $import_note(0, lang('A table in one of your notes: its first row names the columns. The note stays as it is.')) . '
         </div>
     </dialog>';
+
+    // The bulk Delete's question; the count is put in when it opens.
+    if ($bulk_delete !== '') {
+        $windows .= '
+    <dialog class="dialog pg-dialog-centered" id="ws_wt_bulk_delete" aria-labelledby="ws_wt_bulk_delete_title"'
+            . ' data-one="' . h(($bin_days > 0)
+                ? lang(array('string' => 'Delete the chosen table? It stays in Deleted tables for {var:1} days, where you can restore it. A table you do not own is left as it is.', 'vars' => $bin_days))
+                : lang('Delete the chosen table with its rows and shares? It cannot be brought back. A table you do not own is left as it is.')) . '"'
+            . ' data-many="' . h(($bin_days > 0)
+                ? lang(array('string' => 'Delete the {var:1} chosen tables? They stay in Deleted tables for {var:2} days, where you can restore them. A table you do not own is left as it is.', 'vars' => array('__COUNT__', $bin_days)))
+                : lang(array('string' => 'Delete the {var:1} chosen tables with their rows and shares? They cannot be brought back. A table you do not own is left as it is.', 'vars' => '__COUNT__'))) . '">
+        <div class="dialog-header">
+            <h5 class="dialog-title" id="ws_wt_bulk_delete_title">' . h(lang('Delete tables')) . '</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+        </div>
+        <div class="dialog-body"><p class="mb-0 ws-wt-bulk-delete-text"></p></div>
+        <div class="dialog-footer">
+            <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+            <button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-bulk-delete-go">' . h(lang('Delete')) . '</button>
+        </div>
+    </dialog>';
+    }
 
     // On a phone New table floats at the bottom right of the screen, in
     // place of the toolbar's button.
@@ -1777,7 +1829,7 @@ if (!$table) {
 
         // More than one status column: which one the board groups by.
         if (count($status_columns) > 1) {
-            $by = '<div class="pg-seg" role="group" aria-label="' . h(lang('Group by')) . '">';
+            $by = '<div class="pg-seg pg-seg-wrap" role="group" aria-label="' . h(lang('Group by')) . '">';
 
             foreach ($status_columns as $column_id => $name) {
                 $by .= '<a class="pg-seg-item' . (($column_id === $board_id) ? ' is-active" aria-current="page' : '') . '" href="' . h($table_url . '&view=board&by=' . $column_id) . '">' . h($name) . '</a>';
@@ -2003,6 +2055,8 @@ $shell . '
         <input type="hidden" name="wt_share" value="">
         <input type="hidden" name="wt_bin" value="">
         <input type="hidden" name="revision" value="">
+        <input type="hidden" name="target" value="' . h($table ? '' : (string) ($scope ?? '')) . '">
+        <span class="ws-wt-bulk-ids"></span>
     </form>
 </div>
 </div>
@@ -2068,6 +2122,41 @@ $shell . '
         form.elements.revision.value = button.dataset.revision || "";
         form.submit();
     });
+
+    // The Delete of the selection bar follows the selection of the list; its dialog
+    // names the count, and Delete posts the chosen ids as wt_tables[].
+    var bulkList = document.querySelector(".pg-list-table[data-pg-list-table]");
+    var bulkButton = document.querySelector(".ws-wt-bulk-delete");
+    var bulkDialog = document.getElementById("ws_wt_bulk_delete");
+    var bulkIds = [];
+    if (bulkList && bulkButton && bulkDialog) {
+        bulkList.addEventListener("pg-list-table:selection", function (e) {
+            var payload = (e.detail && e.detail.payload) || {};
+            bulkIds = Array.isArray(payload.ids) ? payload.ids : [];
+            bulkButton.disabled = (bulkIds.length === 0);
+        });
+        bulkButton.addEventListener("click", function () {
+            if (!bulkIds.length) { return; }
+            var text = (bulkIds.length === 1) ? bulkDialog.dataset.one : bulkDialog.dataset.many.split("__COUNT__").join(String(bulkIds.length));
+            bulkDialog.querySelector(".ws-wt-bulk-delete-text").textContent = text;
+            window.pgUI.dialog.show(bulkDialog);
+        });
+        bulkDialog.querySelector(".ws-wt-bulk-delete-go").addEventListener("click", function () {
+            var form = document.getElementById("ws_wt_action_form");
+            var box = form.querySelector(".ws-wt-bulk-ids");
+            box.textContent = "";
+            bulkIds.forEach(function (id) {
+                var input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "wt_tables[]";
+                input.value = id;
+                box.appendChild(input);
+            });
+            form.elements.wt_action.value = "table_bulk_delete";
+            this.disabled = true;
+            form.submit();
+        });
+    }
 
     // The new column form shows the options of the chosen type only; the
     // others stay disabled, so they are not posted.

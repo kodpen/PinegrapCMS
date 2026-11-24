@@ -307,6 +307,10 @@ function ws_flow_event_outputs()
     $feedback = array($value('survey_name', 'text', lang('Survey')), $value('kind', 'text', lang('Kind')), $value('touchpoint', 'text', lang('Touchpoint')),
         $value('record_type', 'text', lang('Record type')), $value('record_id', 'number', lang('Record')), $value('contact_id', 'number', lang('Contact')),
         $value('score', 'number', lang('Score')), $value('band', 'text', lang('Band')), $value('comment', 'text', lang('Comment')));
+    // A guest's answer on a prototype share link (pg_proto_verdict_event_payload(),
+    // pg_proto_comment_event_payload()): the guest's words are outside text.
+    $prototype = array($value('page_name', 'text', lang('Page')), $value('design_id', 'number', lang('Design')), $value('link_id', 'number', lang('Share link')),
+        $value('name', 'text', lang('Guest\'s name')));
     // Volunteer shifts (pg_volunteer_event_payload()).
     $volunteer = array($value('programme', 'text', lang('Programme')), $value('contact_id', 'number', lang('Contact')));
     $place = array_merge($volunteer, array($value('shift_id', 'number', lang('Shift')), $value('role_name', 'text', lang('Role')), $value('place', 'text', lang('Place')),
@@ -367,6 +371,9 @@ function ws_flow_event_outputs()
         'page.updated'           => array($value('name', 'text', lang('Page'))),
         'content.review_due'     => array($value('kind', 'text', lang('Kind')), $value('name', 'text', lang('Name')), $value('user_id', 'number', lang('Assigned person')),
             $value('person', 'text', lang('The name of the assigned person')), $value('review_on', 'text', lang('Review by'))),
+        'prototype.approved'     => $prototype,
+        'prototype.changes_requested' => array_merge($prototype, array($value('note', 'text', lang('Note')))),
+        'prototype.commented'    => array_merge($prototype, array($value('text', 'text', lang('Comment')), $value('parent_id', 'number', lang('Answers comment')))),
         'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact')),
             $value('start_at', 'text', lang('The reserved start'))),
         'booking.created'        => $booking,

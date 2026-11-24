@@ -263,6 +263,18 @@ function ws_events_catalog()
         $catalog['content.review_due'] = array('label' => lang('A page or record is due for review'), 'when' => lang('When a page or collection record passes its review date'), 'record' => 'page', 'right' => 'member', 'filter' => '');
     }
 
+    // A guest's answer on a prototype share link, about its draft page
+    // (includes/fn/prototype_events.php), for administrators and designers;
+    // listed once the comments and the verdicts tables exist.
+    if (function_exists('pg_proto_comments_ready') && pg_proto_comments_ready()) {
+        $catalog['prototype.commented'] = array('label' => lang('A guest comments on a prototype'), 'when' => lang('When a guest comments on a prototype share link'), 'record' => 'page', 'right' => 'designs', 'filter' => '');
+    }
+
+    if (function_exists('pg_proto_approval_ready') && pg_proto_approval_ready()) {
+        $catalog['prototype.approved'] = array('label' => lang('A prototype page is approved'), 'when' => lang('When a guest approves a page of a prototype share link'), 'record' => 'page', 'right' => 'designs', 'filter' => '');
+        $catalog['prototype.changes_requested'] = array('label' => lang('Changes are requested on a prototype'), 'when' => lang('When a guest requests changes on a page of a prototype share link'), 'record' => 'page', 'right' => 'designs', 'filter' => '');
+    }
+
     // A contact turned hot, and a hot contact back on the site, about the
     // contact (includes/fn/lead_tell.php); listed once the scores table
     // exists.
@@ -599,6 +611,19 @@ function ws_event($event, $payload = array())
 }
 
 /**
+ * Whether a person hears of a guest's answer on a prototype: a member of the
+ * team who is an administrator or a designer (the Share prototype dialog's
+ * people). Pure.
+ *
+ * @param array $viewer ws_viewer()
+ * @return bool
+ */
+function ws_events_prototype_sees($viewer)
+{
+    return is_array($viewer) && !empty($viewer['member']) && ((int) ($viewer['role'] ?? 3) <= 1);
+}
+
+/**
  * May the creator of a scheduled action read what one of the workspace's
  * own events is about: the task, or the channel of the request or of the
  * guest's message; for a booking's event, the booking? Asked before the
@@ -655,6 +680,12 @@ function ws_events_creator_sees($user_id, $event, $payload)
         $ref = ($id > 0) ? (ws_refs_resolve($viewer, array(array('sigil' => '#', 'type' => 'page', 'id' => $id)))['page:' . $id] ?? null) : null;
 
         return is_array($ref) && !empty($ref['known']);
+    }
+
+    // A guest's answer on a prototype: the creator an administrator or a
+    // designer (ws_events_prototype_sees()).
+    if (strpos((string) $event, 'prototype.') === 0) {
+        return ws_events_prototype_sees($viewer);
     }
 
     // An item due for review: one the creator may edit, by content
@@ -815,6 +846,12 @@ function ws_events_record_of($event, $payload)
         // A page, or a record as the form it is.
         case 'content.review_due':
             return array((($payload['kind'] ?? '') === 'record') ? 'form' : 'page', (int) ($payload['id'] ?? 0));
+
+        // A guest's answer on a prototype: its draft page.
+        case 'prototype.approved':
+        case 'prototype.changes_requested':
+        case 'prototype.commented':
+            return array('page', (int) ($payload['page_id'] ?? 0));
 
         case 'calendar_event.reserved':
             return array('calendar_event', (int) ($payload['id'] ?? 0));
