@@ -97,6 +97,7 @@ function pg_sms_queue_list_kinds()
         'reply'     => lang('Answer to a customer'),
         'feedback'  => lang('Survey'),
         'queue'     => lang('Queue'),
+        'volunteer' => lang('Volunteer shifts'),
         'marketing' => lang('Marketing'),
     );
 }
