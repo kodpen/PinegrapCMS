@@ -728,7 +728,7 @@
 - settings-pane-stale-page.md: A settings pane asked by a page left open across an update: the panel script stamp in the dialog's address, the Reload line instead of the cards, the pure compare (#8787)
 - settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose [decision: here]
 - settings-privacy-retention.md: Visitors and privacy › How long we keep data: every retention period set elsewhere as value rows with Change (pg_privacy_retention_overview()), why each stays where set
-- settings-privacy.md: Site Settings › Visitors and privacy as seven folded rows (Visitor tracking, How long we keep data, KVKK notice…): what each holds, its line, ids and anchors kept
+- settings-privacy.md: Site Settings › Visitors and privacy as eight folded rows (Visitor tracking, How long we keep data, Interest score, KVKK notice…): what each holds, its line, ids and anchors kept
 - settings-public-image-pickers.md: Site Settings pickers whose picture is shown to everyone (Site Icon, App Icon, Default Share Image, Organization Logo, Fediverse Avatar): search and save keep only files every visitor can open
 - settings-refused-not-clamped.md: Site Settings boxes a save refuses instead of clamping or blanking: firewall and sign-in limits, tracking days, analytics IDs, merchant fields (pg_whole_number_in_range(), pg_ga_tag_id())
 - settings-revealed-groups.md: Fields a switch opens inside a Site Settings card: no frame, tint or arrow, lined up with the label text, the indent dropped under 576 px; the divider over a nested row's first field and .pg-set-ruled [decision: here]

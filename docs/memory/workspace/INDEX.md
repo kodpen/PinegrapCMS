@@ -454,6 +454,7 @@
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination [decision: decisions-made-workspace-4.md]
 - workspace-flows-overview.md: Workspace Flows ("Akışlar") as a whole: what it is, the decisions that bind it, every box kind by its label, what drives a run and how late it can be, where each part is
 - workspace-flows-palette.md: The list of boxes to add (FW2 #9178, FE2): a card beside the add rail, numbered sections, the start row with Change, folding groups of 32 px rows
+- workspace-flows-panel-fields.md: How a Flows box panel's fields are written (FE5): one line of help and the "?" window, the e-mail's Recipient words as chips, the folded Sender row showing who sends
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-people-content-start-events.md: People and content webhook events a flow can start on (PR #7416): user account, consent, bounce, campaign, page, calendar reservation, store credit; record, right, kept payload, outputs
 - workspace-flows-problem-names.md: Flow problem texts and the small drawings name boxes as the canvas (ws_flow_box_names(), numbered when untitled boxes share a kind), values as Box › Value; no id or {{…}} (#4061, PR #4189)
@@ -513,7 +514,7 @@
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
 - workspace-flows-undo.md: Undo and redo on the flow canvas (workspace_flow.js): the bottom strip's buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the history of graph snapshots, which changes fold into one step, when it resets
 - workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how value boxes are read in a run, the check, the canvas form
-- workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
+- workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6, FE5): the button inside the field, what the list offers (Recipient, Always), "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version (canvas Resume and API), and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-visual-spec.md: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386) [decision: decisions-made-workspace-4.md, decisions-made-workspace-6.md]
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none

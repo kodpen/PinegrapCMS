@@ -489,6 +489,7 @@
 - walk-in-queue-notices.md: A walk-in queue number's three notices (WQ3): taken, ahead, called; each once by its bit; WhatsApp, SMS or e-mail; kind queue as a service message; the texts and their places
 - walk-in-queue-number-page.md: The walk-in queue's public queue.php (WQ3): taking a number, the person's page and its 15-second read, Leave the queue, staff's Add a number, the limit, the firewall entry
 - walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster [decision: here]
+- walk-in-queue-report.md: Walk-in queue Report tab (WQ7, queue_report.php): waits and handling, left and not here by desk, staff and service, arrivals by hour, Desks needed (Erlang C), Excel
 - walk-in-queue-rules.md: The walk-in queue's pure rules in includes/fn/walk_in_queue.php: the order, the number A-012, cap and closing, the estimate, Not here, the signed link token
 - walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge [decision: here]
 - wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch [decision: decisions-made-product-64.md, decisions-made-product-65.md]
