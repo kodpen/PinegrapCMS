@@ -42,7 +42,9 @@
 //   account.store_credit_uses each card's orders, keyed by
 //                    ^^__credit_id^^: the store credit section's cards;
 //   account.tickets  the member's orders that hold event tickets, the
-//                    tickets section (widgets_event_tickets.php).
+//                    tickets section (widgets_event_tickets.php);
+//   account.volunteering the member's coming volunteer shifts, the
+//                    volunteering section's next shifts (widgets_volunteering.php).
 //
 // The order lists read ^^__ship_to_key^^: 0 outside a shipments list (the
 // static value: the whole order), the recipient's id inside one, so an items
@@ -388,6 +390,26 @@ function pg_sw_list_order_sources()
                 array('__tickets_state_label', lang('State')),
                 array('__tickets_tone', lang('State colour (success or secondary)')),
                 array('__tickets_url', lang('Tickets page URL')),
+            ),
+        ),
+        // The member's coming volunteer shifts in every programme
+        // (pg_sw_list_account_volunteering_rows()), soonest first.
+        'account.volunteering' => array(
+            'family'       => 'account',
+            'key'          => 'account_id',
+            'label'        => lang('Volunteer shifts of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__volunteering_programme', lang('Programme')),
+                array('__volunteering_when', lang('Date, time and place')),
+                array('__volunteering_date', lang('Date')),
+                array('__volunteering_time', lang('Time')),
+                array('__volunteering_place', lang('Place')),
+                array('__volunteering_role', lang('Role')),
+                array('__volunteering_state', lang('State (signed, offered, asked, waiting or swap)')),
+                array('__volunteering_state_label', lang('State')),
+                array('__volunteering_tone', lang('State colour (success, warning or info)')),
             ),
         ),
     );

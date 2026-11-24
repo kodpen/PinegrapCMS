@@ -1910,7 +1910,8 @@ function _pg_acct_staff_url($staff_page_id)
 // refer yet, pg_referral_account_html()) with flags has_referral and
 // can_refer; section volunteering (the member's volunteer programmes:
 // next shifts, shifts for them, documents, pg_volunteer_account_html()) with
-// flag has_volunteering. 'bookings': the booking lists' rows
+// flag has_volunteering, 'volunteering' its views (pg_volunteer_account_views(),
+// the account.volunteering list's rows). 'bookings': the booking lists' rows
 // (pg_booking_customer_view_rows()); 'subscriptions'
 // (pg_subscription_customer_view_rows()) and 'store_credit'
 // (pg_credit_account_view(): balance_info, cards) likewise.
@@ -1937,7 +1938,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
                                   'has_store_credit_cards' => false, 'has_subscriptions' => false, 'has_tickets' => false,
                                   'has_referral' => false, 'can_refer' => false, 'has_volunteering' => false),
                  'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()),
-                 'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()), 'tickets' => array());
+                 'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()), 'tickets' => array(),
+                 'volunteering' => array());
     if (!$logged_in) return $out;
 
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
@@ -1973,7 +1975,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         $volunteer_ids = pg_volunteer_account_ids(defined('USER_CONTACT_ID') ? (int)USER_CONTACT_ID : 0);
         if ($volunteer_ids) {
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_volunteering.php');
-            $out['sections']['volunteering'] = pg_volunteer_account_html($volunteer_ids,
+            $out['volunteering'] = pg_volunteer_account_views($volunteer_ids);
+            $out['sections']['volunteering'] = pg_volunteer_account_html($out['volunteering'],
                 pg_safe_redirect_path(isset($_SERVER['REQUEST_URI']) ? strtok((string)$_SERVER['REQUEST_URI'], '?') : '', defined('PATH') ? PATH : '/'));
             $out['flags']['has_volunteering'] = ($out['sections']['volunteering'] !== '');
         }
