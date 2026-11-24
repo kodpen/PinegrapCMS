@@ -5,7 +5,7 @@ module: legacy_to_designer
 ---
 
 ## Where is it, and who sees it?
-- `legacy_to_designer.php`, linked from the toolbar of All Page Styles (`view_styles.php`); `validate_area_access($user, 'designer')`, roles 0-1, as the conversion. It writes nothing; each row's magic button is the existing `edit_system_style.php?id=<style>&classic=1` (`classic-style-to-design.md`).
+- `legacy_to_designer.php`, linked from the toolbar of All Page Styles (`view_styles.php`); `validate_area_access($user, 'designer')`, roles 0-1, as the conversion. It writes nothing but under Convert; each row's magic button is the one door `?style=<id>#ltd-dry-run` (`legacy-one-door.md`).
 
 ## What does it list per style?
 - Every `style` row that is not `visual_designer`, by name (`pg_ltd_report()`, `includes/fn/legacy_to_designer.php`).

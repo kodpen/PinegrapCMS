@@ -5,7 +5,7 @@ module: classic_style_design
 ---
 
 ## How is a classic style opened?
-- `view_styles.php` shows "Open in the visual designer" (bi-magic) on a row with `style_type = 'custom'` for roles 0-1; it links to `edit_system_style.php?id=<style>&classic=1`.
+- `edit_system_style.php?id=<style>&classic=1` opens it; no button links there since LE3: All Page Styles' "Open in the Page Design Studio" goes to the move screen (`legacy-one-door.md`).
 - `pg_classic_style_design_open()` (`includes/fn/classic_style_design.php`) refuses a role above 1 and a row `pg_classic_style_refusal()` names: already a visual design, not a code style (an older cell-based system style), no code.
 
 ## Where does the style's frame go?

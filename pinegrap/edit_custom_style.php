@@ -168,7 +168,8 @@ if (!$_POST) {
         'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
         'grow'      => '<span class="fw-semibold text-break me-3">' . h($style_name) . '</span>',
     )) . '
-            ' . $liveform->output_notices() . $output_designer_notice . '
+            ' . $liveform->output_notices() . '
+            ' . $output_designer_notice . '
             <form name="form" action="edit_custom_style.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">
