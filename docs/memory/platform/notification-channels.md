@@ -17,4 +17,5 @@ module: notify_channels
 - `notification-channels-delivery.md`: the sealed targets, the queue rows, the masking of secrets.
 
 ## Where is the screen?
-- Site Settings › Updates and maintenance › Chat notifications (`pgset-chat-notify`): one block per target (name, alert codes, Workspace events, Delete, "Save and send a test"), then Add a target. Written by `maintenance.save.php` only when `notify_channels_card` was posted; an invalid new target refuses the save before anything is written. The test (`pg_notify_test()`) posts at once outside the queue and answers as a notice.
+- Since CX11j2 (#11215) each service's page of Connections (`connections.php?service=slack`, `teams`, `telegram`) lists its targets (name, alert codes, Workspace events, Delete, "Save and send a test") and adds one: `ui/connections-chat-notify-page.md`. The test (`pg_notify_test()`) posts at once outside the queue.
+- Site Settings › Updates and maintenance › Chat notifications (`pgset-chat-notify`) only says how many targets each service has and leads there.

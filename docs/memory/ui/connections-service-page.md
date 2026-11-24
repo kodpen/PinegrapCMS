@@ -30,6 +30,7 @@ module: connections_screen
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors gate, `connections-google-analytics-page.md`.
 - Google Cloud Translation (CX11c): the API key, Languages gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers: `connections-sms-providers-page.md`. Ads: `api/ad-conversions.md` (Meta, GA4, TikTok).
 - Paraşüt, Logo İşbaşı (CX11h): `connections-accounting-page.md`; Google reviews (CX11i): `connections-google-reviews-page.md`; backup accounts (CX11j1): `connections-backup-accounts.md`.
+- Slack, Teams, Telegram (CX11j2): `connections-chat-notify-page.md`.
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

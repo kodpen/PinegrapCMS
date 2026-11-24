@@ -807,7 +807,9 @@ function pg_connections_screen_carrier_pages()
  *                    may open Updates and maintenance, connecting Google
  *                    Drive, OneDrive and Dropbox accounts for backups),
  *                    'mail_sending' (bool: may open E-mail › Sending,
- *                    Mailchimp's key and sync)
+ *                    Mailchimp's key and sync), 'chat_notify' (bool: may
+ *                    open Updates and maintenance, Slack's, Teams' and
+ *                    Telegram's targets)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -852,6 +854,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (in_array($id, pg_connections_screen_accounting_pages(), true) && !empty($can['accounting'])) {
         $cards[] = 'details';
     } elseif (($id === 'google_reviews') && !empty($can['integrations'])) {
+        $cards[] = 'details';
+    } elseif (in_array($id, array('slack', 'teams', 'telegram'), true) && !empty($can['chat_notify'])) {
         $cards[] = 'details';
     }
 

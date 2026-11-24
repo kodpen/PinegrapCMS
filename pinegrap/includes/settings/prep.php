@@ -2284,12 +2284,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $sales_watch = $sales_watch_ready ? pg_sales_watch_settings() : array();
     $sales_watch_channels = $sales_watch_ready ? pg_sales_watch_channel_list() : array();
 
-    // Chat notifications card: the Slack, Teams and Telegram targets, read
-    // from their sealed entry. The address and the token are never drawn
-    // back; the card shows where a target sends (scheme and host) only.
+    // Chat notifications card: how many Slack, Teams and Telegram targets
+    // there are; the targets are set on each service's page of Connections.
     $notify_ready = function_exists('pg_notify_targets') && pg_connect_schema_ready() && pg_connect_can_seal();
     $notify_targets = $notify_ready ? pg_notify_targets(true) : array();
-    $notify_job_on = function_exists('pg_cron_job_is_enabled') && pg_cron_job_is_enabled('api_webhook_job');
 
     // Storage card: the S3-compatible object store, one sealed connect_apps
     // entry (includes/fn/object_storage.php). The secret is never drawn back.
