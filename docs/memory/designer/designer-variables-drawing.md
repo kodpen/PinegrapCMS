@@ -11,7 +11,7 @@ description: The drawing of a design's variables (plans/designer-variables.md, D
 
 ## Which board belongs to which step?
 - DV2, part A: A1 the Settings window with the Colour fold open, A2 Type, A3 Spacing, A4 Shape, A5 "Add a variable" and the limit of 24, A6 the "Remove" question, A7 empty, A8 busy, A9 a refused value and the contrast warning, A10 narrow, A11 "More" open.
-- DV3, part B: B1 a typed value beside a bound one, B2 a colour control open, B3 a size control open, B4 spacing and corners bound, B5 the first-use line.
+- DV3, part B: B1 a typed value beside a bound one, B2 a colour control open, B3 a size control open, B4 spacing and corners bound, B5 the first-use line, B6 the type scale in a size control, B7 the units in a spacing control.
 - DV4, part C: C1 to C6. DV5, part D: D1 to D3.
 
 ## How is the Variables tab laid out?
@@ -26,7 +26,7 @@ description: The drawing of a design's variables (plans/designer-variables.md, D
 
 ## How does Options show a bound control?
 - A chip in the field's place, 30 px high: the swatch (or the group's icon for a size), the name, and "Detach" as a small button at the right. "Detach" puts the variable's value of that moment into the field.
-- The list is 252 px wide under the control: a search field, "Variables", "Your own", then "Custom colour…" or "Custom value…". A colour control lists every colour; a size control "Base size" and the sizes of your own; spacing "Base unit", "Section rhythm" and your own; corners "Corners" and your own.
+- The list is 252 px wide under the control: a search field, "Variables", "Your own", then "Custom colour…" or "Custom value…". A colour control lists every colour; a size control "Base size" and your own sizes; spacing "Base unit", "Section rhythm" and your own; corners "Corners" and your own.
 - The first time a person opens the list its top shows one line of what a variable is, with "Got it"; choosing a variable closes it too, and it never comes back.
 - Nothing is added to the Options panel's head or a section's head.
-- Not drawn: type-scale steps and base-unit multiples. If DV3 offers them they are rows of the same list under their variable.
+- The type scale's steps and the base unit's multiples in the list (B6, B7): `designer-variables-drawing-computed-rows.md`.
