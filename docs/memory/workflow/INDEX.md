@@ -43,6 +43,7 @@
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
 - bug-hunt-areas-connections-merges.md: The bug hunt in Connections after the CX11 merges (area connections-merges): Claude's, the chat services' and the MCP connectors' pages; the faults fixed and what was read clean
+- bug-hunt-areas-csv-import-export.md: The bug hunt of the panel's CSV imports and exports (area 27, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
@@ -58,6 +59,7 @@
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-price-rounding.md: The bug hunt of price rounding (area 17, 2026-11-24): money in checkout, cart, offers, tax, shipping, refunds, the payment request and the ERP; four faults fixed, what was read clean
 - bug-hunt-areas-privacy-new-tables.md: Bug hunt of erasure, export, inventory, merge and keep periods over the 2026.11.0 tables (area 11, #11381): three faults fixed, what was read clean
+- bug-hunt-areas-private-content-access.md: The bug hunt in private content access (area 26, #11408): pages, folders and files for members or groups; the faults fixed and what was read clean
 - bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
 - bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
@@ -70,6 +72,7 @@
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
 - bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
+- bug-hunt-areas-workspace-tasks-time.md: Bug hunt 28, Workspace tasks and time (2026-11-24, PR #11413): timer in two tabs and over midnight, a task changed while its timer runs, totals, who edits another's time, a repeat made twice
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
 - bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean [decision: here]

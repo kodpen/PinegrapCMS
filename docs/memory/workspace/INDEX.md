@@ -508,6 +508,7 @@
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, actions, API, Share dialog [decision: here]
 - workspace-flows-side-panel.md: The chosen box's panel of the Flows editor (FW3 #9196; a card over the canvas, FE3 #11165): head, tabs, foot line, Duplicate, Close, Esc, F6, a box brought out from under it, phone sheet [decision: decisions-made-workspace-22.md]
 - workspace-flows-sms-box.md: Flows' Send an SMS box (kind sms, #9290): the record's person's mobile or a typed number, info (SMS kind flow) or marketing with consent, queued by pg_sms_enqueue()
+- workspace-flows-split-box.md: The Split box of flows (kind split, FE12, #11410): two to five arms with whole-percent shares adding up to 100, one arm picked at random and kept on the step, arms as named arrows, trial, try, canvas
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): 13 kinds run by ws_scheduled_do(), the MCP and table boxes, outcomes, owner rights, {{node.ID.FIELD}}, never twice
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own [decision: here]
 - workspace-flows-table-box-form.md: The canvas form of the add-row and change-row flow boxes (F6b-2, #3359): tables offered, a field per column, cells kept as JSON one key at a time, the JSON fallback, threads
@@ -660,6 +661,7 @@
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, My Tasks' views that follow a department pick, pressed week buttons, the announced task count
 - workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
+- workspace-task-timer-guards.md: The task timer's guards (PR #11413): a drawer's Stop stops only its task's timer, one running timer per person, the drawer total over every entry, one repeat series per task
 - workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
 - workspace-team-settings.md: Departments and Team members in Site Settings (Team and working hours) and on Workspace Settings: shared checks and writes, field names, old anchors, Who is in the team
 - workspace-text-fold.md: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains(), SQL helpers in commands.php): what folds, who calls it, why not mb_stripos() [decision: decisions-made-product-10.md]
