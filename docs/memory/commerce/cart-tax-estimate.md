@@ -1,6 +1,6 @@
 ---
 name: cart-tax-estimate
-description: Cart widget tax (pg_cart_estimate_tax): stored line taxes while they fit, else the default-rate preview; the order discount's share off as the checkout takes it (#3455, #9045)
+description: Cart widget tax (pg_cart_estimate_tax): stored line taxes while they fit, else the default-rate preview; a 0-rate line the checkout decided; the order discount's share off (#3455, #9045)
 module: widgets_cart
 ---
 
@@ -9,8 +9,10 @@ module: widgets_cart
 - While every line the preview would tax (taxable product, effective rate above 0 on the default country's zone) has a `tax_total`, the stored taxes are summed: the checkout took them on the buyer's address.
 - When any such line still has `tax_total` 0, the **whole cart** is previewed on `get_default_tax_rate()`, product rates first (`get_effective_tax_rate()`), once per rate on the sum of the lines (`pg_tax_by_rate()`). Not only the missing lines: the checkout takes the tax once per rate over every line, so completing one batch would round twice and could differ by a minor unit.
 - The stored taxes must also still fit today's amounts (PR #3920): with `order_items.tax_rate` read as `charged_rate`, the lines of each charged rate must give their stored tax again through `pg_tax_by_rate()`; a line with a tax but no charged rate (NULL or 0) cannot be checked. Either miss means the whole-cart preview. A rate other than the default one (the buyer's zone) stays trusted while the amounts are unchanged. On a schema without the column the key is absent and the stored taxes are trusted as before.
-- Detection rather than clearing `tax_total` at every writer: quantities and prices are written by the cart, bundles, minimum/maximum quantity, offers and donations, and one missed writer would bring the stale figure back.
+- Detection rather than clearing `tax_total` at every writer (cart, bundles, quantity limits, offers, donations): one missed writer would bring the stale figure back.
 - Tax off, or the default country in no zone: the stored sum (0 before any checkout).
+- A line the checkout charged at rate 0.000 (not NULL) with no tax, an exempt order or an address in no zone, is not untaxed: the cart showed the default rate's tax the checkout never charges (tax rates hunt). A line added later is NULL: preview.
+- A line charged later (recurring, starting later) is taxed alone, as `pg_order_line_taxes()` does, in the check and the preview; grouped, the check failed and the cart showed the preview (tax rates hunt).
 
 ## What was the symptom? (#3455)
 - `tax_total` is written only by the checkout's tax pass. The cart used the stored sum whenever it was above 0, so a product added after the visitor once reached the checkout was left out: 9.998 + 7.499 at 20% showed 1.999,60 instead of 3.499,40.

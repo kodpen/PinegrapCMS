@@ -2510,6 +2510,16 @@ function pg_express_order_live_tax_answer($totals)
  * would otherwise have to clear tax_total. A line without the charged_rate
  * key (a schema before the column) is trusted as before.
  *
+ * A line the checkout charged at a rate of 0 with no tax (the order is
+ * tax-exempt, or the buyer's address is in no tax zone) is not untaxed: the
+ * checkout decided it, and previewing it on the default rate showed a tax
+ * that is never charged.
+ *
+ * A line not charged with the order (a recurring line that starts later,
+ * pg_order_line_charged_today()) is taxed alone, as the checkout takes it
+ * (pg_order_line_taxes()), both in the check of the stored taxes and in the
+ * preview.
+ *
  * Each line's rate is the one its tax was taken at, so the order discount
  * can take the tax again on what it leaves (pg_order_charged_tax()): the
  * charged rate of a stored tax, the preview rate of a previewed one, 0 for a
@@ -2518,48 +2528,58 @@ function pg_express_order_live_tax_answer($totals)
  *
  * @param array       $lines         per active line: price, quantity, tax_total,
  *                                   taxable, tax_rate (products.tax_rate, null for the zone's),
- *                                   charged_rate (order_items.tax_rate, when the column exists)
+ *                                   charged_rate (order_items.tax_rate, when the column exists),
+ *                                   recurring, recurring_start_date, start_days
  * @param float|false $default_rate  get_default_tax_rate(): false when the default country is in no zone
+ * @param string|null $today         Y-m-d; null for today
+ * @param bool        $clearcommerce the gateway charges recurring lines itself
  * @return array  key => ['tax' => int minor units, 'rate' => float|null], in the order given
  */
-function pg_cart_estimate_line_taxes($lines, $default_rate)
+function pg_cart_estimate_line_taxes($lines, $default_rate, $today = null, $clearcommerce = false)
 {
     $estimate = array();
     $preview = array();
     $untaxed = false;
     $charged = array();
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
 
     foreach ((array) $lines as $key => $line) {
         $tax_total = (int) ($line['tax_total'] ?? 0);
         // The whole line, as the checkout's tax pass takes it.
         $amount = (int) ($line['price'] ?? 0) * max(1, (int) ($line['quantity'] ?? 1));
+        $alone = !pg_order_line_charged_today(!empty($line['recurring']), (string) ($line['recurring_start_date'] ?? ''),
+            (int) ($line['start_days'] ?? 0), $today, $clearcommerce);
         $stored_rate = null;
+        $checkout_took_none = false;
         if (array_key_exists('charged_rate', (array) $line)) {
             $charged_rate = (float) ($line['charged_rate'] ?? 0);
             if ($charged_rate > 0) {
                 $group = sprintf('%.3F', $charged_rate);
-                $charged[$group]['lines'][$key] = array('amount' => $amount, 'rate' => $charged_rate);
+                $charged[$group]['lines'][$key] = array('amount' => $amount, 'rate' => $charged_rate, 'alone' => $alone);
                 $charged[$group]['stored'] = ($charged[$group]['stored'] ?? 0) + $tax_total;
                 $stored_rate = $charged_rate;
             } elseif ($tax_total !== 0) {
                 $untaxed = true;
+            } elseif (($line['charged_rate'] ?? null) !== null && (string) $line['charged_rate'] !== '') {
+                // The checkout charged it at 0: exempt, or in no tax zone.
+                $checkout_took_none = true;
             }
         }
         $estimate[$key] = array('tax' => $tax_total, 'rate' => ($stored_rate === null && $tax_total === 0) ? 0.0 : $stored_rate);
         if (empty($line['taxable']) || $default_rate === false) continue;
         $rate = (float) get_effective_tax_rate($line['tax_rate'] ?? null, $default_rate);
         if ($rate <= 0) continue;
-        $preview[$key] = array('amount' => $amount, 'rate' => $rate);
-        if ($tax_total === 0) $untaxed = true;
+        $preview[$key] = array('amount' => $amount, 'rate' => $rate, 'alone' => $alone);
+        if (($tax_total === 0) && !$checkout_took_none) $untaxed = true;
     }
 
     foreach ($charged as $group) {
-        if ((int) array_sum(pg_tax_by_rate($group['lines'])) !== $group['stored']) $untaxed = true;
+        if ((int) array_sum(pg_order_line_taxes($group['lines'])) !== $group['stored']) $untaxed = true;
     }
 
     if (!$untaxed) return $estimate;
 
-    $taxes = pg_tax_by_rate($preview);
+    $taxes = pg_order_line_taxes($preview);
     foreach (array_keys($estimate) as $key) {
         $estimate[$key] = isset($preview[$key])
             ? array('tax' => (int) $taxes[$key], 'rate' => $preview[$key]['rate'])
@@ -2590,7 +2610,8 @@ function pg_cart_estimate_line_taxes($lines, $default_rate)
  */
 function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today = null, $clearcommerce = false)
 {
-    $estimate = pg_cart_estimate_line_taxes($lines, $default_rate);
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
+    $estimate = pg_cart_estimate_line_taxes($lines, $default_rate, $today, $clearcommerce);
     $order_lines = array();
 
     foreach ((array) $lines as $key => $line) {
@@ -2605,7 +2626,7 @@ function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today
         );
     }
 
-    $charged = pg_order_charged_today_totals($order_lines, $order_discount, ($today === null) ? date('Y-m-d') : (string) $today, $clearcommerce);
+    $charged = pg_order_charged_today_totals($order_lines, $order_discount, $today, $clearcommerce);
 
     return $charged['tax'] + $charged['later_tax'];
 }
