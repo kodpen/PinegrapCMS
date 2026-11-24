@@ -485,7 +485,7 @@
                 form.appendChild(picker);
             }
 
-            var text = h.el('textarea', 'form-control form-control-sm');
+            var text = h.el('textarea', 'pg-input pg-input-sm');
             text.rows = 2;
             text.maxLength = state.max;
             text.placeholder = (withKey === '') ? h.t('dg_instruction') : h.t('dg_follow_hint');

@@ -365,7 +365,7 @@
             h.clear(body);
 
             var bar = h.el('div', 'd-flex align-items-center gap-2 mb-3');
-            var pick = h.el('select', 'form-control form-control-sm w-auto');
+            var pick = h.el('select', 'pg-input pg-input-sm w-auto');
 
             pick.setAttribute('aria-label', h.t('page_versions'));
             (data.versions || []).slice().reverse().forEach(function (row) {

@@ -18615,7 +18615,7 @@ a.ws-chip-message:hover,
   width: min(24rem, calc(100vw - 16px));
   padding: .35rem;
 }
-.ws-link-tip .form-control {
+.ws-link-tip .pg-input {
   min-width: 0;
 }
 .ws-link-tip :is(.pg-button, .pg-icon-button) {
@@ -18725,7 +18725,7 @@ a.ws-chip-message:hover,
 .ws-code-language {
   max-width: 12rem;
 }
-.ws-code-edit {
+.pg-input.ws-code-edit {
   min-height: 16rem;
   font-family: var(--pg-font-mono);
   font-size: .85rem;
@@ -18742,7 +18742,8 @@ a.ws-chip-message:hover,
 @media (pointer: coarse) {
   .ws-emoji-search,
   #ws-poll-form .pg-input,
-  .ws-code-edit {
+  .pg-input.ws-code-edit,
+  .pg-input.ws-tip-touch {
     font-size: var(--pg-text-field-touch);
   }
 }
@@ -22143,10 +22144,6 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   font-weight: 600;
   color: var(--pg-fg-2);
 }
-.ws-when .form-label {
-  margin-bottom: .2rem;
-  font-size: .8rem;
-}
 .ws-when-custom,
 .ws-when-end {
   margin-top: .5rem;
@@ -24624,7 +24621,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-rich [data-ws-calc-input] {
   cursor: inherit;
 }
-.ws-calc-live-input {
+.pg-input.ws-calc-live-input {
   display: inline-block;
   width: 7.5rem;
   padding: 0 .35rem;
@@ -24672,10 +24669,10 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   gap: .35rem .6rem;
   margin-bottom: .4rem;
 }
-.ws-calc-settings :is(select.form-control) {
+.ws-calc-settings select.pg-input {
   width: auto;
 }
-.ws-calc-settings .form-control {
+.ws-calc-settings .pg-input {
   width: 7rem;
 }
 .ws-calc-names {
@@ -26288,7 +26285,7 @@ a.ws-tag-card-head:hover span {
     flex-wrap: wrap;
     gap: .3rem;
 }
-.ws-tpl-note-body {
+.pg-input.ws-tpl-note-body {
     font-family: var(--pg-font-mono);
     font-size: .8125rem;
 }

@@ -108,7 +108,7 @@ function test_workspace_phone_fields_are_16px_on_touch()
 	$css = workspace_phone_touch_test_css();
 	$touch = workspace_phone_touch_test_blocks('(pointer: coarse)');
 
-	foreach (array('.ws-emoji-search', '#ws-poll-form .pg-input', '.ws-code-edit') as $selector) {
+	foreach (array('.ws-emoji-search', '#ws-poll-form .pg-input', '.pg-input.ws-code-edit', '.pg-input.ws-tip-touch') as $selector) {
 		$rule = workspace_phone_touch_test_rule($touch, $selector);
 		pg_assert_true($rule !== null && strpos($rule, 'font-size: var(--pg-text-field-touch)') !== false, $selector . ' is 16px on touch');
 	}
@@ -117,8 +117,8 @@ function test_workspace_phone_fields_are_16px_on_touch()
 
 	// The code area's own size is set outside the touch block: the touch
 	// rule has to come after it to win.
-	$base = strpos($css, "\n.ws-code-edit {");
-	$touchAt = strpos($css, '.ws-code-edit {', $base + 1);
+	$base = strpos($css, "\n.pg-input.ws-code-edit {");
+	$touchAt = strpos($css, '.pg-input.ws-code-edit,', $base + 1);
 	pg_assert_true($base !== false && $touchAt !== false, 'the code area has a base and a touch rule');
 }
 

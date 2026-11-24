@@ -474,7 +474,7 @@
     function noteForm(row, tools, one, body) {
         var h = state.h;
         var form = h.el('form', 'ws-hl-note-form');
-        var field = h.el('textarea', 'form-control form-control-sm');
+        var field = h.el('textarea', 'pg-input pg-input-sm');
         field.maxLength = NOTE_MAX;
         field.rows = 2;
         field.value = one.note || '';

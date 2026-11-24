@@ -136,7 +136,7 @@
         var t = h.t;
         var el = h.el;
         var wrap = el('div', 'ws-checkin-form');
-        var area = el('textarea', 'form-control form-control-sm');
+        var area = el('textarea', 'pg-input pg-input-sm');
         var send = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('ci_send'), 'bi-send');
         var row = el('div', 'ws-checkin-form-foot');
 
@@ -204,7 +204,7 @@
             var figures = el('div', 'ws-status-facts');
             var chips = el('div', 'ws-status-chips');
 
-            figures.appendChild(el('div', 'form-label', t('st_facts')));
+            figures.appendChild(el('div', 'pg-field-label', t('st_facts')));
 
             [
                 ['bi-list-task', t('st_open', counts.open), ''],
@@ -254,7 +254,7 @@
             var healthRow = el('div', 'mb-5');
             var group = h.nextId('ws-status-health-');
 
-            healthRow.appendChild(el('div', 'form-label', t('st_health')));
+            healthRow.appendChild(el('div', 'pg-field-label', t('st_health')));
 
             var choices = el('div', 'ws-status-choices');
 
@@ -285,14 +285,14 @@
                 wrap.appendChild(rich.input);
                 wrap.appendChild(rich.tools(false));
             } else {
-                area = el('textarea', 'form-control form-control-sm');
+                area = el('textarea', 'pg-input pg-input-sm');
                 area.rows = 8;
                 area.value = draft;
                 wrap.appendChild(area);
             }
 
             var textRow = el('div', 'mb-5');
-            textRow.appendChild(el('div', 'form-label', t('st_text')));
+            textRow.appendChild(el('div', 'pg-field-label', t('st_text')));
             textRow.appendChild(wrap);
             // The typed text is the person's own, not the figures' draft:
             // only the tags are explained then.
@@ -358,7 +358,7 @@
         var t = h.t;
         var el = h.el;
         var config = h.cfg.status || {};
-        var question = el('input', 'form-control form-control-sm');
+        var question = el('input', 'pg-input pg-input-sm');
         var box = el('div');
 
         question.type = 'text';

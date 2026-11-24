@@ -20,6 +20,6 @@ description: WL8: formRow() is the form parts' field(), the form-control and for
 - `.pg-input.ws-text-area` and `.pg-input.ws-copy-area` carry two classes: the recipe's textarea height and size come later in `backend.src.css`.
 
 ## What is left in workspace.js?
-- 15 `form-text` lines (help lines outside formRow) and 4 old buttons (context menu rows, pressed toggles; `look-workspace-main-script.md`). The other scripts' `form-control` and `form-label` lines are WL9.
+- 15 `form-text` lines (help lines outside formRow) and 4 old buttons (context menu rows, pressed toggles; `look-workspace-main-script.md`). The other scripts' `form-control` and `form-label` lines: `look-workspace-fields-scripts.md` (WL9).
 
-Related: docs/memory/ui/look-check.md, docs/memory/workspace/workspace-drawer-form-parts.md
+Related: docs/memory/ui/look-workspace-fields-scripts.md, docs/memory/ui/look-check.md, docs/memory/workspace/workspace-drawer-form-parts.md
