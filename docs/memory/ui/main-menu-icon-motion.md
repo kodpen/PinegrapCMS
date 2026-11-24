@@ -5,7 +5,7 @@ module: output
 ---
 
 ## How do the icons move?
-- One move per icon (#MI2PR), `backend.src.css` after the tile rules: the moving part's `data-m` value names its keyframes (`.pg-mi [data-m="up"] { --pg-mi-k: pg-mi-up; }`), copied from `ICON_CSS` of the drawing. Played once, 0.5 s, `cubic-bezier(0.4, 0, 0.2, 1)`, on the row's `:hover` and `:focus-visible`, only inside `prefers-reduced-motion: no-preference`. The icon does not grow or change colour.
+- One move per icon (#11233), `backend.src.css` after the tile rules: the moving part's `data-m` value names its keyframes (`.pg-mi [data-m="up"] { --pg-mi-k: pg-mi-up; }`), copied from `ICON_CSS` of the drawing. Played once, 0.5 s, `cubic-bezier(0.4, 0, 0.2, 1)`, on the row's `:hover` and `:focus-visible`, only inside `prefers-reduced-motion: no-preference`. The icon does not grow or change colour.
 - A new drawing's move needs its `--pg-mi-k` line and `@keyframes pg-mi-<move>`; `tests/menu_icon_motion_test.php` checks every `data-m` of `output_menu()`'s drawings has both.
 - Live, Automation flows: the dot (`data-l="run"`, hidden at rest) runs the connector in a 1.5 s loop while the row carries `data-pg-flows-running`, by translate keyframes (`pg-mi-run`); `offset-path` is not taken by SVG parts in every browser.
 - Live, Calendars: the server prints the day (`.pg-mi-date`) and puts the site's time of day and date on the svg (`data-pg-day`, `data-pg-day-date`); `initMenuDay()` in `backend.src.js` moves the day on at the site's midnight. The Dashboard row is tiles: its clock, `data-pg-clock` and the clock's script went.

@@ -27,7 +27,7 @@ priority: 6
 
 ## Which steps? (each enters `includes/fn/output.php` and `assets/css/backend.src.css`: one worker at a time)
 - MI1 (M): the row's tile, the category colours of rows and panels, `pg_menu_icon()` redrawn from `icons.js` for every name, at rest. Done (#11202): `pg_menu_category_tone()`, `pg_menu_icon_tile()`, Page Design Studio's `menu_icon` is `design`; the old moves were deleted, so MI2 writes the new ones from `ICON_CSS`.
-- MI2 (M): the moves and the live parts; the clock's script leaves `backend.src.js`; Design examples gets the pattern "Menu row icon" (a tile in each category colour, one icon moving).
+- MI2 (M): the moves and the live parts; the clock's script leaves `backend.src.js`; Design examples gets the pattern "Menu row icon" (a tile in each category colour, one icon moving). Done (#11233), `ui/main-menu-icon-motion.md`.
 - MI3 (S): the System tools panel as one list (`pg_menu_tools_markup()`: a heading per group, its tools under it, no entry for the screen, no second-level panels), then the close-out.
 - Tests: every `menu_icon` name of `output_menu()` has a drawing and every category a tone; the menu's tests that pin markup a step redraws are rewritten to it, never dropped.
 - Check of a step, on a sandbox with Workspace and ERP on: 1440 and 390 px, both themes, the rail and the wide menu, an opened panel, a row with a badge, a pinned row, reduced motion, the keyboard.
