@@ -4,7 +4,7 @@ description: The list of boxes to add (FW2 #9178, FE2): a card beside the add ra
 ---
 
 ## Why sections?
-- The palette listed its groups as start, values, logic, people, message, system: nothing said which box goes first, and the owner could not tell (2026-11-03). The flow window drawing (`workflow/decisions-made-workspace-20.md`) then gave the left panel one job, adding boxes, in rows that fold.
+- The palette listed its groups as start, values, logic, people, message, system: nothing said which box goes first, and the owner could not tell (2026-11-03). The flow window drawing (`workflow/decisions-made-workspace-20.md`) gave adding boxes a place of its own, in rows that fold; since FE2 that place is a card beside the add rail, and "+" on an arrow opens the shorter add list (`workspace-flows-add-here.md`).
 
 ## How is it laid out? (drawPalette() in workspace_flow.js)
 - The card's head "Add a box" with Close (`fl_palette_close`); "Start from a template" while the flow is empty; the search (`pg-input pg-input-sm`); the sections in a scroll of their own; the foot line "Click or drag onto the canvas".

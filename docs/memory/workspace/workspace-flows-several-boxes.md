@@ -25,4 +25,4 @@ description: Several flow boxes at once (FE7, #11289): chosen with the core's ge
 ## Where is it tested?
 - `test_workspace_flows_canvas_several_boxes_copied` (Node, the pure copy) and the harness scenario "several boxes" (`workspace-flows-canvas-harness.md`).
 
-Related: docs/memory/workspace/workspace-flows-add-here.md, docs/memory/ui/graph-canvas-core-several.md, docs/memory/plans/flows-editor-next-screens-4.md
+Related: docs/memory/workspace/workspace-flows-add-here.md, docs/memory/ui/graph-canvas-core-several.md, docs/memory/workspace/workspace-flows-overview.md

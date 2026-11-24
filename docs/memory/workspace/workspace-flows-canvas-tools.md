@@ -4,7 +4,7 @@ description: The flow canvas's tools (FE2): the add rail with group icons and th
 ---
 
 ## What changed, and why?
-- The flows editor's redraw (`plans/flows-editor-next-screens.md`, board A1) gives the canvas the editor's whole width: the left column "Add a box" and the bar's tools left for floating tools over the canvas. Built in FE2 (`plans/flows-editor-next-steps.md`).
+- The flows editor's redraw (`workflow/decisions-made-workspace-47.md`; board A1 of `flows-editor-drawing/editor.html`) gives the canvas the editor's whole width: the left column "Add a box" and the bar's tools left for floating tools over the canvas. Built in FE2 (#11140).
 - `.wsf-app` is one column, the canvas from edge to edge; the chosen box's panel is a card over it (FE3, `workspace-flows-side-panel.md`).
 
 ## What is the add rail? (drawPaletteRail() in workspace_flow.js)
