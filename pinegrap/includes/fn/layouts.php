@@ -531,9 +531,171 @@ function pg_layout_widget_order_field(array $row, $n, array $field_names)
     return (($field_id > 0) && isset($field_names[$field_id])) ? (string) $field_names[$field_id] : '';
 }
 
+// What a classic page's type settings set in the widget's layout rather than
+// in its config: the catalog's number of columns and its image size, as
+// array('columns' => n, 'image_width' => px, 'image_height' => px), each
+// only when set. A column count the grid cannot split twelve by (5, more
+// than 6) is left out; pg_layout_widget_held() names it. Pure.
+function pg_layout_widget_tree_seed($page_type, array $row)
+{
+    $seed = array();
+
+    if ((string) $page_type !== 'catalog') {
+        return $seed;
+    }
+
+    $columns = isset($row['number_of_columns']) ? (int) $row['number_of_columns'] : 0;
+
+    if (in_array($columns, array(1, 2, 3, 4, 6), true)) {
+        $seed['columns'] = $columns;
+    }
+
+    foreach (array('image_width', 'image_height') as $key) {
+        if (isset($row[$key]) && ((int) $row[$key] > 0)) {
+            $seed[$key] = (int) $row[$key];
+        }
+    }
+
+    return $seed;
+}
+
+// The settings of a classic page's type row the widget can hold neither in
+// its config (pg_layout_widget_seed()) nor in its layout
+// (pg_layout_widget_tree_seed()), as codes (pg_layout_held_label()), in
+// this order: the catalog's featured and new items and a column count the
+// grid cannot split twelve by; the form list's advanced search, a first or
+// second sort the widget has no order for, a third sort, its header and its
+// footer. A page that holds one stays a System region in the move's run.
+// Pure.
+function pg_layout_widget_held($page_type, array $row, array $field_names = array())
+{
+    $int = function ($key) use ($row) {
+        return isset($row[$key]) ? (int) $row[$key] : 0;
+    };
+    $held = array();
+
+    switch ((string) $page_type) {
+        case 'catalog':
+            if ($int('number_of_featured_items') > 0) {
+                $held[] = 'featured_items';
+            }
+            if ($int('number_of_new_items') > 0) {
+                $held[] = 'new_items';
+            }
+            if (($int('number_of_columns') > 1) && !in_array($int('number_of_columns'), array(2, 3, 4, 6), true)) {
+                $held[] = 'columns';
+            }
+            break;
+
+        case 'form list view':
+            if ($int('search_advanced') === 1) {
+                $held[] = 'advanced_search';
+            }
+            foreach (array(1, 2) as $n) {
+                $set = (isset($row['order_by_' . $n . '_standard_field']) && ((string) $row['order_by_' . $n . '_standard_field'] !== ''))
+                    || ($int('order_by_' . $n . '_form_field_id') > 0);
+                if ($set && (pg_layout_widget_order_field($row, $n, $field_names) === '')) {
+                    $held[] = 'sort';
+                    break;
+                }
+            }
+            if ((isset($row['order_by_3_standard_field']) && ((string) $row['order_by_3_standard_field'] !== '')) || ($int('order_by_3_form_field_id') > 0)) {
+                $held[] = 'sort_3';
+            }
+            foreach (array('header', 'footer') as $key) {
+                if (isset($row[$key]) && (trim(strip_tags((string) $row[$key], '<img><iframe><video><script><form><input><hr>')) !== '')) {
+                    $held[] = $key;
+                }
+            }
+            break;
+    }
+
+    return $held;
+}
+
+// The words for a code of pg_layout_widget_held(), as the dry run of the
+// move names it.
+function pg_layout_held_label($code)
+{
+    switch ((string) $code) {
+        case 'featured_items':
+            return lang('Featured items');
+        case 'new_items':
+            return lang('New items');
+        case 'columns':
+            return lang('Number of columns');
+        case 'advanced_search':
+            return lang('Advanced search');
+        case 'sort':
+            return lang('A sort order the widget does not have');
+        case 'sort_3':
+            return lang('Third sort order');
+        case 'header':
+            return lang('Header');
+        case 'footer':
+            return lang('Footer');
+    }
+
+    return (string) $code;
+}
+
+// A widget's layout with the settings of pg_layout_widget_tree_seed() put in:
+// the column of its first loop area spans 12 / columns from the small
+// screen up (one column: the whole row everywhere), and the image bound to
+// the product picture gets the width and height. The editor's twin is
+// _sdClassicTreeSeed(). Pure.
+function pg_layout_widget_tree_apply(array $tree, array $seed)
+{
+    $columns = isset($seed['columns']) ? (int) $seed['columns'] : 0;
+    $width = isset($seed['image_width']) ? (int) $seed['image_width'] : 0;
+    $height = isset($seed['image_height']) ? (int) $seed['image_height'] : 0;
+    $state = array('col' => ($columns <= 0), 'image' => (($width <= 0) && ($height <= 0)));
+
+    $walk = function (array $node, $in_loop) use (&$walk, &$state, $columns, $width, $height) {
+        $type = isset($node['type']) ? (string) $node['type'] : '';
+
+        if (!$state['col'] && $in_loop && ($type === 'col')) {
+            $state['col'] = true;
+            $props = isset($node['props']) && is_array($node['props']) ? $node['props'] : array();
+            $props['xs'] = '12';
+            $props['sm'] = ($columns >= 2) ? '6' : '';
+            $props['md'] = ($columns >= 3) ? '4' : '';
+            $props['lg'] = ($columns >= 4) ? (string) (12 / $columns) : '';
+            $props['xl'] = '';
+            $props['xxl'] = '';
+            $node['props'] = $props;
+        }
+
+        if (!$state['image'] && ($type === 'content') && isset($node['props']['_bindings']['src'])
+            && ((string) $node['props']['_bindings']['src'] === '__image_url')) {
+            $state['image'] = true;
+            if ($width > 0) {
+                $node['props']['width'] = (string) $width;
+            }
+            if ($height > 0) {
+                $node['props']['height'] = (string) $height;
+            }
+        }
+
+        if (isset($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $i => $child) {
+                if (is_array($child)) {
+                    $node['children'][$i] = $walk($child, $in_loop || ($type === 'loop_area'));
+                }
+            }
+        }
+
+        return $node;
+    };
+
+    return $walk($tree, false);
+}
+
 // Of the pages that draw a custom layout (pg_layout_custom_page_ids()), those
 // whose type has a widget, page id => ['kind' => widget kind, 'cfg' =>
-// settings carried from the page's type settings]: the visual designer offers
+// settings carried from the page's type settings, 'tree' => the settings
+// its layout takes (pg_layout_widget_tree_seed()), 'held' => the words for
+// the settings it cannot hold (pg_layout_widget_held())]: the visual designer offers
 // to put that widget beside the page's system region, never on its own.
 function pg_layout_widget_offers(array $layout_page_ids)
 {
@@ -614,6 +776,35 @@ function pg_classic_no_widget_page_ids(array $page_ids)
 // The offers of pg_layout_widget_offers() for the given pages and kinds.
 function _pg_widget_offers(array $page_ids, array $kinds)
 {
+    $out = array();
+
+    foreach (_pg_widget_type_facts($page_ids, $kinds) as $page_id => $f) {
+        $out[$page_id] = array(
+            'kind' => $f['kind'],
+            'cfg'  => (object) $f['cfg'],
+            'tree' => (object) $f['tree'],
+            'held' => array_map('pg_layout_held_label', $f['held']),
+        );
+    }
+
+    return $out;
+}
+
+// Of the given pages, those whose type a system widget stands in for
+// (pg_classic_widget_kinds()), page id => facts of _pg_widget_type_facts():
+// what the move's run reads to put the widget in the System region's place.
+function pg_classic_type_facts(array $page_ids)
+{
+    return _pg_widget_type_facts($page_ids, pg_classic_widget_kinds());
+}
+
+// Of the given pages, those whose type is in $kinds, page id => array(
+// 'type' => page type, 'kind' => widget kind, 'modified' => whether the
+// page draws its own layout file (page.layout_modified), 'cfg' =>
+// pg_layout_widget_seed(), 'tree' => pg_layout_widget_tree_seed(), 'held'
+// => pg_layout_widget_held() codes), read from the page's type row.
+function _pg_widget_type_facts(array $page_ids, array $kinds)
+{
     $ids = array();
 
     foreach ($page_ids as $id) {
@@ -634,7 +825,7 @@ function _pg_widget_offers(array $page_ids, array $kinds)
     );
     $out = array();
 
-    foreach ((array) db_items("SELECT page_id, page_type FROM page WHERE page_id IN (" . implode(',', array_keys($ids)) . ")") as $page) {
+    foreach ((array) db_items("SELECT page_id, page_type, layout_modified FROM page WHERE page_id IN (" . implode(',', array_keys($ids)) . ")") as $page) {
         $page_id = (int) $page['page_id'];
         $type = (string) $page['page_type'];
 
@@ -657,8 +848,12 @@ function _pg_widget_offers(array $page_ids, array $kinds)
         }
 
         $out[$page_id] = array(
-            'kind' => $kinds[$type],
-            'cfg'  => (object) pg_layout_widget_seed($type, $row, $field_names),
+            'type'     => $type,
+            'kind'     => $kinds[$type],
+            'modified' => !empty($page['layout_modified']),
+            'cfg'      => pg_layout_widget_seed($type, $row, $field_names),
+            'tree'     => pg_layout_widget_tree_seed($type, $row),
+            'held'     => pg_layout_widget_held($type, $row, $field_names),
         );
     }
 

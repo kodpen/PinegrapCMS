@@ -35,6 +35,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_region_starters.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
 
 /**
  * The classic data-driven regions a widget draws: the widget kind and the
@@ -365,14 +366,14 @@ function pg_ltd_widget_config($target)
  *                      classic head loaded CSS after it, else ''),
  *                      'stays' (pg_ltd_stay_targets()), 'custom_layouts'
  *                      (int), 'designer_php' (designer region names
- *                      holding PHP)
+ *                      holding PHP), 'types' (pg_ltd_type_target() rows)
  * @return array  'skip' ('' or a reason code), 'components' (list of
  *                array('kind' => 'common'|'designer', 'name', 'exists')),
  *                'frame' ('make'|'update'), 'frame_split', 'frame_parts',
  *                'pages' (rows with 'action': 'tree', 'keep', 'regions' or
  *                'held'), 'widgets', 'warnings', 'writes' (int),
- *                'stays', 'custom_layouts', 'designer_php' (the facts'
- *                own, empty for a refused style)
+ *                'stays', 'custom_layouts', 'designer_php', 'types' (the
+ *                facts' own, empty for a refused style)
  */
 function pg_ltd_plan_style($facts)
 {
@@ -386,6 +387,7 @@ function pg_ltd_plan_style($facts)
                  'parts' => (isset($f['parts']) && is_array($f['parts'])) ? array_merge($none, $f['parts']) : $none,
                  'warnings' => array_values((array)($f['warnings'] ?? array())), 'writes' => 0,
                  'stays' => array_values((array)($f['stays'] ?? array())), 'custom_layouts' => (int)($f['custom_layouts'] ?? 0),
+                 'types' => array_values((array)($f['types'] ?? array())),
                  'designer_php' => array_values(array_map('strval', (array)($f['designer_php'] ?? array()))));
     if ((string)($f['refusal'] ?? '') !== '') {
         $out['skip'] = 'refusal';
@@ -393,6 +395,7 @@ function pg_ltd_plan_style($facts)
         $out['parts'] = $none;
         $out['stays'] = array();
         $out['custom_layouts'] = 0;
+        $out['types'] = array();
         $out['designer_php'] = array();
         return $out;
     }
@@ -692,6 +695,11 @@ function pg_ltd_plan_facts($s, $converted)
 
     $holders = array();
     foreach ($s['locked'] as $p) $holders[$p['page_id']] = $p['holder'] !== '' ? $p['holder'] : lang('Unknown');
+    // The pages whose own System region the run can put a widget in place
+    // of: a page with a tree that still holds it, a page without one when
+    // the style's code has it.
+    $own_system = array();
+    $style_system = ($s['refusal'] === '') && in_array(array('type' => 'system', 'name' => ''), pg_ltd_style_tags($code)['regions'], true);
     foreach (array('own' => $s['own'], 'folder' => $s['folder']) as $source => $rows) {
         foreach ($rows as $p) {
             $own_regions = 0;
@@ -699,6 +707,9 @@ function pg_ltd_plan_facts($s, $converted)
                 $tree = json_decode((string)db_value("SELECT page_tree_json FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1"), true);
                 $own_regions = is_array($tree) ? pg_ltd_page_regions($tree, array())['own'] : 0;
                 if (is_array($tree)) $part_nodes[] = $tree;
+                if (is_array($tree) && pg_ltd_tree_has_own_system($tree)) $own_system[(int)$p['page_id']] = (string)$p['page_name'];
+            } elseif ($style_system) {
+                $own_system[(int)$p['page_id']] = (string)$p['page_name'];
             }
             if ($s['refusal'] === '' && (($split !== null && !$p['has_tree']) || $own_regions > 0)) {
                 $part_nodes[] = pg_ltd_content_region_nodes((int)$p['page_id']);
@@ -720,6 +731,13 @@ function pg_ltd_plan_facts($s, $converted)
     // whose PHP blocks become Custom PHP elements.
     $facts['stays'] = array();
     $facts['custom_layouts'] = (int)($s['custom_layouts'] ?? 0);
+    $facts['types'] = array();
+    if ($own_system) {
+        $hosted = pg_hosted();
+        foreach (pg_classic_type_facts(array_keys($own_system)) as $page_id => $t) {
+            $facts['types'][] = pg_ltd_type_target($own_system[$page_id], $t, $hosted);
+        }
+    }
     $facts['designer_php'] = array();
     if ($s['refusal'] === '') {
         $facts['stays'] = pg_ltd_stay_targets(pg_di_root(array_merge(array($shared), $part_nodes)));
@@ -1061,6 +1079,52 @@ function pg_ltd_stay_targets($tree)
 }
 
 /**
+ * Whether a page's tree still holds the page's own System region: a
+ * `region` node of type `system` with no name, outside a shared component.
+ * Pure.
+ *
+ * @param array $tree
+ * @return bool
+ */
+function pg_ltd_tree_has_own_system($tree)
+{
+    if (!is_array($tree)) return false;
+    $type = isset($tree['type']) ? (string)$tree['type'] : '';
+    if ($type === 'shared_ref') return false;
+    if ($type === 'region' && (string)($tree['props']['regionType'] ?? '') === 'system'
+        && (string)($tree['props']['regionName'] ?? '') === '') {
+        return true;
+    }
+    foreach ((array)($tree['children'] ?? array()) as $child) {
+        if (pg_ltd_tree_has_own_system($child)) return true;
+    }
+    return false;
+}
+
+/**
+ * What the run's types step does with a page whose own System region a
+ * widget stands in for: 'convert' (the stock layout, every setting held by
+ * the widget), 'held' (a type setting the widget cannot hold, named in
+ * 'held') or 'file' (its own layout file, left to the converter). A hosted
+ * site draws no layout file, so its pages are never 'file'. Pure.
+ *
+ * @param string $page_name
+ * @param array  $facts   a pg_classic_type_facts() entry
+ * @param bool   $hosted
+ * @return array  'page_name', 'kind', 'state', 'held' (codes)
+ */
+function pg_ltd_type_target($page_name, $facts, $hosted)
+{
+    $held = array_values(array_map('strval', (array)($facts['held'] ?? array())));
+    if (!empty($facts['modified']) && !$hosted) {
+        $state = 'file';
+    } else {
+        $state = $held ? 'held' : 'convert';
+    }
+    return array('page_name' => (string)$page_name, 'kind' => (string)($facts['kind'] ?? ''), 'state' => $state, 'held' => $held);
+}
+
+/**
  * A dry run entry in three groups: what becomes editable (page content,
  * common regions, designer regions, menus and widgets, each with the names
  * behind its count), what stays code and is drawn as on the site (each
@@ -1082,7 +1146,9 @@ function pg_ltd_plan_groups($p)
     $editable = array('content' => array(), 'common' => array(), 'designer' => array(), 'widgets' => array());
     $code = array();
     $layouts = 0;
-    $add = function ($s) use (&$out, &$editable, &$code, &$layouts) {
+    // Page name lists by the type setting that keeps a page a System region.
+    $held = array();
+    $add = function ($s) use (&$out, &$editable, &$code, &$layouts, &$held) {
         if ($s['skip'] === 'refusal') {
             $out['skipped'][] = array('label' => (string)$s['name'], 'reason' => lang('The Page Design Studio does not open this style.'));
             return;
@@ -1107,6 +1173,10 @@ function pg_ltd_plan_groups($p)
         foreach ((array)($s['stays'] ?? array()) as $r) $code[$r['type'] . "\n" . $r['name']] = $r;
         foreach ((array)($s['designer_php'] ?? array()) as $name) $code["designer_php\n" . $name] = array('type' => 'designer_php', 'name' => (string)$name);
         $layouts += (int)($s['custom_layouts'] ?? 0);
+        foreach ((array)($s['types'] ?? array()) as $t) {
+            if (($t['state'] ?? '') !== 'held') continue;
+            foreach ((array)$t['held'] as $c) $held[(string)$c][] = (string)$t['page_name'];
+        }
     };
     if (($p['kind'] ?? '') === 'set') {
         if ($p['skip'] === 'empty') {
@@ -1149,6 +1219,11 @@ function pg_ltd_plan_groups($p)
     if ($layouts > 0) {
         $out['code'][] = array('label' => lang('Pages with a custom layout'), 'count' => $layouts, 'names' => array(),
                                'reason' => lang('Its layout has pieces that have no design element.'));
+    }
+    foreach ($held as $c => $names) {
+        $names = array_values(array_unique($names));
+        $out['code'][] = array('label' => pg_layout_held_label($c), 'count' => count($names), 'names' => $names,
+                               'reason' => lang('The page type\'s widget has no setting for it: these pages stay System regions.'));
     }
     return $out;
 }
