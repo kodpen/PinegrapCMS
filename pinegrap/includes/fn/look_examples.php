@@ -1205,7 +1205,7 @@ function pg_look_examples_menu_icon_pattern()
     return array(
         'id'      => 'pattern-menu-icon',
         'title'   => lang('Menu row icon'),
-        'classes' => array('.pg-mi', '.pg-mi-tile', '[data-pg-menu-tone]', '[data-m]', '[data-l]', '[data-pg-flows-running]', '.pg-look-mi', '.pg-look-mi-item'),
+        'classes' => array('.pg-look-mi', '.pg-look-mi-item', '.pg-mi', '.pg-mi-tile', '.pg-mi-f', '.pg-mi-h', '.pg-mi-date'),
         'html'    => '<div class="pg-look-line pg-look-mi">' . $items . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From the main menu: one line drawing on a tile in the colour of the row\'s category. Pointing at a row or focusing it plays its icon\'s one move, half a second; nothing loops but a live part, the running flow\'s dot. With less motion asked for, nothing moves.')) . '</p>',
     );
