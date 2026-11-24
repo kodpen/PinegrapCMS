@@ -2491,6 +2491,7 @@
     "The backup {var:1} could not be deleted.": "'{var:1}' yedeği silinemedi.",
     "The backup {var:1} could not be restored: {var:2} The site was not changed.": "{var:1} yedeği geri yüklenemedi: {var:2} Site değişmedi.",
     "The backup {var:1} was restored: {var:2} in {var:3} steps, {var:4} seconds.": "{var:1} yedeği geri yüklendi: {var:2}, {var:3} adımda, {var:4} saniye.",
+    "The backup {var:1} was taken with version {var:2}, newer than this software ({var:3}). Update the software to {var:2} or later first, then restore the backup.": "{var:1} yedeği {var:2} sürümüyle alınmış; bu yazılımdan ({var:3}) daha yeni. Önce yazılımı {var:2} ya da daha yeni bir sürüme güncelleyin, sonra yedeği geri yükleyin.",
     "The backups folder is not writable, so the archive could not be extracted.": "Yedekler klasörüne yazılamıyor, bu yüzden arşiv çıkartılamadı.",
     "The baker who mixed it opens her shop at seven, but her day starts at four. She shapes the loaves by hand, one at a time, and every one of them carries a cut she makes with a single blade.": "Hamuru yoğuran fırıncı dükkânını yedide açıyor, ama günü dörtte başlıyor. Somunları tek tek, elleriyle şekillendiriyor ve her birinin üstünde tek bir bıçak darbesiyle açtığı bir kesik oluyor.",
     "The bakers": "Fırıncılar",

@@ -394,3 +394,20 @@ function test_backup_restore_archive_copy()
 
 	rmdir($dir);
 }
+
+// A backup written by a newer version of the software is refused before its
+// tables replace the site's: the older code cannot read the newer schema.
+function test_backup_restore_version_newer_refuses_only_a_newer_backup()
+{
+	pg_assert_true(pg_restore_version_newer('2026.12.0', '2026.11.0'), 'next month');
+	pg_assert_true(pg_restore_version_newer('2026.11.1', '2026.11.0'), 'next patch');
+	pg_assert_true(pg_restore_version_newer('2026.11.0', '2026.4.10'), 'month compared as a number');
+	pg_assert_true(pg_restore_version_newer('2027.1.0', '2026.12.3'), 'next year');
+	pg_assert_false(pg_restore_version_newer('2026.11.0', '2026.11.0'), 'same version');
+	pg_assert_false(pg_restore_version_newer('2026.4.10', '2026.11.0'), 'older backup, upgraded after');
+	pg_assert_false(pg_restore_version_newer('4.5.0', '2026.11.0'), 'very old site');
+	pg_assert_false(pg_restore_version_newer('', '2026.11.0'), 'no version in the backup');
+	pg_assert_false(pg_restore_version_newer(null, '2026.11.0'), 'no config row');
+	pg_assert_false(pg_restore_version_newer(' 2026.11.0 ', '2026.11.0'), 'spaces around the stored value');
+	pg_assert_false(pg_restore_version_newer('2026.12.0', ''), 'software version unknown');
+}

@@ -5808,6 +5808,30 @@ else {
 
 		}
 
+		// A backup of a newer version is refused while the site is still its own: the older
+		// code cannot run on the newer tables, and the screen would then find a database
+		// version that is not in this package. Only before the swap; a swapped restore that
+		// is finished again has put its tables in place already.
+		if ($install_restore['phase'] == 'loaded') {
+
+			$install_restore_version = pg_restore_loaded_version();
+
+			if (pg_restore_version_newer($install_restore_version, $software_version) == true) {
+
+				pg_restore_discard();
+
+				$install_restore_refusal = lang(array('string' => 'The backup {var:1} was taken with version {var:2}, newer than this software ({var:3}). Update the software to {var:2} or later first, then restore the backup.', 'vars' => array($install_restore['folder'], $install_restore_version, $software_version)));
+
+				log_activity(lang(array('string' => 'The backup {var:1} could not be restored: {var:2} The site was not changed.', 'vars' => array($install_restore['folder'], $install_restore_refusal))), get_install_log_username());
+
+				$liveform->mark_error('', h($install_restore_refusal) . '<br>' . lang('The site was not changed: the backup was loaded next to it, and the part that was loaded has been removed.'));
+
+				return_to_form();
+
+			}
+
+		}
+
 		$install_restore_swap = pg_restore_swap($install_restore, get_tables());
 
 		if ($install_restore_swap['ok'] == false) {
