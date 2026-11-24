@@ -396,6 +396,7 @@
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-everyone-mention.md: The @herkes tag (AE5 #9571, AE5b #9578, DE1): who gets a mention line, which agents it wakes, the discussion hint when it woke nobody, the reserved handles, the @ menu's Everyone row [decision: decisions-made-workspace-30.md, decisions-made-workspace-43.md]
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
+- workspace-file-address-gate.md: Who get_file.php serves a Workspace channel's or note's file to by its address (#11476): readers of the channel or note; staff never by rank; users left to the folder's view right
 - workspace-file-card-preview.md: A channel file's name opens it on the screen (message file card, Files tab), Preview and Download in words, Save as data for a sheet into a Data table of the channel (#11028)
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-files-object-storage.md: Workspace channel files, note attachments, guest files and ERP documents in the object store: which functions read them, which places still write the file directory, the guard test

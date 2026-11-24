@@ -85,12 +85,14 @@
 - bug-hunt-areas-shipping-rates.md: The bug hunt of shipping rates (area 34, 2026-11-24): zones, base rate bands, free shipping offers, a method for an address it does not serve; three faults fixed, what was read clean
 - bug-hunt-areas-site-forms-builder.md: The bug hunt of building a form in the panel (area 44, 2026-11-24, #11453): the five faults fixed, what was read clean, what was not run
 - bug-hunt-areas-site-search.md: Bug hunt of the visitor site search (area 20, 2026-11-24): four faults fixed in the hunt's PR, what was read clean, and the noindex question left as it is
+- bug-hunt-areas-site-themes-and-style-switch.md: The bug hunt in site themes and the style switch (area 51, #11474): activating a theme, copying and deleting a style, what a page keeps when its style goes; what was fixed, read clean and left
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]
 - bug-hunt-areas-subscriptions-recurring.md: The bug hunt of subscriptions and recurring orders (area 33, 2026-11-24): renewals, retries, pause and cancel dates, price changes, card tokens, mails; what it fixed, what was read clean
 - bug-hunt-areas-tax-rates-calculation.md: Bug hunt of tax rates calculation (area 50, 2026-11-24): zone and product rates, tax-inclusive prices, per-rate rounding; two cart widget faults fixed, what read clean
 - bug-hunt-areas-two-step-sign-in.md: Bug hunt area 45, two-step sign-in (2026-11-24, PR #11452): the two faults fixed, what read clean, issue #11454, two questions for the architect
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
 - bug-hunt-areas-webhooks-out.md: The bug hunt in outgoing webhooks and announcements (area 41, PR #11441): what was fixed, what was read clean, what is left
+- bug-hunt-areas-workspace-files-sharing.md: Bug hunt 48, Workspace files sharing (2026-11-24, PR #11476): file addresses after leaving, shares, deletes, replaces, guests, limits, previews; four faults fixed
 - bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas-workspace-tasks-time.md: Bug hunt 28, Workspace tasks and time (2026-11-24, PR #11413): timer in two tabs and over midnight, a task changed while its timer runs, totals, who edits another's time, a repeat made twice

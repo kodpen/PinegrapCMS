@@ -23,6 +23,7 @@
 - agent-guide-workspace-erp.md: The guide's workspace and erp topics for AI agents: what each says, when each is listed, the canvas guide pointed at and not copied, sizes and the tool list's bytes
 - ai-connections-feature-cards.md: The feature cards without a key (CX9b): the Provider select and the chosen provider's connection on the assistants' form and the Voice message transcripts card, own keys, the 11.0.241 voice data step
 - ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it [decision: here]
+- api-announce-door.md: The one door for announced moments: pg_announce() is the only caller of api_webhook_enqueue(); the listeners option keeps the quiet callers as they were; erp_event() goes through it
 - api-answer-check.md: tools/check_api_answers.php, the read-only check that calls every GET route of a running site and compares each answer with the site's OpenAPI document; how it is run, what it flags and skips
 - api-app-token.md: An application key and its secret as one token (Authorization: Bearer pgkt_<key>.<secret>, feature U10): format, where it is read, same path as HTTP Basic, never from the query string
 - api-batch-reads.md: POST /batch (M8b): up to 20 GETs of the API in one request, each checked as its own call; which routes are no entry, rate limit, 304, headers, page cache, no MCP tool

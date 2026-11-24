@@ -718,6 +718,7 @@
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
 - style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests
+- style-copy-delete-binned-pages.md: Pages in the Recycle Bin and a style: a design's copy leaves them out, and they do not keep a classic style from going to the bin once the bin holds styles
 - style-fields.md: Smart completion in the designer's panel inputs: pg_style_fields.js (caret part, pick splice), the Attributes rows and Styles panel fields wired to it, when a list opens, how a pick is written
 - style-predictor.md: The smart completion predictor assets/js/pg_style_predict.js: its API, the context object, suggestion fields, reason codes, how classes are ranked, the hand-kept hint tables, tests [decision: here]
 - style-suggest.md: assets/js/pg_style_suggest.js: the lazy loader of the predictor and vocabulary, the element context, the light dropdown, the Attributes class field and the code view's class list on it
