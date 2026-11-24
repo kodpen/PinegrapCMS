@@ -1317,5 +1317,6 @@ function ws_call_js_strings()
         'call_join_here'  => lang('Join here'),
         'call_elsewhere'  => lang('You are already in this call in another window.'),
         'call_moved'      => lang('The call goes on in another window.'),
+        'call_new_tab'    => lang('Opened in a new tab, so the call goes on.'),
     );
 }
