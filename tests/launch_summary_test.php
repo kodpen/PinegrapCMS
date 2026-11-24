@@ -89,6 +89,43 @@ function test_launch_summary_done_steps_only()
 	pg_assert_same(array(), pg_launch_summary_done_steps(null));
 }
 
+function test_launch_summary_steps_done_then_open()
+{
+	$rows = array(
+		array('key' => 'domain', 'name' => 'Domain and SSL', 'done' => false, 'level' => 'blocker', 'line' => 'Certificate missing'),
+		array('key' => 'mail', 'name' => 'Mail', 'done' => true, 'line' => 'SPF found'),
+		array('key' => 'seo', 'name' => 'Search engines', 'done' => false, 'line' => 'robots.txt closes the site'),
+		array('key' => 'backups', 'name' => 'Backups', 'done' => true),
+	);
+
+	pg_assert_same(array(
+		array('name' => 'Mail', 'done' => true),
+		array('name' => 'Backups', 'done' => true),
+		array('name' => 'Domain and SSL', 'done' => false),
+		array('name' => 'Search engines', 'done' => false),
+	), pg_launch_summary_steps($rows), 'done first, then open, each in the card\'s order; name and state only');
+}
+
+function test_launch_summary_steps_bad_input()
+{
+	pg_assert_same(array(), pg_launch_summary_steps(null));
+	pg_assert_same(array(), pg_launch_summary_steps(array()));
+	pg_assert_same(array(array('name' => 'Mail', 'done' => false)), pg_launch_summary_steps(array('junk', array('done' => true), array('name' => 'Mail'))), 'a row without a name is skipped');
+}
+
+function test_launch_summary_page_counts_and_waits()
+{
+	$page = file_get_contents(PG_FUNCTIONS_DIR . '/launch_summary.php');
+	pg_assert_contains("pg_launch_summary_steps(", $page);
+	pg_assert_contains("'{var:1} of {var:2} steps done'", $page);
+	pg_assert_contains("lang('Waiting')", $page);
+	pg_assert_same(
+		preg_match_all('/\\$ls_card\\[\'rows\'\\]/', $page),
+		preg_match_all('/pg_launch_summary_(?:done_)?steps\\(\\$ls_card\\[\'rows\'\\]\\)/', $page),
+		'the card\'s rows reach the page only through the name-and-state functions'
+	);
+}
+
 function test_launch_summary_page_is_sensitive()
 {
 	$waf = file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');

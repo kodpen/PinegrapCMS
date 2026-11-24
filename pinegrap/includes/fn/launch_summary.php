@@ -181,13 +181,43 @@ function pg_launch_summary_done_steps($rows)
 {
     $done = array();
 
-    foreach ((array) $rows as $row) {
-        if (!empty($row['done'])) {
-            $done[] = (string) $row['name'];
+    foreach (pg_launch_summary_steps($rows) as $step) {
+        if ($step['done']) {
+            $done[] = $step['name'];
         }
     }
 
     return $done;
+}
+
+/**
+ * Every step the set-up card shows, each with its name and whether it is
+ * done: the done ones first, then the open ones, each group in the card's
+ * order. A step hidden on the card is not among the rows, so it is not
+ * listed. Nothing else of a row is kept: never its line, a blocker's text
+ * or a setting's value. Pure.
+ *
+ * @param array $rows pg_launch_journey_card()['rows']
+ * @return array list of name, done
+ */
+function pg_launch_summary_steps($rows)
+{
+    $done = array();
+    $open = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['name'])) {
+            continue;
+        }
+
+        if (!empty($row['done'])) {
+            $done[] = array('name' => (string) $row['name'], 'done' => true);
+        } else {
+            $open[] = array('name' => (string) $row['name'], 'done' => false);
+        }
+    }
+
+    return array_merge($done, $open);
 }
 
 /**
