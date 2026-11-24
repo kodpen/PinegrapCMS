@@ -1495,6 +1495,10 @@ function api_design_prototype_link_present($row, $now) {
 		'password'        => $link['password'],
 		'password_locked' => $link['locked'],
 		'allow_comments'  => $link['comments'],
+		'approval'        => $link['approval'],
+		'publish_rule'    => $link['publish_rule'],
+		'approver_name'   => ($link['approver_name'] !== '') ? $link['approver_name'] : null,
+		'answer_by'       => ($link['answer_by'] !== '') ? $link['answer_by'] : null,
 		'state'           => $link['state'],
 		'expires_at'      => api_time($link['expires_at']),
 		'uses'            => $link['uses'],
@@ -1518,6 +1522,10 @@ function api_design_prototype_link_schema() {
 		'password'        => 'boolean',
 		'password_locked' => 'boolean',
 		'allow_comments'  => 'boolean',
+		'approval'        => 'boolean',
+		'publish_rule'    => 'boolean',
+		'approver_name'   => 'string?',
+		'answer_by'       => 'date?',
 		'state'           => 'string',
 		'expires_at'      => 'datetime?',
 		'uses'            => 'integer',
@@ -1721,6 +1729,24 @@ function api_design_prototype_links_create($params) {
 		'allow_comments' => !empty($params['allow_comments'])
 	), $draft_ids, array_keys(pg_proto_link_durations()), $now);
 
+	$asks = !empty($params['approval']);
+
+	// A site whose schema keeps no verdicts refuses the switch rather than
+	// making a link that asks nothing.
+	if ($plan['ok'] && $asks && !(pg_proto_comments_ready() && pg_proto_approval_ready())) {
+
+		api_fail_validation(pg_proto_link_error_message('approval_ready'), 'approval');
+
+	}
+
+	$plan = pg_proto_link_plan_approval($plan, array(
+		'approval'       => $asks,
+		'approver_name'  => isset($params['approver_name']) ? $params['approver_name'] : '',
+		'approver_email' => isset($params['approver_email']) ? $params['approver_email'] : '',
+		'answer_by'      => isset($params['answer_by']) ? $params['answer_by'] : '',
+		'publish_rule'   => !empty($params['publish_rule'])
+	), $now);
+
 	if (!$plan['ok']) {
 
 		api_fail_validation(pg_proto_link_error_message($plan['error']), ($plan['error'] === 'no_drafts') ? 'id' : $plan['field']);
@@ -1741,7 +1767,11 @@ function api_design_prototype_links_create($params) {
 		'start_page_id' => ($plan['link']['start_page_id'] > 0) ? $plan['link']['start_page_id'] : null,
 		'expires_at'    => api_time($plan['link']['expires_at']),
 		'password'      => ($plan['link']['password'] !== ''),
-		'allow_comments' => ($plan['link']['allow_comments'] === 1)
+		'allow_comments' => ($plan['link']['allow_comments'] === 1),
+		'approval'       => ($plan['link']['approval'] === 1),
+		'publish_rule'   => ($plan['link']['publish_rule'] === 1),
+		'approver_name'  => $plan['link']['approver_name'],
+		'answer_by'      => ($plan['link']['answer_by'] !== '') ? $plan['link']['answer_by'] : null
 	));
 
 	$owner = $app['owner'];

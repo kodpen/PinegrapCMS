@@ -218,9 +218,9 @@ function pg_notification_visible($notification, $rights)
 		return ($target > 0);
 	}
 
-	// A guest's comment on a prototype link: addressed to the link's maker
-	// (includes/fn/prototype_comments.php).
-	if ($action == 'prototype_comment') {
+	// A guest's comment or verdict on a prototype link: addressed to the
+	// link's maker (includes/fn/prototype_comments.php, prototype_verdicts.php).
+	if (($action == 'prototype_comment') || ($action == 'prototype_verdict')) {
 		return ($target > 0);
 	}
 
@@ -786,6 +786,19 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['badge']  = 'assets/images/notification-general-badge.png';
 		$display['action'] = $action;
 
+	} elseif ($action == 'prototype_verdict') {
+
+		// The row keeps the page's name and the verdict's id
+		// (includes/fn/prototype_verdicts.php).
+		$proto_words = pg_proto_verdict_bell_display($notification);
+		$display['title']  = h($proto_words['title']);
+		$display['short']  = h($proto_words['short']);
+		$display['brief']  = h($proto_words['brief']);
+		$display['url']    = $proto_words['url'];
+		$display['icon']   = 'assets/images/notification-general.png';
+		$display['badge']  = 'assets/images/notification-general-badge.png';
+		$display['action'] = $action;
+
 	} elseif ($action == 'launch_answer') {
 
 		// title keeps the line's text; the words are the reader's language.
@@ -1290,7 +1303,7 @@ function pg_notification_module($action)
 		return 'erp';
 	}
 
-	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale', 'prototype_comment'), true)) {
+	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale', 'prototype_comment', 'prototype_verdict'), true)) {
 		return 'content';
 	}
 

@@ -780,6 +780,23 @@ if (($pg_proto_start['id'] > 0) && ($pg_proto_link_bundle <= 0)) {
     $pg_proto_start_shown = pg_proto_link_page_shown((string) $pg_proto_link['audience'], pg_proto_link_page_access($pg_proto_start['id']));
 }
 
+// A link asking approval: the review box of the page drawn, beside its
+// comments.
+$pg_proto_comment_view = !$pg_proto_start_shown ? null : pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
+    isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => '')));
+
+if ($pg_proto_comment_view !== null) {
+    $pg_proto_page_label = '';
+
+    foreach ($pg_proto_pages as $page) {
+        if ($page['id'] === $pg_proto_start['id']) {
+            $pg_proto_page_label = ($page['title'] !== '') ? $page['title'] : $page['name'];
+        }
+    }
+
+    $pg_proto_comment_view['review'] = pg_proto_viewer_review($pg_proto_link, $pg_proto_start['id'], $pg_proto_page_label);
+}
+
 header('Content-Type: text/html; charset=utf-8');
 
 echo pg_proto_shell_html(array(
@@ -801,6 +818,5 @@ echo pg_proto_shell_html(array(
     'wide_pages' => ($pg_proto_link_bundle > 0),
     // A link with "Allow comments": the comment mode, with this page's
     // comments of this link.
-    'comments' => !$pg_proto_start_shown ? null : pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
-        isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => ''))),
+    'comments' => $pg_proto_comment_view,
 ));

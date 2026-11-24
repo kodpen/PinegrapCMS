@@ -8,7 +8,7 @@ description: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the 
 
 - PA1b (M) done (#11298): the five `prototype_links` columns and `prototype_verdicts` (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the five privacy registrations and `pg_contact_holders()`; verdicts deleted with their design and with a link's comments (`pg_proto_comments_delete_design()`, Delete comments); their tests. Features: A1, A2 (the store).
 
-- PA2 (M) after PA1b: the Share prototype dialog's approval fields and the API create route's (`designer/designer-prototype-share-links.md`); the viewer's "Review this page" and its door (the comment door's gates); the verdict's receipt mail; the bell line to the link's maker. Features: A1, A2, A3, A6 (receipt), A7 (bell).
+- PA2 (M) done (#11329): the Share prototype dialog's approval fields and the API create route's (`designer/designer-prototype-share-links.md`); the viewer's "Review this page" and its door (the comment door's gates); the verdict's receipt mail; the bell line to the link's maker. Features: A1, A2, A3, A6 (receipt), A7 (bell).
 
 - PA3 (M) after PA2: round two in the viewer ("Show what changed" outlines from the node marks comment mode already draws, `designer/designer-prototype-comments-viewer.md`); the verdicts in the designer's Comments list and the dialog's links list. Features: A4, A7.
 

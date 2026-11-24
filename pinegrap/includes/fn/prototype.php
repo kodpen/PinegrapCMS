@@ -1400,6 +1400,8 @@ function pg_proto_shell_html($view)
     $version = function ($path) {
         return (string) @filemtime(PG_FUNCTIONS_DIR . $path);
     };
+    // The bar's tool buttons share one look.
+    $tool = 'btn btn-sm btn-outline theme-primary';
     // The comment mode only with a frame to comment on.
     $comments = (isset($view['comments']) && is_array($view['comments']) && ($frame_url !== '') && ($error === '') && $pages) ? $view['comments'] : null;
 
@@ -1518,8 +1520,9 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 <div class="pg-proto-title"><span class="badge theme-primary">' . h(lang('Prototype')) . '</span><span class="pg-proto-name" title="' . h($design) . '">' . h($design) . '</span></div>
 ' . $nav . '
 <div class="pg-proto-tools">
-' . (($comments !== null) ? '<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-comment" aria-pressed="false" title="' . h(lang('Click a spot on the page to leave a comment')) . '"><span class="bi bi-chat-left-text" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Comment')) . '</span> <span class="badge theme-primary d-none" data-pc-count></span></button>' : '') . '
-<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
+' . (($comments !== null) && !empty($comments['review']) ? '<span class="pg-proto-review-state small" id="pg-proto-review-state" role="status"></span><button type="button" class="' . $tool . '" id="pg-proto-review" title="' . h(lang('Review this page')) . '"><span class="bi bi-patch-check" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Review this page')) . '</span></button>' : '') . '
+' . (($comments !== null) ? '<button type="button" class="' . $tool . '" id="pg-proto-comment" aria-pressed="false" title="' . h(lang('Click a spot on the page to leave a comment')) . '"><span class="bi bi-chat-left-text" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Comment')) . '</span> <span class="badge theme-primary d-none" data-pc-count></span></button>' : '') . '
+<button type="button" class="' . $tool . '" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
 ' . (($close_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary" id="pg-proto-close" href="' . h($close_url) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>' : '') . '
 </div>
 </nav>
@@ -1618,9 +1621,13 @@ function pg_proto_shell_comment_css()
 .pg-proto-item-head .badge, .pg-proto-item-time { flex: 0 0 auto; }
 .pg-proto-item-time { font-size: .75rem; white-space: nowrap; }
 .pg-proto-item-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pg-proto-review-state { min-width: 0; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pg-fg-2); }
+.pg-proto-review-state:empty { display: none; }
+.pg-proto-choices { display: flex; flex-wrap: wrap; gap: .375rem; margin-bottom: .5rem; }
 @media (max-width: 575.98px) {
   .pg-proto-cbar { padding: .375rem .75rem; }
   .pg-proto-gone { flex-basis: 100%; }
+  .pg-proto-review-state { max-width: 9rem; }
   .pg-proto-box { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; max-width: none; max-height: 70vh; border-radius: .75rem .75rem 0 0; }
   /* Under 16px iOS zooms the page in when a field is tapped. */
   .pg-proto-box .form-control { font-size: 16px; }

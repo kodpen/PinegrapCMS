@@ -21,7 +21,10 @@
  *  - within the burst per address (a burst counts a firewall offence) and the
  *    open comments a link may hold.
  * The answer is JSON: the comment written (201), or error and message. The
- * open viewer's keep-alive (ping) gets 204 once the gates pass.
+ * open viewer's keep-alive (ping) gets 204 once the gates pass. A post with
+ * a verdict ("Approve this page" or "Request changes", on a link asking
+ * approval) passes the same gates and is answered with the verdict written
+ * (pg_proto_verdict_take()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -111,6 +114,26 @@ if ($pg_pc_refusal !== '') {
 // gates read; nothing is written or counted.
 if (pg_proto_comment_is_ping($_POST)) {
     http_response_code(204);
+    exit;
+}
+
+// "Approve this page" or "Request changes" on a link asking approval
+// (includes/fn/prototype_verdicts.php).
+if (pg_proto_verdict_is_post($_POST)) {
+    $pg_pc_taken = pg_proto_verdict_take($pg_pc_link, $pg_pc_page_id, $_POST, $pg_pc_now);
+
+    if ($pg_pc_taken['error'] === 'save') {
+        http_response_code(500);
+        echo json_encode(array('error' => 'save', 'message' => lang('Sorry, we could not accept your request.')));
+        exit;
+    }
+
+    if ($pg_pc_taken['error'] !== '') {
+        pg_proto_comment_refuse($pg_pc_taken['error']);
+    }
+
+    http_response_code(201);
+    echo json_encode(array('verdict' => $pg_pc_taken['verdict']));
     exit;
 }
 

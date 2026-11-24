@@ -85278,7 +85278,7 @@ const StyleDesigner = (function () {
     function _pgPrototypeShareDialog(startPageId) {
         if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
-        var state = { pages: [], durations: [], canShow: true, comments: false };
+        var state = { pages: [], durations: [], canShow: true, comments: false, approval: false };
         var when = function (unix) {
             if (!(unix > 0)) return '';
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
@@ -85319,6 +85319,23 @@ const StyleDesigner = (function () {
                             '<label class="form-field"><input class="check" type="checkbox" data-ps-comments>' +
                                 '<span>' + esc(_sdT('Allow comments')) + '</span></label>' +
                             '<div class="form-text">' + esc(_sdT('Whoever opens the link can pin comments with their name on the pages and answer them.')) + '</div></div>' +
+                        // Offered once the site keeps approvals; checked, it
+                        // turns "Allow comments" on and shows its fields.
+                        '<div class="mb-3 d-none" data-ps-approval-field>' +
+                            '<label class="form-field"><input class="check" type="checkbox" data-ps-approval>' +
+                                '<span>' + esc(_sdT('Ask for approval')) + '</span></label>' +
+                            '<div class="form-text">' + esc(_sdT('Whoever opens the link can approve each page or request changes with a note.')) + '</div>' +
+                            '<div class="row g-3 mt-0 d-none" data-ps-approval-more>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-approver">' + esc(_sdT('Approver\'s name')) + '</label>' +
+                                    '<input type="text" class="form-control form-control-sm" id="ps-approver" data-ps-approver maxlength="60" autocomplete="off"></div>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-approver-email">' + esc(_sdT('Approver\'s e-mail (optional)')) + '</label>' +
+                                    '<input type="email" class="form-control form-control-sm" id="ps-approver-email" data-ps-approver-email maxlength="255" autocomplete="off">' +
+                                    '<div class="form-text">' + esc(_sdT('Sent the answers and a reminder')) + '</div></div>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-answer-by">' + esc(_sdT('Answer by')) + '</label>' +
+                                    '<input type="date" class="form-control form-control-sm" id="ps-answer-by" data-ps-answer-by></div>' +
+                                '<div class="sm:col-6 d-flex align-items-end"><label class="form-field"><input class="check" type="checkbox" data-ps-publish-rule>' +
+                                    '<span>' + esc(_sdT('Publish only after approval')) + '</span></label></div>' +
+                            '</div></div>' +
                         '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
                         '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
@@ -85389,6 +85406,7 @@ const StyleDesigner = (function () {
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
+                         (l.approval ? '<span class="badge theme-primary me-1"><span class="bi bi-patch-check me-1" aria-hidden="true"></span>' + esc(_sdT('Asks for approval')) + '</span>' : '') +
                          (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
                          (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
             // A revoked link is listed only while its comments are kept:
@@ -85403,6 +85421,8 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            if (l.approval && l.approver_name) facts.push(_sdT('Approver: {var}', l.approver_name));
+            if (l.approval && l.answer_by) facts.push(_sdT('Answer by: {var}', l.answer_by));
             var showable = state.canShow && l.can_show && !revoked;
             return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '" data-ps-count="' + esc(String(count)) + '">' +
                        '<div class="d-flex flex-wrap align-items-center gap-3">' +
@@ -85437,8 +85457,11 @@ const StyleDesigner = (function () {
                 state.canShow = res.can_show !== false;
                 state.comments = res.comments_ready === true;
                 el.querySelector('[data-ps-comments-field]').classList.toggle('d-none', !state.comments);
+                state.approval = res.approval_ready === true;
+                el.querySelector('[data-ps-approval-field]').classList.toggle('d-none', !state.approval);
                 if (!startEl.options.length) fillPages();
                 fillDurations();
+                fillAnswerBy();
                 render(res.links || []);
             }).catch(function () { listEl.innerHTML = '<div class="fg-danger py-3">' + esc(_sdT('Network error.')) + '</div>'; });
         };
@@ -85453,8 +85476,29 @@ const StyleDesigner = (function () {
             });
         };
 
+        var approvalEl = el.querySelector('[data-ps-approval]');
+        var answerByEl = el.querySelector('[data-ps-answer-by]');
+        // "Answer by" runs from today to the day the link runs out.
+        var day = function (d) {
+            return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+        };
+        var fillAnswerBy = function () {
+            var now = new Date();
+            var seconds = parseInt(durationEl.value, 10) || 0;
+            answerByEl.min = day(now);
+            if (seconds > 0) answerByEl.max = day(new Date(now.getTime() + seconds * 1000));
+            else answerByEl.removeAttribute('max');
+        };
         el.addEventListener('change', function (e) {
             if (e.target && e.target.name === 'ps-audience') fillDurations();
+            if (e.target === approvalEl) {
+                el.querySelector('[data-ps-approval-more]').classList.toggle('d-none', !approvalEl.checked);
+                if (approvalEl.checked) {
+                    el.querySelector('[data-ps-comments]').checked = true;
+                    el.querySelector('[data-ps-approver]').focus();
+                }
+            }
+            if (e.target && e.target.name === 'ps-audience' || e.target === durationEl) fillAnswerBy();
         });
         el.addEventListener('click', function (e) {
             var urlBtn = e.target.closest('[data-ps-copy-url]');
@@ -85562,6 +85606,7 @@ const StyleDesigner = (function () {
             if (createBtn.disabled) return;
             errorEl.classList.add('d-none');
             var passwordEl = el.querySelector('[data-ps-password]');
+            var asks = state.approval && approvalEl.checked;
             createBtn.disabled = true;
             _pgApiPost('prototype_link_create', {
                 style_id: styleId,
@@ -85569,7 +85614,12 @@ const StyleDesigner = (function () {
                 start_page_id: parseInt(startEl.value, 10) || 0,
                 duration: parseInt(durationEl.value, 10) || 0,
                 password: passwordEl.value,
-                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0
+                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0,
+                approval: asks ? 1 : 0,
+                approver_name: asks ? el.querySelector('[data-ps-approver]').value : '',
+                approver_email: asks ? el.querySelector('[data-ps-approver-email]').value : '',
+                answer_by: asks ? answerByEl.value : '',
+                publish_rule: (asks && el.querySelector('[data-ps-publish-rule]').checked) ? 1 : 0
             }).then(function (res) {
                 createBtn.disabled = false;
                 if (!res || res.status !== 'success') {
@@ -85578,6 +85628,12 @@ const StyleDesigner = (function () {
                     return;
                 }
                 passwordEl.value = '';
+                if (asks) {
+                    approvalEl.checked = false;
+                    el.querySelector('[data-ps-approval-more]').classList.add('d-none');
+                    ['[data-ps-approver]', '[data-ps-approver-email]', '[data-ps-answer-by]'].forEach(function (q) { el.querySelector(q).value = ''; });
+                    el.querySelector('[data-ps-publish-rule]').checked = false;
+                }
                 madeEl.innerHTML = '<div class="fw-semibold">' + esc(_sdT('The link is ready. Copy it now and send it on.')) + '</div>' + addressBox(res.url);
                 madeEl.setAttribute('data-ps-made-id', String(res.link && res.link.id ? res.link.id : ''));
                 madeEl.classList.remove('d-none');
