@@ -108,7 +108,7 @@ function test_workspace_phone_fields_are_16px_on_touch()
 	$css = workspace_phone_touch_test_css();
 	$touch = workspace_phone_touch_test_blocks('(pointer: coarse)');
 
-	foreach (array('.ws-emoji-search', '#ws-poll-form .form-control', '.ws-code-edit') as $selector) {
+	foreach (array('.ws-emoji-search', '#ws-poll-form .pg-input', '.ws-code-edit') as $selector) {
 		$rule = workspace_phone_touch_test_rule($touch, $selector);
 		pg_assert_true($rule !== null && strpos($rule, 'font-size: var(--pg-text-field-touch)') !== false, $selector . ' is 16px on touch');
 	}

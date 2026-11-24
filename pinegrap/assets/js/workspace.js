@@ -1678,7 +1678,7 @@
             copyModal = el('dialog', 'dialog ws-copy-modal pg-dialog-centered');
             copyModal.tabIndex = -1;
             copyModal.innerHTML = '<div class="dialog-header py-3"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
-                + '<div class="dialog-body"><p class="small fg-secondary mb-3" data-ws-copy-note></p><textarea class="form-control ws-copy-area" readonly></textarea></div>'
+                + '<div class="dialog-body"><p class="small fg-secondary mb-3" data-ws-copy-note></p><textarea class="pg-input ws-copy-area" readonly></textarea></div>'
                 + '<div class="dialog-footer py-3"><button type="button" class="pg-button pg-button-fill pg-button-sm" data-ws-copy-all></button></div>';
             document.body.appendChild(copyModal);
         }
@@ -3422,7 +3422,7 @@
     // group one tab away.
     function emojiPicker(x, y, onPick, above) {
         var content = el('div', 'ws-emoji');
-        var search = el('input', 'form-control form-control-sm ws-emoji-search');
+        var search = el('input', 'pg-input pg-input-sm ws-emoji-search');
         var tabs = el('div', 'ws-emoji-tabs');
         var title = el('div', 'ws-emoji-title');
         var grid = el('div', 'ws-emoji-grid');
@@ -5696,12 +5696,12 @@
         head.appendChild(document.createTextNode(t('remind_head')));
         wrap.appendChild(head);
 
-        var time = el('input', 'form-control form-control-sm');
+        var time = el('input', 'pg-input pg-input-sm');
         pgDateField(time, 'time');
         time.id = nextId('ws-task-time-');
         time.value = info.due_time || '';
 
-        var amount = el('input', 'form-control form-control-sm');
+        var amount = el('input', 'pg-input pg-input-sm');
         amount.type = 'number';
         amount.min = '0';
         amount.step = '1';
@@ -5894,8 +5894,8 @@
         var grid = el('div', 'row g-3');
         var fromCell = el('div', 'col-6');
         var toCell = el('div', 'col-6');
-        var from = pgDateField(el('input', 'form-control form-control-sm'), 'time');
-        var to = pgDateField(el('input', 'form-control form-control-sm'), 'time');
+        var from = pgDateField(el('input', 'pg-input pg-input-sm'), 'time');
+        var to = pgDateField(el('input', 'pg-input pg-input-sm'), 'time');
         var off = el('div', 'form-field mb-0 ws-info-check');
         var offBox = el('input', 'check');
         var offLabel = el('label', '', t('qh_off_days'));
@@ -5969,7 +5969,7 @@
     }
 
     function select(options, value) {
-        var node = el('select', 'form-control form-control-sm');
+        var node = el('select', 'pg-input pg-input-sm');
 
         options.forEach(function (option) {
             var item = el('option', '', option[1]);
@@ -6552,7 +6552,7 @@
         var body = clear(node.querySelector('.drawer-body'));
         // The drawer body is a scrolling flex column: without flex-shrink-0 a
         // long list squeezes the input to a thin line.
-        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
+        var search = el('input', 'pg-input pg-input-sm flex-shrink-0 mb-3');
         var list = el('div', 'ws-pull-list');
         var serial = 0;
 
@@ -6761,8 +6761,8 @@
     function refSearchField(types, onPick, placeholder) {
         var wrap = el('div', 'ws-ref-search-box');
         var group = el('div', 'input-group input-group-sm');
-        var typeSelect = el('select', 'form-control form-control-sm');
-        var input = el('input', 'form-control form-control-sm');
+        var typeSelect = el('select', 'pg-input pg-input-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var list = null;
 
         typeSelect.style.maxWidth = '9rem';
@@ -7044,7 +7044,7 @@
 
             var f = self.fields = {};
 
-            f.title = el('input', 'form-control');
+            f.title = el('input', 'pg-input');
             f.title.id = nextId('ws-task-title-');
             f.title.maxLength = 255;
             f.title.value = task ? task.title : (defaults.title || '');
@@ -7065,7 +7065,7 @@
                 descWrap.appendChild(descRich.tools(true));
                 f.description = descRich;
             } else {
-                var descArea = el('textarea', 'form-control');
+                var descArea = el('textarea', 'pg-input');
                 descArea.id = nextId('ws-task-desc-');
                 descArea.rows = 3;
                 descArea.value = descStart;
@@ -7090,12 +7090,12 @@
                 grid.appendChild(cell);
             }
 
-            f.start = el('input', 'form-control form-control-sm');
+            f.start = el('input', 'pg-input pg-input-sm');
             pgDateField(f.start, 'date');
             f.start.id = nextId('ws-task-start-');
             f.start.value = task ? (task.start_date || '') : (defaults.start_date || '');
 
-            f.due = el('input', 'form-control form-control-sm');
+            f.due = el('input', 'pg-input pg-input-sm');
             pgDateField(f.due, 'date');
             f.due.id = nextId('ws-task-due-');
             f.due.value = task ? (task.due_date || '') : (defaults.due_date || '');
@@ -7147,7 +7147,7 @@
                 }
             }
 
-            f.estimate = el('input', 'form-control form-control-sm');
+            f.estimate = el('input', 'pg-input pg-input-sm');
             f.estimate.type = 'number';
             f.estimate.min = '0';
             f.estimate.step = '0.25';
@@ -7219,7 +7219,7 @@
             body.appendChild(formRow(t('people'), f.people, t('people_help')));
 
             var refsWrap = el('div', 'mb-5');
-            refsWrap.appendChild(el('label', 'form-label', t('about_records')));
+            refsWrap.appendChild(el('label', 'pg-field-label', t('about_records')));
             f.refs = el('div', 'ws-refs-field mb-3');
             refsWrap.appendChild(f.refs);
             refsWrap.appendChild(refSearchField(BOOT.ref_types, function (item) {
@@ -7534,8 +7534,8 @@
         itemAdder: function (task) {
             var self = this;
             var row = el('div', 'ws-item-add input-group input-group-sm');
-            var input = el('input', 'form-control');
-            var add = button('btn btn-outline theme-secondary', '', 'bi-plus-lg', t('add_item'));
+            var input = el('input', 'pg-input');
+            var add = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-plus-lg', t('add_item'));
 
             input.type = 'text';
             input.maxLength = 500;
@@ -7749,7 +7749,7 @@
                 actions.appendChild(el('span', 'ws-grow'));
             }
 
-            var input = rich ? rich.input : el('textarea', 'form-control form-control-sm');
+            var input = rich ? rich.input : el('textarea', 'pg-input pg-input-sm');
 
             if (!rich) {
                 input.rows = 2;
@@ -8006,7 +8006,7 @@
     // search leaves, and Enter in the search takes the first of them.
     function iconPicker(value, kindIcon) {
         var box = el('div', 'ws-icon-picker');
-        var search = el('input', 'form-control form-control-sm ws-icon-search');
+        var search = el('input', 'pg-input pg-input-sm ws-icon-search');
         var grid = el('div', 'ws-icon-grid');
         var empty = el('div', 'ws-icon-empty d-none', t('icon_nothing'));
         var current = value || '';
@@ -8278,7 +8278,7 @@
                 var rename = button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', t('era_rename'));
 
                 rename.addEventListener('click', function () {
-                    var input = el('input', 'form-control form-control-sm');
+                    var input = el('input', 'pg-input pg-input-sm');
                     input.maxLength = 160;
                     input.value = era.title || '';
                     input.placeholder = t('era_title');
@@ -8547,7 +8547,7 @@
 
         body.appendChild(general);
 
-        var name = el('input', 'form-control');
+        var name = el('input', 'pg-input');
         name.id = nextId('ws-ch-name-');
         name.maxLength = 80;
         name.value = channel ? channel.name : (defaults.name || '');
@@ -8568,7 +8568,7 @@
 
         if (!channel) {
             kind = el('div', 'mb-5');
-            kind.appendChild(el('div', 'form-label', t('channel_kind')));
+            kind.appendChild(el('div', 'pg-field-label', t('channel_kind')));
 
             [['public', t('kind_public'), t('kind_public_help')], ['private', t('kind_private'), t('kind_private_help')]].forEach(function (option, index) {
                 var wrap = el('div', 'form-field');
@@ -8612,7 +8612,7 @@
             }
         }
 
-        var topic = el('input', 'form-control');
+        var topic = el('input', 'pg-input');
         topic.id = nextId('ws-ch-topic-');
         topic.maxLength = 255;
         topic.value = channel ? channel.topic : (defaults.topic || '');
@@ -8631,7 +8631,7 @@
         } : null);
         var customerLinks = channel && channel.customer ? channel.customer.links : null;
         var contactBox = el('div', 'mb-5');
-        contactBox.appendChild(el('label', 'form-label', t('customer')));
+        contactBox.appendChild(el('label', 'pg-field-label', t('customer')));
         var contactShown = el('div', 'ws-refs-field mb-3');
         var linksShown = el('div', 'ws-customer-links');
         contactBox.appendChild(contactShown);
@@ -9023,13 +9023,13 @@
         var group = nextId('ws_guest_mode_');
         var mode = 'once';
 
-        box.appendChild(el('div', 'form-label', t('guest_mode')));
+        box.appendChild(el('div', 'pg-field-label', t('guest_mode')));
 
         var duration = select((durations || []).map(function (option) { return [option.v, option.t]; }), '604800');
         duration.id = nextId('ws-guest-duration-');
 
         var durationRow = el('div', 'ws-guest-duration d-none');
-        var durationLabel = el('label', 'form-label small mb-1', t('guest_duration'));
+        var durationLabel = el('label', 'pg-field-label', t('guest_duration'));
         durationLabel.htmlFor = duration.id;
         durationRow.appendChild(durationLabel);
         durationRow.appendChild(duration);
@@ -9087,14 +9087,14 @@
         }
 
         var group = el('div', 'input-group');
-        var field = el('input', 'form-control font-monospace');
+        var field = el('input', 'pg-input font-monospace');
         field.type = 'text';
         field.readOnly = true;
         field.value = url;
         field.setAttribute('aria-label', t('guest_link_help'));
         field.addEventListener('focus', function () { field.select(); });
 
-        var copy = button('btn btn-outline theme-primary', t('guest_copy'), 'bi-clipboard');
+        var copy = button('pg-button pg-button-quiet', t('guest_copy'), 'bi-clipboard');
         copy.addEventListener('click', function () {
             var done = function () {
                 clear(copy);
@@ -9127,13 +9127,13 @@
 
         body.appendChild(el('div', 'alert theme-info small py-3', t('guest_start_help')));
 
-        var name = el('input', 'form-control');
+        var name = el('input', 'pg-input');
         name.id = nextId('ws-guest-name-');
         name.maxLength = 60;
         name.autocomplete = 'off';
         body.appendChild(formRow(t('guest_name'), name));
 
-        var topic = el('input', 'form-control');
+        var topic = el('input', 'pg-input');
         topic.id = nextId('ws-guest-topic-');
         topic.maxLength = 120;
         body.appendChild(formRow(t('guest_topic'), topic));
@@ -9211,8 +9211,8 @@
         var grid = el('div', 'row g-3');
         var fromCell = el('div', 'col-6');
         var toCell = el('div', 'col-6');
-        var from = el('input', 'form-control form-control-sm');
-        var to = el('input', 'form-control form-control-sm');
+        var from = el('input', 'pg-input pg-input-sm');
+        var to = el('input', 'pg-input pg-input-sm');
 
         pgDateField(from, 'date');
         pgDateField(to, 'date');
@@ -9225,7 +9225,7 @@
         body.appendChild(grid);
 
         var choices = el('div', 'mb-5');
-        choices.appendChild(el('div', 'form-label', t('chx_format')));
+        choices.appendChild(el('div', 'pg-field-label', t('chx_format')));
 
         [['markdown', t('chx_markdown'), 'bi-filetype-md'], ['print', t('chx_print'), 'bi-printer']].forEach(function (option) {
             var wrap = el('div', 'form-field');
@@ -9289,14 +9289,14 @@
         node.querySelector('.drawer-title').textContent = t('share_start') + ' · #' + channel.name;
         body.appendChild(el('div', 'alert theme-info small py-3', t('share_help')));
 
-        var name = el('input', 'form-control');
+        var name = el('input', 'pg-input');
         name.id = nextId('ws-share-name-');
         name.maxLength = 60;
         name.autocomplete = 'off';
         body.appendChild(formRow(t('guest_name'), name));
 
         var choices = el('div', 'mb-5');
-        choices.appendChild(el('div', 'form-label', t('share_access')));
+        choices.appendChild(el('div', 'pg-field-label', t('share_access')));
 
         [['read', t('share_read'), t('share_read_help'), 'bi-eye'], ['write', t('share_write'), t('share_write_help'), 'bi-chat-dots']].forEach(function (option) {
             var wrap = el('div', 'form-field ws-share-choice');
@@ -10184,7 +10184,7 @@
                 return [item.id, (item.kind === 'private' ? '🔒 ' : '#') + item.name];
             });
             var target = select(channels, (source && source.kind !== 'guest') ? source.id : (channels[0] || [0])[0]);
-            var comment = el('textarea', 'form-control form-control-sm');
+            var comment = el('textarea', 'pg-input pg-input-sm');
 
             target.id = nextId('ws-fwd-to-');
             comment.rows = 3;
@@ -10247,7 +10247,7 @@
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
             var slot = el('div');
-            var comment = el('textarea', 'form-control form-control-sm');
+            var comment = el('textarea', 'pg-input pg-input-sm');
             var picker = null;
 
             footer.classList.remove('d-none');
@@ -10497,7 +10497,7 @@
             defaults = defaults || {};
             footer.classList.remove('d-none');
 
-            var name = el('input', 'form-control');
+            var name = el('input', 'pg-input');
             name.id = nextId('ws-grp-name-');
             name.maxLength = 80;
             name.value = group ? group.name : '';
@@ -10915,7 +10915,7 @@
 
         clearConversation: function (channel, after) {
             var self = this;
-            var title = el('input', 'form-control form-control-sm');
+            var title = el('input', 'pg-input pg-input-sm');
             var details = el('div');
 
             title.id = nextId('ws-era-title-');
@@ -11790,7 +11790,7 @@
         startThread: function (message) {
             var self = this;
             var box = el('div');
-            var title = el('input', 'form-control');
+            var title = el('input', 'pg-input');
 
             title.maxLength = 80;
             title.placeholder = self.plain(message.html).slice(0, 80);
@@ -15238,7 +15238,7 @@
                 }
 
                 var form = el('form', 'ws-agent-feedback-form');
-                var reason = el('textarea', 'form-control form-control-sm');
+                var reason = el('textarea', 'pg-input pg-input-sm');
                 var save = button('pg-button pg-button-fill pg-button-sm', t('af_save'));
                 var cancel = button('pg-button pg-button-ghost pg-button-sm', t('af_cancel'));
                 var actions = el('div', 'ws-agent-feedback-actions');
@@ -15721,7 +15721,7 @@
 
                 var body = node.querySelector('.dialog-body');
                 var footer = node.querySelector('.dialog-footer');
-                var area = el('textarea', 'form-control ws-text-area');
+                var area = el('textarea', 'pg-input ws-text-area');
                 var view = el('div', 'ws-msg-body ws-text-view d-none');
                 var writable = !!(data.can_replace || data.can_send);
 
@@ -18147,7 +18147,7 @@
                 // The voter's own words, asked under the "Other" row.
                 if (option.other && poll.can_vote) {
                     otherBox = el('div', 'ws-poll-other' + (option.mine ? '' : ' d-none'));
-                    otherInput = el('input', 'form-control form-control-sm');
+                    otherInput = el('input', 'pg-input pg-input-sm');
                     otherInput.maxLength = 255;
                     otherInput.value = option.my_text || '';
                     otherInput.placeholder = t('poll_other_placeholder');
@@ -18472,7 +18472,7 @@
                 var send = button('pg-button pg-button-fill pg-button-sm ws-poll-send-button', t('send'));
 
                 if (otherOption) {
-                    otherInput = el('input', 'form-control form-control-sm');
+                    otherInput = el('input', 'pg-input pg-input-sm');
                     otherInput.maxLength = 255;
                     otherInput.placeholder = t('poll_other_placeholder');
                     otherInput.setAttribute('aria-label', otherOption.label);
@@ -18589,7 +18589,7 @@
                 body.appendChild(el('div', 'ws-poll-note mb-3', t('poll_again_help')));
             }
 
-            var question = el('textarea', 'form-control form-control-sm');
+            var question = el('textarea', 'pg-input pg-input-sm');
             question.rows = 2;
             question.maxLength = 1000;
             question.id = nextId('ws-poll-q-');
@@ -18688,9 +18688,9 @@
 
             function linkRow(holder, link) {
                 var row = el('div', 'input-group input-group-sm ws-poll-form-link');
-                var url = el('input', 'form-control');
-                var text = el('input', 'form-control');
-                var drop = button('btn btn-outline theme-secondary', '', 'bi-x-lg', t('remove'));
+                var url = el('input', 'pg-input');
+                var text = el('input', 'pg-input');
+                var drop = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-x-lg', t('remove'));
 
                 url.type = 'url';
                 url.maxLength = 500;
@@ -18716,7 +18716,7 @@
             // under the option's label until asked for.
             function optionMore(line, option) {
                 var more = el('div', 'ws-poll-form-more' + ((option.description || option.picture || (option.links && option.links.length) || option.recommended) ? '' : ' d-none'));
-                var description = el('input', 'form-control form-control-sm ws-poll-form-desc');
+                var description = el('input', 'pg-input pg-input-sm ws-poll-form-desc');
 
                 description.maxLength = 500;
                 description.value = option.description || '';
@@ -18835,9 +18835,9 @@
                 var voted = (option.count > 0);
                 var line = el('div', 'ws-poll-form-option mb-1');
                 var group = el('div', 'input-group input-group-sm');
-                var input = el('input', 'form-control ws-poll-form-label' + (voted ? ' fg-secondary' : ''));
-                var details = button('btn btn-outline theme-secondary', '', 'bi-sliders', t('poll_option_more'));
-                var remove = button('btn btn-outline theme-secondary', '', voted ? 'bi-lock' : 'bi-x-lg', voted ? t('poll_option_voted') : t('remove'));
+                var input = el('input', 'pg-input ws-poll-form-label' + (voted ? ' fg-secondary' : ''));
+                var details = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-sliders', t('poll_option_more'));
+                var remove = button('pg-button pg-button-quiet pg-button-sm', '', voted ? 'bi-lock' : 'bi-x-lg', voted ? t('poll_option_voted') : t('remove'));
                 var more = optionMore(line, option);
 
                 input.maxLength = 255;
@@ -18962,8 +18962,8 @@
             var grid = el('div', 'row g-3 mt-1');
             var dateCell = el('div', 'col-7');
             var timeCell = el('div', 'col-5');
-            var date = el('input', 'form-control form-control-sm');
-            var time = el('input', 'form-control form-control-sm');
+            var date = el('input', 'pg-input pg-input-sm');
+            var time = el('input', 'pg-input pg-input-sm');
 
             pgDateField(date, 'date');
             date.id = nextId('ws-poll-date-');
@@ -24062,7 +24062,7 @@
                         wrap.appendChild(rich.input);
                         wrap.appendChild(rich.tools(true));
                     } else {
-                        area = el('textarea', 'form-control');
+                        area = el('textarea', 'pg-input');
                         area.rows = 14;
                         area.value = channel.summary || '';
                         wrap.appendChild(area);
@@ -24979,7 +24979,7 @@
 
         view.rename = function () {
             var self = this;
-            var field = el('input', 'form-control');
+            var field = el('input', 'pg-input');
 
             field.maxLength = 80;
             field.value = self.channel.name;
@@ -25066,7 +25066,7 @@
                 var outside = readers.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
 
                 if (outside.length) {
-                    body.appendChild(el('div', 'form-label mt-5', t('th_add_people')));
+                    body.appendChild(el('div', 'pg-field-label mt-5', t('th_add_people')));
                     body.appendChild(el('div', 'form-text mt-0 mb-3', t('th_add_people_help')));
 
                     var picker = peoplePicker([], outside);
@@ -25140,7 +25140,7 @@
     // the name it is shown with.
     function saRecordPicker(tag, id, label) {
         var box = el('div', 'ws-sa-picker');
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var list = el('div', 'ws-sa-picker-list');
         var chosen = { id: id || 0, label: label || '' };
 
@@ -25220,7 +25220,7 @@
             input = select([['1', t('sa_yes')], ['0', t('sa_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
         } else if (meta.kind === 'lines') {
             // One line each; the server also takes them separated by commas.
-            input = el('textarea', 'form-control form-control-sm');
+            input = el('textarea', 'pg-input pg-input-sm');
             input.rows = 3;
             input.placeholder = t('qe_lines_help');
             input.value = Array.isArray(value) ? value.join('\n') : (value || '');
@@ -25231,11 +25231,11 @@
             // unless its value already holds a line break (a panel textarea stores
             // one in a meta description): a one-line input drops it, and saving any
             // other field of the record would send the value back without it.
-            input = el('textarea', 'form-control form-control-sm');
+            input = el('textarea', 'pg-input pg-input-sm');
             input.rows = 3;
             input.value = value || '';
         } else {
-            input = el('input', 'form-control form-control-sm');
+            input = el('input', 'pg-input pg-input-sm');
             if (meta.kind === 'date' || meta.kind === 'datetime') {
                 pgDateField(input, (meta.kind === 'date') ? 'date' : 'datetime-local');
             } else {
@@ -25308,7 +25308,7 @@
 
     function saLabelled(label, node, help) {
         var wrap = el('div', 'ws-sa-field');
-        var caption = el('label', 'form-label small mb-1', label);
+        var caption = el('label', 'pg-field-label', label);
         var field = labelTarget(node);
 
         if (field && (field === node || !hasName(field))) {
@@ -25752,12 +25752,12 @@
     // A date and a time, for "Choose a time…" and for changing one.
     function smWhenFields(date, time) {
         var box = el('div', 'row g-3');
-        var dateInput = el('input', 'form-control form-control-sm');
-        var timeInput = el('input', 'form-control form-control-sm');
+        var dateInput = el('input', 'pg-input pg-input-sm');
+        var timeInput = el('input', 'pg-input pg-input-sm');
         var dateCol = el('div', 'col-7');
         var timeCol = el('div', 'col-5');
-        var dateLabel = el('label', 'form-label small mb-1', t('sm_date'));
-        var timeLabel = el('label', 'form-label small mb-1', t('sm_time'));
+        var dateLabel = el('label', 'pg-field-label', t('sm_date'));
+        var timeLabel = el('label', 'pg-field-label', t('sm_time'));
 
         pgDateField(dateInput, 'date');
         dateInput.id = nextId('ws-sm-date-');
@@ -27820,7 +27820,7 @@
     function eventCustomerPicker(contact, readOnly) {
         var picked = { id: contact && !contact.hidden ? contact.id : 0, changed: false };
         var wrap = el('div');
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var list = el('div', 'list-group mt-1 d-none');
         var chip = el('div', 'd-flex align-items-center gap-2 d-none');
         var serial = 0;
@@ -28059,7 +28059,7 @@
                     return [channel.id, '#' + channel.name + (channel.kind === 'private' ? ' (' + t('kind_private') + ')' : '')];
                 }), 0);
                 share.appendChild(target);
-                var note = el('textarea', 'form-control form-control-sm mt-3');
+                var note = el('textarea', 'pg-input pg-input-sm mt-3');
                 note.rows = 2;
                 note.placeholder = t('share_placeholder');
                 share.appendChild(note);
@@ -28622,7 +28622,7 @@
         var dates = el('div', 'd-flex gap-1 ws-tl-dates');
         dates.setAttribute('role', 'group');
         var dateField = function (key, label) {
-            var input = el('input', 'form-control form-control-sm');
+            var input = el('input', 'pg-input pg-input-sm');
             pgDateField(input, 'date');
             input.value = state[key];
             input.title = label;
@@ -30187,7 +30187,7 @@
                 headNode.appendChild(noteFaces(current, 5));
             }
 
-            var title = el('input', 'form-control ws-nb-title');
+            var title = el('input', 'pg-input ws-nb-title');
             title.type = 'text';
             title.maxLength = 200;
             title.placeholder = t('notes_title');
@@ -31024,7 +31024,7 @@
                 body.appendChild(el('p', 'small fg-secondary', t('notes_notion_intro')));
 
                 var form = el('form', 'd-flex gap-2 mb-4');
-                var input = el('input', 'form-control form-control-sm');
+                var input = el('input', 'pg-input pg-input-sm');
                 var find = button('pg-button pg-button-ghost pg-button-sm', t('notes_notion_search'), 'bi-search');
 
                 input.type = 'search';
@@ -31602,7 +31602,7 @@
                 // Files exported from here: brought up to date, or copies.
                 if (counts.update || counts.same) {
                     var modeRow = el('div', 'd-flex flex-wrap align-items-center gap-3 mb-3');
-                    var select = el('select', 'form-control form-control-sm w-auto');
+                    var select = el('select', 'pg-input pg-input-sm w-auto');
                     var modeLabel = el('label', 'small fg-secondary', t('notes_import_mode'));
 
                     select.id = 'ws-nb-import-mode';
@@ -32493,7 +32493,7 @@
         function sharesList(note) {
             var box = el('div', 'ws-nb-shares');
 
-            box.appendChild(el('div', 'form-label mb-1', t('notes_shares')));
+            box.appendChild(el('div', 'pg-field-label', t('notes_shares')));
 
             if (!(note['with'] || []).length && !(note['in'] || []).length) {
                 box.appendChild(el('div', 'small fg-secondary', t('notes_only_you')));
@@ -32652,14 +32652,14 @@
                     }
 
                     if (data.decisions.length) {
-                        list.appendChild(el('div', 'form-label mt-3', t('meeting_decisions')));
+                        list.appendChild(el('div', 'pg-field-label mt-3', t('meeting_decisions')));
                         data.decisions.forEach(function (item) {
                             list.appendChild(row('decisions', item, item.text, item.done ? t('meeting_transfer_done') : '', item.done));
                         });
                     }
 
                     if (data.actions.length) {
-                        list.appendChild(el('div', 'form-label mt-3', t('meeting_actions')));
+                        list.appendChild(el('div', 'pg-field-label mt-3', t('meeting_actions')));
                         data.actions.forEach(function (item) {
                             var sub = item.done ? t('meeting_transfer_task') : (item.error || [item.people.map(function (who) { return who.name; }).join(', '), item.due].filter(Boolean).join(' · '));
                             list.appendChild(row('actions', item, item.title || '…', sub, item.done || !!item.error));

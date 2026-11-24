@@ -1,16 +1,16 @@
 ---
 name: workspace-drawer-form-parts
-description: The Workspace kit's drawer form parts in look A (formParts, h.form, PGWsKit.form; #9887, #9909): what each part builds, the two plan drawers built from them, what stays on formRow()
+description: The Workspace kit's drawer form parts in look A (formParts, h.form, PGWsKit.form; #9887, #9909): what each part builds, the two plan drawers built from them, formRow() as field()
 ---
 
 ## Where are the parts?
 - `formParts` in `assets/js/workspace.js` (next to `formRow()` and `select()`), handed over as `form` by `featureHelpers()` and by `window.PGWsKit`.
 - My calendar's plan drawer (`planDrawer()` in `workspace_my_calendar.js`) and its roadmap (`workspace_my_calendar_roadmap.js`) take them as `var part = h.form;` and build every field from them; they define no `field()` or `input()` of their own.
-- "Add to the plan" (`eventForm()` in `workspace.js`) takes them as `var part = formParts;` since #9909. Every other form stays on `formRow()` (Bootstrap's small look).
+- "Add to the plan" (`eventForm()` in `workspace.js`) takes them as `var part = formParts;` since #9909. Every other form calls `formRow()`, which since WL8 (#PRNUM) returns `formParts.field()` (`ui/look-workspace-fields.md`).
 - Neither drawer holds a Bootstrap form class (`form-control`, `form-label`, `form-text`, `input-group`, `row`/`col-*`, `.switch`, `btn btn-*`); the pickers they share (`peoplePicker`, the customer pickers) are not rebuilt.
 
 ## What does each part build?
-- `field(label, control, help)`: `div.ws-plan-field`, a `label.pg-field-label` bound to the control (an id `ws-plan-N` when it has none), the control, an optional `pg-text-meta` help line.
+- `field(label, control, help)`: `div.ws-plan-field`, a `label.pg-field-label` bound to the control, or to a wrapper's first unnamed field (an id `ws-plan-N` when it has none); a picker box with a role is named by the caption (`aria-labelledby`); the control, an optional `pg-text-meta` help line.
 - `group(label, control)`: the same with a `span.pg-field-label`, for a control that names itself (a `pg-seg`, a picker).
 - `help(text)` `div.pg-field-help`; `error(text)` `div.pg-field-help.pg-field-error.d-none`.
 - `input(type, value, small)`: `pg-input` (`pg-input-sm` when small); date and time get the `data-pg-*` hook (`dateField`). `textarea(value, rows)`: `pg-input`, 4 rows by default.

@@ -112,7 +112,7 @@ function test_look_markup_counts_old_fields_in_workspace_files()
 		. "var a = formRow('Name', '<input class=\"form-control form-control-sm\">');\n"
 		. "var b = h.formRow('Mail', '<select class=\"form-select\"></select>');\n"
 		. "var c = '<span class=\"pg-form-control form-labels myformRow(\"></span>';\n";
-	pg_assert_same(array('button' => 0, 'tabs' => 0, 'field' => 5), pg_look_markup_counts($js, 'js', array(), 'assets/js/workspace_mail.js'), 'two formRow( calls and three field classes; the definition, comments and lookalikes left out');
+	pg_assert_same(array('button' => 0, 'tabs' => 0, 'field' => 3), pg_look_markup_counts($js, 'js', array(), 'assets/js/workspace_mail.js'), 'three field classes; formRow( calls (built from the form parts), comments and lookalikes left out');
 
 	$php = "<?php\necho '<input class=\"form-control\"><label class=\"form-label\">';\n";
 	pg_assert_same(array('button' => 0, 'tabs' => 0, 'field' => 2), pg_look_markup_counts($php, 'php', array(), 'includes/workspace/notes.php'), 'a Workspace PHP file is counted');

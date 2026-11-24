@@ -7,8 +7,8 @@
  * (tools/look_rules.php). In the panel's PHP screens and script sources it
  * counts the old Bootstrap buttons (`btn btn-`) and tab strips (nav-tabs,
  * nav-pills, nav-underline) that pg-button and pg-seg replace, and in the
- * Workspace's files the old fields (formRow( calls, form-control, form-label,
- * form-text) that the kit's form parts replace. The counts
+ * Workspace's files the old fields (form-control, form-label, form-text)
+ * that the kit's form parts replace. The counts
  * are kept in tools/check_look_baseline.json and may only fall: a count
  * above its baseline fails.
  *
@@ -82,7 +82,7 @@ $kinds = array(
 	'colour' => 'colours outside the tokens',
 	'button' => 'old buttons (btn btn-) in panel markup',
 	'tabs' => 'old tab strips (nav-tabs, nav-pills, nav-underline) in panel markup',
-	'field' => 'old fields (formRow(, form-control, form-label, form-text) in Workspace markup',
+	'field' => 'old fields (form-control, form-label, form-text) in Workspace markup',
 );
 $totals = array_fill_keys(array_keys($kinds), 0);
 foreach ($current as $counts) {
