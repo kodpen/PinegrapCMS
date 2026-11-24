@@ -130,6 +130,7 @@
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; wide layout, limits, unit conversion, required boxes, the list's figures
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
+- css-class-attribute-subtree-restyle.md: A [class] compound followed by a descendant part (`.row > [class] > …`) makes any class change on any element restyle its whole subtree in Chromium; where backend.src.css has it, why it is still there
 - css-has-whole-document-restyle.md: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the Bootstrap 6 dist rewrite, the guard test [decision: decisions-made-panel-2.md]
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater (#1341); Update Exchange Rates announces only the rates it wrote
 - currency-shared-form.md: The currency create and edit screens share includes/forms/currency_form.php: what it holds, what stays in the screens
@@ -511,6 +512,7 @@
 - main-menu-settings-row.md: The retired Site Settings row of the main menu (slot 20): what replaced it, where Translations went, which screens it marked, what is left of data-pg-settings-page [decision: decisions-made-panel-2.md]
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 - main-menu-system-tools-row.md: Main menu row 25, System tools: its slot and gate, its panel as one list of every tool under group headings (pg_menu_tools_markup()), the screens that light it [decision: decisions-made-panel-17.md]
+- main-menu-widening.md: The main menu goes between rail, open and hidden and opens a panel without a stutter: no animated grid column (.pg-menu-grows), rows at the open width, icon moves held [decision: decisions-made-panel-19.md]
 - marketplace-products-names.md: Marketplace products screen: named row boxes, focus kept on redrawn rows and when the bulk bar hides, pager spans, emphasis inks, formatted counts, announced progress and selected count
 - marketplace-settings-layout.md: Marketplaces screen (marketplace_settings.php) on the wide layout: account tiles, work cards in the form column, the account card in the status column, the Settings drawer sections and form-field rows
 - marketplace-settings-screen-a11y.md: Marketplaces account screen: phone-width rows, inks, named dialogs, current account, counts, a refused Connect or Save with its messages inside, long names, toolbar
