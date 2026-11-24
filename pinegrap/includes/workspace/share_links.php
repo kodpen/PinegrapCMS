@@ -278,6 +278,68 @@ function ws_share_link_item_mark($link, $can_revoke)
 }
 
 /**
+ * The icon of an item's kind, as the channel's Sharing lists its links. Pure.
+ *
+ * @param string $kind ws_share_links.kind
+ * @return string
+ */
+function ws_share_link_kind_icon($kind)
+{
+    $icons = array('file' => 'bi-file-earmark', 'note' => 'bi-journal-text', 'table' => 'bi-table', 'list' => 'bi-list-check');
+
+    return $icons[(string) $kind] ?? 'bi-link-45deg';
+}
+
+/**
+ * How often a link was opened, in words. Pure but for lang().
+ *
+ * @param int $opens
+ * @return string
+ */
+function ws_share_link_opened_words($opens)
+{
+    $opens = (int) $opens;
+
+    if ($opens <= 0) {
+        return lang('not opened yet');
+    }
+
+    return ($opens === 1) ? lang('opened once') : lang(array('string' => 'opened {var:1} times', 'vars' => $opens));
+}
+
+/**
+ * One open link as the channel's Sharing lists it (the head's menu, Channel
+ * info): the item's kind icon and name, and under it who made it, its end
+ * and how often it was opened. Never the address. Pure but for lang().
+ *
+ * @param array  $link       ws_share_links row
+ * @param string $name       the item's name
+ * @param string $who        the maker's name, an agent by its @handle
+ * @param bool   $can_revoke ws_share_link_can_revoke()
+ * @return array id, message_id, kind, icon, name, line, until_at, until, can_revoke
+ */
+function ws_share_link_row($link, $name, $who, $can_revoke)
+{
+    $until = date('d.m.Y H:i', (int) $link['expires_at']);
+
+    return array(
+        'id'         => (int) $link['id'],
+        'message_id' => (int) $link['message_id'],
+        'kind'       => (string) $link['kind'],
+        'icon'       => ws_share_link_kind_icon($link['kind']),
+        'name'       => (string) $name,
+        'line'       => implode(' · ', array_filter(array(
+            (string) $who,
+            lang(array('string' => 'until {var:1}', 'vars' => $until)),
+            ws_share_link_opened_words($link['opens'] ?? 0),
+        ), 'strlen')),
+        'until_at'   => (int) $link['expires_at'],
+        'until'      => $until,
+        'can_revoke' => (bool) $can_revoke,
+    );
+}
+
+/**
  * The cut-off of the sweep: a row whose end (its take-back, else its expiry)
  * lies before it is deleted. Pure.
  *
@@ -345,6 +407,11 @@ function ws_share_link_js_strings()
         'sl_copy'         => lang('Copy'),
         'sl_done'         => lang('Done'),
         // The end's choices and the one chosen first, not words.
+        'sl_sharing'      => lang('Sharing'),
+        'sl_this_channel' => lang('This channel'),
+        'sl_not_outside'  => lang('Not shared outside'),
+        'sl_by_link'      => lang('Shared by link'),
+        'sl_nothing'      => lang('Nothing is shared outside this channel.'),
         'sl_day_choices'  => WS_SHARE_LINK_DAYS,
         'sl_day_default'  => (string) WS_SHARE_LINK_DEFAULT_DAYS,
     );
@@ -852,6 +919,103 @@ function ws_share_links_map($viewer, $rows, $can_post)
             'open'     => ($link && !$past) ? ws_share_link_item_mark($link, ws_share_link_can_revoke($viewer, $link, $channel, $maker)) : null,
             'can_make' => !$link && !$past && !empty($can_post[(int) $row['channel_id']]),
         );
+    }
+
+    return $out;
+}
+
+/**
+ * The name of who made a link, as the channel's Sharing shows it: a
+ * person's name, an application by the @handle of its agent.
+ *
+ * @param array $link       ws_share_links row
+ * @param int   $channel_id the agent channel
+ * @return string
+ */
+function ws_share_link_maker_name($link, $channel_id)
+{
+    $maker = array('kind' => (string) $link['created_by_kind'], 'id' => (int) $link['created_by_id']);
+
+    if ($maker['kind'] === 'app') {
+        return ws_share_link_who($maker, $channel_id);
+    }
+
+    return (string) ws_person_name($maker['id']);
+}
+
+/**
+ * The open links of an agent channel for its Sharing (the head's menu,
+ * Channel info), newest first: only links whose item still stands
+ * (ws_share_link_state() open). Null outside an agent channel, where no
+ * link can be made; a discussion lists none of its own.
+ *
+ * @param array $viewer
+ * @param array $channel ws_channels row
+ * @return array[]|null ws_share_link_row()
+ */
+function ws_channel_share_links($viewer, $channel)
+{
+    if (!ws_share_links_ready() || !is_array($channel) || ((string) $channel['kind'] === 'thread') || !ws_agent_channel_is($channel)) {
+        return null;
+    }
+
+    if ((int) $channel['archived_at'] > 0) {
+        return array();
+    }
+
+    $links = ws_share_links_of_channel((int) $channel['id'], true);
+
+    if (!$links) {
+        return array();
+    }
+
+    $message_ids = array_unique(array_map(function ($link) { return (int) $link['message_id']; }, $links));
+    $messages = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_messages WHERE id IN (" . implode(',', $message_ids) . ")") as $row) {
+        $messages[(int) $row['id']] = $row;
+    }
+
+    $file_ids = array_filter(array_map(function ($row) { return (int) $row['file_id']; }, $messages));
+    $files = $file_ids ? array_flip(array_map('intval', (array) db_values("SELECT id FROM files WHERE id IN (" . implode(',', array_unique($file_ids)) . ")"))) : array();
+    $channels = array((int) $channel['id'] => $channel);
+    $maker = ws_share_link_maker((int) $viewer['id']);
+    $names = array();
+    $now = time();
+    $out = array();
+
+    foreach ($links as $link) {
+        $message = $messages[(int) $link['message_id']] ?? null;
+
+        if (!$message) {
+            continue;
+        }
+
+        // A link of a message in a discussion of this channel: the
+        // discussion is its channel, this one its parent.
+        $own_id = (int) $message['channel_id'];
+
+        if (!array_key_exists($own_id, $channels)) {
+            $own = ws_channel($own_id);
+            $channels[$own_id] = is_array($own) ? $own : null;
+        }
+
+        $own = $channels[$own_id];
+        $parent = ($own_id === (int) $channel['id']) ? null : $channel;
+        $in_past = function_exists('ws_message_in_past') && ws_message_in_past($message);
+        $present = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], isset($files[(int) $message['file_id']]));
+
+        if (ws_share_link_state($link, $now, $own, $parent, $message, $in_past, $present) !== 'open') {
+            continue;
+        }
+
+        $key = (string) $link['created_by_kind'] . ':' . (int) $link['created_by_id'];
+
+        if (!isset($names[$key])) {
+            $names[$key] = ws_share_link_maker_name($link, (int) $channel['id']);
+        }
+
+        $out[] = ws_share_link_row($link, (string) $message['file_name'], $names[$key], ws_share_link_can_revoke($viewer, $link, $channel, $maker));
     }
 
     return $out;

@@ -2955,6 +2955,8 @@
     "open, closed, slopes, lifts, conditions, snow": "açık, kapalı, pistler, liftler, kar durumu, kar",
     "open-ended": "süresiz",
     "opened": "açıldı",
+    "opened once": "bir kez açıldı",
+    "opened {var:1} times": "{var:1} kez açıldı",
     "opening": "açılıyor",
     "opening hours, Sunday, address": "çalışma saatleri, pazar, adres",
     "opening hours, address, location, near me, open today": "çalışma saatleri, adres, konum, yakınımda, bugün açık",
