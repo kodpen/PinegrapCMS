@@ -1,13 +1,13 @@
 ---
 name: bug-hunt-areas-invoices-pdf-documents
-description: The bug hunt of order documents made as PDF or print pages (area 38, #PRNUM, 2026-11-24): four faults fixed, what was read clean, what was left
+description: The bug hunt of order documents made as PDF or print pages (area 38, #11434, 2026-11-24): four faults fixed, what was read clean, what was left
 ---
 
 ## Which area was hunted?
 - Area 38, invoices and order documents: the customer's printed invoice (`order_invoice_print.php`), the panel's printed order and packing slip, the ERP invoice and delivery note PDFs (`includes/erp/document.php`, `templates/*_default.html`, `get_erp_invoice_pdf.php`), the invoice's public address (`erp_invoice.php`), the member's copies (`get_account_document.php`), document and order numbering.
 - Looked at: totals and tax lines against the order, numbers without gaps or twins under two orders at once, another customer's document by a guessed address, long names and non-Latin letters, a cancelled or refunded order's documents.
 
-## What did #PRNUM fix?
+## What did #11434 fix?
 - The customer's printed invoice told a stranger whether an order id exists: "You are not allowed to view this invoice." for another customer's order, "Order not found." for none. Now one answer, 404 (`commerce/order-invoice-print.md`).
 - Its line table listed recurring lines whose payments start after the order date, which `orders.subtotal` leaves out: the line totals came to more than the subtotal. `pg_order_print_lines()` puts them apart under Recurring Payments.
 - Its city line printed "06100 Ankara Ankara" and no recipient district; now `pg_legal_document_city_line()`.
