@@ -14041,6 +14041,13 @@ const StyleDesigner = (function () {
               __tickets_count: '2', __tickets_count_label: _sdT('{var:1} tickets').replace('{var:1}', '2'), __tickets_valid: '0',
               __tickets_state_label: _sdT('None valid'), __tickets_tone: 'secondary', __tickets_url: '#' }
         ],
+        // A waitlist place after the preview's signed shift.
+        'account.volunteering': [
+            { __volunteering_programme: _sdT('Food bank'), __volunteering_when: '12.12.2026 14:00–18:00 · ' + _sdT('Warehouse'),
+              __volunteering_date: '12.12.2026', __volunteering_time: '14:00–18:00', __volunteering_place: _sdT('Warehouse'),
+              __volunteering_role: _sdT('Packer'), __volunteering_state: 'waiting', __volunteering_state_label: _sdT('On the waitlist'),
+              __volunteering_tone: 'warning' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -26549,6 +26556,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Store credit of the member'), type: 'loop_area', icon: 'bi-wallet2', extra: { listSource: 'account.store_credit' } },
                 { label: _sdT('Orders that spent the card'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.store_credit_uses' } },
                 { label: _sdT('Tickets of the member'), type: 'loop_area', icon: 'bi-ticket-perforated', extra: { listSource: 'account.tickets' } },
+                { label: _sdT('Volunteer shifts of the member'), type: 'loop_area', icon: 'bi-person-heart', extra: { listSource: 'account.volunteering' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -37603,6 +37611,7 @@ const StyleDesigner = (function () {
             'account.store_credit': _sdT('One row for every store credit card of the signed-in member, newest first, at most 50.'),
             'account.store_credit_uses': _sdT('One row for every order that spent the store credit card the row stands in, newest first.'),
             'account.tickets':    _sdT('One row for every order of the signed-in member that holds event tickets, newest first, at most 50, with the link to its tickets page.'),
+            'account.volunteering': _sdT('One row for every coming volunteer shift the signed-in member signed up or waits for, in every programme, soonest first. Its buttons stay in the volunteering section.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -45840,6 +45849,7 @@ const StyleDesigner = (function () {
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
             out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
             out.push(['tickets',              _sdT('My tickets (shop sites; hidden when there are none)')]);
+            out.push(['volunteering',         _sdT('My volunteering (hidden when the member volunteers in no programme)')]);
             out.push(['referral',             _sdT('Refer a friend (shop sites; hidden while the referral programme is off)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
@@ -47675,6 +47685,77 @@ const StyleDesigner = (function () {
         ])]);
     }
 
+    // pg_volunteer_page_html() in the site's look (pg_volunteer_page_site_classes())
+    // for one programme: rows in account.volunteering's shape as its next
+    // shifts, one shift to sign up for and one document.
+    /* @pg-site-output */
+    function _sdAccountVolunteeringHtml(rows) {
+        rows = rows || [];
+        var item = 'list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2';
+        var meta = 'small text-body-secondary';
+        var button = function (cls, label, confirm) {
+            if (!confirm) return '<form method="post" action="#" class="d-inline"><button type="submit" class="' + cls + '">' + esc(label) + '</button></form>';
+            return '<details><summary class="' + cls + '">' + esc(label) + '</summary><form method="post" action="#" class="d-inline">'
+                + '<p class="small my-2">' + esc(confirm) + '</p><button type="submit" class="' + cls + '">' + esc(_sdT('Yes, cancel')) + '</button></form></details>';
+        };
+        var danger = 'btn btn-sm btn-outline-danger', quiet = 'btn btn-sm btn-outline-secondary';
+        var mine = rows.map(function (r) {
+            var buttons = '';
+            if (r.__volunteering_state === 'signed') buttons = button(danger, _sdT('Cancel'), _sdT('Cancel this shift? Your place goes to the next volunteer.'));
+            else if (r.__volunteering_state === 'offered') buttons = button(quiet, _sdT('Keep my place'));
+            else if (r.__volunteering_state === 'waiting' || r.__volunteering_state === 'swap') buttons = button(danger, _sdT('Leave the waitlist'));
+            return '<div class="' + item + '"><span><span class="fw-semibold">' + esc(r.__volunteering_when) + '</span>'
+                + '<span class="d-block ' + meta + '">' + esc(r.__volunteering_role) + ' <span class="badge text-bg-' + esc(r.__volunteering_tone) + '">' + esc(r.__volunteering_state_label) + '</span></span></span>'
+                + (buttons ? '<span class="d-flex flex-wrap gap-2">' + buttons + '</span>' : '') + '</div>';
+        }).join('');
+        var role = rows.length ? rows[0].__volunteering_role : _sdT('Packer');
+        return '<section class="card mb-4 pg-sw-volunteering"><div class="card-body">'
+            + '<h2 class="h5 mb-3">' + esc(rows.length ? rows[0].__volunteering_programme : _sdT('Food bank')) + '</h2>'
+            + '<h3 class="h6 mb-2">' + esc(_sdT('My next shifts')) + '</h3>'
+            + (mine ? '<div class="list-group mb-3">' + mine + '</div>' : '<p class="' + meta + '">' + esc(_sdT('No shifts yet.')) + '</p>')
+            + '<h3 class="h6 mb-2">' + esc(_sdT('Shifts for you')) + '</h3><div class="list-group mb-3"><div class="' + item + '">'
+            + '<span><span class="fw-semibold">' + esc('19.12.2026 09:00–13:00 · ' + _sdT('Warehouse')) + '</span></span><span class="d-flex flex-wrap gap-2">'
+            + button('btn btn-sm btn-primary', _sdT('Sign up') + ' · ' + role) + button(quiet, _sdT('Join the waitlist') + ' · ' + _sdT('Driver'))
+            + '</span></div></div>'
+            + '<h3 class="h6 mb-2">' + esc(_sdT('My documents')) + '</h3><div class="list-group mb-3 mb-0"><div class="' + item + '"><span>' + esc(_sdT('Food hygiene certificate')) + '</span>'
+            + '<span class="' + meta + '">' + esc(_sdT('Valid until {var:1}').replace('{var:1}', '31.12.2027')) + '</span></div></div>'
+            + '</div></section>';
+    }
+
+    // A new list of the member's volunteer shifts, as the volunteering
+    // section draws its next shifts, without the buttons.
+    /* @pg-site-output */
+    function _sdAccountVolunteeringList(bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var text = function (tag, cls, name, sample, token) {
+            return sem(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        // The badge's colour is a condition on the tone: a class takes no value.
+        var badge = function (tone, sample) {
+            return sem('span', 'badge text-bg-' + tone, _sdT('State'), _sdPartWhen('__volunteering_tone', 'eq', tone),
+                [text('span', '', _sdT('State'), sample, '__volunteering_state_label')]);
+        };
+        return sem('div', 'list-group', _sdT('Volunteer shifts of the member'), {}, [createNode('loop_area', { source: 'account.volunteering' }, [
+            sem('div', 'list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2', _sdT('Shift'), {}, [
+                sem('span', '', _sdT('Shift'), {}, [
+                    text('span', 'fw-semibold d-block', _sdT('Date, time and place'), '05.12.2026 09:00–13:00 · ' + _sdT('Warehouse'), '__volunteering_when'),
+                    sem('span', 'd-block small text-body-secondary', _sdT('Shift'), {}, [
+                        text('span', '', _sdT('Programme'), _sdT('Food bank'), '__volunteering_programme'),
+                        sem('span', '', '·', { text: ' · ' }),
+                        text('span', '', _sdT('Role'), _sdT('Driver'), '__volunteering_role')
+                    ])
+                ]),
+                badge('success', _sdT('Signed up')),
+                badge('warning', _sdT('On the waitlist')),
+                badge('info', _sdT('Waiting for approval'))
+            ])
+        ])]);
+    }
+
     // pg_referral_account_html() for a member who can refer, with one
     // reward kept and one taken back.
     /* @pg-site-output */
@@ -47862,6 +47943,7 @@ const StyleDesigner = (function () {
         }
         if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
         if (section === 'tickets') return _sdAccountTicketsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.tickets']));
+        if (section === 'volunteering') return _sdAccountVolunteeringHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.volunteering']));
         if (section === 'referral') return _sdAccountReferralHtml();
         if (section === 'store_credit') {
             var use = function (u) {
@@ -66501,6 +66583,24 @@ const StyleDesigner = (function () {
                 ['__tickets_url',         _sdT('Tickets page URL')]
             ]
         },
+        // The member's coming volunteer shifts
+        // (pg_sw_list_account_volunteering_rows()).
+        'account.volunteering': {
+            label: _sdT('Volunteer shifts of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__volunteering_programme',   _sdT('Programme')],
+                ['__volunteering_when',        _sdT('Date, time and place')],
+                ['__volunteering_date',        _sdT('Date')],
+                ['__volunteering_time',        _sdT('Time')],
+                ['__volunteering_place',       _sdT('Place')],
+                ['__volunteering_role',        _sdT('Role')],
+                ['__volunteering_state',       _sdT('State (signed, offered, asked, waiting or swap)')],
+                ['__volunteering_state_label', _sdT('State')],
+                ['__volunteering_tone',        _sdT('State colour (success, warning or info)')]
+            ]
+        },
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
@@ -66920,6 +67020,15 @@ const StyleDesigner = (function () {
         __tickets_state_label:  _sdT('{var:1} valid').replace('{var:1}', '4'),
         __tickets_tone:         'success',
         __tickets_url:          '#',
+        __volunteering_programme:   _sdT('Food bank'),
+        __volunteering_when:        '05.12.2026 09:00–13:00 · ' + _sdT('Warehouse'),
+        __volunteering_date:        '05.12.2026',
+        __volunteering_time:        '09:00–13:00',
+        __volunteering_place:       _sdT('Warehouse'),
+        __volunteering_role:        _sdT('Driver'),
+        __volunteering_state:       'signed',
+        __volunteering_state_label: _sdT('Signed up'),
+        __volunteering_tone:        'success',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -67123,6 +67232,7 @@ const StyleDesigner = (function () {
         if (source === 'account.subscriptions') return _sdAccountPart('subscriptions')[0];
         if (source === 'account.store_credit') return _sdAccountPart('store_credit')[0].children[2];
         if (source === 'account.tickets') return _sdAccountTicketsList(bs);
+        if (source === 'account.volunteering') return _sdAccountVolunteeringList(bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -88168,6 +88278,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each order that spent the store credit card.') },
             'l:account.tickets': { v: 'l-account-orders', k: 'member event tickets qr orders account list repeat loop',
                                     d: _sdT('Repeats its row for each order of the signed-in member that holds event tickets.') },
+            'l:account.volunteering': { v: 'l-account-orders', k: 'member volunteer volunteering shifts programme account list repeat loop',
+                                    d: _sdT('Repeats its row for each coming volunteer shift of the signed-in member.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
