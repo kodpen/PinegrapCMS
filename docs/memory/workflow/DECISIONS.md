@@ -1283,6 +1283,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection
 - ui/connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button
+- ui/connections-mailchimp-page.md: Mailchimp's page on Connections (EM6): sync switch, key, list, store and limits set there under E-mail › Sending's gate; Campaign mail shows the connection; old anchors open the page
 - ui/connections-payment-gateways-page.md: The card gateways on Connections (CX11g1): each gateway of the Payment Gateway list has a page with its keys; the card keeps the choice, Mode, Transaction Type, shop options
 - ui/connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - ui/connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
@@ -1381,7 +1382,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
 - ui/settings-general.md: Site Settings › General as folded rows: Organization, Site address (Hostname, Other host names and HTTPS value rows, Outgoing proxy), Software, Date and time; what moved, what stayed
 - ui/settings-mail-sending-rows.md: E-mail sending's folded rows (EM2): How e-mail leaves with a sentence a kind of mail, the ways sheet of system e-mail and what its choice saves, each row's line and pill, Send a test's result
-- ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors
+- ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3, EM6): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors
+- ui/settings-mail.md: Site Settings › E-mail as a whole (plan mail-settings-one, EM1 to EM6): the two tabs, what each holds, the architect's eight answers, the approved drawing, which file holds each part
 - ui/settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - ui/settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751)
 - ui/settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose

@@ -247,6 +247,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail_transport`: [[mail-transports]], [[smtp-kept-password]]
 - `mail_webhook`: [[mail-transport-webhooks]]
 - `mailchimp_key`: [[mailchimp-key-kept]]
+- `mailchimp_settings`: [[connections-mailchimp-page]]
 - `marketplace_pricing`: [[marketplace-channel-price]]
 - `marketplace_pricing_settings`: [[marketplace-pricing-tab]]
 - `marketplace_repricer`: [[marketplace-repricer-robot]]
