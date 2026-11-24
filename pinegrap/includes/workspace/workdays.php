@@ -1477,16 +1477,16 @@ function ws_holidays_add_fields_html($action, $departments, $name, $prefix, $for
         return '
                     <div class="row g-3' . (($form === null) ? ' align-items-end mt-1' : '') . '">
                         <div class="' . (($form === null) ? 'lg:col-6' : 'col-12') . '">
-                            <label class="form-label small" for="' . $prefix . 'url">' . h(lang('Calendar address (iCal)')) . '</label>
-                            <input class="form-control form-control-sm" type="url" name="' . $field('url') . '" id="' . $prefix . 'url"' . $join . $required . ' placeholder="https://…/basic.ics">
+                            <label class="pg-field-label" for="' . $prefix . 'url">' . h(lang('Calendar address (iCal)')) . '</label>
+                            <input class="pg-input pg-input-sm" type="url" name="' . $field('url') . '" id="' . $prefix . 'url"' . $join . $required . ' placeholder="https://…/basic.ics">
                         </div>
                         <div class="col-6' . (($form === null) ? ' lg:col-3' : '') . '">
-                            <label class="form-label small" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
-                            <input class="form-control form-control-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="120">
+                            <label class="pg-field-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
+                            <input class="pg-input pg-input-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="120">
                         </div>
                         <div class="col-6' . (($form === null) ? ' lg:col-3' : '') . '">
-                            <label class="form-label small" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
-                            <select class="form-control form-control-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
+                            <label class="pg-field-label" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
+                            <select class="pg-input pg-input-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
                         </div>
                         <div class="' . (($form === null) ? 'sm:col-8' : 'col-12') . '">
                             <div class="form-field mb-0">
@@ -1499,21 +1499,21 @@ function ws_holidays_add_fields_html($action, $departments, $name, $prefix, $for
     return '
                             <div class="row g-3' . (($form === null) ? ' align-items-end' : '') . '">
                                 <div class="sm:col-12">
-                                    <label class="form-label small" for="' . $prefix . 'name">' . h(($form === null) ? lang('Add a holiday') : lang('Name')) . '</label>
-                                    <input class="form-control form-control-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="255"' . $required . (($form === null) ? ' placeholder="' . h(lang('Name')) . '"' : '') . '>
+                                    <label class="pg-field-label" for="' . $prefix . 'name">' . h(($form === null) ? lang('Add a holiday') : lang('Name')) . '</label>
+                                    <input class="pg-input pg-input-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="255"' . $required . (($form === null) ? ' placeholder="' . h(lang('Name')) . '"' : '') . '>
                                 </div>
                                 <div class="col-6' . (($form === null) ? ' sm:col-4' : '') . '">
-                                    <label class="form-label small" for="' . $prefix . 'from">' . h(lang('First day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" data-pg-date name="' . $field('from') . '" id="' . $prefix . 'from"' . $join . $required . '>
+                                    <label class="pg-field-label" for="' . $prefix . 'from">' . h(lang('First day')) . '</label>
+                                    <input class="pg-input pg-input-sm" type="date" data-pg-date name="' . $field('from') . '" id="' . $prefix . 'from"' . $join . $required . '>
                                 </div>
                                 <div class="col-6' . (($form === null) ? ' sm:col-4' : '') . '">
-                                    <label class="form-label small" for="' . $prefix . 'to">' . h(lang('Last day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" data-pg-date name="' . $field('to') . '" id="' . $prefix . 'to"' . $join . ' aria-describedby="' . $prefix . 'to_hint">
-                                    <div class="form-text" id="' . $prefix . 'to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
+                                    <label class="pg-field-label" for="' . $prefix . 'to">' . h(lang('Last day')) . '</label>
+                                    <input class="pg-input pg-input-sm" type="date" data-pg-date name="' . $field('to') . '" id="' . $prefix . 'to"' . $join . ' aria-describedby="' . $prefix . 'to_hint">
+                                    <div class="pg-field-help" id="' . $prefix . 'to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
                                 </div>
                                 <div class="' . (($form === null) ? 'sm:col-4' : 'col-12') . '">
-                                    <label class="form-label small" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
-                                    <select class="form-control form-control-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
+                                    <label class="pg-field-label" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
+                                    <select class="pg-input pg-input-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
                                 </div>
                                 <div class="' . (($form === null) ? 'sm:col-8' : 'col-12') . '">
                                     <div class="form-field mb-0">

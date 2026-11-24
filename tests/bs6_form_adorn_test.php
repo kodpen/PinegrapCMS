@@ -48,7 +48,8 @@ function pg_test_form_adorn_cases()
 	$cases = array(
 		// The gift card amount (create) and balance (edit), drawn by the shared form.
 		array($root . 'includes/forms/gift_card_form.php', '\'id\' => $field', '<label for="\' . $field . \'"', 'form-adorn-end', ''),
-		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
+		// The template's Icon field is the look's pg-input wrapper, checked
+		// in test_workspace_template_icon_field() below.
 		array($root . 'includes/forms/ad_region_form.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
 		array($root . 'includes/forms/ad_region_form.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
 		// The MCP alias fields are the look's pg-input wrapper, checked in
@@ -348,4 +349,21 @@ function test_bs6_form_adorn_offer_condition_and_action_fields_have_names()
 	foreach ($m[0] as $tag) {
 		pg_assert_contains('aria-label=', $tag, 'offer_editor.js: ' . $tag);
 	}
+}
+
+// The template's Icon field: a pg-input wrapper holding the preview icon and
+// a bare input, named by its label.
+function test_workspace_template_icon_field()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/workspace_template.php');
+	$at = strpos($source, 'id="ws_tpl_icon"');
+
+	pg_assert_true($at !== false, 'the icon input');
+
+	$start = strrpos(substr($source, 0, $at), '<label class="pg-input">');
+
+	pg_assert_true($start !== false, 'the icon input sits in a pg-input wrapper');
+	pg_assert_contains('id="ws_tpl_icon_preview" aria-hidden="true"', substr($source, $start, $at - $start), 'the preview icon');
+	pg_assert_contains('for="ws_tpl_icon"', $source, 'the caption names the input');
+	pg_assert_true(strpos($source, 'form-ghost') === false, 'no form-adorn parts left');
 }

@@ -325,9 +325,9 @@ if ($open_tool) {
                     <input type="hidden" name="mcp_tool" value="' . h($open_name) . '">
                     ' . $output_fields . '
                     <div class="mb-5 mt-5">
-                        <label class="form-label small mb-1" for="ws_mcp_channel">' . h(lang('Post the answer in')) . '</label>
-                        <select class="form-control form-control-sm" name="mcp_channel" id="ws_mcp_channel">' . $options . '</select>
-                        <div class="form-text">' . h(lang('In a channel the answer is posted in your name and nobody can edit it.')) . '</div>
+                        <label class="pg-field-label" for="ws_mcp_channel">' . h(lang('Post the answer in')) . '</label>
+                        <select class="pg-input pg-input-sm" name="mcp_channel" id="ws_mcp_channel">' . $options . '</select>
+                        <div class="pg-field-help">' . h(lang('In a channel the answer is posted in your name and nobody can edit it.')) . '</div>
                     </div>
                     ' . (($runs_with !== '')
                         ? '<p class="small fg-secondary mb-3"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($runs_with) . '</p>

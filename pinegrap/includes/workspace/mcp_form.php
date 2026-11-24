@@ -430,19 +430,19 @@ function ws_mcp_form_field_html($field, $value, $error = '')
             $options .= '<option value="' . h($choice) . '"' . (($choice === $value) ? ' selected' : '') . '>' . h($choice) . '</option>';
         }
 
-        $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>' . $options . '</select>';
+        $input = '<select class="pg-input pg-input-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>' . $options . '</select>';
     } elseif ($field['type'] === 'boolean') {
-        $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>'
+        $input = '<select class="pg-input pg-input-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>'
             . '<option value="">' . h($field['required'] ? lang('Choose…') : lang('(empty)')) . '</option>'
             . '<option value="1"' . (($value === '1') ? ' selected' : '') . '>' . h(lang('Yes')) . '</option>'
             . '<option value="0"' . (($value === '0') ? ' selected' : '') . '>' . h(lang('No')) . '</option>'
             . '</select>';
     } elseif (in_array($field['type'], array('list', 'json'), true)) {
-        $input = '<textarea class="form-control form-control-sm font-monospace' . $invalid . '" name="' . $name . '" id="' . $id . '" rows="3"' . $required . ' spellcheck="false">' . h($value) . '</textarea>';
+        $input = '<textarea class="pg-input pg-input-sm font-monospace' . $invalid . '" name="' . $name . '" id="' . $id . '" rows="3"' . $required . ' spellcheck="false">' . h($value) . '</textarea>';
     } else {
         $number = in_array($field['type'], array('integer', 'number'), true);
 
-        $input = '<input class="form-control form-control-sm' . $invalid . '" type="text"' . ($number ? ' inputmode="decimal"' : '') . ' name="' . $name . '" id="' . $id . '" value="' . h($value) . '"' . $required . ' autocomplete="off">';
+        $input = '<input class="pg-input pg-input-sm' . $invalid . '" type="text"' . ($number ? ' inputmode="decimal"' : '') . ' name="' . $name . '" id="' . $id . '" value="' . h($value) . '"' . $required . ' autocomplete="off">';
     }
 
     $hint = array();
@@ -459,10 +459,10 @@ function ws_mcp_form_field_html($field, $value, $error = '')
 
     return '
         <div class="mb-3">
-            <label class="form-label small mb-1" for="' . $id . '">' . $label . '</label>
+            <label class="pg-field-label" for="' . $id . '">' . $label . '</label>
             ' . $input . '
             ' . (($error !== '') ? '<div class="invalid-feedback">' . h($error) . '</div>' : '') . '
-            ' . (!empty($hint) ? '<div class="form-text">' . h(implode(' ', $hint)) . '</div>' : '') . '
+            ' . (!empty($hint) ? '<div class="pg-field-help">' . h(implode(' ', $hint)) . '</div>' : '') . '
         </div>';
 }
 
