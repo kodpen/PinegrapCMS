@@ -16,6 +16,11 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// The file is written a row at a time, several queries a row: a file of
+// tens of thousands of rows stopped at PHP's default 30 seconds part way
+// through, with no result screen.
+ini_set('max_execution_time', '9999');
+
 include('init.php');
 // A file over post_max_size empties the whole request; say so instead of
 // answering with the token page.
