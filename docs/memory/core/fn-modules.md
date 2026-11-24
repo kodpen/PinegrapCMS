@@ -99,6 +99,7 @@ description: Generated from the module field of the memory files: each includes/
 - `common_regions`: [[api-design-dialogs-regions]]
 - `communication_settings_fold`: [[settings-communication]]
 - `config_text`: [[config-table-no-varchar]], [[job-pass-time-claim]]
+- `connect`: [[api-connected-accounts-renewal]]
 - `connections_registry`: [[connections-registry]], [[connections-registry-rows]]
 - `connections_screen`: [[connections-accounting-page]], [[connections-accounts-signin-page]], [[connections-address-merchant-page]], [[connections-backup-accounts]], [[connections-chat-notify-page]], [[connections-claude-page]], [[connections-communication-page]], [[connections-google-reviews-page]], [[connections-google-translate-page]], [[connections-mailboxes-accounts]], [[connections-mcp-connector-page]], [[connections-one-place]], [[connections-payment-gateways-page]], [[connections-payment-services-page]], [[connections-screen-drawers]], [[connections-screen-layout]], [[connections-service-page]], [[connections-service-page-layout]], [[connections-shipping-services-page]], [[connections-sms-providers-page]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]

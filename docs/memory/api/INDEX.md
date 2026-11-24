@@ -36,6 +36,7 @@
 - api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open [decision: decisions-made-product-92.md]
 - api-commission-writes.md: POST /commissions/{id} status (commissions:write) through the screen's write, GET /commissions/recurring-profiles, POST /affiliates/{id}/approve (customers:write), their events
 - api-connected-accounts-github.md: GitHub in connected accounts (model A, no OpenID): identity from /user, a token that does not end, comma scopes, revoke and Check, the channel_links purpose with admin:repo_hook only
+- api-connected-accounts-renewal.md: Connected accounts: renewal only under the connection's lock (a waiter that timed out gets busy), Google not revoked while another row holds the account
 - api-connected-accounts-usage.md: Connected accounts at work: mail through Gmail or Microsoft 365, cloud backups to Drive, OneDrive or Dropbox, a Connect button inside a settings form, response headers, what api_http_request() refuses
 - api-connected-accounts.md: The site as an OAuth client (connected accounts, includes/fn/connect.php, 2026.4.10, model A): provider and purpose files, the Connect button, tokens and provider calls, refresh, service tokens
 - api-content-review.md: GET /content-review and POST /content-review/{kind}/{id} (CH4): the screen's filters, the keyset over its branches, the fields, partial writes, the dry run, the scope and a user-role caller's rows [decision: here]
@@ -138,6 +139,7 @@
 - api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals, page-clicks): what each reads, the window, linked false
 - api-volunteers.md: GET /volunteer/programmes, GET /volunteer/shifts and GET /volunteer/hours (VS8, customers:read, MCP tools): fields, filters, coordinator rule for the user role, what is never given
 - api-walk-in-queue-routes.md: Walk-in queue API routes (WQ8): places, a day's numbers, kiosk join, Call next at a desk, Finish; scope queue, role-3 rows, 409 codes, the link given once
+- api-webhook-dispatch-run.md: One run of the webhook dispatcher: a receiver that failed is left for the rest of the run, and a delivery's answer never switches a disabled subscription back on
 - api-webhook-event-payloads.md: Fields and samples of webhook events (api_webhook_event_payloads()), GET /webhooks/events, POST /webhooks/{id}/test with event, the test that reads the announcing code
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
