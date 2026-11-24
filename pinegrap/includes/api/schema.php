@@ -304,6 +304,25 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'products.shelf',
+			'method'  => 'POST',
+			'also_accepts' => array('PUT'),
+			'path'    => '/products/{id}/shelf',
+			'scope'   => 'inventory:write',
+			'handler' => 'api_products_shelf',
+			'dry_run' => true,
+			'returns' => 'ProductShelf',
+			'summary' => 'Set a product\'s shelf address',
+			'description' => 'Writes the shelf address of a product at a stock location, such as A-03-2, without changing its stock; an empty shelf removes it. Pick lists walk the shelves in this order. A bundle is refused with 409 bundle: it has no shelf of its own.',
+			'details' => 'Blanks and control characters are folded into one space and the ends trimmed. On a site without stock locations the address is the product\'s one; with them it is the location\'s, the default one when location is left out or 0. POST /products/{id}/inventory takes the same shelf with a stock change. 503 service_unavailable: the site has not been updated to the version that keeps shelf addresses.',
+			'params'  => array(
+				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'shelf',    'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'required' => true, 'description' => 'The shelf address, at most 40 characters; empty or null removes it.'),
+				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location the address is at (left out or 0: the default location). A site without locations refuses any other value with 422 location.')
+			)
+		),
+
+		array(
 			'id'      => 'inventory.bulk',
 			'method'  => 'POST',
 			'path'    => '/products/inventory',
@@ -1046,6 +1065,53 @@ function api_schema() {
 				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the problems of this order.'),
 				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'pick_waves.list',
+			'method'  => 'GET',
+			'path'    => '/pick-waves',
+			'scope'   => 'orders:read',
+			'handler' => 'api_pick_waves_list',
+			'returns' => array('list' => 'PickWave'),
+			'summary' => 'Pick waves',
+			'description' => 'The pick waves of Orders > Pick waves, newest first, cursor paged: the orders picked together, with the addresses still in each, their units and how many are packed. status open (being picked), picked (every line ticked) or closed. Read only: making, ticking and closing a wave are done on the screen. GET /pick-waves/{id} gives its pick list.',
+			'details' => 'name is null when the wave has none; the screen then calls it Wave and its id. location_id is the stock location the wave was made for, null for any. single_item marks a wave of addresses with one unit each. A cancelled order leaves its wave by itself and is not counted. A site not yet updated to the version that keeps waves has an empty list.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'picked', 'closed')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'pick_waves.get',
+			'method'  => 'GET',
+			'path'    => '/pick-waves/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_pick_waves_get',
+			'returns' => 'PickWaveDetail',
+			'summary' => 'One pick wave and its pick list',
+			'description' => 'A wave as GET /pick-waves lists it, with its pick list and its orders. lines: one per product and stock location, in shelf order (shelf null last), units and the addresses wanting it, picked when ticked; lines still to pick come first. orders: each address with order_id, order_number, ship_by day, units and pack_status waiting, open, packed or short.',
+			'details' => 'An address whose order was cancelled after the wave was made keeps its row with removed_at and is in no count or line. options are the variant\'s choices, such as Size: M. picked_lines of total_lines are ticked. GET /orders/{id}/packs gives what was scanned for an address.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'orders.packs',
+			'method'  => 'GET',
+			'path'    => '/orders/{id}/packs',
+			'scope'   => 'orders:read',
+			'handler' => 'api_orders_packs',
+			'returns' => array('list' => 'OrderPack'),
+			'summary' => 'The pack checks of an order',
+			'description' => 'One pack per address of the order with goods to send, as the Pack screen counts it: status waiting (no scan yet), open, packed (every unit scanned) or short (closed with units missing), its wave, the packer, units and scanned, refused scans, each line\'s units and scanned, and missing (product and units). Read only: scanning is done on the Pack screen.',
+			'details' => 'refused counts the scans that were turned down: a wrong product or variant, one unit too many. A line whose product was deleted has product_id null and cannot be scanned. The order.packed webhook event carries the same counts when a pack is checked. A site not yet updated to the version that keeps packs has an empty list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

@@ -10007,6 +10007,7 @@
     "This product has no barcode. Type the barcode it is listed under on {var:1}.": "Bu ürünün barkodu yok. {var:1} üzerindeki ilanının barkodunu yazın.",
     "This product has variants": "Bu ürünün varyantları var",
     "This product is a bundle": "Bu ürün bir paket",
+    "This product is a bundle: it has no shelf address. Give the products in it theirs.": "Bu ürün bir pakettir: raf adresi yoktur. İçindeki ürünlere kendi adreslerini verin.",
     "This product is a bundle: its stock follows the products in it. Change their stock instead.": "Bu ürün bir paket: stoğu içindeki ürünlere göre belirlenir. Onların stoğunu değiştirin.",
     "This product is a variant in a variant set: choose one option of each of its attributes.": "Bu ürün bir varyant setindeki bir varyanttır: özelliklerinin her birinden bir seçenek seçin.",
     "This product is already in the Recycle Bin.": "Bu ürün zaten Geri Dönüşüm Kutusunda.",
