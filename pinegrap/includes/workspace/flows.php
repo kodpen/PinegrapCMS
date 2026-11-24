@@ -18,7 +18,8 @@
  *   {"v": 1,
  *    "nodes": [{"id", "kind", "label", "x", "y", "config"}],
  *    "edges": [{"from", "to", "on"}],
- *    "notes": [{"id", "text", "x", "y", "w", "h"}]}
+ *    "notes": [{"id", "text", "x", "y", "w", "h", "by", "day"}],
+ *    "frames": [{"id", "name", "x", "y", "w", "h", "folded"}]}
  * ws_flow_graph_normalize() keeps it in that shape and ws_flow_graph_check()
  * lists what stops it from being published; both are pure. A draft may hold
  * problems, a published version never does.
@@ -51,6 +52,9 @@ define('WS_FLOW_MAX_NODES', 100);
 
 /** The most notes a flow's canvas holds. */
 define('WS_FLOW_MAX_NOTES', 200);
+
+/** The most frames a flow's canvas holds. */
+define('WS_FLOW_MAX_FRAMES', 30);
 
 /** The largest graph, in bytes of JSON. */
 define('WS_FLOW_GRAPH_BYTES', 262144);
@@ -428,7 +432,7 @@ function ws_flow_node_id_valid($id)
  */
 function ws_flow_graph_empty()
 {
-    return array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array());
+    return array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array(), 'frames' => array());
 }
 
 /**
@@ -493,6 +497,19 @@ function ws_flow_line($value, $length)
     $text = trim((string) preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', ws_flow_text($value)));
 
     return mb_substr($text, 0, $length);
+}
+
+/**
+ * A day written as Y-m-d, or '' for anything else (a note's day).
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_flow_day($value)
+{
+    $text = is_string($value) ? trim($value) : '';
+
+    return (preg_match('/^\d{4}-\d{2}-\d{2}$/', $text) === 1) ? $text : '';
 }
 
 /**
@@ -699,14 +716,15 @@ function ws_flow_tell_of($graph)
 
 /**
  * A graph in its kept shape, from an array or its JSON: types cast, unknown
- * keys dropped, labels cut to 160 characters and note texts to 2,000, places
- * held within WS_FLOW_COORD_MAX. A start box keeps its tell choice
+ * keys dropped, labels and frame names cut to 160 characters and note texts
+ * to 2,000, places held within WS_FLOW_COORD_MAX. A note keeps its writer's
+ * name (80 characters) and its day (Y-m-d or ''); a frame its folded flag. A start box keeps its tell choice
  * (ws_flow_tell_normalize()) unless it is every run. An arrow sent without an outcome leaves its
  * box on the box's first one (a start box on next, a task when it is done).
  * Nothing is refused here; ws_flow_graph_check() says what is wrong.
  *
  * @param array|string $graph
- * @return array v, nodes, edges, notes
+ * @return array v, nodes, edges, notes, frames
  */
 function ws_flow_graph_normalize($graph)
 {
@@ -784,6 +802,26 @@ function ws_flow_graph_normalize($graph)
             'y'    => ws_flow_coord($note['y'] ?? 0),
             'w'    => ws_flow_coord($note['w'] ?? 0, 0),
             'h'    => ws_flow_coord($note['h'] ?? 0, 0),
+            'by'   => ws_flow_line($note['by'] ?? '', 80),
+            'day'  => ws_flow_day($note['day'] ?? ''),
+        );
+    }
+
+    foreach ((is_array($graph['frames'] ?? null) ? $graph['frames'] : array()) as $frame) {
+        if (!is_array($frame)) {
+            continue;
+        }
+
+        $folded = $frame['folded'] ?? false;
+
+        $out['frames'][] = array(
+            'id'     => ws_flow_token($frame['id'] ?? '', 64),
+            'name'   => ws_flow_line($frame['name'] ?? '', 160),
+            'x'      => ws_flow_coord($frame['x'] ?? 0),
+            'y'      => ws_flow_coord($frame['y'] ?? 0),
+            'w'      => ws_flow_coord($frame['w'] ?? 0, 0),
+            'h'      => ws_flow_coord($frame['h'] ?? 0, 0),
+            'folded' => ($folded === true) || ($folded === 1) || ($folded === '1') || ($folded === 'true'),
         );
     }
 
@@ -1264,6 +1302,10 @@ function ws_flow_graph_check($graph)
 
     if (count($graph['notes']) > WS_FLOW_MAX_NOTES) {
         $problems[] = ws_flow_problem('too_many', null, null, lang(array('string' => 'A flow can hold at most {var:1} notes.', 'vars' => WS_FLOW_MAX_NOTES)));
+    }
+
+    if (count($graph['frames']) > WS_FLOW_MAX_FRAMES) {
+        $problems[] = ws_flow_problem('too_many', null, null, lang(array('string' => 'A flow can hold at most {var:1} frames.', 'vars' => WS_FLOW_MAX_FRAMES)));
     }
 
     // The boxes, by id; a second box with an id already taken is not one an
@@ -2949,6 +2991,7 @@ function ws_flow_graph_present($graph, $edit = false)
         }, $graph['nodes']),
         'edges' => $graph['edges'],
         'notes' => $graph['notes'],
+        'frames' => $graph['frames'] ?? array(),
     );
 }
 
@@ -4052,6 +4095,18 @@ function ws_flow_js_strings()
         'fl_removed_boxes'    => ws_js_template('Removed: {var:1} boxes', 1),
         'fl_copy_failed'      => lang('The boxes could not be kept in this browser to paste them.'),
         'fl_paste_no_start'   => lang('This flow has a start already: the start box was not pasted.'),
+        'fl_frame'            => lang('Frame'),
+        'fl_frame_name'       => lang('Frame name'),
+        'fl_frame_fold'       => lang('Fold the frame'),
+        'fl_frame_open'       => lang('Open the frame'),
+        'fl_frame_remove'     => lang('Remove the frame'),
+        'fl_frame_added'      => lang('Frame drawn round the boxes'),
+        'fl_too_many_frames'  => ws_js_template('A flow can hold at most {var:1} frames.', 1),
+        'fl_note_add'         => lang('Note'),
+        'fl_note'             => lang('Note on the canvas'),
+        'fl_note_remove'      => lang('Remove the note'),
+        'fl_note_size'        => lang('Resize the note'),
+        'fl_too_many_notes'   => ws_js_template('A flow can hold at most {var:1} notes.', 1),
         'fl_key_tab'          => lang('Tab: from box to box, in the order of the arrows'),
         'fl_key_areas'        => lang('F6, Shift+F6: the bar, the boxes to add, the canvas and the chosen box, in turn'),
         'fl_key_windows'      => lang('The chevron beside the flow\'s name: its facts, home channel and these keys; Problems: its list under it; Esc closes either'),
@@ -4482,7 +4537,7 @@ function ws_flow_js_config($viewer, $mode)
         // (ws_flow_run_contact_check() decides which).
         'run_customer' => !empty($viewer['contacts']),
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
-        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'frames' => WS_FLOW_MAX_FRAMES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
             'web_fields' => defined('WS_FLOW_WEB_FIELDS_MAX') ? WS_FLOW_WEB_FIELDS_MAX : 20),
     );
 }

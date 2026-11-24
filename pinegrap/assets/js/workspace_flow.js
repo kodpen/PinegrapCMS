@@ -568,9 +568,9 @@
     }
 
     // The graph as the editor keeps it: every part there, a box's settings
-    // an object; the notes go back as they came.
+    // an object, the notes and frames in their kept shape.
     function graphOf(source) {
-        var graph = { v: 1, nodes: [], edges: [], notes: [] };
+        var graph = { v: 1, nodes: [], edges: [], notes: [], frames: [] };
 
         (source && source.nodes || []).forEach(function (node) {
             var config = (node.config && !Array.isArray(node.config)) ? JSON.parse(JSON.stringify(node.config)) : {};
@@ -582,7 +582,15 @@
             graph.edges.push({ from: String(edge.from || ''), to: String(edge.to || ''), on: String(edge.on || '') });
         });
 
-        graph.notes = (source && Array.isArray(source.notes)) ? source.notes : [];
+        ((source && Array.isArray(source.notes)) ? source.notes : []).forEach(function (note) {
+            graph.notes.push({ id: String(note.id || ''), text: String(note.text || ''), x: +note.x || 0, y: +note.y || 0,
+                w: +note.w || 0, h: +note.h || 0, by: String(note.by || ''), day: String(note.day || '') });
+        });
+
+        ((source && Array.isArray(source.frames)) ? source.frames : []).forEach(function (frame) {
+            graph.frames.push({ id: String(frame.id || ''), name: String(frame.name || ''), x: +frame.x || 0, y: +frame.y || 0,
+                w: +frame.w || 0, h: +frame.h || 0, folded: frame.folded === true });
+        });
 
         return graph;
     }
@@ -1378,8 +1386,14 @@
         ui.temp = svgEl('path', 'pgc-edge-temp pgc-hidden');
         ui.svg.appendChild(ui.temp);
         ui.boxes = el('div', 'pgc-boxes');
+        // Frames lie behind the arrows and boxes, notes over them
+        // (drawDecor()).
+        ui.frames = el('div', 'wsf-frames');
+        ui.notes = el('div', 'wsf-notes');
+        ui.layer.appendChild(ui.frames);
         ui.layer.appendChild(ui.svg);
         ui.layer.appendChild(ui.boxes);
+        ui.layer.appendChild(ui.notes);
         // The "+" of the arrow pointed at or chosen, and the dashed "+"
         // after each box with a free outcome (drawPluses()): they open the
         // add list there.
@@ -1446,6 +1460,10 @@
         if (!state.embed && state.flow) {
             ui.strip.appendChild(stripDivider());
             ui.strip.appendChild(threadsButton());
+        }
+
+        if (addable()) {
+            ui.strip.appendChild(stripButton('fl_note_add', 'bi-sticky', addNote));
         }
     }
 
@@ -3589,10 +3607,16 @@
 
     function drawCanvas() {
         K.clear(ui.boxes);
+        state.foldedAway = foldedAway();
 
         orderedNodes().forEach(function (node) {
-            ui.boxes.appendChild(boxNode(node));
+            var box = boxNode(node);
+
+            box.classList.toggle('d-none', !!state.foldedAway[node.id]);
+            ui.boxes.appendChild(box);
         });
+
+        drawDecor();
 
         drawEdges();
         drawFlag();
@@ -3777,8 +3801,10 @@
         (state.graph ? state.graph.edges : []).forEach(function (edge, index) {
             var from = nodeById(edge.from);
             var to = nodeById(edge.to);
+            var away = state.foldedAway || {};
 
-            if (!from || !to) {
+            // An arrow of a box in a folded frame is hidden with the box.
+            if (!from || !to || away[from.id] || away[to.id]) {
                 return;
             }
 
@@ -7754,6 +7780,337 @@
         };
     }
 
+    // ── Notes and frames ───────────────────────────────────────────────
+    // Neither is read by a run or by the check (ws_flow_graph_normalize()
+    // keeps them, limits in FL.limits). A note is a card of text over the
+    // boxes, edited in place and resized at its corner; a frame a named
+    // rectangle behind them, drawn round several boxes, moved by its head
+    // with the boxes inside and folded into one row.
+    var NOTE_SIZE = { w: 208, h: 128, minW: 144, minH: 80 };
+    var FRAME_PAD = { side: 24, top: 48, bottom: 24 };
+    var FRAME_ROW = 40;
+
+    function noteById(id) {
+        return state.graph.notes.filter(function (note) { return note.id === id; })[0] || null;
+    }
+
+    function frameById(id) {
+        return state.graph.frames.filter(function (frame) { return frame.id === id; })[0] || null;
+    }
+
+    // A free id for a note or frame: its prefix and the next number.
+    function decorId(list, prefix) {
+        var taken = {};
+        var n = 1;
+
+        list.forEach(function (item) { taken[item.id] = true; });
+
+        while (taken[prefix + n]) {
+            n++;
+        }
+
+        return prefix + n;
+    }
+
+    // The boxes a frame holds: those whose middle lies in its rectangle.
+    function frameInside(frame) {
+        return state.graph.nodes.filter(function (node) {
+            var mx = node.x + BOX_W / 2;
+            var my = node.y + BOX_H / 2;
+
+            return (mx >= frame.x) && (mx <= frame.x + frame.w) && (my >= frame.y) && (my <= frame.y + frame.h);
+        });
+    }
+
+    // The ids of the boxes a folded frame hides.
+    function foldedAway() {
+        var away = {};
+
+        (state.graph ? state.graph.frames : []).forEach(function (frame) {
+            if (frame.folded) {
+                frameInside(frame).forEach(function (node) { away[node.id] = true; });
+            }
+        });
+
+        return away;
+    }
+
+    function drawDecor() {
+        if (!ui.frames || !state.graph) {
+            return;
+        }
+
+        K.clear(ui.frames);
+        K.clear(ui.notes);
+        state.graph.frames.forEach(function (frame) { ui.frames.appendChild(frameEl(frame)); });
+        state.graph.notes.forEach(function (note) { ui.notes.appendChild(noteEl(note)); });
+    }
+
+    function placeDecor(node, item, height) {
+        node.style.left = item.x + 'px';
+        node.style.top = item.y + 'px';
+        node.style.width = item.w + 'px';
+        node.style.height = (height || item.h) + 'px';
+    }
+
+    // A note: its writer's first name and day over the text; while the
+    // draft may change, the text edited in place, its × and the corner.
+    function noteEl(note) {
+        var card = el('div', 'wsf-note');
+        var head = el('div', 'wsf-note-head');
+        var text = el('textarea', 'wsf-note-text');
+        var day = note.day ? new Date(note.day + 'T12:00:00') : null;
+
+        card.setAttribute('data-note', note.id);
+        head.appendChild(el('span', 'wsf-note-by', [note.by, (day && !isNaN(day)) ? day.toLocaleDateString(CFG.locale || undefined, { day: 'numeric', month: 'short' }) : ''].filter(Boolean).join(' · ')));
+        text.value = note.text;
+        text.maxLength = 2000;
+        text.setAttribute('aria-label', t('fl_note'));
+        text.readOnly = !addable();
+        text.addEventListener('input', function () {
+            note.text = text.value;
+            changed(false);
+        });
+        text.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                text.blur();
+                ui.viewport.focus({ preventScroll: true });
+            }
+        });
+        card.appendChild(head);
+        card.appendChild(text);
+
+        if (addable()) {
+            var remove = K.button('pg-icon-button pg-icon-button-sm wsf-note-remove', '', 'bi-x-lg', t('fl_note_remove'));
+            var grip = el('span', 'wsf-note-grip');
+
+            remove.addEventListener('click', function () { removeDecor('notes', note.id); });
+            head.appendChild(remove);
+            grip.setAttribute('title', t('fl_note_size'));
+            card.appendChild(grip);
+        }
+
+        placeDecor(card, { x: note.x, y: note.y, w: note.w || NOTE_SIZE.w, h: note.h || NOTE_SIZE.h });
+
+        return card;
+    }
+
+    // Note on the strip: a note in the middle of what the canvas shows,
+    // signed with the person's first name and today; its text focused.
+    function addNote() {
+        var limit = (FL.limits && FL.limits.notes) || 200;
+
+        if (!addable()) {
+            return;
+        }
+
+        if (state.graph.notes.length >= limit) {
+            K.toast(t('fl_too_many_notes', limit), 'warning');
+            return;
+        }
+
+        var rect = ui.viewport.getBoundingClientRect();
+        var middle = canvasPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        var now = new Date();
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        var note = {
+            id: decorId(state.graph.notes, 'note_'),
+            text: '',
+            x: coord(middle.x - NOTE_SIZE.w / 2),
+            y: coord(middle.y - NOTE_SIZE.h / 2),
+            w: NOTE_SIZE.w,
+            h: NOTE_SIZE.h,
+            by: String((BOOT.me && BOOT.me.name) || '').trim().split(/\s+/)[0] || '',
+            day: now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
+        };
+
+        state.graph.notes.push(note);
+        changed(true);
+        focusDecor('[data-note="' + note.id + '"] .wsf-note-text');
+    }
+
+    function focusDecor(selector) {
+        var field = ui.layer.querySelector(selector);
+
+        if (field) {
+            field.focus({ preventScroll: true });
+        }
+    }
+
+    // A frame: its head with the fold, the name edited in place, the count
+    // of its boxes and its ×; folded, the head alone.
+    function frameEl(frame) {
+        var box = el('div', 'wsf-frame' + (frame.folded ? ' wsf-frame-folded' : ''));
+        var head = el('div', 'wsf-frame-head');
+        var name = el('input', 'wsf-frame-name');
+        var count = frameInside(frame).length;
+        var fold = K.button('pg-icon-button pg-icon-button-sm wsf-frame-fold', '', frame.folded ? 'bi-chevron-right' : 'bi-chevron-down', t(frame.folded ? 'fl_frame_open' : 'fl_frame_fold'));
+
+        box.setAttribute('data-frame', frame.id);
+        fold.setAttribute('aria-expanded', frame.folded ? 'false' : 'true');
+        fold.disabled = !addable();
+        fold.addEventListener('click', function () {
+            frame.folded = !frame.folded;
+            changed(true);
+            focusDecor('[data-frame="' + frame.id + '"] .wsf-frame-fold');
+        });
+        name.type = 'text';
+        name.value = frame.name;
+        name.maxLength = 160;
+        name.placeholder = t('fl_frame');
+        name.setAttribute('aria-label', t('fl_frame_name'));
+        name.readOnly = !addable();
+        name.addEventListener('input', function () {
+            frame.name = name.value;
+            changed(false);
+        });
+        name.addEventListener('keydown', function (event) {
+            if ((event.key === 'Enter') || (event.key === 'Escape')) {
+                event.preventDefault();
+                event.stopPropagation();
+                name.blur();
+                ui.viewport.focus({ preventScroll: true });
+            }
+        });
+        head.appendChild(fold);
+        head.appendChild(name);
+        head.appendChild(el('span', 'pg-text-meta wsf-frame-count', t('fl_boxes_count', count)));
+
+        if (addable()) {
+            var remove = K.button('pg-icon-button pg-icon-button-sm wsf-frame-remove', '', 'bi-x-lg', t('fl_frame_remove'));
+
+            remove.addEventListener('click', function () { removeDecor('frames', frame.id); });
+            head.appendChild(remove);
+        }
+
+        box.appendChild(head);
+        placeDecor(box, frame, frame.folded ? FRAME_ROW : 0);
+
+        return box;
+    }
+
+    // Frame in the tools of several boxes: a frame round them, its name
+    // focused; one undo step.
+    function frameBoxes() {
+        var nodes = canvas.chosen().map(nodeById).filter(Boolean);
+        var limit = (FL.limits && FL.limits.frames) || 30;
+
+        if (!addable() || (nodes.length < 2)) {
+            return;
+        }
+
+        if (state.graph.frames.length >= limit) {
+            K.toast(t('fl_too_many_frames', limit), 'warning');
+            return;
+        }
+
+        var frame = Object.assign({ id: decorId(state.graph.frames, 'frame_'), name: '', folded: false }, frameRound(nodes));
+
+        state.graph.frames.push(frame);
+        canvas.choose([]);
+        changed(true);
+        announce(t('fl_frame_added'));
+        focusDecor('[data-frame="' + frame.id + '"] .wsf-frame-name');
+    }
+
+    // The rectangle round boxes, with room for the frame's head.
+    function frameRound(nodes) {
+        var left = Math.min.apply(null, nodes.map(function (node) { return node.x; })) - FRAME_PAD.side;
+        var top = Math.min.apply(null, nodes.map(function (node) { return node.y; })) - FRAME_PAD.top;
+        var right = Math.max.apply(null, nodes.map(function (node) { return node.x + BOX_W; })) + FRAME_PAD.side;
+        var bottom = Math.max.apply(null, nodes.map(function (node) { return node.y + BOX_H; })) + FRAME_PAD.bottom;
+
+        return { x: coord(left), y: coord(top), w: Math.round(right - left), h: Math.round(bottom - top) };
+    }
+
+    // A note's or frame's × (a frame's boxes stay); one undo step.
+    function removeDecor(part, id) {
+        state.graph[part] = state.graph[part].filter(function (item) { return item.id !== id; });
+        changed(true);
+        ui.viewport.focus({ preventScroll: true });
+    }
+
+    // A press on a note (moved), its corner (resized) or a frame's head
+    // (moved with its boxes), while the draft may change.
+    function decorPress(event, drag) {
+        var target = event.target;
+        var grip = target.closest('.wsf-note-grip');
+        var card = target.closest('.wsf-note[data-note]');
+        var head = target.closest('.wsf-frame-head');
+
+        if ((!card && !head) || !addable() || (event.button === 1)) {
+            return;
+        }
+
+        drag.start = canvasPoint(event.clientX, event.clientY);
+        event.preventDefault();
+
+        if (card) {
+            drag.note = noteById(card.getAttribute('data-note'));
+            drag.node = card;
+            drag.kind = grip ? 'note-size' : 'note';
+            drag.from = { x: drag.note.x, y: drag.note.y, w: drag.note.w || NOTE_SIZE.w, h: drag.note.h || NOTE_SIZE.h };
+            return;
+        }
+
+        drag.frame = frameById(head.parentNode.getAttribute('data-frame'));
+        drag.node = head.parentNode;
+        drag.kind = 'frame';
+        drag.from = { x: drag.frame.x, y: drag.frame.y };
+        drag.inside = frameInside(drag.frame).map(function (node) { return { item: node, x: node.x, y: node.y }; });
+    }
+
+    function decorDrag(event, drag) {
+        if ((drag.kind !== 'note') && (drag.kind !== 'note-size') && (drag.kind !== 'frame')) {
+            return false;
+        }
+
+        var point = canvasPoint(event.clientX, event.clientY);
+        var dx = point.x - drag.start.x;
+        var dy = point.y - drag.start.y;
+
+        if (drag.kind === 'note-size') {
+            drag.note.w = Math.max(NOTE_SIZE.minW, Math.round(snap(drag.from.w + dx)));
+            drag.note.h = Math.max(NOTE_SIZE.minH, Math.round(snap(drag.from.h + dy)));
+            placeDecor(drag.node, drag.note);
+        } else if (drag.kind === 'note') {
+            drag.note.x = coord(drag.from.x + dx);
+            drag.note.y = coord(drag.from.y + dy);
+            drag.note.w = drag.from.w;
+            drag.note.h = drag.from.h;
+            placeDecor(drag.node, drag.note);
+        } else {
+            drag.frame.x = coord(drag.from.x + dx);
+            drag.frame.y = coord(drag.from.y + dy);
+            placeDecor(drag.node, drag.frame, drag.frame.folded ? FRAME_ROW : 0);
+            drag.inside.forEach(function (one) {
+                one.item.x = coord(one.x + (drag.frame.x - drag.from.x));
+                one.item.y = coord(one.y + (drag.frame.y - drag.from.y));
+                place(ui.boxes.querySelector('[data-node="' + one.item.id + '"]'), one.item);
+            });
+            drawEdges();
+        }
+
+        return true;
+    }
+
+    // The drag let go: a note or frame moved is one undo step.
+    function decorRelease(drag) {
+        if ((drag.kind !== 'note') && (drag.kind !== 'note-size') && (drag.kind !== 'frame')) {
+            return false;
+        }
+
+        if (drag.moved) {
+            changed(false, true);
+            drawSeveral();
+        } else if (drag.kind === 'note') {
+            focusDecor('[data-note="' + drag.note.id + '"] .wsf-note-text');
+        }
+
+        return true;
+    }
+
     // The core chose several boxes (several() of the core; [] when they
     // went): the panel closes while they are chosen, their tools show.
     function severalChosen(ids) {
@@ -7809,6 +8166,7 @@
         tool('fl_copy', 'bi-clipboard', copyBoxes);
 
         if (addable()) {
+            tool('fl_frame', 'bi-bounding-box', frameBoxes);
             tool('fl_delete_boxes', 'bi-trash', removeSeveral);
         }
 
@@ -15532,7 +15890,7 @@
         // A link on a box (the task of a waiting box) and the last run's
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
-        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus, .wsf-several',
+        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus, .wsf-several, .wsf-note-text, .wsf-note button, .wsf-frame-head input, .wsf-frame-head button',
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,
@@ -15682,13 +16040,19 @@
             drag.kind = 'none';
             select({ type: 'thread', id: wire.getAttribute('data-thread') });
             ui.viewport.focus({ preventScroll: true });
+        } else {
+            decorPress(event, drag);
         }
 
         return true;
     }
 
-    // A thread drawn (move() of the core).
+    // A thread drawn (move() of the core); a note or frame moved.
     function pointerDrag(event, drag) {
+        if (decorDrag(event, drag)) {
+            return;
+        }
+
         if (drag.kind === 'thread') {
             if (!state.binding && !startBinding(drag.from.id, drag.token, true)) {
                 canvas.hold(null);
@@ -15712,6 +16076,10 @@
 
     // The drag's pointer up (release() of the core).
     function pointerRelease(event, drag) {
+        if (decorRelease(drag)) {
+            return;
+        }
+
         if (drag.kind === 'thread') {
             ui.temp.classList.add('pgc-hidden');
             ui.temp.classList.remove('wsf-temp-thread');
