@@ -19,7 +19,7 @@ priority: 6
 - SC1 (S) done (#11425, `waf/security-scan-findings.md`): the table by a migration step, the pure finding model (kind, place, fingerprint, severity, state), tests.
 - SC2 (M) File scan done (#11451, `waf/security-scan-file-scan.md`): a PHP file not in the release reference; an executable name in the upload folders (`.php`, `.phtml`, `.phar`, a double extension), PHP tags inside a picture; a changed or new `.htaccess` / `.user.ini`; known shell marks (`eval(base64_decode(`, `assert($_`) only in files outside the reference. After SC1.
 - SC3 (M) done (#11484, `waf/security-scan-section.md`) The section: findings by severity with place, reason and "What to do"; Quarantine (moved to a folder that cannot run, with Restore), Ignore with a note, "Scan now" with its progress, the last run. After SC2.
-- SC4 (S) The Firewall card: last scan, open findings by severity, "Scan now"; the ops alert `security_finding`, once a day (`platform/ops-alerts.md`). After SC3.
+- SC4 (S) done (#PRNUM, `waf/security-scan-card.md`) The Firewall card: last scan, open findings by severity, "Scan now"; the ops alert `security_finding`, once a day (`platform/ops-alerts.md`). After SC3.
 - SC5 (M) done (#11456, `waf/security-scan-stored-content.md`) Stored content: a script, hidden iframe or redirect from a host the site never used, in pages, regions, styles and settings. After SC1.
 - SC6 (M) done (#11457, `waf/security-scan-accounts-settings.md`) Accounts and settings: a new Administrator or Designer account, a new API key, a writable core folder, risky PHP settings, the PHP security fixes check joined in. After SC1.
 - SC7 (S) API read route and one MCP tool ("is the site at risk?"): findings and last run, read only. After SC3.

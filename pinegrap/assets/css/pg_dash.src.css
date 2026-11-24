@@ -3323,6 +3323,37 @@
     --pg-dash-row-to: var(--pgd-chart-hot);
   }
 
+  /* The Security Scan part: a title with its line, the open findings'
+     severity pills, and two quiet small buttons. */
+  .pg-dash-scan {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin-top: 1rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--pgd-line-2);
+  }
+
+  .pg-dash-scan-head .pg-dash-rows-title {
+    margin-bottom: .125rem;
+  }
+
+  .pg-dash-scan-line {
+    margin: 0;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-scan-line[data-tone="bad"] { color: var(--pgd-bad); }
+
+  .pg-dash-scan-pills,
+  .pg-dash-scan-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .375rem;
+  }
+
   /* ── Team cards ───────────────────────────────────────────────────────── */
 
   .pg-dash-people {

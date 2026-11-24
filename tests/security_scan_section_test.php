@@ -159,3 +159,45 @@ function test_settings_firewall_fold_scan_line()
 	$fold = pg_firewall_fold_scan(true, 100, false, array(4 => 0, 3 => 0, 2 => 1, 1 => 0), 'today');
 	pg_assert_false($fold['attention'], 'a medium finding does not');
 }
+
+function test_security_open_count_map()
+{
+	pg_assert_same(array(4 => 0, 3 => 0, 2 => 0, 1 => 0), pg_security_open_count_map(array()));
+	pg_assert_same(
+		array(4 => 2, 3 => 0, 2 => 5, 1 => 1),
+		pg_security_open_count_map(array(
+			array('severity' => '2', 'total' => '5'),
+			array('severity' => '4', 'total' => '2'),
+			array('severity' => '1', 'total' => '1'),
+			array('severity' => '9', 'total' => '7'),
+		)),
+		'counts by severity, an unknown severity left out'
+	);
+}
+
+function test_security_card_pills_worst_first()
+{
+	pg_assert_same(array(), pg_security_card_pills(array(4 => 0, 3 => 0, 2 => 0, 1 => 0)));
+
+	$pills = pg_security_card_pills(array(4 => 0, 3 => 2, 2 => 0, 1 => 3));
+	pg_assert_same(2, count($pills), 'only severities with open findings');
+	pg_assert_same(array('label' => lang('High'), 'count' => '2', 'tone' => 'pg-tone-amber'), $pills[0]);
+	pg_assert_same(array('label' => lang('Low'), 'count' => '3', 'tone' => 'pg-tone-gray'), $pills[1]);
+}
+
+function test_security_alert_text_high_and_critical_only()
+{
+	pg_assert_same('', pg_security_alert_text(array(4 => 0, 3 => 0, 2 => 4, 1 => 9)), 'medium and low findings send no alert');
+
+	$text = pg_security_alert_text(array(4 => 1, 3 => 2, 2 => 4, 1 => 0));
+	pg_assert_true($text !== '', 'a critical or high finding sends one');
+	pg_assert_true(strpos($text, '3') !== false, 'the open critical and high findings are counted together');
+}
+
+function test_ops_alerts_security_finding_code()
+{
+	$codes = pg_ops_alert_codes();
+	pg_assert_true(isset($codes['security_finding']));
+	pg_assert_same('settings_firewall.php#pgset-scan', $codes['security_finding']['url']);
+	pg_assert_same('pg_ops_alerts_check_security', pg_ops_alert_sources()['security']);
+}
