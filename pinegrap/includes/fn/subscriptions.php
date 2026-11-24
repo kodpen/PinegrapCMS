@@ -670,7 +670,7 @@ function pg_subscription_set_status($id, $to, $detail = '', $from = '')
 }
 
 /**
- * Makes the subscriptions of a completed checkout (submit_order.php): one per
+ * Makes the subscriptions of a completed checkout: one per
  * recurring line pg_subscription_checkout_lines() picks, with the card the
  * payment stored. Run again for the same order it makes nothing new.
  *
@@ -699,12 +699,66 @@ function pg_subscription_checkout_create($order_id, $driver, $answer, $lines)
         return array();
     }
 
+    // The visitor's return and the payment service's message can both reach
+    // here for one order: one at a time, so the second finds the rows the
+    // first made instead of making a second subscription for a line (the
+    // table has no unique key on the line).
+    if ((int) db_value("SELECT GET_LOCK('pg_subscription_checkout_" . (int) $order_id . "', 10)") !== 1) {
+        return array();
+    }
+
     $made = array();
 
-    foreach ($planned as $line) {
-        $made[$line['item']['id']] = pg_subscription_create_from_order_line($order, $line['item'], $driver, $line['period'],
-            defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $card_ref, (string) ($answer['card_last4'] ?? ''));
+    try {
+        foreach ($planned as $line) {
+            $made[$line['item']['id']] = pg_subscription_create_from_order_line($order, $line['item'], $driver, $line['period'],
+                defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $card_ref, (string) ($answer['card_last4'] ?? ''));
+        }
+    } finally {
+        db_value("SELECT RELEASE_LOCK('pg_subscription_checkout_" . (int) $order_id . "')");
     }
 
     return $made;
+}
+
+/**
+ * Makes the subscriptions of a completed order from whichever completion has
+ * the stored card: the visitor's return (submit_order.php), also when the
+ * payment service's message completed the order first, and that message
+ * (includes/payments/callback.php) when the visitor never came back. A line
+ * that got none is logged.
+ *
+ * @param int        $order_id
+ * @param string     $driver the payment's driver key
+ * @param array      $answer the payment's answer (pg_payment_answer())
+ * @param array|null $lines  order lines as pg_order_lines_sql() reads them;
+ *                           null reads them
+ * @return int how many lines have a subscription
+ */
+function pg_subscription_checkout_record($order_id, $driver, $answer, $lines = null)
+{
+    if (((int) $order_id <= 0) || (trim((string) ($answer['card_ref'] ?? '')) === '') || !pg_subscriptions_ready()) {
+        return 0;
+    }
+
+    if ($lines === null) {
+        $lines = array();
+        $result = db_q(pg_order_lines_sql(), array((string) (int) $order_id));
+
+        while ($result && ($line = mysqli_fetch_assoc($result))) {
+            $lines[] = $line;
+        }
+    }
+
+    $count = 0;
+
+    foreach (pg_subscription_checkout_create((int) $order_id, $driver, $answer, $lines) as $item_id => $subscription_id) {
+        if ((int) $subscription_id > 0) {
+            $count++;
+        } else {
+            log_activity(pg_log_lang(array('string' => 'A subscription could not be created for an order line.')) . ' (' . (int) $order_id . ', ' . (int) $item_id . ')');
+        }
+    }
+
+    return $count;
 }

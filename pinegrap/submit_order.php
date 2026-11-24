@@ -3617,6 +3617,13 @@ function submit_order($type) {
     if ($order_number === null) {
         $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
+        // The payment service's message may have completed the order first,
+        // without the card this return carries: the subscriptions of its
+        // recurring lines are made here (rows already made are kept).
+        if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
+            pg_subscription_checkout_record($completed_order_id, $payment_driver, $payment_answer, $products);
+        }
+
         log_activity(pg_log_lang(array('string' => 'A second checkout of an order that was already completed changed nothing.')) . ' (' . $completed_order_id . ')');
 
         $_SESSION['ecommerce']['completed_order_id'] = $completed_order_id;
@@ -3639,11 +3646,7 @@ function submit_order($type) {
     // 'store') gets a subscription per paid recurring line, charged later
     // from the card its payment stored; a line that got none is logged.
     if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
-        foreach (pg_subscription_checkout_create((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products) as $subscription_item_id => $subscription_id) {
-            if ($subscription_id === 0) {
-                log_activity(pg_log_lang(array('string' => 'A subscription could not be created for an order line.')) . ' (' . $order_number . ', ' . $subscription_item_id . ')');
-            }
-        }
+        pg_subscription_checkout_record((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products);
     }
 
     // The frozen legacy gateways' recurring profiles need the card the

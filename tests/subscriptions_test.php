@@ -333,3 +333,25 @@ function test_subscription_checkout_refuses_an_order_that_starts_only_later()
 	pg_assert_same('', pg_payment_order_driver('Credit/Debit Card', 'Stripe'), 'the classic Stripe Charges code is a legacy gateway');
 	pg_assert_same('', pg_payment_order_driver('Credit/Debit Card', 'Authorize.Net'), 'a legacy gateway has no driver');
 }
+
+function test_subscription_checkout_record_from_either_completion()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions.php');
+	$create = substr($source, strpos($source, 'function pg_subscription_checkout_create('), 2400);
+
+	// The visitor's return and the payment service's message may both make
+	// them: one at a time, and the second finds the rows the first made.
+	pg_assert_contains("GET_LOCK('pg_subscription_checkout_", $create);
+	pg_assert_contains("RELEASE_LOCK('pg_subscription_checkout_", $create);
+	pg_assert_true(strpos($create, 'GET_LOCK') < strpos($create, 'pg_subscription_create_from_order_line('), 'the lock comes before the rows are looked for');
+
+	// The visitor's return that finds the order completed by the message
+	// still makes the subscriptions: that message may have carried no card.
+	$submit = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	$second = substr($submit, strpos($submit, 'if ($order_number === null) {'), 1400);
+	pg_assert_contains('pg_subscription_checkout_record(', $second);
+	pg_assert_true(strpos($second, 'pg_subscription_checkout_record(') < strpos($second, 'exit();'));
+
+	// No database in the runner: nothing is made and nothing throws.
+	pg_assert_same(0, pg_subscription_checkout_record(501, 'stripe', array('card_ref' => 'cus_1|pm_1')));
+}

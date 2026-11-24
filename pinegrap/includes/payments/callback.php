@@ -425,6 +425,10 @@ function pg_payment_callback_receive()
         $completion = pg_order_complete_from_payment((int) $order['id'], (string) $answer['status'], array('amount' => $answer['amount'], 'installments' => $answer['installments']));
 
         if ($completion['status'] === 'completed') {
+            // The visitor may never come back from the payment page: the
+            // subscriptions of the order's paid recurring lines are made from
+            // the card the message carries.
+            pg_subscription_checkout_record((int) $order['id'], $key, $answer);
             $outcome['status'] = 'completed';
             $outcome['log'] = array(pg_payment_notify_line($key, $outcome['source'], (int) $order['id'], 'completed', array('number' => $completion['order_number'])));
         } elseif ($completion['status'] === 'nothing') {
