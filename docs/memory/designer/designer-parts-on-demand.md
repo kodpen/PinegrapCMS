@@ -7,7 +7,7 @@ module: output
 ## Where is a part described?
 - One file per part, `includes/designer_parts/<name>.php` (name `[a-z0-9]+`), header block and gate constant, returning `array('sources' => array(...), 'when' => '<condition>')`. The sources are its files in load order; its bundle is `assets/js/style_designer_<name>.min.js`. A comment in the file names its memory file.
 - `pg_designer_part_files()` (`includes/fn/output.php`) reads the folder once per request, names sorted. `pg_designer_parts()` (name => bundle) and the part bundles of `pg_js_bundles()` come from it; no part is listed by hand.
-- Owner (2026-11-25): adding a part is one new file, no shared list edited (steps adding parts kept clashing in the same lines; #PR).
+- Owner (2026-11-25): adding a part is one new file, no shared list edited (steps adding parts kept clashing in the same lines; #11615).
 
 ## Which conditions may a part have?
 - `when` is one of `pg_designer_part_conditions()`: `always`, `designer` (full designer access), `ai` (`sdDesign.ai.enabled`), `comments` (designer and comments ready), `phone`, `publishcheck` (designer, draft table ready, not a component), `clicks` (`sdDesign.clicks` set), `off` (never handed; `mirror` until its switch).
