@@ -760,7 +760,7 @@
 - overview-search-map.md: Designer Overview (DP13): the tree search part (name, text, class, id; Turkish letters folded; results with their path; Ctrl+F) and the page map at the tree's right edge [decision: here]
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-designer-retired.md: The legacy page designer (page_designer.php) retired in 2026.11.0: the owner's decision, where each of its jobs went, what was removed and kept, the rules that stay, what is left [decision: decisions-made-product-2.md, decisions-made-product-40.md]
-- page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
+- page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies. [decision: here]
 - page-experiments-model.md: Page experiments model: the three tables (11.0.153), statuses and moves, the weighted draw, the pg_exp bucket cookie, which requests never join [decision: here]
 - page-experiments-serving.md: Serving a page experiment variant: body swap, the bucket at render and in the router, one cache copy per variant, private headers, views into experiment_hourly
 - page-experiments-sheet.md: The Experiments sheet (page_experiments.php, PX4 #6184): set-up with a variant draft, start/pause/end, Publish the winner through the page save, the chips, the holds on a variant draft
