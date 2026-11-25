@@ -79460,6 +79460,32 @@ const StyleDesigner = (function () {
         return 'pg_proto_sketch_' + ((_design && _design.styleId) ? _design.styleId : 'new');
     }
 
+    // A new design's first save gives it an id: the sketch kept under
+    // 'new' (drawn before the save, or the Canva start's pages) moves to
+    // the id's key, so it is still there once the design is saved.
+    function _sdSketchAdopt(styleId) {
+        var from = 'pg_proto_sketch_new';
+        var to = 'pg_proto_sketch_' + styleId;
+        try {
+            var raw = window.localStorage.getItem(from);
+            if (raw !== null && window.localStorage.getItem(to) === null) window.localStorage.setItem(to, raw);
+            window.localStorage.removeItem(from);
+        } catch (e) {}
+        if (_sdProto.sk.key === from) _sdProto.sk.key = to;
+    }
+
+    // The Canva start (sdDesign.autoSketch): its pages wait as the new
+    // design's sketch, written by assets/js/designer_canva.js; the
+    // Prototype view opens on them with the Sketch switch on.
+    function _sdSketchStart() {
+        if (!_sdProto.open) _sdProtoOpen();
+        if (!_sdProto.open) return;
+        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
+        var first = _sdSketchData().pages[0];
+        var item = first ? _sdProto.byId['k:' + first.id] : null;
+        if (item && _sdProto.canvas) _sdProto.canvas.view.reveal(item);
+    }
+
     // A stored sketch made safe to draw: numbers whole and finite, boxes
     // inside their frame's width, a known kind or none, a short heading.
     function _sdSketchClean(raw) {
@@ -88212,7 +88238,10 @@ const StyleDesigner = (function () {
                 }
             });
         }
-        if (data && data.style_id && _design) _design.styleId = data.style_id;
+        if (data && data.style_id && _design) {
+            if (!_design.styleId) _sdSketchAdopt(data.style_id);
+            _design.styleId = data.style_id;
+        }
         _pgSyncDraftBox(_pgActivePage());
         // A rename changes the page's address; a return address that pointed
         // at the old one (the site's "Edit page" link sends it) follows it.
@@ -89523,6 +89552,9 @@ const StyleDesigner = (function () {
 
         if (design && design.autoImport) {
             setTimeout(function () { if (typeof _pgImportOpen === 'function') _pgImportOpen(); }, 400);
+        }
+        if (design && design.autoSketch) {
+            setTimeout(_sdSketchStart, 400);
         }
         if (design && design.startAction) {
             setTimeout(function () { _pgStartAction(design.startAction); }, 400);
