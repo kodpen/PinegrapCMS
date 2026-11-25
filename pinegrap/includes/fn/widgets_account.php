@@ -908,9 +908,11 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
 // ^^__group_id^^, ^^__group_name^^, ^^__group_description^^.
 //
 // Visibility flags: show_form (whose preferences is known), is_signed_in,
-// is_signed_out, has_contact_groups, no_contact_groups. Tokens:
-// ^^__site_name^^, ^^__email_address^^,
-// ^^__my_account_url^^, ^^__login_url^^, ^^__not_logged_in^^.
+// is_signed_out, has_contact_groups, no_contact_groups, shows_opt_in_sms
+// (the SMS box is offered); a row's group_has_description. Tokens:
+// ^^__site_name^^, ^^__email_address^^, ^^__opt_in_label^^,
+// ^^__opt_in_sms_label^^, ^^__my_account_url^^, ^^__login_url^^,
+// ^^__not_logged_in^^.
 // Errors and the notice: liveform 'email_preferences'.
 // cfg: my_account_page_id, login_page_id, not_logged_in_message.
 function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
@@ -995,13 +997,16 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
     }
 
     $account_url = $signed_in ? _pg_acct_page_url(isset($cfg['my_account_page_id']) ? $cfg['my_account_page_id'] : 0, 'my account') : '';
-    _eo_apply_visibility_bindings($tree, array(
+    // group_has_description is a row's: kept here, decided per row below.
+    $vis = array(
         'show_form'          => true,
         'is_signed_in'       => $signed_in,
         'is_signed_out'      => false,
         'has_contact_groups' => count($groups) > 0,
         'no_contact_groups'  => count($groups) === 0,
-    ));
+        'shows_opt_in_sms'   => $sms_offered,
+    );
+    _eo_apply_visibility_bindings($tree, $vis + array('group_has_description' => true));
     _pg_member_drop_empty_links($tree, array('__my_account_url' => $account_url, '__login_url' => ''));
     pg_cf_link_labels($tree);
     _pg_inject_messages_node($tree, 'email_preferences');
@@ -1016,6 +1021,7 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
             $gid = (int)$g['id'];
             $checked = $submitted ? (bool)$lf->get_field_value('contact_group_' . $gid) : $g['on'];
             $t = $row_tree;
+            _eo_apply_visibility_bindings($t, array('group_has_description' => trim((string)$g['description']) !== '') + $vis);
             _pg_email_preferences_name_box($t, 'contact_group_' . $gid);
             _pg_member_fill_control($t, 'contact_group_' . $gid, '1', $checked);
             if (!$has_box) {
@@ -1047,6 +1053,8 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
         '__site_name'      => h(_pg_member_site_name()),
         '__email_address'  => h($email),
         '__my_account_url' => h($account_url),
+        '__opt_in_label'   => h(defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : ''),
+        '__opt_in_sms_label' => h(pg_sms_opt_in_label()),
     ));
 }
 

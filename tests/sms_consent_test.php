@@ -233,7 +233,7 @@ function test_sms_consent_default_trees()
 	$js = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, "checkRow('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms')") !== false, 'express order starter twin');
 	pg_assert_true(strpos($js, "biCheck('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), '_optinsms', '', 'shows_opt_in_sms')") !== false, 'billing information starter');
-	pg_assert_same(2, substr_count($js, "['shows_opt_in_sms',"), 'flag offered in both widgets');
+	pg_assert_same(3, substr_count($js, "['shows_opt_in_sms',"), 'flag offered in the express order, billing and e-mail preferences widgets');
 }
 
 // Enough of a liveform for pg_consent_sms_checkout_row().
