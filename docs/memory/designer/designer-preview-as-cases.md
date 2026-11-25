@@ -5,7 +5,7 @@ module: designer_preview_as
 ---
 
 ## What is the case model?
-- Pure functions in `includes/fn/designer_preview_as.php` (PW1); no query, no session. The server (PW2) turns a setup into a render; the bar (PW3) lists the choices. Tests: `tests/designer_preview_as_test.php`.
+- Pure functions in `includes/fn/designer_preview_as.php` (PW1); no query, no session. The server turns a setup into a render ([[designer-preview-as-server]]); the bar (PW3) lists the choices. Tests: `tests/designer_preview_as_test.php`.
 - Cases, in list order: `typical`, `empty`, `long`, `sold_out`, `error` (`pg_preview_as_cases()`). Visitors: `signed_out`, `signed_in`, `member`, `first_visit`, `returning` (`pg_preview_as_visitors()`). No choice = `typical` + `signed_out` + record 0: the Preview as before.
 
 ## Which cases does a kind have?

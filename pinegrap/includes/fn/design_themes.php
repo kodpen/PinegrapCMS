@@ -347,8 +347,10 @@ function pg_design_theme_files($kind = null)
 
 // The stylesheets of a look and a palette, in load order: array of
 // array(id, url). Empty for a design without a framework, and for a choice
-// whose file has gone.
-function pg_design_theme_assets($look, $palette, $framework = 'bootstrap5')
+// whose file has gone. $variables_url is the design's variables stylesheet
+// (pg_design_variables_url()), loaded last; it needs the bridge and the
+// look engine, whose defaults are plain Bootstrap.
+function pg_design_theme_assets($look, $palette, $framework = 'bootstrap5', $variables_url = '')
 {
     $out = array();
     if (function_exists('pg_design_framework')) {
@@ -379,23 +381,29 @@ function pg_design_theme_assets($look, $palette, $framework = 'bootstrap5')
         }
     }
 
-    if ($look_url === '' && $palette_url === '') return $out;
+    $variables_url = (string)$variables_url;
+    if ($look_url === '' && $palette_url === '' && $variables_url === '') return $out;
     $out[] = array('id' => 'pg-theme-bridge', 'url' => pg_design_theme_url('bridge.css'));
-    if ($look_url !== '') {
+    if ($look_url !== '' || $variables_url !== '') {
         $out[] = array('id' => 'pg-theme-base', 'url' => pg_design_theme_url('base.css'));
+    }
+    if ($look_url !== '') {
         $out[] = array('id' => 'pg-theme-look', 'url' => $look_url);
     }
     if ($palette_url !== '') {
         $out[] = array('id' => 'pg-theme-palette', 'url' => $palette_url);
     }
+    if ($variables_url !== '') {
+        $out[] = array('id' => 'pg-theme-variables', 'url' => $variables_url);
+    }
     return $out;
 }
 
 // The same, as <link> tags for the page head.
-function pg_design_theme_links($look, $palette, $framework = 'bootstrap5')
+function pg_design_theme_links($look, $palette, $framework = 'bootstrap5', $variables_url = '')
 {
     $html = '';
-    foreach (pg_design_theme_assets($look, $palette, $framework) as $a) {
+    foreach (pg_design_theme_assets($look, $palette, $framework, $variables_url) as $a) {
         $html .= '<link rel="stylesheet" id="' . h($a['id']) . '" href="' . h($a['url']) . '">';
     }
     return $html;
@@ -920,6 +928,104 @@ function pg_design_theme_save_file($kind, $name, $css, $user_id)
     if ($id <= 0) return lang('The theme could not be saved.');
     return array('id' => $id, 'name' => $name, 'file' => $file_name,
                  'url' => (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $file_name . '?v=' . time());
+}
+
+// ── A design's variables file ──────────────────────────────────────────
+//
+// The variables of a design (includes/fn/design_variables.php) are one
+// design CSS file per design, found by its name, so no column points at it:
+// a design that never saved its variables has no file and loads nothing.
+
+// The file name of a design's variables, '' for no design.
+function pg_design_variables_file_name($style_id)
+{
+    $style_id = (int)$style_id;
+    return $style_id > 0 ? 'design-variables-' . $style_id . '.css' : '';
+}
+
+// Whether the start of a file is a variables head: another file uploaded
+// under the same name is never loaded as variables.
+function pg_design_variables_head_ok($head)
+{
+    return strncmp((string)$head, '/*! pg-theme {"kind":"variables"', 32) === 0;
+}
+
+// The site address of a design's variables stylesheet, '' when the design
+// has none. A stat and 32 bytes per request, kept for the request.
+function pg_design_variables_url($style_id)
+{
+    static $seen = array();
+    $name = pg_design_variables_file_name($style_id);
+    if ($name === '' || !defined('FILE_DIRECTORY_PATH')) return '';
+    if (isset($seen[$name])) return $seen[$name];
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $url = '';
+    if (is_file($path)) {
+        $fh = @fopen($path, 'rb');
+        $head = $fh ? (string)fread($fh, 32) : '';
+        if ($fh) fclose($fh);
+        if (pg_design_variables_head_ok($head)) {
+            $url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $name . '?v=' . (int)@filemtime($path);
+        }
+    }
+    return $seen[$name] = $url;
+}
+
+// The stored variables model of a design, as written (not yet normalized
+// to a look and palette), or null when it has none.
+function pg_design_variables_stored($style_id)
+{
+    $name = pg_design_variables_file_name($style_id);
+    if ($name === '' || !defined('FILE_DIRECTORY_PATH')) return null;
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    if (!is_file($path)) return null;
+    $fh = @fopen($path, 'rb');
+    if (!$fh) return null;
+    // The head is at most 8192 bytes (PG_DESIGN_VARIABLES_HEAD_MAX).
+    $head = (string)fread($fh, 8256);
+    fclose($fh);
+    if (!pg_design_variables_head_ok($head) || !preg_match('~^/\*! pg-theme (\{.*?\}) \*/~s', $head, $m)) return null;
+    $meta = json_decode($m[1], true);
+    return is_array($meta) ? $meta : null;
+}
+
+// Writes a design's variables file for its look and palette and keeps its
+// file manager row. $model null rewrites the stored model on the current
+// choice (a changed palette carries the untouched colours along) and
+// writes nothing when there is none. Returns true or an error message.
+function pg_design_variables_save($style_id, $model, $look, $palette, $user_id)
+{
+    $name = pg_design_variables_file_name($style_id);
+    if ($name === '') return lang('The design could not be saved. Please try again.');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+    if ($model === null) {
+        $model = pg_design_variables_stored($style_id);
+        if ($model === null) return true;
+    }
+    $state = pg_design_variables_state($model, $look, $palette);
+    $css = $state['css'];
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $row = db_item("SELECT id FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+    if (is_file($path)) {
+        $fh = @fopen($path, 'rb');
+        $head = $fh ? (string)fread($fh, 32) : '';
+        if ($fh) fclose($fh);
+        if (!pg_design_variables_head_ok($head)) {
+            return lang(array('string' => 'The variables were not saved: the file manager holds another file named {var:1}.', 'vars' => $name));
+        }
+        if ((string)file_get_contents($path) === $css && $row) return true;
+    }
+    if (!pg_file_write_whole($path, $css)) {
+        return lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $name));
+    }
+    if ($row) {
+        db("UPDATE files SET size = '" . (int)strlen($css) . "', user = '" . (int)$user_id . "', timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int)$row['id'] . "'");
+    } else {
+        $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+        db("INSERT INTO files (name, folder, description, type, size, user, design, theme, timestamp)
+            VALUES ('" . e($name) . "', '$folder_id', '', 'css', '" . (int)strlen($css) . "', '" . (int)$user_id . "', '1', '0', UNIX_TIMESTAMP())");
+    }
+    return true;
 }
 
 // ── Look drawings ──────────────────────────────────────────────────────────

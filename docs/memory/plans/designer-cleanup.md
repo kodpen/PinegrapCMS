@@ -22,7 +22,7 @@ priority: 6
 - Touch a stylesheet that is not the design's own (a library's, the look's).
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- CU1 (M) The finder, pure: the classes in use gathered from trees, components, interactions, conditions and the words in scripts; a stylesheet's rules matched against them; the "cannot tell" cases.
+- CU1 (M) The finder, pure: the classes in use gathered from trees, components, interactions, conditions and the words in scripts; a stylesheet's rules matched against them; the "cannot tell" cases. Done #11560 (`designer/design-cleanup-finder.md`).
 - CU2 (M) after CU1, PC2 and DD18: the window with its four lists, "Show".
 - CU3 (S) after CU2: removal with the snapshot and its closing line.
 - CU4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.

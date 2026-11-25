@@ -8171,6 +8171,7 @@ function pg_js_bundles()
         'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
         'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
+        'assets/js/style_designer_variables.min.js' => array('assets/js/style_designer_variables.js'),
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
@@ -8291,6 +8292,9 @@ function pg_designer_parts()
         // The "Clicks" layer: badges and tenth lines over the canvas and
         // its panel, handed only with sdDesign.clicks (who may open Visitors).
         'clicks' => 'assets/js/style_designer_clicks.min.js',
+        // The Variables tab of Settings › Theme: the design's named colours,
+        // type, spacing and shape, tried on the canvas as they change.
+        'variables' => 'assets/js/style_designer_variables.min.js',
         // My library's file: the Import window (the file checked, the
         // report, a refusal) and the Export download, designers only.
         'libraryfile' => 'assets/js/style_designer_libraryfile.min.js',
