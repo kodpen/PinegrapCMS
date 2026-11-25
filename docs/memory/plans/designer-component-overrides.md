@@ -15,7 +15,7 @@ priority: 7
 - Where it is placed: the Options panel's first section "This place" lists the open fields, the component's value as the hint. A changed field carries a dot and "Reset to the component". An open text is edited in place on the canvas for this place only; everything else is read-only with "Edit the component".
 - Variants: the component can keep named sets of its nodes' classes and options ("Dark", "Compact"); a place picks one from a list. A variant is the component's, a place holds only its name.
 - Kept on the placing node of the page's tree, by the open field's stable id: no table or column. The site, the canvas and the Preview apply them when they draw the component.
-- A field closed later or a node removed: its values are ignored, never drawn, and listed as left-over by the Publish check (`designer-publish-check.md`).
+- A field closed later or a node removed: its values are ignored, never drawn, and listed as left-over by the Publish check once a step hands them in (`designer/designer-publish-check-results.md`).
 - A place's text enters the site translation as its own text (`designer/designer-content-translation.md`); a content editor may change a place's open fields on a page that is theirs (`designer/designer-content-roles-save-gate.md`).
 
 ## What must it keep?

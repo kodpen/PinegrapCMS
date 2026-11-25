@@ -5,7 +5,7 @@ priority: 7
 ---
 
 ## What holds for these steps?
-- The frame of `designer-options-census.md`. What Bootstrap Studio has and ours lacks: `designer/options-panel-census-bss.md`. "Check for issues" is `designer-publish-check.md` and a designer's own options on a component are `designer-component-overrides.md`: neither is built here.
+- The frame of `designer-options-census.md`. What Bootstrap Studio has and ours lacks: `designer/options-panel-census-bss.md`. "Check for issues" is the Publish check (`designer/designer-publish-overview.md`) and a designer's own options on a component are `designer-component-overrides.md`: neither is built here.
 
 ## Which steps add page components and the rest? (line "page and site")
 - DO21 (S) Done (#11564). Two palette components: "Back to top", a button shown once the page is scrolled, and "Scroll progress", a thin bar at the page's top. Their site script is printed only on a page that holds one.

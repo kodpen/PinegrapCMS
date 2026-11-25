@@ -1,6 +1,6 @@
 ---
 name: designer-publish-check-drawing
-description: The drawing of the Publish check (plans/designer-publish-check.md, PC4 and PC5): the sheet, its seven boards and what each step builds from it
+description: The drawing of the Publish check (PC4 #11577, PC5 #11607): the sheet, its seven boards and what each step builds from it
 ---
 
 ## Where is the drawing?
