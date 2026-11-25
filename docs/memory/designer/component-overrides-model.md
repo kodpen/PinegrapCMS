@@ -21,7 +21,7 @@ module: component_overrides
 - `pg_co_place_values($ref)` / `placeValues`: `props._place` or nothing.
 
 ## What does the model not do?
-- `pg_co_apply()` checks no address and escapes nothing: drawing runs `pg_co_safe_values()` first (`component-overrides-render.md`); the save checks are CO4's.
+- `pg_co_apply()` checks no address and escapes nothing: drawing runs `pg_co_safe_values()` first (`component-overrides-render.md`); the save cleans a place with `pg_co_clean_place()` (`component-overrides-this-place.md`).
 
 ## Tests?
 - `tests/component_overrides_test.php`: the PHP functions, and the twin run in Node on the same cases with the answers compared (skipped without Node). CO1, #11520.
