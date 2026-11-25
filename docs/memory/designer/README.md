@@ -37,13 +37,13 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `custom-form-*`: 22 files; start at `custom-form-overview.md`.
 - `design-template-*`: 119 files; start at `design-template-overview.md`.
 - `design-variables-*`: 8 files; start at `design-variables-overview.md`.
-- `designer-activity-*`: 7 files.
+- `designer-activity-*`: 8 files; start at `designer-activity.md`.
 - `designer-blocks-*`: 58 files; start at `designer-blocks-overview.md`.
 - `designer-canvas-*`: 23 files; start at `designer-canvas-overview.md`.
 - `designer-code-*`: 6 files.
 - `designer-content-*`: 6 files.
 - `designer-interactions-*`: 7 files; start at `designer-interactions.md`.
-- `designer-options-*`: 24 files; start at `designer-options-overview.md`.
+- `designer-options-*`: 33 files; start at `designer-options-overview.md`.
 - `designer-panels-*`: 7 files; start at `designer-panels-overview.md`.
 - `designer-phone-*`: 7 files.
 - `designer-preview-*`: 12 files; start at `designer-preview-overview.md`.

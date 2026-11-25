@@ -31,7 +31,6 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-activity.md: Plan (owner 2026-11-24, level 3): an Activity tab in the designer's History: who published, restored, imported or shared what in a design, from rows that exist; steps AC1 to AC4
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
 - designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
