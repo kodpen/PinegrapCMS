@@ -4784,6 +4784,50 @@ function pg_scroller_inject($content, $src = null)
 }
 
 /**
+ * The markers of the visual editor's "Back to top" button (data-pg-to-top)
+ * and "Scroll progress" bar (data-pg-scroll-progress): the attributes
+ * themselves, not longer names that start with them. The editor's Preview
+ * tests the markup with the same expression (_SD_PAGE_SCRIPTS in
+ * assets/js/style_designer.js).
+ *
+ * @return string PCRE pattern
+ */
+function pg_page_scroll_pattern()
+{
+    return '/\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i';
+}
+
+/**
+ * The script behind "Back to top" and "Scroll progress", for a page whose
+ * HTML holds either marker (pg_page_scroll_pattern()); a page without one
+ * gets nothing. Asked once every shared component and system widget is
+ * drawn in (get_page_content.php), so the file follows the element wherever
+ * it was placed. assets/js/pg_page_scroll.js is deferred and needs no
+ * framework.
+ *
+ * @param string      $content page HTML
+ * @param string|null $src     the script's address; null builds it from the
+ *                             software directory and the file's time
+ * @return string
+ */
+function pg_page_scroll_inject($content, $src = null)
+{
+    if (stripos($content, 'data-pg-') === false || !preg_match(pg_page_scroll_pattern(), $content)) return $content;
+    if (strpos($content, '/assets/js/pg_page_scroll.js') !== false) return $content;
+
+    if ($src === null) {
+        $src = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_page_scroll.js?v='
+             . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_page_scroll.js');
+    }
+    $file = '<script src="' . h($src) . '" defer></script>' . "\n";
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    return ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
+}
+
+/**
  * Emit Fancybox v6 (Fancyapps) assets exactly once per request.
  *
  * Fancybox v6 replaces the legacy pg_lightbox custom build for the new

@@ -24947,6 +24947,32 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
+                // Back to top and Scroll progress: fixed to the window, no
+                // script in the markup. The data-pg-to-top and
+                // data-pg-scroll-progress markers bring assets/js/pg_page_scroll.js
+                // to the page and the Preview (pg_page_scroll_inject()); the
+                // canvas does not load it, so both stay in view to be selected.
+                // Without the script the button still leads to the top (#top)
+                // and is always shown.
+                if (ctype === 'back-to-top') {
+                    return createNode('semantic', { tag: 'a', cssClass: 'btn btn-primary rounded-circle shadow position-fixed bottom-0 end-0 m-4 p-0 d-inline-flex align-items-center justify-content-center pg-to-top',
+                        href: '#top', target: '', customName: _sdT('Back to top'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Back to top') }, { name: 'data-pg-to-top', value: '' }] }, [
+                        createNode('content', { contentType: 'icon', iconName: 'bi-arrow-up', cssClass: '', fontSize: '' })
+                    ]);
+                }
+
+                // The bar is decoration: a reader knows where it is on the
+                // page, so the bar is hidden from it. Its width is the one
+                // inline value, written by the script as Bootstrap's own data.
+                if (ctype === 'scroll-progress') {
+                    return createNode('semantic', { tag: 'div', cssClass: 'progress position-fixed top-0 start-0 w-100 rounded-0 bg-transparent pg-scroll-progress', customName: _sdT('Scroll progress'),
+                        _attrs: [{ name: 'aria-hidden', value: 'true' }, { name: 'data-pg-scroll-progress', value: '' }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar', customName: _sdT('Progress Bar'),
+                            _attrs: [{ name: 'style', value: 'width:0%' }] })
+                    ]);
+                }
+
                 if (ctype === 'carousel') {
                     var crId = 'cr_' + Math.random().toString(36).substr(2, 6);
                     // 3 slides with distinct gradient hero backgrounds + title/desc/button — _crId lets
@@ -26547,7 +26573,9 @@ const StyleDesigner = (function () {
                 { label: _sdT('Figure'),          type: 'component', icon: 'bi-image',                extra: { componentType: 'figure' } },
                 { label: _sdT('Vertical Rule'),   type: 'component', icon: 'bi-vr',                   extra: { componentType: 'vr' } },
                 { label: _sdT('Horizontal Stack'), type: 'component', icon: 'bi-layout-three-columns', extra: { componentType: 'hstack' } },
-                { label: _sdT('Vertical Stack'),  type: 'component', icon: 'bi-layout-sidebar-reverse', extra: { componentType: 'vstack' } }
+                { label: _sdT('Vertical Stack'),  type: 'component', icon: 'bi-layout-sidebar-reverse', extra: { componentType: 'vstack' } },
+                { label: _sdT('Back to top'),     type: 'component', icon: 'bi-arrow-up-circle',      extra: { componentType: 'back-to-top' } },
+                { label: _sdT('Scroll progress'), type: 'component', icon: 'bi-hr',                   extra: { componentType: 'scroll-progress' } }
             ])},
             { title: _sdT('Content'), icon: 'bi-fonts', items: Object.keys(CONTENT).filter(function (k) {
                 // 'text' is a legacy/safety-net contentType used by older add-row/add-col
@@ -76427,13 +76455,15 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
-    // and pg_fx_inject() (pg_fx_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern()),
+    // pg_page_scroll_inject() (pg_page_scroll_pattern()) and pg_fx_inject()
+    // (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
@@ -89104,7 +89134,14 @@ const StyleDesigner = (function () {
                            '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-label { outline: 2px dashed var(--bs-emphasis-color); outline-offset: 3px; }\n' +
                            '@media (prefers-reduced-motion: reduce) { .pg-variant.pg-variant .pg-variant-shot { animation: none; } }',
 
-        'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
+        'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }',
+
+        // Back to top and Scroll progress sit above a fixed navbar (1030)
+        // and below an offcanvas or a dialog (1045, 1055).
+        'pg-to-top':          '.pg-to-top { width: 3rem; height: 3rem; z-index: 1035; transition: opacity .2s ease, visibility .2s ease; }\n' +
+                              '@media (prefers-reduced-motion: reduce) { .pg-to-top { transition: none; } }',
+        'pg-scroll-progress': '.pg-scroll-progress { --bs-progress-height: .25rem; z-index: 1035; }\n' +
+                              '.pg-scroll-progress .progress-bar { transition: none; }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
     // block is one line in each, and a block that needs nothing says nothing.
@@ -89121,6 +89158,8 @@ const StyleDesigner = (function () {
         'blog-list':            ['pg-thumb-200'],
         'stats-progress':       ['pg-progress-8'],
         'progress':             ['pg-progress-18'],
+        'back-to-top':          ['pg-to-top'],
+        'scroll-progress':      ['pg-scroll-progress'],
         'faq-categorized':      ['pg-sticky-1'],
         'timeline-horizontal':  ['pg-circle-60'],
         'alert-success-toast':  ['pg-circle-40'],
@@ -89272,6 +89311,10 @@ const StyleDesigner = (function () {
                                     d: _sdT('One feature: an icon with a title and a short explanation.') },
             'c:progress':         { v: 'progress', h: '<div class="progress">', k: 'progress bar percent',
                                     d: _sdT('A bar that shows how far something has got.') },
+            'c:back-to-top':      { v: 'to-top', h: '<a href="#top" data-pg-to-top>', k: 'back to top scroll top up arrow button go up',
+                                    d: _sdT('A round button in the corner that appears once the page is scrolled and takes the visitor back to the top.') },
+            'c:scroll-progress':  { v: 'scroll-progress', h: '<div class="progress" data-pg-scroll-progress>', k: 'scroll progress reading bar indicator top',
+                                    d: _sdT('A thin bar along the top of the window that fills as the visitor scrolls down the page.') },
             'c:modal':            { v: 'modal', h: '<div class="modal">', k: 'modal dialog popup window lightbox',
                                     d: _sdT('A dialog window that opens over the page, for example when a button is clicked.') },
             'c:dropdown':         { v: 'dropdown', h: '<div class="dropdown">', k: 'dropdown menu toggle button',
@@ -89869,6 +89912,14 @@ const StyleDesigner = (function () {
             },
             'progress': function () {
                 return R(0, 0, 200, 110, W) + L(20, 36, 54, S) + R(20, 50, 160, 14, G, 7) + R(20, 50, 104, 14, P, 7) + Tx(72, 60, '65%', 9, W, 'middle');
+            },
+            'to-top': function () {
+                return R(0, 0, 200, 110, W) + Hd(14, 12, 70) + L(14, 26, 150) + L(14, 34, 160) + L(14, 42, 130) + L(14, 56, 150) + L(14, 64, 110) +
+                    C(176, 88, 12, P) + Pa('M176 94v-12M171 87l5 -5 5 5', W, 1.6);
+            },
+            'scroll-progress': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 4, G) + R(0, 0, 120, 4, P) + Hd(14, 16, 70) + L(14, 30, 150) + L(14, 38, 160) +
+                    L(14, 46, 130) + L(14, 60, 150) + L(14, 68, 110) + L(14, 82, 140) + R(192, 14, 3, 90, G, 1.5) + R(192, 50, 3, 24, S, 1.5);
             },
             'modal': function () {
                 return R(0, 0, 200, 110, W) + L(10, 10, 120) + L(10, 20, 150) + L(10, 30, 100) + R(0, 0, 200, 110, '#000', 0, '', DIM) +

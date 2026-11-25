@@ -675,6 +675,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_scroller_inject($content);
     }
 
+    // ── Back to top and Scroll progress ─────────────────────────────────────────
+    // Both carry a marker and no script; the page brings it
+    // (pg_page_scroll_inject()), checked once everything is drawn in. Not in
+    // an e-mail.
+    if (!$email && stripos($content, 'data-pg-') !== false && function_exists('pg_page_scroll_inject')) {
+        $content = pg_page_scroll_inject($content);
+    }
+
     // ── Listen ──────────────────────────────────────────────────────────────────
     // A "Listen" block carries data-pg-listen and no script; the page brings
     // the script and its labels (pg_listen_inject()), checked once everything
