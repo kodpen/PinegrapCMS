@@ -457,6 +457,9 @@
 - designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the parts (D5)
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
+- designer-phone-preview-drawing-phone.md: The phone's view of "Preview on a phone" as drawn (phone-preview.html, boards V1 and V2, step PP3): the thin line, a redraw, the page list, Paused, and the phone's messages
+- designer-phone-preview-drawing-window.md: The window "Preview on a phone" as drawn (phone-preview.html, boards H1 to H4, step PP2): the QR code, its lines and buttons, its states, a page for signed-in visitors, the team link
+- designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (plans/designer-phone-preview.md, PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 - designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-as-cases.md: The Preview's case model (PW1): the cases each widget kind has, the visitors a page offers, the choice read back from the browser, what a case sets per widget (record, visitor, flags)
