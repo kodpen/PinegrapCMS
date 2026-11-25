@@ -340,7 +340,7 @@ StyleDesigner.definePart('grid', function (K) {
         };
         var p = A.parse(cur.value);
         var st = { node: node, cls: cls, vals: vals, own: cur.here, from: cur.here ? '' : cur.size, value: cur.value,
-            cols: trk('columns'), rows: trk('rows'), ok: p.ok, drawnCols: p.cols, drawnRows: p.rows, areas: p.areas };
+            cols: trk('columns'), 'rows': trk('rows'), ok: p.ok, drawnCols: p.cols, drawnRows: p.rows, areas: p.areas };
         // Areas drawn for another count are shown where they fall.
         if (st.cols && st.rows) st.areas = A.fit(p.areas, st.cols, st.rows).areas;
         st.smaller = Z.SIZES.slice(0, Z.SIZES.indexOf(host.size)).some(function (s) { return !!vals[s]; });
