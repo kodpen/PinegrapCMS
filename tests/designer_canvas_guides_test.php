@@ -343,3 +343,38 @@ function test_canvas_guides_gaps_and_equal_gaps()
 	pg_assert_same(16, $res[12], 'a tie keeps the first');
 	pg_assert_same(null, $res[13], 'no target');
 }
+
+// Layout lines: Bootstrap's container width for a canvas width, and the
+// container's edges, its twelve columns and the gutters between them.
+function test_canvas_guides_layout_lines()
+{
+	$res = canvas_guides_test_node('var page = { left: 0, top: 0, right: 1200, bottom: 900 };'
+		. 'var l = G.layout(page);'
+		. 'var found = G.layout(page, { container: { left: 100, right: 700, padLeft: 12, padRight: 12 } });'
+		. 'var half = G.layout({ left: 0, top: 0, right: 600, bottom: 450 }, { zoom: 0.5 });'
+		. 'out = [ [375, 576, 767, 768, 992, 1200, 1399, 1400, 1920].map(G.containerWidth),'
+		. ' [l.left, l.right, l.top, l.bottom], l.columns.length, l.columns[0], l.columns[11], l.gutters.length, l.gutters[0],'
+		. ' [found.left, found.right, found.columns[0].left, found.columns[11].right, found.gutters[0].right - found.gutters[0].left],'
+		. ' [half.left, half.right, half.columns[0].left, half.gutters[0].right - half.gutters[0].left],'
+		. ' G.layout({ left: 0, top: 0, right: 375, bottom: 600 }).left,'
+		. ' G.layout({ left: 0, top: 0, right: 1200, bottom: 900 }, { count: 6 }).columns.length,'
+		. ' G.layout(null), G.layout({ left: 0, top: 0, right: 0, bottom: 10 }) ];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(375, 540, 540, 720, 960, 1140, 1140, 1320, 1320), $res[0], 'Bootstrap 5.3 container widths; below 576 the full width');
+	pg_assert_same(array(30, 1170, 0, 900), $res[1], 'the 1140 container centred on a 1200 canvas, full height');
+	pg_assert_same(12, $res[2], 'twelve columns');
+	pg_assert_same(array('left' => 42, 'right' => 113), $res[3], 'the first column\'s content starts at the container\'s padding');
+	pg_assert_same(array('left' => 1087, 'right' => 1158), $res[4], 'the last ends at the container\'s padding');
+	pg_assert_same(11, $res[5], 'a gutter between each two columns');
+	pg_assert_same(array('left' => 113, 'right' => 137), $res[6], 'a 24 px gutter');
+	pg_assert_same(array(100, 700, 112, 688, 24), $res[7], 'the container found on the page and its paddings');
+	pg_assert_same(array(15, 585, 21, 12), $res[8], 'at a zoom of 0.5 the 1200 page px canvas: the container and gutters halved');
+	pg_assert_same(0, $res[9], 'a phone canvas: the container is the full width');
+	pg_assert_same(6, $res[10], 'a count');
+	pg_assert_same(null, $res[11], 'no canvas, no lines');
+	pg_assert_same(null, $res[12], 'a canvas with no width');
+}

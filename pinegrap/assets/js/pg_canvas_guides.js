@@ -21,7 +21,8 @@
  *   1, 1.5 and 3 times the root font size (16 px unless given).
  * - The grid is Bootstrap's twelve columns: a row is split into equal
  *   column boxes; each column's content sits half a gutter (1.5rem by
- *   default) inside its box.
+ *   default) inside its box. Layout lines put that grid in the page's
+ *   container, across the whole canvas.
  *
  * Nothing runs at load but the definition of window.PGCanvasGuides.
  * tests/designer_canvas_guides_test.php runs it in Node.
@@ -227,6 +228,55 @@
         return out;
     }
 
+    // Bootstrap 5.3's .container max-widths by the viewport's breakpoint,
+    // widest first; below the first breakpoint it is the full width.
+    var CONTAINERS = [[1400, 1320], [1200, 1140], [992, 960], [768, 720], [576, 540]];
+
+    // The width of Bootstrap's .container on a page `width` CSS px wide.
+    function containerWidth(width) {
+        var w = num(width, 0);
+        for (var i = 0; i < CONTAINERS.length; i++) {
+            if (w >= CONTAINERS[i][0]) return CONTAINERS[i][1];
+        }
+        return w;
+    }
+
+    // Layout lines across the canvas' box `page`: the container's edges,
+    // its columns' content and the gutters between them, full height.
+    // `opts.container` is a container found on the page ({ left, right,
+    // padLeft, padRight }, canvas space); without one, Bootstrap's
+    // container for the page's width, centred, half a gutter of padding.
+    // `opts.gutter` page px (1.5rem by default), `count`, `zoom`, `rtl`.
+    // Null without a page of some width.
+    function layout(page, opts) {
+        var p = box(page);
+        opts = opts || {};
+        if (!p || p.right <= p.left) return null;
+        var z = zoomOf(opts.zoom);
+        var g = num(opts.gutter, 1.5 * num(opts.root, 16)) * z;
+        var c = opts.container, left, right, padL, padR;
+        if (c && isFinite(num(c.left, NaN)) && num(c.right, NaN) > num(c.left, NaN)) {
+            left = num(c.left, 0);
+            right = num(c.right, 0);
+            padL = num(c.padLeft, g / 2);
+            padR = num(c.padRight, g / 2);
+        } else {
+            var w = Math.min(p.right - p.left, containerWidth((p.right - p.left) / z) * z);
+            left = p.left + (p.right - p.left - w) / 2;
+            right = left + w;
+            padL = padR = g / 2;
+        }
+        var row = { left: left + padL - g / 2, right: right - padR + g / 2, top: p.top, bottom: p.bottom };
+        var cols = columns(row, { count: opts.count, gutter: g, zoom: 1, rtl: opts.rtl }).map(function (col) {
+            return { left: col.content.left, right: col.content.right };
+        }).sort(function (a, b) { return a.left - b.left; });
+        var gutters = [];
+        for (var i = 1; i < cols.length; i++) {
+            gutters.push({ left: cols[i - 1].right, right: cols[i].left });
+        }
+        return { left: left, right: right, top: p.top, bottom: p.bottom, columns: cols, gutters: gutters };
+    }
+
     // The column (1..count) under the pointer at `x` in a row, counted from
     // the start; a pointer outside the row reads as the nearest end column.
     function columnAt(x, row, opts) {
@@ -315,6 +365,8 @@
         dragStep: dragStep,
         columns: columns,
         columnAt: columnAt,
+        containerWidth: containerWidth,
+        layout: layout,
         spanAt: spanAt,
         gaps: gaps,
         equalGaps: equalGaps,
