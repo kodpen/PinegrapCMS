@@ -85045,13 +85045,75 @@ const StyleDesigner = (function () {
         return (p && p.page_id > 0) ? p.page_id : 0;
     }
 
-    function openSnapshotsPanel() {
+    // The History panel open now: its tab switch and its close; null when
+    // it is closed.
+    var _sdHistoryOpen = null;
+
+    // tab: 'activity' opens on the design's Activity (the command palette's
+    // row); anything else, as the canvas bar's button gives, on "This page".
+    function openSnapshotsPanel(tab) {
         var old = document.getElementById('sd-snapshots-panel');
-        if (old) { old.remove(); return; }
+        if (old) {
+            if (tab === 'activity' && _sdHistoryOpen) { _sdHistoryOpen.show('activity'); return; }
+            if (_sdHistoryOpen) _sdHistoryOpen.close();
+            else old.remove();
+            return;
+        }
         var btn = document.getElementById('sd-vb-snapshots');
         var panel = document.createElement('div');
         panel.id = 'sd-snapshots-panel';
         panel.className = 'sd-snapshots-panel';
+        // The head and the two tabs are drawn once; "This page" is redrawn
+        // by renderList(), "Activity" is the part `activity`.
+        panel.innerHTML = '<div class="sd-snap-hdr"><span><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '</span>' +
+            '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn" aria-label="' + esc(_sdT('Close')) + '" title="' + esc(_sdT('Close')) + '"></button></div>' +
+            '<div class="sd-hist-tabs" role="tablist" aria-label="' + esc(_sdT('History')) + '">' +
+                '<button type="button" class="sd-hist-tab" role="tab" data-tab="page">' + esc(_sdT('This page')) + '</button>' +
+                '<button type="button" class="sd-hist-tab" role="tab" data-tab="activity">' + esc(_sdT('Activity')) + '</button>' +
+            '</div>' +
+            '<div class="sd-hist-page" role="tabpanel"></div>' +
+            '<div class="sd-act-host" role="tabpanel" hidden></div>';
+        var pageBox = panel.querySelector('.sd-hist-page');
+        var actHost = panel.querySelector('.sd-act-host');
+        // The Activity list is asked for each time its tab is shown; the
+        // choosers and the counts are kept while History stays open.
+        var actFresh = true;
+        function closePanel() {
+            panel.remove();
+            _sdHistoryOpen = null;
+            document.removeEventListener('mousedown', onOutside);
+        }
+        function showTab(name) {
+            panel.querySelectorAll('.sd-hist-tab').forEach(function (t) {
+                var on = t.dataset.tab === name;
+                t.classList.toggle('is-active', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+                t.tabIndex = on ? 0 : -1;
+            });
+            pageBox.hidden = (name !== 'page');
+            actHost.hidden = (name !== 'activity');
+            if (name === 'activity') {
+                var fresh = actFresh;
+                actFresh = false;
+                _sdPartCall('activity', 'show', [actHost, { fresh: fresh, done: closePanel }]).catch(_sdPartFailed);
+            }
+        }
+        _sdHistoryOpen = { show: showTab, close: closePanel };
+        panel.querySelectorAll('.sd-hist-tab').forEach(function (t) {
+            t.addEventListener('click', function () { showTab(t.dataset.tab); });
+            // The two tabs are one stop: the arrow keys go between them.
+            t.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight' && ev.key !== 'Home' && ev.key !== 'End') return;
+                ev.preventDefault();
+                var next = (t.dataset.tab === 'page') ? 'activity' : 'page';
+                if (ev.key === 'Home') next = 'page';
+                if (ev.key === 'End') next = 'activity';
+                showTab(next);
+                var nb = panel.querySelector('.sd-hist-tab[data-tab="' + next + '"]');
+                if (nb) nb.focus();
+            });
+        });
+        panel.querySelector('#sd-snap-close-btn').addEventListener('click', closePanel);
 
         // Read the autosave record and surface it as a virtual snapshot at
         // the top of the list. Lets the user restore an unsaved design
@@ -85147,9 +85209,7 @@ const StyleDesigner = (function () {
         function renderList() {
             var snaps = _loadSnapshots();
             var autosaveSnap = _readAutosaveAsSnapshot();
-            var html = '<div class="sd-snap-hdr"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '' +
-                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn" aria-label="' + esc(_sdT('Close')) + '" title="' + esc(_sdT('Close')) + '"></button></div>';
-            html += revisionsHtml();
+            var html = revisionsHtml();
             html += '<div class="sd-snap-sect"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Local snapshots')) + '</div>' +
                 '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>' + esc(_sdT('New Snapshot')) + '</button>';
             if (!snaps.length && !autosaveSnap) {
@@ -85181,7 +85241,7 @@ const StyleDesigner = (function () {
                 });
                 html += '</div>';
             }
-            panel.innerHTML = html;
+            pageBox.innerHTML = html;
 
             var newBtn = panel.querySelector('#sd-snap-new');
             if (newBtn) newBtn.addEventListener('click', function() {
@@ -85191,9 +85251,6 @@ const StyleDesigner = (function () {
                 renderList();
             });
 
-            var closeBtn = panel.querySelector('#sd-snap-close-btn');
-            if (closeBtn) closeBtn.addEventListener('click', function() { panel.remove(); });
-            _sdTipAsk('history', _sdT('Every save is kept here. Open one to look at it, or bring it back.'), panel.querySelector('.sd-snap-hdr'), panel);
 
             var moreBtn = panel.querySelector('#sd-rev-more');
             if (moreBtn) moreBtn.addEventListener('click', function () {
@@ -85203,13 +85260,13 @@ const StyleDesigner = (function () {
 
             panel.querySelectorAll('.sd-rev-compare').forEach(function (b) {
                 b.addEventListener('click', function () {
-                    _sdRevisionOpenCompare(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                    _sdRevisionOpenCompare(revState.pageId, parseInt(this.dataset.no, 10), closePanel);
                 });
             });
             panel.querySelectorAll('.sd-rev-restore').forEach(function (b) {
                 b.addEventListener('click', function () {
                     if (this.disabled) return;
-                    _sdRevisionRestore(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                    _sdRevisionRestore(revState.pageId, parseInt(this.dataset.no, 10), closePanel);
                 });
             });
 
@@ -85238,7 +85295,7 @@ const StyleDesigner = (function () {
                     _replaceTreeWithPrefetch(cloneTree(snap.tree), {
                         selectedNodeId: snap.selectedNodeId || null
                     });
-                    panel.remove();
+                    closePanel();
                 });
             });
 
@@ -85259,15 +85316,18 @@ const StyleDesigner = (function () {
         renderList();
         loadRevisions(0);
         document.body.appendChild(panel);
+        _sdTipAsk('history', _sdT('Every save is kept here. Open one to look at it, or bring it back.'), panel.querySelector('.sd-snap-hdr'), panel);
+        // History opens on "This page" every time.
+        showTab(tab === 'activity' ? 'activity' : 'page');
         if (btn) {
             var r = btn.getBoundingClientRect();
-            panel.style.right = (window.innerWidth - r.right) + 'px';
+            panel.style.right = Math.max(0, window.innerWidth - r.right) + 'px';
             panel.style.top   = (r.bottom + 4) + 'px';
         }
         function onOutside(ev) {
             // A compare dialog opened from the panel is its own layer.
             if (document.getElementById('sd-rev-overlay')) return;
-            if (!panel.contains(ev.target) && ev.target !== btn) { panel.remove(); document.removeEventListener('mousedown', onOutside); }
+            if (!panel.contains(ev.target) && ev.target !== btn) closePanel();
         }
         setTimeout(function() { document.addEventListener('mousedown', onOutside); }, 0);
     }
@@ -92093,6 +92153,11 @@ const StyleDesigner = (function () {
             items.push({ id: 'act_document', label: _sdT('Page from a document'), icon: 'bi-file-earmark-text', action: function () { _sdDocumentOpen(); } });
         }
 
+        // History on the design's Activity tab (the part `activity`).
+        if (document.getElementById('sd-vb-snapshots') && _sdPartUrls('activity')) {
+            items.push({ id: 'act_activity', label: _sdT('Show the design\'s activity'), icon: 'bi-clock-history', action: function () { openSnapshotsPanel('activity'); } });
+        }
+
         // Preview on a phone, where the Preview menu offers it.
         if (_pgPrototypeShareReady()) {
             items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
@@ -97923,6 +97988,7 @@ const StyleDesigner = (function () {
             _sdLineDiff: _sdLineDiff,
             _sdLineDiffHtml: _sdLineDiffHtml,
             _sdLivePreviewSchedule: _sdLivePreviewSchedule,
+            _sdLocale: _sdLocale,
             _sdLookDrawingOf: _sdLookDrawingOf,
             _sdNodeSetBinding: _sdNodeSetBinding,
             _sdOpenThemeSettings: _sdOpenThemeSettings,
@@ -97933,6 +97999,7 @@ const StyleDesigner = (function () {
             _sdPaletteItemHTML: _sdPaletteItemHTML,
             _sdPartCall: _sdPartCall,
             _sdPartFailed: _sdPartFailed,
+            _sdPartLoad: _sdPartLoad,
             _sdPartUrls: _sdPartUrls,
             _sdPickerReady: _sdPickerReady,
             _sdPreviewDocHtml: _sdPreviewDocHtml,
@@ -97968,6 +98035,7 @@ const StyleDesigner = (function () {
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
             _sdThemes: _sdThemes,
+            _sdTreeObjects: _sdTreeObjects,
             _sdUndoBeforeFirstInput: _sdUndoBeforeFirstInput,
             _sdUserAttrValue: _sdUserAttrValue,
             _sdUsesBootstrap: _sdUsesBootstrap,

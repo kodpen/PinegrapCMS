@@ -1275,7 +1275,7 @@ function pg_panel_designer($request, $action)
         // The design's events for History's Activity tab
         // (includes/fn/designer_activity.php), fifty at a time. Every role
         // that opens the editor may ask; the reader keeps a content editor
-        // to the pages they may edit.
+        // to the pages they may edit. `person`, `page` and `kind` narrow it.
         case 'activity_list':
             $ac_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
             if ($ac_style <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$ac_style'")) {
@@ -1283,7 +1283,14 @@ function pg_panel_designer($request, $action)
             }
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_activity.php');
             $ac_before = isset($request['before']) ? (string)$request['before'] : '';
-            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before));
+            // The tab's three choosers: person, page, kind.
+            $ac_filter = pg_designer_activity_filter(
+                isset($request['person']) ? (string)$request['person'] : '',
+                isset($request['page']) ? (string)$request['page'] : '',
+                isset($request['kind']) ? (string)$request['kind'] : '',
+                $user
+            );
+            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before, $ac_filter));
             break;
 
         case 'revision_get':
