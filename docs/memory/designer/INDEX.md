@@ -119,6 +119,7 @@
 - component-overrides-fields.md: Opening a shared component's field "Can change per place" in the designer (CO3): the menu and palette row, the list, labels, the marks, the settings list with order, Rename and Close the field
 - component-overrides-model.md: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
 - component-overrides-render.md: How a place's values of a shared component reach the site, the canvas and the Preview (CO2, #11595): the place marker, the per-call render and the cache rule, the draw checks, translation
+- component-overrides-this-place.md: A placed shared component with open fields (CO4, #11663): "This place", the dot and reset, typing in place, read-only elements and "Edit the component", content editors, save checks
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
 - content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
 - content-proposals-deleted-page.md: An editor's waiting change whose page is deleted or in the Recycle Bin: stale and told on Apply, or refused and still waiting; the count skips a gone page; "Deleted page" in the list (#10219)
@@ -371,7 +372,7 @@
 - designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
 - designer-canvas-absolute-position.md: Where the designer canvas places an absolutely positioned element (sd-fx-abs, sd-fx-unpos), which wrappers stop the walk, and how the chrome of see-through wrappers is placed.
 - designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6) [decision: here]
-- designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu with its badge, Find and History; its measures
+- designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu (Shared parts…) and badge, Find and History; its measures
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
@@ -425,6 +426,7 @@
 - designer-document-to-page-drawing.md: The drawing of the "From a document" start (plan designer-document-to-page, FD3 and FD4): boards F1 what opens it, F2 the form, F3 the sections as rows
 - designer-document-to-page-rows-drawing.md: The "From a document" drawing, boards F4 to F6: a row's kind list, opened words, left out, moved; "Sort it for me" proposals (FD4); busy, refusals, cut short, 390 px
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
+- designer-first-tour-card.md: The designer's first card "New here? A one-minute tour" and its tour (FT2): the part 'tour', when the card shows, the ring and the bubble, the keys, the phone's sheet, "Take the tour"
 - designer-first-tour-drawing.md: The first tour's drawing (DD14), boards T1 to T3 and T7: the first card, the five stops' ring and bubble, a content editor's three stops, the phone's sheet; the sentences
 - designer-first-tour-help-drawing.md: The first tour's drawing (DD14), boards T4 to T6 for step FT3: the Help window's "How do I…" with its ten tasks and three pointers, the "Tips" switch, a first-use tip, an empty page's three starts
 - designer-first-tour-model.md: The first tour's pure model (window.PGDesignerTour, FT1): stops and their controls per access, Next and Back skipping a missing control, what was seen kept per person in the browser
@@ -486,6 +488,7 @@
 - designer-options-states.md: The Options panel's State row as built (DO10, #11588): Normal, Hover, Focus, Pressed; the state's rule in User Styles, which rows write, the canvas view, the part 'states', what is not built yet
 - designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
+- designer-options-transform.md: "Transform" in Shadow and effect as built (DO12): the rows, translate/rotate/scale per state, composed with Interactions, the canvas outline, the cost
 - designer-options-transition.md: "Transition" in Shadow and effect as built (DO11): the three rows, the rule in User Styles inside the no-preference block, the look's values, under a state, reduced motion, the part, the cost
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
@@ -559,6 +562,7 @@
 - designer-scroller-wide-slides.md: The Wide slides option of a scroller row (pg-snap-wide): one large slide per stop, 85vw, centred; the Scroller section, its helper and rule
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-select-similar-drawing.md: The drawing of "Select similar" (sheet DD13, step SE2): boards E1 to E4, where the row sits, the line above the Options panel with its two lists, what it settles, the new texts and the key
+- designer-select-similar-matcher.md: Why "Select similar" exists in the designer, what is never chosen, the pure matcher PGSelectSimilar.find() (ways of alike, places, left out), not across pages; SE1 #11530, SE2 #11649 [decision: decisions-made-product-108.md]
 - designer-select-similar-part.md: "Select similar" in the designer: the menu rows, the S key, the palette row, the `similar` part and the line above the Options panel with its two lists; what ends the line
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
@@ -661,6 +665,7 @@
 - layout-type-converter-express-order-render.md: What the Express Order widget gives a converted classic layout (LE9b, #11486): tokens, row values, flags, the type row's state, known differences, starting sites
 - layout-type-converter-express-order.md: An express order page's layout file into the Express Order widget (LE9b, #11486): the cart's map, the theme's billing markup, the widget's sections, controls
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
+- layout-type-converter-order-preview.md: Order preview layout files into the order preview widget (LE9d, #11667): its map, the new flags and tokens, the converter rules it added, differences, starting sites; view order moved to LE9e
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
 - layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10): what the converter is, the rules kept, which file holds each type's map [decision: here]
@@ -845,7 +850,7 @@
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8 [decision: here]
 - shared-component-editor-cache.md: The editor's shared component cache: prefetch keeps a changed entry, the snapshot every drawn tree gets, what marks a component dirty, the flush at Save, a template placeholder.
-- shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
+- shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, colours, canvas marks.
 - shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links [decision: here]
 - shared-components-panel.md: Deleting shared components and system widgets without opening a design (designs home panel), how usage is counted, and why deleting a design leaves those rows alone (pg_designer_delete_design()).
 - shipping-address-verified-box.md: Verified shipping addresses help box of the Shipping Address widget (#3177): has_verified_addresses, the verified_addresses section, the fill script by name

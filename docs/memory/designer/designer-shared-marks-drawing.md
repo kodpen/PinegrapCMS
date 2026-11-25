@@ -4,7 +4,7 @@ description: The drawing of shared components and system widgets on the canvas, 
 ---
 
 ## Where is the sheet?
-- `designer/designer-shared-marks-drawing/shared-marks.html` with `drawing.css`, pictures `shared-marks-dark.jpg` and `shared-marks-light.jpg`. It is step SM1 of `plans/designer-shared-marks.md`; where a plan line differs, the drawing wins (`workflow/screen-follows-drawing.md`).
+- `designer/designer-shared-marks-drawing/shared-marks.html` with `drawing.css`, pictures `shared-marks-dark.jpg` and `shared-marks-light.jpg`. Built in #11662 (`tests/designer_shared_marks_test.php`); the code is described in `shared-component-model.md` and `designer-canvas-bar.md`.
 - Why it was drawn: `workflow/decisions-made-product-111.md` (owner, 2026-11-25).
 
 ## What is drawn at rest (Q1)?

@@ -4601,6 +4601,7 @@ const StyleDesigner = (function () {
      */
     function _sdCanEditNode(node, what) {
         if (!_collab.mayEdit) return false;
+        if (_sdCoLocked(node)) return false;
         if (!_sdIsContentLevel()) return true;
         // A shared component's node is theirs only in a component opened to
         // them; inside it the page's rule applies. A widget never opens.
@@ -4625,6 +4626,7 @@ const StyleDesigner = (function () {
             return false;
         }
         if (_sdCanEditNode(node, what)) return true;
+        if (_sdCoLocked(node)) { _sdContentNudge('component'); return false; }
         if (!_sdIsContentLevel()) return true;
         _sdContentNudge((node && _sdInClosedShared(node)) ? 'shared' : 'area');
         return false;
@@ -4956,6 +4958,7 @@ const StyleDesigner = (function () {
     function _sdContentReason(why) {
         if (why === 'shared') return _sdT('System widgets and shared components are managed by designers.');
         if (why === 'design') return _sdT('The design\'s styles are managed by designers.');
+        if (why === 'component') return _sdT('Part of a shared component: the same in every place. Choose “Edit the component” to change it.');
         return _sdT('You can edit text, and anything inside an area marked as editable.');
     }
 
@@ -4968,6 +4971,7 @@ const StyleDesigner = (function () {
     // and was gone after the save. The design's stylesheets are never
     // written at this level. View mode keeps its own nudge.
     function _sdPanelLockReason(nodes, part) {
+        if (_collab.mayEdit && part !== 'design' && [].concat(nodes || []).some(_sdCoLocked)) return 'component';
         if (!_collab.mayEdit || !_sdIsContentLevel()) return '';
         if (part === 'design') return 'design';
         var list = [].concat(nodes || []).filter(Boolean);
@@ -7004,6 +7008,10 @@ const StyleDesigner = (function () {
         'body.sd-parts-lit .sd-wrap.sd-shared-wrap:not(.sd-system-wrap):not(.sd-selected):not(:hover) > .sd-tb > .sd-tb-name.sd-part-tag { display:flex !important; }',
         _sdPartBoxless(' > .sd-wrap.sd-shared-wrap::after', 'display:none !important;'),
         _sdPartBoxless(' > .sd-wrap.sd-shared-wrap > :not(.sd-tb)', 'outline:1px solid rgba(var(--sd-part),.55) !important; outline-offset:-1px !important; background-color:rgba(var(--sd-part),.06);', 'body.sd-parts-lit '),
+        // A selected place: the elements of the component open per place
+        // (_sdCoOutline()); the one typed in place.
+        '.sd-co-open-el { outline:1px dashed rgba(16,185,129,.85) !important; outline-offset:1px; }',
+        '.sd-co-typing { outline:2px solid rgba(16,185,129,.9) !important; outline-offset:2px; cursor:text; }',
         '.sd-shared-placeholder { padding:.5rem .75rem; font-size:.8rem; color:#10b981; opacity:.9; font-style:italic; border:1px dashed rgba(16,185,129,.5); border-radius:.25rem; text-align:center; }',
         // On the page _render_system_widget_express_order() draws the widget
         // inside `.container.py-4.pg-eo-wrap`, whose side padding takes in the
@@ -10514,6 +10522,10 @@ const StyleDesigner = (function () {
     function _sdTrackSharedEditing() {
         var _prevSid = _editingSharedSid;
         _editingSharedSid = _resolveSharedSid(selectedNode);
+        // "Edit the component" lasts while the selection stays in it.
+        Object.keys(_sdCoEditing).forEach(function (k) { if ((parseInt(k, 10) || 0) !== _editingSharedSid) delete _sdCoEditing[k]; });
+        // A read-only element of a component with open fields is not edited.
+        if (_editingSharedSid > 0 && _sdCoLocked(selectedNode)) _editingSharedSid = 0;
         // At content level only a component opened to the operator is
         // written; selecting inside another one changes nothing.
         if (_editingSharedSid > 0 && _sdIsContentLevel() && !_sdSharedOpenToContent(_editingSharedSid)) {
@@ -11013,6 +11025,7 @@ const StyleDesigner = (function () {
         // the fidelity pass has moved things; so do the layout lines.
         if (selectedNode) _positionSizeBadge();
         _sdLinesSoon();
+        _sdCoOutline();
     }
 
     // The wrapper under the pointer (the canvas mouseover handler).
@@ -13177,6 +13190,7 @@ const StyleDesigner = (function () {
         }
 
         setupDropEvents(wrapper, node);
+        if (!_isSysWidget && sid > 0 && _sdCoHasSid(sid)) _sdCoCanvasWire(wrapper, node, sid);
 
         wrapper.addEventListener('click', function (e) {
             // FORM CONTROL EARLY EXIT — mirror the main sd-wrap handler (see buildNodeEl click).
@@ -17346,6 +17360,7 @@ const StyleDesigner = (function () {
             __cart_subtotal: _sdMoney(m.subtotal), __cart_discount: _sdMoney(m.discount), __cart_tax: _sdMoney(m.tax),
             __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(m.gift), __cart_surcharge: _sdMoney(0),
             __cart_total: _sdMoney(m.due), __cart_total_with_surcharge: _sdMoney(m.due), __cart_total_charged: _sdMoney(m.due),
+            __cart_total_with_surcharge_charged: _sdMoney(m.due),
             __cart_today_total: _sdMoney(m.due), __cart_recurring_total: _sdMoney(0),
             __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.due * 100)),
             __cart_total_with_surcharge_cents: String(Math.round(m.due * 100)),
@@ -26232,7 +26247,10 @@ const StyleDesigner = (function () {
             go: _sdStateGo,
             locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(null, 'design'); },
             segSync: _sdSegSync,
-            resetButtons: _sdChgResetButtons
+            resetButtons: _sdChgResetButtons,
+            tfHtml: _sdTfRowsHtml,
+            tfMark: _sdTfMark,
+            tfOrigins: _sdTfOrigins
         };
     }
 
@@ -26362,6 +26380,198 @@ const StyleDesigner = (function () {
             var k = t && t.getAttribute ? t.getAttribute('data-sd-trans') : null;
             if (!k) return;
             _sdTransSet(k === 'ms-range' ? 'ms' : k, t.value);
+        });
+    }
+
+    // ── Options: the element's Transform (Shadow and effect) ──
+    // "Move", "Scale" and "Rotate" under the sub-head "Transform", "Skew"
+    // and "Origin" under the section's "More". Every row can differ in a
+    // state: written by the part 'states' (PGOptionStates.tfWrite()) as
+    // translate, scale, rotate, transform (skew) and transform-origin on
+    // the element's custom style class or the state's rule. Those compose
+    // with an Interactions effect's inline transform (pg_fx.src.js keeps
+    // the element's own). Nothing is parsed or loaded while the User
+    // Styles hold no transform for the element.
+    var _SD_TF_NONE = { tx: '', ty: '', s: '', r: '', skx: '', sky: '', o: '' };
+    var _sdTfLoading = false;
+    var _sdTfMoreOpen = false;
+    // The name of an Interactions effect that moves the element (a
+    // transform), or ''.
+    function _sdTfFxName(effect) {
+        return ({ 'slide-up': _sdT('Slide up'), 'slide-down': _sdT('Slide down'), 'slide-left': _sdT('Slide left'),
+            'slide-right': _sdT('Slide right'), scale: _sdT('Scale'), 'zoom-out': _sdT('Zoom out'), 'rotate-in': _sdT('Rotate in'),
+            parallax: _sdT('Parallax'), 'scroll-zoom': _sdT('Zoom on scroll'), 'scroll-rise': _sdT('Rise on scroll') })[effect] || '';
+    }
+
+    // The element's transform in the state st ('' Normal).
+    function _sdTfOf(node, st) {
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('.' + cls) === -1 || !/(?:^|[\s;{])(?:translate|rotate|scale|transform)\s*:/.test(text)) return _SD_TF_NONE;
+        if (_sdPartLoaded('states') && window.PGOptionStates) return window.PGOptionStates.tfRead(text, cls, st || '');
+        if (!_sdTfLoading) {
+            _sdTfLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTfLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTfLoading = false; _sdPartFailed(); });
+        }
+        return _SD_TF_NONE;
+    }
+
+    // The nine Origin places: their names and per cents.
+    function _sdTfOrigins() {
+        return [_sdT('Top left'), _sdT('Top'), _sdT('Top right'), _sdT('Left'), _sdT('Middle'), _sdT('Right'),
+            _sdT('Bottom left'), _sdT('Bottom'), _sdT('Bottom right')];
+    }
+
+    // The rows: v the values of the shown state, inh the ones shown in grey
+    // until set (Normal's under a state, the defaults on Normal).
+    function _sdTfRowsHtml(node, v, inh) {
+        v = v || _sdTfOf(node, '');
+        inh = inh || _SD_TF_NONE;
+        var shown = function (k, dflt) { return v[k] !== '' ? v[k] : inh[k] !== '' ? inh[k] : dflt; };
+        var field = function (key, unit, axis, dflt) {
+            var ph = String(inh[key] !== '' ? inh[key] : dflt).replace(/px$/, '');
+            return '<div class="input-group input-group-sm' + (v[key] === '' ? ' sd-trans-inh' : '') + '">' +
+                (axis ? '<span class="input-group-text">' + axis + '</span>' : '') +
+                '<input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tf="' + key + '" value="' + esc(String(v[key]).replace(/px$/, '')) + '" placeholder="' + esc(ph) + '"' +
+                ' aria-label="' + esc((axis ? axis + ' ' : '') + unit) + '">' +
+                '<span class="input-group-text">' + unit + '</span></div>';
+        };
+        var slider = function (key, lo, hi, step, unit, dflt, name) {
+            var val = shown(key, dflt);
+            return '<div class="sd-trans-ms' + (v[key] === '' ? ' sd-trans-inh' : '') + '">' +
+                '<input type="range" class="form-range-input" min="' + lo + '" max="' + hi + '" step="' + step + '" value="' + Math.min(hi, Math.max(lo, val)) + '" data-sd-tf-range="' + key + '" aria-label="' + esc(name) + '">' +
+                '<div class="input-group input-group-sm"><input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tf="' + key + '" value="' + esc(String(v[key])) + '" placeholder="' + esc(String(inh[key] !== '' ? inh[key] : dflt)) + '" aria-label="' + esc(name) + '">' +
+                (unit ? '<span class="input-group-text">' + unit + '</span>' : '') + '</div></div>';
+        };
+        var tfRow = function (keys, label, ctrl) {
+            return '<div class="sd-prop-row" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+        };
+        var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; });
+        var h = '<div class="sd-tf" data-sd-tf-box>' +
+            '<div class="sd-trans-sub">' + esc(_sdT('Transform')) + '</div>' +
+            tfRow('tx,ty', _sdT('Move'), '<div class="sd-tf-pair">' + field('tx', 'px', 'X', '0') + field('ty', 'px', 'Y', '0') + '</div>') +
+            tfRow('s', _sdT('Scale'), slider('s', 0.5, 1.5, 0.01, '', 1, _sdT('Scale'))) +
+            tfRow('r', _sdT('Rotate'), slider('r', -180, 180, 1, '°', 0, _sdT('Rotate')));
+        var fx = node.props && node.props._fx ? _sdTfFxName(node.props._fx.effect) : '';
+        if (fx) {
+            h += '<div class="sd-tf-fx"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' +
+                esc(_sdT('The effect {var} in Interactions moves this element too. Both apply, one on top of the other.', fx)) + '</span></div>';
+        }
+        if (more) {
+            var names = _sdTfOrigins();
+            var o = shown('o', 4);
+            var cells = names.map(function (nm, i) {
+                return '<button type="button" role="radio" class="sd-tf-o' + (i === o ? ' sd-tf-o-on' : '') + '" data-sd-tf-o="' + i + '" aria-checked="' + (i === o ? 'true' : 'false') + '"' +
+                    ' tabindex="' + (i === o ? '0' : '-1') + '" aria-label="' + esc(nm) + '"></button>';
+            }).join('');
+            h += tfRow('skx,sky', _sdT('Skew'), '<div class="sd-tf-pair">' + field('skx', '°', 'X', '0') + field('sky', '°', 'Y', '0') + '</div>') +
+                tfRow('o', _sdT('Origin'), '<div class="sd-tf-og' + (v.o === '' ? ' sd-trans-inh' : '') + '"><div class="sd-tf-grid" role="radiogroup" aria-label="' + esc(_sdT('Origin')) + '">' + cells + '</div>' +
+                    '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>');
+        }
+        h += '<button type="button" class="sd-tf-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
+            esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
+        return h + '</div>';
+    }
+
+    // The changed dot on a Transform row whose own value is set.
+    function _sdTfMark(root) {
+        root.querySelectorAll('[data-sd-tf-keys]').forEach(function (r) {
+            var lbl = r.querySelector('.sd-prop-label');
+            var set = r.querySelector('.sd-tf-og:not(.sd-trans-inh)') ||
+                Array.prototype.some.call(r.querySelectorAll('[data-sd-tf]'), function (i) { return i.value !== ''; });
+            if (!lbl || !set) return;
+            lbl.classList.add('sd-prop-modified');
+            lbl.dataset.resetKind = 'tf';
+        });
+    }
+
+    // Values written in the chosen state, { key: value } ('' takes one
+    // out), as one undo step.
+    function _sdTfSet(vals) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var st = _sdOptState;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) {
+                Object.keys(vals).forEach(function (k) { text = S.tfWrite(text, cls, st, k, vals[k]); });
+                return text;
+            });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // The canvas while a row is dragged or holds the focus: the part draws
+    // the place the element keeps and the value (api.tfShow / tfHide).
+    function _sdTfCanvas(key, value) {
+        var go = function () {
+            var api = _sdPartApis.states;
+            if (!api || !api.tfShow) return;
+            if (key === null) api.tfHide(canvasDoc);
+            else api.tfShow(_sdStateHost(), key, value);
+        };
+        if (_sdPartLoaded('states')) { go(); return; }
+        if (key !== null) _sdPartLoad('states').then(go, _sdPartFailed);
+    }
+
+    // Once per panel: the slider shows its number and the canvas while
+    // dragged and writes when let go; a field writes on change; Origin's
+    // places by press or the arrows; "More" and "Less".
+    function _sdTfBind(panel) {
+        if (!panel || panel._sdTf || !panel.querySelector('[data-sd-tf-box]')) return;
+        panel._sdTf = true;
+        var keyOf = function (t) { return t && t.getAttribute ? (t.getAttribute('data-sd-tf') || t.getAttribute('data-sd-tf-range')) : null; };
+        panel.addEventListener('input', function (e) {
+            var t = e.target, k = t && t.getAttribute ? t.getAttribute('data-sd-tf-range') : null;
+            if (!k) return;
+            var box = t.closest('.sd-trans-ms');
+            var num = box ? box.querySelector('[data-sd-tf="' + k + '"]') : null;
+            if (num) num.value = t.value;
+            if (box) box.classList.remove('sd-trans-inh');
+            _sdTfCanvas(k, t.value);
+        });
+        panel.addEventListener('change', function (e) {
+            var k = keyOf(e.target);
+            if (!k) return;
+            _sdTfCanvas(null);
+            var o = {};
+            o[k] = e.target.value.trim();
+            _sdTfSet(o);
+        });
+        panel.addEventListener('focusin', function (e) {
+            var k = keyOf(e.target) || (e.target.hasAttribute && e.target.hasAttribute('data-sd-tf-o') ? 'o' : null);
+            if (k) _sdTfCanvas(k, k === 'o' ? e.target.getAttribute('data-sd-tf-o') : e.target.value);
+        });
+        panel.addEventListener('focusout', function (e) {
+            var to = e.relatedTarget;
+            if (!to || !to.closest || !to.closest('[data-sd-tf-box]')) _sdTfCanvas(null);
+        });
+        panel.addEventListener('click', function (e) {
+            var t = e.target && e.target.closest ? e.target.closest('.sd-tf-more, [data-sd-tf-o]') : null;
+            if (!t || !panel.contains(t)) return;
+            if (t.classList.contains('sd-tf-more')) {
+                _sdTfMoreOpen = t.getAttribute('aria-expanded') !== 'true';
+                renderProperties();
+                var b = document.querySelector('#sd-properties .sd-tf-more');
+                if (b) b.focus();
+                return;
+            }
+            _sdTfSet({ o: t.getAttribute('data-sd-tf-o') });
+        });
+        panel.addEventListener('keydown', function (e) {
+            var t = e.target;
+            if (!t.hasAttribute || !t.hasAttribute('data-sd-tf-o')) return;
+            var i = Number(t.getAttribute('data-sd-tf-o'));
+            var to = { ArrowLeft: i % 3 ? i - 1 : i, ArrowRight: i % 3 < 2 ? i + 1 : i, ArrowUp: i > 2 ? i - 3 : i, ArrowDown: i < 6 ? i + 3 : i }[e.key];
+            if (to === undefined) return;
+            e.preventDefault();
+            var c = t.parentNode.querySelector('[data-sd-tf-o="' + to + '"]');
+            if (c && c !== t) c.focus();
         });
     }
 
@@ -37271,6 +37481,8 @@ const StyleDesigner = (function () {
     // settings list filled by the part.
     var _SD_CO_PROP = { text: 'text', picture: 'src', link: 'href', icon: 'iconName' };
     function _sdCoAfter(panel, node) {
+        _sdCoFillPlace(panel, node);
+        if (_sdCoLocked(node)) _sdCoLockPanel(panel, node);
         var list = panel.querySelector('.sd-co-list[data-sd-co-sid]');
         if (list) _sdPartCall('overrides', 'fillList', [list, parseInt(list.getAttribute('data-sd-co-sid'), 10) || 0]).catch(_sdPartFailed);
         var entries = _sdIsContentLevel() ? [] : _sdCoEntries(node);
@@ -37305,6 +37517,8 @@ const StyleDesigner = (function () {
     // kept from before (never after a change, or Save skips it), an undo
     // step, the change, the component marked changed, the editor drawn.
     function _sdCoWrite(sid, fn) {
+        // Opening a field does not make the element read-only under the hand.
+        _sdCoEditing[sid] = true;
         if (!_sharedSnapshots[sid] && !_sharedDirty[sid]) {
             var c = _sharedCache[sid];
             _sharedSnapshots[sid] = _sdSharedTreeJSON(c && c.tree);
@@ -37313,6 +37527,170 @@ const StyleDesigner = (function () {
         fn();
         _sharedDirty[sid] = true;
         render();
+    }
+
+    // ── This place ───────────────────────────────────────────────────────
+    // Where a component with an open field is placed, the place's own values
+    // (props._place on the placing node) are changed under "This place" and
+    // an open text is typed in place; every other element of the component
+    // is read-only there until "Edit the component", which starts today's
+    // editing of the component (for every place) while the selection stays
+    // in it. A component with no open field is edited as before.
+    var _sdCoEditing = {};
+    // The field whose row takes the focus when "This place" is drawn next.
+    var _sdCoFocus = '';
+    var _sdCoMemo = { epoch: -1, has: {}, map: {} };
+
+    function _sdCoMemoNow() {
+        if (_sdCoMemo.epoch !== _sdEditEpoch) _sdCoMemo = { epoch: _sdEditEpoch, has: {}, map: {} };
+        return _sdCoMemo;
+    }
+
+    // Whether component `sid` (an ordinary one, loaded) has an open field.
+    function _sdCoHasSid(sid) {
+        var m = _sdCoMemoNow();
+        if (!Object.prototype.hasOwnProperty.call(m.has, sid)) {
+            var c = _sharedCache[sid];
+            m.has[sid] = !!(c && c.tree && !c.system_region_config && _sdCoHas(c.tree));
+        }
+        return m.has[sid];
+    }
+
+    // The component's open entries by the canvas id of their node.
+    function _sdCoNodeMap(sid) {
+        var m = _sdCoMemoNow();
+        if (m.map[sid]) return m.map[sid];
+        var c = _sharedCache[sid], map = {};
+        (function walk(n, top) {
+            if (!n || typeof n !== 'object') return;
+            var e = _sdCoEntries(n);
+            if (e.length && n._id != null) map[String(n._id)] = e;
+            if (n.type === 'shared_ref' && !top) return;
+            (n.children || []).forEach(function (k) { walk(k, false); });
+        })(c && c.tree, true);
+        return (m.map[sid] = map);
+    }
+
+    // An element of a component with an open field, outside "Edit the
+    // component": read-only. At content level only in a component opened
+    // to the operator (another one is read-only by its own rule).
+    function _sdCoLocked(node) {
+        if (!node || node.type === 'shared_ref') return false;
+        var sid = _sdNodeSharedSid(node);
+        if (!(sid > 0) || _sdCoEditing[sid] || !_sdCoHasSid(sid)) return false;
+        return !_sdIsContentLevel() || _sdSharedOpenToContent(sid);
+    }
+
+    // { ref, sid } when `node` places a component with an open field.
+    function _sdCoPlaceOf(node) {
+        if (!node || node.type !== 'shared_ref') return null;
+        var sid = parseInt(node.props && node.props.sharedId, 10) || 0;
+        return (sid > 0 && _sdCoHasSid(sid)) ? { ref: node, sid: sid } : null;
+    }
+
+    // Who may edit the component itself: every designer, a content editor
+    // when it is opened to them.
+    function _sdCoMayEditComp(sid) {
+        return !!_collab.mayEdit && (!_sdIsContentLevel() || _sdSharedOpenToContent(sid));
+    }
+
+    // "This place", the first section of a place's panel; the part fills it.
+    function _sdCoPlaceSect(n, sid, cached) {
+        if (!(sid > 0) || !cached || cached.system_region_config || !_sdCoHasSid(sid)) return '';
+        return sect('bi-arrows-angle-expand', _sdT('This place'), '<div class="sd-co-place" data-sd-co-place="' + sid + '"></div>');
+    }
+
+    function _sdCoFillPlace(panel, node) {
+        var holder = panel.querySelector('.sd-co-place[data-sd-co-place]');
+        var at = holder ? _sdCoPlaceOf(node) : null;
+        if (!at) return;
+        var focus = _sdCoFocus;
+        _sdCoFocus = '';
+        _sdPartCall('overrides', 'fillPlace', [holder, node, at.sid,
+            { readOnly: !_collab.mayEdit, mayEdit: _sdCoMayEditComp(at.sid), focusId: focus }]).catch(_sdPartFailed);
+    }
+
+    // The panel of a read-only element: its fields disabled, dimmed, and the
+    // line "Part of …" with "Edit the component" on top.
+    function _sdCoLockPanel(panel, node) {
+        var sid = _sdNodeSharedSid(node);
+        var c = _sharedCache[sid];
+        panel.querySelectorAll('.sd-tab-content, .sd-props-readonly').forEach(function (box) {
+            box.classList.add('sd-panel-readonly');
+            box.querySelectorAll('input, textarea, select, button').forEach(function (el) { el.disabled = true; });
+        });
+        var line = document.createElement('div');
+        line.className = 'sd-co-partof';
+        line.innerHTML = '<span>' + esc(_sdT('Part of “{var}”: the same in every place.', (c && c.name) || ('#' + sid))) + '</span>' +
+            (_sdCoMayEditComp(sid) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary">' + esc(_sdT('Edit the component')) + '</button>' : '');
+        var b = line.querySelector('button');
+        if (b) b.addEventListener('click', function () { _sdCoEditComponent(node); });
+        panel.insertBefore(line, panel.firstChild);
+    }
+
+    // "Edit the component": today's editing of it, for every place. From a
+    // place, its first element is selected.
+    function _sdCoEditComponent(node) {
+        var sid = (node && node.type === 'shared_ref') ? (parseInt(node.props && node.props.sharedId, 10) || 0) : _sdNodeSharedSid(node);
+        if (!(sid > 0) || !_sdCoMayEditComp(sid)) return;
+        _sdCoEditing[sid] = true;
+        var c = _sharedCache[sid];
+        if (node.type === 'shared_ref') {
+            var first = c && c.tree && Array.isArray(c.tree.children) ? c.tree.children[0] : null;
+            if (!first) return;
+            selectedNode = first;
+            selectedNodes = [];
+        }
+        render();
+    }
+
+    // A selected place: its open elements carry a dashed outline.
+    function _sdCoOutline() {
+        if (!canvasDoc) return;
+        canvasDoc.querySelectorAll('.sd-co-open-el').forEach(function (el) { el.classList.remove('sd-co-open-el'); });
+        var at = _sdCoPlaceOf(selectedNode);
+        var wrap = at ? _findCanvasEl(selectedNode) : null;
+        if (!wrap) return;
+        var map = _sdCoNodeMap(at.sid);
+        wrap.querySelectorAll('[data-sd-id]').forEach(function (el) {
+            if (map[el.getAttribute('data-sd-id')]) el.classList.add('sd-co-open-el');
+        });
+    }
+
+    // On a place of a component with open fields: a click on an open
+    // element selects the place with the focus in its row; a double click on
+    // an open text types in place; a double click elsewhere in the component
+    // starts no editing (read-only). Taken before the elements' own handlers.
+    function _sdCoCanvasWire(wrapper, ref, sid) {
+        var hitOf = function (e) {
+            if (_sdCoEditing[sid] || e.ctrlKey || e.metaKey || e.shiftKey) return null;
+            var el = (e.target && e.target.closest) ? e.target.closest('[data-sd-id]') : null;
+            if (!el || el === wrapper || !wrapper.contains(el)) return null;
+            return { el: el, entries: _sdCoNodeMap(sid)[el.getAttribute('data-sd-id')] || null };
+        };
+        wrapper.addEventListener('click', function (e) {
+            var hit = hitOf(e);
+            if (!hit || !hit.entries) return;
+            e.stopPropagation();
+            e.preventDefault();
+            var row = hit.entries.filter(function (x) { return x.kind !== 'shown'; })[0] || hit.entries[0];
+            _sdCoFocus = row.id;
+            selectedNode = ref;
+            selectedNodes = [];
+            _sdSelectRender();
+        }, true);
+        wrapper.addEventListener('dblclick', function (e) {
+            var hit = hitOf(e);
+            if (!hit) return;
+            e.stopPropagation();
+            e.preventDefault();
+            var text = (hit.entries || []).filter(function (x) { return x.kind === 'text'; })[0];
+            if (!text || !_collab.mayEdit) return;
+            var inner = _sdWrapInner(hit.el) || hit.el;
+            var tag = wrapper.querySelector(':scope > .sd-tb .sd-tb-name');
+            if (tag) tag.textContent = (text.label || _sdT('Text')) + ' · ' + _sdT('This place');
+            _sdPartCall('overrides', 'typeIn', [inner, ref, sid, text.id]).catch(_sdPartFailed);
+        }, true);
     }
 
     // A held-back body put into a detached copy, with the bodies of the
@@ -37539,6 +37917,16 @@ const StyleDesigner = (function () {
         // would discard on save. The text row stays when the node has text —
         // that part IS theirs.
         if (_sdIsContentLevel() && !_sdCanEditNode(selectedNode)) {
+            // A place of a component with open fields: "This place" alone on
+            // a page that is theirs; under today's read-only box, its
+            // fields disabled, on one they may not change.
+            var _coAt = _sdCoPlaceOf(selectedNode);
+            var _coSect = _coAt ? '<div class="sd-tab-content">' + _sdCoPlaceSect(selectedNode, _coAt.sid, _sharedCache[_coAt.sid]) + '</div>' : '';
+            if (_coSect && _collab.mayEdit) {
+                panel.innerHTML = _coSect;
+                _sdCoFillPlace(panel, selectedNode);
+                return;
+            }
             var _roText  = _sdCanEditNode(selectedNode, 'text');
             var _roImage = _sdCanEditNode(selectedNode, 'image') ? _sdNodeImage(selectedNode) : null;
             // The translations of a text the operator may edit are theirs as
@@ -37573,6 +37961,11 @@ const StyleDesigner = (function () {
                           '</div></div></div>'
                         : '') +
                 '</div>';
+            if (_coSect) {
+                panel.insertAdjacentHTML('beforeend', _coSect);
+                _sdCoFillPlace(panel, selectedNode);
+            }
+            if (_sdCoLocked(selectedNode)) _sdCoLockPanel(panel, selectedNode);
             if (_roText) bindPropEvents();
             if (_roTr) _sdTrLoad(selectedNode);
             if (_roImage) {
@@ -37758,6 +38151,7 @@ const StyleDesigner = (function () {
         markModifiedProps();
         _sdStateAfter(panel);
         _sdTransBind(panel);
+        _sdTfBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -41663,6 +42057,7 @@ const StyleDesigner = (function () {
 
         return systemSection +
             (_cfg && sid > 0 ? _swPlacementSection(n, sid, _cfg, _placeOrderOpts) : '') +
+            (_cfg ? '' : _sdCoPlaceSect(n, sid, cached)) +
             sect('bi-puzzle-fill', _cfg ? _sdT('System Widget Record') : _sdT('Shared Component'),
                 nameHtml +
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
@@ -46096,11 +46491,22 @@ const StyleDesigner = (function () {
             ['__cart_total',                _sdT('Total — without the surcharge (currency)')],
             ['__cart_total_with_surcharge', _sdT('Total — with the surcharge (currency)')],
             ['__cart_total_charged',        _sdT('Amount charged — base currency and code')],
+            ['__cart_total_with_surcharge_charged', _sdT('Amount charged with the surcharge — base currency and code')],
             ['__currency_disclaimer',       _sdT('Exchange rate note (another currency)')]
         ]},
         { label: _sdT('Billing'), tokens: [
             ['__billing_name',          _sdT('Full Name')],
+            ['__billing_salutation',    _sdT('Salutation')],
+            ['__billing_first_name',    _sdT('First Name')],
+            ['__billing_last_name',     _sdT('Last Name')],
             ['__billing_company',       _sdT('Company')],
+            ['__billing_address_1',     _sdT('Address 1')],
+            ['__billing_address_2',     _sdT('Address 2')],
+            ['__billing_city',          _sdT('City')],
+            ['__billing_state',         _sdT('State / Province')],
+            ['__billing_zip',           _sdT('Zip / Postal Code')],
+            ['__billing_country',       _sdT('Country')],
+            ['__billing_fax',           _sdT('Fax')],
             ['__billing_address_html',  _sdT('Full address (<br> block)')],
             ['__billing_email',         _sdT('Email')],
             ['__billing_phone',         _sdT('Phone')],
@@ -50729,7 +51135,26 @@ const StyleDesigner = (function () {
             ['has_custom_field_2',         _sdT('Custom field 2 has a label')],
             ['has_po_number',              _sdT('A PO number was given')],
             ['is_tax_exempt',              _sdT('The order is tax-exempt')],
-            ['has_currency_choice', _sdT('The site offers more than one currency')]
+            ['has_currency_choice', _sdT('The site offers more than one currency')],
+            ['has_shipping_cost',          _sdT('Shipping is charged')],
+            ['no_surcharge',               _sdT('No card surcharge applies')],
+            ['has_applied_gift_cards',     _sdT('Gift cards are applied')],
+            ['can_purchase_in_totals',     _sdT('The order can be placed and has no recurring items')],
+            ['one_payment_method',         _sdT('Only one payment method is offered')],
+            ['has_installment_table',      _sdT('An installment table is offered')],
+            ['shows_custom_field_1',       _sdT('Custom field 1 has a label and a value')],
+            ['shows_custom_field_2',       _sdT('Custom field 2 has a label and a value')],
+            ['has_billing_form_title',     _sdT('The custom billing form has a title')],
+            ['billing_has_name',           _sdT('The billing address has a first name')],
+            ['billing_has_company',        _sdT('The billing address has a company')],
+            ['billing_has_address_1',      _sdT('The billing address has a first line')],
+            ['billing_has_address_2',      _sdT('The billing address has a second line')],
+            ['billing_has_city_line',      _sdT('The billing address has a city, state or zip code')],
+            ['billing_has_city',           _sdT('The billing address has a city')],
+            ['billing_has_country',        _sdT('The billing address has a country')],
+            ['billing_has_phone',          _sdT('The billing address has a phone number')],
+            ['billing_has_fax',            _sdT('The billing address has a fax number')],
+            ['billing_has_email',          _sdT('The billing address has an email address')]
         ],
         billing_information: [
             ['has_custom_field_1',   _sdT('Custom field 1 has a label')],
@@ -59092,8 +59517,9 @@ const StyleDesigner = (function () {
             row(_sdT('Animation'),   sel('placeholderAnim', [['',_sdT('None')],['glow',_sdT('Glow')],['wave',_sdT('Wave')]], p.placeholderAnim || '')) +
             '<div class="sd-sp-divider"></div>' +
             row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)) +
-            // The element's Transition, one value in every state.
-            (n === selectedNode && _sdStateNode() ? _sdTransRowsHtml(n) : ''),
+            // The element's Transition, one value in every state, and its
+            // Transform.
+            (n === selectedNode && _sdStateNode() ? _sdTransRowsHtml(n) + _sdTfRowsHtml(n) : ''),
             _sdT('Styling')
         );
 
@@ -66661,6 +67087,8 @@ const StyleDesigner = (function () {
             lbl.classList.add('sd-prop-modified');
             lbl.dataset.resetKind = 'trans';
         });
+        // 15. The element's Transform (_sdTfRowsHtml()): a row with its own value.
+        _sdTfMark(root);
 
         if (!live) return;
 
@@ -66719,6 +67147,13 @@ const StyleDesigner = (function () {
         if (kind === 'trans') {
             var _tc = propRow.querySelector('[data-sd-trans="what"], [data-sd-trans="ms"], [data-sd-trans="ease"]');
             if (_tc) _sdTransSet(_tc.getAttribute('data-sd-trans'), '');
+            return;
+        }
+        // A Transform row: its values out, in the chosen state.
+        if (kind === 'tf') {
+            var _tv = {};
+            String(propRow.getAttribute('data-sd-tf-keys') || '').split(',').forEach(function (k) { if (k) _tv[k] = ''; });
+            _sdTfSet(_tv);
             return;
         }
 
@@ -90915,6 +91350,8 @@ const StyleDesigner = (function () {
             { id: 'act_open_field', label: _sdT('Can change per place'), icon: 'bi-arrows-angle-expand', hint: getNodeLabel(selectedNode), action: function() { if (_sdCoMayOpen(selectedNode)) _sdCoOpen(selectedNode, null); } }
         ] : []).concat(_sdSimOffered(selectedNode) ? [
             { id: 'act_select_similar', label: _sdT('Select similar'), icon: 'bi-ui-checks-grid', meta: _sdMcKindName(selectedNode), hint: 'S', action: function() { if (_sdSimOffered(selectedNode)) _sdSimOpen(selectedNode); } }
+        ] : []).concat(((_sdCoPlaceOf(selectedNode) || _sdCoLocked(selectedNode)) && _sdCoMayEditComp(_sdCoPlaceOf(selectedNode) ? _sdCoPlaceOf(selectedNode).sid : _sdNodeSharedSid(selectedNode))) ? [
+            { id: 'act_edit_component', label: _sdT('Edit the component'), icon: 'bi-puzzle', hint: getNodeLabel(selectedNode), action: function() { _sdCoEditComponent(selectedNode); } }
         ] : []).concat([
             { id: 'act_copy', label: _sdT('Copy'), icon: 'bi-clipboard', hint: 'Ctrl+C', action: function() {
                 var _tc = selectedNodes.length > 1 ? selectedNodes.slice() : (selectedNode ? [selectedNode] : []);
@@ -90961,6 +91398,9 @@ const StyleDesigner = (function () {
             (_sdProto.open ? null : { id: 'act_a11y_view', label: _sdA11yState().on ? _sdT('Hide accessibility view') : _sdT('Show accessibility view'), icon: 'bi-universal-access', action: function () { _sdA11ySet(!_sdA11yState().on); } }),
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ]).filter(Boolean);
+
+        // The first tour, from its first stop (the part 'tour').
+        if (_sdPartUrls('tour')) items.push({ id: 'act_tour', label: _sdT('Take the tour'), icon: 'bi-signpost-2', action: function () { _sdTourStart(); } });
 
         // A sketch page selected in the Prototype view: its "Page details".
         var sketchId = _sdSketchSelected();
@@ -96786,6 +97226,7 @@ const StyleDesigner = (function () {
             _sdBlockSketch: _sdBlockSketch,
             _sdCanEditNode: _sdCanEditNode,
             _sdCanvasInnerOf: _sdCanvasInnerOf,
+            _sdCoEditComponent: _sdCoEditComponent,
             _sdCoWrite: _sdCoWrite,
             _sdCode: _sdCode,
             _sdCodeActiveTab: _sdCodeActiveTab,
@@ -96826,6 +97267,7 @@ const StyleDesigner = (function () {
             _sdPartCall: _sdPartCall,
             _sdPartFailed: _sdPartFailed,
             _sdPartUrls: _sdPartUrls,
+            _sdPickerReady: _sdPickerReady,
             _sdPreviewDocHtml: _sdPreviewDocHtml,
             _sdProtoClose: _sdProtoClose,
             _sdProtoCommentsFrame: _sdProtoCommentsFrame,
@@ -96842,6 +97284,7 @@ const StyleDesigner = (function () {
             _sdRevisionRestore: _sdRevisionRestore,
             _sdRevisionSourceLabel: _sdRevisionSourceLabel,
             _sdRevisionWhen: _sdRevisionWhen,
+            _sdSectHeadExtras: _sdSectHeadExtras,
             _sdSelectFound: _sdSelectFound,
             _sdSelectRender: _sdSelectRender,
             _sdSeoCheckBody: _sdSeoCheckBody,
@@ -97021,6 +97464,35 @@ const StyleDesigner = (function () {
         setTimeout(function () {
             _sdPartLoad('ai').catch(function () { /* the button asks again */ });
         }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
+    }
+
+    // ── The first tour ────────────────────────────────────────────────────
+    // The card "New here? A one-minute tour" and the tour it starts are the
+    // part 'tour' (assets/js/style_designer_tour.js). The core reads only
+    // whether the card was offered or this access's tour seen, from the
+    // browser key the model keeps (PGDesignerTour.key()), and loads the part
+    // when the card is due: a person who has seen it pays nothing.
+    function _sdTourDue() {
+        var uid = parseInt(_design && _design.userId, 10);
+        if (!(uid > 0) || !_sdPartUrls('tour')) return false;
+        var raw;
+        try { raw = window.localStorage.getItem('pg.designer.' + uid + '.tour'); } catch (e) { return false; }
+        var o = null;
+        try { o = raw ? JSON.parse(raw) : null; } catch (e) { o = null; }
+        if (!o || typeof o !== 'object') return true;
+        return !(o.offered === true || (o.seen && o.seen[_sdAccess()] === true));
+    }
+
+    function _sdTourInit() {
+        if (!_sdTourDue()) return;
+        // Once the page is drawn; the part waits for a quiet moment itself.
+        setTimeout(function () {
+            _sdPartCall('tour', 'offer', []).catch(function () { /* offered on the next visit */ });
+        }, 1200);
+    }
+
+    function _sdTourStart() {
+        _sdPartCall('tour', 'start', []).catch(_sdPartFailed);
     }
 
     // ── Canvas guides: Measure ────────────────────────────────────────────
@@ -97424,6 +97896,7 @@ const StyleDesigner = (function () {
             }
             _sdAiPartInit();
             _sdClicksPartInit();
+            _sdTourInit();
         },
         getTree: function () { return tree; },
         getTreeJSON: function () { return JSON.stringify(tree); },

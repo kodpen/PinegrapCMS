@@ -811,6 +811,41 @@ JS;
 	pg_assert_same('circle(50%)', $got['revealAfter'], 'its own clip again');
 }
 
+// An effect on a node whose stylesheet gives it a transform (a skew of
+// the Options panel's Transform, a centring class) is composed after that
+// transform, not put in its place, and the node gets no inline transform
+// back; a node with no transform of its own moves as before.
+function test_designer_fx_script_keeps_the_stylesheet_transform()
+{
+	$fake = _test_fx_fake_dom() . <<<'JS'
+window.getComputedStyle = function (el) { return { display: 'block', position: 'static', transform: el.attrs['data-own'] || 'none' }; };
+var skewed = new El({ 'data-pg-fx': 'scale', 'data-pg-fx-trigger': 'hover', 'data-own': 'matrix(1, 0, 0.0875, 1, 0, 0)' });
+var plain = new El({ 'data-pg-fx': 'scale', 'data-pg-fx-trigger': 'hover' });
+nodes.push(skewed, plain);
+JS;
+	$steps = <<<'JS'
+var out = {};
+timers = [];
+window.pgFx.replay(skewed);
+out.during = skewed.style.transform;
+timers.shift()(); timers.shift()();
+out.after = skewed.style.transform;
+timers = [];
+window.pgFx.replay(plain);
+out.plain = plain.style.transform;
+console.log(JSON.stringify(out));
+JS;
+	$script = $fake . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps;
+	$got = _test_fx_node($script);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same('matrix(1, 0, 0.0875, 1, 0, 0) scale(1.05)', $got['during'], 'the effect on top of the stylesheet transform');
+	pg_assert_same('', $got['after'], 'no inline transform left: the stylesheet applies again');
+	pg_assert_same('scale(1.05)', $got['plain'], 'a node with none moves as before');
+}
+
 // The scroll-linked effects on a fake page 800 px high: each frame puts
 // the node at its point between the start and its own state, measured
 // without the shift or scale it already has (no drift on a scroll that

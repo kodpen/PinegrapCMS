@@ -226,3 +226,52 @@ function test_designer_option_states_transition()
 	pg_assert_true($r['badWhat'], 'only the four choices');
 	pg_assert_same(array(true, false), $r['maybe']);
 }
+
+// The element's Transform: Move, Scale, Rotate, Skew and Origin written on
+// the custom style class or a state's rule, read back, a state's pair
+// following Normal on the axis it took from it, values no row reads kept.
+function test_designer_option_states_transform()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.tfWrite(base, c, "", "r", "-6");'
+		. 'a = S.tfWrite(a, c, "", "tx", "10");'
+		. 'var h = S.tfWrite(a, c, "hover", "ty", "-2");'
+		. 'h = S.tfWrite(h, c, "hover", "s", "1.02");'
+		. 'var m = S.tfWrite(h, c, "", "tx", "20");'
+		. 'var o = S.tfWrite(S.tfWrite(a, c, "", "o", "0"), c, "", "skx", "5");'
+		. 'var back = S.tfWrite(S.tfWrite(h, c, "hover", "ty", ""), c, "hover", "s", "");'
+		. 'var zero = S.tfWrite(S.tfWrite(a, c, "", "r", "0"), c, "", "tx", "");'
+		. 'var foreign = base.replace("color: red;", "color: red;\n  transform: translate(-50%, -50%);");'
+		. 'console.log(JSON.stringify({ a: a, h: h, readA: S.tfRead(a, c, ""), readH: S.tfRead(h, c, "hover"),'
+		. ' countH: S.count(S.read(h, c, "hover")), sect: S.sections(h, c).styling, readM: S.tfRead(m, c, "hover"),'
+		. ' readO: S.tfRead(o, c, ""), o: o, back: back, zero: zero,'
+		. ' foreign: S.tfWrite(foreign, c, "", "skx", "4") === foreign, foreignRead: S.tfRead(foreign, c, "").skx,'
+		. ' em: S.tfRead(S.tfWrite(base, c, "", "ty", "1.5rem"), c, "").ty, bad: S.tfWrite(base, c, "", "tx", "wide") === base,'
+		. ' big: S.tfRead(S.tfWrite(base, c, "", "s", "40"), c, "").s, maybe: [S.tfMaybe(a, c), S.tfMaybe(base, c)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  rotate: -6deg;\n  translate: 10px 0px;\n}\n", $r['a'], 'Normal writes on the class, a bare number is px');
+	pg_assert_true(strpos($r['h'], ".pgs-abc123:hover {\n  translate: 10px -2px;\n  scale: 1.02;\n}") !== false, 'a state takes Normal\'s other axis');
+	pg_assert_same(array('tx' => '10px', 'ty' => '0px', 's' => '', 'r' => -6, 'skx' => '', 'sky' => '', 'o' => ''), $r['readA']);
+	pg_assert_same(array('tx' => '10px', 'ty' => '-2px', 's' => 1.02, 'r' => '', 'skx' => '', 'sky' => '', 'o' => ''), $r['readH']);
+	pg_assert_same(2, $r['countH'], 'Move and Scale count as two rows of the state');
+	pg_assert_same(array('hover'), $r['sect'], 'Shadow and effect is ringed');
+	pg_assert_same('20px', $r['readM']['tx'], 'the state follows a change of Normal on the axis it took');
+	pg_assert_same('-2px', $r['readM']['ty']);
+	pg_assert_same(0, $r['readO']['o']);
+	pg_assert_same(5, $r['readO']['skx']);
+	pg_assert_true(strpos($r['o'], 'transform-origin: 0% 0%;') !== false && strpos($r['o'], 'transform: skew(5deg, 0deg);') !== false);
+	pg_assert_same($r['a'], $r['back'], 'a state emptied goes with its rule');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n}\n", $r['zero'], 'Normal\'s defaults are not written');
+	pg_assert_true($r['foreign'], 'a transform no row reads is not written over');
+	pg_assert_same('', $r['foreignRead']);
+	pg_assert_same('1.5rem', $r['em']);
+	pg_assert_true($r['bad'], 'a length the field cannot read writes nothing');
+	pg_assert_same(10, $r['big'], 'Scale is kept to 10');
+	pg_assert_same(array(true, false), $r['maybe']);
+}

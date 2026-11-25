@@ -24,5 +24,5 @@ description: Decisions made, product part 111 (2026-11-25 on): the Sketch tool's
 - Why: a customer looking at the designer asked why the parts were wrapped, and it took explaining.
 
 ## What follows for the canvas? (architect, 2026-11-25)
-- Drawn on boards Q1 to Q4 of `designer/designer-shared-marks-drawing.md`; built by step SM1 of `plans/designer-shared-marks.md`.
+- Drawn on boards Q1 to Q4 of `designer/designer-shared-marks-drawing.md`; built in #11662.
 - The switch "Shared parts" is off at first: the default is the page with no marks, and a designer who wants the parts lit turns it on once.

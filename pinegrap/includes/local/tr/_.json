@@ -1026,6 +1026,7 @@
     "{var:1} days ago": "{var:1} gün önce",
     "{var:1} days back": "{var:1} gün geride",
     "{var:1} days before · {var:2}": "{var:1} gün önce · {var:2}",
+    "{var:1} days late": "{var:1} gün gecikti",
     "{var:1} days left": "{var:1} gün kaldı",
     "{var:1} days off": "{var:1} tatil günü",
     "{var:1} days overdue": "{var:1} gün gecikmiş",
