@@ -249,3 +249,25 @@ function test_page_form_sitemap_type()
 	pg_assert_true(!pg_page_form_sitemap_type('logout'));
 	pg_assert_true(!pg_page_form_sitemap_type('checkout'));
 }
+
+// A draft stays in the Drafts folder (9): the Folder field is the folder it
+// goes to when published, written to page_drafts, never to page_folder.
+function test_page_form_folder_write_keeps_a_draft_in_drafts()
+{
+	pg_assert_same(array('page_folder' => 9, 'draft_folder' => 6), pg_page_form_folder_write('6', 9, 9), 'a draft keeps its folder');
+	pg_assert_same(array('page_folder' => 6, 'draft_folder' => null), pg_page_form_folder_write('6', 3, 9), 'a live page moves');
+	pg_assert_same(array('page_folder' => 6, 'draft_folder' => null), pg_page_form_folder_write('6', 3, 0), 'no Drafts folder');
+	pg_assert_same(array('page_folder' => 6, 'draft_folder' => null), pg_page_form_folder_write('6', 0, 0), 'no Drafts folder, no stored folder');
+}
+
+// The edit screen shows a draft's return folder and writes through the helper.
+function test_page_form_edit_page_keeps_a_draft()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_page.php');
+
+	pg_assert_contains('pg_page_draft_publish_folder(', $source, 'the field shows the folder the draft returns to');
+	pg_assert_contains('pg_page_form_folder_write(', $source, 'the save decides the folder through the helper');
+	pg_assert_contains("page_folder = '\" . (int) \$folder_write['page_folder'] . \"',", $source, 'page_folder comes from the helper');
+	pg_assert_false(strpos($source, "page_folder = '\" . escape(\$_POST['folder']") !== false, 'the posted folder is not written straight');
+	pg_assert_contains('INSERT INTO page_drafts', $source, 'the return folder goes to page_drafts');
+}
