@@ -990,6 +990,38 @@ body.sd-email-design .sd-bp-bar .sd-bp-zsep-mode { display:none; }
 .sd-vb-menu .sd-vb-row:hover { background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
 .sd-vb-menu .sd-vb-row:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
 .sd-vb-menu .sd-vb-row .bi { color:var(--sd-text-muted); }
+/* A line between groups of rows; a row with no room, its reason under it. */
+.sd-vb-menu .sd-vb-menu-line { height:1px; margin:6px 4px; background:var(--sd-panel-border); }
+.sd-vb-menu .sd-vb-row.sd-vb-row-off { opacity:.5; cursor:default; }
+.sd-vb-menu .sd-vb-row.sd-vb-row-off:hover { background:none; }
+.sd-vb-menu .sd-vb-row-why {
+    max-width:15.5rem; padding:0 8px 6px 34px; font-size:.72rem; line-height:1.35;
+    color:var(--sd-text-muted);
+}
+.sd-vb-menu .sd-vb-row-why[hidden] { display:none; }
+
+/* Side by side (the part 'mirror'): the canvas area gives up the strip on
+   its right, where each mirror has a 28 px head, 6 px, then its box. */
+.sd-canvas.sd-side-on { background-color:#22262b; }
+.sd-canvas.sd-side-on .sd-iframe-area { margin:12px var(--sd-side-w, 0px) 12px 12px; }
+.sd-side {
+    position:absolute; display:flex; gap:12px; padding:12px; box-sizing:border-box;
+    width:var(--sd-side-w, 0px); background-color:#22262b; z-index:4;
+}
+.sd-side-col { display:flex; flex-direction:column; flex:0 0 auto; min-height:0; }
+.sd-side-head { display:flex; align-items:center; height:28px; margin-bottom:6px; }
+.sd-side-w {
+    display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 8px;
+    border:1px solid transparent; border-radius:6px; background:none;
+    color:#e6e8eb; font-size:.75rem; white-space:nowrap;
+}
+.sd-side-w .bi { color:#9aa1a9; }
+button.sd-side-w:hover { background:rgba(255,255,255,.08); }
+button.sd-side-w:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
+.sd-side-w .sd-side-caret { font-size:.6rem; }
+.sd-side-box { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; background:#fff; }
+.sd-side-menu .sd-side-note { color:var(--sd-text-muted); font-size:.72rem; }
+.sd-side-menu .sd-side-tick { width:1em; color:var(--sd-accent); }
 .sd-vb-menu .sd-vb-row-lbl { flex:1; }
 .sd-vb-menu .sd-vb-kbd {
     padding:0 5px; border:1px solid var(--sd-input-border); border-radius:4px;

@@ -178,7 +178,7 @@ function test_mirror_is_a_part()
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_mirror.min.js', isset($parts['mirror']) ? $parts['mirror'] : null, 'mirror part listed');
 	$bundles = pg_js_bundles();
-	pg_assert_same(array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'), $bundles['assets/js/style_designer_mirror.min.js'], 'mirror bundle sources');
+	pg_assert_same(array('assets/js/pg_designer_tour.js', 'assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'), $bundles['assets/js/style_designer_mirror.min.js'], 'mirror bundle sources');
 	pg_assert_false(in_array('assets/js/style_designer_mirror.js', $bundles['assets/js/style_designer.min.js'], true), 'not in the core bundle');
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_false(strpos($core, 'PGMirrorSchedule') !== false, 'the core holds no scheduling');
@@ -188,4 +188,76 @@ function test_mirror_is_a_part()
 function test_mirror_is_handed_to_every_editor()
 {
 	pg_assert_true(in_array('mirror', pg_designer_parts_for(array()), true), 'handed with no condition');
+}
+
+// One function of style_designer.src.js, from its declaration to its
+// closing brace.
+function mirror_test_core_fn($name)
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$start = strpos($js, "\n    function " . $name . '(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start + 6);
+}
+
+// The mirrors' widths: a phone and a tablet unless two of the bar's five
+// differing widths are kept; an e-mail design has the phone alone.
+function test_mirror_side_widths()
+{
+	$fn = mirror_test_core_fn('_sdSideWidths');
+	pg_assert_true($fn !== '', 'style_designer.src.js has _sdSideWidths()');
+	$out = mirror_test_node($fn . "\nout = [_sdSideWidths('', false), _sdSideWidths('576,992', false), _sdSideWidths('768,768', false), _sdSideWidths('375,1400', false), _sdSideWidths('576,992', true), _sdSideWidths(null, false)];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(array(375, 768), array(576, 992), array(375, 768), array(375, 768), array(375), array(375, 768)), $out, 'widths');
+}
+
+// The row's room: boxes of 200 and 280, 12 px around and between, a canvas
+// of at least 400; three need a column of 928 px, an e-mail design 636.
+function test_mirror_side_layout_needs_room()
+{
+	$fn = mirror_test_core_fn('_sdSideLayout');
+	pg_assert_true($fn !== '', 'style_designer.src.js has _sdSideLayout()');
+	$out = mirror_test_node($fn . "\nout = [_sdSideLayout(930, [375, 768]), _sdSideLayout(927, [375, 768]), _sdSideLayout(928, [375, 768]), _sdSideLayout(636, [375]), _sdSideLayout(635, [375]), _sdSideLayout(2000, [992, 1200]), _sdSideLayout(1000, [])];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('boxes' => array(200, 280), 'side' => 516, 'canvas' => 402, 'fits' => true), $out[0], 'the drawing\'s 1440 px window');
+	pg_assert_false($out[1]['fits'], 'one pixel short');
+	pg_assert_true($out[2]['fits'], 'three fit in 928');
+	pg_assert_same(array('boxes' => array(200), 'side' => 224, 'canvas' => 400, 'fits' => true), $out[3], 'an e-mail design in 636');
+	pg_assert_false($out[4]['fits'], 'an e-mail design one pixel short');
+	pg_assert_same(array(280, 280), $out[5]['boxes'], 'wide widths take 280');
+	pg_assert_false($out[6]['fits'], 'no mirror, no row');
+}
+
+// A head's list: the five widths, the shown one ticked, the canvas's and the
+// other mirror's dimmed; choosing a dimmed one changes nothing.
+function test_mirror_size_list()
+{
+	$out = mirror_test_node("out = { list: M.sizes([375, 768], 0, 1200), full: M.sizes([375, 768], 1, 0), pick: M.pick([375, 768], 0, 576, 1200), other: M.pick([375, 768], 0, 768, 1200), canvas: M.pick([375, 768], 1, 1200, 1200), outline: M.clean('a sd-outline-grid sd-grid-overlay b') };");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('w' => 375, 'on' => true, 'where' => ''),
+		array('w' => 576, 'on' => false, 'where' => ''),
+		array('w' => 768, 'on' => false, 'where' => 'other'),
+		array('w' => 992, 'on' => false, 'where' => ''),
+		array('w' => 1200, 'on' => false, 'where' => 'canvas'),
+	), $out['list'], 'the phone mirror\'s list beside a 1200 canvas');
+	pg_assert_same('other', $out['full'][0]['where'], 'Full width dims none for the canvas');
+	pg_assert_same('', $out['full'][4]['where'], 'Full width is not 1200');
+	pg_assert_same(array(576, 768), $out['pick'], 'a free width is taken');
+	pg_assert_same(array(375, 768), $out['other'], 'the other mirror\'s width is refused');
+	pg_assert_same(array(375, 768), $out['canvas'], 'the canvas\'s width is refused');
+	pg_assert_same('a b', $out['outline'], 'Outline and the grid are not drawn in a mirror');
 }

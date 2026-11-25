@@ -2964,6 +2964,7 @@
     "Not enough data": "Yeterli veri yok",
     "Not enough history": "Yeterli geçmiş yok",
     "Not enough parcels yet": "Henüz yeterli gönderi yok",
+    "Not enough room here. Close a side panel or use a wider window.": "Burada yeterli yer yok. Bir yan paneli kapatın ya da daha geniş bir pencere kullanın.",
     "Not enough stock. Available: {var:1}": "Yeterli stok yok. Mevcut: {var:1}",
     "Not enough visits yet.": "Henüz yeterli ziyaret yok.",
     "Not enough visits yet: about {var:1} more for each version.": "Henüz yeterli ziyaret yok: her sürüm için yaklaşık {var:1} ziyaret daha gerekiyor.",
