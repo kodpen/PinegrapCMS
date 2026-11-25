@@ -613,6 +613,7 @@
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 - designer-theme-panel-value-check.md: What the Themes panel's text boxes write: one CSS value only (no ; { } < > comment, backslash or open bracket or quote), a colour row also a colour by CSS.supports; a refused box stays marked.
 - designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
+- designer-tips-off.md: The Help window's "Tips" switch off hides every first-use line in the designer, the older lines with their own browser keys included (#11711, #11723)
 - designer-toast-phone-width.md: Visual designer toasts (sdToast()) on a phone-width editor span the screen with 12 px at each side so a long message wraps inside it (#10072)
 - designer-tree-move-keeps-selection.md: Dragging rows in the designer's Overview tree: which picked rows move (#10169) and the moved elements stay selected, as on the canvas (#10067).
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
