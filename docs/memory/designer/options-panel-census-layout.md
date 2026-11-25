@@ -4,7 +4,7 @@ description: Options panel census, part 2: gaps to place and size an element (gr
 ---
 
 ## Grid tracks and areas?
-- Today Display offers Grid (`d-grid`) and Layout's Gap works on it, but no row sets the tracks: `grid-template-columns` and `-rows` are typed in "This element". Missing: a Columns and Rows row (count, equal or fixed sizes, auto-fit with a minimum width), per size. M. Reads `--bs-gutter-x` and the spacing steps for the gap; none for tracks.
+- Columns and Rows on a grid box are built (DO4, `designer-grid-columns-rows.md`): a count, equal or fixed sizes, "As many as fit" with a smallest width, per size. Gap is Layout's Gap.
 - A child cannot span or be placed: `grid-column`, `grid-row`, named areas are code only. Missing: Span columns, Span rows, Start, and named areas drawn as a small grid. M (areas), S (span and start once tracks exist). Reads none.
 
 ## Position and layer order?
