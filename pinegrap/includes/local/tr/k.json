@@ -148,6 +148,7 @@
     "Kept encrypted with the site's key and never shown again.": "Sitenin anahtarıyla şifreli saklanır ve bir daha gösterilmez.",
     "Kept encrypted with the site's key and never shown again. While forms use this provider, changed keys are checked with it before they are saved.": "Sitenin anahtarıyla şifrelenerek saklanır ve bir daha gösterilmez. Formlar bu sağlayıcıyı kullanırken değiştirilen anahtarlar kaydedilmeden önce sağlayıcıyla denetlenir.",
     "Kept for": "Saklama süresi",
+    "Kept for {var} and up.": "{var} ve üstü için geçerli.",
     "Kept in": "Tutulduğu yer",
     "Kept in a password manager or cloud account, so your other devices can use it too.": "Bir parola yöneticisinde ya da bulut hesabında saklanır; diğer cihazlarınız da kullanabilir.",
     "Kept in each record": "Her kaydın kendi içinde",

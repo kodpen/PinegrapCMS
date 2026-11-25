@@ -59039,6 +59039,11 @@ const StyleDesigner = (function () {
             ratio: function (v) { return _sdRatioCss(v) || ''; },
             ratioOf: function (n) { return _sdAspectOf(n.props, n.type === 'content' && n.props.contentType === 'image'); },
             setSize: _sdSpSizeSet,
+            // A grid child's box, for its "Area" (the part 'grid').
+            parentOf: function (n) {
+                var p = n ? _sdAnyParent(n) : null;
+                return p ? p.parent : null;
+            },
             commit: function (next, changes) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
                 if (_sdPanelLockReason(nodes)) return;

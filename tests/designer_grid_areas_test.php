@@ -155,3 +155,25 @@ JS
 	pg_assert_same(array('filters', 'classes', 'footer'), $r['oneRow']['gone'], 'an area left with no cell is removed');
 	pg_assert_same(array(array(), array()), array($r['more']['cut'], $r['more']['gone']), 'more tracks arrive as free cells');
 }
+
+// The part draws the Areas row and a child's Area; the part's bundle.
+function test_designer_grid_areas_wiring()
+{
+	$parts = pg_designer_part_files();
+	pg_assert_same(array('assets/js/pg_grid_tracks.js', 'assets/js/pg_grid_areas.js', 'assets/js/style_designer_grid.js'),
+		isset($parts['grid']['sources']) ? $parts['grid']['sources'] : null, 'the areas model loads with the grid part');
+
+	$part = (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_grid.js');
+	foreach (array('Areas', 'Area', 'Remove area', 'Reset this size', 'Drag across the cells to make an area.',
+		'Areas cannot overlap. An area is one rectangle of free cells.', 'This name is taken.',
+		'Use letters, digits, - and _, starting with a letter.',
+		'Placed by its area. Choose “None” to place it by column and row.') as $key) {
+		pg_assert_true(strpos($part, "_sdT('" . $key . "'") !== false, 'the part says ' . $key);
+	}
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_true(strpos($src, 'parentOf: function (n) {') !== false, 'the size host hands the part a child\'s grid box');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	pg_assert_true(strpos($css, '.sd-ga-grid') !== false, 'the small grid has its look');
+}
