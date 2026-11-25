@@ -268,6 +268,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_prototype_approval();      // 11.0.276
 	upgrade_2026_11_0_security_finding();        // 11.0.277
 	upgrade_2026_11_0_launch_summary_answer_kind(); // 11.0.278
+	upgrade_2026_11_0_form_old_address();        // 11.0.279
 
 }
 
@@ -9468,5 +9469,30 @@ function upgrade_2026_11_0_launch_summary_answer_kind() {
 	install_add_column('launch_summary_lines', 'answer_kind', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER line_text");
 
 	install_note('Set-up journey: a line of the agency summary can ask the customer for one file or several files instead of a text answer.');
+
+}
+
+// 11.0.279 - The earlier address names of a record (includes/fn/
+// record_old_address.php): a post or category renamed keeps answering at its
+// old pretty address with a 301 to the address of today. One row per earlier
+// name: form_id the record (forms.id), page_id its custom form's page
+// (forms.page_id), address_name the name it had, in the collation of
+// forms.address_name so a lookup compares as the live one does; created_at
+// in Unix seconds. idx_lookup finds a name on a form page, idx_form a
+// record's rows. Nothing is backfilled: names are kept from the upgrade on.
+function upgrade_2026_11_0_form_old_address() {
+
+	install_create_table('form_old_address', "CREATE TABLE form_old_address (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		form_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		address_name  VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_lookup (page_id, address_name(191)),
+		KEY idx_form (form_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Collections: a renamed post or category keeps answering at its old address.');
 
 }

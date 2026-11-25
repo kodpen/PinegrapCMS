@@ -15896,7 +15896,9 @@ const StyleDesigner = (function () {
         '__quick_add_label':          ['quick_add_label',          _sdT('Quick Add')],
         '__special_offer_code_label': ['special_offer_code_label', _sdT('Special Offer Code')],
         '__update_button_label':      ['update_button_label',      _sdT('Update')],
-        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')]
+        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')],
+        // The express order's purchase button (its default label).
+        '__purchase_now_button_label': ['purchase_button_label',   _sdT('Place Order')]
     };
     // What a token with no sample of its own previews as: its name, readable
     // and in angle quotes ("‹Billing city›" for __billing_city, the field's
@@ -34915,7 +34917,8 @@ const StyleDesigner = (function () {
         // A Style or Advanced section opens by its rule when it holds for
         // every element (_sdOptOpenByDefault()).
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
-            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
+            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex,
+                snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem, visit: false };
         });
         // Layout's rows follow the same context; a row any element holds a
         // value in is drawn (rowCss()).
@@ -35252,6 +35255,7 @@ const StyleDesigner = (function () {
                 }
                 var val = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value;
                 _sdMcCommit(nodes, function (n) { _sdMcWrite(n, s, val); });
+                _sdSnapEnsure(val);
             });
         });
 
@@ -36640,6 +36644,8 @@ const StyleDesigner = (function () {
             text: _sdOptIsText(n.type, p.tag, p.contentType),
             flex: _sdOptIsFlex(n.type, p.cssClass),
             parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            snapBox: _sdSnapBox(n.type, p.cssClass),
+            snapItem: !!(par && _sdSnapBox(par.type, (par.props || {}).cssClass)),
             visit: _sdCondRowsOf(n).length > 0
         };
     }
@@ -39994,6 +40000,7 @@ const StyleDesigner = (function () {
                     eo_address_book_shipping:  _sdT('Saved Addresses (shipping)'),
                     eo_upsell_offers:          _sdT('Upsell Offers (alert strip)'),
                     eo_applied_offers:         _sdT('Applied Offers (promotions active in the cart)'),
+                    eo_payment_periods:        _sdT('Recurring Totals (one line per payment period)'),
                     eo_totals:                 _sdT('Order Totals'),
                     eo_submit_button:          _sdT('Complete the Order button'),
                     eo_update_button:          _sdT('Update button')
@@ -45868,7 +45875,27 @@ const StyleDesigner = (function () {
             // container.
             ['__item_has_low_stock',              _sdT('Low stock flag (for visibility)')],
             ['__item_stock_warning',              _sdT('Low stock message (e.g. "Only 3 left")')],
-            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')]
+            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')],
+            // The row's parts alone, for a classic layout's cells.
+            ['__item_form_data_html',             _sdT('Product form fields (HTML)')],
+            ['__item_gift_card_html',             _sdT('Gift card recipient fields (HTML)')],
+            ['__item_recurring_schedule_html',    _sdT('Payment schedule fields (HTML)')],
+            ['__item_recurring_period',           _sdT('Payment period of a recurring product')],
+            ['__item_out_of_stock_message',       _sdT('Out of stock message')],
+            ['__item_calendar_event_name',        _sdT('Reserved calendar event')],
+            ['__item_calendar_event_dates',       _sdT('Reserved event date and time')]
+        ]},
+        { label: _sdT('Classic express order page'), tokens: [
+            ['__shopping_cart_label',             _sdT('The page\'s word for the cart')],
+            ['__update_button_label',             _sdT('Update button label')],
+            ['__purchase_now_button_label',       _sdT('Purchase button label')],
+            ['__special_offer_code_label',        _sdT('Offer code label')],
+            ['__special_offer_code_message',      _sdT('Offer code message')],
+            ['__retrieve_order_url',              _sdT('Address that restores this cart later')],
+            ['__currency_code',                   _sdT('Currency code shown beside amounts (empty when the site shows none)')],
+            ['__currency_selector',               _sdT('Currency pick list (its own form)')],
+            ['__opt_in_label',                    _sdT('E-mail opt-in label')],
+            ['__tax_exempt_label',                _sdT('Tax exemption label')]
         ]}
     ];
 
@@ -49522,7 +49549,35 @@ const StyleDesigner = (function () {
             ['has_shipping_cost',    _sdT('There is a shipping cost')],
             ['has_gift_card',        _sdT('A gift card is applied')],
             ['has_surcharge',        _sdT('There is a card surcharge')],
-            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')]
+            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')],
+            // A classic express order layout's two tables, totals and
+            // payment part; the row flags are the cart's.
+            ['has_today_items',             _sdT('Something is charged today')],
+            ['has_today_non_donations',     _sdT('Something other than a donation is charged today')],
+            ['has_recurring_products',      _sdT('The cart has a recurring product, charged today or later')],
+            ['has_no_recurring_products',   _sdT('The cart has no recurring product')],
+            ['has_recurring_non_donations', _sdT('A recurring product is not a donation')],
+            ['has_special_offer_code',      _sdT('The offer code box is shown')],
+            ['has_currency_code',           _sdT('A currency code is shown beside amounts')],
+            ['has_subtotal_line',           _sdT('A discount, tax, shipping or gift card comes between subtotal and total')],
+            ['has_payment',                 _sdT('Something is to be paid')],
+            ['has_gift_card_code',          _sdT('Gift cards are accepted')],
+            ['can_update_contact',          _sdT('The buyer is signed in')],
+            ['has_referral_sources',        _sdT('The site lists referral sources')],
+            ['cart_item_today',                       _sdT('Row: charged today')],
+            ['cart_item_recurring',                   _sdT('Row: a recurring product')],
+            ['cart_item_recurring_only',              _sdT('Row: a recurring product first charged later')],
+            ['cart_item_donation',                    _sdT('Row: a donation')],
+            ['cart_item_not_donation',                _sdT('Row: not a donation')],
+            ['cart_item_added_by_offer',              _sdT('Row: added by an offer (quantity fixed)')],
+            ['cart_item_quantity_editable',           _sdT('Row: the visitor may change the quantity')],
+            ['cart_item_recurring_quantity_fixed',    _sdT('Row: among recurring charges, the quantity is not changed here')],
+            ['cart_item_recurring_quantity_editable', _sdT('Row: among recurring charges, the quantity is changed here')],
+            ['cart_item_recurring_donation',          _sdT('Row: among recurring charges, a donation whose amount is changed here')],
+            ['cart_item_recurring_amount',            _sdT('Row: among recurring charges, the amount is shown as text')],
+            ['cart_item_has_image',                   _sdT('Row: the product has an image')],
+            ['cart_item_out_of_stock',                _sdT('Row: the product is out of stock')],
+            ['cart_item_has_calendar_event',          _sdT('Row: a reservation for a calendar event')]
         ],
         shopping_cart: [
             ['has_items',            _sdT('The cart has items')],
@@ -52365,8 +52420,66 @@ const StyleDesigner = (function () {
             row(_sdT('Sticky position'), posH) +
             row(_sdT('Theme'), themeH) +
             row(_sdT('Expand at'), expH) +
-            _sdSmartActiveRows(n)
+            _sdSmartActiveRows(n) +
+            _sdNavScrollRows(n)
         );
+    }
+
+    // A menu's two scroll rows. Both write attributes only (props._attrs),
+    // printed by both renderers as they are; each marker brings
+    // assets/js/pg_page_scroll.js to the page (pg_page_scroll_pattern()).
+    // "Mark the section in view" is data-pg-spy: the script makes the menu
+    // the target of Bootstrap's scrollspy on the body. "After scrolling" is
+    // data-pg-scrolled="<px>" with data-pg-scrolled-class, the Bootstrap
+    // classes the menu takes past that distance. Off writes nothing.
+    var _SD_NAV_SCROLLED_AT = 80;
+    var _SD_NAV_SCROLLED_DEFAULT = 'shadow py-1';
+    // The kind of a scrolled class: its own list in the panel.
+    function _sdNavScrolledKind(c) {
+        if (/^bg-(?!opacity|gradient)/.test(c) || /^navbar-(?:dark|light)$/.test(c)) return 'bg';
+        if (/^shadow(?:-|$)/.test(c)) return 'shadow';
+        if (/^p[ytb]-/.test(c)) return 'height';
+        return '';
+    }
+    // The class list split into its three lists; what fits none is dropped.
+    function _sdNavScrolledParts(cls) {
+        var out = { bg: [], shadow: [], height: [] };
+        String(cls || '').split(/\s+/).forEach(function (c) {
+            var k = c ? _sdNavScrolledKind(c) : '';
+            if (k && out[k].indexOf(c) === -1) out[k].push(c);
+        });
+        return { bg: out.bg.join(' '), shadow: out.shadow.join(' '), height: out.height.join(' ') };
+    }
+    // The one writer of data-pg-scrolled-class: one list's value changed.
+    function _sdNavScrolledClass(cls, part, value) {
+        var p = _sdNavScrolledParts(cls);
+        if (Object.prototype.hasOwnProperty.call(p, part)) p[part] = String(value || '').trim();
+        return [p.bg, p.shadow, p.height].filter(Boolean).join(' ');
+    }
+    function _sdNavScrollRows(n) {
+        var hint = function (t) { return '<div style="font-size:.66rem;color:#888;margin:-2px 0 4px">' + esc(t) + '</div>'; };
+        var h = row(_sdT('Mark the section in view'), swAttr('data-nav-spy', _sdAttr(n, 'data-pg-spy') !== null)) +
+            hint(_sdT('For a one-page menu: the link of the section on screen is marked active.'));
+        var at = _sdAttr(n, 'data-pg-scrolled');
+        h += row(_sdT('After scrolling'), swAttr('data-nav-scrolled', at !== null));
+        if (at === null) return h + hint(_sdT('Changes the menu once the page is scrolled down.'));
+        var parts = _sdNavScrolledParts(_sdAttr(n, 'data-pg-scrolled-class'));
+        var list = function (part, opts) {
+            var v = parts[part], known = opts.some(function (o) { return o[0] === v; });
+            if (!known) opts = opts.concat([[v, v]]);
+            return '<select class="form-control form-control-sm" data-nav-scrolled-part="' + part + '">' +
+                opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                '</select>';
+        };
+        var px = parseInt(at, 10);
+        h += row(_sdT('Distance'), '<input type="number" class="form-control form-control-sm" min="0" max="5000" step="10" data-nav-scrolled-at value="' +
+            (isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.max(0, px)) + '" aria-label="' + esc(_sdT('Distance in pixels')) + '">');
+        h += row(_sdT('Background'), list('bg', [['', _sdT('Unchanged')], ['bg-body', _sdT('Page colour')], ['bg-body-tertiary', _sdT('Light')],
+            ['bg-dark navbar-dark', _sdT('Dark')], ['bg-primary navbar-dark', _sdT('Primary')]]));
+        h += row(_sdT('Shadow'), list('shadow', [['', _sdT('Unchanged')], ['shadow-none', _sdT('None')], ['shadow-sm', _sdT('Small')],
+            ['shadow', _sdT('Regular')], ['shadow-lg', _sdT('Large')]]));
+        h += row(_sdT('Height'), list('height', [['', _sdT('Unchanged')], ['py-1', _sdT('Smaller')], ['py-0', _sdT('Smallest')]]));
+        return h;
     }
 
     // Smart active state (props.smartActive): an opt-in switch on navigation
@@ -57476,7 +57589,11 @@ const StyleDesigner = (function () {
             order:        [_sdT('Flex Order'),      'order-',           orderValues],
             grow:         [_sdT('Grow'),            'flex-',            growValues],
             shrink:       [_sdT('Shrink'),          'flex-',            shrinkValues],
-            fill:         [_sdT('Fill'),            'flex-',            fillValues]
+            fill:         [_sdT('Fill'),            'flex-',            fillValues],
+            // Scroll snap (_SD_SNAP_CLASSES): one value for every size, None
+            // writes nothing; its rule joins User Styles on first use.
+            snap:         [_sdT('Scroll snap'),     'pg-scroll-snap-',  [['always',_sdT('Always')],['near',_sdT('Near')]], _sdT('None')],
+            snapTo:       [_sdT('Snap to'),         'pg-snap-to-',      [['start',_sdT('Start')],['center',_sdT('Centre')],['end',_sdT('End')]], _sdT('Default')]
         };
         var _layHeld = {};
         Object.keys(_layRows).forEach(function (id) { _layHeld[id] = _sdLayHeld(_layCls, _layRows[id][1], _layRows[id][2]); });
@@ -57485,7 +57602,13 @@ const StyleDesigner = (function () {
         _layPlan.rows.forEach(function (id, i) {
             // A line between the box rows and the element's own.
             if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
-            _fxBody += mkRespRow(_layRows[id][0], _layRows[id][1], _layRows[id][2], _sdT('Default'));
+            var _lr = _layRows[id];
+            if (!_lr[3]) { _fxBody += mkRespRow(_lr[0], _lr[1], _lr[2], _sdT('Default')); return; }
+            _fxBody += mkNonRespRow(_lr[0], _lr[2].map(function (v) { return [_lr[1] + v[0], v[1]]; }), _lr[3]);
+            if (id === 'snap' && _sdSnapNeedsScroll(_layCls, _laySeveral ? null : p)) {
+                _fxBody += '<div class="sd-lay-note" role="note"><span class="bi bi-info-circle" aria-hidden="true"></span>' +
+                    '<span class="sd-lay-note-txt">' + esc(_sdT('Snapping works once the element scrolls: set Overflow to Auto or Scroll.')) + '</span></div>';
+            }
         });
         _fxBody += _sdLayNoteHtml(_layPlan, _laySeveral) + '</div>';
         var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
@@ -59652,6 +59775,7 @@ const StyleDesigner = (function () {
                 });
                 valWords.forEach(function(w) { clsArray.push(w); });
                 tgt.props.cssClass = clsArray.join(' ').trim();
+                _sdSnapEnsure(val);
                 renderProperties();
                 renderCanvas();
                 renderAttrsPanel();
@@ -59766,6 +59890,47 @@ const StyleDesigner = (function () {
                 if (this.checked) selectedNode.props.smartActive = true;
                 else delete selectedNode.props.smartActive;
                 render();
+            });
+        });
+
+        // A menu's scroll rows (_sdNavScrollRows()): attributes only.
+        function navScrollWrite(fn) {
+            if (!selectedNode) return;
+            saveState();
+            var owner = _sdAnyParent(selectedNode);
+            if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+            fn(selectedNode);
+            render();
+        }
+        document.querySelectorAll('#sd-properties input[data-nav-spy]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-spy', on ? '' : null); });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) {
+                    _sdSetAttrOn(n, 'data-pg-scrolled', on ? String(_SD_NAV_SCROLLED_AT) : null);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', on ? _SD_NAV_SCROLLED_DEFAULT : null);
+                });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled-at]').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var px = parseInt(this.value, 10);
+                px = isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.min(5000, Math.max(0, px));
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-scrolled', String(px)); });
+            });
+        });
+        document.querySelectorAll('#sd-properties select[data-nav-scrolled-part]').forEach(function (sl) {
+            sl.addEventListener('change', function () {
+                var part = this.getAttribute('data-nav-scrolled-part'), val = this.value;
+                navScrollWrite(function (n) {
+                    var cls = _sdNavScrolledClass(_sdAttr(n, 'data-pg-scrolled-class'), part, val);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', cls);
+                });
             });
         });
 
@@ -60385,6 +60550,81 @@ const StyleDesigner = (function () {
     }
 
     // ========================= STATUS BAR =========================
+    // ── Spacing bands (canvas guides)
+    // The selection's margin and padding drawn as bands over the canvas,
+    // each band's edge a handle that steps the side through the spacing
+    // scale (the part 'bands', style_designer_bands.js). The core only says
+    // when to draw or hide them; the part loads on the first selection
+    // that can show them and holds no listener while they are hidden.
+    var _sdBandsRaf = 0;
+    function _sdBandsSoon() {
+        if (_sdBandsRaf || typeof requestAnimationFrame !== 'function') return;
+        _sdBandsRaf = requestAnimationFrame(function () {
+            _sdBandsRaf = 0;
+            _sdBandsDraw();
+        });
+    }
+
+    // One selected element the operator may change, on the Design canvas of
+    // a Bootstrap design, with no element being dragged.
+    function _sdBandsDraw() {
+        var node = (selectedNode && selectedNodes.length <= 1) ? selectedNode : null;
+        var show = !!(node && node.props && node.type !== 'root' && canvasDoc && canvasDoc.body && canvasIframe &&
+            _collab.mayEdit && !_sdProto.open && !dragData && _sdUsesBootstrap() &&
+            !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
+        if (show) {
+            // The part writes through window.PGSpacingBox, which comes with
+            // the Spacing box's part: loaded first, once.
+            _sdPartLoad('spacing').then(function () {
+                return _sdPartCall('bands', 'draw', [_sdBandsHost(node)]);
+            }).catch(_sdPartFailed);
+        } else if (_sdPartLoaded('bands') && _sdPartApis.bands) {
+            _sdPartApis.bands.hide();
+        }
+    }
+
+    // What the part draws from: the element, the screen size the canvas
+    // width stands for, the Spacing box's commit and where the layer goes
+    // (_sdBandsGeo(), asked again on every placing).
+    function _sdBandsHost(node) {
+        var host = _sdSpBoxHost(null, [node]);
+        host.id = node._id;
+        host.el = _sdCanvasInnerOf(node);
+        host.width = canvasDoc.documentElement.clientWidth;
+        host.userId = (_design && _design.userId) || 0;
+        host.geo = _sdBandsGeo;
+        return host;
+    }
+
+    // The layer's place in the canvas wrapper over the part of the canvas
+    // frame in view, the frame's top left in it and the scale of a canvas
+    // pixel on screen (zoom and Fit, read as the link marks read them);
+    // null without a canvas.
+    function _sdBandsGeo() {
+        var frame = canvasIframe;
+        var area = (frame && canvasDoc) ? frame.closest('.sd-iframe-area') : null;
+        var wrapper = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!wrapper) return null;
+        var docEl = canvasDoc.documentElement;
+        var fr = frame.getBoundingClientRect(), ar = area.getBoundingClientRect(), hr = wrapper.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        return {
+            wrapper: wrapper,
+            area: area,
+            left: left - hr.left,
+            top: top - hr.top,
+            w: Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left,
+            h: Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top,
+            fx: fr.left - left,
+            fy: fr.top - top,
+            k: k
+        };
+    }
+
     function _ensureSizeBadge() {
         var badge = document.getElementById('sd-canvas-size-badge');
         if (!badge) {
@@ -60398,6 +60638,7 @@ const StyleDesigner = (function () {
     }
 
     function _positionSizeBadge() {
+        _sdBandsSoon();
         var badge = _ensureSizeBadge();
         if (!badge) return;
         if (!canvasDoc || !selectedNode || !canvasIframe) { badge.style.display = 'none'; return; }
@@ -64331,11 +64572,13 @@ const StyleDesigner = (function () {
         { id: 'alignItems', of: 'box', name: 'alignment' },
         { id: 'alignContent', of: 'box', name: 'alignment' },
         { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'snap', of: 'box', name: '', when: 'snapBox' },
         { id: 'alignSelf', of: 'item', name: 'self' },
         { id: 'order', of: 'item', name: 'order' },
         { id: 'grow', of: 'item', name: 'grow' },
         { id: 'shrink', of: 'item', name: 'shrink' },
-        { id: 'fill', of: 'item', name: 'grow' }
+        { id: 'fill', of: 'item', name: 'grow' },
+        { id: 'snapTo', of: 'item', name: '', when: 'snapItem' }
     ];
 
     // The group of a row: 'box', 'item', or '' for no row of Layout.
@@ -64347,7 +64590,9 @@ const StyleDesigner = (function () {
     }
 
     // What Layout draws. `ctx`: { flex: the element is a flex box,
-    // parentFlex: its parent is one } (_sdOptCtx()); `held`: { id: true }
+    // parentFlex: its parent is one, snapBox / snapItem: the element / its
+    // parent takes Scroll snap } (_sdOptCtx()); a row with `when` follows
+    // that key instead of flex / parentFlex; `held`: { id: true }
     // for a row holding a value, drawn whatever the context so nothing set
     // is out of sight. Returns { rows: the ids drawn, in order; make:
     // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
@@ -64358,7 +64603,7 @@ const StyleDesigner = (function () {
         held = held || {};
         var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
         _SD_LAY_ROWS.forEach(function (r) {
-            if ((r.of === 'box' ? ctx.flex : ctx.parentFlex) || held[r.id]) {
+            if (ctx[r.when || (r.of === 'box' ? 'flex' : 'parentFlex')] || held[r.id]) {
                 out.rows.push(r.id);
                 return;
             }
@@ -64443,6 +64688,34 @@ const StyleDesigner = (function () {
         var s = ' ' + out.join(' ') + ' ';
         if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
         return out.join(' ');
+    }
+    // Scroll snap's classes, their rules in _SD_BLOCK_CSS.
+    var _SD_SNAP_CLASSES = ['pg-scroll-snap-always', 'pg-scroll-snap-near', 'pg-snap-to-start', 'pg-snap-to-center', 'pg-snap-to-end'];
+
+    // Whether an element takes Scroll snap: a flex or grid box at any size,
+    // never the scroller's row (pg-snap), which keeps its own snapping.
+    function _sdSnapBox(type, cls) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (s.indexOf(' pg-snap ') !== -1) return false;
+        return _sdOptIsFlex(type, cls) || / d-((sm|md|lg|xl|xxl)-)?(inline-)?grid /.test(s);
+    }
+
+    // The Scroll snap rules a class list (or a picked value) needs, in
+    // _SD_SNAP_CLASSES's order.
+    function _sdSnapNames(cls) {
+        var have = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        return _SD_SNAP_CLASSES.filter(function (k) { return have.indexOf(' ' + k + ' ') !== -1; });
+    }
+
+    // Whether a box with Scroll snap set does not scroll yet: no Overflow
+    // of Auto or Scroll as a prop (`props`, null for several elements) or a
+    // Bootstrap overflow class. False without Scroll snap.
+    function _sdSnapNeedsScroll(cls, props) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (!/ pg-scroll-snap-(always|near) /.test(s)) return false;
+        if (/ overflow-(x-|y-)?(auto|scroll) /.test(s)) return false;
+        var p = props || {};
+        return !['overflow', 'overflowX', 'overflowY'].some(function (k) { return /^(auto|scroll)$/.test(String(p[k] || '').trim()); });
     }
     // ── end of layout by context
 
@@ -76845,7 +77118,7 @@ const StyleDesigner = (function () {
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
-        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
@@ -87145,6 +87418,7 @@ const StyleDesigner = (function () {
         var row = function (l) {
             var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'theme-warning' : 'theme-info') + ' me-1">' +
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
+                         (l.phone ? '<span class="badge theme-secondary me-1"><span class="bi bi-phone me-1" aria-hidden="true"></span>' + esc(_sdT('Phone preview')) + '</span>' : '') +
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
@@ -87401,7 +87675,7 @@ const StyleDesigner = (function () {
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
         var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
-        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+        ['sd-vb-phone', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
             var row = document.getElementById(id);
             if (!row) return;
             var off = rows.indexOf(id) === -1;
@@ -87413,13 +87687,15 @@ const StyleDesigner = (function () {
 
     // ── Preview menu (D58) ───────────────────────────────────────────────
     // Beside Publish, the ways to see the page outside the editor, in this
-    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
-    // on the site (the page as the site serves it, as saved), Play as a
-    // prototype and Share the prototype… (the saved drafts). The rows a page
-    // cannot use are left out, never shown dead. s: { live, play, share }.
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P),
+    // Preview on a phone (a QR code of the saved drafts, shown where sharing
+    // is), Open on the site (the page as the site serves it, as saved), Play
+    // as a prototype and Share the prototype… (the saved drafts). The rows a
+    // page cannot use are left out, never shown dead. s: { live, play, share }.
     function _sdPreviewMenuRows(s) {
         s = s || {};
         var rows = ['sd-vb-preview'];
+        if (s.share) rows.push('sd-vb-phone');
         if (s.live) rows.push('sd-vb-live');
         if (s.play) rows.push('sd-vb-play');
         if (s.share) rows.push('sd-vb-share');
@@ -87450,6 +87726,7 @@ const StyleDesigner = (function () {
         menu.hidden = true;
         menu.innerHTML =
             '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-phone" role="menuitem" hidden><span class="bi bi-phone"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview on a phone')) + '</span></button>' +
             '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
@@ -87461,6 +87738,8 @@ const StyleDesigner = (function () {
             _sdPreviewMenuOpen(false);
             if (row.id === 'sd-vb-preview') {
                 openPreview();
+            } else if (row.id === 'sd-vb-phone') {
+                _sdPhoneOpen();
             } else if (row.id === 'sd-vb-live') {
                 if (row.getAttribute('href') === '#') e.preventDefault();
             } else if (row.id === 'sd-vb-play') {
@@ -87499,6 +87778,31 @@ const StyleDesigner = (function () {
             rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
         }, true);
         window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // "Preview on a phone" (the `phone` part): the QR code of the person's
+    // phone link, starting on the page on screen when it is a saved draft.
+    function _sdPhoneOpen() {
+        if (!_pgPrototypeShareReady()) return;
+        _sdPartCall('phone', 'open', [_sdPhoneHost()]).catch(_sdPartFailed);
+    }
+
+    // What the phone part reads the editor through: the design, the page on
+    // screen (its id only when it is a saved draft of this design), whether
+    // anything is unsaved, and the designer's own save.
+    function _sdPhoneHost() {
+        var p = _pgActivePage();
+        var draft = !!(p && p.page_id > 0 && p.page_draft && !p.pickedPending);
+        return {
+            styleId: _design.styleId,
+            page: { id: draft ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
+            dirty: function () { return _pages.some(_pgPageDirty); },
+            save: function (done) {
+                var b = document.getElementById('sd-ajax-save');
+                if (!b || b.disabled) { done(); return; }
+                saveAjax({ button: b, onSuccess: function () { done(); }, onError: function () { done(); } });
+            }
+        };
     }
 
     // Opens or closes the Preview menu under its button, its right edge on
@@ -88864,6 +89168,12 @@ const StyleDesigner = (function () {
                 }});
         }
 
+        // Preview on a phone, where the Preview menu offers it.
+        if (_pgPrototypeShareReady()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_phone', label: _sdT('Preview on a phone'), icon: 'bi-phone', action: function () { _sdPhoneOpen(); } });
+        }
+
         // ── Assets-panel commands (only when the panel is mounted) ──
         if (_assetsApi) {
             items.push({ id: 'act_new_css',  label: _sdT('New CSS File'),  icon: 'bi-filetype-css',
@@ -89724,6 +90034,14 @@ const StyleDesigner = (function () {
                            '.pg-video-toggle[aria-pressed="true"] .pg-video-play { display: inline-block; }\n' +
                            '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }',
         'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
+        // Layout's Scroll snap on any flex or grid box (_SD_SNAP_CLASSES):
+        // the box snaps whichever way it scrolls, always (mandatory) or
+        // near a stop (proximity); a child names the edge it stops on.
+        'pg-scroll-snap-always': '.pg-scroll-snap-always { scroll-snap-type: both mandatory; }',
+        'pg-scroll-snap-near':   '.pg-scroll-snap-near { scroll-snap-type: both proximity; }',
+        'pg-snap-to-start':      '.pg-snap-to-start { scroll-snap-align: start; }',
+        'pg-snap-to-center':     '.pg-snap-to-center { scroll-snap-align: center; }',
+        'pg-snap-to-end':        '.pg-snap-to-end { scroll-snap-align: end; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,
         // which a transform skips.
@@ -89854,6 +90172,13 @@ const StyleDesigner = (function () {
         if (!add) return;
         if (css.indexOf(_SD_BLOCK_CSS_MARK) === -1) add = _SD_BLOCK_CSS_MARK + '\n' + add;
         _userStylesSet((css ? css.replace(/\s*$/, '\n') : '') + add);
+    }
+
+    // A Scroll snap value picked: its rule joins User Styles the first
+    // time (_SD_BLOCK_CSS), as a block rule does; an operator's edit is kept.
+    function _sdSnapEnsure(val) {
+        var names = _sdSnapNames(val);
+        if (names.length && !_sdPaletteDry) _sdEnsureBlockStyles(names);
     }
 
     // ── Palette item info: hover card and search words ──────────────────

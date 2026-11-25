@@ -301,7 +301,8 @@ function pg_rec_edit_fields($record)
 
 /**
  * The fields as the Preview reads them: id, name, label, control, required,
- * value, file_name. Pure.
+ * rss (the RSS role, which a bound post title or picture names), value,
+ * file_name. Pure.
  *
  * @param array $fields  pg_rec_edit_fields()
  * @return array
@@ -317,6 +318,7 @@ function pg_rec_edit_fields_out($fields)
             'label' => (string) $field['label'],
             'control' => $field['control'],
             'required' => !empty($field['required']),
+            'rss' => (string) ($field['rss_field'] ?? ''),
             'value' => $field['value'],
             'file_name' => $field['file_name'],
         );

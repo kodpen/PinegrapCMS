@@ -9433,6 +9433,7 @@ function get_tables() {
 		'prototype_comments',
 		'prototype_verdicts',
 		'security_finding',
+		'form_old_address',
 	);
 
 }

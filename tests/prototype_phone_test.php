@@ -297,3 +297,33 @@ function test_prototype_phone_endpoints_are_wired_for_designers_only()
 	pg_assert_true(strpos($viewer, 'pg_proto_phone_watch_run(') !== false, 'the viewer answers the watch');
 	pg_assert_false(strpos(substr($viewer, strpos($viewer, 'pg_proto_phone_watch_run(') - 400, 800), 'pg_proto_link_record_use'), 'the watch counts no use');
 }
+
+function test_prototype_phone_start_name_is_the_pages_title_or_the_first_draft()
+{
+	$pages = array(
+		array('id' => 11, 'name' => 'home', 'title' => 'Home'),
+		array('id' => 12, 'name' => 'about-us', 'title' => 'About us'),
+		array('id' => 13, 'name' => 'courses', 'title' => ' '),
+	);
+
+	pg_assert_same('About us', pg_proto_phone_start_name($pages, 12), 'the start page by its title');
+	pg_assert_same('courses', pg_proto_phone_start_name($pages, 13), 'its name when it has no title');
+	pg_assert_same('Home', pg_proto_phone_start_name($pages, 0), 'the first draft for a link that starts there');
+	pg_assert_same('Home', pg_proto_phone_start_name($pages, 99), 'the first draft for a page no longer a draft');
+	pg_assert_same('', pg_proto_phone_start_name(array(), 12), 'nothing for a design with no drafts');
+}
+
+function test_prototype_phone_window_gets_its_code_inline_and_never_cached()
+{
+	$fn = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+
+	// The code is inline SVG drawn by the server from the address: no image
+	// address that would carry the token into a log or a Referer.
+	pg_assert_true(strpos($fn, "'qr' => pg_qr_svg(\$url, 0,") !== false, 'the answer carries the code as SVG');
+
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	$at = strpos($designer, "case 'prototype_phone_end':");
+	$case = substr($designer, $at, 700);
+	pg_assert_true(strpos($case, "includes/fn/qr.php") !== false, 'the generator is loaded for the answer');
+	pg_assert_true(strpos($case, "Cache-Control: no-store") !== false, 'the answer is never kept');
+}

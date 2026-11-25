@@ -104,6 +104,13 @@ function pg_ops_alert_codes()
             'type'  => 'warning',
             'url'   => 'api_settings.php#events',
         ),
+        // A critical or high finding of the Security Scan is open
+        // (pg_ops_alerts_check_security()); told once a day while it stays.
+        'security_finding' => array(
+            'label' => lang('The security scan found a serious problem'),
+            'type'  => 'error',
+            'url'   => 'settings_firewall.php#pgset-scan',
+        ),
         'payment_notice' => array(
             'label' => lang('A payment service reported a payment to check'),
             'type'  => 'warning',
@@ -1404,6 +1411,33 @@ function pg_ops_alerts_check_webhooks($now)
 }
 
 /**
+ * Security Scan: an open finding of critical or high severity
+ * (includes/fn/security_scan_section.php). Read from the table, so a finding
+ * stays told once a day until a person quarantines or ignores it, or a scan
+ * no longer sees it.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_security($now)
+{
+    if (!function_exists('pg_security_open_counts') || !pg_security_finding_ready()) {
+        return '';
+    }
+
+    $text = pg_security_alert_text(pg_security_open_counts());
+
+    if ($text === '') {
+        return '';
+    }
+
+    pg_ops_alert('security_finding', $text);
+
+    return 'security_finding';
+}
+
+/**
  * Object storage: calls of the last hour that could not reach the store
  * (pg_os_health_recent()), counted while a store is set up and switched on.
  *
@@ -1635,6 +1669,7 @@ function pg_ops_alert_sources()
         'mail_reputation' => 'pg_ops_alerts_check_mail_reputation',
         'webhooks'    => 'pg_ops_alerts_check_webhooks',
         'storage'     => 'pg_ops_alerts_check_storage',
+        'security'    => 'pg_ops_alerts_check_security',
         // An ad service that refused every event of yesterday, once a day
         // (includes/fn/ad_conversions_log.php).
         'ad_conversions' => 'pg_ad_conversion_check_refused',

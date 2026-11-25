@@ -64,8 +64,19 @@ $order = db_item(
      LIMIT 1"
 );
 
-if (!$order) {
-    output_error(lang('Order not found.'));
+// Order ids are sequential: another customer's order answers as a missing
+// one does, so a guessed id tells nothing about whether that order exists.
+// The owner is checked before anything else of the order is read. Customer
+// can print own; admin can print any (the same rule as cancel_order.php).
+$order_lookup_refused = !$order
+    || (!$is_admin && (($current_user_id <= 0) || ((int)$order['user_id'] !== $current_user_id)));
+
+if ($order_lookup_refused && $order) {
+    log_activity(pg_log_lang(array('string' => 'Access denied — non-owner attempted to print invoice for order #{var:1}', 'vars' => array($order_id))));
+}
+
+if ($order_lookup_refused) {
+    output_error(lang('Order not found.'), 404);
 }
 
 // The parcel numbers, for the customer's own copy. They live in
@@ -85,20 +96,12 @@ if (is_array($tracking_rows)) {
     }
 }
 
-// Ownership — same rule as cancel_order.php. Customer can print own; admin can print any.
-if (!$is_admin) {
-    if ($current_user_id <= 0 || (int)$order['user_id'] !== $current_user_id) {
-        log_activity(pg_log_lang(array('string' => 'Access denied — non-owner attempted to print invoice for order #{var:1}', 'vars' => array($order_id))));
-        output_error(lang('You are not allowed to view this invoice.'));
-    }
-}
-
 // Items: the display name is the short description (falling back to the
 // Product ID), the SKU column is the Product ID (order_items.product_name).
 $items = db_items(
     "SELECT oi.id AS item_id, oi.product_name,
-            oi.quantity, oi.price,
-            p.short_description
+            oi.quantity, oi.price, oi.recurring_start_date,
+            p.short_description, p.recurring, p.start
      FROM order_items oi
      LEFT JOIN products p ON oi.product_id = p.id
      WHERE oi.order_id = '" . e($order_id) . "'
@@ -106,10 +109,18 @@ $items = db_items(
 );
 if (!is_array($items)) $items = array();
 
+// The lines charged with the order make up the subtotal; recurring lines
+// whose payments start later are listed apart, below the totals.
+$print_lines = pg_order_print_lines(
+    $items,
+    (int)$order['order_date'],
+    (ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce')
+);
+
 // Shipping address (first complete ship_to row).
 $ship_to = db_item(
     "SELECT first_name, last_name, company, phone_number,
-            address_1, address_2, city, state, zip_code, country
+            address_1, address_2, " . (pg_ship_to_district_ready() ? "district, " : "") . "city, state, zip_code, country
      FROM ship_tos
      WHERE order_id = '" . e($order_id) . "' AND complete = 1
      ORDER BY id ASC
@@ -141,7 +152,7 @@ $billing_lines = array_filter(array(
     (string)$order['billing_company'],
     (string)$order['billing_address_1'],
     (string)$order['billing_address_2'],
-    trim((string)$order['billing_zip_code'] . ' ' . (string)$order['billing_city'] . ' ' . (string)$order['billing_state']),
+    implode(' ', pg_legal_document_city_line($order['billing_zip_code'], '', $order['billing_city'], $order['billing_state'])),
     pg_order_view_country($order['billing_country']),
     (string)$order['billing_phone_number'],
     (string)$order['billing_email_address'],
@@ -155,7 +166,7 @@ if (!empty($ship_to)) {
         (string)($ship_to['company'] ?? ''),
         (string)($ship_to['address_1'] ?? ''),
         (string)($ship_to['address_2'] ?? ''),
-        trim((string)($ship_to['zip_code'] ?? '') . ' ' . (string)($ship_to['city'] ?? '') . ' ' . (string)($ship_to['state'] ?? '')),
+        implode(' ', pg_legal_document_city_line($ship_to['zip_code'] ?? '', $ship_to['district'] ?? '', $ship_to['city'] ?? '', $ship_to['state'] ?? '')),
         pg_order_view_country($ship_to['country'] ?? ''),
         (string)($ship_to['phone_number'] ?? ''),
     ));
@@ -203,11 +214,13 @@ header('Content-Type: text/html; charset=utf-8');
     .addrs .lines{font-size:.95rem}
     table{width:100%;border-collapse:collapse;margin-bottom:1rem}
     th{text-align:left;font-size:.8rem;text-transform:uppercase;color:#6c757d;border-bottom:2px solid #dee2e6;padding:.5rem .25rem}
-    td{padding:.65rem .25rem;border-bottom:1px solid #f1f3f5;vertical-align:top;font-size:.95rem}
+    td{padding:.65rem .25rem;border-bottom:1px solid #f1f3f5;vertical-align:top;font-size:.95rem;overflow-wrap:anywhere}
+    .addrs .lines{overflow-wrap:anywhere}
     td.num,th.num{text-align:right;white-space:nowrap}
     .totals{margin-left:auto;width:50%;max-width:320px;font-size:.95rem}
     .totals .row{display:flex;justify-content:space-between;padding:.4rem 0}
     .totals .grand{border-top:2px solid #212529;margin-top:.25rem;padding-top:.6rem;font-weight:700;font-size:1.1rem}
+    h3.later{font-size:.85rem;text-transform:uppercase;color:#6c757d;letter-spacing:.05em;margin:1.5rem 0 .5rem}
     .meta-row{font-size:.85rem;color:#6c757d;margin-top:1.5rem;border-top:1px solid #dee2e6;padding-top:1rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem 1.5rem}
     .actions{max-width:820px;margin:0 auto 1rem;text-align:right}
     .actions button{background:#0d6efd;color:#fff;border:0;padding:.55rem 1.25rem;border-radius:.35rem;font-size:.95rem;cursor:pointer}
@@ -275,10 +288,10 @@ header('Content-Type: text/html; charset=utf-8');
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($items as $it):
+            <?php foreach ($print_lines['charged'] as $it):
                 $qty = (int)$it['quantity'];
                 $unit = (int)$it['price'];
-                $line = $unit * $qty;
+                $line = (int)$it['line_total'];
             ?>
                 <tr>
                     <td><?= h(trim((string)($it['short_description'] ?? '')) !== '' ? (string)$it['short_description'] : (string)$it['product_name']) ?></td>
@@ -302,6 +315,32 @@ header('Content-Type: text/html; charset=utf-8');
             </div>
         <?php endif; ?>
     </div>
+
+    <?php if (!empty($print_lines['later'])): ?>
+        <h3 class="later"><?= h(lang('Recurring Payments')) ?></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th><?= h(lang('Item')) ?></th>
+                    <th><?= h(lang('Start Date')) ?></th>
+                    <th class="num"><?= h(lang('Qty')) ?></th>
+                    <th class="num"><?= h(lang('Price')) ?></th>
+                    <th class="num"><?= h(lang('Total')) ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($print_lines['later'] as $it): ?>
+                    <tr>
+                        <td><?= h(trim((string)($it['short_description'] ?? '')) !== '' ? (string)$it['short_description'] : (string)$it['product_name']) ?></td>
+                        <td><?= h(date('d.m.Y', strtotime((string)$it['starts']))) ?></td>
+                        <td class="num"><?= h((string)(int)$it['quantity']) ?></td>
+                        <td class="num"><?= h($fmt((int)$it['price'])) ?></td>
+                        <td class="num"><?= h($fmt((int)$it['line_total'])) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
 
     <div class="meta-row">
         <?php if (!empty($order['payment_method'])): ?>

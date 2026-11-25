@@ -1329,6 +1329,10 @@ function pg_panel_designer($request, $action)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/qr.php');
+            // The answer holds the link's address and its code: never kept
+            // by a browser or a proxy.
+            header('Cache-Control: no-store, private');
             respond(pg_proto_phone_panel($sub, $request, $user));
             break;
 

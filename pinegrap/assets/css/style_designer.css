@@ -1797,6 +1797,50 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-lm:hover { filter: brightness(1.12); }
 .sd-lm:focus-visible { outline: none; border-color: var(--sd-accent); box-shadow: 0 0 0 3px var(--sd-accent-soft); }
 
+/* The spacing bands over the canvas (style_designer_bands.js): the
+   selection's outer spacing as a hatched amber band outside its frame, its
+   inner spacing as a plain teal band inside, each band's edge a white pill
+   handle with an accent ring, the same size at every zoom. Like the link
+   marks' layer it covers the canvas in view and lets every other click
+   through. */
+.sd-cgb-layer { position: absolute; z-index: 21; overflow: hidden; pointer-events: none; }
+.sd-cgb-band { position: absolute; box-sizing: border-box; }
+.sd-cgb-m {
+    background: repeating-linear-gradient(135deg, rgba(245,181,74,.34) 0 2px, rgba(245,181,74,.12) 2px 6px);
+    border: 1px dashed rgba(245,181,74,.7);
+}
+.sd-cgb-p { background: rgba(45,212,191,.2); }
+.sd-cgb-h {
+    position: absolute; width: 22px; height: 6px; padding: 0; margin: 0;
+    transform: translate(-50%, -50%);
+    border: 0; border-radius: 3px; background: #fff;
+    box-shadow: 0 0 0 1.5px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35);
+    cursor: ns-resize; pointer-events: auto; touch-action: none;
+}
+.sd-cgb-h::before { content: ''; position: absolute; inset: -6px; }
+.sd-cgb-h.is-v { width: 6px; height: 22px; cursor: ew-resize; }
+.sd-cgb-h.is-faint { opacity: .45; }
+.sd-cgb-h:hover, .sd-cgb-h.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35); }
+.sd-cgb-h:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 0 0 5px var(--sd-accent-soft); }
+.sd-cgb-layer.is-live .sd-cgb-h:not(.is-on) { opacity: .25; }
+.sd-cgb-val {
+    position: absolute; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    background: var(--sd-panel-bg); color: #fff; font-size: 11px; line-height: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-cgb-val b { margin-right: 2px; color: var(--sd-warning); }
+.sd-cgb-first {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    background: var(--sd-accent-soft); border-bottom: 1px solid var(--sd-panel-border);
+    color: var(--sd-text); font-size: 12px;
+}
+.sd-cgb-first > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.sd-cgb-got {
+    flex: 0 0 auto; padding: 2px 10px; border: 1px solid var(--sd-accent-line); border-radius: 4px;
+    background: transparent; color: var(--sd-accent); font-size: 12px;
+}
+.sd-cgb-got:hover { background: var(--sd-accent-soft); }
+
 /* ── Color pickers (Text Col / Bg Col / Border Color) ──
    Custom dropdown widget so each option can render a colored dot to the LEFT of the name —
    native <select><option> on Windows Chrome ignores background-image and most CSS.
@@ -8517,6 +8561,30 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 @media (pointer: coarse) { .sd-tree-mv-b { width: 32px; height: 28px; line-height: 28px; } }
 
 .sd-move-dialog { width: min(480px, calc(100vw - 32px)); }
+/* "Preview on a phone" (style_designer_phone.js): the QR code on white,
+   its two lines, the info line, and the foot with no filled button. Below
+   768 px the window fills the screen. */
+.sd-phone-dialog { width: min(360px, calc(100vw - 32px)); }
+.sd-phone-body { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.sd-phone-code { width: 196px; height: 196px; padding: 6px; border-radius: 8px; background: #fff; color: #000;
+    display: flex; align-items: center; justify-content: center; }
+.sd-phone-code svg { display: block; width: 100%; height: 100%; }
+.sd-phone-wait { background: var(--sd-raised-bg); border: 1px dashed var(--sd-panel-border); color: var(--sd-text-muted); font-size: 2rem; }
+.sd-phone-dim svg { opacity: .2; }
+.sd-phone-head { margin: 8px 0 0; font-weight: 600; }
+.sd-phone-sub { margin: 0; font-size: .8rem; color: var(--sd-text-muted); }
+.sd-phone-sub b { color: inherit; font-weight: 600; }
+.sd-phone-act { margin: 6px 0 0; }
+.sd-phone-line { display: flex; align-items: flex-start; gap: 8px; width: 100%; margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
+    text-align: start; font-size: .78rem; background: var(--sd-accent-soft); color: var(--sd-accent); }
+.sd-phone-line > span:nth-child(2) { flex: 1; }
+.sd-phone-warn { background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-phone-foot { gap: 8px; }
+.sd-phone-note { font-size: .78rem; color: var(--sd-text-muted); }
+.sd-phone-narrow.sd-phone-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
+.sd-phone-narrow .sd-phone-body { justify-content: center; }
+.sd-phone-narrow .sd-phone-code { width: 176px; height: 176px; }
+.sd-phone-narrow .sd-phone-foot { flex-direction: column; align-items: stretch; }
 .sd-move-handle { display: none; }
 .sd-move-head { gap: 8px; }
 .sd-move-icon { color: var(--sd-accent); }

@@ -4,8 +4,8 @@
  *
  * The Firewall card: blocked requests, bots and failed sign-ins for the
  * period, the blocked requests as bars (an hour each for today, a day each
- * for 7 and 30 days, a bar well above the rest marked), and what was
- * blocked most. Read from the same table and the same buckets as widgets 21
+ * for 7 and 30 days, a bar well above the rest marked), what was blocked
+ * most, and the Security Scan's last run and open findings with Scan now. Read from the same table and the same buckets as widgets 21
  * and 22: hit_count summed, never rows counted, since identical events are
  * folded into five-minute buckets. Staff only (role < 3): the log holds
  * visitor addresses and attack payloads.
@@ -98,6 +98,54 @@ function pg_dashboard_v2_waf_source($source, $category)
     }
 
     return $names[$source] ?? $source;
+}
+
+/**
+ * The Security Scan's part of the card: the last scan or what a running one
+ * is doing, the open findings by severity, and what Scan now needs. Null
+ * before the upgrade has made the findings table.
+ *
+ * @return array|null
+ */
+function pg_dashboard_v2_firewall_scan()
+{
+    if (!pg_security_finding_ready()) {
+        return null;
+    }
+
+    $state = pg_security_scan_stored_state();
+    $running = (int) $state['started'] > 0;
+
+    if ($running) {
+        $line = pg_security_scan_progress($state);
+    } elseif ((int) $state['last_finished'] === 0) {
+        $line = lang('Not scanned yet');
+    } else {
+        $line = lang(array(
+            'string' => 'Last scan {var:1}',
+            'vars' => get_relative_time(array('timestamp' => (int) $state['last_finished'], 'mid_sentence' => true)),
+        ));
+    }
+
+    $pills = pg_security_card_pills(pg_security_open_counts());
+
+    return array(
+        'title'   => lang('Security Scan'),
+        'line'    => $line,
+        'pills'   => $pills,
+        // "Nothing open" only after a finished scan: before one, an empty
+        // list says nothing about the site.
+        'none'    => (empty($pills) && ((int) $state['last_finished'] > 0)) ? lang('Nothing open') : '',
+        'running' => $running,
+        'url'     => 'settings_firewall.php#pgset-scan',
+        'labels'  => array(
+            'open'     => lang('Open findings'),
+            'now'      => lang('Scan now'),
+            'scanning' => lang('Scanning now'),
+            'findings' => lang('See the findings'),
+            'failed'   => lang('The scan could not be run. Please try again.'),
+        ),
+    );
 }
 
 function pg_dashboard_v2_card_firewall($user, $period, $compare)
@@ -193,6 +241,7 @@ function pg_dashboard_v2_card_firewall($user, $period, $compare)
         'tips'       => $tips,
         'rows_title' => lang('Most blocked'),
         'rows'       => $rows,
+        'scan'       => pg_dashboard_v2_firewall_scan(),
         'url'        => 'view_waf_log.php',
         'url_text'   => lang('Security log'),
     ));

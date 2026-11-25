@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order');
 }
 
 /**
@@ -718,7 +718,9 @@ function pg_layout_convert_types()
  * reads from the page's settings, the header and footer), 'row' (the
  * record: the widget's row template), 'text:<words>' (those words, for a
  * control's name), 'form:<action>' (the attributes of a <form>: it is
- * bound to that action, or with 'strip' its tags go).
+ * bound to that action, or with 'strip' its tags go), 'section:<name>'
+ * (the node bound to that section in its place), 'state:<key>' (the page
+ * setting's words, pg_layout_convert_state()).
  *
  * 'if': a condition: array('becomes' => 'widget' (the widget draws what it
  * holds: skipped), 'flag' (shown only under the widget's flag 'flag'),
@@ -732,7 +734,8 @@ function pg_layout_convert_types()
  * only, before the bare key. 'flag' may list flags: each nested in the
  * one before. 'section' (a block the widget fills with its own markup:
  * the node bound to that section stands in its place, what the block
- * holds is the widget's). 'token' (a block the widget prints whole as the
+ * holds is the widget's; 'wrap' => markup holding it at '%s', 'flag' as
+ * for 'token'). 'token' (a block the widget prints whole as the
  * value 'token': an element holding it stands in its place, under 'flag'
  * when one is given).
  *
@@ -748,14 +751,18 @@ function pg_layout_convert_types()
  * to it stands in the place of the list holding the loop), or
  * 'token:<name>' (rows the widget prints whole as that value: an element
  * holding it stands in the loop's place, the body is not read), or 'keep'
- * (a grouping the widget's list does not have: the body is read once).
+ * (a grouping the widget's list does not have: the body is read once), or
+ * 'source:<list>' (one of the widget's lists: its body is the list's row).
  *
  * Optional: 'forms' => 'strip' (the layout's <form> tags go: the widget
  * draws its own form around the tree), 'flag_list' => true (a flag may
  * cover the list: the widget has no empty message in its place),
  * 'controls' => array(name in the layout => name the widget looks for,
  * '' for none, 'bind:<value>' for the control bound to that value,
- * 'action:<action>' for the button bound to that action),
+ * 'action:<action>' for the button bound to that action, 'eo:<field>' for
+ * the field the express order binds; a key '#<id>' names a control with
+ * no name; an array('name' => …, 'value' => …) gives the control that
+ * name and value),
  * 'submits' => array(token => control name: a link to that address
  * becomes a submit button of that name), 'media' => array(token => flag:
  * the wrapper an image of that address alone fills is shown under the
@@ -767,7 +774,8 @@ function pg_layout_convert_types()
  * container (its element becomes the widget's cross-sell part), 'lists'
  * => true (every 'list' loop is a place of the widget's list, its rows
  * told apart by row flags; otherwise a second one is dropped), 'scripts'
- * => 'keep' (a <script> of the layout is kept as a raw block).
+ * => 'keep' (a <script> of the layout is kept as a raw block), 'replace'
+ * => array(text => text) (put in the markup before it is read).
  *
  * @param string $type
  * @return array|null
@@ -816,6 +824,9 @@ function pg_layout_piece_map($type)
 
         case 'shopping cart':
             return _pg_lc_cart_map($none);
+
+        case 'express order':
+            return _pg_lc_express_order_map($none);
 
         case 'form item view':
             return array(
@@ -1204,6 +1215,115 @@ function _pg_lc_cart_map($none)
     );
 }
 
+// The express order (_render_system_widget_express_order()): its cart part
+// is the shopping cart's (the items of every recipient are the widget's one
+// list, drawn in today's and the recurring table by row flags), the rest
+// the theme's own markup posting to the classic handler under the widget's
+// flags, but for the blocks the widget prints whole as its sections: the
+// shipping of each recipient, the payment methods, the terms, the applied
+// offers, the recurring totals and the messages.
+function _pg_lc_express_order_map($none)
+{
+    $map = _pg_lc_cart_map($none);
+    $map['echo'] = array(
+        '$messages' => 'section:eo_errors_notices',
+        '$pending_system' => 'none',
+        '$base_currency_total_info' => 'token:__cart_total_charged',
+        '$base_currency_total_with_surcharge_info' => 'token:__cart_total_charged',
+        '$tax_info' => 'token:__cart_tax',
+        '$shipping_info' => 'token:__cart_shipping',
+        '$gift_card_discount_info' => 'token:__cart_gift_card_discount',
+        '$surcharge_info' => 'token:__cart_surcharge',
+        '$total_with_surcharge_info' => 'token:__cart_total_with_surcharge',
+        'h($purchase_now_button_label)' => 'token:__purchase_now_button_label',
+        'h($special_offer_code_label)' => 'token:__special_offer_code_label',
+        'h($special_offer_code_message)' => 'token:__special_offer_code_message',
+        'h($custom_field_1_label)' => 'state:custom_field_1_label',
+        'h($custom_field_2_label)' => 'state:custom_field_2_label',
+        'h($opt_in_label)' => 'token:__opt_in_label',
+        'h($tax_exempt_label)' => 'token:__tax_exempt_label',
+        "h(\$gift_card['protected_code'])" => 'token:__gift_card_code',
+        "\$gift_card['remaining_balance_info']" => 'token:__gift_card_balance',
+        "h(\$gift_card['remove_url'])" => 'token:__gift_card_remove_url',
+    ) + $map['echo'];
+    // The express order's values carry their own minus sign.
+    $map['replace'] = array('-^^__cart_discount^^' => '^^__cart_discount^^', '-^^__cart_gift_card_discount^^' => '^^__cart_gift_card_discount^^');
+
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $keep = array('becomes' => 'keep');
+    $widget = array('becomes' => 'widget');
+    unset($map['if']['$taxable_items or $shippable_items']);
+    $map['if'] = array(
+        // Offers the widget lists above its form itself.
+        '$number_of_special_offers' => $widget,
+        '$quick_add' => array('becomes' => 'widget', 'drop_when' => array('quick_add' => 'quick_add')),
+        '!$recipients' => $widget,
+        "ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'" => array('becomes' => 'widget', 'drop_when' => array('multi_recipient' => 'recipients')),
+        // The address, arrival date and method of every recipient.
+        "\$recipient['shipping']" => array('becomes' => 'section', 'section' => 'eo_shipping', 'flag' => array('has_shipping'), 'wrap' => '<tr><td colspan="6">%s</td></tr>'),
+        // A shipped recipient's fee: in the totals' shipping line.
+        "\$recipient['shipping'] and \$recipient['complete']" => $widget,
+        '$show_subtotal' => $flag('has_subtotal_line'),
+        '$tax_info' => $flag('has_tax'),
+        '$shipping_info' => $flag('has_shipping_cost'),
+        '$gift_card_discount_info' => $flag('has_gift_card'),
+        '$number_of_applied_gift_cards > 1' => $keep,
+        '$show_surcharge' => $flag('has_surcharge'),
+        '$base_currency_total_info' => $flag('has_foreign_currency'),
+        '$base_currency_total_with_surcharge_info' => $flag('has_foreign_currency'),
+        '$total_disclaimer' => array('becomes' => 'token', 'token' => '__currency_disclaimer', 'flag' => array('has_foreign_currency')),
+        '$show_special_offer_code' => $flag('has_special_offer_code'),
+        '$special_offer_code_label' => $keep,
+        '$special_offer_code_message' => $keep,
+        '$applied_offers' => array('becomes' => 'section', 'section' => 'eo_applied_offers'),
+        '$paypal_express_checkout' => $widget,
+        '$purchase_now_button' => $keep,
+        '$purchase_now_button and !$recurring_items' => $flag('has_no_recurring_products'),
+        '$billing_same_as_shipping' => $flag('has_single_recipient'),
+        '$custom_field_1 OR $custom_field_2' => array('becomes' => 'keep', 'state' => array('custom_field_1', 'custom_field_2')),
+        '$custom_field_1' => array('becomes' => 'keep', 'state' => array('custom_field_1')),
+        '$custom_field_2' => array('becomes' => 'keep', 'state' => array('custom_field_2')),
+        '$custom_field_1_required' => array('becomes' => 'keep', 'state' => array('custom_field_1_required')),
+        '$custom_field_2_required' => array('becomes' => 'keep', 'state' => array('custom_field_2_required')),
+        '$opt_in' => $keep,
+        '$opt_in_sms' => $flag('shows_opt_in_sms'),
+        '$po_number' => array('becomes' => 'keep', 'state' => array('po_number')),
+        '$referral_source' => $flag('has_referral_sources'),
+        '$update_contact' => $flag('can_update_contact'),
+        '$tax_exempt' => $flag('tax_exempt_allowed'),
+        // The page's own billing form: the widget has none.
+        '$custom_billing_form' => array('becomes' => 'widget', 'drop_when' => array('billing_form' => 'billing_form')),
+        '$applied_gift_cards' => $flag('has_gift_card'),
+        '$payment' => $flag('has_payment'),
+        '$gift_card_code' => $flag('has_gift_card_code'),
+        // Every payment method, the card's fields and the gateway's extras.
+        '$credit_debit_card' => array('becomes' => 'section', 'section' => 'eo_payment_methods'),
+        '$offline_payment' => $widget,
+        '$offline_payment_allowed' => $widget,
+        '$terms_url' => array('becomes' => 'section', 'section' => 'eo_terms'),
+    ) + $map['if'];
+    $map['else']['!$recipients'] = 'keep';
+    $map['else']['$number_of_applied_gift_cards > 1'] = 'widget';
+    $map['loop'] = array(
+        '$payment_periods as $payment_period' => 'section:eo_payment_periods',
+        '$applied_gift_cards as $gift_card' => 'source:checkout.gift_cards',
+    ) + $map['loop'];
+    // The rows' boxes are named as the express order names them (a
+    // donation's becomes its amount box); the buttons and the billing
+    // fields the widget fills are bound to it.
+    $qty = array('name' => 'quantity[^^__item_id^^]', 'value' => '^^__item_qty^^');
+    $map['controls'] = array(
+        'quantity[^^__item_id^^]' => $qty,
+        'donations[^^__item_id^^]' => $qty,
+        'submit_update' => 'action:eo_submit_update',
+        'submit_purchase_now' => 'action:eo_submit_purchase',
+        '#billing_same_as_shipping' => array('name' => 'billing_same_as_shipping', 'value' => '1'),
+        'billing_salutation' => 'eo:billing_salutation',
+        'billing_country' => 'eo:billing_country',
+    );
+    return $map;
+}
+
 /**
  * A widget starter's row template: what its first loop area holds, or the
  * content of the loop area's one column (the layout's own loop body lays
@@ -1223,7 +1343,8 @@ function pg_layout_convert_row($starter)
 
 function _pg_lc_find_loop($node)
 {
-    if (($node['type'] ?? '') === 'loop_area') return $node;
+    // One of the widget's further lists (a sourced loop) is not its list.
+    if (($node['type'] ?? '') === 'loop_area' && (string)($node['props']['source'] ?? '') === '') return $node;
     foreach ((array)($node['children'] ?? array()) as $c) {
         if (!is_array($c)) continue;
         $hit = _pg_lc_find_loop($c);
@@ -1328,7 +1449,10 @@ function pg_layout_convert($type, $code, $ctx = array())
                 // The section's node is written whole at the start; what
                 // the block holds is the widget's, never read.
                 if ($in_tag()) break;
-                return array('mode' => 'skip', 'key' => $p['key'], 'lead' => '<pg-section data-section="' . h($p['section']) . '"></pg-section>');
+                $lead = '<pg-section data-section="' . h($p['section']) . '"></pg-section>';
+                foreach (array_reverse((array)($p['flag'] ?? array())) as $f) $lead = '<pg-vis data-flag="' . h($f) . '">' . $lead . '</pg-vis>';
+                if (isset($p['wrap'])) $lead = sprintf((string)$p['wrap'], $lead);
+                return array('mode' => 'skip', 'key' => $p['key'], 'lead' => $lead);
             case 'token':
                 // The widget prints the block whole: its value in its place.
                 if ($in_tag()) break;
@@ -1405,6 +1529,10 @@ function pg_layout_convert($type, $code, $ctx = array())
             if ($lv === 'keep') {
                 // A grouping the widget has not: its body once, as it is.
                 $stack[] = array('mode' => 'keep');
+            } elseif (strpos($lv, 'source:') === 0 && !$in_tag()) {
+                // One of the widget's further lists: the body is its row.
+                $write('<pg-source data-source="' . h(substr($lv, 7)) . '">');
+                $stack[] = array('mode' => 'list', 'close' => '</pg-source>');
             } elseif (strpos($lv, 'token:') === 0 && !$in_tag()) {
                 // Rows the widget prints whole: the value in their place.
                 $write('<div>^^' . h(substr($lv, 6)) . '^^</div>');
@@ -1440,6 +1568,7 @@ function pg_layout_convert($type, $code, $ctx = array())
     }
 
     if (($map['forms'] ?? '') === 'strip') $html = preg_replace('~<form\b[^>]*>|</form\s*>~i', '', $html);
+    if (!empty($map['replace'])) $html = strtr($html, (array)$map['replace']);
     $raw = array();
     if (($map['scripts'] ?? '') === 'keep') {
         // A script is no element: it is kept whole as a raw block.
@@ -1551,6 +1680,8 @@ function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
         if (strpos($v, 'ctx:') === 0) return (string)($ctx[substr($v, 4)] ?? '');
         if (strpos($v, 'text:') === 0) return h(substr($v, 5));
         if (strpos($v, 'form:') === 0) return ' data-pg-form="' . h(substr($v, 5)) . '"';
+        if (strpos($v, 'section:') === 0) return '<pg-section data-section="' . h(substr($v, 8)) . '"></pg-section>';
+        if (strpos($v, 'state:') === 0) return h((string)($ctx['state'][substr($v, 6)] ?? ''));
     }
     // Interface words the template prints: the words themselves, which
     // the page's translation reads like any text.
@@ -1609,6 +1740,10 @@ function _pg_lc_finish($nodes, $row, $map = array())
             $kind = (string)_pg_lfc_attr($n, 'data-row-flag');
             if ($kind !== '') foreach ($kids as $i => $k) $kids[$i] = _pg_lc_flag($k, $kind);
             $out[] = pg_di_mk('loop_area', $kind !== '' ? array('_kinds' => true) : array(), $kids);
+            continue;
+        }
+        if ($tag === 'pg-source') {
+            $out[] = pg_di_mk('loop_area', array('source' => (string)_pg_lfc_attr($n, 'data-source')), $kids);
             continue;
         }
         if ($tag === 'pg-section') {
@@ -1729,11 +1864,19 @@ function _pg_lc_bind($n, $map = array())
     }
     $controls = (array)($map['controls'] ?? array());
     $name = (string)_pg_lfc_attr($n, 'name');
-    if ($name !== '' && isset($controls[$name])) {
+    $id = (string)($n['props']['id'] ?? '');
+    if ($name === '' && $id !== '' && isset($controls['#' . $id])) $name = '#' . $id;
+    if ($name !== '' && isset($controls[$name]) && is_array($controls[$name])) {
+        // The name and value the widget's rows give the control.
+        foreach (array('name', 'value') as $attr) {
+            if (isset($controls[$name][$attr])) _pg_lfc_set_attr($n, $attr, (string)$controls[$name][$attr]);
+        }
+    } elseif ($name !== '' && isset($controls[$name])) {
         $to = (string)$controls[$name];
+        if (strpos($to, 'eo:') === 0) $n['props']['_bindings']['eo_field'] = substr($to, 3);
         if (strpos($to, 'bind:') === 0) $n['props']['_bindings']['value'] = substr($to, 5);
         if (strpos($to, 'action:') === 0) $n['props']['_bindings']['action'] = substr($to, 7);
-        _pg_lfc_set_attr($n, 'name', ($to === '' || strpos($to, 'bind:') === 0 || strpos($to, 'action:') === 0) ? null : $to);
+        _pg_lfc_set_attr($n, 'name', ($to === '' || strpos($to, 'bind:') === 0 || strpos($to, 'action:') === 0 || strpos($to, 'eo:') === 0) ? null : $to);
     }
     return $n;
 }

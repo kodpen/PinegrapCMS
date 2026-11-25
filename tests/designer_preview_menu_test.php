@@ -83,9 +83,9 @@ function test_designer_preview_menu_rows_by_page_state()
 	pg_assert_same(array('sd-vb-preview'), $res[0], 'Preview in a new window is always offered');
 	pg_assert_same(array('sd-vb-preview'), $res[1], 'a page not on the site has no Open on the site');
 	pg_assert_same(array('sd-vb-preview', 'sd-vb-live'), $res[2], 'a page on the site opens there as saved');
-	pg_assert_same(array('sd-vb-preview', 'sd-vb-play', 'sd-vb-share'), $res[3], 'a saved draft plays and shares the prototype');
-	pg_assert_same(array('sd-vb-preview', 'sd-vb-share'), $res[4], 'sharing does not wait for a page to play');
-	pg_assert_same(array('sd-vb-preview', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share'), $res[5], 'the rows keep the drawing\'s order');
+	pg_assert_same(array('sd-vb-preview', 'sd-vb-phone', 'sd-vb-play', 'sd-vb-share'), $res[3], 'a saved draft plays, shares and previews on a phone');
+	pg_assert_same(array('sd-vb-preview', 'sd-vb-phone', 'sd-vb-share'), $res[4], 'sharing does not wait for a page to play; the phone row shows where sharing does');
+	pg_assert_same(array('sd-vb-preview', 'sd-vb-phone', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share'), $res[5], 'the rows keep the drawing\'s order: the phone second');
 }
 
 function test_designer_preview_menu_replaces_the_bar_buttons()
@@ -99,7 +99,7 @@ function test_designer_preview_menu_replaces_the_bar_buttons()
 
 	$menu = designer_preview_menu_fn($js, '_sdPreviewMenuBuild');
 
-	foreach (array('sd-vb-preview', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share') as $id) {
+	foreach (array('sd-vb-preview', 'sd-vb-phone', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share') as $id) {
 		pg_assert_true((bool) preg_match('/id="' . $id . '"[^>]* role="menuitem"/', $menu), '#' . $id . ' is a row of the Preview menu');
 	}
 

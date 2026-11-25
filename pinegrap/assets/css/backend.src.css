@@ -27618,7 +27618,7 @@ html.ws-flow-layer-on body {
   max-width: 50%;
   text-align: right;
 }
-.wsf-share-level :is(select.form-control, select.pg-input) {
+.wsf-share-level select.pg-input {
   width: auto;
 }
 .wsf-main {
@@ -28975,15 +28975,19 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 /* A text a box writes in, its values as chips (valueInput()); the list
    "Add value" opens under it (valueField()). */
 /* A text box like any other, text and chips on one line until it wraps:
-   Bootstrap 6 lays .form-control out as a flex row, which put every text
-   piece and chip in a column of its own. */
-.wsf-values {
+   .pg-input lays a field out as a flex row of a fixed height, which put every
+   text piece and chip in a column of its own. Two classes, as .pg-input and
+   .pg-input-sm come later. */
+.pg-input.wsf-values {
   display: block;
-  min-height: calc(1.5em + .5rem + 2px);
+  height: auto;
+  min-height: 32px;
+  padding: 5px 12px;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.wsf-values-multi {
+.pg-input.wsf-values-multi {
   min-height: 5rem;
 }
 .wsf-chip {

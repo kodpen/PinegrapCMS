@@ -8195,6 +8195,12 @@ function pg_js_bundles()
         // The canvas guides: their pure geometry (window.PGCanvasGuides),
         // then the part that draws Measure over the canvas.
         'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
+        // The spacing bands over the canvas: their geometry
+        // (window.PGCanvasBands), the first-use tips' state (window.PGDesignerTour), then the part that
+        // draws them. What the Spacing box writes (window.PGSpacingBox) comes
+        // with the part 'spacing', which the core loads first.
+        'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
+        'assets/js/style_designer_phone.min.js'    => array('assets/js/style_designer_phone.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8295,6 +8301,9 @@ function pg_designer_parts()
         // head (also on Size and display and Text), drawn when the section
         // is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The spacing bands and their handles on the selected element over
+        // the canvas, drawn on the first selection that can show them.
+        'bands' => 'assets/js/style_designer_bands.min.js',
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.
         'pages' => 'assets/js/style_designer_pages.min.js',
@@ -8316,6 +8325,9 @@ function pg_designer_parts()
         // The Focus control: a picture's focus point dragged on the whole
         // picture, with the cut on each screen, drawn when first shown.
         'focus' => 'assets/js/style_designer_focus.min.js',
+        // The "Preview on a phone" window: the QR code of the person's
+        // phone link, its time left, "Copy link" and "End now".
+        'phone' => 'assets/js/style_designer_phone.min.js',
     );
 }
 

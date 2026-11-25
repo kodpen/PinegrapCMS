@@ -4848,8 +4848,10 @@ function pg_scroller_inject($content, $src = null)
 }
 
 /**
- * The markers of the visual editor's "Back to top" button (data-pg-to-top)
- * and "Scroll progress" bar (data-pg-scroll-progress): the attributes
+ * The markers of the visual editor's "Back to top" button (data-pg-to-top),
+ * "Scroll progress" bar (data-pg-scroll-progress) and a menu's "After
+ * scrolling" (data-pg-scrolled) and "Mark the section in view"
+ * (data-pg-spy) rows: the attributes
  * themselves, not longer names that start with them. The editor's Preview
  * tests the markup with the same expression (_SD_PAGE_SCRIPTS in
  * assets/js/style_designer.js).
@@ -4858,12 +4860,12 @@ function pg_scroller_inject($content, $src = null)
  */
 function pg_page_scroll_pattern()
 {
-    return '/\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i';
+    return '/\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i';
 }
 
 /**
- * The script behind "Back to top" and "Scroll progress", for a page whose
- * HTML holds either marker (pg_page_scroll_pattern()); a page without one
+ * The script behind "Back to top", "Scroll progress" and a menu's scroll
+ * rows, for a page whose HTML holds one of their markers (pg_page_scroll_pattern()); a page without one
  * gets nothing. Asked once every shared component and system widget is
  * drawn in (get_page_content.php), so the file follows the element wherever
  * it was placed. assets/js/pg_page_scroll.js is deferred and needs no
