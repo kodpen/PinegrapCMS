@@ -133,10 +133,9 @@ function test_designer_parts_for_follow_their_condition()
 
 	$all = array_fill_keys(pg_designer_part_conditions(), true);
 	$given = pg_designer_parts_for($all);
-	pg_assert_false(in_array('mirror', $given, true), 'mirror is off');
-	pg_assert_same(array_values(array_diff(array_keys(pg_designer_part_files()), array('mirror'))), $given, 'everything else holds');
+	pg_assert_same(array_keys(pg_designer_part_files()), $given, 'everything holds');
 
-	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'styleguide' => 'designer', 'clicks' => 'clicks', 'mirror' => 'off');
+	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'styleguide' => 'designer', 'clicks' => 'clicks');
 	foreach ($expect as $part => $condition) {
 		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
 	}
