@@ -23,7 +23,7 @@ priority: 8
 - DD15 (M) Done (`designer/designer-style-guide-drawing.md`). `designer-style-guide.md`: the sheet's six blocks, light and dark, the print sheet, a design with no variables. Holds SG2, SG3.
 - DD16 (M) `designer-accessibility-view.md`: the card, tab order, headings, names, the sight filters. Holds AV2, AV3.
 - DD17 (M) `designer-compare-live.md`: the Look tab with its slider, side by side, "What changed", a page never on the site. Holds CL2, CL3.
-- DD18 (S) `designer-cleanup.md`: the window with its four lists, a row with its reason, the closing line. Holds CU2, CU3.
+- DD18 (S) Done (`designer/designer-cleanup-drawing.md`). `designer-cleanup.md`: the window with its four lists, a row with its reason, the closing line. Holds CU2, CU3.
 - DD19 (M) `designer-document-to-page.md`: the start's form, the rows with kinds and unsure marks, the AI proposals. Holds FD3, FD4.
 - DD20 (M) `designer-record-edit-in-place.md`: the switch, the dashed frames, each control in place, the foot bar, changed meanwhile. Holds RE3, RE4.
 - DD21 (S) `designer-activity.md`: the Activity tab, a day's rows, the three choosers, an empty design. Holds AC3.
