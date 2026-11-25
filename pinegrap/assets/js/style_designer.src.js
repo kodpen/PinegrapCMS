@@ -14950,6 +14950,19 @@ const StyleDesigner = (function () {
                 noteBtn.addEventListener('click', function (e) { e.stopPropagation(); openNotesPopup(node); });
                 tbBtns.appendChild(noteBtn);
             }
+            // Set focus: where the element's picture is cut, the picture is
+            // dragged under its frame on the canvas (_sdFocusModeOpen()).
+            var _focusKind = _sdFocusKindOf(node);
+            if (_focusKind && _sdCanEditNode(node) && !node.props._locked && !hasLockedAncestor(node)) {
+                var focusBtn = doc.createElement('button');
+                focusBtn.type = 'button';
+                focusBtn.className = 'sd-tb-focus-btn bi bi-bullseye';
+                focusBtn.title = _sdT('Set focus');
+                focusBtn.setAttribute('aria-label', _sdT('Set focus'));
+                focusBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                focusBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdFocusModeOpen(node, _focusKind); });
+                tbBtns.appendChild(focusBtn);
+            }
             // Delete
             if (node.type !== 'root') {
                 var delBtn = doc.createElement('button');
@@ -57440,6 +57453,14 @@ const StyleDesigner = (function () {
         return size === 'cover' || (rep === 'no-repeat' && (size === '' || size === 'auto'));
     }
 
+    // The picture "Set focus" moves on the canvas: the Image's own, else a
+    // cut background picture; '' for neither.
+    function _sdFocusKindOf(node) {
+        if (!node || node.type === 'root') return '';
+        if (_sdFocusTakes(node, 'image')) return 'image';
+        return _sdFocusTakes(node, 'background') ? 'background' : '';
+    }
+
     function _sdFocusPlace(kind) {
         return '<div class="sd-fc" data-sd-focus="' + kind + '"></div>';
     }
@@ -57505,6 +57526,18 @@ const StyleDesigner = (function () {
             screen: screen,
             ratio: kind === 'image' ? String(node.props.aspectRatio || '') : '',
             measured: box && box.height > 0 ? box.width / box.height : 0,
+            id: node._id,
+            pic: pic,
+            // The fit and the position the canvas draws now, read on demand
+            // by the mode only.
+            drawnAs: function () {
+                var cs = null;
+                try { cs = pic ? pic.ownerDocument.defaultView.getComputedStyle(pic) : null; } catch (e) {}
+                if (!cs) return { fit: '', position: '' };
+                return kind === 'image'
+                    ? { fit: cs.objectFit, position: cs.objectPosition }
+                    : { fit: cs.backgroundSize, position: cs.backgroundPosition };
+            },
             bound: _sdFocusInLoop(node),
             locked: !!_sdPanelLockReason([node]),
             F: { parse: _sdFocusParse, format: _sdFocusFormat, forScreen: _sdFocusForScreen, set: _sdFocusSet, same: _sdFocusSameEverywhere },
@@ -57536,6 +57569,19 @@ const StyleDesigner = (function () {
                 _sdRenderNode(node, render);
             }
         };
+    }
+
+    // "Set focus" from the selected element's toolbar: the part draws the
+    // mode over the canvas and writes through the same host as the
+    // control, so the move is one undo step and the panel follows.
+    function _sdFocusModeOpen(node, kind) {
+        if (!node || !kind || !canvasDoc) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (_sdPanelLockReason([node])) return;
+        var host = _sdFocusHost(null, node, kind);
+        if (!host.pic || !host.src) return;
+        host.doc = canvasDoc;
+        _sdPartCall('focus', 'mode', [host]).catch(_sdPartFailed);
     }
 
     // Draws each Focus control of the panel. A control in a closed group

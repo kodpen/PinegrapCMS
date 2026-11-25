@@ -124,5 +124,64 @@ window.PGImageFocus = function (F) {
         return out;
     }
 
-    return { view: view, typed: typed, move: move, key: key, fromPointer: fromPointer, reset: reset, shapes: shapes, same: F.same };
+    // "Set focus" on the canvas. The size a picture of nw x nh is drawn at
+    // in a frame of fw x fh by its fit ("cover", "contain", "fill",
+    // "scale-down", or its own size: "none", "auto", ''), how far it
+    // reaches past the frame (ox, oy) and whether the frame cuts it.
+    function drawn(fit, fw, fh, nw, nh) {
+        fit = String(fit || '').toLowerCase();
+        var w = fw, h = fh;
+        if (nw > 0 && nh > 0 && fw > 0 && fh > 0) {
+            var contain = Math.min(fw / nw, fh / nh);
+            if (fit === 'cover') { var c = Math.max(fw / nw, fh / nh); w = nw * c; h = nh * c; }
+            else if (fit === 'none' || fit === 'auto' || fit === '') { w = nw; h = nh; }
+            else if (fit === 'scale-down') { var s = Math.min(1, contain); w = nw * s; h = nh * s; }
+            else if (fit === 'contain') { w = nw * contain; h = nh * contain; }
+        }
+        var ox = Math.max(0, w - fw), oy = Math.max(0, h - fh);
+        return { w: w, h: h, ox: ox, oy: oy, cut: ox > 0.5 || oy > 0.5 };
+    }
+
+    // Where the mode starts: the screen's value, else where the canvas
+    // draws the picture now (`now`, its computed position), else the middle.
+    function start(values, screen, now) {
+        var v = view(values, screen);
+        if (v.set) return v.xy;
+        var xy = now ? F.parse(now) : null;
+        return xy ? [xy[0], xy[1]] : [50, 50];
+    }
+
+    // The point after the picture was dragged by (dx, dy) pixels from `xy`:
+    // the picture follows the pointer, so a drag to the right shows more of
+    // its left side. A side the frame does not cut keeps its value.
+    function drag(xy, size, dx, dy) {
+        return [
+            size.ox > 0 ? clamp(xy[0] - dx / size.ox * 100) : xy[0],
+            size.oy > 0 ? clamp(xy[1] - dy / size.oy * 100) : xy[1]
+        ];
+    }
+
+    // The arrows move the picture by 1 %, as a drag would; null for any
+    // other key.
+    function nudge(xy, name) {
+        var x = Math.round(xy[0]), y = Math.round(xy[1]);
+        switch (name) {
+            case 'ArrowLeft': x += 1; break;
+            case 'ArrowRight': x -= 1; break;
+            case 'ArrowUp': y += 1; break;
+            case 'ArrowDown': y -= 1; break;
+            default: return null;
+        }
+        return [clamp(x), clamp(y)];
+    }
+
+    // Where the whole picture sits against its frame's top left corner.
+    function offset(xy, size) {
+        return { left: -size.ox * xy[0] / 100 + 0, top: -size.oy * xy[1] / 100 + 0 };
+    }
+
+    return {
+        view: view, typed: typed, move: move, key: key, fromPointer: fromPointer, reset: reset, shapes: shapes, same: F.same,
+        drawn: drawn, start: start, drag: drag, nudge: nudge, offset: offset
+    };
 };
