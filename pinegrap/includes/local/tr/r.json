@@ -2728,6 +2728,8 @@
     "removed the {var:1} connection": "{var:1} bağlantısını kaldırdı",
     "removed their own calendar from their Work Calendar": "kendi takvimini İş Takviminden kaldırdı",
     "removing old items": "eski öğeler kaldırılıyor",
+    "renamed a shared component to {var:1}": "bir ortak bileşenin adını {var:1} olarak değiştirdi",
+    "renamed the design to {var:1}": "tasarımın adını {var:1} olarak değiştirdi",
     "renew, cancel, subscription, automatic": "yenileme, iptal, abonelik, otomatik",
     "renew, end, cancel subscription": "yenile, bitir, aboneliği iptal et",
     "renovation, live in, dust, noise": "tadilat, evde yaşamak, toz, gürültü",

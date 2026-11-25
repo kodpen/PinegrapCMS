@@ -16,13 +16,9 @@ description: Census for the designer's History "Activity" tab (AC1): every write
 - Shared components: content editing switched on or off, one delete or "Delete selected".
 - Draft on or off for a whole design (`pg_designer_design_set_draft()`), release bundle publish and take-back, Assistant asked.
 
-## Which writers leave no row at all?
-- A shared component's save: `shared_component` `update` and `content_update` set `tree_json` and `updated_at` only, with no user; `create` keeps `created_by`; `rename` and `update_config` log nothing. Every page placing it changes on the site with no revision.
-- A designer CSS/JS/JSON file saved: `files.timestamp` only, no user.
-- The scheduled job taking a page on or off the site (`pg_page_schedule_run()`): no revision, no log.
-- A page brought back from the Recycle Bin: its `recycle_bin` row is deleted, no log line names it.
-- Design variables: no writer yet (`design-variables-model.md`; the Variables tab is DV2); its save will leave none unless DV2 adds one.
+## Which writers left no row at all, and what keeps them now?
+- A shared component's save, rename and settings, the scheduled job taking a page on or off the site, the design's variables file saved: audit trail lines since AC5 (`designer-activity-audit-trail.md`), as are the style save, design rename, duplicate, delete and the whole-design draft switch listed above.
+- Still none: a page brought back from the Recycle Bin keeps only the trail's `restore` line (`core/audit-trail-writers.md`); a design brought back from the bin writes none.
 
-## What is the open question for the architect?
-- Open (AC1, sent to the architect 2026-11-25): the tab ships from `page_revisions`, `design_proposals`, `prototype_links` and their answers only. Should the owner be asked for a store of the design-level events above (shared component save, style/theme/variables save, page binned or restored, design rename, schedule going live)?
-- Shapes: a `shared_id` on `page_revisions` (already open in `page-revisions.md`) for components only, or one design events table for all. Reading the Site Log text is not offered: no ids, translated text, six months.
+## Where did the store question go?
+- Architect (2026-11-25): the audit trail, no new table or column (`designer-activity-audit-trail.md`).

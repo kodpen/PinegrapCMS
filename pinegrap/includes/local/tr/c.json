@@ -4942,6 +4942,7 @@
     "change-password": "parola-degistir",
     "changed the Sign in with Google application": "Google ile Giriş uygulamasını değiştirdi",
     "changed the design file {var:1}": "{var:1} tasarım dosyasını değiştirdi",
+    "changed the settings of the shared component {var:1}": "{var:1} ortak bileşeninin ayarlarını değiştirdi",
     "changed the {var:1} application of connected accounts": "bağlı hesapların {var:1} uygulamasını değiştirdi",
     "changed the {var:1} connection": "{var:1} bağlantısını değiştirdi",
     "changed {var:1} with the assistant": "{var:1} sayfasını asistanla değiştirdi",

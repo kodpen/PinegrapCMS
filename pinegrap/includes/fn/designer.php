@@ -2451,12 +2451,16 @@ function pg_designer_design_set_draft($style_id, $on, $user)
         if ($on) {
             if ($draft) continue;
             if ((string)$r['page_home'] === 'yes') { $out['home']++; continue; }
+            $audit_before = pg_audit_fetch('page', $pid);
             if (!pg_page_draft_move($pid, true, (int)$r['page_folder'], $uid)) continue;
+            pg_audit_record('update', 'page', $pid, $audit_before);
             log_activity(lang(array('string' => 'page ({var:1}) was taken off the site as a draft', 'vars' => array($r['page_name']))), $who);
         } else {
             if (!$draft) continue;
             // A draft waiting for a prototype link's approval stays a draft.
+            $audit_before = pg_audit_fetch('page', $pid);
             if (!pg_page_draft_move($pid, false, (int)$r['page_folder'], $uid)) { $out['held']++; continue; }
+            pg_audit_record('update', 'page', $pid, $audit_before);
             log_activity(lang(array('string' => 'page ({var:1}) was published', 'vars' => array($r['page_name']))), $who);
         }
         $out['changed']++;
@@ -2938,11 +2942,13 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
         if (pg_recycle_style_ready()) {
             $live_ids = array();
             foreach ($live as $lp) $live_ids[] = (int)$lp['page_id'];
+            $audit_before = pg_audit_fetch('style', $style_id);
             $rs = pg_recycle_style($style_id, $user, $live_ids);
             if ($rs['status'] !== 'binned') {
                 $out['error'] = $rs['message'];
                 return $out;
             }
+            pg_audit_record('recycle', 'style', $style_id, $audit_before);
             $out['recycled'] = true;
             $out['folders']  = (int)$rs['folders'];
         }
@@ -2974,7 +2980,9 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
         WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
     $out['folders'] = max(0, (int)mysqli_affected_rows(db::$con));
 
+    $audit_before = pg_audit_fetch('style', $style_id);
     db("DELETE FROM style WHERE style_id = '$style_id'");
+    pg_audit_record('delete', 'style', $style_id, $audit_before);
     db("DELETE FROM system_style_cells WHERE style_id = '$style_id'");
     db("DELETE FROM preview_styles WHERE style_id = '$style_id'");
     // Its prototype share links end with it: a later design may get its id.
@@ -3087,7 +3095,9 @@ function pg_designer_rename_design($style_id, $name, $user)
         return $out;
     }
 
+    $audit_before = pg_audit_fetch('style', $style_id);
     db("UPDATE style SET style_name = '" . e($name) . "', style_user = '" . (int)$user['id'] . "', style_timestamp = UNIX_TIMESTAMP() WHERE style_id = '$style_id'");
+    pg_audit_record('update', 'style', $style_id, $audit_before);
     log_activity(lang(array('string' => '{var:1} was renamed to {var:2}', 'vars' => array($out['old'], $name))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     $out['ok']   = true;

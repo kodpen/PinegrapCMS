@@ -147,6 +147,8 @@ function workspace_record_kinds_registry_test_lists()
 			'except'   => array(
 				'config'   => 'the site\'s settings row, no record kind',
 				'api_apps' => 'an application of the external API, no record kind',
+				'style'    => 'a visual design, traced for the designer\'s Activity tab, no record kind',
+				'shared_components' => 'a designer shared component, traced for the designer\'s Activity tab, no record kind',
 			),
 		),
 		'quick_edit' => array(
