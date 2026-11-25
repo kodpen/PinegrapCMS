@@ -76,7 +76,7 @@ function test_workspace_channel_board_tab_old_address_opens_the_list()
 {
 	$js = workspace_channel_board_tab_js('workspace.js');
 
-	pg_assert_contains("if ((self.tab === 'tasks') && self.hasBoard(channel)) {", $js, 'the Tasks tab asked for opens the Board tab');
+	pg_assert_contains("if ((self.tab === 'tasks') && board) {", $js, 'the Tasks tab asked for opens the Board tab');
 	pg_assert_contains("(query.view === 'tasks') || (query.view === 'list')", $js, 'the address of the Tasks tab and of the List view are read');
 }
 
