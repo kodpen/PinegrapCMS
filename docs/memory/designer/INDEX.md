@@ -355,6 +355,7 @@
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
+- designer-canvas-guides-drawing.md: The drawing of plan designer-canvas-guides (DD8): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
 - designer-canvas-guides-geometry.md: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
 - designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 - designer-canvas-mirror.md: The canvas mirror as the designer part 'mirror' (SS1, #11535): a frame filled from the canvas's markup without the editor, redrawn when the hand rests; its pure scheduling PGMirrorSchedule
