@@ -11,10 +11,16 @@
  * stylesheet, which the canvas and the Preview try on at once. The design's
  * save writes the file.
  *
+ * The same part draws the list a colour or size control of Options opens
+ * (_sdVarCtl() in the core): the variables of the control's kind, the
+ * designer's own, the type scale's steps, then the way out to a typed value;
+ * and Detach, which puts the value of that moment in the control's place.
+ *
  * Not needed to open a page: the core runs this file the first time the tab
- * is shown, or when the look or palette of a design with a saved variables
- * file changes (_sdVarsFollowTheme()), and hands it a host: the pane, the
- * look and palette, the hidden input the save posts and the try-on.
+ * is shown, a control's list or Detach is asked for, or when the look or
+ * palette of a design with a saved variables file changes
+ * (_sdVarsFollowTheme()), and hands it a host: the pane, the look and
+ * palette, the hidden input the save posts and the try-on.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -107,7 +113,19 @@ StyleDesigner.definePart('variables', function (K) {
         return '<span class="sd-vars-sample" aria-hidden="true"></span>';
     }
 
-    function customRow(c, i) {
+    // The token a variable writes (pg_design_variables_token()).
+    function tokenOf(key, custom) {
+        return (custom ? 'c-' : '') + String(key).replace(/_/g, '-');
+    }
+
+    // "Used in n places", words and never a button.
+    function usedHtml(used, token) {
+        var n = used[token] || 0;
+        var t = n === 0 ? _sdT('Not used yet') : (n === 1 ? _sdT('Used in 1 place') : _sdT('Used in {var} places', n));
+        return '<span class="sd-vars-used' + (n ? '' : ' is-none') + '">' + esc(t) + '</span>';
+    }
+
+    function customRow(c, i, used) {
         var value = c.kind === 'color'
             ? '<span class="sd-vars-pair">' +
                 '<input type="color" class="sd-vars-color" data-custom="' + i + '" data-mode="light" value="' + attr(c.light) + '" aria-label="' + attr(c.name) + ', ' + attr(_sdT('Light')) + '" title="' + attr(_sdT('Light')) + '">' +
@@ -117,7 +135,7 @@ StyleDesigner.definePart('variables', function (K) {
         return '<div class="sd-vars-row">' +
             (c.kind === 'color' ? '<span class="sd-vars-swatch" style="background:' + attr(c.light) + '" aria-hidden="true"></span>' : '<span class="sd-vars-sample" aria-hidden="true"></span>') +
             '<input type="text" class="form-control form-control-sm sd-vars-name" data-custom-name="' + i + '" value="' + attr(c.name) + '" maxlength="40" aria-label="' + attr(_sdT('Name')) + '">' +
-            value +
+            value + usedHtml(used || {}, tokenOf(c.key, true)) +
             '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-act="remove" data-custom="' + i + '" title="' + attr(_sdT('Remove')) + '" aria-label="' + attr(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
             '</div>';
     }
@@ -140,6 +158,7 @@ StyleDesigner.definePart('variables', function (K) {
     function draw() {
         if (!shown() || !S) return;
         var m = current() || S.model;
+        var used = H.usage ? H.usage() : {};
         var h = '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Variables')) + '</span>' +
                 '<span class="sd-th-sub">' + esc(_sdT('The named colours, type, spacing and shape of the design. Change one here and every page that uses it follows.')) + '</span></div>';
         (S.list.groups || []).forEach(function (g) {
@@ -149,13 +168,13 @@ StyleDesigner.definePart('variables', function (K) {
                 if (vr.group !== g.key) return;
                 var v = m.values[vr.key];
                 h += '<div class="sd-vars-row">' + sample(vr, v) +
-                     '<span class="sd-vars-label">' + esc(vr.label) + '</span>' + field(vr, v) + '</div>';
+                     '<span class="sd-vars-label">' + esc(vr.label) + '</span>' + field(vr, v) + usedHtml(used, tokenOf(vr.key, false)) + '</div>';
             });
             h += '</details>';
         });
         h += '<details class="sd-vars-group" data-group="custom"' + (open.custom || (m.custom && m.custom.length) ? ' open' : '') + '>' +
              '<summary class="sd-vars-summary">' + esc(_sdT('Your own')) + '</summary>';
-        (m.custom || []).forEach(function (c, i) { h += customRow(c, i); });
+        (m.custom || []).forEach(function (c, i) { h += customRow(c, i, used); });
         h += '<div class="sd-vars-add">' +
              '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-act="add-color"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a colour')) + '</button>' +
              '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-act="add-size"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a size')) + '</button>' +
@@ -302,5 +321,209 @@ StyleDesigner.definePart('variables', function (K) {
         });
     }
 
-    return { render: render, refresh: refresh };
+    // ── The list of an Options control ───────────────────────────────────
+
+    // The list open under a control: { el, host, off }.
+    var L = null;
+    var TIP = 'sd_vars_tip';
+
+    // The state of the look and palette of the moment, asked once.
+    function ready(host) {
+        if (!H) H = host;
+        if (S && S.look === host.look() && S.palette === host.palette()) return Promise.resolve(S);
+        return ask(current());
+    }
+
+    // token => { name, color } for the core's chips.
+    function names(m) {
+        var out = {};
+        S.list.rows.forEach(function (vr) {
+            var v = m.values[vr.key];
+            out[tokenOf(vr.key, false)] = { name: vr.label, color: vr.kind === 'color' && v ? v.light : '' };
+        });
+        (m.custom || []).forEach(function (c) {
+            out[tokenOf(c.key, true)] = { name: c.name, color: c.kind === 'color' ? c.light : '' };
+        });
+        return out;
+    }
+
+    function pxText(px) {
+        return px == null ? '' : Math.round(px) + ' px';
+    }
+
+    // The rows a control of `kind` offers, under their headings:
+    // [{ head, items: [{ expr, name, value, color }] }]; a heading with no
+    // rows is left out.
+    function offer(host, m) {
+        var vars = [], own = [], computed = [];
+        var px = host.px;
+        if (host.kind === 'color') {
+            S.list.rows.forEach(function (vr) {
+                if (vr.kind !== 'color') return;
+                var v = m.values[vr.key];
+                vars.push({ expr: host.expr({ token: tokenOf(vr.key, false) }), name: vr.label, value: v.light, color: v.light });
+            });
+        } else {
+            vars.push({ expr: host.expr({ token: 'size-base' }), name: labelOf('size_base'), value: pxText(px(m.values.size_base)) });
+            var base = px(m.values.size_base), scale = parseFloat(m.values.scale);
+            if (base != null && scale > 0) {
+                host.steps.forEach(function (st) {
+                    computed.push({ expr: host.expr({ step: st[1] }), name: st[0], value: pxText(base * Math.pow(scale, st[1])) });
+                });
+            }
+        }
+        (m.custom || []).forEach(function (c) {
+            if ((host.kind === 'color') !== (c.kind === 'color')) return;
+            own.push({ expr: host.expr({ token: tokenOf(c.key, true) }), name: c.name,
+                value: c.kind === 'color' ? c.light : pxText(px(c.value)) || c.value, color: c.kind === 'color' ? c.light : '' });
+        });
+        return [
+            { head: _sdT('Variables'), items: vars },
+            { head: _sdT('Your own'), items: own },
+            { head: _sdT('Type scale'), items: computed }
+        ].filter(function (g) { return g.items.length; });
+    }
+
+    function labelOf(key) {
+        var r = S.list.rows.filter(function (vr) { return vr.key === key; })[0];
+        return r ? r.label : key;
+    }
+
+    function tipShown() {
+        try { return !localStorage.getItem(TIP); } catch (e) { return false; }
+    }
+    function tipDone() {
+        try { localStorage.setItem(TIP, '1'); } catch (e) { /* the line comes back next time */ }
+    }
+
+    function close() {
+        if (!L) return;
+        document.removeEventListener('pointerdown', L.off, true);
+        document.removeEventListener('keydown', L.off, true);
+        if (L.el.parentNode) L.el.parentNode.removeChild(L.el);
+        L = null;
+    }
+
+    function listHtml(host, m) {
+        var now = host.value ? String(host.value).trim() : '';
+        var h = '';
+        if (tipShown()) {
+            h += '<div class="sd-var-tip">' + esc(_sdT('A variable is a value the whole design shares. Pick one and this control follows it when it changes.')) +
+                 '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vl-tip>' + esc(_sdT('Got it')) + '</button></div>';
+        }
+        h += '<input type="search" class="form-control form-control-sm sd-var-search" placeholder="' + attr(_sdT('Search variables')) + '" aria-label="' + attr(_sdT('Search variables')) + '">';
+        h += '<div class="sd-var-rows" role="listbox" aria-label="' + attr(_sdT('Variables')) + '">';
+        offer(host, m).forEach(function (g) {
+            h += '<div class="sd-var-group"><div class="sd-var-head">' + esc(g.head) + '</div>';
+            g.items.forEach(function (r) {
+                var on = r.expr === now;
+                h += '<button type="button" class="sd-var-row' + (on ? ' is-on' : '') + '" role="option" aria-selected="' + on + '" data-vl-expr="' + attr(r.expr) + '">' +
+                     (r.color ? '<span class="sd-var-sw" style="background:' + attr(r.color) + '" aria-hidden="true"></span>'
+                              : '<span class="bi ' + (host.kind === 'color' ? 'bi-palette' : 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>') +
+                     '<span class="sd-var-name">' + esc(r.name) + '</span><span class="sd-var-val">' + esc(r.value) + '</span>' +
+                     '<span class="bi bi-check2 sd-var-tick" aria-hidden="true"></span></button>';
+            });
+            h += '</div>';
+        });
+        h += '</div><div class="sd-var-sep"></div>' +
+             '<button type="button" class="sd-var-row sd-var-typed" data-vl-typed>' +
+             esc(host.kind === 'color' ? _sdT('Custom colour…') : _sdT('Custom value…')) + '</button>';
+        return h;
+    }
+
+    // The search narrows every heading; one with nothing left goes.
+    function filter(q) {
+        q = q.trim().toLowerCase();
+        L.el.querySelectorAll('.sd-var-group').forEach(function (g) {
+            var any = false;
+            g.querySelectorAll('.sd-var-row').forEach(function (r) {
+                var hit = !q || r.textContent.toLowerCase().indexOf(q) !== -1;
+                r.hidden = !hit;
+                if (hit) any = true;
+            });
+            g.hidden = !any;
+        });
+    }
+
+    // A variable chosen: the design gets a variables stylesheet if it has
+    // none yet (its model goes into the hidden input, so Save writes the
+    // file), then the control takes the expression.
+    function choose(host, expr) {
+        tipDone();
+        close();
+        if (host.locked) { host.set(expr); return; }
+        if (!host.hasCss()) {
+            host.setModel(current() || S.model);
+            host.tryCss(S.css);
+        }
+        host.set(expr);
+    }
+
+    function pick(host) {
+        if (L && L.host.anchor === host.anchor) { close(); return; }
+        close();
+        var el = document.createElement('div');
+        el.className = 'sd-var-list';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', _sdT('Variables'));
+        el.innerHTML = '<p class="sd-var-busy">' + esc(_sdT('Loading…')) + '</p>';
+        host.anchor.appendChild(el);
+        var off = function (e) {
+            if (e.type === 'keydown') {
+                if (e.key === 'Escape') { e.stopPropagation(); close(); }
+                return;
+            }
+            if (!el.contains(e.target) && !host.anchor.contains(e.target)) close();
+        };
+        L = { el: el, host: host, off: off };
+        document.addEventListener('pointerdown', off, true);
+        document.addEventListener('keydown', off, true);
+        return ready(host).then(function (res) {
+            if (!res || !L || L.el !== el) { if (!res) close(); return; }
+            var m = current() || S.model;
+            host.names(names(m));
+            el.innerHTML = listHtml(host, m);
+            var q = el.querySelector('.sd-var-search');
+            q.addEventListener('input', function () { filter(q.value); });
+            el.addEventListener('click', function (e) {
+                var t = e.target.closest('[data-vl-expr], [data-vl-typed], [data-vl-tip]');
+                if (!t) return;
+                if (t.hasAttribute('data-vl-tip')) { tipDone(); t.parentNode.remove(); return; }
+                if (t.hasAttribute('data-vl-typed')) { close(); host.typed(); return; }
+                choose(host, t.getAttribute('data-vl-expr'));
+            });
+            q.focus();
+        });
+    }
+
+    // The value the bound expression gives now, in the control's place.
+    function valueNow(host, m) {
+        var ref = host.parse(host.value);
+        if (!ref) return '';
+        var base = host.px(m.values.size_base);
+        if (ref.step != null) return base == null ? '' : Math.round(base * Math.pow(parseFloat(m.values.scale), ref.step)) + 'px';
+        if (ref.units != null) {
+            var u = host.px(m.values.space_unit);
+            return u == null ? '' : Math.round(u * ref.units) + 'px';
+        }
+        var key = ref.token.replace(/-/g, '_');
+        var v = m.values[key];
+        if (v === undefined) {
+            var c = (m.custom || []).filter(function (x) { return tokenOf(x.key, true) === ref.token; })[0];
+            if (!c) return '';
+            v = c.kind === 'color' ? c.light : c.value;
+        }
+        return (v && typeof v === 'object') ? v.light : String(v);
+    }
+
+    function detach(host) {
+        close();
+        return ready(host).then(function (res) {
+            if (!res) return;
+            var v = valueNow(host, current() || S.model);
+            if (v) host.set(v);
+        });
+    }
+
+    return { render: render, refresh: refresh, pick: pick, detach: detach };
 });

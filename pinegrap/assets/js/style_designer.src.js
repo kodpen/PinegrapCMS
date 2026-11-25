@@ -25768,6 +25768,189 @@ const StyleDesigner = (function () {
         return t === 'style' ? _sdT('Style') : t === 'advanced' ? _sdT('Advanced') : _sdT('Content');
     }
 
+    // ── Options states: pure helpers ──
+    // The states an element takes: Hover for every element; Focus and
+    // Pressed for one a visitor can focus and press (a link, a button, a
+    // form control, a summary, an element drawn as a button or a nav link).
+    // tests/designer_option_states_test.php runs it under Node.
+    function _sdStatesFor(tag, cssClass) {
+        var t = String(tag || '').toLowerCase();
+        var list = String(cssClass || '').split(/\s+/);
+        var press = /^(a|button|input|select|textarea|summary)$/.test(t) ||
+            list.indexOf('btn') !== -1 || list.indexOf('nav-link') !== -1;
+        return press ? ['hover', 'focus', 'pressed'] : ['hover'];
+    }
+    // ── end of the Options states pure helpers
+
+    // ── Options states: the core's hooks ──
+    // "State", the first row of the Style tab's body: Normal, Hover, Focus,
+    // Pressed. Under a state Color and background, Border and corner and
+    // Shadow and effect write the state's rule on the element's custom
+    // style class in User Styles (`.pgs-xxxxxx:hover`, `:focus-visible`,
+    // `:active`); the part 'states' (pg_option_states.js,
+    // style_designer_states.js) draws the panel under the state, writes it
+    // and shows it on the canvas. The part loads the first time a state is
+    // chosen or an element whose class holds a state's rule is shown. The
+    // state is held while this element and the Style tab are open.
+    var _sdOptState = '';
+    var _sdOptStateId = '';
+    var _SD_STATE_PSEUDO = { hover: ':hover', focus: ':focus-visible', pressed: ':active' };
+
+    function _sdStateName(st) {
+        return st === 'hover' ? _sdT('Hover') : st === 'focus' ? _sdT('Focus') : st === 'pressed' ? _sdT('Pressed') : _sdT('Normal');
+    }
+
+    // The element the State row is drawn for: one element whose custom
+    // style is on (_sdCustomStyleOff()), or null.
+    function _sdStateNode() {
+        var n = selectedNode;
+        if (!n || selectedNodes.length > 1 || n.type === 'root' || _sdInnerSel()) return null;
+        if (typeof PgCustomStyle === 'undefined' || !window.PgUserStyles || _sdCustomStyleOff(n)) return null;
+        return n;
+    }
+
+    // The states whose rule the element's custom style class holds: a look
+    // at the User Styles text, no parse.
+    function _sdStateHeld(node) {
+        var cls = node && node.props ? PgCustomStyle.classOf(node.props.cssClass) : '';
+        if (!cls) return [];
+        var text = _userStylesGet();
+        if (text.indexOf(cls + ':') === -1) return [];
+        return Object.keys(_SD_STATE_PSEUDO).filter(function (st) {
+            return new RegExp('\\.' + cls + _SD_STATE_PSEUDO[st] + '\\s*\\{').test(text);
+        });
+    }
+
+    // The State row: a label and one group, a ring on a state that holds a
+    // value. The line under it is the part's (_sdStateAfter()).
+    function _sdStateRowHtml(node) {
+        var held = _sdStateHeld(node);
+        var states = _sdStatesFor(_sdIdTag(node), node.props.cssClass);
+        var seg = function (st) {
+            var on = st === _sdOptState;
+            var has = held.indexOf(st) !== -1;
+            var name = _sdStateName(st);
+            return '<button type="button" class="sd-state-seg' + (on ? ' sd-seg-on' : '') + '" data-sd-state="' + st + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+                (has ? ' aria-label="' + esc(_sdT('{var}, has values', name)) + '"' : '') + '>' + esc(name) +
+                (has ? '<span class="sd-state-ring" aria-hidden="true"></span>' : '') + '</button>';
+        };
+        return '<div class="sd-state-row" data-sd-state-row="1">' +
+            '<span class="sd-state-lbl" id="sd-state-lbl">' + esc(_sdT('State')) + '</span>' +
+            '<div class="sd-state-grp" role="group" aria-labelledby="sd-state-lbl">' + seg('') + states.map(seg).join('') + '</div>' +
+        '</div>';
+    }
+
+    // Back to Normal without a drawing: another element, another tab, the
+    // search, "Only what I changed".
+    function _sdStateDrop() {
+        if (!_sdOptState) return;
+        _sdOptState = '';
+        _sdOptStateId = '';
+        var api = _sdPartApis.states;
+        if (api && typeof api.leave === 'function') api.leave(canvasDoc);
+    }
+
+    // A state chosen in the row; the chosen one, or Normal, goes back to
+    // Normal. The part is loaded first.
+    function _sdStateGo(st) {
+        var node = _sdStateNode();
+        if (!node) return;
+        if (st === _sdOptState) st = '';
+        var done = function () {
+            renderProperties();
+            _sdStateSay(_sdT('State: {var}', _sdStateName(st)));
+            var b = document.querySelector('#sd-properties .sd-state-seg[data-sd-state="' + st + '"]');
+            if (b) b.focus();
+        };
+        if (!st) { _sdStateDrop(); done(); return; }
+        _sdPartLoad('states').then(function () {
+            if (selectedNode !== node) return;
+            _sdOptState = st;
+            _sdOptStateId = node._id;
+            done();
+        }, _sdPartFailed);
+    }
+
+    // Says what was chosen to a screen reader.
+    function _sdStateSay(text) {
+        var live = document.getElementById('sd-state-live');
+        if (!live) {
+            live = document.createElement('div');
+            live.id = 'sd-state-live';
+            live.className = 'visually-hidden';
+            live.setAttribute('aria-live', 'polite');
+            document.body.appendChild(live);
+        }
+        live.textContent = text;
+    }
+
+    // Writes the state's rule as one undo step: `fn(text, cls)` gives the
+    // new User Styles text; the element gets its custom style class the
+    // first time (as _sdWriteCustomStyle() does).
+    function _sdStateWrite(fn) {
+        var node = _sdStateNode();
+        if (!node || !_sdMayEdit(node)) return;
+        if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+        var cls = PgCustomStyle.classOf(node.props.cssClass) || _sdNewCustomStyleClass();
+        if (!cls) return;
+        var text = _userStylesGet();
+        var next = fn(text, cls);
+        if (next === text) return;
+        saveState();
+        if (String(node.props.cssClass || '').split(/\s+/).indexOf(cls) === -1) _sdSetNodeClass(node, '', cls);
+        _userStylesSet(next);
+        render();
+    }
+
+    // What the part reads and calls.
+    function _sdStateHost() {
+        return {
+            state: _sdOptState,
+            name: _sdStateName,
+            node: selectedNode,
+            panel: document.getElementById('sd-properties'),
+            canvasDoc: canvasDoc,
+            canvasEl: function () { return _sdCanvasInnerOf(selectedNode); },
+            cls: function () { return PgCustomStyle.classOf(selectedNode.props.cssClass); },
+            text: _userStylesGet,
+            held: function () { return _sdStateHeld(selectedNode); },
+            write: _sdStateWrite,
+            go: _sdStateGo,
+            locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(null, 'design'); },
+            segSync: _sdSegSync,
+            resetButtons: _sdChgResetButtons
+        };
+    }
+
+    // After markModifiedProps() in the single element's panel: the part
+    // draws the panel under the chosen state, or the rings of Normal's
+    // section heads. With nothing held and Normal chosen nothing loads; an
+    // element holding a state's rule loads the part (its values count in
+    // "Only what I changed") and draws the panel again.
+    function _sdStateAfter(panel) {
+        if (!_sdOptState && !(_sdStateNode() && _sdStateHeld(selectedNode).length)) return;
+        if (!_sdPartLoaded('states')) {
+            _sdPartLoad('states').then(function () { renderProperties(); }, _sdPartFailed);
+            return;
+        }
+        var api = _sdPartApis.states;
+        if (panel.querySelector('[data-sd-state-row]') && api && typeof api.after === 'function') api.after(_sdStateHost());
+    }
+
+    // The row of a state's value back to Normal's: the dot's arrow.
+    function _sdStateRowReset(propRow) {
+        var api = _sdPartApis.states;
+        if (api && typeof api.resetRow === 'function') api.resetRow(_sdStateHost(), propRow);
+    }
+
+    // The states that hold values on the selected element, for "Only what
+    // I changed": [{ state, name, count }].
+    function _sdStateReview() {
+        var api = _sdPartApis.states;
+        if (!_sdStateNode() || !api || typeof api.review !== 'function') return [];
+        return api.review(_sdStateHost());
+    }
+
     // ── "Only what I changed": the core's hooks ──
     // The switch under the Options panel counts the rows of the element
     // changed in its tabs. Switched on, the panel is drawn with every tab
@@ -25789,6 +25972,8 @@ const StyleDesigner = (function () {
         foot.hidden = !counts;
         if (!counts) { foot.innerHTML = ''; return; }
         var n = Object.keys(counts).reduce(function (sum, t) { return sum + (Number(counts[t]) || 0); }, 0);
+        // The values the element's states hold count too.
+        n += _sdStateReview().reduce(function (sum, e) { return sum + e.count; }, 0);
         var on = _sdReviewOn;
         foot.classList.toggle('is-on', on);
         foot.innerHTML = '<button type="button" class="sd-review-switch" role="switch" aria-checked="' + (on ? 'true' : 'false') + '">' +
@@ -25885,16 +26070,21 @@ const StyleDesigner = (function () {
         var n = 0;
         _sdReviewBusy = true;
         try {
-            n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
-                var rows = _sdReviewRows(document.getElementById('sd-properties'));
-                for (var i = 0; i < rows.length; i++) {
-                    var r = rows[i];
-                    if (!r.top || r.top === 'tr') continue;
-                    var key = r.tab + '|' + r.card + '|' + r.at;
-                    if (!done[key]) return { key: key, lbl: r.lbl };
-                }
-                return null;
-            }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+            // The rows and the states' values in one undo step.
+            _sdUndoAsOne(_saveStateRun, function () {
+                n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
+                    var rows = _sdReviewRows(document.getElementById('sd-properties'));
+                    for (var i = 0; i < rows.length; i++) {
+                        var r = rows[i];
+                        if (!r.top || r.top === 'tr') continue;
+                        var key = r.tab + '|' + r.card + '|' + r.at;
+                        if (!done[key]) return { key: key, lbl: r.lbl };
+                    }
+                    return null;
+                }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+                var api = _sdPartApis.states;
+                if (_sdStateNode() && api && typeof api.clearAll === 'function') n += api.clearAll(_sdStateHost());
+            });
         } finally {
             _sdReviewBusy = false;
         }
@@ -25914,6 +26104,10 @@ const StyleDesigner = (function () {
             locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(nodes) || !!(panel && panel.querySelector('.sd-panel-readonly')); },
             reset: _sdReviewResetRow,
             resetAll: _sdReviewResetAll,
+            // The states holding values ("In a state"), and "Show": the
+            // Style tab opened on that state.
+            states: _sdStateReview,
+            showState: function (st) { _sdReviewOn = false; _sdOptTab = 'style'; _sdStateGo(st); },
             // "Copy style" under the list: one element's changed Style rows.
             copyStyle: _sdStyleCopy,
             several: nodes.length > 1,
@@ -36816,6 +37010,7 @@ const StyleDesigner = (function () {
         var box = document.getElementById('sd-props-search');
         var searching = !!(box && box.value.trim());
         if (!panel || !tab || (tab === _sdOptTab && !searching)) return;
+        if (tab !== _sdOptTab) _sdStateDrop();
         if (box) { box.value = ''; if (box.parentElement) box.parentElement.classList.remove('sd-has-q'); }
         _sdPropsSearchEmpty('');
         _sdOptSearchClose();
@@ -36957,7 +37152,12 @@ const StyleDesigner = (function () {
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || _sdReviewOn || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
-        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
+        // A state is held while this element and the Style tab are open; a
+        // search, a jump to a row and "Only what I changed" go back to Normal.
+        if (_sdOptState && (_allBodies || _sdOptStateId !== selectedNode._id || !_sdStateNode())) _sdStateDrop();
+        // Under a state every body is built: the part reads the rows of
+        // the closed cards too.
+        _sdSectBuild = { cards: {}, lazy: (_allBodies || _sdOptState) ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
         // Options section (node-specific)
         var optHtml = '';
@@ -37041,6 +37241,10 @@ const StyleDesigner = (function () {
         ].concat(_keyed.keyed));
         var _shown = _sdOptTabsShown(_plan);
         _sdOptTab = _sdOptTabPick(_sdOptTab, _shown);
+        if (_sdOptTab !== 'style') _sdStateDrop();
+        // "State", the first row of the Style tab's body.
+        var _stNode = _sdStateNode();
+        if (_stNode && _plan.style) _plan.style = _sdStateRowHtml(_stNode) + _plan.style;
         var _drawn = '';
         _shown.forEach(function (t) {
             if (_allBodies || t === _sdOptTab) _drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + _plan[t] + '</div>';
@@ -37060,6 +37264,7 @@ const StyleDesigner = (function () {
         _sdSpBoxBind([selectedNode]);
         _sdFocusBind(selectedNode);
         markModifiedProps();
+        _sdStateAfter(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -52258,11 +52463,11 @@ const StyleDesigner = (function () {
         // data-sd-szbox: the size chooser of Font Size (_sdSzBind()).
         return _sdSectKey(sect('bi-type', _sdT('Text'),
             '<div data-sd-szbox hidden></div>' + _alignHtml +
-            row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
+            row(_sdT('Color'),        colorSelectGroup('text-', tColors), 'color:color') +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
-            row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors), 'color:background-color') +
             row(_sdT('Case'),         selStyleGroup(n.props, ['text-lowercase','text-uppercase','text-capitalize'], 'None')) +
-            row(_sdT('Font Size'),    selStyleGroup(n.props, fontSizeClasses, 'Default')) +
+            row(_sdT('Font Size'),    selStyleGroup(n.props, fontSizeClasses, 'Default'), 'size:font-size') +
             row(_sdT('Font Weight'),  selStyleGroup(n.props, ['fw-lighter','fw-light','fw-normal','fw-medium','fw-semibold','fw-bold','fw-bolder'], 'Default')) +
             row(_sdT('Font Style'),   selStyleGroup(n.props, ['fst-italic','fst-normal'], 'Default')) +
             row(_sdT('Line Height'),  selStyleGroup(n.props, ['lh-1','lh-sm','lh-base','lh-lg'], 'Default')) +
@@ -56596,13 +56801,16 @@ const StyleDesigner = (function () {
     // A row: the changed dot's place, the label, the control. While the
     // single element's panel is built (_sdSectBuild) a lone select of up to
     // six values is drawn as a button group (_sdSegPlan()).
-    function row(label, ctrl) {
+    // `vars` ('<kind>:<css property>') makes the control one that offers the
+    // design's variables (_sdVarCtl()).
+    function row(label, ctrl, vars) {
         var extra = '';
         var ps = _sdSectBuild ? _sdSelParse(ctrl) : null;
         if (ps) {
             var plan = _sdSegPlan(ps.opts.filter(function (o) { return o.v !== ''; }).map(function (o) { return o.l; }));
             if (plan.kind === 'group') { ctrl = _sdSegGroup(ps); extra = _sdSegRowCls(plan); }
         }
+        if (vars) ctrl = _sdVarCtl(vars, ctrl);
         return '<div class="sd-prop-row' + extra + '"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
     }
     // A button group from a read select (_sdSelParse()). The select stays,
@@ -56996,6 +57204,215 @@ const StyleDesigner = (function () {
         });
         h += '</div>';
         return h;
+    }
+
+    // ── Design variables in Options: pure helpers ──
+    // A control bound to a design variable holds a CSS expression on the
+    // design's --pg-var-* tokens (the variables stylesheet,
+    // includes/fn/design_variables.php): a variable ({ token: 'brand' }, a
+    // designer's own 'c-<key>'), a step of the type scale ({ step: n }: the
+    // base size times the scale n times, a negative n divides) or a multiple
+    // of the base unit ({ units: n }). Steps and multiples are not variables
+    // of their own: the expression works them out, so a change of the base
+    // size, the scale or the unit moves every element bound to one.
+    var _SD_VAR_STEPS = [['XS', -2], ['S', -1], ['L', 1], ['XL', 2], ['2XL', 3], ['3XL', 4], ['4XL', 5], ['5XL', 6]];
+    var _SD_VAR_UNITS = [2, 3, 4, 6, 8];
+
+    function _sdVarTok(t) {
+        return 'var(--pg-var-' + t + ')';
+    }
+
+    // The expression of a reference; '' for one that names nothing offered.
+    function _sdVarExpr(ref) {
+        if (!ref) return '';
+        if (ref.token != null) return /^[a-z0-9][a-z0-9-]*$/.test(ref.token) ? _sdVarTok(ref.token) : '';
+        if (ref.units != null) return _SD_VAR_UNITS.indexOf(ref.units) !== -1 ? 'calc(' + _sdVarTok('space-unit') + ' * ' + ref.units + ')' : '';
+        var n = +ref.step;
+        if (!_SD_VAR_STEPS.some(function (s) { return s[1] === n; })) return '';
+        var h = 'calc(' + _sdVarTok('size-base');
+        for (var i = 0; i < Math.abs(n); i++) h += (n > 0 ? ' * ' : ' / ') + _sdVarTok('scale');
+        return h + ')';
+    }
+
+    // The reference a style value is, read back; null for a typed value.
+    function _sdVarParse(v) {
+        v = String(v == null ? '' : v).trim();
+        var m = /^var\(--pg-var-([a-z0-9][a-z0-9-]*)\)$/.exec(v);
+        if (m) return { token: m[1] };
+        m = /^calc\(var\(--pg-var-space-unit\) \* (\d+)\)$/.exec(v);
+        if (m) return _sdVarExpr({ units: +m[1] }) ? { units: +m[1] } : null;
+        for (var i = 0; i < _SD_VAR_STEPS.length; i++) {
+            if (_sdVarExpr({ step: _SD_VAR_STEPS[i][1] }) === v) return { step: _SD_VAR_STEPS[i][1] };
+        }
+        return null;
+    }
+
+    // A length of the model in pixels (a rem is 16); null for anything else.
+    function _sdVarPx(v) {
+        var m = /^(-?\d*\.?\d+)(px|rem)?$/.exec(String(v == null ? '' : v).trim());
+        if (!m) return null;
+        return m[2] === 'rem' ? +m[1] * 16 : +m[1];
+    }
+
+    // What a step of the scale and a multiple of the unit give now, whole px.
+    function _sdVarStepPx(base, scale, n) {
+        return Math.round(base * Math.pow(scale, n));
+    }
+    function _sdVarUnitPx(unit, n) {
+        return Math.round(unit * n);
+    }
+
+    // The name a chip shows: `names` maps a token to its variable's name;
+    // a designer's own variable not in it is named from its key.
+    function _sdVarRefName(ref, names) {
+        if (!ref) return '';
+        if (ref.units != null) return _sdT('{var} units', ref.units);
+        if (ref.step != null) {
+            var s = _SD_VAR_STEPS.filter(function (x) { return x[1] === ref.step; })[0];
+            return _sdT('Scale {var}', s ? s[0] : String(ref.step));
+        }
+        if (names && names[ref.token]) return names[ref.token];
+        var t = String(ref.token).replace(/^c-/, '').replace(/-/g, ' ');
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    // "Used in n places": per token, the elements of `trees` whose style
+    // reads it (an element reading it twice counts once).
+    function _sdVarUsage(trees) {
+        var out = {};
+        var stack = (trees || []).slice();
+        while (stack.length) {
+            var n = stack.pop();
+            if (!n) continue;
+            var attrs = (n.props && n.props._attrs) || [];
+            var seen = {};
+            for (var i = 0; i < attrs.length; i++) {
+                if (!attrs[i] || attrs[i].name !== 'style') continue;
+                var re = /--pg-var-([a-z0-9][a-z0-9-]*)/g, m;
+                while ((m = re.exec(String(attrs[i].value || '')))) {
+                    if (!seen[m[1]]) { seen[m[1]] = 1; out[m[1]] = (out[m[1]] || 0) + 1; }
+                }
+            }
+            (n.children || []).forEach(function (c) { stack.push(c); });
+        }
+        return out;
+    }
+    // ── end of the design variables in Options ──
+
+    // ── Design variables in Options
+    // Colour and font size controls of the single element's panel offer
+    // the design's variables (row()'s `vars`). The list, the values and the
+    // names come from the part 'variables', loaded when a list or a Detach
+    // is first asked for; the core draws only the chip of a bound control.
+    // What the part last gave: token => { name, color }.
+    var _sdVarNames = {};
+
+    function _sdVarNamesMap() {
+        var out = {
+            brand: _sdT('Brand'), accent: _sdT('Accent'), neutral: _sdT('Neutral'), surface: _sdT('Surface'),
+            text: _sdT('Text'), success: _sdT('Success'), warning: _sdT('Warning'), danger: _sdT('Danger'),
+            'size-base': _sdT('Base size'), 'space-unit': _sdT('Base unit'), 'space-section': _sdT('Section rhythm'),
+            radius: _sdT('Corners')
+        };
+        Object.keys(_sdVarNames).forEach(function (t) { if (_sdVarNames[t].name) out[t] = _sdVarNames[t].name; });
+        return out;
+    }
+
+    // The control as today with a quiet "Variables" button beside it; a
+    // bound control shows the chip in its place (the variable's name and
+    // "Detach"), a typed value of the property a field. The control stays
+    // in the row, hidden, for the search and the counts.
+    function _sdVarCtl(vars, html) {
+        if (!selectedNode || selectedNodes.length > 1 || !_sdThemes() || !_sdUsesBootstrap()) return html;
+        var kind = vars.split(':')[0], prop = vars.split(':')[1];
+        var val = getAttrStyleProp(selectedNode, prop);
+        var ref = _sdVarParse(val);
+        var a = ' data-sd-var="' + kind + '" data-sd-var-prop="' + prop + '"';
+        var pick = '<button type="button" class="sd-var-pick" data-sd-var-open title="' + esc(_sdT('Variables')) + '" aria-label="' + esc(_sdT('Choose a variable')) + '">' +
+            '<span class="bi bi-braces" aria-hidden="true"></span></button>';
+        if (ref) {
+            var info = ref.token ? (_sdVarNames[ref.token] || {}) : {};
+            var nm = _sdVarRefName(ref, _sdVarNamesMap());
+            var mark = (kind === 'color' && info.color)
+                ? '<span class="sd-var-sw" style="background:' + esc(info.color) + '" aria-hidden="true"></span>'
+                : '<span class="bi ' + (kind === 'color' ? 'bi-palette' : 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>';
+            return '<div class="sd-var-ctl sd-var-bound"' + a + '><div hidden>' + html + '</div>' +
+                '<span class="sd-var-chip"><button type="button" class="sd-var-chip-name" data-sd-var-open title="' + esc(nm) + '">' + mark +
+                '<span class="sd-var-chip-txt">' + esc(nm) + '</span></button>' +
+                '<button type="button" class="sd-var-detach" data-sd-var-detach>' + esc(_sdT('Detach')) + '</button></span></div>';
+        }
+        if (val && prop !== 'background-color') {
+            return '<div class="sd-var-ctl"' + a + '><div hidden>' + html + '</div>' +
+                '<input type="text" class="form-control form-control-sm sd-var-lit" data-sd-var-lit value="' + esc(val) + '" spellcheck="false" aria-label="' + esc(_sdT('Value')) + '">' +
+                pick + '</div>';
+        }
+        return '<div class="sd-var-ctl"' + a + '><div class="sd-var-main">' + html + '</div>' + pick + '</div>';
+    }
+
+    // Writes a bound or typed value ('' removes it) as one undo step.
+    function _sdVarSet(node, prop, v) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!node || _sdPanelLockReason([node])) return;
+        if ((getAttrStyleProp(node, prop) || '') === (v || '')) return;
+        saveState();
+        setAttrStyleProp(node, prop, v || '');
+        _sdRenderNode(node, render);
+    }
+
+    // A typed value left in the field: written when the browser takes it.
+    function _sdVarLitChange(inp) {
+        var ctl = inp.closest('.sd-var-ctl');
+        if (!ctl || !selectedNode) return;
+        var prop = ctl.getAttribute('data-sd-var-prop'), v = inp.value.trim();
+        if (v && (/[;{}<>]/.test(v) || (window.CSS && CSS.supports && !CSS.supports(prop, v)))) {
+            _sdFieldInvalid(inp, ctl.getAttribute('data-sd-var') === 'color'
+                ? _sdT('Not a colour. Write a hex value such as #94A3B8.')
+                : _sdT('Not a size. Write a value such as 16px or 1rem.'));
+            return;
+        }
+        _sdFieldInvalid(inp, '');
+        _sdVarSet(selectedNode, prop, v);
+    }
+
+    // The way out to a typed value: the binding goes and the control opens
+    // as it does today.
+    function _sdVarTyped(prop) {
+        if (selectedNode && _sdVarParse(getAttrStyleProp(selectedNode, prop))) _sdVarSet(selectedNode, prop, '');
+        var ctl = document.querySelector('#sd-properties .sd-var-ctl[data-sd-var-prop="' + prop + '"]');
+        var main = ctl ? ctl.querySelector('.sd-var-main') : null;
+        if (!main) return;
+        var trig = main.querySelector('.sd-cp-trigger');
+        if (trig) { trig.click(); return; }
+        var f = main.querySelector('.sd-seg, select:not([hidden])');
+        if (!f) return;
+        f.focus();
+        if (f.tagName === 'SELECT' && typeof f.showPicker === 'function') { try { f.showPicker(); } catch (e) { /* not from a script here */ } }
+    }
+
+    // What the part reaches for one control: the variables host
+    // (_sdVarsHost()) and the control, its value, the write, the way out to
+    // a typed value and the count over the pages open in the editor.
+    function _sdVarsPickHost(ctl, node) {
+        var h = _sdVarsHost(null);
+        var prop = ctl.getAttribute('data-sd-var-prop');
+        h.anchor = ctl;
+        h.kind = ctl.getAttribute('data-sd-var');
+        h.value = getAttrStyleProp(node, prop);
+        h.locked = !_collab.mayEdit || !!_sdPanelLockReason([node]);
+        h.set = function (v) { _sdVarSet(node, prop, v); };
+        h.typed = function () { _sdVarTyped(prop); };
+        h.parse = _sdVarParse;
+        h.expr = _sdVarExpr;
+        h.px = _sdVarPx;
+        h.steps = _SD_VAR_STEPS;
+        h.names = function (map) { _sdVarNames = map || {}; };
+        return h;
+    }
+
+    function _sdVarOpen(btn) {
+        var ctl = btn.closest('.sd-var-ctl');
+        if (!ctl || !selectedNode) return;
+        _sdPartCall('variables', btn.hasAttribute('data-sd-var-detach') ? 'detach' : 'pick', [_sdVarsPickHost(ctl, selectedNode)]).catch(_sdPartFailed);
     }
 
     /**
@@ -57848,7 +58265,7 @@ const StyleDesigner = (function () {
         // the search read them as before.
         var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
-            row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
+            row(_sdT('Color'),  colorSelectGroup('border-', borderColors), 'color:border-color') +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
             '<div class="sd-spb-host sd-rdb-host sd-bm-wrap" data-sd-rdbox></div>' +
             '<div class="sd-rd-rows" hidden>' +
@@ -58042,10 +58459,10 @@ const StyleDesigner = (function () {
             '</div>';
 
         var colorsHtml = as(_sdT('Color and background'),
-            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
+            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors), 'color:color') +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors), 'color:background-color') +
             row(_sdT('Bg Opacity'),   selStyleGroup(n.props, ['bg-opacity-10','bg-opacity-25','bg-opacity-50','bg-opacity-75','bg-opacity-100'], 'Default')) +
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
@@ -65638,6 +66055,9 @@ const StyleDesigner = (function () {
         if (!propRow) return;
         var kind = lbl.dataset.resetKind;
 
+        // A state's value: the row back to Normal's (_sdStateRowReset()).
+        if (kind === 'state') { _sdStateRowReset(propRow); return; }
+
         if (kind === 'bg-color-all') {
             if (!selectedNode) return;
             saveState();
@@ -65833,10 +66253,14 @@ const StyleDesigner = (function () {
             if (!t || !t.closest) return;
             var pre = t.closest('[data-sd-pos-preset]');
             if (pre && panel.contains(pre)) { _sdPosPresetApply(pre.getAttribute('data-sd-pos-preset')); return; }
+            var stb = t.closest('.sd-state-seg');
+            if (stb && panel.contains(stb)) { _sdStateGo(stb.getAttribute('data-sd-state')); return; }
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
             if (mk && panel.contains(mk)) { if (!mk.disabled) _sdLayMake(); return; }
+            var vo = t.closest('[data-sd-var-open], [data-sd-var-detach]');
+            if (vo && panel.contains(vo)) { _sdVarOpen(vo); return; }
             var rb = t.closest('.sd-chg-reset');
             if (!rb || !panel.contains(rb) || rb.disabled) return;
             var lbl = rb.nextElementSibling;
@@ -65845,10 +66269,22 @@ const StyleDesigner = (function () {
             if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
         });
+        // Escape goes back to Normal from a state, outside a field and an
+        // open colour menu.
+        panel.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' || !_sdOptState) return;
+            var t = e.target;
+            if (t && t.closest && t.closest('input, select, textarea, .sd-cp-menu:not([hidden])')) return;
+            if (panel.querySelector('.sd-cp-menu:not([hidden])')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sdStateGo('');
+        });
         // A layer picked beside Z Index fills the field, whose own listener
         // writes: 'input' for one element, 'change' for several.
         panel.addEventListener('change', function (e) {
             var sel = e.target;
+            if (sel && sel.hasAttribute && sel.hasAttribute('data-sd-var-lit')) { _sdVarLitChange(sel); return; }
             if (!sel || !sel.hasAttribute || !sel.hasAttribute('data-sd-zlayer') || sel.value === '') return;
             var inp = sel.parentNode ? sel.parentNode.querySelector('input[data-prop="zIndex"]') : null;
             if (!inp || inp.disabled) return;
@@ -76850,7 +77286,11 @@ const StyleDesigner = (function () {
                 try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
             },
             setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
-            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
+            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); },
+            // Whether the canvas reads a variables stylesheet: the saved
+            // file or one being tried.
+            hasCss: function () { return !!(_sdThemeTry.variables || th.variables); },
+            usage: function () { return _sdVarUsage(_pages.map(_pgTreeOf)); }
         };
     }
 
@@ -89285,6 +89725,14 @@ const StyleDesigner = (function () {
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ]).filter(Boolean);
+
+        // My library's Import, for the designers its part is handed to: the
+        // part runs on the first choice.
+        if (_sdPartUrls('libraryfile')) {
+            items.push({ id: 'act_library_import', label: _sdT('Import to my library'), icon: 'bi-box-arrow-in-down', action: function () {
+                _sdPartCall('libraryfile', 'importFile', []).catch(_sdPartFailed);
+            }});
+        }
 
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {

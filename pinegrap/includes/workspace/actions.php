@@ -932,6 +932,39 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(($action === 'ws_flow_bin') ? array() : array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit'))));
 
+        // The rules of a channel's board: its flows that start on a task
+        // event and the ready rules, turned on and off (channel_board_rules.php).
+        case 'ws_channel_board_rules':
+        case 'ws_channel_board_rule_set':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if ($action === 'ws_channel_board_rule_set') {
+                $result = ws_board_rule_set($viewer, $channel, array(
+                    'key'     => (string) ($request['key'] ?? ''),
+                    'flow_id' => (int) ($request['flow_id'] ?? 0),
+                    'on'      => !empty($request['on']),
+                    'answer'  => $request['answer'] ?? null,
+                ));
+
+                if (!$result['ok']) {
+                    return ws_action_flow_refused($result);
+                }
+            }
+
+            $rules = ws_board_rules_for($viewer, $channel);
+
+            if (!$rules['ok']) {
+                return ws_action_error($rules['error']);
+            }
+
+            unset($rules['ok'], $rules['error']);
+
+            return ws_action_ok($rules);
+
         // The setup panel of a template just placed (flow_templates.php): its
         // answers checked here, written into the draft and, with publish,
         // published through Publish's own checks.

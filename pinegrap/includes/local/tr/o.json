@@ -1832,6 +1832,7 @@
     "Open this channel to the whole team? Everything written in it so far becomes readable by everyone, and it cannot be made private again.": "Bu kanal tüm ekibe açılsın mı? Şimdiye kadar yazılan her şey herkes tarafından okunabilir olur ve kanal yeniden özel yapılamaz.",
     "Open this channel to the whole team? Everything written in it so far becomes readable by everyone. Staff can make it private again, but what was read stays read.": "Bu kanal tüm ekibe açılsın mı? Şimdiye kadar yazılan her şeyi herkes okuyabilir. Yöneticiler kanalı yeniden özel yapabilir, ama okunan okunmuş olur.",
     "Open this desk": "Bu masayı aç",
+    "Open this flow in Flows to publish it.": "Yayınlamak için bu akışı Akışlar'da açın.",
     "Open this page again using an \"https://\" address. If you already did, then a proxy in front of this server is terminating SSL without sending any recognised forwarding header, and Secure Mode cannot be used safely.": "Bu sayfayı \"https://\" adresiyle yeniden açın. Zaten öyle açtıysanız, bu sunucunun önündeki bir proxy SSL'i sonlandırıyor ancak tanınan hiçbir yönlendirme başlığı göndermiyor demektir; bu durumda Güvenli Mod güvenle kullanılamaz.",
     "Open to children from other schools": "Başka okullardan çocuklara da açık",
     "Open to every resident; seats are first come, first served": "Her sakine açıktır; yerler gelen sırasına göre verilir",

@@ -21,7 +21,7 @@ module: designer_library
 ## Where is the library kept?
 - One design file per item in the file manager's root folder: `library-<slug>.json`, `files.type = 'json'`, `design = 1`, the way a theme is a design CSS file; no table, no column. It shows in the Design Files list.
 - `pg_library_list()` (by `order`, then name), `pg_library_get()`, `pg_library_save()`, `pg_library_update()`, `pg_library_delete()`; `pg_library_item_decode()` refuses a file that is not an item, too large (1 MB), of a newer version or nameless, and drops a rule or variable that could close its block.
-- The checks of an imported file (script, event attribute, address kinds) are ML4's.
+- Export, Import and the checks of an imported file: `designer-library-export-import.md`.
 
 ## Who may do what?
 - `pg_library_may($action, $user)`: `use` (see, insert) for designer access full or content (roles 0-3); `save`, `manage`, `export`, `import` for full only (administrator, designer).

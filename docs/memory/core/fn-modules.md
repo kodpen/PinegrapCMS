@@ -145,6 +145,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer`: [[bound-media-src]], [[common-region-component-usage]], [[design-asset-path-placeholders]]
 - `designer_fx`: [[designer-interactions]], [[designer-interactions-chapter]], [[designer-interactions-count]], [[designer-interactions-more-entrances]], [[designer-video-autoplay]]
 - `designer_library`: [[designer-library-item]]
+- `designer_library_io`: [[designer-library-export-import]], [[designer-library-import-checks]]
 - `designer_messages`: [[messages-node-settings]]
 - `designer_preview_as`: [[designer-preview-as-cases]]
 - `designer_preview_render`: [[designer-preview-as-server]]
