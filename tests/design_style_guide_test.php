@@ -257,3 +257,22 @@ function test_style_guide_model_reads_nothing_it_is_not_given()
 	pg_assert_same('#0d6efd', style_guide_test_row($bad['blocks']['colours']['rows'], 'key', 'brand')['light'], 'a refused value takes its default');
 	pg_assert_same(array(), $bad['blocks']['components']['rows'], 'no components');
 }
+
+function test_style_guide_component_pages_count_each_page_once_and_skip_the_bin()
+{
+	$rows = array(array('id' => 3, 'name' => 'Footer'), array('id' => 7, 'name' => 'Header'), array('id' => 9, 'name' => 'Promo'));
+	$usage = array(
+		3 => array(
+			array('page_id' => 10, 'style_id' => 1),
+			array('page_id' => 10, 'style_id' => 1),
+			array('page_id' => 11, 'style_id' => 1),
+			array('page_id' => 12, 'style_id' => 2, 'binned' => true),
+		),
+		7 => array(array('page_id' => 0, 'style_id' => 4), array('page_id' => 0, 'style_id' => 5)),
+	);
+	$out = pg_style_guide_component_pages($rows, $usage);
+	pg_assert_same(2, $out[0]['pages'], 'a page placing it twice counts once; a binned page not at all');
+	pg_assert_same(2, $out[1]['pages'], 'an older database counts designs');
+	pg_assert_same(0, $out[2]['pages'], 'not placed');
+	pg_assert_same('Promo', $out[2]['name'], 'the row is kept');
+}

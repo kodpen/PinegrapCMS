@@ -24,5 +24,5 @@ return array(
 	'sources' => array(
 		'assets/js/style_designer_styleguide.js',
 	),
-	'when'    => 'always',
+	'when'    => 'designer',
 );
