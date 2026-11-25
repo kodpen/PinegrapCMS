@@ -489,6 +489,33 @@ function pg_figma_import_keep($id, $data)
 }
 
 /**
+ * Keeps a frame step's work, unless "Stop" removed the import while the
+ * step was fetching: Stop deleted the files the work file listed then, so
+ * the files this step fetched are deleted here and nothing is written back.
+ *
+ * @param string $id
+ * @param array  $data    the import with this step's work
+ * @param array  $fetched the files this step stored, each array('id', 'name')
+ * @return bool false when the import was stopped
+ */
+function pg_figma_import_keep_step($id, $data, $fetched)
+{
+    if (pg_figma_import_load($id) === null) {
+        if ($fetched) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+
+            foreach ($fetched as $file) {
+                pg_delete_file_record(array('id' => (int) $file['id'], 'name' => (string) $file['name']));
+            }
+        }
+
+        return false;
+    }
+
+    return pg_figma_import_keep($id, $data);
+}
+
+/**
  * Starts the import of the ticked frames: reads them in one GET nodes call,
  * converts each, asks for the addresses of the pictures (one call for the
  * image fills, one per hundred vectors), and keeps the work.
@@ -672,6 +699,7 @@ function pg_figma_import_frame($id, $index, $user)
 
     $frame = $data['frames'][$index];
     $out = array('ok' => true, 'pictures' => 0, 'vectors' => 0, 'notes' => 0, 'failed' => !empty($frame['failed']));
+    $fetched = array();
 
     if (!$out['failed'] && $frame['pictures']) {
         @set_time_limit(300);
@@ -698,6 +726,7 @@ function pg_figma_import_frame($id, $index, $user)
 
                 if ($file) {
                     $data['files'][] = $file;
+                    $fetched[] = $file;
 
                     if ($ref !== '') {
                         $data['by_ref'][$ref] = $file;
@@ -719,7 +748,10 @@ function pg_figma_import_frame($id, $index, $user)
     $frame['pictures'] = array();
     $data['frames'][$index] = $frame;
     $out['notes'] = count($frame['report']);
-    pg_figma_import_keep($id, $data);
+
+    if (!pg_figma_import_keep_step($id, $data, $fetched)) {
+        return array('ok' => false);
+    }
 
     return $out;
 }
