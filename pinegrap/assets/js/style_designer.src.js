@@ -34912,7 +34912,8 @@ const StyleDesigner = (function () {
         // A Style or Advanced section opens by its rule when it holds for
         // every element (_sdOptOpenByDefault()).
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
-            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
+            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex,
+                snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem, visit: false };
         });
         // Layout's rows follow the same context; a row any element holds a
         // value in is drawn (rowCss()).
@@ -35249,6 +35250,7 @@ const StyleDesigner = (function () {
                 }
                 var val = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value;
                 _sdMcCommit(nodes, function (n) { _sdMcWrite(n, s, val); });
+                _sdSnapEnsure(val);
             });
         });
 
@@ -36637,6 +36639,8 @@ const StyleDesigner = (function () {
             text: _sdOptIsText(n.type, p.tag, p.contentType),
             flex: _sdOptIsFlex(n.type, p.cssClass),
             parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            snapBox: _sdSnapBox(n.type, p.cssClass),
+            snapItem: !!(par && _sdSnapBox(par.type, (par.props || {}).cssClass)),
             visit: _sdCondRowsOf(n).length > 0
         };
     }
@@ -57252,7 +57256,11 @@ const StyleDesigner = (function () {
             order:        [_sdT('Flex Order'),      'order-',           orderValues],
             grow:         [_sdT('Grow'),            'flex-',            growValues],
             shrink:       [_sdT('Shrink'),          'flex-',            shrinkValues],
-            fill:         [_sdT('Fill'),            'flex-',            fillValues]
+            fill:         [_sdT('Fill'),            'flex-',            fillValues],
+            // Scroll snap (_SD_SNAP_CLASSES): one value for every size, None
+            // writes nothing; its rule joins User Styles on first use.
+            snap:         [_sdT('Scroll snap'),     'pg-scroll-snap-',  [['always',_sdT('Always')],['near',_sdT('Near')]], _sdT('None')],
+            snapTo:       [_sdT('Snap to'),         'pg-snap-to-',      [['start',_sdT('Start')],['center',_sdT('Centre')],['end',_sdT('End')]], _sdT('Default')]
         };
         var _layHeld = {};
         Object.keys(_layRows).forEach(function (id) { _layHeld[id] = _sdLayHeld(_layCls, _layRows[id][1], _layRows[id][2]); });
@@ -57261,7 +57269,13 @@ const StyleDesigner = (function () {
         _layPlan.rows.forEach(function (id, i) {
             // A line between the box rows and the element's own.
             if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
-            _fxBody += mkRespRow(_layRows[id][0], _layRows[id][1], _layRows[id][2], _sdT('Default'));
+            var _lr = _layRows[id];
+            if (!_lr[3]) { _fxBody += mkRespRow(_lr[0], _lr[1], _lr[2], _sdT('Default')); return; }
+            _fxBody += mkNonRespRow(_lr[0], _lr[2].map(function (v) { return [_lr[1] + v[0], v[1]]; }), _lr[3]);
+            if (id === 'snap' && _sdSnapNeedsScroll(_layCls, _laySeveral ? null : p)) {
+                _fxBody += '<div class="sd-lay-note" role="note"><span class="bi bi-info-circle" aria-hidden="true"></span>' +
+                    '<span class="sd-lay-note-txt">' + esc(_sdT('Snapping works once the element scrolls: set Overflow to Auto or Scroll.')) + '</span></div>';
+            }
         });
         _fxBody += _sdLayNoteHtml(_layPlan, _laySeveral) + '</div>';
         var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
@@ -59425,6 +59439,7 @@ const StyleDesigner = (function () {
                 });
                 valWords.forEach(function(w) { clsArray.push(w); });
                 tgt.props.cssClass = clsArray.join(' ').trim();
+                _sdSnapEnsure(val);
                 renderProperties();
                 renderCanvas();
                 renderAttrsPanel();
@@ -64104,11 +64119,13 @@ const StyleDesigner = (function () {
         { id: 'alignItems', of: 'box', name: 'alignment' },
         { id: 'alignContent', of: 'box', name: 'alignment' },
         { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'snap', of: 'box', name: '', when: 'snapBox' },
         { id: 'alignSelf', of: 'item', name: 'self' },
         { id: 'order', of: 'item', name: 'order' },
         { id: 'grow', of: 'item', name: 'grow' },
         { id: 'shrink', of: 'item', name: 'shrink' },
-        { id: 'fill', of: 'item', name: 'grow' }
+        { id: 'fill', of: 'item', name: 'grow' },
+        { id: 'snapTo', of: 'item', name: '', when: 'snapItem' }
     ];
 
     // The group of a row: 'box', 'item', or '' for no row of Layout.
@@ -64120,7 +64137,9 @@ const StyleDesigner = (function () {
     }
 
     // What Layout draws. `ctx`: { flex: the element is a flex box,
-    // parentFlex: its parent is one } (_sdOptCtx()); `held`: { id: true }
+    // parentFlex: its parent is one, snapBox / snapItem: the element / its
+    // parent takes Scroll snap } (_sdOptCtx()); a row with `when` follows
+    // that key instead of flex / parentFlex; `held`: { id: true }
     // for a row holding a value, drawn whatever the context so nothing set
     // is out of sight. Returns { rows: the ids drawn, in order; make:
     // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
@@ -64131,7 +64150,7 @@ const StyleDesigner = (function () {
         held = held || {};
         var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
         _SD_LAY_ROWS.forEach(function (r) {
-            if ((r.of === 'box' ? ctx.flex : ctx.parentFlex) || held[r.id]) {
+            if (ctx[r.when || (r.of === 'box' ? 'flex' : 'parentFlex')] || held[r.id]) {
                 out.rows.push(r.id);
                 return;
             }
@@ -64216,6 +64235,34 @@ const StyleDesigner = (function () {
         var s = ' ' + out.join(' ') + ' ';
         if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
         return out.join(' ');
+    }
+    // Scroll snap's classes, their rules in _SD_BLOCK_CSS.
+    var _SD_SNAP_CLASSES = ['pg-scroll-snap-always', 'pg-scroll-snap-near', 'pg-snap-to-start', 'pg-snap-to-center', 'pg-snap-to-end'];
+
+    // Whether an element takes Scroll snap: a flex or grid box at any size,
+    // never the scroller's row (pg-snap), which keeps its own snapping.
+    function _sdSnapBox(type, cls) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (s.indexOf(' pg-snap ') !== -1) return false;
+        return _sdOptIsFlex(type, cls) || / d-((sm|md|lg|xl|xxl)-)?(inline-)?grid /.test(s);
+    }
+
+    // The Scroll snap rules a class list (or a picked value) needs, in
+    // _SD_SNAP_CLASSES's order.
+    function _sdSnapNames(cls) {
+        var have = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        return _SD_SNAP_CLASSES.filter(function (k) { return have.indexOf(' ' + k + ' ') !== -1; });
+    }
+
+    // Whether a box with Scroll snap set does not scroll yet: no Overflow
+    // of Auto or Scroll as a prop (`props`, null for several elements) or a
+    // Bootstrap overflow class. False without Scroll snap.
+    function _sdSnapNeedsScroll(cls, props) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (!/ pg-scroll-snap-(always|near) /.test(s)) return false;
+        if (/ overflow-(x-|y-)?(auto|scroll) /.test(s)) return false;
+        var p = props || {};
+        return !['overflow', 'overflowX', 'overflowY'].some(function (k) { return /^(auto|scroll)$/.test(String(p[k] || '').trim()); });
     }
     // ── end of layout by context
 
@@ -89410,6 +89457,14 @@ const StyleDesigner = (function () {
                            '.pg-video-toggle[aria-pressed="true"] .pg-video-play { display: inline-block; }\n' +
                            '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }',
         'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
+        // Layout's Scroll snap on any flex or grid box (_SD_SNAP_CLASSES):
+        // the box snaps whichever way it scrolls, always (mandatory) or
+        // near a stop (proximity); a child names the edge it stops on.
+        'pg-scroll-snap-always': '.pg-scroll-snap-always { scroll-snap-type: both mandatory; }',
+        'pg-scroll-snap-near':   '.pg-scroll-snap-near { scroll-snap-type: both proximity; }',
+        'pg-snap-to-start':      '.pg-snap-to-start { scroll-snap-align: start; }',
+        'pg-snap-to-center':     '.pg-snap-to-center { scroll-snap-align: center; }',
+        'pg-snap-to-end':        '.pg-snap-to-end { scroll-snap-align: end; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,
         // which a transform skips.
@@ -89540,6 +89595,13 @@ const StyleDesigner = (function () {
         if (!add) return;
         if (css.indexOf(_SD_BLOCK_CSS_MARK) === -1) add = _SD_BLOCK_CSS_MARK + '\n' + add;
         _userStylesSet((css ? css.replace(/\s*$/, '\n') : '') + add);
+    }
+
+    // A Scroll snap value picked: its rule joins User Styles the first
+    // time (_SD_BLOCK_CSS), as a block rule does; an operator's edit is kept.
+    function _sdSnapEnsure(val) {
+        var names = _sdSnapNames(val);
+        if (names.length && !_sdPaletteDry) _sdEnsureBlockStyles(names);
     }
 
     // ── Palette item info: hover card and search words ──────────────────
