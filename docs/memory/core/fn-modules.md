@@ -142,7 +142,7 @@ description: Generated from the module field of the memory files: each includes/
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
 - `design_style_guide`: [[design-style-guide-model]], [[designer-style-guide-sheet]]
 - `design_themes`: [[design-theme-dark-lines]], [[design-theme-look-drawing]], [[design-theme-pale-colours]], [[design-theme-product-looks]], [[design-variables-tab]]
-- `design_variables`: [[design-variables-files]], [[design-variables-model]], [[design-variables-questions]]
+- `design_variables`: [[design-variables-files]], [[design-variables-model]], [[design-variables-overview]], [[design-variables-questions]]
 - `designer`: [[bound-media-src]], [[common-region-component-usage]], [[design-asset-path-placeholders]], [[preview-as-bar]], [[record-edit-in-place-preview]], [[sketch-build]], [[sketch-build-again]], [[sketch-page-details]]
 - `designer_activity`: [[designer-activity-audit-lines]], [[designer-activity-reader]]
 - `designer_fx`: [[designer-interactions]], [[designer-interactions-chapter]], [[designer-interactions-count]], [[designer-interactions-more-entrances]], [[designer-video-autoplay]]
