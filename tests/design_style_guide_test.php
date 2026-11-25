@@ -276,3 +276,15 @@ function test_style_guide_component_pages_count_each_page_once_and_skip_the_bin(
 	pg_assert_same(0, $out[2]['pages'], 'not placed');
 	pg_assert_same('Promo', $out[2]['name'], 'the row is kept');
 }
+
+function test_style_guide_names_carry_their_number()
+{
+	$d = pg_design_variables_defaults('', '');
+	$m = pg_style_guide_model($d, $d, '', array());
+	$h2 = style_guide_test_row($m['blocks']['type']['styles'], 'key', 'h2');
+	$d3 = style_guide_test_row($m['blocks']['type']['styles'], 'key', 'display-3');
+	pg_assert_same('Heading 2', $h2['name'], 'a heading\'s name has its number');
+	pg_assert_same('Display 3', $d3['name'], 'a display style\'s name has its number');
+	pg_assert_same('1 unit', $m['blocks']['spacing']['rows'][0]['name'], 'one unit');
+	pg_assert_same('4 units', $m['blocks']['spacing']['rows'][3]['name'], 'four units');
+}

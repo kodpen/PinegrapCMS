@@ -152,11 +152,11 @@ function pg_style_guide_text_styles($css, $model)
     $styles = array();
     foreach (array(5, 4.5, 4, 3.5, 3, 2.5) as $i => $rem) {
         $n = $i + 1;
-        $styles['display-' . $n] = $style('display-' . $n, lang(array('string' => 'Display {var}', 'vars' => $n)), '.display-' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading');
+        $styles['display-' . $n] = $style('display-' . $n, lang(array('string' => 'Display {var:1}', 'vars' => $n)), '.display-' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading');
     }
     foreach (array(2.5, 2, 1.75, 1.5, 1.25, 1) as $i => $rem) {
         $n = $i + 1;
-        $styles['h' . $n] = $style('h' . $n, lang(array('string' => 'Heading {var}', 'vars' => $n)), 'h' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading', 'weight_heading');
+        $styles['h' . $n] = $style('h' . $n, lang(array('string' => 'Heading {var:1}', 'vars' => $n)), 'h' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading', 'weight_heading');
     }
     $styles['lead']  = $style('lead', lang('Lead'), '.lead', '1.25rem', 'font_body');
     $styles['body']  = $style('body', lang('Text'), 'body', $v['size_base'], 'font_body', 'weight_body', 'size_base');
@@ -211,7 +211,7 @@ function pg_style_guide_spacing($model)
     foreach (array(1, 2, 3, 4, 6, 8) as $n) {
         $rows[] = array(
             'key' => 'space_unit',
-            'name' => lang(array('string' => '{var} unit{suffix}', 'vars' => $n, 'suffix' => $n === 1 ? '' : 's')),
+            'name' => lang(array('string' => '{var:1} unit{suffix}', 'vars' => $n, 'suffix' => $n === 1 ? '' : 's')),
             'size' => $n === 1 ? $unit : _pg_style_guide_multiply($unit, $n),
             'px' => $unit_px === null ? null : _pg_style_guide_round($unit_px * $n),
             'multiple' => $n, 'custom' => false,

@@ -2220,6 +2220,7 @@
     "{var:1} units checked into the box": "{var:1} adet kutuya denetlenerek kondu",
     "{var:1} units of {var:2} were moved.": "{var:2} ürününden {var:1} adet taşındı.",
     "{var:1} unit{suffix:1}": "{var:1} adet",
+    "{var:1} unit{suffix}": "{var:1} birim",
     "{var:1} unread": "{var:1} okunmamış",
     "{var:1} unread e-mail conversation(s)": "{var:1} okunmamış e-posta konuşması",
     "{var:1} unsubscribed with one click.": "{var:1} tek tıkla abonelikten çıktı.",
