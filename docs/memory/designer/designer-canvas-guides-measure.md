@@ -7,7 +7,7 @@ description: Measure on the designer canvas (CG2 #11570): Alt held with one elem
 - One element selected, Alt held, pointer on another element: rose lines with caps and the distance in whole page pixels between the facing edges, plus how far the starts are apart (`PGCanvasGuides.offset()`, the tops side by side), as board G1 of `designer-canvas-guides-drawing.md`. Off diagonally: the gap line at the selection's middle and a dashed guide to the other's edge.
 - Pointing at an element that holds the selection (its parent): the four inner distances; pointing inside the selection: the child's four. A side of 0 draws the shared edge, no number; a number that does not fit its line sits beside it.
 - The element pointed at gets a dashed frame and its name on white. Measure changes no value.
-- Nothing selected, several selected, or the Prototype view open: Alt does nothing. Letting Alt go, a press (Alt and a drag copies), a window blur or the pointer leaving the canvas ends it.
+- Nothing selected, several selected, the Prototype view open, or "Canvas guides" off in the View menu: Alt does nothing. Letting Alt go, a press (Alt and a drag copies), a window blur or the pointer leaving the canvas ends it.
 
 ## How is it built?
 - Core (`style_designer.src.js`, section `// ── Canvas guides: Measure`): `_sdGuidesSync()` at the end of `render()` and `renderSelectionOnly()` binds a capture `keydown` on the editor window and the canvas window only while one element is selected; the first Alt runs the part with `_sdPartCall('guides', 'measure', [host])`, host = `{ doc, selected(), rectOf: _sdBoxRect, nameOf }`.
