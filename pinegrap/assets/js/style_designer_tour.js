@@ -465,6 +465,9 @@ StyleDesigner.definePart('tour', function (K) {
         // the next quiet moment of this visit.
         offer: offer,
         // "Take the tour": the tour from its first stop, card or no card.
-        start: start
+        start: start,
+        // The model alone (window.PGDesignerTour), for a part that keeps a
+        // first-use tip: running this part defines it.
+        model: function () { return M; }
     };
 });

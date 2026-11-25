@@ -7,9 +7,10 @@
  *
  * The spacing bands and their handles on the selected element over the
  * canvas, drawn on the first selection that can show them: their geometry
- * (window.PGCanvasBands), the first-use tips' state (window.PGDesignerTour),
- * then the part. What the Spacing box writes (window.PGSpacingBox) comes
- * with the part 'spacing', which the core loads first.
+ * (window.PGCanvasBands), then the part. What the Spacing box writes
+ * (window.PGSpacingBox) comes with the part 'spacing', which the core loads
+ * first; the first-use tip's state (window.PGDesignerTour) with the part
+ * 'tour', run when the tip is first due.
  *
  * Memory: docs/memory/designer/designer-canvas-guides-bands.md
  *
@@ -26,7 +27,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 return array(
 	'sources' => array(
 		'assets/js/pg_canvas_bands.js',
-		'assets/js/pg_designer_tour.js',
 		'assets/js/style_designer_bands.js',
 	),
 	'when'    => 'always',
