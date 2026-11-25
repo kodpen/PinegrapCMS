@@ -88198,6 +88198,14 @@ const StyleDesigner = (function () {
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];
 
+        // My library's Import, for the designers its part is handed to: the
+        // part runs on the first choice.
+        if (_sdPartUrls('libraryfile')) {
+            items.push({ id: 'act_library_import', label: _sdT('Import to my library'), icon: 'bi-box-arrow-in-down', action: function () {
+                _sdPartCall('libraryfile', 'importFile', []).catch(_sdPartFailed);
+            }});
+        }
+
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
             items.splice(items.findIndex(function (it) { return it.id === 'act_save'; }) + 1, 0,

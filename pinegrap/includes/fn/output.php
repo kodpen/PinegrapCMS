@@ -8192,6 +8192,8 @@ function pg_js_bundles()
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // My library's Import window and the Export download.
+        'assets/js/style_designer_libraryfile.min.js' => array('assets/js/style_designer_libraryfile.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8289,6 +8291,9 @@ function pg_designer_parts()
         // The "Clicks" layer: badges and tenth lines over the canvas and
         // its panel, handed only with sdDesign.clicks (who may open Visitors).
         'clicks' => 'assets/js/style_designer_clicks.min.js',
+        // My library's file: the Import window (the file checked, the
+        // report, a refusal) and the Export download, designers only.
+        'libraryfile' => 'assets/js/style_designer_libraryfile.min.js',
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
