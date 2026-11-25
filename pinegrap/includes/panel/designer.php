@@ -1301,6 +1301,41 @@ function pg_panel_designer($request, $action)
                 'list' => pg_design_variables_client_list()));
             break;
 
+        // ── MY LIBRARY'S FILE ────────────────────────────────────────
+        // includes/fn/designer_library_io.php. Export answers with the text
+        // of one file holding the chosen items (every item when none is
+        // chosen), named after the site; the editor offers it as a
+        // download. Import takes the text of such a file, read in the
+        // browser since api.php reads JSON only, refuses it whole with the
+        // reason when one item fails the checks, and answers with one row
+        // per item kept. Designer roles only (pg_library_may()); the list
+        // above does not open them to a content-level operator.
+        case 'library_export':
+        case 'library_import':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_library_io.php');
+            if (!pg_library_may($sub === 'library_export' ? 'export' : 'import', $user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if ($sub === 'library_export') {
+                $lib_items = pg_library_export_items(isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array());
+                respond(array('status' => 'success', 'count' => count($lib_items),
+                              'name' => pg_library_export_file_name(defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : ''),
+                              'text' => $lib_items ? pg_library_export_text($lib_items, date('Y-m-d')) : ''));
+            }
+            $lib_file = isset($request['file']) ? basename((string)$request['file']) : '';
+            $lib_read = pg_library_import_read(isset($request['text']) ? (string)$request['text'] : '');
+            if (isset($lib_read['error'])) {
+                respond(array('status' => 'error', 'code' => $lib_read['error'],
+                              'message' => pg_library_import_message($lib_read['error'], $lib_file, $lib_read['item'], $lib_read['detail'])));
+            }
+            $lib_kept = pg_library_import_save($lib_read['items'], $user['id']);
+            if (!is_array($lib_kept)) {
+                respond(array('status' => 'error', 'message' => $lib_kept));
+            }
+            log_activity(lang(array('string' => '{var:1} item(s) were imported into My library', 'vars' => count($lib_kept['rows']))), $_SESSION['sessionusername']);
+            respond(array('status' => 'success', 'rows' => $lib_kept['rows']));
+            break;
+
         // ── PROTOTYPE SHARE LINKS ────────────────────────────────────
         // The Share prototype dialog (includes/fn/prototype_links.php): a
         // design's links, a new one, a link's address shown again, and

@@ -558,6 +558,7 @@
     "Import new or overwrite existing key codes.": "Yeni anahtar kodlarını içe aktarın veya mevcut anahtar kodlarının üzerine yazın.",
     "Import new users and their contacts, give them a role and rights, and optionally e-mail each one a link to set a password.": "Yeni kullanıcıları ve rehber kayıtlarını içe aktarın, onlara rol ve haklar verin; isterseniz her birine parola belirleme bağlantısı e-postayla gönderin.",
     "Import notes": "Notları içe aktar",
+    "Import to my library": "Kütüphaneme içe aktar",
     "Import web pages and files from a ZIP file.": "Bir ZIP dosyasından web sayfalarını ve dosyaları içe aktarın.",
     "Import {var:1}": "{var:1} içe aktarılsın",
     "Import {var:1} note(s)": "{var:1} notu içe aktar",
