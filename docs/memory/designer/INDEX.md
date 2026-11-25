@@ -439,6 +439,7 @@
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
 - designer-my-library-drawing.md: The drawing of My library (plans/designer-my-library.md, ML2 to ML4): the sheet, its eight boards, what each step builds from it and what the sheet settles
+- designer-my-library-manage.md: "Manage library" (ML3): where it opens, the window's rows and foot, rename, Move to group, order by grip or Alt+arrow, delete, the server calls and the order they keep
 - designer-my-library-save-and-group.md: "Save to my library" (element menu, command palette) and its window, the "My library" group atop the Blocks list with search and hover card, adding a copy, the amber mark of a cleared binding (ML2)
 - designer-narrow-screen-bars.md: Designer toolbars hide labels, never controls: the page bar below 1024px window, the canvas bar (.sd-bp-bar) by its own width in fold levels (DP22), and how to measure off-screen controls.
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
@@ -508,11 +509,14 @@
 - designer-publish-check-drawing-findings.md: Publish check drawing, boards P5 to P7 (step PC5): "Fix", "Show me", "Ignore on this page" with its reason, the Weight group with its budget bars and the list of unused rules
 - designer-publish-check-drawing-results.md: Publish check drawing, boards P1 to P4 (step PC4): the result on a row, the five groups, a finding and its path, a check that could not run, a blocking page, narrow
 - designer-publish-check-drawing.md: The drawing of the Publish check (plans/designer-publish-check.md, PC4 and PC5): the sheet, its seven boards and what each step builds from it
+- designer-publish-check-fix-ignore.md: The Publish check's "Fix", "Show me" and "Ignore on this page" (PC5, #11607): which findings get Fix, the undo step, where the reason is kept, the ignored fold, what is not counted
 - designer-publish-check-results.md: The Publish check in the Publish sheet (PC4): pages checked, a row's result, the five groups, a path that selects the element, a blocking page, its part
 - designer-publish-content.md: The Publish check's Content group (pg_publish_content.js): starters' sample words and pictures left, a link to the page itself, the audit's empty heading moved in
 - designer-publish-findings.md: The Publish check's finding shape (pg_publish_findings.js): what the four checks become, one concept kept once, the blocking table, a failed check, a page's summary
+- designer-publish-overview.md: Start file of the visual designer's Publish sheet and its Publish check: what they are, the decisions that bind them, their parts by label, which file holds each part [decision: here]
 - designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
+- designer-publish-weight-seo-check.md: The weight seo_check measures for the Publish check (PC5): when it is asked, the files whose sizes it reads, the design's own stylesheet and the other pages' names, the answer, its time
 - designer-publish-weight.md: The Publish check's weight measure (includes/fn/publish_weight.php): what it counts on the rendered draft, the budget and its grades, the findings it gives, how it joins the finding shape
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
