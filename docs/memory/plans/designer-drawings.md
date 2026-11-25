@@ -8,7 +8,7 @@ priority: 8
 - Owner (2026-11-24): "planlar çizimleri de önce tasarlansın"; drawn, with nobody waiting for his approval, for the seven new plans and the screen steps not yet started of the plans before them (`workflow/decisions-made-product-106.md`).
 
 ## Who draws, and where is a drawing kept?
-- The design session, or the architect while none runs (`workflow/design-work-session.md`): one step and one docs-only PR at a time; a green one lands alone.
+- The design session, or the architect while none runs (`workflow/design-work-session.md`): one step and one docs-only PR at a time.
 - No step is a coordinator's: whoever draws marks lines `free` for a worker; none is marked.
 - In `docs/memory/designer/<plan>-drawing/`: one HTML sheet of boards with a light and a dark picture of each sheet, as the Flows editor's sheets are kept in the workspace folder.
 
@@ -33,8 +33,8 @@ priority: 8
 - DD7 (M) Done (#11547). `designer-publish-check.md`: the sheet's results, the five groups, a finding with Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
 - DD8 (M) Done (#11550). `designer-canvas-guides.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
 - DD9 (M) Done (#11559). `designer-my-library.md`: the save window, "My library" in Blocks, "Manage library", Export and Import. Holds ML2 to ML4.
-- DD10 (S) `designer-image-focus.md`: the Focus control with its three frames, "Set focus" on the canvas. Holds IF2, IF3.
-- DD11 (S) `designer-phone-preview.md`: the window with the QR code, the phone's view with its thin line, the signed-in case. Holds PP2, PP3.
+- DD10 (S) Done (#11561). `designer-image-focus.md`: the Focus control with its three frames, "Set focus" on the canvas. Holds IF2, IF3.
+- DD11 (S) Done (#11565). `designer-phone-preview.md`: the window with the QR code, the phone's view with its thin line, the signed-in case. Holds PP2, PP3.
 - DD4 (M) after SK2 and ST2 have landed: the Sketch tool and the New design window as they should look.
 
 ## What does every step keep?
