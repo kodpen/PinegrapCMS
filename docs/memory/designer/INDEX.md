@@ -419,7 +419,7 @@
 - designer-compare-changes.md: Compare's change reader (pg_compare_changes.js, PgCompareChanges): two designer trees in, plain-words changes with their place out; matching, kinds, order, rows, texts
 - designer-compare-live-drawing.md: The drawing of "Compare with the live page" (plan designer-compare-live, CL2 and CL3): boards L1 what opens it, L2 the Look tab's slider, L3 side by side and phone, L6 from History [decision: here]
 - designer-compare-live-list-drawing.md: The drawing of Compare's "What changed" list joined to the two pictures, the window's states and its narrow form: boards L4, L5 and L6 of the compare-live sheet
-- designer-compare-look-tab.md: Compare's Look tab (part compare, CL2): its sides, the pictures drawn by compare_render, the slider, Side by side, the width, the states, History's choosers
+- designer-compare-look-tab.md: Compare's Look tab (part compare, CL2): its sides, what Load this revision loads, the pictures drawn by compare_render, the slider, Side by side, the width, the states, History's choosers [decision: decisions-made-product-108.md]
 - designer-compare-what-changed.md: Compare's "What changed" column joined to the pictures (CL3, #11707), and the three rows that open Compare with the live page: tab menu, command palette, Publish sheet icon
 - designer-component-overrides-drawing-fields.md: Boards C1 and C2 of the component overrides drawing (step CO3): the "Can change per place" menu row and list, the label, the mark, Overview, the list in the component's settings
 - designer-component-overrides-drawing-this-place.md: Boards C3 to C5 of the component overrides drawing (step CO4): the "This place" section, the dot and "Reset to the component", typing in place, "Edit the component", content editors, the narrow panel
@@ -512,6 +512,7 @@
 - designer-options-states.md: The Options panel's State row as built (DO10, #11588): Normal, Hover, Focus, Pressed; the state's rule in User Styles, which rows write, the canvas view, the part 'states', what is not built yet
 - designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
+- designer-options-text.md: Text shadow, Letter spacing, Font family, "Limit to lines", Gradient fill and Outline in the Text section's "More" as built (DO16, #11720): the rows, what they write, the part, the cost
 - designer-options-transform.md: "Transform" in Shadow and effect as built (DO12): the rows, translate/rotate/scale per state, composed with Interactions, the canvas outline, the cost
 - designer-options-transition.md: "Transition" in Shadow and effect as built (DO11): the three rows, the rule in User Styles inside the no-preference block, the look's values, under a state, reduced motion, the part, the cost
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
@@ -547,6 +548,7 @@
 - designer-preview-as-drawing.md: The drawing of the "Preview as" bar (plans/designer-preview-as.md, PW3 and PW4): the sheet, where each part is described, which board belongs to which step
 - designer-preview-as-readers.md: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview
 - designer-preview-as-server.md: "Preview as" on the server (PW2): preview_widgets with a choice and a case per widget, the record each pick draws, the preview_records search and rights, the scope that writes nothing
+- designer-preview-as-viewer.md: What PW2c (#11728) built: pg_preview_as_viewer() and its helpers, which renderers read it, the sample account's rows, the mask, what is left to the operator
 - designer-preview-as-visitor.md: How a widget of the Preview is drawn for the chosen visitor (PW2c, architect 2026-11-26): one viewer reader in place of the USER_ constants, the sample account with no row, what is never read [decision: here]
 - designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244; phone row #11578): its five rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
 - designer-preview-overview.md: Start file for the designer-preview-* files: what the designer's Preview is, which file holds the menu, links, page scripts and each part of "Preview as" (cases, server, renderer readers, drawings)
