@@ -38,8 +38,8 @@
 - designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
 - designer-document-to-page.md: Plan (owner 2026-11-24, level 3): a page built from a pasted text or a document: headings, lists, questions, figures and quotes read into sections, checked in a list, then built; steps FD1 to FD5
-- designer-drawings-levels.md: Plan (owner 2026-11-24): the sheets drawn first for the ten designer features that come in levels, DD12 to DD21, by the design session; a screen step waits for its sheet's merge, never for a yes
-- designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first by the design session, DD1 to DD11; a screen step waits for its drawing's merge, never for a yes
+- designer-drawings-levels.md: Plan (owner 2026-11-24): the sheets drawn first for the ten levelled designer features, DD12 to DD21, by the design session or the architect; a screen step waits for its sheet's merge, never for a yes
+- designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 - designer-first-tour.md: Plan (owner 2026-11-24, level 1): the designer's first tour of five stops, "How do I" pointers on the real controls, one-line first-use tips and an empty canvas that offers starts; steps FT1 to FT4
 - designer-image-focus.md: Plan (owner 2026-11-24): a picture's focus point set by dragging, per screen size, for an Image and a background picture, with the three screen frames shown; steps IF1 to IF4
 - designer-my-library.md: Plan (owner 2026-11-24): a section saved to the site's own library, inserted as a copy in any design, exported and imported as a file; kept as files; steps ML1 to ML5
