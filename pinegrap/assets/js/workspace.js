@@ -24048,6 +24048,7 @@
         // the Tasks tab or the Board tab's List view; My tasks and a record's
         // window draw the same rows as a list. filters: status (open, closed,
         // all), and from the board's toolbar q, priority, person, mine,
+        // figure (one of the board's figures: its tasks, open or closed),
         // onChange (a task changed: the view is drawn again).
         taskListInto: function (body, filters) {
             var self = this;
@@ -24063,7 +24064,8 @@
                 q: filters.q || '',
                 priority: filters.priority || '',
                 person: filters.person || 0,
-                mine: filters.mine ? 1 : 0
+                mine: filters.mine ? 1 : 0,
+                figure: filters.figure || ''
             }).then(function (data) {
                 if (self.channel === channel) {
                     taskRows(list, data.tasks, redraw);

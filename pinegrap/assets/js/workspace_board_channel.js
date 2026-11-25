@@ -20,6 +20,10 @@
  * (ws_sync) brings back while the tab is open; when the stamp moves, the
  * board is read again. Every text comes from the #ws-config block.
  *
+ * Above both views stand the four figures of ws_channel_board() (open
+ * tasks, due this week, overdue, done in the last seven days); a figure is
+ * a button that narrows both views to its tasks, a second press clears it.
+ *
  * The tab has two views under one toolbar: Board, the columns, and List,
  * the channel's task cards the Tasks tab showed, drawn by workspace.js
  * (hooks.listInto()). The toolbar holds the Segmented control of the two,
@@ -193,7 +197,8 @@
             self.filter.refresh();
         }
 
-        // The List view: the Tasks pane's cards, narrowed by the toolbar.
+        // The List view: the Tasks pane's cards, narrowed by the toolbar and
+        // the figure chosen; the figures are read on their own.
         if (!self.source && (prefs.view === 'list')) {
             clear(self.body);
             self.hooks.listInto(self.body, {
@@ -202,10 +207,21 @@
                 priority: prefs.priority,
                 person: self.person,
                 mine: prefs.mine,
+                figure: self.figure,
                 onChange: function () {
                     if (self === board) {
                         reload();
                     }
+                }
+            });
+            k.api('ws_channel_board', boardQuery(self, { figures_only: 1 })).then(function (data) {
+                if ((mine === self.serial) && (self === board)) {
+                    self.stamp = data.stamp;
+                    drawFigures(self, data.figures);
+                }
+            }).catch(function (error) {
+                if (self === board) {
+                    k.fail(error);
                 }
             });
             return;
@@ -213,16 +229,7 @@
 
         prefs.group = knownGroup(prefs.group);
 
-        var reading = self.source ? self.source.load({ all: self.doneAll }) : k.api('ws_channel_board', {
-            channel_id: self.channel.id,
-            group_by: prefs.group,
-            priority: prefs.priority,
-            person: self.person,
-            mine: prefs.mine ? 1 : 0,
-            q: self.q,
-            cancelled: prefs.cancelled ? 1 : 0,
-            done_all: self.doneAll ? 1 : 0
-        });
+        var reading = self.source ? self.source.load({ all: self.doneAll }) : k.api('ws_channel_board', boardQuery(self, {}));
 
         reading.then(function (data) {
             if ((mine !== self.serial) || (self !== board)) {
@@ -231,12 +238,34 @@
 
             self.data = data;
             self.stamp = data.stamp;
+            drawFigures(self, data.figures);
             draw(self);
         }).catch(function (error) {
             if (self === board) {
                 k.fail(error);
             }
         });
+    }
+
+    // What the board is asked for: the toolbar's choices and the figure.
+    function boardQuery(self, extra) {
+        var query = {
+            channel_id: self.channel.id,
+            group_by: prefs.group,
+            priority: prefs.priority,
+            person: self.person,
+            mine: prefs.mine ? 1 : 0,
+            q: self.q,
+            cancelled: prefs.cancelled ? 1 : 0,
+            done_all: self.doneAll ? 1 : 0,
+            figure: self.figure
+        };
+
+        Object.keys(extra).forEach(function (key) {
+            query[key] = extra[key];
+        });
+
+        return query;
     }
 
     function reload() {
@@ -250,6 +279,73 @@
     }
 
     // ── Drawing ──
+
+    // The four figures: key, icon, tone of the icon tile.
+    var FIGURES = [
+        ['open', 'bi-list-check', 'pg-tone-blue'],
+        ['week', 'bi-calendar-week', 'pg-tone-amber'],
+        ['overdue', 'bi-exclamation-circle', 'pg-tone-rose'],
+        ['done', 'bi-check2-circle', 'pg-tone-teal']
+    ];
+
+    // The figures above both views, drawn once a mount; drawFigures() puts
+    // the counts in and marks the one chosen.
+    function figuresNode(self) {
+        var k = kit();
+        var node = k.el('div', 'ws-cb-figures');
+
+        node.setAttribute('role', 'group');
+        node.setAttribute('aria-label', t('cb_figures'));
+        self.figureNodes = {};
+
+        FIGURES.forEach(function (figure) {
+            var key = figure[0];
+            var item = k.el('button', 'ws-cb-figure');
+            var tile = k.el('span', 'pg-icon-tile pg-icon-tile-lg ' + figure[2]);
+            var text = k.el('span', 'ws-cb-figure-text');
+            var value = k.el('span', 'ws-cb-figure-value', '–');
+
+            item.type = 'button';
+            item.title = t('cb_figure_help');
+            item.setAttribute('aria-pressed', 'false');
+            tile.appendChild(k.icon(figure[1], ''));
+            item.appendChild(tile);
+            text.appendChild(value);
+            text.appendChild(k.el('span', 'ws-cb-figure-label', t('cb_fig_' + key)));
+            item.appendChild(text);
+            item.addEventListener('click', function () {
+                self.figure = (self.figure === key) ? '' : key;
+                self.doneAll = false;
+                markFigure(self);
+                load(self);
+            });
+
+            self.figureNodes[key] = { item: item, value: value };
+            node.appendChild(item);
+        });
+
+        return node;
+    }
+
+    function markFigure(self) {
+        Object.keys(self.figureNodes || {}).forEach(function (key) {
+            var on = self.figure === key;
+
+            self.figureNodes[key].item.classList.toggle('active', on);
+            self.figureNodes[key].item.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+
+    function drawFigures(self, figures) {
+        if (!self.figureNodes || !figures) {
+            return;
+        }
+
+        Object.keys(self.figureNodes).forEach(function (key) {
+            self.figureNodes[key].value.textContent = String(figures[key] || 0);
+        });
+        markFigure(self);
+    }
 
     // The one toolbar of both views, drawn once a mount: the Segmented
     // control, the grouping or the task status, the search, "Only mine",
@@ -454,7 +550,8 @@
             self.current = 0;
         }
 
-        // A phone shows one column at a time, picked here.
+        // A table's board on a phone shows one column at a time, picked
+        // here; the channel's columns scroll sideways.
         var picker = k.select(columns.map(function (column, index) {
             return [index, column.title + ' (' + column.items.length + ')'];
         }), self.current);
@@ -466,7 +563,9 @@
                 node.classList.toggle('ws-cb-col-current', index === self.current);
             });
         });
-        pane.appendChild(picker);
+        if (self.source) {
+            pane.appendChild(picker);
+        }
 
         var cols = k.el('div', 'ws-cb-cols ws-cb-by-' + self.data.group_by);
         self.colsNode = cols;
@@ -503,6 +602,9 @@
             var face = k.avatar(column.person, '1.4rem');
             face.classList.add('ws-cb-face');
             head.appendChild(face);
+        } else if (!self.source && (self.data.group_by === 'status')) {
+            // A status column: the status's dot.
+            head.appendChild(k.el('span', 'ws-cb-dot ws-cb-dot-' + column.key));
         } else {
             var mark = k.icon(column.icon || 'bi-columns', 'ws-cb-col-icon');
 
@@ -537,7 +639,23 @@
             list.appendChild(cardNode(self, item, column, index));
         });
 
+        // The dashed drop place, shown while a card is over this column.
+        if (!self.source && (column.drop !== null)) {
+            var slot = k.el('div', 'ws-cb-slot');
+
+            slot.setAttribute('aria-hidden', 'true');
+            slot.appendChild(k.icon('bi-arrow-down-short', ''));
+            slot.appendChild(document.createTextNode(dropText(self, column)));
+            list.appendChild(slot);
+        }
+
         node.appendChild(list);
+
+        if (column.add && self.data.can_post && !self.source) {
+            var addFoot = k.button('pg-button pg-button-ghost pg-button-sm ws-cb-add-foot', t('cb_add'), 'bi-plus-lg');
+            addFoot.addEventListener('click', function () { newTask(self, column); });
+            node.appendChild(addFoot);
+        }
 
         if (column.more) {
             var more = k.button('pg-button pg-button-ghost pg-button-sm ws-cb-more', t('cb_more_done', column.more));
@@ -578,9 +696,22 @@
         return node;
     }
 
+    // What dropping a card on a column does, in its words.
+    function dropText(self, column) {
+        switch (self.data.group_by) {
+            case 'person':
+                return (column.drop > 0) ? t('cb_drop_person', column.title) : t('cb_drop_nobody');
+
+            case 'date':
+                return (column.drop === '') ? t('cb_drop_no_date') : t('cb_drop_date', column.title);
+        }
+
+        return t('cb_drop_status', column.title);
+    }
+
     function cardNode(self, item, column, columnIndex) {
         var k = kit();
-        var card = k.el('div', 'ws-cb-card ws-cb-' + item.kind + (item.priority ? ' ws-cb-pri-' + item.priority : '') + ((item.kind === 'task' && !item.open) ? ' ws-cb-closed' : ''));
+        var card = k.el('div', 'ws-cb-card ws-cb-' + item.kind + (item.priority ? ' ws-cb-pri-' + item.priority : '') + ((item.kind === 'task' && !item.open) ? ' ws-cb-closed ws-cb-s-' + item.status : ''));
         var key = item.kind + ':' + item.id;
 
         card.tabIndex = 0;
@@ -627,11 +758,14 @@
     function taskCard(card, item) {
         var k = kit();
         var top = k.el('div', 'ws-cb-card-top');
+        var end = k.el('span', 'ws-cb-card-end');
 
         top.appendChild(k.el('span', 'ws-cb-number', item.number));
 
-        if (item.priority === 'urgent' || item.priority === 'high') {
-            top.appendChild(k.el('span', 'badge ws-cb-priority', item.priority_label));
+        if (item.status === 'done') {
+            var check = k.icon('bi-check-circle-fill', 'ws-cb-done-mark');
+            check.title = t('cb_done');
+            top.appendChild(check);
         }
 
         if (item.recurring) {
@@ -649,18 +783,33 @@
         // On the status board the column says the status; elsewhere the card
         // does.
         if (!board || board.data.group_by !== 'status') {
-            top.appendChild(k.el('span', 'ws-cb-status ws-s-' + item.status, item.status_label));
+            end.appendChild(k.el('span', 'ws-cb-status ws-s-' + item.status, item.status_label));
         }
 
+        // Urgent and high as a small chip with a flag, at the right.
+        if (item.priority === 'urgent' || item.priority === 'high') {
+            var flag = k.el('span', 'ws-cb-priority ws-cb-priority-' + item.priority);
+
+            flag.appendChild(k.icon('bi-flag-fill', ''));
+            flag.appendChild(document.createTextNode(item.priority_label));
+            end.appendChild(flag);
+        }
+
+        top.appendChild(end);
         card.appendChild(top);
         card.appendChild(k.el('div', 'ws-cb-title', item.title));
 
         var meta = k.el('div', 'ws-cb-meta');
 
+        // The due date as a chip: amber for today and tomorrow, rose with
+        // the days late, green with a check once the task is closed.
         if (item.due_date) {
-            var due = k.el('span', 'ws-cb-due' + (item.overdue ? ' fg-danger' : ''));
-            due.appendChild(k.icon('bi-calendar-event', 'me-1'));
-            due.appendChild(document.createTextNode(item.due_label));
+            var tone = item.due_tone || '';
+            var due = k.el('span', 'ws-cb-due' + (tone ? ' ws-cb-due-' + tone : ''));
+            var late = (tone === 'late') ? ((item.due_late === 1) ? t('cb_late_one') : t('cb_late', item.due_late)) : '';
+
+            due.appendChild(k.icon((tone === 'done') ? 'bi-check2' : 'bi-calendar3', ''));
+            due.appendChild(document.createTextNode(late || item.due_label));
             meta.appendChild(due);
         }
 
@@ -686,7 +835,7 @@
 
         if (item.notes_count) {
             var notes = k.el('span', 'ws-cb-notes');
-            notes.appendChild(k.icon('bi-journal-text', 'me-1'));
+            notes.appendChild(k.icon('bi-chat-left-text', 'me-1'));
             notes.appendChild(document.createTextNode(String(item.notes_count)));
             notes.title = t('cb_notes', item.notes_count);
             meta.appendChild(notes);
@@ -965,6 +1114,8 @@
             person: 0,
             q: '',
             doneAll: false,
+            figure: '',
+            figureNodes: null,
             current: 0,
             body: pane,
             drag: null,
@@ -986,6 +1137,7 @@
 
         var frame = kit().el('div', 'ws-bar-frame');
 
+        pane.appendChild(figuresNode(board));
         frame.appendChild(toolbar(board));
         pane.appendChild(frame);
         pane.appendChild(board.filter.tags);
