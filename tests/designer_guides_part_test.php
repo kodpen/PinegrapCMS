@@ -27,8 +27,7 @@ function test_designer_guides_is_a_part_after_its_geometry()
 	pg_assert_same(array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'), $bundles['assets/js/style_designer_guides.min.js'], 'the geometry runs first');
 	pg_assert_false(in_array('assets/js/style_designer_guides.js', $bundles['assets/js/style_designer.min.js'], true), 'not in the core bundle');
 
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true((bool) preg_match("/pg_designer_part_urls\(array_merge\(array\([^)]*'guides'/", $screen), 'handed to every editor');
+	pg_assert_same('always', pg_designer_part_files()['guides']['when'], 'handed to every editor');
 }
 
 function test_designer_guides_key_bound_only_with_one_selection()

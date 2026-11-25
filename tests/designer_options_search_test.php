@@ -217,9 +217,8 @@ function test_options_search_is_a_part()
 	pg_assert_same('assets/js/style_designer_optsearch.min.js', isset($parts['optsearch']) ? $parts['optsearch'] : null, 'optsearch is a part');
 	pg_assert_same(array('assets/js/pg_options_search.js', 'assets/js/style_designer_optsearch.js'), $bundles['assets/js/style_designer_optsearch.min.js'], 'the module, then the part');
 
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_contains("'optsearch'", $screen, 'the editor is handed the part');
-	pg_assert_contains("'spacing'", $screen, 'and the spacing box\'s part');
+	pg_assert_same('always', pg_designer_part_files()['optsearch']['when'], 'the editor is handed the part');
+	pg_assert_same('always', pg_designer_part_files()['spacing']['when'], 'and the spacing box\'s part');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdT('Search or add an option…')", $core, 'the box\'s placeholder');

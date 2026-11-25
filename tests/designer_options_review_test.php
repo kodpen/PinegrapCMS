@@ -224,8 +224,7 @@ function test_options_review_is_a_part()
 	pg_assert_same('assets/js/style_designer_review.min.js', isset($parts['review']) ? $parts['review'] : null, 'review is a part');
 	pg_assert_same(array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'), isset($bundles['assets/js/style_designer_review.min.js']) ? $bundles['assets/js/style_designer_review.min.js'] : null, 'the module, then the part');
 
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_contains("'review'", $screen, 'the editor is handed the part');
+	pg_assert_same('always', pg_designer_part_files()['review']['when'], 'the editor is handed the part');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdT('Only what I changed')", $core, 'the switch\'s words');
