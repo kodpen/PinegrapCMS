@@ -511,14 +511,86 @@ StyleDesigner.definePart('spacing', function (K) {
         f.parentNode.replaceChild(nf, f);
     }
 
+    // ── Hide on and Sticky from (Size and display), Bootstrap's classes
+
+    function _cssOf(n) { return n && n.props ? String(n.props.cssClass || '') : ''; }
+
+    // Writes each element's classes through `fn(classes)` as one change.
+    function _clsCommit(host, fn) {
+        host.commit(host.text(), host.nodes.map(function (n) {
+            if (!n || !n.props) return null;
+            var next = fn(_cssOf(n));
+            return next === _cssOf(n) ? null : { cssClass: next };
+        }));
+    }
+
+    // "Hide on" under Display: Phone, Tablet and Desktop pressed where every
+    // element is hidden at those sizes (Display None per size).
+    function _hoDraw(host, sect) {
+        var box = sect.querySelector('[data-sd-hideon]');
+        var nodes = host.nodes.filter(function (n) { return n && n.props; });
+        if (!box || !nodes.length) return;
+        var reads = nodes.map(function (n) { return Z.hideOn(_cssOf(n)); });
+        var names = [['phone', _sdT('Phone')], ['tablet', _sdT('Tablet')], ['desktop', _sdT('Desktop')]];
+        box.className = 'sd-sp-row';
+        box.innerHTML = '<span class="sd-sp-label">' + esc(_sdT('Hide on')) + '</span>' +
+            '<div class="sd-seg-grp" role="group" aria-label="' + esc(_sdT('Hide on')) + '">' +
+            names.map(function (g) {
+                var on = reads.every(function (r) { return r[g[0]]; });
+                return '<button type="button" class="sd-seg' + (on ? ' sd-seg-on' : '') + '" data-sd-hide="' + g[0] + '"' +
+                    ' aria-pressed="' + (on ? 'true' : 'false') + '"' + (host.locked ? ' disabled' : '') + '>' + esc(g[1]) + '</button>';
+            }).join('') + '</div>';
+        box.hidden = false;
+        box.querySelectorAll('[data-sd-hide]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var g = b.getAttribute('data-sd-hide');
+                var hide = b.getAttribute('aria-pressed') !== 'true';
+                _clsCommit(host, function (c) {
+                    var h = Z.hideOn(c);
+                    h[g] = hide;
+                    return Z.hideOnWrite(c, h);
+                });
+            });
+        });
+    }
+
+    // "Sticky from" under Position, while it is Sticky: every size
+    // (position-sticky) or a size up (sticky-md-top).
+    function _sfDraw(host, sect) {
+        var box = sect.querySelector('[data-sd-stickyfrom]');
+        var nodes = host.nodes.filter(function (n) { return n && n.props; });
+        if (!box || !nodes.length) return;
+        var reads = nodes.map(function (n) { return Z.stickyFrom(_cssOf(n)); });
+        if (reads.some(function (r) { return !r; })) return;
+        var mixed = reads.some(function (r) { return r !== reads[0]; });
+        box.className = 'sd-sp-row';
+        box.innerHTML = '<span class="sd-sp-label">' + esc(_sdT('Sticky from')) + '</span>' +
+            '<select class="form-control form-control-sm" data-sd-sticky-from' + (host.locked ? ' disabled' : '') + '>' +
+            (mixed ? '<option value="" selected>' + esc(_sdT('— Multiple —')) + '</option>' : '') +
+            Z.SIZES.map(function (s) {
+                return '<option value="' + s + '"' + (!mixed && s === reads[0] ? ' selected' : '') + '>' +
+                    esc(s === 'xs' ? _sdT('Every screen size') : _sdT('From {var} up', s.toUpperCase())) + '</option>';
+            }).join('') + '</select>';
+        box.hidden = false;
+        var sel = box.querySelector('select');
+        sel.addEventListener('change', function () {
+            if (!sel.value) return;
+            _clsCommit(host, function (c) { return Z.stickyFromWrite(c, sel.value); });
+        });
+    }
+
     // The chooser in the section's head and, at a size, the rows' fields.
     // Not drawn where a custom style is off (a system widget, a shared
-    // component): the rows stay for every size there.
+    // component): the rows stay for every size there. Hide on and Sticky
+    // from are classes, drawn there too.
     function sizes(host) {
         var el = host.el;
-        if (!el || !el.isConnected || host.off || !Z || !window.PgCustomStyle) return;
+        if (!el || !el.isConnected || !Z) return;
         var sect = el.closest('.sd-sect-body');
         if (!sect) return;
+        _hoDraw(host, sect);
+        _sfDraw(host, sect);
+        if (host.off || !window.PgCustomStyle) return;
         var fields = _szFields(sect);
         if (!fields.length) return;
         var text = host.text();

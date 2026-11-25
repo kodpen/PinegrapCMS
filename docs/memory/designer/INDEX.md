@@ -111,8 +111,10 @@
 - comments-widget-two-forms.md: A product page's reviews and questions widgets keep apart: form state, Messages, form id and anchor, which comment each form answers, the Reply script's scope
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
+- common-region-component-scripts.md: The block scripts (theme switcher, scroller, back to top, Listen, map, interactions…) run a second time after a converted common region or a designed pop-up is drawn
 - common-region-component-usage.md: A converted common region's shared component counts as used on every page printing the region's tag; the delete confirmations and delete_many read it [decision: decisions-made-product-109.md]
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused [decision: decisions-made-product-109.md, decisions-made-product-20.md, decisions-made-product-3.md, decisions-made.md]
+- component-overrides-fields.md: Opening a shared component's field "Can change per place" in the designer (CO3): the menu and palette row, the list, labels, the marks, the settings list with order, Rename and Close the field
 - component-overrides-model.md: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
 - content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
@@ -281,9 +283,12 @@
 - design-theme-pale-colours.md: A palette colour too pale for a white page (Silver, Electric Blue's second colour): outline button border, focus ring, tick, radio dot and switch knob drawn in its readable shade
 - design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - design-variables-model.md: A design's variables (DV1, 2026.11.0): the list, defaults from look and palette, the variables stylesheet with its pg-theme head, the reader, the text-on-surface contrast check
+- design-variables-options.md: Options controls offering a design's variables (DV3): which rows, the list, the chip and Detach, the expression a bound control holds, "Used in n places"
+- design-variables-questions.md: The design variables' five start questions (DV4, #11593): one part for the New design window and the Variables tab's "Ask me again", the answers, the model they give, how a new design carries them
 - design-variables-tab.md: The Variables tab of Settings, Theme (DV2): the part 'variables', the file design-variables-<style id>.css found by its name, the save, the canvas, Preview and site loading it after the palette
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-activity-audit-trail.md: The Activity tab's design events that leave no page version are kept in the audit trail (audit_log), no new table or column: the lines there today, the writers to add, what the tab shows [decision: here]
+- designer-activity-reader.md: The reader behind the designer's History "Activity" tab (AC2, #11599): which rows become events, their sentences, the cursor and pages of fifty, who sees which event, the panel action
 - designer-activity-writers.md: Census for the designer's History "Activity" tab (AC1): every writer that changes a visual design, the row it leaves with who and when, the ones that leave none, and the open store question [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-assistant-apply-answers.md: Assistant Apply's "Unexpected token '<'" (#8970): its cause, class names sent as lists (#9093), what an operation's fields accept, how the Assistant actions keep their answer JSON (#9093)
@@ -361,6 +366,7 @@
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
 - designer-canvas-guides-bands.md: The spacing bands and handles over the designer canvas (CG3 #11568, part bands): when they show, what a drag or arrow writes, the core's stub and host, the first-use line, the numbers measured
+- designer-canvas-guides-columns.md: Column handles and equal gaps on the designer canvas (CG4 #11603, part bands): the end-edge handle and twelve-column grid, what it writes, equal gaps, why two parts, the numbers
 - designer-canvas-guides-drawing.md: The drawing of plan designer-canvas-guides (DD8): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
 - designer-canvas-guides-geometry.md: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
 - designer-canvas-guides-measure.md: Measure on the designer canvas (CG2 #11570): Alt held with one element selected draws the distances to the element pointed at, in the part guides, outside the page
@@ -408,6 +414,7 @@
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
+- designer-hide-on-sticky-from.md: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and "Sticky from" a size (DO3): Bootstrap's d-* and sticky-{size}-top classes, written and read back by pg_size_style.js
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
 - designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
 - designer-home-screen.md: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
@@ -425,11 +432,14 @@
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
 - designer-left-panel-hide.md: The Page Design Studio toolbar's menu button (#sd-left-toggle) opens and shuts the panel's main menu as the phone drawer at every width (#9712); the old left panel hide (sd-hide-left) is gone
+- designer-library-export-import.md: My library's Export and Import (ML4): the export file and its name, names kept beside, the import's report, the endpoints and the part
+- designer-library-import-checks.md: The checks an import into My library runs (script, event attribute, address kinds), all or nothing, and the refusal's words
 - designer-library-item.md: My library item model (ML1): a subtree to an item, an item into a design (rules added or renamed, variables, references cleared and marked), the store as design files, rights
 - designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows [decision: decisions-made-product-108.md, decisions-made-product-110.md]
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
 - designer-my-library-drawing.md: The drawing of My library (plans/designer-my-library.md, ML2 to ML4): the sheet, its eight boards, what each step builds from it and what the sheet settles
+- designer-my-library-manage.md: "Manage library" (ML3): where it opens, the window's rows and foot, rename, Move to group, order by grip or Alt+arrow, delete, the server calls and the order they keep
 - designer-my-library-save-and-group.md: "Save to my library" (element menu, command palette) and its window, the "My library" group atop the Blocks list with search and hover card, adding a copy, the amber mark of a cleared binding (ML2)
 - designer-narrow-screen-bars.md: Designer toolbars hide labels, never controls: the page bar below 1024px window, the canvas bar (.sd-bp-bar) by its own width in fold levels (DP22), and how to measure off-screen controls.
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
@@ -450,6 +460,7 @@
 - designer-options-states-drawing-motion.md: Transition, Transform and a section's "More" as drawn (options-states.html, boards T1, R1, R2, Z1, steps DO11 and DO12): the rows, the look's values, Origin, the outline on the canvas
 - designer-options-states-drawing-state.md: The Options panel's State row as drawn (options-states.html, boards S1 to S3, step DO10): the row, the ring, what the panel and the canvas show under a state, "Reset this state"
 - designer-options-states-drawing.md: The drawing of the Options panel's states, Transition and Transform (plan designer-options-census, DO10 to DO12): the sheet, its seven boards, which step builds which, what is new
+- designer-options-states.md: The Options panel's State row as built (DO10, #11588): Normal, Hover, Focus, Pressed; the state's rule in User Styles, which rows write, the canvas view, the part 'states', what is not built yet
 - designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
@@ -498,11 +509,14 @@
 - designer-publish-check-drawing-findings.md: Publish check drawing, boards P5 to P7 (step PC5): "Fix", "Show me", "Ignore on this page" with its reason, the Weight group with its budget bars and the list of unused rules
 - designer-publish-check-drawing-results.md: Publish check drawing, boards P1 to P4 (step PC4): the result on a row, the five groups, a finding and its path, a check that could not run, a blocking page, narrow
 - designer-publish-check-drawing.md: The drawing of the Publish check (plans/designer-publish-check.md, PC4 and PC5): the sheet, its seven boards and what each step builds from it
+- designer-publish-check-fix-ignore.md: The Publish check's "Fix", "Show me" and "Ignore on this page" (PC5, #11607): which findings get Fix, the undo step, where the reason is kept, the ignored fold, what is not counted
 - designer-publish-check-results.md: The Publish check in the Publish sheet (PC4): pages checked, a row's result, the five groups, a path that selects the element, a blocking page, its part
 - designer-publish-content.md: The Publish check's Content group (pg_publish_content.js): starters' sample words and pictures left, a link to the page itself, the audit's empty heading moved in
 - designer-publish-findings.md: The Publish check's finding shape (pg_publish_findings.js): what the four checks become, one concept kept once, the blocking table, a failed check, a page's summary
+- designer-publish-overview.md: Start file of the visual designer's Publish sheet and its Publish check: what they are, the decisions that bind them, their parts by label, which file holds each part [decision: here]
 - designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
+- designer-publish-weight-seo-check.md: The weight seo_check measures for the Publish check (PC5): when it is asked, the files whose sizes it reads, the design's own stylesheet and the other pages' names, the answer, its time
 - designer-publish-weight.md: The Publish check's weight measure (includes/fn/publish_weight.php): what it counts on the rendered draft, the budget and its grades, the findings it gives, how it joins the finding shape
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
@@ -551,6 +565,7 @@
 - designer-video-autoplay.md: Play by itself on a Video item (B9): the autoplay interaction, muted and looping, its pause button (data-pg-video-toggle, pg-video-toggle rule), still under reduced motion and without script [decision: decisions-made-product-44.md]
 - designer-video-item.md: Palette > Content > Video: a <video> with controls, no autoplay; its panel (file from the Files tab, poster, switches), the "Fill its box" switch for a hero, what a player holds.
 - designer-widget-ghosts-and-edit-chips.md: Canvas ghost records of listing widgets (designer/widget_ghosts); the edit pencil on records (pg_sw_add_edit_chip()): who sees it, inline !important look, its page stylesheet.
+- document-paragraphs.md: A .docx, .md or .txt turned into the paragraphs the designer's document reader takes (includes/fn/document_paragraphs.php): styles, bold leads, pictures taken out, limits, how much was read
 - document-reader.md: The designer's document reader (assets/js/pg_document_reader.js): paragraphs with their styles in, sections with kinds, items and unsure marks out; pasted text to paragraphs; rules, test
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
@@ -587,6 +602,7 @@
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
 - image-focus-control.md: The Focus control (IF2): where it shows in an Image's and a background picture's options, what it draws and writes per screen, the part 'focus' and its host, what is not built yet
+- image-focus-mode.md: "Set focus" on the canvas (IF3): the toolbar button, the mode that drags a picture under its frame, its keys, what it writes, how it is loaded, tested and measured
 - image-focus-value.md: A picture's focus point as a value: the pair of percentages, word pairs read, a value per screen size, how the Image element and a background picture write it, the pg-focus rule
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
 - image-size-props.md: How the Image element's size is written: whole-number width/height as attributes, a unit as a style, the Sizing panel's style; in a ratio box the box takes the style, the img its attributes
@@ -804,6 +820,7 @@
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - sketch-builder.md: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): sections to header, body and footer trees from palette starters, columns, heading, the section rhythm variable
+- sketch-page-details.md: "Page details" of a Prototype view sketch page (SK5): the More menu and palette row, the seven rows and defaults, checks, the sketch_details endpoint, where values are kept [decision: here]
 - sketch-read-picture.md: "Read the picture" of the Sketch tool (SK7b): the reference picture read into proposed boxes by the browser's model, nothing sent; row, first use, busy, Keep, Discard [decision: here]
 - sketch-reader.md: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, window.PGSketchReader): boxes drawn in a frame in, sections with kinds and unsure marks out; its input, rules, output and test
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.

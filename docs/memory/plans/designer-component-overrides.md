@@ -25,7 +25,7 @@ priority: 7
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - CO1 (M) Done (#11520). The model, pure, PHP and its browser twin: the open-field list, stable ids, a place's values applied to a tree, left-overs found.
 - CO2 (M) after CO1: site render, canvas and Preview apply them; translation; the cache test.
-- CO3 (M) after CO1 and DD6: marking fields open in the component, the list in its settings.
+- CO3 (M) Done (#11597). marking fields open in the component, the list in its settings.
 - CO4 (M) after CO2, CO3: "This place", the dot and reset, in-place text, content roles.
 - CO5 (M) after CO4: variants.
 - CO6 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.

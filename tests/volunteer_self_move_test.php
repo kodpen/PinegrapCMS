@@ -91,7 +91,7 @@ function test_volunteer_self_move_shares_the_coordinators_path()
 {
 	pg_assert_contains("_pg_volunteer_self_move(\$volunteer_id, \$action)", pg_test_function_source('pg_volunteer_self_act'));
 	pg_assert_contains('pg_volunteer_move($programme, $volunteer, $to, 0)', pg_test_function_source('_pg_volunteer_self_move'));
-	pg_assert_contains('_pg_volunteer_signup_give_up(', pg_test_function_source('_pg_volunteer_self_move'), 'given up as a cancel gives one up');
+	pg_assert_contains('pg_volunteer_give_up_coming(', pg_test_function_source('_pg_volunteer_self_move'), 'given up as a cancel gives one up');
 	pg_assert_contains('log_activity(', pg_test_function_source('pg_volunteer_move'), 'one log line for both');
 	pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_volunteer_programme.php'), 'was moved to') !== false, 'the screen logs no second line');
 }

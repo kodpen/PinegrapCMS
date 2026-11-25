@@ -223,7 +223,7 @@ function pg_panel_designer($request, $action)
     // nothing about why the button did nothing.
     if (!pg_designer_is_full($user)) {
         $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
-                            'page_load', 'seo_check', 'import_fragment',
+                            'page_load', 'seo_check', 'import_fragment', 'activity_list',
                             'form_fields', 'preview_widgets', 'preview_records', 'widget_ghosts', 'legacy_region_preview',
                             'revisions_list', 'revision_get', 'prototype_map');
         // The "Clicks" layer's figures: the sub action asks the Visitors
@@ -259,8 +259,10 @@ function pg_panel_designer($request, $action)
     }
 
     // My library (includes/fn/designer_library.php): the Blocks list's
-    // group, "Save to my library" and a copy added to a page.
-    if (in_array($sub, array('library_list', 'library_save', 'library_prepare'), true)) {
+    // group, "Save to my library", a copy added to a page and "Manage
+    // library" (rename, move to a group, order, delete).
+    if (in_array($sub, array('library_list', 'library_save', 'library_prepare',
+                             'library_rename', 'library_move', 'library_order', 'library_delete'), true)) {
         respond(pg_library_editor($sub, $request, $user));
     }
 
@@ -500,6 +502,13 @@ function pg_panel_designer($request, $action)
                 isset($request['folder_id']) ? (int)$request['folder_id'] : 0,
                 isset($request['exclude_style_id']) ? (int)$request['exclude_style_id'] : 0
             ));
+            break;
+
+        // "Page details" of a sketch page in the Prototype view: the menus,
+        // or who has an address already. Read-only, design-level like
+        // adding a page.
+        case 'sketch_details':
+            respond(pg_designer_sketch_details($request));
             break;
 
         // Pages the "Select Page" picker may offer: every visual-designer
@@ -793,6 +802,13 @@ function pg_panel_designer($request, $action)
                         pg_seo_check_draft_context($row, $draft['page_type']));
                 }
             }
+            // The Publish check's weight on the same render, asked only by
+            // the Publish sheet: null when not asked or the page is not
+            // saved, false when the draft did not render.
+            $weight = null;
+            if (!empty($request['weight']) && $page_id > 0) {
+                $weight = $document ? pg_designer_publish_weight($draft['html'], $page_id) : false;
+            }
             if (!$document && trim($html) !== '') {
                 $raw = pg_seo_analyze_html($html, 'fragment', array(
                     'title'         => $row['page_title'],
@@ -871,6 +887,7 @@ function pg_panel_designer($request, $action)
                 // fragment) and the registry the panel groups everything by.
                 'a11y'            => $a11y,
                 'concepts'        => pg_seo_check_concepts(),
+                'weight'          => $weight,
             ));
             break;
 
@@ -1175,6 +1192,20 @@ function pg_panel_designer($request, $action)
             respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => $rv_more));
             break;
 
+        // The design's events for History's Activity tab
+        // (includes/fn/designer_activity.php), fifty at a time. Every role
+        // that opens the editor may ask; the reader keeps a content editor
+        // to the pages they may edit.
+        case 'activity_list':
+            $ac_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            if ($ac_style <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$ac_style'")) {
+                respond(array('status' => 'error', 'message' => lang('Design not found.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_activity.php');
+            $ac_before = isset($request['before']) ? (string)$request['before'] : '';
+            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before));
+            break;
+
         case 'revision_get':
             $rv_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
             $rv_no   = isset($request['revision_no']) ? (int)$request['revision_no'] : 0;
@@ -1283,8 +1314,9 @@ function pg_panel_designer($request, $action)
         // (includes/fn/design_variables.php): the model it sends - or, the
         // first time, the design's stored one - on the look and palette of
         // the moment, with the defaults, the stylesheet the canvas tries on,
-        // the contrast rows and the tab's rows. Nothing is written: the
-        // design's save writes the file.
+        // the contrast rows and the tab's rows; with `questions` also the
+        // start questions' data. Nothing is written: the design's save
+        // writes the file.
         case 'variables_state':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
             $look    = isset($request['look']) ? (string)$request['look'] : '';
@@ -1296,9 +1328,50 @@ function pg_panel_designer($request, $action)
                 $model = pg_design_variables_stored((int)$request['style_id']);
             }
             $state = pg_design_variables_state($model, $look, $palette);
+            // "Ask me again": the answers replace the four groups' values.
+            if (isset($request['answers'])) {
+                $state = pg_design_variables_state(pg_design_variables_from_answers($state['model'],
+                    pg_design_variables_answers($request['answers']), $state['defaults']), $look, $palette);
+            }
             respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
                 'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
-                'list' => pg_design_variables_client_list()));
+                'list' => pg_design_variables_client_list())
+                + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
+            break;
+
+        // ── MY LIBRARY'S FILE ────────────────────────────────────────
+        // includes/fn/designer_library_io.php. Export answers with the text
+        // of one file holding the chosen items (every item when none is
+        // chosen), named after the site; the editor offers it as a
+        // download. Import takes the text of such a file, read in the
+        // browser since api.php reads JSON only, refuses it whole with the
+        // reason when one item fails the checks, and answers with one row
+        // per item kept. Designer roles only (pg_library_may()); the list
+        // above does not open them to a content-level operator.
+        case 'library_export':
+        case 'library_import':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_library_io.php');
+            if (!pg_library_may($sub === 'library_export' ? 'export' : 'import', $user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if ($sub === 'library_export') {
+                $lib_items = pg_library_export_items(isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array());
+                respond(array('status' => 'success', 'count' => count($lib_items),
+                              'name' => pg_library_export_file_name(defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : ''),
+                              'text' => $lib_items ? pg_library_export_text($lib_items, date('Y-m-d')) : ''));
+            }
+            $lib_file = isset($request['file']) ? basename((string)$request['file']) : '';
+            $lib_read = pg_library_import_read(isset($request['text']) ? (string)$request['text'] : '');
+            if (isset($lib_read['error'])) {
+                respond(array('status' => 'error', 'code' => $lib_read['error'],
+                              'message' => pg_library_import_message($lib_read['error'], $lib_file, $lib_read['item'], $lib_read['detail'])));
+            }
+            $lib_kept = pg_library_import_save($lib_read['items'], $user['id']);
+            if (!is_array($lib_kept)) {
+                respond(array('status' => 'error', 'message' => $lib_kept));
+            }
+            log_activity(lang(array('string' => '{var:1} item(s) were imported into My library', 'vars' => count($lib_kept['rows']))), $_SESSION['sessionusername']);
+            respond(array('status' => 'success', 'rows' => $lib_kept['rows']));
             break;
 
         // ── PROTOTYPE SHARE LINKS ────────────────────────────────────

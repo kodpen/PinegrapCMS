@@ -19,6 +19,10 @@
  *   PGSizeStyle.fontValue(cssClass)              // a font size class as CSS
  *   PGSizeStyle.fontClass(value, classes)        // the class a value stands for
  *   PGSizeStyle.len(value)                       // a typed length as CSS
+ *   PGSizeStyle.hideOn(classes)                  // { phone, tablet, desktop } hidden
+ *   PGSizeStyle.hideOnWrite(classes, hidden)     // the classes with those hidden
+ *   PGSizeStyle.stickyFrom(classes)              // 'xs', 'md', … or '' not sticky
+ *   PGSizeStyle.stickyFromWrite(classes, size)   // the classes sticky from size
  *
  * The browser keeps the inline style and Bootstrap's `fs-*` classes
  * (`!important`) above any User Styles rule, so the designer moves a value
@@ -252,10 +256,109 @@
         return /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(s) ? s + 'px' : s;
     }
 
+    // ── Hide on: Display None per size, as Bootstrap's d-* classes.
+    // Phone is XS and SM (below 768 px), Tablet MD, Desktop LG and up, as
+    // the canvas bar's widths.
+    var GROUPS = { phone: ['xs', 'sm'], tablet: ['md'], desktop: ['lg', 'xl', 'xxl'] };
+    var DISPLAY_RE = /^d-(?:(sm|md|lg|xl|xxl)-)?(none|inline|inline-block|block|grid|inline-grid|flex|inline-flex|table|table-row|table-cell|contents)$/;
+
+    function classList(classes) {
+        return (Array.isArray(classes) ? classes : String(classes || '').split(/\s+/)).filter(Boolean);
+    }
+
+    // The display each size draws: a d-* value, '' where no class sets one.
+    // With `reshow`, a d-{size}-block that only shows the element again
+    // after a hidden size, with no display set before, reads '' too.
+    function displays(list, reshow) {
+        var set = {}, out = {}, cur = '', own = false;
+        list.forEach(function (c) {
+            var m = DISPLAY_RE.exec(c);
+            if (m) set[m[1] || 'xs'] = m[2];
+        });
+        SIZES.forEach(function (s) {
+            if (set.hasOwnProperty(s)) {
+                cur = (reshow && !own && cur === 'none' && set[s] === 'block') ? '' : set[s];
+                if (cur && cur !== 'none') own = true;
+            }
+            out[s] = cur;
+        });
+        return out;
+    }
+
+    function hideOn(classes) {
+        var d = displays(classList(classes));
+        var out = {};
+        Object.keys(GROUPS).forEach(function (g) {
+            out[g] = GROUPS[g].every(function (s) { return d[s] === 'none'; });
+        });
+        return out;
+    }
+
+    // The fewest d-* classes that hide the groups in `hidden` and show the
+    // rest with the display they had; shown again after a hidden size, a
+    // size takes the display the element has elsewhere, block where it has
+    // none of its own.
+    function hideOnWrite(classes, hidden) {
+        var list = classList(classes);
+        var d = displays(list, true);
+        var hideAt = {};
+        Object.keys(GROUPS).forEach(function (g) {
+            if (hidden && hidden[g]) GROUPS[g].forEach(function (s) { hideAt[s] = true; });
+        });
+        var shown = '';
+        SIZES.forEach(function (s) { if (!shown && d[s] && d[s] !== 'none') shown = d[s]; });
+        var made = [], prev = '';
+        SIZES.forEach(function (s) {
+            var t = hideAt[s] ? 'none' : (d[s] === 'none' ? '' : d[s]);
+            if (t === prev) return;
+            if (!t) {
+                t = shown || 'block';
+                if (t === prev) return;
+            }
+            made.push('d-' + (s === 'xs' ? '' : s + '-') + t);
+            prev = t;
+        });
+        var out = [], put = false;
+        list.forEach(function (c) {
+            if (!DISPLAY_RE.test(c)) { out.push(c); return; }
+            if (!put) { out = out.concat(made); put = true; }
+        });
+        if (!put) out = out.concat(made);
+        return out.join(' ');
+    }
+
+    // ── Sticky from a size: Position Sticky (position-sticky) at every
+    // size, Bootstrap's sticky-{size}-top from a size up.
+    var STICKY_FROM = SIZES.slice(1).map(function (s) { return 'sticky-' + s + '-top'; });
+
+    function stickyFrom(classes) {
+        var out = '';
+        classList(classes).forEach(function (c) {
+            if (c === 'position-sticky') out = out || 'xs';
+            var i = STICKY_FROM.indexOf(c);
+            if (i !== -1) out = SIZES[i + 1];
+        });
+        return out;
+    }
+
+    // `size` '' leaves the element not sticky.
+    function stickyFromWrite(classes, size) {
+        var add = size === 'xs' ? 'position-sticky' : (STICKY_FROM.indexOf('sticky-' + size + '-top') !== -1 ? 'sticky-' + size + '-top' : '');
+        var out = [], put = false;
+        classList(classes).forEach(function (c) {
+            if (c !== 'position-sticky' && STICKY_FROM.indexOf(c) === -1) { out.push(c); return; }
+            if (!put && add) out.push(add);
+            put = true;
+        });
+        if (!put && add) out.push(add);
+        return out.join(' ');
+    }
+
     var api = {
-        SIZES: SIZES, MIN: MIN, PROPS: PROPS, FONT: FONT,
+        SIZES: SIZES, MIN: MIN, PROPS: PROPS, FONT: FONT, STICKY_FROM: STICKY_FROM,
         media: media, sizeOf: sizeOf, read: read, at: at, held: held, perSize: perSize,
-        write: write, fontValue: fontValue, fontClass: fontClass, len: len
+        write: write, fontValue: fontValue, fontClass: fontClass, len: len,
+        hideOn: hideOn, hideOnWrite: hideOnWrite, stickyFrom: stickyFrom, stickyFromWrite: stickyFromWrite
     };
 
     root.PGSizeStyle = api;

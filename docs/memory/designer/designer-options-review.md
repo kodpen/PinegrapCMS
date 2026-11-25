@@ -11,6 +11,7 @@ description: Options panel "Only what I changed" (DP9, #10699): the switch at th
 ## What does it show when on?
 - The tab strip and the tabs' panes are hidden; one list (`#sd-review-list`) stands in their place: per changed row its label, its path "tab › section" (the outermost section card's title), its value and a reset arrow. Content, Style, Advanced, each in the panel's order.
 - The value as the closed card's summary reads it (`_sdChgRowOf()`): a colour with its square, "— Multiple —" when several elements differ, "none" when empty. Several elements: the row once, with in how many it is changed ("2/3").
+- Under the list, "In a state": one line per state of the element that holds values, with its count and "Show" (`designer-options-states.md`); the switch's count and "Reset all" include them.
 - The list holds exactly the rows the badges count: the dots of all three tabs, Translation's card and rows outside a card left out (`_sdSectHeadsFill()`). Nothing changed: "No option is changed here."
 
 ## How does it work?

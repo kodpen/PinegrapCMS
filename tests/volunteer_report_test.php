@@ -89,3 +89,17 @@ function test_volunteer_report_sheets()
 	pg_assert_same(array('t' => 's', 'v' => '=1+1'), pg_volunteer_report_sheets(array('weeks' => array(), 'roles' => array(), 'volunteers' => array(array('name' => '=1+1', 'minutes' => 0, 'came' => 0, 'no_show' => 0, 'late' => 0)), 'total' => $report['total']), array('active' => 0, 'left' => 0), array('from' => '', 'to' => ''), array())[3]['rows'][2][0], 'a name is text, never a formula');
 	pg_assert_true(strpos(json_encode($sheets), 'document') === false, 'no document in the export');
 }
+
+function test_volunteer_report_late_cancel_leaves_out_swaps()
+{
+	$shifts = array(5 => array('start' => '2026-11-20 09:00:00', 'roles' => array('r1' => 1)));
+	$row = array('shift_id' => 5, 'volunteer_id' => 7, 'name' => 'Ada', 'role' => 'r1', 'state' => 'cancelled', 'outcome' => '', 'cancelled' => '2026-11-20 08:00:00', 'day' => '', 'minutes' => 0, 'approved' => false);
+	$late = function (array $rows) use ($shifts) {
+		return pg_volunteer_report_build($shifts, $rows, 24, '2026-11-16', '2026-11-22')['total']['late'];
+	};
+
+	pg_assert_same(1, $late(array($row)), 'a place given back past the cut-off is a late cancel');
+	pg_assert_same(0, $late(array(array('offered_at' => 1763600000) + $row)), 'a place offered and taken by another volunteer is no late cancel');
+	pg_assert_same(0, $late(array(array('swap_from' => 3) + $row)), 'a request to take an offered place, refused or withdrawn, is no late cancel');
+	pg_assert_contains('volunteer_signups.offered_at, volunteer_signups.swap_from', pg_test_function_source('pg_volunteer_report_load'), 'the report reads both');
+}

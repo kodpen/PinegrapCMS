@@ -11,8 +11,13 @@ priority: 7
 - DO2 (M) Done (#11571). The per size writer and its chooser: the Spacing box's size chooser on Width, Height, their Min and Max, Top, Right, Bottom, Left and Font Size.
   - A length for a size is an `@media (min-width: …)` rule on the element's class in User Styles, as the custom style writes; a row that has a Bootstrap per size class (`w-md-50`) writes the class.
   - Pure writer and reader with tests; the canvas shows the size the chooser names; a value set for one size shows a dot on the chooser.
+<<<<<<< HEAD
 - DO3 (S) after DO2: "Hide on" with Phone, Tablet and Desktop (Display None per size, today's classes, read back from them), and "Sticky from" a size on Position Sticky (`sticky-md-top`).
 - DO4 (M) Done (#11611). On an element whose Display is Grid, "Columns" and "Rows": a count, equal or fixed sizes, "As many as fit" with a smallest width; per size through DO2's writer. Layout's Gap stays the gap.
+=======
+- DO3 (S) Done (#11602). "Hide on" with Phone, Tablet and Desktop (Display None per size, today's classes, read back from them), and "Sticky from" a size on Position Sticky (`sticky-md-top`).
+- DO4 (M) after DO2: on an element whose Display is Grid, "Columns" and "Rows": a count, equal or fixed sizes, "As many as fit" with a smallest width; per size through DO2's writer. Layout's Gap stays the gap.
+>>>>>>> 2c0ea613dd944f2290a302f711be59d8d7afcbef
 - DO5 (S) after DO4: on a grid's child, "Span columns", "Span rows" and "Start at".
 - DO6 (M) after DO5 and DD23: named areas drawn as a small grid: cells dragged into an area, a child given its area from a list; per size.
 
