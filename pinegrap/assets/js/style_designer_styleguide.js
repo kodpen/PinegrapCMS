@@ -255,9 +255,10 @@ StyleDesigner.definePart('styleguide', function (K) {
     function goTo(key) {
         if (!W || !W.doc) return;
         var el = W.doc.getElementById('pgsg-' + key);
-        // The block asked for stays marked while the sheet scrolls to it,
-        // also when the sheet ends before it reaches the top.
-        W.hold = Date.now() + 400;
+        // The block asked for stays marked until the person scrolls the
+        // sheet themselves, also when the sheet ends before it reaches the
+        // top or a component drawn above moves it.
+        W.hold = true;
         if (el) el.scrollIntoView({ block: 'start' });
         mark(key);
     }
@@ -279,7 +280,7 @@ StyleDesigner.definePart('styleguide', function (K) {
     }
 
     function onScroll() {
-        if (W.raf || (W.hold && Date.now() < W.hold)) return;
+        if (W.raf || W.hold) return;
         var win = W.doc.defaultView;
         W.raf = win.requestAnimationFrame(function () {
             W.raf = 0;
@@ -367,6 +368,8 @@ StyleDesigner.definePart('styleguide', function (K) {
         var t = setTimeout(show, 4000);
         W.off.push(function () { clearTimeout(t); });
         listen(frame.contentWindow, 'scroll', onScroll, { passive: true });
+        var own = function () { if (W) W.hold = false; };
+        ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (n) { listen(doc, n, own, { passive: true }); });
         listen(doc, 'keydown', function (e) {
             if (e.key === 'Escape') { e.preventDefault(); close(); }
         });
@@ -499,6 +502,7 @@ StyleDesigner.definePart('styleguide', function (K) {
 
     // A text style's sample: the element its selector names, so the
     // design's own rules size it.
+    /* @pg-site-output */
     function styleSample(s, text) {
         var t = esc(text);
         var sel = String(s.selector || '');
@@ -567,6 +571,7 @@ StyleDesigner.definePart('styleguide', function (K) {
     // One control in one state. The state is forced through a class the
     // frame's copy of the design's :hover and :focus rules answers
     // (forceStates()), so a missing focus ring shows as missing.
+    /* @pg-site-output */
     function controlSample(key, state) {
         var cls = state === 'hover' ? ' pgsg-s-hover' : (state === 'focus' ? ' pgsg-s-focus' : '');
         var off = state === 'disabled';
