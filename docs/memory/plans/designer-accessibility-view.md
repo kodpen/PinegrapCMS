@@ -11,7 +11,7 @@ priority: 6
 - The audit lists contrast, target size and tree faults such as a skipped heading level (`designer/editor-audit-panel.md`). The order a keyboard walks, what a screen reader calls a region or a picture, and how the page looks without a colour are seen nowhere.
 
 ## What is built?
-- "Accessibility view" as a switch of the canvas bar's View menu. On: a small card floats in a corner of the canvas with four switches; one is on at the start, Tab order.
+- "Accessibility view" as a switch of the canvas bar's View menu. On: a small card stands in the canvas's bottom right corner with three kinds of mark, one at a time, Tab order at the start, and "See as" beside them.
 - Tab order: a number on every element the keyboard reaches, in the order it reaches them, joined by a thin line; a step that jumps backwards on the page is marked.
 - Headings: each heading carries its level as a tag; a skipped level is marked, and the card lists the outline.
 - Names: regions are outlined with their role and name; a picture shows its text, or "no text"; a control with no name is marked.
@@ -26,9 +26,9 @@ priority: 6
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - AV1 (M) The reader, pure: the keyboard's order over a tree, the heading outline, regions and their names, pictures' texts. Done (#11529): `designer/accessibility-reader.md`.
-- AV2 (M) after AV1 and DD16: the card and the three kinds of marks.
-- AV3 (S) after AV2: the sight filters.
+- AV2 (M) after AV1: the card and the three kinds of marks, boards V1 to V4 and V6 of the drawing. The PR body carries a table of the boards: what was built for each, what differs and why.
+- AV3 (S) after AV2: the sight filters, boards V5 and V6. The PR body carries a table of the boards: what was built for each, what differs and why.
 - AV4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
-- No table or column. The drawing: `designer-drawings-levels.md`. Claim as `[plan:designer-accessibility-view] <step> — <topic>`.
+- No table or column. The drawing: `designer/designer-accessibility-view-drawing.md` and `designer-accessibility-view-marks-drawing.md`; it decides where the two differ (`workflow/screen-follows-drawing.md`). Claim as `[plan:designer-accessibility-view] <step> — <topic>`.
