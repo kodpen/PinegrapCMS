@@ -1,10 +1,10 @@
 ---
 name: architect-wake
-description: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
+description: What wakes the architect session (owner, 2026-11-16): only a mention in the agent channel, by the push door since 2026-11-25; no hourly check; a pause he names; economy mode (2026-11-17)
 ---
 
 ## What wakes the architect?
-- A request in the agent channel: the waiter (`php tools/ws_wait.php --requests`, `agent-channel-wake.md`) ends when someone names the architect, and also when the owner answers one of its questions. It is started again after every answered queue.
+- A request in the agent channel, made when someone names the architect and also when the owner answers one of its questions. Since 2026-11-25 the site's knock on its push door tells the session, which no longer reads the queue on a clock (`architect-push-door.md`); a session with no address the site can reach keeps the waiter (`php tools/ws_wait.php --requests`, `agent-channel-wake.md`). The listener or the waiter is started again after every answered queue.
 - Owner (2026-11-16): "kanaldan anılınca uyan kota çok hızlı doldu". The hourly routine "Mimar: hourly check" is disabled, not deleted, and no session enables it without his word.
 - Why: each hourly turn read the queue and the open PRs although nothing waited, and that spent the account's quota.
 
