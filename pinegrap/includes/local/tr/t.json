@@ -9925,6 +9925,7 @@
     "This kind of box cannot start a flow.": "Bu tür bir kutu akış başlatamaz.",
     "This kind of box is not open to your own flows.": "Bu kutu türü kendi akışlarınızda kullanılamaz.",
     "This kind of connection is not available.": "Bu tür bir bağlantı kullanılamıyor.",
+    "This kind of file cannot be read.": "Bu tür bir dosya okunamaz.",
     "This kind of item cannot be shared by link yet.": "Bu tür bir öğe henüz bağlantıyla paylaşılamaz.",
     "This label is already cancelled.": "Bu etiket zaten iptal edilmiş.",
     "This language has no language file, so the software's own wording (buttons, labels, messages) is translated here. A text appears here once a visitor has been shown it on a page in this language; until it is translated, the English wording is shown.": "Bu dilin dil dosyası yok; bu yüzden yazılımın kendi ifadeleri (düğmeler, etiketler, iletiler) burada çevrilir. Bir ifade, bu dildeki bir sayfada bir ziyaretçiye gösterildiğinde burada belirir; çevrilene kadar İngilizcesi görünür.",
