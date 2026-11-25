@@ -249,6 +249,12 @@ if ($style['type'] == 'system') {
         $result = db_q($query, array((string) $new_style_id, (string) $cell['area'], (string) $cell['row'], (string) $cell['col'], (string) $cell['region_type'], (string) $cell['region_name'])) or output_error('Query failed.');
     }
 }
+// The copy's line names the design it was made from, so the original's
+// Activity list shows the duplicate too.
+$audit_after = pg_audit_fetch('style', $new_style_id);
+if ($audit_after) {
+    pg_audit('create', 'style', $new_style_id, array(), $audit_after + array('copied_from' => (string) (int) $_GET['id']), pg_audit_label_of('style', $audit_after));
+}
 log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('page style'), $original_style_name) )), $_SESSION['sessionusername']);
 
 // Edit Custom Page Style prints its notices; the system style screen keeps

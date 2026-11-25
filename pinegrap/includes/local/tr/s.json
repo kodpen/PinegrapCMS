@@ -6379,6 +6379,8 @@
     "samples, mock up, trial, consultation": "örnekler, deneme, prova, görüşme",
     "save to keep it.": "kalması için kaydedin.",
     "save, bookmark, favourites, notify": "kaydet, yer imi, favoriler, bildir",
+    "saved the design {var:1}": "{var:1} tasarımını kaydetti",
+    "saved the shared component {var:1}": "{var:1} ortak bileşenini kaydetti",
     "saved-posts": "kaydedilen-gonderiler",
     "saved. The design still needs saving to keep this address.": "kaydedildi. Bu adresin kalıcı olması için tasarımı da kaydedin.",
     "say-hi": "merhaba-de",

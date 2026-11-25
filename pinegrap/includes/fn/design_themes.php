@@ -1015,15 +1015,21 @@ function pg_design_variables_save($style_id, $model, $look, $palette, $user_id)
         }
         if ((string)file_get_contents($path) === $css && $row) return true;
     }
+    // A design file like any other: its trail line carries the content's
+    // digest, so a change of the same size is still a change.
+    $audit_before = $row ? pg_audit_fetch_file((int)$row['id'], $path) : array();
     if (!pg_file_write_whole($path, $css)) {
         return lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $name));
     }
     if ($row) {
         db("UPDATE files SET size = '" . (int)strlen($css) . "', user = '" . (int)$user_id . "', timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int)$row['id'] . "'");
+        pg_audit_record_file((int)$row['id'], $audit_before, $path);
     } else {
         $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
         db("INSERT INTO files (name, folder, description, type, size, user, design, theme, timestamp)
             VALUES ('" . e($name) . "', '$folder_id', '', 'css', '" . (int)strlen($css) . "', '" . (int)$user_id . "', '1', '0', UNIX_TIMESTAMP())");
+        $file_id = (int)mysqli_insert_id(db::$con);
+        if ($file_id > 0) pg_audit_record('create', 'files', $file_id);
     }
     return true;
 }
