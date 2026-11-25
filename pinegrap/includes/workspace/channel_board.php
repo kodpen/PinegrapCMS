@@ -135,6 +135,165 @@ function ws_channel_board_drop_date($bucket, $today)
 }
 
 /**
+ * How many days back "Done in the last 7 days" counts.
+ */
+define('WS_CHANNEL_BOARD_FIGURE_DONE_DAYS', 7);
+
+/**
+ * The four figures above the board, in the order they stand: open tasks,
+ * due this week (today to Sunday), overdue, done in the last seven days.
+ *
+ * @return string[]
+ */
+function ws_channel_board_figure_keys()
+{
+    return array('open', 'week', 'overdue', 'done');
+}
+
+/**
+ * The figures a card counts in. Pure.
+ *
+ * @param array  $card  status, open, due_date (Y-m-d or empty), completed_at
+ * @param string $today Y-m-d
+ * @param int    $now   timestamp
+ * @return string[] keys of ws_channel_board_figure_keys()
+ */
+function ws_channel_board_card_figures($card, $today, $now)
+{
+    $out = array();
+
+    if (!empty($card['open'])) {
+        $out[] = 'open';
+        $bucket = ws_channel_board_date_bucket($card['due_date'] ?? '', $today);
+
+        if (($bucket === 'today') || ($bucket === 'week')) {
+            $out[] = 'week';
+        } elseif ($bucket === 'overdue') {
+            $out[] = 'overdue';
+        }
+    } elseif (((string) ($card['status'] ?? '') === 'done')
+        && ((int) ($card['completed_at'] ?? 0) >= ((int) $now - (WS_CHANNEL_BOARD_FIGURE_DONE_DAYS * 86400)))) {
+        $out[] = 'done';
+    }
+
+    return $out;
+}
+
+/**
+ * The four figures of a set of cards. Pure.
+ *
+ * @param array[] $cards
+ * @param string  $today Y-m-d
+ * @param int     $now   timestamp
+ * @return array key => count
+ */
+function ws_channel_board_figures($cards, $today, $now)
+{
+    $counts = array_fill_keys(ws_channel_board_figure_keys(), 0);
+
+    foreach ($cards as $card) {
+        foreach (ws_channel_board_card_figures($card, $today, $now) as $key) {
+            $counts[$key]++;
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * The cards a figure chosen as a filter keeps; an empty or unknown figure
+ * keeps them all. Pure.
+ *
+ * @param array[] $cards
+ * @param string  $figure
+ * @param string  $today  Y-m-d
+ * @param int     $now    timestamp
+ * @return array[] a list
+ */
+function ws_channel_board_figure_filter($cards, $figure, $today, $now)
+{
+    if (!in_array((string) $figure, ws_channel_board_figure_keys(), true)) {
+        return array_values($cards);
+    }
+
+    return array_values(array_filter($cards, function ($card) use ($figure, $today, $now) {
+        return in_array($figure, ws_channel_board_card_figures($card, $today, $now), true);
+    }));
+}
+
+/**
+ * Task briefs (ws_tasks_list()) narrowed to a figure, for the List view;
+ * when the figure is "done" their finishing time is read, which the brief
+ * does not carry.
+ *
+ * @param array[] $briefs
+ * @param string  $figure
+ * @return array[]
+ */
+function ws_channel_board_list_figure($briefs, $figure)
+{
+    $briefs = array_values((array) $briefs);
+
+    if (empty($briefs) || !in_array((string) $figure, ws_channel_board_figure_keys(), true)) {
+        return $briefs;
+    }
+
+    $finished = array();
+
+    if ($figure === 'done') {
+        $ids = array_map(function ($brief) { return (int) $brief['id']; }, $briefs);
+
+        foreach ((array) db_items("SELECT id, completed_at FROM ws_tasks WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+            $finished[(int) $row['id']] = (int) $row['completed_at'];
+        }
+    }
+
+    $today = date('Y-m-d');
+    $now = time();
+
+    return array_values(array_filter($briefs, function ($brief) use ($figure, $finished, $today, $now) {
+        $brief['completed_at'] = $finished[(int) $brief['id']] ?? 0;
+
+        return in_array($figure, ws_channel_board_card_figures($brief, $today, $now), true);
+    }));
+}
+
+/**
+ * The tone of a card's due chip: gray for a later day, "soon" (amber) for
+ * today and tomorrow, "late" (rose) with the days late, "done" (green) on a
+ * closed task. Pure.
+ *
+ * @param string|null $due   Y-m-d, or empty for none
+ * @param bool        $open
+ * @param string      $today Y-m-d
+ * @return array tone ('', soon, late, done), late (days)
+ */
+function ws_channel_board_due_chip($due, $open, $today)
+{
+    $due = (string) $due;
+
+    if (($due === '') || ($due === '0000-00-00')) {
+        return array('tone' => '', 'late' => 0);
+    }
+
+    if (!$open) {
+        return array('tone' => 'done', 'late' => 0);
+    }
+
+    $bucket = ws_channel_board_date_bucket($due, $today);
+
+    if ($bucket === 'overdue') {
+        $days = (int) round((strtotime($today . ' 12:00:00') - strtotime($due . ' 12:00:00')) / 86400);
+
+        return array('tone' => 'late', 'late' => max(1, $days));
+    }
+
+    $tomorrow = date('Y-m-d', strtotime('+1 day', strtotime($today . ' 12:00:00')));
+
+    return array('tone' => (($due === $today) || ($due === $tomorrow)) ? 'soon' : '', 'late' => 0);
+}
+
+/**
  * The order of the cards in a column: the more pressing first, then the
  * sooner due (those without a date last), then the newer.
  *
@@ -256,6 +415,7 @@ function ws_channel_board_tasks($viewer, $channel, $options)
     $me = (int) $viewer['id'];
     $person = (int) ($options['person'] ?? 0);
     $priorities = ws_task_priorities();
+    $today = date('Y-m-d');
     $out = array();
 
     foreach ($briefs as $brief) {
@@ -271,6 +431,8 @@ function ws_channel_board_tasks($viewer, $channel, $options)
             continue;
         }
 
+        $chip = ws_channel_board_due_chip($brief['due_date'], !empty($brief['open']), $today);
+
         $out[] = array(
             'kind'           => 'task',
             'id'             => (int) $brief['id'],
@@ -284,6 +446,8 @@ function ws_channel_board_tasks($viewer, $channel, $options)
             'due_date'       => $brief['due_date'],
             'due_label'      => (string) $brief['due_label'],
             'overdue'        => (bool) $brief['overdue'],
+            'due_tone'       => $chip['tone'],
+            'due_late'       => $chip['late'],
             'assignees'      => $people,
             'progress'       => $brief['progress'],
             'notes_count'    => (int) $brief['notes_count'],
@@ -309,8 +473,11 @@ function ws_channel_board_tasks($viewer, $channel, $options)
  * @param array $viewer
  * @param array $channel  one the person may read
  * @param array $options  group_by, priority, person, mine, q, cancelled (show
- *                        the cancelled tasks), done_all (every finished task)
- * @return array group_by, columns (key, title, icon, drop, add, items, more), counts, members, stamp
+ *                        the cancelled tasks), done_all (every finished task),
+ *                        figure (a key of ws_channel_board_figure_keys(): only
+ *                        its tasks), figures_only (the figures and the stamp,
+ *                        for the List view)
+ * @return array group_by, figure, figures, columns (key, title, icon, drop, add, items, more), counts, members, stamp
  */
 function ws_channel_board($viewer, $channel, $options = array())
 {
@@ -323,7 +490,19 @@ function ws_channel_board($viewer, $channel, $options = array())
     $q = trim(mb_substr((string) ($options['q'] ?? ''), 0, 100));
     $options['q'] = $q;
     $today = date('Y-m-d');
+    $now = time();
     $tasks = ws_channel_board_tasks($viewer, $channel, $options);
+
+    // The figures count what the toolbar lets through; the figure chosen
+    // then narrows the cards, so the other figures keep their counts.
+    $figures = ws_channel_board_figures($tasks, $today, $now);
+    $figure = in_array((string) ($options['figure'] ?? ''), ws_channel_board_figure_keys(), true) ? (string) $options['figure'] : '';
+
+    if (!empty($options['figures_only'])) {
+        return array('figure' => $figure, 'figures' => $figures, 'stamp' => ws_channel_board_stamp($channel));
+    }
+
+    $tasks = ws_channel_board_figure_filter($tasks, $figure, $today, $now);
     $cutoff = strtotime('-' . WS_CHANNEL_BOARD_DONE_DAYS . ' days', strtotime($today . ' 00:00:00'));
     $done_hidden = 0;
 
@@ -425,6 +604,8 @@ function ws_channel_board($viewer, $channel, $options = array())
 
     return array(
         'group_by' => $group_by,
+        'figure'   => $figure,
+        'figures'  => $figures,
         'today'    => $today,
         'columns'  => $columns,
         'counts'   => $counts,
@@ -466,6 +647,20 @@ function ws_channel_board_js_strings()
         'cb_dropped'       => ws_js_template('Put in the column {var:1}', 1),
         'cb_cancel_move'   => lang('Left where it was.'),
         'cb_count'         => ws_js_template('{var:1} cards', 1),
+        'cb_figures'       => lang('What the board holds'),
+        'cb_figure_help'   => lang('Show only these tasks. Press again to show them all.'),
+        'cb_fig_open'      => lang('Open tasks'),
+        'cb_fig_week'      => lang('Due this week'),
+        'cb_fig_overdue'   => lang('Overdue'),
+        'cb_fig_done'      => lang('Done in the last 7 days'),
+        'cb_late'          => ws_js_template('{var:1} days late', 1),
+        'cb_late_one'      => lang('1 day late'),
+        'cb_done'          => lang('Done'),
+        'cb_drop_status'   => ws_js_template('Drop here: status becomes “{var:1}”', 1),
+        'cb_drop_person'   => ws_js_template('Drop here: goes to {var:1}', 1),
+        'cb_drop_nobody'   => lang('Drop here: nobody on it'),
+        'cb_drop_date'     => ws_js_template('Drop here: due date becomes “{var:1}”', 1),
+        'cb_drop_no_date'  => lang('Drop here: no due date'),
     );
 
     foreach (ws_channel_board_groupings() as $key => $label) {

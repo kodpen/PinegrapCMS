@@ -26177,18 +26177,16 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     border-color: rgba(var(--ws-accent-rgb), .55);
     background: rgba(var(--ws-accent-rgb), .07);
 }
-/* On the channel's Board tab a column is a card like the panes' others; the
-   workflow table's board (.ws-wt-board) keeps its own columns. */
+/* On the channel's Board tab a column is a gray surface the cards stand on;
+   a card over it shows the column's drop place (.ws-cb-slot). The workflow
+   table's board (.ws-wt-board) keeps its own columns. */
 .ws-pane-board .ws-cb-col {
     flex: 1 1 17rem;
     max-width: 34rem;
-    border: 1px solid var(--pg-border-color);
-    border-radius: 1rem;
-    background: var(--pg-card-bg);
-}
-.ws-pane-board .ws-cb-col.ws-cb-drop {
-    border-color: rgba(var(--ws-accent-rgb), .55);
-    background: rgba(var(--ws-accent-rgb), .07);
+    padding: 10px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--pg-bg-1);
 }
 .ws-cb-col-head {
     display: flex;
@@ -26281,6 +26279,8 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
 }
 .ws-cb-closed .ws-cb-title {
     color: var(--pg-fg-2);
+}
+.ws-cb-s-cancelled .ws-cb-title {
     text-decoration: line-through;
 }
 .ws-cb-card-top {
@@ -26294,12 +26294,54 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
 .ws-cb-number {
     font-weight: 600;
 }
+.ws-cb-card-end {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-inline-start: auto;
+}
+/* Urgent (rose) and high (amber) as a small chip with a flag. */
 .ws-cb-priority {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-weight: var(--pg-weight-strong);
+}
+.ws-cb-priority-urgent {
     background: var(--pg-danger-bg-subtle);
     color: var(--pg-danger-fg-emphasis);
 }
-.ws-cb-status {
-    margin-left: auto;
+.ws-cb-priority-high {
+    background: var(--pg-warning-bg-subtle);
+    color: var(--pg-warning-fg-emphasis);
+}
+.ws-cb-done-mark {
+    color: var(--pg-success-fg-emphasis);
+}
+/* The due date as a chip: gray for a later day, amber for today and
+   tomorrow, rose when late, green on a closed task. */
+.ws-cb-due {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pg-tone-gray) 12%, transparent);
+    font-weight: var(--pg-weight-medium);
+}
+.ws-cb-due-soon {
+    background: var(--pg-warning-bg-subtle);
+    color: var(--pg-warning-fg-emphasis);
+}
+.ws-cb-due-late {
+    background: var(--pg-danger-bg-subtle);
+    color: var(--pg-danger-fg-emphasis);
+}
+.ws-cb-due-done {
+    background: var(--pg-success-bg-subtle);
+    color: var(--pg-success-fg-emphasis);
 }
 .ws-cb-title {
     font-weight: 500;
@@ -26365,9 +26407,7 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     box-shadow: var(--ws-shadow-soft);
 }
 .ws-pane-board .ws-cb-card::before {
-    inset-inline-start: 0;
-    top: .55rem;
-    bottom: .55rem;
+    content: none;
 }
 .ws-pane-board .ws-cb-card:hover {
     border-color: rgba(var(--ws-accent-rgb), .45);
@@ -26389,6 +26429,173 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     }
     .ws-cb-col.ws-cb-col-current {
         display: flex;
+    }
+}
+/* The channel's Board tab: the four figures above both views (buttons that
+   filter, the chosen one in the primary's subtle fill), the columns on the
+   gray surface with the status's dot and the count in a pill, the cards,
+   and the dashed drop place of the column a card is over. At phone width
+   the figures are one row and the columns scroll sideways. */
+.ws-cb-figures {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: .75rem;
+}
+.ws-cb-figure {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--pg-border-color);
+    border-radius: 14px;
+    background: var(--pg-card-bg);
+    color: inherit;
+    text-align: start;
+}
+.ws-cb-figure:hover {
+    border-color: color-mix(in srgb, var(--pg-primary) 55%, transparent);
+}
+.ws-cb-figure.active {
+    border-color: var(--pg-primary-border-subtle);
+    background: var(--pg-primary-bg-subtle);
+}
+.ws-cb-figure:focus-visible {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-figure-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.ws-cb-figure-value {
+    font-size: var(--pg-text-figure-sm);
+    font-weight: var(--pg-weight-title);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.05;
+}
+.ws-cb-figure-label {
+    overflow: hidden;
+    color: var(--pg-fg-2);
+    font-size: var(--pg-text-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-pane-board .ws-cb-col-head {
+    padding: 4px 6px 10px;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-title);
+}
+.ws-cb-dot {
+    flex: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--pg-tone-gray);
+}
+.ws-cb-dot-doing {
+    background: var(--pg-tone-blue);
+}
+.ws-cb-dot-waiting {
+    background: var(--pg-tone-amber);
+}
+.ws-cb-dot-done {
+    background: var(--pg-tone-teal);
+}
+.ws-cb-dot-cancelled {
+    background: var(--pg-tone-rose);
+}
+.ws-pane-board .ws-cb-col-title {
+    flex: 0 1 auto;
+}
+.ws-pane-board .ws-cb-col-count {
+    margin-inline-end: auto;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--pg-tone-gray) 16%, transparent);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--pg-weight-strong);
+}
+.ws-pane-board .ws-cb-list {
+    gap: 9px;
+    padding: 0;
+}
+.ws-pane-board .ws-cb-card {
+    padding: 11px 12px 10px;
+    border-radius: 13px;
+}
+.ws-pane-board .ws-cb-card-top {
+    gap: 7px;
+    margin-bottom: 5px;
+    font-size: var(--pg-text-meta);
+}
+.ws-pane-board .ws-cb-title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--pg-text-base);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+.ws-pane-board .ws-cb-meta {
+    gap: .3rem 10px;
+    margin-top: 10px;
+    font-size: var(--pg-text-meta);
+}
+.ws-pane-board .ws-cb-progress-bar {
+    --bs-progress-bar-bg: var(--pg-primary);
+    width: 34px;
+}
+.ws-pane-board .ws-cb-card.ws-cb-lifted {
+    box-shadow: var(--pg-shadow-float);
+    transform: rotate(-2deg);
+}
+.ws-cb-slot {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-height: 54px;
+    padding: 6px 10px;
+    border: 1.5px dashed var(--pg-primary);
+    border-radius: 13px;
+    background: var(--pg-primary-bg-subtle);
+    color: var(--pg-primary-fg-emphasis);
+    font-size: var(--pg-text-meta);
+    font-weight: var(--pg-weight-medium);
+    text-align: center;
+}
+.ws-cb-col.ws-cb-drop .ws-cb-slot {
+    display: flex;
+}
+.ws-cb-col.ws-cb-drop .ws-cb-empty {
+    display: none;
+}
+.ws-cb-add-foot {
+    align-self: flex-start;
+    margin-top: 6px;
+    color: var(--pg-fg-3);
+}
+@media (max-width: 767.98px) {
+    .ws-pane-board .ws-cb-cols {
+        display: flex;
+    }
+    .ws-pane-board .ws-cb-col,
+    .ws-pane-board .ws-cb-col.ws-cb-col-current {
+        display: flex;
+        flex: 0 0 min(292px, 82vw);
+    }
+}
+@media (max-width: 575.98px) {
+    .ws-cb-figures {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+    }
+    .ws-cb-figure {
+        flex: 0 0 168px;
     }
 }
 /* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */

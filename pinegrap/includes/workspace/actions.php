@@ -4905,16 +4905,19 @@ function ws_handle_action($action, $request)
             }
 
             // The Board tab's List view narrows it as the board does: the
-            // search, the urgency, a person or the reader alone.
+            // search, the urgency, a person or the reader alone, and a
+            // figure chosen above it (which looks past open or closed).
+            $figure = (string) ($request['figure'] ?? '');
             $tasks = ws_tasks_list($viewer, array(
                 'scope'      => 'channel',
                 'channel_id' => $channel['id'],
-                'status'     => (string) ($request['status'] ?? 'all'),
+                'status'     => ($figure !== '') ? 'all' : (string) ($request['status'] ?? 'all'),
                 'search'     => trim((string) ($request['q'] ?? '')),
                 'priority'   => (string) ($request['priority'] ?? ''),
             ));
+            $tasks = ws_tasks_for_person($tasks, !empty($request['mine']) ? (int) $viewer['id'] : (int) ($request['person'] ?? 0));
 
-            return ws_action_ok(array('tasks' => ws_tasks_for_person($tasks, !empty($request['mine']) ? (int) $viewer['id'] : (int) ($request['person'] ?? 0))));
+            return ws_action_ok(array('tasks' => ws_channel_board_list_figure($tasks, $figure)));
 
         case 'ws_search':
             return ws_action_ok(array('messages' => ws_message_search($viewer, (string) ($request['q'] ?? ''), (int) ($request['channel_id'] ?? 0))));
@@ -4950,6 +4953,8 @@ function ws_handle_action($action, $request)
                 'q'         => (string) ($request['q'] ?? ''),
                 'cancelled' => !empty($request['cancelled']),
                 'done_all'  => !empty($request['done_all']),
+                'figure'    => (string) ($request['figure'] ?? ''),
+                'figures_only' => !empty($request['figures_only']),
             )));
 
         case 'ws_command_suggest':
