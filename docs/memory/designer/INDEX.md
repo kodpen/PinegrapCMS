@@ -404,6 +404,7 @@
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
 - designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
 - designer-home-screen.md: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+- designer-image-focus-drawing.md: The drawing of the image focus (plans/designer-image-focus.md, IF2 and IF3): the sheet, its four boards, what each step builds from it and what the sheet settles
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
