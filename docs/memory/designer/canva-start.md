@@ -13,6 +13,9 @@ module: canva_start
 - Server rules: `pg_upload_error_message()`, the kind from the first bytes (`pg_canva_file_kind()`: PNG or JPG; the stored name gets that extension), `getimagesize()`, then `pg_file_store_upload()` into the file manager's top folder (`pg_canva_folder()`) with the description "A Canva page, the model of a sketch page".
 - A PDF is refused with its own reason: turning PDF pages into pictures needs Ghostscript behind ImageMagick, which runs the PDF's own program and which a host may not have. No part of the software rasterises PDF, so the drawing's PDF unfolding is not built.
 
+## What happens to pages the person leaves?
+- Architect (2026-11-26, agent channel request 2991): an abandoned start does what "Stop" does: it deletes what it stored itself and nothing uses. The bin, the cross on a sent upload, Cancel and the window's close delete this start's pages by the session's ids, never one a saved page uses (`start-abandoned-cleanup.md`, #11705).
+
 ## How are the colours measured?
 - `pg_canva_measure()`: GD samples the stored picture over its own size (the upload cap may have shrunk it; hunt 57) to 64 pixels wide (nearest pixels, so edges give no blends; skipped over 40 megapixels or without GD), `pg_canva_colors_from_pixels()` boxes them four bits a channel and drops near white, near black and greys (HSL s < .25, l outside .12-.88).
 - "Next" sends every page's list to designer › `canva_colors`: `pg_canva_pick_colors()` weighs each picture the same, joins colours closer than 64 ("redmean" distance) and gives at most `pg_canva_max_colors()` = 5. Brand colour is the first, Second colour the next; a press on a swatch changes it. Fonts are never taken: the third row reads "The site's default".
@@ -26,4 +29,4 @@ module: canva_start
 - `_sdSketchAdopt(styleId)` moves the sketch kept under `pg_proto_sketch_new` to the new id's key. Before, a sketch drawn in an unsaved design was left behind under `new` once the design was saved.
 
 ## Tests?
-- `tests/canva_start_test.php`: the kind, the refusals, a page's name, the colours of pixels and of several pictures, the row and the pane, and in Node the sketch the part writes and what the browser refuses. The upload, the drag order and the editor's opening were not run in a browser.
+- `tests/canva_start_test.php`: the kind, the refusals, a page's name, the ids a drop may delete, the colours of pixels and of several pictures, the row and the pane, and in Node the sketch the part writes and what the browser refuses. The upload, the drag order and the editor's opening were not run in a browser.

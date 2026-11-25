@@ -215,3 +215,48 @@ function test_figma_import_start_marks_a_refused_token()
 	$start = substr($start, 0, strpos($start, "\n}\n"));
 	pg_assert_contains('pg_figma_connection_refused()', $start, 'the start marks the token');
 }
+
+// What a stop may delete: the files the import fetched (each once, a real
+// id only), the shared rows it made, and its Figma/<file name> folder only
+// when the import made it.
+function test_figma_stop_targets()
+{
+	$data = array(
+		'files'       => array(array('id' => 7, 'name' => 'a.png'), array('id' => '8', 'name' => 'b.svg'), array('id' => 7, 'name' => 'a.png'), array('id' => 0, 'name' => 'x.png')),
+		'folder'      => 41,
+		'made_folder' => true,
+		'ready'       => array('shared' => array(array('id' => 3, 'name' => 'Card'), array('id' => '0'))),
+	);
+	$t = pg_figma_stop_targets($data);
+	pg_assert_same(array(array('id' => 7, 'name' => 'a.png'), array('id' => 8, 'name' => 'b.svg')), $t['files'], 'each fetched file once');
+	pg_assert_same(array(3), $t['shared'], 'the shared rows made');
+	pg_assert_same(41, $t['folder'], 'the folder the import made');
+
+	$data['made_folder'] = false;
+	pg_assert_same(0, pg_figma_stop_targets($data)['folder'], 'a folder found, not made, stays');
+	$none = pg_figma_stop_targets(array('files' => array(), 'folder' => 0));
+	pg_assert_same(array('files' => array(), 'shared' => array(), 'folder' => 0), $none, 'nothing fetched yet');
+}
+
+// The clean-up sweep knows a work file left behind by its name only.
+function test_figma_work_file_name()
+{
+	pg_assert_true(pg_figma_is_work_file('figma_' . sha1('x') . '.json'), 'a work file');
+	pg_assert_same(false, pg_figma_is_work_file('figma_' . sha1('x') . '.json.bak'), 'not a work file');
+	pg_assert_same(false, pg_figma_is_work_file('figma_../x.json'), 'never a path');
+	pg_assert_same(false, pg_figma_is_work_file('hash_reference.json'), 'another file');
+}
+
+// An abandoned start does what Stop does: the window's close and a failed
+// finish call the stop step, and Stop clears the empty import folder. A
+// source check: the window's close is a browser event.
+function test_figma_abandoned_start_stops()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_figma.js');
+	pg_assert_contains("pgUI.dialog.on(win, 'hidden'", $js, 'the window\'s close is heard');
+	pg_assert_true(substr_count($js, 'abandon(s)') >= 3, 'close, a failed finish and Back abandon the import');
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
+	pg_assert_contains('pg_figma_stop_targets(', $php);
+	$sweep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php');
+	pg_assert_contains('pg_figma_import_stop_path(', $sweep, 'the sweep stops a work file before removing it');
+}
