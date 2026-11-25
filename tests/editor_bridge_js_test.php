@@ -190,7 +190,7 @@ function test_editor_bridge_link_window_deleted()
 {
 	pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/editor_select_page_or_file.php'), 'the file is deleted');
 	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php'), 'editor_select_page_or_file'), 'no setting names it');
-	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php'), "    'editor_select_page_or_file.php',\n") !== false, 'Cleanup lists it');
+	pg_assert_true(in_array('editor_select_page_or_file.php', pg_clean_up_file_list(), true), 'Cleanup lists it');
 }
 
 // A screen that keeps files gets the picked pictures as names and ids, in
@@ -222,7 +222,7 @@ function test_editor_bridge_image_window_deleted()
 	pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/editor_select_image.php'), 'the file is deleted');
 	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php'), 'editor_select_image'), 'no setting names it');
 	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/add_file.php'), 'editor_select_image'), 'no upload returns to it');
-	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php'), "    'editor_select_image.php',\n") !== false, 'Cleanup lists it');
+	pg_assert_true(in_array('editor_select_image.php', pg_clean_up_file_list(), true), 'Cleanup lists it');
 
 	$backend = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
 	pg_assert_same(false, strpos($backend, 'window.open(windowUrl'), 'no window');

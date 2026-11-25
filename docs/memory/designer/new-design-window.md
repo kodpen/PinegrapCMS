@@ -4,7 +4,7 @@ description: The New design window (#sdStartModal) on the Page Design Studio hom
 ---
 
 ## What is the New design window?
-- One dialog for every way to start a design (`pg_designer_start_window()`, includes/designer_screen.php); it replaced the framework dialog and the separate template gallery dialog (ST2 of `plans/designer-start-import.md`).
+- One dialog for every way to start a design (`pg_designer_start_window()`, includes/designer_screen.php); it replaced the framework dialog and the separate template gallery dialog (ST2 of the start plan, `designer-start-import.md`).
 - Left: the starts as a vertical tab list, each row a small drawing (`pg_designer_home_drawing()`), a title and one line; the rows are the settings rail's `.pg-sm-link`. Right: the chosen start's pane. Foot: Cancel quiet and one filled button.
 - Opened by the home's "New design" button and by each start card, on the card's own start (`data-sd-start`); `view_system_styles.php?start=<key>` opens it on load.
 

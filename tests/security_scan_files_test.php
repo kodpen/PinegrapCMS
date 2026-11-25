@@ -105,6 +105,18 @@ function test_security_files_sightings()
 	pg_assert_same(array('file_upload_executable:4'), $kinds(pg_security_file_sightings('data/layouts/x.php', null, $none)));
 	pg_assert_same(array('file_shell_mark:4'), $kinds(pg_security_file_sightings('data/layouts/12.php', null, array('shell' => 'eval($_'))));
 	pg_assert_same(array('file_server_config:2'), $kinds(pg_security_file_sightings('.htaccess', true, array('config' => 'changed'))));
+
+	// A place an earlier release carried, on the Cleanup tool's list: retired
+	// (medium), at the root, inside a listed folder of includes/ and outside
+	// the reference's scope; a shell mark in it is still a shell mark.
+	pg_assert_same(array('file_php_retired:2'), $kinds(pg_security_file_sightings('page_designer.php', false, $none)));
+	pg_assert_same(array('file_php_retired:2'), $kinds(pg_security_file_sightings('includes/phpexcel/PHPExcel/IOFactory.php', false, $none)));
+	pg_assert_same(array('file_php_retired:2'), $kinds(pg_security_file_sightings('assets/lib/image_editor/save.php', null, $none)));
+	pg_assert_same(array('file_php_unknown:3'), $kinds(pg_security_file_sightings('page_designer2.php', false, $none)), 'not listed');
+	pg_assert_same(array('file_php_unknown:3'), $kinds(pg_security_file_sightings('includes/phpexcel2/x.php', false, $none)), 'a listed folder is no prefix of a name');
+	pg_assert_same(array(), $kinds(pg_security_file_sightings('page_designer.php', null, $none)), 'not judged without a reference');
+	pg_assert_same(array('file_php_retired:2', 'file_shell_mark:4'), $kinds(pg_security_file_sightings('view_files.php', false, array('shell' => 'eval(base64_decode('))));
+	pg_assert_same(array('shell'), pg_security_file_reads('view_files.php', false), 'a retired file is read for shell marks');
 	pg_assert_same(array('file_server_config:3'), $kinds(pg_security_file_sightings('data/files/sub/.htaccess', null, array('config' => 'new'))), 'in an upload folder');
 
 	$sightings = pg_security_file_sightings('data/files/a.phtml', null, $none);
@@ -185,6 +197,7 @@ function test_security_files_state_and_judged_kinds()
 
 	pg_assert_same(array_keys(pg_security_file_kinds()), pg_security_files_judged_kinds('github'));
 	pg_assert_false(in_array('file_php_unknown', pg_security_files_judged_kinds(''), true), 'not judged without a reference');
+	pg_assert_false(in_array('file_php_retired', pg_security_files_judged_kinds(''), true), 'not judged without a reference');
 	pg_assert_true(in_array('file_upload_executable', pg_security_files_judged_kinds(''), true));
 
 	foreach (array_keys(pg_security_file_kinds()) as $kind) {

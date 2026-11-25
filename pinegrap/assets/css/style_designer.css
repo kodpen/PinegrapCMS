@@ -1019,6 +1019,13 @@ body.sd-email-design .sd-bp-bar .sd-bp-zsep-mode { display:none; }
 button.sd-side-w:hover { background:rgba(255,255,255,.08); }
 button.sd-side-w:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
 .sd-side-w .sd-side-caret { font-size:.6rem; }
+/* "Edit at this size": an icon button at the head's right end. */
+.sd-side-swap {
+    display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; margin-left:auto;
+    padding:0; border:0; border-radius:6px; background:none; color:#9aa1a9; font-size:.8rem;
+}
+.sd-side-swap:hover { background:rgba(255,255,255,.08); color:#e6e8eb; }
+.sd-side-swap:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
 .sd-side-box { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; background:#fff; }
 .sd-side-menu .sd-side-note { color:var(--sd-text-muted); font-size:.72rem; }
 .sd-side-menu .sd-side-tick { width:1em; color:var(--sd-accent); }

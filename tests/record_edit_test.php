@@ -212,3 +212,16 @@ function test_record_edit_fields_out()
 		array('id' => 6, 'name' => 'note', 'label' => 'Note', 'control' => 'text', 'required' => false, 'rss' => '', 'value' => 'x', 'file_name' => ''),
 	), $out);
 }
+
+// The read names the item's form page, so the Preview finds the spots of that form's detail widget (PGRecordEditSpots formId).
+function test_record_edit_record_out_names_the_form()
+{
+	$out = pg_rec_edit_record_out(
+		array('id' => '7', 'page_id' => '31', 'reference_code' => 'ABC', 'address_name' => 'blue', 'form_name' => 'Coffees'),
+		array(array('rss_field' => 'title', 'value' => 'Blue'))
+	);
+
+	pg_assert_same(31, $out['form_page_id']);
+	pg_assert_same(7, $out['id']);
+	pg_assert_same('Blue', $out['title']);
+}

@@ -1,6 +1,6 @@
 ---
 name: designer-side-by-side
-description: "Side by side" in the designer's View menu (SS2): the switch, the row of the canvas and two mirrors, its room (928 px, 636 for an e-mail design), the heads and their size lists
+description: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size
 ---
 
 ## How is "Side by side" turned on?
@@ -15,7 +15,13 @@ description: "Side by side" in the designer's View menu (SS2): the switch, the r
 - A head (28 px, then 6 px) holds the width button: the bar's icon and "375 px", opening a menu of the bar's five widths under the bar's names. The one shown is ticked; the canvas's and the other mirror's are dimmed with "on the canvas" / "in the other mirror" (`PGMirrorSchedule.sizes()`, `pick()`). An e-mail design's head has no list.
 - The first-use line under the bar, once per person: the tour's tip `side-by-side` (`PGDesignerTour`, from the part `bands`, which `cfg.tour()` runs when it has not run yet).
 
-## What comes next?
-- SS3 adds "Edit at this size" to the head, the chosen element followed in each mirror and a click choosing it.
+## How does a mirror follow the chosen element (SS3, #11676)?
+- Each mirror frames the canvas's `.sd-selected` elements: a div `[data-sd-mirror-mark="chosen"]` in the mirror's document over the picture, 2 px on screen at its scale, `#0d6efd`. An element that width hides has none. No frame while a redraw waits; the redraw frames again. Followed from the part's MutationObserver (`PGMirrorSchedule.selectionMoved()`), at the next animation frame.
+- A mirror scrolls only when the choice moved and the element is out of its view, to a third of the way down (`follow()`).
+- A click in a mirror chooses the element on the canvas (`cfg.select` = `_sdSideSelect(id, sid)`), a dashed frame (`hover`) shows what a click would choose.
+
+## What does "Edit at this size" do?
+- The head's icon button `.sd-side-swap` (`bi-arrow-left-right`) after the width: `PGMirrorSchedule.swap()` gives the canvas the mirror's width and the mirror the canvas's (Full width hands over 1200; another mirror on that width takes the first free one); the core (`_sdSideSwap()`) presses the bar's width button, stores the widths, says "Editing at {var:1} px.". Again swaps back. An e-mail design's head has no swap.
+- Measured: framing two mirrors on a 1,539-element body 0.9 ms median, 5.5 ms worst; typing unchanged (0.1-0.2 ms per 100 text changes).
 
 Related: docs/memory/designer/designer-canvas-mirror.md, docs/memory/designer/designer-screens-side-by-side-drawing.md

@@ -20,6 +20,13 @@
  * says how wide each box is and whether the row has room; the boxes
  * follow the column's height here.
  *
+ * The chosen element is framed in every mirror and brought into view
+ * there when it is out of it; a click in a mirror chooses the element on
+ * the canvas (cfg.select), a dashed frame shows what a click would choose,
+ * and "Edit at this size" in a head swaps that mirror's width with the
+ * canvas's (cfg.swap). The frames sit in the mirror's own document over
+ * the picture and go with every redraw; while a redraw waits none is shown.
+ *
  * Not needed to open a page: the core runs this file the first time a
  * mirror is asked for (pg_designer_parts()); when the canvas document is
  * written anew the core calls rebind().
@@ -55,8 +62,10 @@ StyleDesigner.definePart('mirror', function (K) {
 
     // ── When to draw ─────────────────────────────────────────────────────
     function note(kind) {
+        var waited = S.due(plan) !== null;
         plan = S.step(plan, kind, clock());
         schedule();
+        if (!waited && S.due(plan) !== null) marks();
     }
 
     function schedule() {
@@ -103,10 +112,18 @@ StyleDesigner.definePart('mirror', function (K) {
         return { type: r.type, cls: ownerClass(r.target), nodes: nodes };
     }
 
+    // A change a mirror shows waits for the hand to rest; the selection
+    // mark moving is followed at the next frame.
     function observed(records) {
-        for (var i = 0; i < records.length; i++) {
-            if (S.matters(shape(records[i]))) { note('change'); return; }
+        var changed = false, moved = false;
+        for (var i = 0; i < records.length && !(changed && moved); i++) {
+            var r = records[i];
+            if (!moved && r.type === 'attributes' && r.attributeName === 'class'
+                && S.selectionMoved({ type: 'attributes', name: 'class', old: r.oldValue, now: r.target.getAttribute('class') })) moved = true;
+            if (!changed && S.matters(shape(r))) changed = true;
         }
+        if (changed) note('change');
+        if (moved) markSoon();
     }
 
     function bind() {
@@ -139,6 +156,7 @@ StyleDesigner.definePart('mirror', function (K) {
     }
 
     function unbind() {
+        if (markFrame) { cancelAnimationFrame(markFrame); markFrame = 0; }
         if (!watch) return;
         watch.offs.forEach(function (off) { off(); });
         watch = null;
@@ -181,9 +199,15 @@ StyleDesigner.definePart('mirror', function (K) {
             d.write('<!DOCTYPE html><html><head></head><body></body></html>');
             d.close();
             var stop = function (e) { e.preventDefault(); };
-            d.addEventListener('click', stop, true);
+            d.addEventListener('click', function (e) {
+                e.preventDefault();
+                var w = wrapOf(e.target);
+                if (w && row && row.cfg.select) row.cfg.select(w.getAttribute('data-sd-id'), w.getAttribute('data-sw-sid') || '');
+            }, true);
             d.addEventListener('submit', stop, true);
             d.addEventListener('dragstart', stop, true);
+            d.addEventListener('mouseover', function (e) { hover(m, wrapOf(e.target)); }, true);
+            d.addEventListener('mouseleave', function () { hover(m, null); }, true);
             d._sdMirror = true;
             m.head = null;
         }
@@ -212,6 +236,7 @@ StyleDesigner.definePart('mirror', function (K) {
             m.head = head;
         }
         var y = d.scrollingElement ? d.scrollingElement.scrollTop : 0;
+        unmark(d);
         var nb = d.importNode(body, true);
         if (d.body) d.documentElement.replaceChild(nb, d.body); else d.documentElement.appendChild(nb);
         if (y && d.scrollingElement) d.scrollingElement.scrollTop = y;
@@ -223,6 +248,91 @@ StyleDesigner.definePart('mirror', function (K) {
         if (!src || !src.body || !mirrors.length) return;
         var body = strip(src.body.cloneNode(true));
         mirrors.forEach(function (m) { fill(m, src, body); });
+        marks();
+    }
+
+    // ── The chosen element ───────────────────────────────────────────────
+    // The element a mirror's frame or click stands for: the nearest one
+    // the editor drew with an id.
+    function wrapOf(t) {
+        return t && t.closest ? t.closest('[data-sd-id]') : null;
+    }
+
+    // Its box in its document's view: the wrapper's own, or that of the
+    // element it holds when the wrapper is see-through (display: contents).
+    function boxOf(w) {
+        var r = w.getBoundingClientRect();
+        if (r.width || r.height || !w.firstElementChild) return r;
+        return w.firstElementChild.getBoundingClientRect();
+    }
+
+    // A frame over `w` in mirror `m`'s document: 2 px on the screen at the
+    // mirror's scale, solid for the chosen element, dashed under the
+    // pointer. Null when that width hides the element.
+    function frameOver(m, d, w, kind) {
+        var r = boxOf(w);
+        if (!r.width || !r.height) return null;
+        var win = d.defaultView;
+        var b = Math.max(1, Math.round(2 / (m.scale || 1) * 10) / 10);
+        var f = d.createElement('div');
+        f.setAttribute('data-sd-mirror-mark', kind);
+        f.style.cssText = 'position:absolute;pointer-events:none;box-sizing:border-box;z-index:2147483647;margin:0;'
+            + 'border:' + b + 'px ' + (kind === 'hover' ? 'dashed' : 'solid') + ' #0d6efd;'
+            + 'left:' + (r.left + win.scrollX) + 'px;top:' + (r.top + win.scrollY) + 'px;width:' + r.width + 'px;height:' + r.height + 'px;';
+        d.documentElement.appendChild(f);
+        return { el: f, top: r.top, bottom: r.bottom };
+    }
+
+    function unmark(d, kind) {
+        var all = d.querySelectorAll(kind ? '[data-sd-mirror-mark="' + kind + '"]' : '[data-sd-mirror-mark]');
+        for (var i = 0; i < all.length; i++) all[i].parentNode.removeChild(all[i]);
+    }
+
+    function hover(m, w) {
+        var d = m.frame.contentDocument;
+        if (!d || !d.documentElement) return;
+        unmark(d, 'hover');
+        if (w && !S.due(plan)) frameOver(m, d, w, 'hover');
+    }
+
+    var markFrame = 0;
+    // The ids last framed, so a mirror scrolls only when the choice moved.
+    var markKey = '';
+
+    function markSoon() {
+        if (markFrame) return;
+        markFrame = requestAnimationFrame(function () { markFrame = 0; marks(); });
+    }
+
+    // Frames the canvas's chosen elements in every mirror; a mirror whose
+    // element is out of view scrolls it a third of the way down when the
+    // choice is a new one. No frame while a redraw waits.
+    function marks() {
+        var src = K.canvasDoc;
+        var chosen = (src && src.body) ? Array.prototype.slice.call(src.querySelectorAll('.sd-selected[data-sd-id]')) : [];
+        var waits = S.due(plan) !== null;
+        var key = chosen.map(function (c) { return (c.getAttribute('data-sw-sid') || '') + ':' + c.getAttribute('data-sd-id'); }).join(',');
+        // A choice made while a redraw waits is followed once it is drawn.
+        var moved = key !== markKey;
+        if (!waits) markKey = key;
+        mirrors.forEach(function (m) {
+            var d = m.frame.contentDocument;
+            if (!d || !d.documentElement || !d._sdMirror) return;
+            unmark(d, 'chosen');
+            if (waits) return;
+            var first = null;
+            chosen.forEach(function (c) {
+                var sid = c.getAttribute('data-sw-sid');
+                var q = '[data-sd-id="' + CSS.escape(c.getAttribute('data-sd-id')) + '"]' + (sid ? '[data-sw-sid="' + CSS.escape(sid) + '"]' : ':not([data-sw-sid])');
+                var w = d.querySelector(q);
+                var f = w ? frameOver(m, d, w, 'chosen') : null;
+                if (f && !first) first = f;
+            });
+            if (!first || !moved) return;
+            var win = d.defaultView;
+            var y = S.follow(first.top, first.bottom, win.innerHeight, win.scrollY);
+            if (y !== null) win.scrollTo(0, y);
+        });
     }
 
     // ── Size ─────────────────────────────────────────────────────────────
@@ -254,6 +364,8 @@ StyleDesigner.definePart('mirror', function (K) {
         bind();
         var src = K.canvasDoc;
         if (src && src.body) fill(m, src, strip(src.body.cloneNode(true)));
+        markKey = '';
+        marks();
         return m.id;
     }
 
@@ -263,6 +375,7 @@ StyleDesigner.definePart('mirror', function (K) {
         if (!m) return false;
         m.width = Math.max(1, parseInt(w, 10) || m.width);
         size(m);
+        markSoon();
         return true;
     }
 
@@ -283,6 +396,7 @@ StyleDesigner.definePart('mirror', function (K) {
             unbind();
             if (timer) { clearTimeout(timer); timer = null; }
             plan = S.initial();
+            markKey = '';
         }
     }
 
@@ -363,6 +477,17 @@ StyleDesigner.definePart('mirror', function (K) {
         btn.addEventListener('click', function () { list(index); });
         h.appendChild(btn);
         c.btn = btn;
+        var swap = el('button', 'sd-side-swap');
+        swap.type = 'button';
+        swap.setAttribute('title', _sdT('Edit at this size'));
+        swap.setAttribute('aria-label', _sdT('Edit at this size'));
+        swap.appendChild(icon('bi-arrow-left-right'));
+        swap.addEventListener('click', function () {
+            listClose(false);
+            var canvasW = row.cfg.canvasWidth ? row.cfg.canvasWidth() : 0;
+            if (row.cfg.swap) row.cfg.swap(S.swap(row.cfg.widths, index, canvasW));
+        });
+        h.appendChild(swap);
     }
 
     function build(cfg) {

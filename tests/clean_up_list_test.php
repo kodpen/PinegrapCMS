@@ -100,3 +100,29 @@ function test_clean_up_summary_counts()
 	pg_assert_same(2, substr_count($without, '<dt>'), 'two rows');
 	pg_assert_true(strpos($without, lang('Everything listed here is deleted permanently.')) !== false, 'warning');
 }
+
+// A listed place is the name itself or a path inside a listed folder; a
+// longer name that only starts with a listed one is not.
+function test_clean_up_place_listed()
+{
+	$list = array('page_designer.php', 'includes/phpexcel', 'assets/lib/image_editor/');
+
+	pg_assert_true(pg_clean_up_place_listed('page_designer.php', $list), 'the file');
+	pg_assert_true(pg_clean_up_place_listed('includes/phpexcel/PHPExcel/IOFactory.php', $list), 'inside a listed folder');
+	pg_assert_true(pg_clean_up_place_listed('assets/lib/image_editor/save.php', $list), 'a folder written with its slash');
+	pg_assert_false(pg_clean_up_place_listed('includes/phpexcel2/x.php', $list), 'a longer name');
+	pg_assert_false(pg_clean_up_place_listed('x/page_designer.php', $list), 'the same name elsewhere');
+	pg_assert_false(pg_clean_up_place_listed('', $list), 'no place');
+	pg_assert_true(pg_clean_up_place_listed('includes/templates/shipping_method_service.php'), 'the shared list by default');
+}
+
+// The list means "safe to delete": a name the software uses again never stays
+// on it, so no listed place exists in the tree.
+function test_clean_up_file_list_holds_no_live_place()
+{
+	$software = PG_FUNCTIONS_DIR;
+
+	foreach (pg_clean_up_file_list() as $entry) {
+		pg_assert_false(file_exists($software . '/' . $entry), $entry . ' is not in the tree');
+	}
+}

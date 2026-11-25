@@ -25,7 +25,7 @@ priority: 8
 - A step with no screen (a pure model, a server step, a census, a close-out) waits for no drawing.
 
 ## Which steps, in this order?
-- DD1 (M) Done (#11508). `designer-variables.md`: the Variables tab, the Options chip, the start questions, Export and Import. Holds DV2 to DV5.
+- DD1 (M) Done (#11508). `designer/design-variables-overview.md`: the Variables tab, the Options chip, the start questions, Export and Import. Holds DV2 to DV5.
 - DD2 (M) Done (#11526). `designer-sketch.md`: "Build the page" and "Build again", "Page details", the two AI actions, the reference picture. Holds SK4 to SK7.
 - DD3 (M) Done (#11525). `designer-start-import.md`: Figma on Connections, the frame list, the report; Canva's form, reference pictures and brand. Holds ST3, ST5, ST6.
 - DD5 (S) Done (#11538). `designer-preview-as.md`: the "Preview as" bar, its three choosers, the "Check all cases" list. Holds PW3, PW4.
