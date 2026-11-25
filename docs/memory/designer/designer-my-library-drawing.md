@@ -1,6 +1,6 @@
 ---
 name: designer-my-library-drawing
-description: The drawing of My library (plans/designer-my-library.md, ML2 to ML4): the sheet, its eight boards, what each step builds from it and what the sheet settles
+description: The drawing of My library (ML2 to ML4, `designer-my-library-overview.md`): the sheet, its eight boards, what each step builds from it and what the sheet settles
 ---
 
 ## Where is the drawing?
