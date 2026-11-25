@@ -26,7 +26,7 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `optsearch` (DP8): `designer-options-search.md`; `pages` (DP20): `designer-pages-window.md`.
 - `comments` (#10042): `designer-prototype-comments-list.md`.
 - `spacing` (DP7): `designer-spacing-box.md`; `focus` (IF2): `image-focus-control.md`.
-- `guides` (#11570): canvas guides, `designer-canvas-guides-measure.md`.
+- `guides` (#11570): `designer-canvas-guides-measure.md`.
 - `bands` (CG3): spacing bands and handles, `designer-canvas-guides-bands.md`.
 - `states` (DO10): `designer-options-states.md`; `phone` (#11578): `designer-phone-preview-window.md`.
 - Assistant code kept in the core for open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), `_sdAiAltButton()`.
