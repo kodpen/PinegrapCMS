@@ -1355,6 +1355,34 @@ function pg_panel_designer($request, $action)
                 + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
             break;
 
+        // The Style guide sheet of the Preview menu
+        // (includes/fn/design_style_guide.php): the model of what the
+        // design is made of, from the variables the editor holds (or, with
+        // none sent, the stored file), the look and palette of the moment,
+        // the canvas's own stylesheet text and the shared components with
+        // the pages each is on. Reads only.
+        case 'style_guide':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+            $look    = isset($request['look']) ? (string)$request['look'] : '';
+            $palette = isset($request['palette']) ? (string)$request['palette'] : '';
+            $model   = null;
+            if (isset($request['model']) && is_array($request['model'])) {
+                $model = $request['model'];
+            } elseif (isset($request['style_id']) && (int)$request['style_id'] > 0) {
+                $model = pg_design_variables_stored((int)$request['style_id']);
+            }
+            $state = pg_design_variables_state($model, $look, $palette);
+            $css = (isset($request['css']) && is_string($request['css'])) ? substr($request['css'], 0, PG_STYLE_GUIDE_CSS_MAX) : '';
+            $sg_rows = db_items("SELECT id, name, system_region_config FROM shared_components");
+            $sg_rows = is_array($sg_rows) ? $sg_rows : array();
+            $guide = pg_style_guide_model($model === null ? null : $state['model'], $state['defaults'], $css, $sg_rows);
+            $sg_ids = array();
+            foreach ($guide['blocks']['components']['rows'] as $sg_row) $sg_ids[] = $sg_row['id'];
+            $guide['blocks']['components']['rows'] = pg_style_guide_component_pages($guide['blocks']['components']['rows'],
+                $sg_ids ? pg_shared_component_usage($sg_ids) : array());
+            respond(array('status' => 'success', 'guide' => $guide));
+            break;
+
         // ── MY LIBRARY'S FILE ────────────────────────────────────────
         // includes/fn/designer_library_io.php. Export answers with the text
         // of one file holding the chosen items (every item when none is

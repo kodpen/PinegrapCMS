@@ -353,6 +353,7 @@
     "Heading of this box": "Bu kutunun başlığı",
     "Heading up the mountain? See the snow, the weather and which slopes and lifts are open today.": "Dağa mı çıkıyorsunuz? Karı, havayı ve bugün hangi pistlerle liftlerin açık olduğunu görün.",
     "Heading weight": "Başlık kalınlığı",
+    "Heading {var:1}": "Başlık {var:1}",
     "Heading {var}": "Başlık {var}",
     "Headings": "Başlıklar",
     "Headings start below H1": "Başlıklar H1 olmadan başlıyor",

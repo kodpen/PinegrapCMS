@@ -89407,7 +89407,8 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-phone" role="menuitem" hidden><span class="bi bi-phone"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview on a phone')) + '</span></button>' +
             '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
-            '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
+            '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>' +
+            (_sdStyleGuideReady() ? '<div class="sd-vb-sep" role="separator"></div><button type="button" class="sd-vb-row" id="sd-vb-styleguide" role="menuitem"><span class="bi bi-journal-richtext"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Style guide')) + '</span></button>' : '');
         ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(btn) : document.body).appendChild(menu);
 
         menu.addEventListener('click', function (e) {
@@ -89427,6 +89428,8 @@ const StyleDesigner = (function () {
                 // A saved draft on screen is offered as the link's start page.
                 var p = _pgActivePage();
                 _pgPrototypeShareDialog((p && p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0);
+            } else if (row.id === 'sd-vb-styleguide') {
+                _sdStyleGuideOpen();
             }
         });
 
@@ -89456,6 +89459,47 @@ const StyleDesigner = (function () {
             rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
         }, true);
         window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // "Style guide" (the `styleguide` part, designers only): the design's
+    // colours, type, spacing, shape, controls and shared components on one
+    // sheet, drawn with the canvas's own stylesheets. Reads only.
+    function _sdStyleGuideReady() {
+        return _sdAccess() === 'full' && _sdUsesBootstrap() && !!(_sdPartUrls('styleguide') || []).length;
+    }
+
+    function _sdStyleGuideOpen() {
+        if (!_sdStyleGuideReady()) return;
+        _sdPartCall('styleguide', 'open', [_sdStyleGuideHost()]).catch(_sdPartFailed);
+    }
+
+    // What the style guide reads the editor through: the design, its look,
+    // palette and colour mode, the variables the Variables tab holds (null:
+    // the stored file, or none), the canvas, and the way to the start
+    // questions.
+    function _sdStyleGuideHost() {
+        var th = _sdThemes() || {};
+        var input = document.getElementById('sd-style-variables');
+        var nameEl = document.querySelector('[name="name"]');
+        return {
+            styleId: (_design && _design.styleId) ? _design.styleId : 0,
+            name: nameEl ? nameEl.value.trim() : '',
+            stored: !!th.variables,
+            look: _sdThemeValue('look'),
+            palette: _sdThemeValue('palette'),
+            colorMode: _sdColorMode(),
+            model: function () {
+                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+            },
+            button: document.getElementById('sd-preview-menu-btn'),
+            askQuestions: function () {
+                _sdThemePaneTab = 'variables';
+                _sdOpenThemeSettings();
+                var pane = document.getElementById('sd-vars-pane');
+                if (!pane) return;
+                _sdPartCall('variables', 'render', [_sdVarsHost(pane)]).then(_sdVarsAskAgain).catch(_sdPartFailed);
+            }
+        };
     }
 
     // "Preview on a phone" (the `phone` part): the QR code of the person's
@@ -90879,6 +90923,7 @@ const StyleDesigner = (function () {
                 var b = document.getElementById('sd-ajax-save'); if (b) b.click();
             }},
             { id: 'act_preview', label: _sdT('Preview'), icon: 'bi-box-arrow-up-right', hint: 'Ctrl+Alt+P', action: function() { openPreview(); } },
+            (_sdStyleGuideReady() ? { id: 'act_style_guide', label: _sdT('Style guide'), icon: 'bi-journal-richtext', hint: _sdT('Preview'), action: function() { _sdStyleGuideOpen(); } } : null),
             { id: 'act_pages', label: _sdT('Pages'), icon: 'bi-files', hint: 'Ctrl+P', action: function() { _pgPagesOpen(); } },
             { id: 'act_snapshot', label: _sdT('Take a Snapshot'), icon: 'bi-camera', action: function() { var n = window.prompt(_sdT('Snapshot name:')); if (n && n.trim()) saveSnapshot(n.trim()); } },
             // ── Selection ───────────────────────────────────────────
@@ -96808,6 +96853,7 @@ const StyleDesigner = (function () {
             getNodeLabel: getNodeLabel,
             gid: gid,
             hasLockedAncestor: hasLockedAncestor,
+            prefetchShared: prefetchShared,
             reindex: reindex,
             render: render,
             renderAttrsPanel: renderAttrsPanel,
