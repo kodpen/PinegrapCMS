@@ -204,3 +204,14 @@ function test_figma_report_notes_pictures_never_fetched()
 	$done['pictures'] = array();
 	pg_assert_same($done, pg_figma_frame_unfetched($done), 'a frame fetched is as it was');
 }
+
+// The import's reads mark a token Figma refuses, as the file read does, so
+// Connections shows "Figma no longer accepts the stored token" too. A
+// source check: the reads need Figma.
+function test_figma_import_start_marks_a_refused_token()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
+	$start = substr($source, strpos($source, 'function pg_figma_import_start('));
+	$start = substr($start, 0, strpos($start, "\n}\n"));
+	pg_assert_contains('pg_figma_connection_refused()', $start, 'the start marks the token');
+}
