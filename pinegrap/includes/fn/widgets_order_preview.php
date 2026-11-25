@@ -74,6 +74,27 @@ function pg_op_flags($d, $currencies = array())
         'has_po_number'             => $filled('po_number'),
         'is_tax_exempt'             => $on('tax_exempt'),
         'has_currency_choice'       => count((array)$currencies) > 1,
+        // A classic layout's parts: the shipping line, the totals' own
+        // button, the one method's heading, the billing address's lines.
+        'has_shipping_cost'         => $filled('shipping_info'),
+        'no_surcharge'              => !$on('show_surcharge'),
+        'has_applied_gift_cards'    => $on('applied_gift_cards'),
+        'can_purchase_in_totals'    => $on('purchase_now_button') && !$on('recurring_items'),
+        'one_payment_method'        => $methods === 1,
+        'has_installment_table'     => $filled('installment_table'),
+        'shows_custom_field_1'      => $filled('custom_field_1_label') && $filled('custom_field_1'),
+        'shows_custom_field_2'      => $filled('custom_field_2_label') && $filled('custom_field_2'),
+        'has_billing_form_title'    => $filled('billing_form_title'),
+        'billing_has_name'          => $filled('billing_first_name'),
+        'billing_has_company'       => $filled('billing_company'),
+        'billing_has_address_1'     => $filled('billing_address_1'),
+        'billing_has_address_2'     => $filled('billing_address_2'),
+        'billing_has_city_line'     => $filled('billing_city') || $filled('billing_state') || $filled('billing_zip_code'),
+        'billing_has_city'          => $filled('billing_city'),
+        'billing_has_country'       => $filled('billing_country'),
+        'billing_has_phone'         => $filled('billing_phone_number'),
+        'billing_has_fax'           => $filled('billing_fax_number'),
+        'billing_has_email'         => $filled('billing_email_address'),
     );
     return $op_flags;
 }
@@ -834,10 +855,15 @@ function _pg_op_page_settings($page_id, $cfg)
 // ^^__cart_shipping^^, ^^__cart_gift_card_discount^^, ^^__cart_surcharge^^,
 // ^^__surcharge_percentage^^, ^^__cart_total^^, ^^__cart_total_with_surcharge^^,
 // ^^__cart_total_charged^^ (the total in the base currency charged, while
-// the visitor reads another), ^^__currency_disclaimer^^,
+// the visitor reads another), ^^__cart_total_with_surcharge_charged^^ (the
+// same with the surcharge), ^^__currency_disclaimer^^,
 // ^^__purchase_now_label^^, the order view's ^^__billing_name^^,
 // ^^__billing_company^^, ^^__billing_address_html^^, ^^__billing_email^^,
-// ^^__billing_phone^^, and ^^__custom_field_1_label^^, ^^__custom_field_1^^,
+// ^^__billing_phone^^, the address's parts ^^__billing_salutation^^,
+// ^^__billing_first_name^^, ^^__billing_last_name^^, ^^__billing_address_1^^,
+// ^^__billing_address_2^^, ^^__billing_city^^, ^^__billing_state^^,
+// ^^__billing_zip^^, ^^__billing_country^^, ^^__billing_fax^^, and
+// ^^__custom_field_1_label^^, ^^__custom_field_1^^,
 // ^^__custom_field_2_label^^, ^^__custom_field_2^^, ^^__po_number^^,
 // ^^__billing_form_title^^, ^^__offline_payment_label^^,
 // ^^__paypal_image_url^^, ^^__iyzico_image_url^^.
@@ -964,6 +990,7 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         '__cart_total'              => (string)$d['total_info'],
         '__cart_total_with_surcharge' => (string)$d['total_with_surcharge_info'],
         '__cart_total_charged'      => (string)$d['base_currency_total_info'],
+        '__cart_total_with_surcharge_charged' => (string)$d['base_currency_total_with_surcharge_info'],
         '__currency_disclaimer'     => $op_flags['has_currency_disclaimer'] ? _eo_currency_disclaimer() : '',
         '__purchase_now_label'      => h((string)$d['purchase_now_button_label']),
         '__billing_name'            => h($billing_name),
@@ -971,6 +998,17 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         '__billing_address_html'    => implode('<br>', array_map('h', $billing_lines)),
         '__billing_email'           => h((string)$d['billing_email_address']),
         '__billing_phone'           => h((string)$d['billing_phone_number']),
+        '__billing_fax'             => h((string)$d['billing_fax_number']),
+        // The address's own parts, for a classic layout's lines.
+        '__billing_salutation'      => h((string)$d['billing_salutation']),
+        '__billing_first_name'      => h((string)$d['billing_first_name']),
+        '__billing_last_name'       => h((string)$d['billing_last_name']),
+        '__billing_address_1'       => h((string)$d['billing_address_1']),
+        '__billing_address_2'       => h((string)$d['billing_address_2']),
+        '__billing_city'            => h((string)$d['billing_city']),
+        '__billing_state'           => h((string)$d['billing_state']),
+        '__billing_zip'             => h((string)$d['billing_zip_code']),
+        '__billing_country'         => h((string)$d['billing_country']),
         '__custom_field_1_label'    => h((string)$d['custom_field_1_label']),
         '__custom_field_1'          => h((string)$d['custom_field_1']),
         '__custom_field_2_label'    => h((string)$d['custom_field_2_label']),

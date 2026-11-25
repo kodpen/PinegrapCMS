@@ -1180,6 +1180,7 @@
     "Only on {var:1}": "Yalnız şu günlerde: {var:1}",
     "Only one option can be chosen in this poll.": "Bu oylamada yalnız bir seçenek seçilebilir.",
     "Only one option can be recommended.": "Yalnızca bir seçenek önerilebilir.",
+    "Only one payment method is offered": "Yalnızca bir ödeme yöntemi sunuluyor",
     "Only orders from this marketplace account.": "Yalnızca bu pazaryeri hesabından gelen siparişler.",
     "Only orders in the chosen date range that match every filter are counted.": "Yalnızca seçilen tarih aralığında olup tüm filtrelere uyan siparişler sayılır.",
     "Only orders picked at this location.": "Yalnızca bu konumda toplanan siparişler.",
