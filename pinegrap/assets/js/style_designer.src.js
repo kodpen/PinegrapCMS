@@ -89012,6 +89012,29 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // A Publish check "Fix", its "Undo" or an "Ignore": fn(tree) changes the
+    // page's tree as one undo step of that page. The active page goes
+    // through saveState() and is drawn again; another tab's page gets the
+    // step on its own history, taken when it is opened again. False when
+    // the page is gone or locked to this user.
+    function _sdPageEdit(key, fn) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked' || !_collab.mayEdit) return false;
+        if (key === _activeKey) {
+            saveState();
+            fn(tree);
+            render();
+            return true;
+        }
+        if (!p.tree) return false;
+        if (!Array.isArray(p.undoStack)) p.undoStack = [];
+        p.undoStack.push({ tree: JSON.stringify(p.tree), shared: {}, assets: null });
+        if (p.undoStack.length > 50) p.undoStack.shift();
+        p.redoStack = [];
+        fn(p.tree);
+        return true;
+    }
+
     // The main button: Save on a draft (it stays off the site), the Publish
     // sheet on a page on the site.
     function _pgPublishClick(opts) {
@@ -95808,7 +95831,9 @@ const StyleDesigner = (function () {
             showCtxMenu: showCtxMenu,
             scrollTreeToNode: scrollTreeToNode,
             renderProperties: renderProperties,
-            _sdCoWrite: _sdCoWrite
+            _sdCoWrite: _sdCoWrite,
+            _sdPageEdit: _sdPageEdit,
+            _pgTabsOpenPageSettings: _pgTabsOpenPageSettings
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },

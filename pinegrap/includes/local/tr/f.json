@@ -958,6 +958,8 @@
     "Fixed, agreed before we start": "Sabit, işe başlamadan belirlendi",
     "Fixed-price quote": "Sabit fiyatlı teklif",
     "Fixed-term contract": "Belirli süreli sözleşme",
+    "Fixed: the empty heading was removed.": "Düzeltildi: boş başlık kaldırıldı.",
+    "Fixed: the picture got its own width and height.": "Düzeltildi: resme kendi genişliği ve yüksekliği verildi.",
     "Fixing": "Onarılıyor",
     "Fixings and small parts": "Vida, dübel ve küçük parçalar",
     "Fixture {var}": "Fikstür {var}",

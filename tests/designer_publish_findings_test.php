@@ -241,3 +241,101 @@ function test_designer_publish_findings_summary()
 		'groups' => array('links' => 2, 'a11y' => 1, 'seo' => 0, 'weight' => 0, 'content' => 0)), $got[1]);
 	pg_assert_same('look', $got[2]['state']);
 }
+
+// The weight answer of seo_check is read as findings in the Weight group; a
+// measure that failed is one finding that blocks nothing; none asked, none.
+function test_designer_publish_findings_read_weight()
+{
+	$got = designer_publish_findings_test_eval('[PgPublishFindings.read({ weight: [{ id: "weight:img_no_size:n2:0", source: "weight", code: "img_no_size", group: "weight", level: "look", text: "No size", node: "n2" }] }),'
+		. ' PgPublishFindings.read({ weight: false }, { weight_failed: "Not measured" }),'
+		. ' PgPublishFindings.read({ weight: null })]');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(1, count($got[0]));
+	pg_assert_same('weight', $got[0][0]['group']);
+	pg_assert_same('n2', $got[0][0]['node']);
+	pg_assert_same('failed', $got[1][0]['level']);
+	pg_assert_same('weight', $got[1][0]['group']);
+	pg_assert_same('Not measured', $got[1][0]['text']);
+	pg_assert_same(array(), $got[2]);
+}
+
+// One button per finding: "Fix" where one press can put it right without a
+// choice (an empty heading, a picture without width and height whose size
+// is known, a left-over component value), "Show me" otherwise; a failed
+// check has none. Only a finding to look at may be ignored.
+function test_designer_publish_findings_action_and_ignore()
+{
+	$got = designer_publish_findings_test_eval('[["audit","heading_empty","look"],["weight","img_no_size","look"],["component","field_leftover","block"],'
+		. '["weight","img_oversized","look"],["seo","title_present","block"],["seo","seo_failed","failed"]].map(function (a) {'
+		. ' var f = { source: a[0], code: a[1], level: a[2], node: "n" };'
+		. ' return [PgPublishFindings.action(f, { n: [10, 20] }), PgPublishFindings.canIgnore(f)]; })'
+		. '.concat([[PgPublishFindings.action({ source: "weight", code: "img_no_size", level: "look", node: "x" }, {}), true]])');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('fix', true), array('fix', true), array('fix', false),
+		array('show', true), array('show', false), array('', false),
+		array('show', true),
+	), $got);
+}
+
+// The ignored findings live on the page tree's root (props._pcIgnored: id =>
+// reason, at most 500 characters), so the page's draft keeps them; an empty
+// reason ignores nothing, and stopping takes the entry away.
+function test_designer_publish_findings_ignored_on_the_tree()
+{
+	$got = designer_publish_findings_test_eval('(function () {'
+		. ' var t = { _id: "root", type: "root", props: {}, children: [] };'
+		. ' var a = PgPublishFindings.ignore(t, "audit:img_alt:n1:0", "  Decorative  ");'
+		. ' var b = PgPublishFindings.ignore(t, "seo:x::0", "   ");'
+		. ' var long = PgPublishFindings.ignore(t, "seo:y::0", new Array(700).join("a"));'
+		. ' var map1 = PgPublishFindings.ignored(t);'
+		. ' PgPublishFindings.ignore(t, "seo:y::0", "");'
+		. ' var map2 = PgPublishFindings.ignored(t);'
+		. ' return [a, b, long, Object.keys(map1), map1["audit:img_alt:n1:0"], map1["seo:y::0"].length, map2, PgPublishFindings.ignored(null)];'
+		. '})()');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(true, $got[0]);
+	pg_assert_same(false, $got[1], 'an empty reason ignores nothing');
+	pg_assert_same(true, $got[2]);
+	pg_assert_same(array('audit:img_alt:n1:0', 'seo:y::0'), $got[3]);
+	pg_assert_same('Decorative', $got[4]);
+	pg_assert_same(500, $got[5], 'the reason is cut at 500 characters');
+	pg_assert_same(array('audit:img_alt:n1:0' => 'Decorative'), $got[6], 'stopped: the entry is gone');
+	pg_assert_same(array(), $got[7]);
+}
+
+// A page's findings split: the ones counted, the ignored ones with their
+// reason (never a blocking one), the fixed ones; the summary counts only the
+// first.
+function test_designer_publish_findings_split_ignored_and_fixed()
+{
+	$got = designer_publish_findings_test_eval('(function () {'
+		. ' var found = [{ id: "a", level: "block", group: "seo" }, { id: "b", level: "look", group: "a11y" },'
+		. '  { id: "c", level: "look", group: "a11y" }, { id: "d", level: "look", group: "content" }];'
+		. ' var s = PgPublishFindings.split(found, { a: "no", b: "Decorative" }, { d: true });'
+		. ' return [s.shown.map(function (f) { return f.id; }), s.ignored.map(function (f) { return [f.id, f.reason]; }),'
+		. '  s.fixed.map(function (f) { return f.id; }), PgPublishFindings.summary(s.shown).state, PgPublishFindings.summary(s.shown).look];'
+		. '})()');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('a', 'c'), $got[0], 'a blocking finding is never ignored');
+	pg_assert_same(array(array('b', 'Decorative')), $got[1]);
+	pg_assert_same(array('d'), $got[2]);
+	pg_assert_same('block', $got[3]);
+	pg_assert_same(1, $got[4]);
+}

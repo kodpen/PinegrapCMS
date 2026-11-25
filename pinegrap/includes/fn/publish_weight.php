@@ -772,3 +772,88 @@ function pg_publish_weight_local_files($urls, $root, $base)
 
     return $out;
 }
+
+/**
+ * The design's own stylesheet in a rendered page: the text of the
+ * <style id="pg-user-styles"> the render prints last in the head (the
+ * framework's and the look's sheets are not the design's own).
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_publish_weight_own_css($html)
+{
+    if (!preg_match('~<style\b[^>]*\bid\s*=\s*["\']?pg-user-styles["\']?[^>]*>(.*?)</style>~is', (string)$html, $m)) {
+        return '';
+    }
+
+    return $m[1];
+}
+
+/**
+ * The names a stored page tree may give its markup, as class and id keys:
+ * every word of its JSON counts as both, so a rule is never listed for a
+ * class another page draws (it errs towards "used").
+ *
+ * @param string|array $tree the tree or its JSON
+ * @return array name => true
+ */
+function pg_publish_weight_tree_names($tree)
+{
+    // The words are read from the JSON text itself, keys included (more
+    // names only keep more rules): decoding thirty large trees cost ten
+    // times as much.
+    $json = is_string($tree) ? ltrim($tree) : json_encode($tree);
+    $names = array();
+
+    if (!is_string($json) || $json === '' || $json[0] !== '{') {
+        return $names;
+    }
+
+    if (preg_match_all('/-?[A-Za-z_][A-Za-z0-9_-]*/', $json, $m)) {
+        foreach (array_unique($m[0]) as $word) {
+            $names['.' . $word] = true;
+            $names['#' . $word] = true;
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * The Publish check's weight answer for one rendered page: its bytes with
+ * the budget and grades, its findings, the rules of the design's own
+ * stylesheet no page uses, and the pixel size of each picture without width
+ * and height whose file is known (node => [width, height], what "Fix"
+ * writes on the picture).
+ *
+ * @param string $html  the rendered draft
+ * @param array  $files url => bytes or array(bytes, width, height)
+ * @param string $css   the design's own stylesheet (pg_publish_weight_own_css())
+ * @param array  $used  the other pages' names, merged with this page's
+ * @param array  $texts code => sentence (pg_publish_weight_texts())
+ * @return array bytes, budget, grades, findings, unused, sizes
+ */
+function pg_publish_weight_report($html, $files, $css, $used, $texts)
+{
+    $budget = pg_publish_weight_budget();
+    $measure = pg_publish_weight_measure($html, $files);
+    $used = (is_array($used) ? $used : array()) + pg_publish_weight_used_names($html);
+    $unused = (trim((string)$css) !== '') ? pg_publish_weight_unused_rules($css, $used) : array();
+    $sizes = array();
+
+    foreach ($measure['unsized'] as $img) {
+        if ($img['node'] !== '' && $img['width'] > 0 && $img['height'] > 0) {
+            $sizes[$img['node']] = array((int)$img['width'], (int)$img['height']);
+        }
+    }
+
+    return array(
+        'bytes' => $measure['bytes'],
+        'budget' => $budget,
+        'grades' => pg_publish_weight_grade($measure['bytes'], $budget),
+        'findings' => pg_publish_weight_findings($measure, $unused, $texts, $budget),
+        'unused' => $unused,
+        'sizes' => $sizes,
+    );
+}
