@@ -22,6 +22,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_paragraphs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_sort.php');
 
 // The largest file the form takes (the own reader's main part limit).
 define('PG_DOCUMENT_START_MAX_BYTES', 8 * 1024 * 1024);
@@ -84,6 +85,19 @@ function pg_document_start_texts()
         'tooLong' => lang('The text is longer than 600,000 characters.'),
         'network' => lang('Network error.'),
         'built' => lang('The page was built from the document.'),
+        // "Sort it for me" (document_sort.php): offered only where Pinegrap AI writes.
+        'sortOn' => pg_document_sort_on(),
+        'sort' => array(
+            'button' => lang('Sort it for me'), 'busy' => lang('Sorting…'),
+            'line' => lang('“Sort it for me” sends this text to Pinegrap AI. Nothing is sent before it is pressed.'),
+            'proposals' => lang('{var:1} proposals'), 'kind' => lang('Proposed: {var:1} instead of {var:2}'),
+            'accept' => lang('Accept'), 'leave' => lang('Leave'),
+            'short' => lang('A shorter text: {var:1} words in place of {var:2}'), 'show' => lang('Show'), 'hide' => lang('Hide'),
+            'use' => lang('Use the shorter text'), 'keep' => lang('Keep mine'),
+            'yours' => lang('Yours · {var:1} words'), 'proposed' => lang('Proposed · {var:1} words'),
+            'none' => lang('Nothing to propose'), 'noneText' => lang('The kinds fit the words and no passage is long.'),
+            'failed' => lang('Pinegrap AI did not answer'), 'failedText' => lang('The sections are as they were.'), 'again' => lang('Try again'),
+        ),
         'kinds' => array(
             'intro' => lang('Intro'), 'text' => lang('Text'), 'cards' => lang('Cards'),
             'questions' => lang('Questions'), 'figures' => lang('Figures'), 'testimonial' => lang('Testimonial'),

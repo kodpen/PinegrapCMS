@@ -14,8 +14,13 @@
  * rows carry an amber "?" and the reason until a kind is chosen. "Build
  * the page" hands the rows kept, in order, to the host's build().
  *
- * Pure parts (rowsOf, choices, choose, move, count, preview, fields, set)
- * are tested in Node: tests/document_start_test.php. The texts arrive
+ * With Pinegrap AI on, the host gives sort(): "Sort it for me" sends the
+ * kept rows' words and draws each proposal as a line under its row (another
+ * kind, a shorter text for a long passage), each accepted or left by itself;
+ * a row changed while it works keeps the person's choice.
+ *
+ * Pure parts (rowsOf, choices, choose, move, count, preview, fields, set,
+ * sectionText, sortSections, sig, takeProposals, shorten) are tested in Node: tests/document_start_test.php. The texts arrive
  * translated from the host (pg_document_start_texts()).
  *
  * @author      Erdal Güral (Kodpen)
@@ -148,6 +153,81 @@
         at[path[path.length - 1]] = String(value);
     }
 
+    // ---- "Sort it for me" (pure) ----------------------------------------------
+
+    // A row's words as one plain text, an item a paragraph.
+    function sectionText(row) {
+        return row.items.map(function (item) {
+            if (item.rows) {
+                return item.rows.map(function (cells) { return cells.join(' | '); }).join('\n');
+            }
+            if (item.question != null) {
+                return item.question + '\n' + (item.answer || '');
+            }
+            if (item.quote != null) {
+                return item.quote + (item.name ? ' — ' + item.name + (item.role ? ', ' + item.role : '') : '');
+            }
+            if (item.title != null) {
+                return item.title + (item.text ? ': ' + item.text : '');
+            }
+            if (item.label != null) {
+                return item.value + ' ' + item.label;
+            }
+            return item.text || item.value || item.alt || '';
+        }).filter(Boolean).join('\n\n');
+    }
+
+    // What one press sends: the rows kept, each with the kinds its words fill.
+    function sortSections(rows) {
+        return rows.filter(function (r) { return !r.out; }).map(function (r) {
+            return {id: r.id, kind: r.kind, fits: r.fits.map(function (f) { return f.kind; }), heading: r.heading || '', text: sectionText(r), unsure: !!r.unsure};
+        });
+    }
+
+    // A row's kind and words, to see whether it changed while the proposals were asked for.
+    function sig(row) {
+        return row.kind + '|' + (row.out ? 1 : 0) + '|' + JSON.stringify(row.items);
+    }
+
+    // The answer's proposals by row id, without those of a row changed
+    // since the press (sent: id => sig) or of a kind its words cannot fill.
+    function takeProposals(list, rows, sent) {
+        var out = {};
+        (list || []).forEach(function (p) {
+            var row = rows.filter(function (r) { return r.id === p.id; })[0];
+            if (!row || !sent || sent[row.id] !== sig(row)) {
+                return;
+            }
+            var it = {};
+            if (p.kind && p.kind !== row.kind && row.fits.some(function (f) { return f.kind === p.kind; })) {
+                it.kind = p.kind;
+            }
+            if (typeof p.short === 'string' && p.short.trim() !== '') {
+                it.short = p.short;
+                it.words = +p.words || p.short.split(/\s+/).filter(Boolean).length;
+                it.was = count(row)[1];
+            }
+            if (it.kind || it.short) {
+                out[row.id] = it;
+            }
+        });
+        return out;
+    }
+
+    // The shorter text taken: the row's words become its paragraphs.
+    function shorten(row, text) {
+        row.items = String(text).split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean).map(function (s) {
+            return {type: 'paragraph', text: s};
+        });
+    }
+
+    // How many proposal lines are waiting.
+    function proposalCount(props) {
+        return Object.keys(props || {}).reduce(function (n, id) {
+            return n + (props[id].kind ? 1 : 0) + (props[id].short ? 1 : 0);
+        }, 0);
+    }
+
     // ---- The form and the rows -----------------------------------------------
 
     function mount(o) {
@@ -155,7 +235,9 @@
         var R = o.reader;
         var box = o.box;
         var foot = o.foot;
-        var st = {text: '', file: null, answer: null, paragraphs: null, rows: null, open: '', dirty: false, busy: false, warned: false};
+        var st = {text: '', file: null, answer: null, paragraphs: null, rows: null, open: '', dirty: false, busy: false, warned: false,
+            props: {}, sorting: false, sortEnd: '', sortMsg: '', sortOff: !o.sort};
+        var ts = t.sort || {};
         var live = document.createElement('div');
 
         box.classList.add('pg-doc');
@@ -315,17 +397,123 @@
             st.open = '';
             st.dirty = false;
             st.warned = false;
+            st.props = {};
+            st.sortEnd = '';
             drawRows();
+        }
+
+        // ---- F5: "Sort it for me"
+        function sort() {
+            if (st.sorting || st.sortOff) {
+                return;
+            }
+            var rows = st.rows;
+            var sent = {};
+            rows.forEach(function (r) { sent[r.id] = sig(r); });
+            st.sorting = true;
+            st.sortEnd = '';
+            st.props = {};
+            drawRows();
+            var done = function (res) {
+                if (st.rows !== rows) {
+                    return;
+                }
+                st.sorting = false;
+                if (res && res.status === 'success') {
+                    st.props = takeProposals(res.proposals, rows, sent);
+                    st.sortEnd = proposalCount(st.props) ? '' : 'none';
+                } else {
+                    st.sortOff = !!(res && res.off);
+                    st.sortEnd = 'fail';
+                    st.sortMsg = (res && res.message) || '';
+                }
+                if (st.mode === 'rows') {
+                    drawRows();
+                }
+            };
+            Promise.resolve(o.sort(sortSections(rows))).then(done, function () { done(null); });
+        }
+
+        function drawProposals(row, li) {
+            var p = st.props[row.id];
+            if (!p || row.out) {
+                return;
+            }
+            var line = function (html, buttons) {
+                var div = document.createElement('div');
+                div.className = 'pg-doc-px';
+                div.innerHTML = '<i class="bi bi-stars" aria-hidden="true"></i><span class="pg-doc-pt">' + html + '</span>';
+                buttons.forEach(function (b) {
+                    var el = btn('pg-button pg-button-' + b[0] + ' pg-button-sm', esc(b[1]));
+                    if (b[3] != null) {
+                        el.setAttribute('aria-expanded', b[3] ? 'true' : 'false');
+                    }
+                    el.addEventListener('click', function () {
+                        b[2]();
+                        drawRows();
+                    });
+                    div.appendChild(el);
+                });
+                li.appendChild(div);
+                return div;
+            };
+            if (p.kind) {
+                line(fill(esc(ts.kind), ['<b>' + esc(t.kinds[p.kind]) + '</b>', esc(t.kinds[row.kind])]), [
+                    ['quiet', ts.accept, function () {
+                        choose(row, p.kind);
+                        st.dirty = true;
+                        delete p.kind;
+                    }],
+                    ['ghost', ts.leave, function () { delete p.kind; }]
+                ]);
+            }
+            if (p.short) {
+                line(fill(esc(ts.short), ['<b>' + esc(p.words) + '</b>', esc(p.was)]), [
+                    ['quiet', p.show ? ts.hide : ts.show, function () { p.show = !p.show; }, !!p.show],
+                    ['quiet', ts.use, function () {
+                        shorten(row, p.short);
+                        st.dirty = true;
+                        delete p.short;
+                    }],
+                    ['ghost', ts.keep, function () { delete p.short; }]
+                ]);
+                if (p.show) {
+                    var ba = document.createElement('div');
+                    ba.className = 'pg-doc-ba';
+                    ba.innerHTML = '<div><em>' + esc(fill(ts.yours, [p.was])) + '</em>' + esc(sectionText(row)) + '</div>'
+                        + '<div><em>' + esc(fill(ts.proposed, [p.words])) + '</em>' + esc(p.short) + '</div>';
+                    li.appendChild(ba);
+                }
+            }
+            if (!p.kind && !p.short) {
+                delete st.props[row.id];
+            }
+        }
+
+        function sortEnd() {
+            if (st.sortEnd === 'none') {
+                return alertHtml('success', ts.none, ts.noneText);
+            }
+            if (st.sortEnd === 'fail') {
+                return '<div class="alert theme-danger small py-3 px-5 mt-4 mb-0 pg-doc-fail" role="alert"><strong class="d-block">' + esc(ts.failed) + '</strong>'
+                    + esc(ts.failedText + (st.sortMsg ? ' ' + st.sortMsg : '')) + '</div>';
+            }
+            return '';
         }
 
         // ---- F3, F4: the rows
         function drawRows() {
+            // A field being typed in keeps its focus over a redraw (the
+            // proposals may arrive meanwhile).
+            var act = document.activeElement;
+            var focus = (act && act.id && box.contains(act) && act.tagName === 'INPUT') ? [act.id, act.selectionStart, act.selectionEnd] : null;
             st.mode = 'rows';
             var rows = st.rows;
             var kept = rows.filter(function (r) { return !r.out; }).length;
             var unsure = rows.filter(function (r) { return r.unsure && !r.out; }).length;
             var a = st.answer;
             var wordCount = rows.reduce(function (n, r) { return n + r.words; }, 0);
+            var proposals = proposalCount(st.props);
             var notes = '';
             if (a.cut && a.read) {
                 notes += alertHtml('warning', '', fill(t.cut, [a.read.paragraphs, a.read.percent]));
@@ -338,11 +526,36 @@
             }
             box.innerHTML = notes + '<div class="pg-doc-head"><strong>' + esc(kept === rows.length ? fill(t.sections, [rows.length]) : fill(t.sectionsOf, [kept, rows.length])) + '</strong>'
                 + '<span class="pg-text-meta">' + esc(a.name ? fill(t.from, [a.name, wordCount]) : fill(t.fromPaste, [wordCount])) + '</span>'
-                + (unsure ? '<span class="pg-pill pg-tone-amber">' + esc(fill(t.toCheck, [unsure])) + '</span>' : '') + '</div>'
+                + (proposals ? '<span class="pg-pill pg-doc-pill-ai">' + esc(fill(ts.proposals, [proposals])) + '</span>'
+                    : (unsure ? '<span class="pg-pill pg-tone-amber">' + esc(fill(t.toCheck, [unsure])) + '</span>' : ''))
+                + (st.sortOff ? '' : '<button type="button" class="pg-button pg-button-quiet pg-button-sm pg-doc-sort"' + (st.sorting ? ' disabled' : '') + '>'
+                    + (st.sorting ? '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + esc(ts.busy) : '<i class="bi bi-stars me-2" aria-hidden="true"></i>' + esc(ts.button)) + '</button>')
+                + '</div>'
                 + '<ol class="pg-doc-rows list-unstyled mb-0"></ol>';
             var list = box.querySelector('.pg-doc-rows');
             rows.forEach(function (row, at) { list.appendChild(drawRow(row, at)); });
+            if (st.sortEnd === 'fail') {
+                list.insertAdjacentHTML('afterend', sortEnd());
+                if (!st.sortOff) {
+                    var again = btn('pg-button pg-button-quiet pg-button-sm mt-3', esc(ts.again));
+                    again.addEventListener('click', sort);
+                    box.querySelector('.pg-doc-fail').appendChild(again);
+                }
+            } else if (st.sortEnd === 'none') {
+                list.insertAdjacentHTML('afterend', '<div class="mt-4">' + sortEnd() + '</div>');
+            }
+            if (!st.sortOff) {
+                box.insertAdjacentHTML('beforeend', '<p class="pg-text-meta pg-doc-ai mt-3 mb-0"><i class="bi bi-stars me-2" aria-hidden="true"></i>' + esc(ts.line) + '</p>');
+                box.querySelector('.pg-doc-sort').addEventListener('click', sort);
+            }
             box.appendChild(live);
+            if (focus && document.getElementById(focus[0])) {
+                var again2 = document.getElementById(focus[0]);
+                again2.focus();
+                try {
+                    again2.setSelectionRange(focus[1], focus[2]);
+                } catch (e) { /* not a text field */ }
+            }
             drawFoot([['quiet me-auto', t.back, function () { drawForm(); }], ['quiet', t.cancel, o.cancel], ['fill pg-doc-build', t.build, build]]);
         }
 
@@ -377,6 +590,7 @@
             acts.appendChild(outBtn);
             li.querySelector('.pg-doc-kind').addEventListener('click', function (e) { kindMenu(row, e.currentTarget); });
             wireMove(li, at);
+            drawProposals(row, li);
             if (st.open === row.id && !row.out) {
                 li.appendChild(drawFields(row));
             }
@@ -431,6 +645,9 @@
                 b.addEventListener('click', function () {
                     choose(row, k);
                     st.dirty = true;
+                    if (st.props[row.id]) {
+                        delete st.props[row.id].kind;
+                    }
                     closeMenu();
                     drawRows();
                 });
@@ -573,6 +790,12 @@
         preview: preview,
         fields: fields,
         set: set,
+        sectionText: sectionText,
+        sortSections: sortSections,
+        sig: sig,
+        takeProposals: takeProposals,
+        shorten: shorten,
+        proposalCount: proposalCount,
         mount: mount
     };
 })();
