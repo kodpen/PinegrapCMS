@@ -1,6 +1,6 @@
 ---
 name: accessibility-view
-description: The designer's Accessibility view as built (AV2): the View menu switch, the part accessview, the card, the tab order, heading and name marks, the fault's card
+description: The designer's Accessibility view as built (AV2, #11657): the View menu switch, the part accessview, the card, the tab order, heading and name marks, the fault's card
 ---
 
 ## Where is it turned on?
