@@ -9308,6 +9308,8 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
     margin-left: auto; padding: 0 5px; border-radius: 4px; border: 1px solid var(--sd-panel-border);
     background: transparent; color: var(--sd-text-muted); font: inherit; font-size: .66rem; line-height: 1.5;
 }
+/* The mark at the end of a context menu row that opens a new tab. */
+.sd-tree-ctx-ext { margin-left: auto; font-size: .7rem; color: var(--sd-text-muted); }
 /* The command palette row's second word (the selected element's kind). */
 .sd-cp-item-meta { flex-shrink: 0; color: var(--sd-text-muted, #8b9ab0); font-size: .75rem; }
 /* The line above the Options panel (style_designer_similar.js): the count,
