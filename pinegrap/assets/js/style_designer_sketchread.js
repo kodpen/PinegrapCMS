@@ -104,6 +104,7 @@ StyleDesigner.definePart('sketchread', function (K) {
     }
 
     function _srSeen() {
+        if (K._sdTipsOff()) return true;
         try { return window.localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return false; }
     }
 

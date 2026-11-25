@@ -45,6 +45,7 @@ StyleDesigner.definePart('states', function (K) {
     }
 
     function hintSeen() {
+        if (K._sdTipsOff()) return true;
         try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return true; }
     }
 

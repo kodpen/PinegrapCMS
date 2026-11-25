@@ -97764,6 +97764,7 @@ const StyleDesigner = (function () {
             _sdSeoCheckBody: _sdSeoCheckBody,
             _sdSmartActiveHost: _sdSmartActiveHost,
             _sdT: _sdT,
+            _sdTipsOff: _sdTipsOff,
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
             _sdThemes: _sdThemes,
@@ -97980,6 +97981,16 @@ const StyleDesigner = (function () {
         try { o = JSON.parse(window.localStorage.getItem('pg.designer.' + uid + '.tour') || 'null'); } catch (e) { return false; }
         if (!o || typeof o !== 'object') return true;
         return o.tipsOff !== true && !(o.tips && o.tips[name] === true);
+    }
+
+    // "Tips" off in the Help window: no first-use line at all, also for the
+    // parts that keep their own "seen" key (handed to them as `_sdTipsOff`).
+    function _sdTipsOff() {
+        var uid = parseInt(_design && _design.userId, 10);
+        if (!(uid > 0)) return false;
+        var o = null;
+        try { o = JSON.parse(window.localStorage.getItem('pg.designer.' + uid + '.tour') || 'null'); } catch (e) { return false; }
+        return !!(o && typeof o === 'object' && o.tipsOff === true);
     }
 
     // `head`: the element the line goes under; `box`: the feature, where a

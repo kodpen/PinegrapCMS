@@ -61,6 +61,7 @@ StyleDesigner.definePart('similar', function (K) {
     }
 
     function tipSeen() {
+        if (K._sdTipsOff()) return true;
         try { return localStorage.getItem(TIP_KEY) === '1'; } catch (e) { return true; }
     }
 
