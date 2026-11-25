@@ -150,7 +150,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer_library_io`: [[designer-library-export-import]], [[designer-library-import-checks]]
 - `designer_messages`: [[messages-node-settings]]
 - `designer_preview_as`: [[designer-preview-as-cases]]
-- `designer_preview_render`: [[designer-preview-as-readers]], [[designer-preview-as-server]]
+- `designer_preview_render`: [[designer-preview-as-readers]], [[designer-preview-as-server]], [[designer-preview-as-visitor]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `document_paragraphs`: [[document-paragraphs]]
 - `document_sort`: [[document-sort]]

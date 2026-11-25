@@ -35,7 +35,6 @@
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
 - designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
-- designer-document-to-page.md: Plan (owner 2026-11-24, level 3): a page built from a pasted text or a document: headings, lists, questions, figures and quotes read into sections, checked in a list, then built; steps FD1 to FD5
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 - designer-options-census-steps-2.md: Plan designer-options-census, DO10 to DO20: states, transition, transform, background layers, clip shape and mask, the small effects, new entrances, the easing curve, page transitions
 - designer-options-census-steps-3.md: Plan designer-options-census, DO21 to DO27 and sheets DD22 to DD26: back to top, scroll progress, scrollspy, scrolled navbar, a collection with its pages, favourites, find and replace, Markdown

@@ -429,7 +429,7 @@
 - designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome. [decision: here]
 - designer-content-translation.md: Which texts of a designer node enter the site translation (pg_tr_node_fields()), visible text kept in an underscore prop such as _labelDetail, and form records translated through translate_records.
 - designer-corner-box.md: Style › Border and corner's corners as one drawing (DP7b, #10633): sides, all corners, each corner as the browser rounds it, Shift and Alt, what it writes (today's radius classes) and reads
-- designer-document-to-page-drawing.md: The drawing of the "From a document" start (plan designer-document-to-page, FD3 and FD4): boards F1 what opens it, F2 the form, F3 the sections as rows
+- designer-document-to-page-drawing.md: The drawing of the "From a document" start (`document-to-page.md`): boards F1 what opens it, F2 the form, F3 the sections as rows
 - designer-document-to-page-rows-drawing.md: The "From a document" drawing, boards F4 to F6: a row's kind list, opened words, left out, moved; "Sort it for me" proposals (FD4); busy, refusals, cut short, 390 px
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
 - designer-first-tour-card.md: The designer's first card "New here? A one-minute tour" and its tour (FT2): the part 'tour', when the card shows, the ring and the bubble, the keys, the phone's sheet, "Take the tour" [decision: decisions-made-product-108.md]
@@ -530,8 +530,9 @@
 - designer-preview-as-drawing-check.md: "Check all cases" of the Preview as drawn (boards P6, P7 of designer-preview-as-drawing): where it starts, the run, the list of findings, a row opening its case, the labels
 - designer-preview-as-drawing-choosers.md: The "Record", "Visitor" and "Case" menus of the "Preview as" bar as drawn (boards P2 to P4 of designer-preview-as-drawing): rows, labels, states, what a case sets
 - designer-preview-as-drawing.md: The drawing of the "Preview as" bar (plans/designer-preview-as.md, PW3 and PW4): the sheet, where each part is described, which board belongs to which step
-- designer-preview-as-readers.md: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview, the visitor still open
+- designer-preview-as-readers.md: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview
 - designer-preview-as-server.md: "Preview as" on the server (PW2): preview_widgets with a choice and a case per widget, the record each pick draws, the preview_records search and rights, the scope that writes nothing
+- designer-preview-as-visitor.md: How a widget of the Preview is drawn for the chosen visitor (PW2c, architect 2026-11-26): one viewer reader in place of the USER_ constants, the sample account with no row, what is never read [decision: here]
 - designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244; phone row #11578): its five rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
 - designer-preview-overview.md: Start file for the designer-preview-* files: what the designer's Preview is, which file holds the menu, links, page scripts and each part of "Preview as" (cases, server, renderer readers, drawings)
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
@@ -622,6 +623,7 @@
 - document-reader.md: The designer's document reader (assets/js/pg_document_reader.js): paragraphs with their styles in, sections with kinds, items and unsure marks out; pasted text to paragraphs; rules, test
 - document-sort.md: "Sort it for me" on the "From a document" rows (FD4): when it shows, what is sent, the proposals and their answers, limits, designer_document.php sort, includes/fn/document_sort.php, tests
 - document-start.md: The "From a document" start as built (FD3): where it opens, the form, the rows and their kind list, Build the page, designer_document.php, the pictures, the files, the cost
+- document-to-page.md: A page from a document ("From a document" start, "Page from a document"): what it is, what binds it (words never changed, nothing sent before "Sort it for me"), its parts and which file holds each [decision: decisions-made-product-108.md]
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
