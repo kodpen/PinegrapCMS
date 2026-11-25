@@ -83489,101 +83489,18 @@ const StyleDesigner = (function () {
     }
 
     // ── Compare ──
-    // The revision beside the page as it is now: both drawn through the
-    // page's frame (generateHTML() with the revision's tree), shown side by
-    // side as blob documents, and as a line diff of the two HTML texts.
-    // System widgets are not drawn by the server here; they appear as
-    // their placeholders on both sides.
-    function _sdRevisionOpenCompare(pageId, no, done) {
-        _sdRevisionFetch(pageId, no).then(function (rev) {
-            if (!rev) return;
-            // A shared component or system widget the page has dropped
-            // since is not in the cache, and the emitter draws nothing for
-            // a shared_ref it has no tree for: the revision's side lost the
-            // block and could even read as the same HTML. Fetch the missing
-            // ones first, as loading a tree does (_replaceTreeWithPrefetch()).
-            var sids = {};
-            collectSharedIds(rev.tree, sids);
-            var missing = Object.keys(sids).map(Number).filter(function (id) { return id > 0 && !_sharedCache[id]; });
-            prefetchShared(missing, function () {
-                var nameEl = document.querySelector('[name="name"]');
-                var bcEl   = document.querySelector('[name="additional_body_classes"]');
-                var styleName = nameEl ? nameEl.value.trim() : '';
-                var addBc     = bcEl ? bcEl.value.trim() : '';
-                var nowHtml = generateHTML(styleName, addBc);
-                var revHtml = generateHTML(styleName, addBc, rev.tree);
-                var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
-                var revDoc  = _sdPreviewDocHtml(null, revHtml);
-                _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
-            });
-        });
+    // History's Compare window, for any two versions of a page: the part
+    // `compare` (style_designer_compare.js), loaded the first time it opens.
+    // opts: pageId; left and right as "now", "live" or "rev:<no>" (the page
+    // on the site and the page now by default); history, the revision whose
+    // row opened it (its head, the side choosers and "Load this revision");
+    // done, run after a revision is loaded.
+    function _sdCompareOpen(opts) {
+        _sdPartCall('compare', 'open', [opts]).catch(_sdPartFailed);
     }
 
-    function _sdRevisionShowCompare(rev, docs, pageId, done) {
-        var existing = document.getElementById('sd-rev-overlay');
-        if (existing) existing.remove();
-        var overlay = document.createElement('div');
-        overlay.id = 'sd-rev-overlay';
-        overlay.className = 'sd-fr-overlay sd-rev-overlay';
-        var who = esc(rev.user_username || _sdT('Unknown')) + ' · ' + esc(_sdRevisionWhen(rev.created_at)) + ' · ' + esc(_sdRevisionSourceLabel(rev.source));
-        var loadRefusal = _sdRevisionLoadRefusal();
-        overlay.innerHTML =
-            '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
-                '<div class="sd-fr-header">' +
-                    '<span class="bi bi-arrow-left-right me-3"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
-                    '<div class="sd-rev-tabs" role="tablist">' +
-                        '<button type="button" class="sd-rev-tab is-active" data-view="preview">' + esc(_sdT('Preview')) + '</button>' +
-                        '<button type="button" class="sd-rev-tab" data-view="code">' + esc(_sdT('Code')) + '</button>' +
-                    '</div>' +
-                    '<button type="button" class="sd-fr-close" id="sd-rev-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>' +
-                '</div>' +
-                '<div class="sd-rev-body">' +
-                    '<div class="sd-rev-view sd-rev-view-preview">' +
-                        '<div class="sd-rev-pane"><div class="sd-rev-pane-hdr">' + esc(_sdT('Revision #{var}', rev.revision_no)) + '</div><iframe class="sd-rev-frame" title="' + esc(_sdT('Revision #{var}', rev.revision_no)) + '"></iframe></div>' +
-                        '<div class="sd-rev-pane"><div class="sd-rev-pane-hdr">' + esc(_sdT('The page now')) + '</div><iframe class="sd-rev-frame" title="' + esc(_sdT('The page now')) + '"></iframe></div>' +
-                    '</div>' +
-                    '<div class="sd-rev-view sd-rev-view-code" hidden><pre class="sd-rev-diff"></pre></div>' +
-                '</div>' +
-                '<div class="sd-fr-footer">' +
-                    '<span class="sd-rev-summary"></span>' +
-                    '<button type="button" class="sd-fr-btn" id="sd-rev-cancel">' + esc(_sdT('Close')) + '</button>' +
-                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load this revision')) + '</button>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(overlay);
-
-        var frames = overlay.querySelectorAll('.sd-rev-frame');
-        var urls = [URL.createObjectURL(new Blob([docs.revDoc], { type: 'text/html' })),
-                    URL.createObjectURL(new Blob([docs.nowDoc], { type: 'text/html' }))];
-        frames[0].src = urls[0];
-        frames[1].src = urls[1];
-
-        var diff = _sdLineDiff(docs.revHtml.split('\n'), docs.nowHtml.split('\n'));
-        overlay.querySelector('.sd-rev-diff').innerHTML = _sdLineDiffHtml(diff);
-        overlay.querySelector('.sd-rev-summary').textContent = diff.same
-            ? _sdT('The revision and the page print the same HTML.')
-            : _sdT('{var:1} lines added, {var:2} removed against the revision.', [diff.added, diff.removed]);
-
-        var close = function () {
-            urls.forEach(function (u) { URL.revokeObjectURL(u); });
-            overlay.remove();
-        };
-        overlay.querySelector('#sd-rev-close').addEventListener('click', close);
-        overlay.querySelector('#sd-rev-cancel').addEventListener('click', close);
-        overlay.addEventListener('mousedown', function (ev) { if (ev.target === overlay) close(); });
-        overlay.querySelectorAll('.sd-rev-tab').forEach(function (t) {
-            t.addEventListener('click', function () {
-                overlay.querySelectorAll('.sd-rev-tab').forEach(function (x) { x.classList.toggle('is-active', x === t); });
-                overlay.querySelector('.sd-rev-view-preview').hidden = (t.dataset.view !== 'preview');
-                overlay.querySelector('.sd-rev-view-code').hidden    = (t.dataset.view !== 'code');
-            });
-        });
-        var loadBtn = overlay.querySelector('#sd-rev-load');
-        loadBtn.addEventListener('click', function () {
-            if (loadBtn.disabled) return;
-            close();
-            _sdRevisionRestore(pageId, rev.revision_no, done);
-        });
+    function _sdRevisionOpenCompare(pageId, no, done) {
+        _sdCompareOpen({ pageId: pageId, left: 'rev:' + no, right: 'now', history: no, done: done });
     }
 
     // ── Line diff ──
@@ -95866,6 +95783,7 @@ const StyleDesigner = (function () {
             _normalizeToggleableShowState: _normalizeToggleableShowState,
             _parseInlineStyle: _parseInlineStyle,
             _pgApiPost: _pgApiPost,
+            _pgDraftsReady: _pgDraftsReady,
             _pgNewPageDraft: _pgNewPageDraft,
             _pgPageByKey: _pgPageByKey,
             _pgPublishSheet: _pgPublishSheet,
@@ -95915,6 +95833,8 @@ const StyleDesigner = (function () {
             _sdImgInRatio: _sdImgInRatio,
             _sdIsSentence: _sdIsSentence,
             _sdLegacyRegionForget: _sdLegacyRegionForget,
+            _sdLineDiff: _sdLineDiff,
+            _sdLineDiffHtml: _sdLineDiffHtml,
             _sdLivePreviewSchedule: _sdLivePreviewSchedule,
             _sdLookDrawingOf: _sdLookDrawingOf,
             _sdNodeSetBinding: _sdNodeSetBinding,
@@ -95927,6 +95847,7 @@ const StyleDesigner = (function () {
             _sdPartCall: _sdPartCall,
             _sdPartFailed: _sdPartFailed,
             _sdPartUrls: _sdPartUrls,
+            _sdPreviewDocHtml: _sdPreviewDocHtml,
             _sdProtoClose: _sdProtoClose,
             _sdProtoCommentsFrame: _sdProtoCommentsFrame,
             _sdProtoCommentsMark: _sdProtoCommentsMark,
@@ -95934,6 +95855,11 @@ const StyleDesigner = (function () {
             _sdProtoCommentsPane: _sdProtoCommentsPane,
             _sdProtoTabs: _sdProtoTabs,
             _sdRetargetLabels: _sdRetargetLabels,
+            _sdRevisionFetch: _sdRevisionFetch,
+            _sdRevisionLoadRefusal: _sdRevisionLoadRefusal,
+            _sdRevisionRestore: _sdRevisionRestore,
+            _sdRevisionSourceLabel: _sdRevisionSourceLabel,
+            _sdRevisionWhen: _sdRevisionWhen,
             _sdSelectFound: _sdSelectFound,
             _sdSelectRender: _sdSelectRender,
             _sdSeoCheckBody: _sdSeoCheckBody,
@@ -95953,13 +95879,16 @@ const StyleDesigner = (function () {
             _userStylesGet: _userStylesGet,
             _userStylesSet: _userStylesSet,
             applyAssetsToIframe: applyAssetsToIframe,
+            collectSharedIds: collectSharedIds,
             createDefaultTree: createDefaultTree,
             createNode: createNode,
             esc: esc,
+            generateHTML: generateHTML,
             getNodeExtraStyle: getNodeExtraStyle,
             getNodeLabel: getNodeLabel,
             gid: gid,
             hasLockedAncestor: hasLockedAncestor,
+            prefetchShared: prefetchShared,
             reindex: reindex,
             render: render,
             renderAttrsPanel: renderAttrsPanel,

@@ -5288,6 +5288,81 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-rev-diff .sd-rev-fold { display: block; color: #6e7681; font-style: italic; padding: 2px 0; }
 .sd-rev-summary { margin-right: auto; font-size: .78rem; color: #9ca3af; align-self: center; }
 
+/* Compare's Look tab (style_designer_compare.js): the two pictures under a
+   slider handle or side by side. The pictures scroll as one in .sd-cmp-scroll;
+   the handle stands over them in the stage and does not scroll. */
+.sd-cmp-title-short { display: none; }
+.sd-cmp-look { flex-direction: column; background: #111622; }
+.sd-cmp-line {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid #2d3648; font-size: .8rem; color: #e5e7eb;
+}
+.sd-cmp-side { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-cmp-side[data-side="after"] { text-align: right; }
+.sd-cmp-side[hidden], .sd-cmp-seg[hidden], .sd-cmp-pic[hidden], .sd-cmp-note[hidden], .sd-cmp-handle[hidden], .sd-cmp-state[hidden] { display: none; }
+.sd-cmp-detail { color: #9ca3af; }
+.sd-cmp-choose {
+    max-width: 16rem; background: #1a1f2e; color: #e5e7eb; border: 1px solid #2d3648;
+    border-radius: 4px; padding: 2px 6px; font-size: .8rem;
+}
+.sd-cmp-seg { display: inline-flex; border: 1px solid #2d3648; border-radius: 4px; overflow: hidden; }
+.sd-cmp-seg button {
+    background: transparent; border: 0; color: #9ca3af; padding: 3px 10px; font-size: .76rem; cursor: pointer;
+}
+.sd-cmp-seg button + button { border-left: 1px solid #2d3648; }
+.sd-cmp-seg button.is-active { background: #2d3648; color: #e5e7eb; }
+.sd-cmp-seg button:focus-visible, .sd-cmp-choose:focus-visible { outline: 2px solid #60a5fa; outline-offset: -2px; }
+.sd-cmp-note { padding: 6px 14px; font-size: .8rem; color: #e5e7eb; background: #1e293b; border-bottom: 1px solid #2d3648; }
+.sd-cmp-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.sd-cmp-scroll { position: absolute; inset: 0; overflow: auto; padding: 16px; }
+.sd-cmp-pics { position: relative; margin: 0 auto; cursor: ew-resize; }
+.sd-cmp-pics.is-side { display: flex; justify-content: center; gap: 16px; cursor: default; }
+.sd-cmp-pic { position: absolute; top: 0; left: 0; background: #111622; }
+.sd-cmp-pics.is-side .sd-cmp-pic { position: static; }
+.sd-cmp-cap { display: none; padding: 0 0 6px; font-size: .74rem; color: #9ca3af; }
+.sd-cmp-pics.is-side .sd-cmp-cap { display: block; }
+.sd-cmp-box { position: relative; overflow: hidden; min-height: 240px; background: #fff; }
+.sd-cmp-frame {
+    position: absolute; top: 0; left: 0; border: 0; background: #fff;
+    transform-origin: 0 0; pointer-events: none;
+}
+.sd-cmp-state {
+    position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; padding: 16px; text-align: center; font-size: .82rem; color: #4b5563;
+    background: #f3f4f6;
+}
+.sd-cmp-state.is-loading {
+    background: linear-gradient(100deg, #f3f4f6 30%, #e5e7eb 50%, #f3f4f6 70%) 0 0 / 300% 100%;
+    animation: sd-cmp-shimmer 1.6s linear infinite;
+}
+.sd-cmp-state.is-failed { color: #374151; }
+@keyframes sd-cmp-shimmer { to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .sd-cmp-state.is-loading { animation: none; } }
+.sd-cmp-handle {
+    position: absolute; top: 0; bottom: 0; z-index: 2; width: 24px; margin-left: -12px;
+    cursor: ew-resize; touch-action: none;
+}
+.sd-cmp-handle::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 11px; width: 2px;
+    background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.sd-cmp-grip {
+    position: absolute; top: 50%; left: 0; width: 24px; height: 24px; margin-top: -12px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4);
+}
+.sd-cmp-grip::after {
+    content: '\2039\00a0\203A'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; line-height: 1; color: #374151;
+}
+.sd-cmp-grip:focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
+@media (max-width: 767.98px) {
+    .sd-rev-overlay { padding: 0; }
+    .sd-rev-overlay .sd-rev-modal { border-radius: 0; }
+    .sd-cmp-title { display: none; }
+    .sd-cmp-title-short { display: inline; }
+    .sd-cmp-choose { max-width: 9rem; }
+}
+
 /* ===================== PANELS READ-ONLY AT CONTENT LEVEL ===================== */
 /* _sdPanelLock(): the fields are disabled; the marks that remove or add go. */
 .sd-panel-readonly-note {
