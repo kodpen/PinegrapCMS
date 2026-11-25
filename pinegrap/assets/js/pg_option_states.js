@@ -20,6 +20,9 @@
  *   PGOptionStates.transRead(text, cls)         // { what, ms, ease, raw }: the element's transition
  *   PGOptionStates.transWrite(text, cls, t)     // the new text with transition t ({ what, ms, ease })
  *   PGOptionStates.transMaybe(text, cls)        // whether the text may hold one (no parse)
+ *   PGOptionStates.tfRead(text, cls, st)        // { tx, ty, s, r, skx, sky, o }: the transform ('' st: Normal)
+ *   PGOptionStates.tfWrite(text, cls, st, key, v) // the new text with one transform value set
+ *   PGOptionStates.tfMaybe(text, cls)           // whether the text may hold one (no parse)
  *
  * The declarations carry !important: the Bootstrap utilities they stand in
  * for carry it too, so a state's value wins over Normal's class.
@@ -56,7 +59,13 @@
         { sect: 'border', props: ['border-top-left-radius', 'border-top-right-radius'] },
         { sect: 'border', props: ['border-bottom-right-radius'] },
         { sect: 'border', props: ['border-bottom-left-radius'] },
-        { sect: 'styling', props: ['box-shadow'] }
+        { sect: 'styling', props: ['box-shadow'] },
+        // Transform: Move, Scale, Rotate, Skew, Origin (tfWrite()).
+        { sect: 'styling', props: ['translate'] },
+        { sect: 'styling', props: ['scale'] },
+        { sect: 'styling', props: ['rotate'] },
+        { sect: 'styling', props: ['transform'] },
+        { sect: 'styling', props: ['transform-origin'] }
     ];
 
     // The order the declarations are written in: a shorthand before its
@@ -259,7 +268,7 @@
     var TRANS_WHAT = {
         colors: 'color, background-color, border-color',
         shadow: 'box-shadow',
-        place: 'transform, width, height, inset',
+        place: 'transform, translate, rotate, scale, width, height, inset',
         all: 'all'
     };
     var TRANS_LOOK_MS = 'var(--pg-duration, 0.15s)';
@@ -300,6 +309,9 @@
         Object.keys(TRANS_WHAT).forEach(function (k) {
             if (flat(TRANS_WHAT[k]) === flat(prop)) out.what = k;
         });
+        // Size and place as written before it named the transform's own
+        // properties (translate, rotate, scale).
+        if (flat(prop) === 'transform,width,height,inset') out.what = 'place';
         if (!out.what) { out.what = 'custom'; out.raw = prop; }
         var ms = msOf(map['transition-duration']);
         if (!isNaN(ms)) out.ms = ms;
@@ -378,6 +390,188 @@
         return !!cls && text.indexOf('prefers-reduced-motion') !== -1 && text.indexOf('.' + cls) !== -1;
     }
 
+
+    // ── Transform ──
+    // Move, Scale and Rotate as the element's own `translate`, `scale` and
+    // `rotate`, Skew as `transform: skew()`, Origin as `transform-origin`,
+    // on the custom style class (Normal) or the state's rule. The separate
+    // properties compose with an Interactions effect's inline `transform`
+    // instead of being replaced by it (pg_fx.src.js keeps the element's
+    // own transform under its effect). Written without !important, so the
+    // effect's inline value still applies. A value this model cannot read
+    // (a translate in three axes, a transform other than a skew) is left as
+    // it is: the row reads empty and a change of another row keeps it.
+    var ORIGINS = ['0% 0%', '50% 0%', '100% 0%', '0% 50%', '50% 50%', '100% 50%', '0% 100%', '50% 100%', '100% 100%'];
+    var TF_KEYS = { tx: 'translate', ty: 'translate', s: 'scale', r: 'rotate', skx: 'transform', sky: 'transform', o: 'transform-origin' };
+    var NUM = '(-?(?:\\d+\\.?\\d*|\\.\\d+))';
+    var LEN_RE = new RegExp('^' + NUM + '(px|%|rem|em|vw|vh)?$', 'i');
+    var DEG_RE = new RegExp('^' + NUM + 'deg$', 'i');
+    var SKEW_RE = new RegExp('^skew\\(\\s*' + NUM + 'deg\\s*(?:,\\s*' + NUM + 'deg\\s*)?\\)$', 'i');
+
+    function tfRule(text, cls, st) {
+        if (!st) {
+            if (!U() || !CLASS_RE.test(cls)) return null;
+            var list = U().parse(String(text || ''));
+            for (var i = 0; i < list.length; i++) {
+                if (!list[i].media && flat(list[i].selector) === '.' + cls) return list[i];
+            }
+            return null;
+        }
+        return ruleOf(text, cls, st);
+    }
+
+    function tfDecls(rule) {
+        var map = {};
+        if (rule) rule.decls.forEach(function (d) { map[d.name.toLowerCase()] = d.value.replace(IMP_RE, '').trim(); });
+        return map;
+    }
+
+    // A length as written: a bare number is px; '' for anything else.
+    function lenClean(v) {
+        var m = LEN_RE.exec(String(v === undefined || v === null ? '' : v).trim());
+        if (!m) return '';
+        return Number(m[1]) + (m[2] ? m[2].toLowerCase() : 'px');
+    }
+
+    function numClean(v, lo, hi, dp) {
+        if (v === '' || v === null || v === undefined) return '';
+        var n = Number(String(v).trim());
+        if (!isFinite(n)) return '';
+        var f = Math.pow(10, dp);
+        return Math.round(Math.min(hi, Math.max(lo, n)) * f) / f;
+    }
+
+    // { tx, ty, s, r, skx, sky, o }: lengths as written ('-2px'), numbers
+    // for scale and the degrees, the index of the Origin place (0 to 8);
+    // '' where the rule holds none.
+    function tfRead(text, cls, st) {
+        var out = { tx: '', ty: '', s: '', r: '', skx: '', sky: '', o: '' };
+        var map = tfDecls(tfRule(text, cls, st));
+        var m;
+        if (map.translate) {
+            var p = map.translate.split(/\s+/);
+            if (p.length <= 2 && lenClean(p[0]) && (p.length === 1 || lenClean(p[1]))) {
+                out.tx = lenClean(p[0]);
+                out.ty = p.length === 2 ? lenClean(p[1]) : '0px';
+            }
+        }
+        if (map.scale && /^\S+$/.test(map.scale) && isFinite(Number(map.scale))) out.s = Number(map.scale);
+        if (map.rotate && (m = DEG_RE.exec(map.rotate))) out.r = Number(m[1]);
+        if (map.transform && (m = SKEW_RE.exec(map.transform))) {
+            out.skx = Number(m[1]);
+            out.sky = m[2] === undefined ? 0 : Number(m[2]);
+        }
+        if (map['transform-origin']) {
+            var o = ORIGINS.indexOf(String(map['transform-origin']).replace(/\s+/g, ' '));
+            if (o !== -1) out.o = o;
+        }
+        return out;
+    }
+
+    // The declaration a row's key belongs to, with the value `v` set;
+    // value '' takes it out. Under a state the axis not set falls back to
+    // Normal's, and a pair equal to Normal's goes.
+    function tfValue(cur, base, st, key, v) {
+        var pair = function (a, b, unit, zero) {
+            var x = key === a ? v : cur[a];
+            var y = key === b ? v : cur[b];
+            if (st) {
+                if (x === '') x = base[a];
+                if (y === '') y = base[b];
+                if (String(x) === String(base[a]) && String(y) === String(base[b])) return '';
+            }
+            x = x === '' ? zero : x;
+            y = y === '' ? zero : y;
+            if (!st && String(x) === zero && String(y) === zero) return '';
+            return [x, y, unit];
+        };
+        if (key === 'tx' || key === 'ty') {
+            var t = pair('tx', 'ty', '', '0px');
+            return t ? t[0] + ' ' + t[1] : '';
+        }
+        if (key === 'skx' || key === 'sky') {
+            var k = pair('skx', 'sky', 'deg', '0');
+            return k ? 'skew(' + k[0] + 'deg, ' + k[1] + 'deg)' : '';
+        }
+        if (v === '') return '';
+        if (key === 's') return (!st && v === 1) ? '' : String(v);
+        if (key === 'r') return (!st && v === 0) ? '' : v + 'deg';
+        return (!st && v === 4) ? '' : ORIGINS[v];
+    }
+
+    // The text with one transform value of the state `st` ('' Normal) set:
+    // key tx or ty (a length, a bare number is px), s (0 to 10), r (−360 to
+    // 360), skx or sky (−89 to 89), o (an Origin place, 0 to 8); '' takes
+    // the value out. A state's rule left empty goes; Normal's stays.
+    function tfWrite(text, cls, st, key, value) {
+        text = String(text || '');
+        var prop = TF_KEYS[key];
+        if (!U() || !CLASS_RE.test(cls) || !prop || (st && !PSEUDO[st])) return text;
+        var v = value;
+        if (v !== '' && v !== null && v !== undefined) {
+            if (key === 'tx' || key === 'ty') v = lenClean(v);
+            else if (key === 's') v = numClean(v, 0, 10, 3);
+            else if (key === 'r') v = numClean(v, -360, 360, 2);
+            else if (key === 'o') v = (/^[0-8]$/.test(String(v))) ? Number(v) : '';
+            else v = numClean(v, -89, 89, 2);
+            if (v === '') return text;
+        } else {
+            v = '';
+        }
+        var rule = tfRule(text, cls, st);
+        var map = tfDecls(rule);
+        // A value no row reads is not written over.
+        if (prop === 'transform' && map.transform && !SKEW_RE.test(map.transform)) return text;
+        var cur = tfRead(text, cls, st);
+        if (prop === 'translate' && map.translate && cur.tx === '') return text;
+        var base = st ? tfRead(text, cls, '') : cur;
+        var val = tfValue(cur, base, st, key, v);
+        var out = tfPut(text, cls, st, prop, val);
+        // A state's pair keeps following Normal on the axis it took from it.
+        if (!st && (prop === 'translate' || prop === 'transform')) {
+            var a = prop === 'translate' ? 'tx' : 'skx', b = prop === 'translate' ? 'ty' : 'sky';
+            var zero = prop === 'translate' ? '0px' : '0';
+            var or0 = function (x) { return x === '' ? zero : String(x); };
+            var now = tfRead(out, cls, '');
+            STATES.forEach(function (s2) {
+                var sc = tfRead(out, cls, s2);
+                if (sc[a] === '') return;
+                var c2 = {};
+                c2[a] = or0(sc[a]) === or0(base[a]) ? or0(now[a]) : sc[a];
+                c2[b] = or0(sc[b]) === or0(base[b]) ? or0(now[b]) : sc[b];
+                out = tfPut(out, cls, s2, prop, tfValue(c2, now, s2, a, c2[a]));
+            });
+        }
+        return out;
+    }
+
+    // The declaration `prop: val` in the rule of `st`; val '' takes it out.
+    function tfPut(text, cls, st, prop, val) {
+        var rule = tfRule(text, cls, st);
+        var idx = -1;
+        if (rule) {
+            rule.decls.forEach(function (d, i) { if (d.name.toLowerCase() === prop) idx = i; });
+        }
+        if (!val) {
+            if (idx === -1) return text;
+            if (st && rule.decls.length === 1) return U().removeRule(text, rule).replace(/\n{2,}$/, '\n');
+            return U().removeDecl(text, rule, idx);
+        }
+        if (idx !== -1) return U().setDecl(text, rule, idx, prop, val);
+        if (!rule) {
+            text = U().appendRule(text, st ? selector(cls, st) : '.' + cls);
+            rule = tfRule(text, cls, st);
+            if (!rule) return text;
+        }
+        return U().addDecl(text, rule, prop, val);
+    }
+
+    // Whether the text may hold a transform for cls: a look, no parse.
+    function tfMaybe(text, cls) {
+        text = String(text || '');
+        return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:translate|rotate|scale|transform|transform-origin)\s*:/.test(text);
+    }
+
     var api = {
         STATES: STATES,
         PSEUDO: PSEUDO,
@@ -394,7 +588,11 @@
         TRANS_WHAT: TRANS_WHAT,
         transRead: transRead,
         transWrite: transWrite,
-        transMaybe: transMaybe
+        transMaybe: transMaybe,
+        ORIGINS: ORIGINS,
+        tfRead: tfRead,
+        tfWrite: tfWrite,
+        tfMaybe: tfMaybe
     };
 
     root.PGOptionStates = api;

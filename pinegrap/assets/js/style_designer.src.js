@@ -26004,7 +26004,10 @@ const StyleDesigner = (function () {
             go: _sdStateGo,
             locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(null, 'design'); },
             segSync: _sdSegSync,
-            resetButtons: _sdChgResetButtons
+            resetButtons: _sdChgResetButtons,
+            tfHtml: _sdTfRowsHtml,
+            tfMark: _sdTfMark,
+            tfOrigins: _sdTfOrigins
         };
     }
 
@@ -26134,6 +26137,198 @@ const StyleDesigner = (function () {
             var k = t && t.getAttribute ? t.getAttribute('data-sd-trans') : null;
             if (!k) return;
             _sdTransSet(k === 'ms-range' ? 'ms' : k, t.value);
+        });
+    }
+
+    // ── Options: the element's Transform (Shadow and effect) ──
+    // "Move", "Scale" and "Rotate" under the sub-head "Transform", "Skew"
+    // and "Origin" under the section's "More". Every row can differ in a
+    // state: written by the part 'states' (PGOptionStates.tfWrite()) as
+    // translate, scale, rotate, transform (skew) and transform-origin on
+    // the element's custom style class or the state's rule. Those compose
+    // with an Interactions effect's inline transform (pg_fx.src.js keeps
+    // the element's own). Nothing is parsed or loaded while the User
+    // Styles hold no transform for the element.
+    var _SD_TF_NONE = { tx: '', ty: '', s: '', r: '', skx: '', sky: '', o: '' };
+    var _sdTfLoading = false;
+    var _sdTfMoreOpen = false;
+    // The name of an Interactions effect that moves the element (a
+    // transform), or ''.
+    function _sdTfFxName(effect) {
+        return ({ 'slide-up': _sdT('Slide up'), 'slide-down': _sdT('Slide down'), 'slide-left': _sdT('Slide left'),
+            'slide-right': _sdT('Slide right'), scale: _sdT('Scale'), 'zoom-out': _sdT('Zoom out'), 'rotate-in': _sdT('Rotate in'),
+            parallax: _sdT('Parallax'), 'scroll-zoom': _sdT('Zoom on scroll'), 'scroll-rise': _sdT('Rise on scroll') })[effect] || '';
+    }
+
+    // The element's transform in the state st ('' Normal).
+    function _sdTfOf(node, st) {
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('.' + cls) === -1 || !/(?:^|[\s;{])(?:translate|rotate|scale|transform)\s*:/.test(text)) return _SD_TF_NONE;
+        if (_sdPartLoaded('states') && window.PGOptionStates) return window.PGOptionStates.tfRead(text, cls, st || '');
+        if (!_sdTfLoading) {
+            _sdTfLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTfLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTfLoading = false; _sdPartFailed(); });
+        }
+        return _SD_TF_NONE;
+    }
+
+    // The nine Origin places: their names and per cents.
+    function _sdTfOrigins() {
+        return [_sdT('Top left'), _sdT('Top'), _sdT('Top right'), _sdT('Left'), _sdT('Middle'), _sdT('Right'),
+            _sdT('Bottom left'), _sdT('Bottom'), _sdT('Bottom right')];
+    }
+
+    // The rows: v the values of the shown state, inh the ones shown in grey
+    // until set (Normal's under a state, the defaults on Normal).
+    function _sdTfRowsHtml(node, v, inh) {
+        v = v || _sdTfOf(node, '');
+        inh = inh || _SD_TF_NONE;
+        var shown = function (k, dflt) { return v[k] !== '' ? v[k] : inh[k] !== '' ? inh[k] : dflt; };
+        var field = function (key, unit, axis, dflt) {
+            var ph = String(inh[key] !== '' ? inh[key] : dflt).replace(/px$/, '');
+            return '<div class="input-group input-group-sm' + (v[key] === '' ? ' sd-trans-inh' : '') + '">' +
+                (axis ? '<span class="input-group-text">' + axis + '</span>' : '') +
+                '<input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tf="' + key + '" value="' + esc(String(v[key]).replace(/px$/, '')) + '" placeholder="' + esc(ph) + '"' +
+                ' aria-label="' + esc((axis ? axis + ' ' : '') + unit) + '">' +
+                '<span class="input-group-text">' + unit + '</span></div>';
+        };
+        var slider = function (key, lo, hi, step, unit, dflt, name) {
+            var val = shown(key, dflt);
+            return '<div class="sd-trans-ms' + (v[key] === '' ? ' sd-trans-inh' : '') + '">' +
+                '<input type="range" class="form-range-input" min="' + lo + '" max="' + hi + '" step="' + step + '" value="' + Math.min(hi, Math.max(lo, val)) + '" data-sd-tf-range="' + key + '" aria-label="' + esc(name) + '">' +
+                '<div class="input-group input-group-sm"><input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tf="' + key + '" value="' + esc(String(v[key])) + '" placeholder="' + esc(String(inh[key] !== '' ? inh[key] : dflt)) + '" aria-label="' + esc(name) + '">' +
+                (unit ? '<span class="input-group-text">' + unit + '</span>' : '') + '</div></div>';
+        };
+        var tfRow = function (keys, label, ctrl) {
+            return '<div class="sd-prop-row" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+        };
+        var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; });
+        var h = '<div class="sd-tf" data-sd-tf-box>' +
+            '<div class="sd-trans-sub">' + esc(_sdT('Transform')) + '</div>' +
+            tfRow('tx,ty', _sdT('Move'), '<div class="sd-tf-pair">' + field('tx', 'px', 'X', '0') + field('ty', 'px', 'Y', '0') + '</div>') +
+            tfRow('s', _sdT('Scale'), slider('s', 0.5, 1.5, 0.01, '', 1, _sdT('Scale'))) +
+            tfRow('r', _sdT('Rotate'), slider('r', -180, 180, 1, '°', 0, _sdT('Rotate')));
+        var fx = node.props && node.props._fx ? _sdTfFxName(node.props._fx.effect) : '';
+        if (fx) {
+            h += '<div class="sd-tf-fx"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' +
+                esc(_sdT('The effect {var} in Interactions moves this element too. Both apply, one on top of the other.', fx)) + '</span></div>';
+        }
+        if (more) {
+            var names = _sdTfOrigins();
+            var o = shown('o', 4);
+            var cells = names.map(function (nm, i) {
+                return '<button type="button" role="radio" class="sd-tf-o' + (i === o ? ' sd-tf-o-on' : '') + '" data-sd-tf-o="' + i + '" aria-checked="' + (i === o ? 'true' : 'false') + '"' +
+                    ' tabindex="' + (i === o ? '0' : '-1') + '" aria-label="' + esc(nm) + '"></button>';
+            }).join('');
+            h += tfRow('skx,sky', _sdT('Skew'), '<div class="sd-tf-pair">' + field('skx', '°', 'X', '0') + field('sky', '°', 'Y', '0') + '</div>') +
+                tfRow('o', _sdT('Origin'), '<div class="sd-tf-og' + (v.o === '' ? ' sd-trans-inh' : '') + '"><div class="sd-tf-grid" role="radiogroup" aria-label="' + esc(_sdT('Origin')) + '">' + cells + '</div>' +
+                    '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>');
+        }
+        h += '<button type="button" class="sd-tf-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
+            esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
+        return h + '</div>';
+    }
+
+    // The changed dot on a Transform row whose own value is set.
+    function _sdTfMark(root) {
+        root.querySelectorAll('[data-sd-tf-keys]').forEach(function (r) {
+            var lbl = r.querySelector('.sd-prop-label');
+            var set = r.querySelector('.sd-tf-og:not(.sd-trans-inh)') ||
+                Array.prototype.some.call(r.querySelectorAll('[data-sd-tf]'), function (i) { return i.value !== ''; });
+            if (!lbl || !set) return;
+            lbl.classList.add('sd-prop-modified');
+            lbl.dataset.resetKind = 'tf';
+        });
+    }
+
+    // Values written in the chosen state, { key: value } ('' takes one
+    // out), as one undo step.
+    function _sdTfSet(vals) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var st = _sdOptState;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) {
+                Object.keys(vals).forEach(function (k) { text = S.tfWrite(text, cls, st, k, vals[k]); });
+                return text;
+            });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // The canvas while a row is dragged or holds the focus: the part draws
+    // the place the element keeps and the value (api.tfShow / tfHide).
+    function _sdTfCanvas(key, value) {
+        var go = function () {
+            var api = _sdPartApis.states;
+            if (!api || !api.tfShow) return;
+            if (key === null) api.tfHide(canvasDoc);
+            else api.tfShow(_sdStateHost(), key, value);
+        };
+        if (_sdPartLoaded('states')) { go(); return; }
+        if (key !== null) _sdPartLoad('states').then(go, _sdPartFailed);
+    }
+
+    // Once per panel: the slider shows its number and the canvas while
+    // dragged and writes when let go; a field writes on change; Origin's
+    // places by press or the arrows; "More" and "Less".
+    function _sdTfBind(panel) {
+        if (!panel || panel._sdTf || !panel.querySelector('[data-sd-tf-box]')) return;
+        panel._sdTf = true;
+        var keyOf = function (t) { return t && t.getAttribute ? (t.getAttribute('data-sd-tf') || t.getAttribute('data-sd-tf-range')) : null; };
+        panel.addEventListener('input', function (e) {
+            var t = e.target, k = t && t.getAttribute ? t.getAttribute('data-sd-tf-range') : null;
+            if (!k) return;
+            var box = t.closest('.sd-trans-ms');
+            var num = box ? box.querySelector('[data-sd-tf="' + k + '"]') : null;
+            if (num) num.value = t.value;
+            if (box) box.classList.remove('sd-trans-inh');
+            _sdTfCanvas(k, t.value);
+        });
+        panel.addEventListener('change', function (e) {
+            var k = keyOf(e.target);
+            if (!k) return;
+            _sdTfCanvas(null);
+            var o = {};
+            o[k] = e.target.value.trim();
+            _sdTfSet(o);
+        });
+        panel.addEventListener('focusin', function (e) {
+            var k = keyOf(e.target) || (e.target.hasAttribute && e.target.hasAttribute('data-sd-tf-o') ? 'o' : null);
+            if (k) _sdTfCanvas(k, k === 'o' ? e.target.getAttribute('data-sd-tf-o') : e.target.value);
+        });
+        panel.addEventListener('focusout', function (e) {
+            var to = e.relatedTarget;
+            if (!to || !to.closest || !to.closest('[data-sd-tf-box]')) _sdTfCanvas(null);
+        });
+        panel.addEventListener('click', function (e) {
+            var t = e.target && e.target.closest ? e.target.closest('.sd-tf-more, [data-sd-tf-o]') : null;
+            if (!t || !panel.contains(t)) return;
+            if (t.classList.contains('sd-tf-more')) {
+                _sdTfMoreOpen = t.getAttribute('aria-expanded') !== 'true';
+                renderProperties();
+                var b = document.querySelector('#sd-properties .sd-tf-more');
+                if (b) b.focus();
+                return;
+            }
+            _sdTfSet({ o: t.getAttribute('data-sd-tf-o') });
+        });
+        panel.addEventListener('keydown', function (e) {
+            var t = e.target;
+            if (!t.hasAttribute || !t.hasAttribute('data-sd-tf-o')) return;
+            var i = Number(t.getAttribute('data-sd-tf-o'));
+            var to = { ArrowLeft: i % 3 ? i - 1 : i, ArrowRight: i % 3 < 2 ? i + 1 : i, ArrowUp: i > 2 ? i - 3 : i, ArrowDown: i < 6 ? i + 3 : i }[e.key];
+            if (to === undefined) return;
+            e.preventDefault();
+            var c = t.parentNode.querySelector('[data-sd-tf-o="' + to + '"]');
+            if (c && c !== t) c.focus();
         });
     }
 
@@ -37454,6 +37649,7 @@ const StyleDesigner = (function () {
         markModifiedProps();
         _sdStateAfter(panel);
         _sdTransBind(panel);
+        _sdTfBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -58781,8 +58977,9 @@ const StyleDesigner = (function () {
             row(_sdT('Animation'),   sel('placeholderAnim', [['',_sdT('None')],['glow',_sdT('Glow')],['wave',_sdT('Wave')]], p.placeholderAnim || '')) +
             '<div class="sd-sp-divider"></div>' +
             row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)) +
-            // The element's Transition, one value in every state.
-            (n === selectedNode && _sdStateNode() ? _sdTransRowsHtml(n) : ''),
+            // The element's Transition, one value in every state, and its
+            // Transform.
+            (n === selectedNode && _sdStateNode() ? _sdTransRowsHtml(n) + _sdTfRowsHtml(n) : ''),
             _sdT('Styling')
         );
 
@@ -66348,6 +66545,8 @@ const StyleDesigner = (function () {
             lbl.classList.add('sd-prop-modified');
             lbl.dataset.resetKind = 'trans';
         });
+        // 15. The element's Transform (_sdTfRowsHtml()): a row with its own value.
+        _sdTfMark(root);
 
         if (!live) return;
 
@@ -66406,6 +66605,13 @@ const StyleDesigner = (function () {
         if (kind === 'trans') {
             var _tc = propRow.querySelector('[data-sd-trans="what"], [data-sd-trans="ms"], [data-sd-trans="ease"]');
             if (_tc) _sdTransSet(_tc.getAttribute('data-sd-trans'), '');
+            return;
+        }
+        // A Transform row: its values out, in the chosen state.
+        if (kind === 'tf') {
+            var _tv = {};
+            String(propRow.getAttribute('data-sd-tf-keys') || '').split(',').forEach(function (k) { if (k) _tv[k] = ''; });
+            _sdTfSet(_tv);
             return;
         }
 

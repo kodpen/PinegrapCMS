@@ -371,9 +371,21 @@
         return out.length ? out : [el];
     }
 
-    // The node's own values, kept the first time it is touched.
+    // The node's own values, kept the first time it is touched. `own` is
+    // the transform its stylesheet gives it (a skew from the Options
+    // panel, a centring class) when it has no inline one: the effect's
+    // inline transform would replace it, so the effect is composed after
+    // it. translate, rotate and scale need nothing: they are properties of
+    // their own and apply under any inline transform.
     function base(t) {
-        if (!t.pgFxBase) t.pgFxBase = { opacity: t.style.opacity, transform: t.style.transform, transition: t.style.transition };
+        if (!t.pgFxBase) {
+            var own = '';
+            if (!t.style.transform && window.getComputedStyle) {
+                own = window.getComputedStyle(t).transform;
+                if (!own || own === 'none') own = '';
+            }
+            t.pgFxBase = { opacity: t.style.opacity, transform: t.style.transform, transition: t.style.transition, own: own };
+        }
         return t.pgFxBase;
     }
 
@@ -383,7 +395,8 @@
         var b = base(t);
         t.style.transition = move || 'none';
         t.style.opacity = s.opacity !== '' ? s.opacity : b.opacity;
-        t.style.transform = s.transform ? (b.transform ? b.transform + ' ' : '') + s.transform : b.transform;
+        var mine = b.transform || b.own;
+        t.style.transform = s.transform ? (mine ? mine + ' ' : '') + s.transform : b.transform;
         if (s.filter !== undefined) {
             if (b.filter === undefined) b.filter = t.style.filter || '';
             t.style.filter = s.filter ? (b.filter ? b.filter + ' ' : '') + s.filter : b.filter;
