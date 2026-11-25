@@ -14,7 +14,7 @@ module: canva_start
 - A PDF is refused with its own reason: turning PDF pages into pictures needs Ghostscript behind ImageMagick, which runs the PDF's own program and which a host may not have. No part of the software rasterises PDF, so the drawing's PDF unfolding is not built.
 
 ## How are the colours measured?
-- `pg_canva_measure()`: GD samples the picture to 64 pixels wide (nearest pixels, so edges give no blends; skipped over 40 megapixels or without GD), `pg_canva_colors_from_pixels()` boxes them four bits a channel and drops near white, near black and greys (HSL s < .25, l outside .12-.88).
+- `pg_canva_measure()`: GD samples the stored picture over its own size (the upload cap may have shrunk it; hunt 57) to 64 pixels wide (nearest pixels, so edges give no blends; skipped over 40 megapixels or without GD), `pg_canva_colors_from_pixels()` boxes them four bits a channel and drops near white, near black and greys (HSL s < .25, l outside .12-.88).
 - "Next" sends every page's list to designer › `canva_colors`: `pg_canva_pick_colors()` weighs each picture the same, joins colours closer than 64 ("redmean" distance) and gives at most `pg_canva_max_colors()` = 5. Brand colour is the first, Second colour the next; a press on a swatch changes it. Fonts are never taken: the third row reads "The site's default".
 
 ## What does "Create design" do?
