@@ -8081,7 +8081,9 @@ const StyleDesigner = (function () {
             choose: function (widths) {
                 _sdSideStore('pg_sd_side_w', widths.join(','));
                 _sdSideSync();
-            }
+            },
+            select: _sdSideSelect,
+            swap: _sdSideSwap
         }]).then(function () {
             if (fit && _sdSide.shown) _sdCanvasFit();
         }, function (e) {
@@ -8089,6 +8091,35 @@ const StyleDesigner = (function () {
             _sdSide.shown = false;
             _sdPartFailed();
         });
+    }
+
+    // A click in a mirror on the element `id` (`sid`: the shared component
+    // or widget it is drawn in, '' on the page) chooses it on the canvas
+    // and brings it into view there.
+    function _sdSideSelect(id, sid) {
+        if (!canvasDoc || !id) return;
+        var q = '[data-sd-id="' + CSS.escape(String(id)) + '"]' + (sid ? '[data-sw-sid="' + CSS.escape(String(sid)) + '"]' : ':not([data-sw-sid])');
+        var el = canvasDoc.querySelector(q);
+        var node = el ? _sdFindNodeForEl(String(id), el) : null;
+        if (!node || node.type === 'root') return;
+        selectedNodes = [];
+        _sdInner = null;
+        selectedNode = node;
+        _sdSelectRender();
+        scrollCanvasToNode(node);
+    }
+
+    // "Edit at this size": `s` is the part's { widths, canvas }. The
+    // canvas takes the mirror's width with the bar's own button and the
+    // mirror the width the canvas had; nothing else moves.
+    function _sdSideSwap(s) {
+        if (!s) return;
+        var b = document.querySelector('#sd-bp-bar .sd-bp-btn:not(.sd-bp-mail)[data-w="' + s.canvas + '"]');
+        if (!b) return;
+        _sdSideStore('pg_sd_side_w', s.widths.join(','));
+        b.click();
+        _sdSideSync();
+        _sdStateSay(_sdT('Editing at {var:1} px.', s.canvas));
     }
 
     // The mirrors leave; `keepWatch` keeps watching the column, so they

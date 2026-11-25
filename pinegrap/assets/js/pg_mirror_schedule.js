@@ -18,7 +18,10 @@
  *   height its frame takes so the scaled picture fills the box.
  * - sizes(): a mirror's list of widths, the one it shows ticked and those
  *   the canvas or the other mirror show dimmed; pick() the widths after a
- *   choice in it.
+ *   choice in it; swap() the widths after "Edit at this size".
+ * - selectionMoved(): whether a canvas change moved the selection mark, so
+ *   the mirrors' frames follow; follow() where a mirror scrolls to bring
+ *   the chosen element into view.
  *
  * Nothing runs at load but the definition of window.PGMirrorSchedule. It is
  * the first source of the designer part 'mirror'
@@ -163,7 +166,49 @@
         return out;
     }
 
+    // "Edit at this size" on mirror `index`: the canvas takes that mirror's
+    // width and the mirror the canvas's (`canvasW`, 0 for Full width, which
+    // hands over 1200). The other mirror never shows the width the swapped
+    // one now shows: it takes the first free width of SIZES instead.
+    // Null for a mirror that is not there.
+    function swap(widths, index, canvasW) {
+        var out = (widths || []).slice();
+        if (index < 0 || index >= out.length) return null;
+        var canvas = out[index];
+        var mirror = canvasW > 0 ? canvasW : 1200;
+        out[index] = mirror;
+        out.forEach(function (w, i) {
+            if (i === index || w !== mirror) return;
+            out[i] = SIZES.filter(function (s) { return s !== mirror && s !== canvas && out.indexOf(s) === -1; })[0] || w;
+        });
+        return { widths: out, canvas: canvas };
+    }
+
+    // Whether a canvas change put the selection mark on an element or took
+    // it off (a mutation record in the shape matters() reads).
+    function selectionMoved(rec) {
+        if (!rec || rec.type !== 'attributes' || String(rec.name || '').toLowerCase() !== 'class') return false;
+        var had = tokens(rec.old).indexOf('sd-selected') !== -1;
+        return had !== (tokens(rec.now).indexOf('sd-selected') !== -1);
+    }
+
+    // Where a mirror `viewH` px high, scrolled to `scrollY`, scrolls to show
+    // an element at `top`..`bottom` (its view's coordinates): null while it
+    // is in view or takes no room (that width hides it), else the scroll
+    // that brings it a third of the way down.
+    function follow(top, bottom, viewH, scrollY) {
+        top = Number(top) || 0;
+        bottom = Number(bottom) || 0;
+        viewH = Math.max(0, Number(viewH) || 0);
+        if (bottom <= top) return null;
+        if (top >= 0 && bottom <= viewH) return null;
+        return Math.max(0, Math.round((Number(scrollY) || 0) + top - viewH / 3));
+    }
+
     window.PGMirrorSchedule = {
+        swap: swap,
+        selectionMoved: selectionMoved,
+        follow: follow,
         SIZES: SIZES,
         sizes: sizes,
         pick: pick,
