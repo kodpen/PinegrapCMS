@@ -24158,6 +24158,13 @@
 
             var side = el('div', 'ws-summary-side');
 
+            // The pinned message, read here now that the board holds tasks
+            // only; shown even where the reader closed the line above the
+            // conversation.
+            if (channel.pin) {
+                side.appendChild(self.summaryPinCard(channel));
+            }
+
             // The customer the channel is about and where they stand, loaded
             // when the tab is opened (workspace_customer.js).
             if (window.PGWsCustomer && channel.customer) {
@@ -24175,6 +24182,37 @@
             } else {
                 layout.classList.add('ws-summary-alone');
             }
+        },
+
+        // The Summary tab's card of the pinned message: who wrote it, its
+        // text, when, who pinned it, and a way to it in the conversation.
+        summaryPinCard: function (channel) {
+            var self = this;
+            var pin = channel.pin;
+            var card = el('section', 'card ws-summary-pin');
+            var header = el('div', 'card-header d-flex align-items-center gap-3');
+            var heading = el('h3', 'h6 mb-0 me-auto');
+            var body = el('div', 'card-body');
+            var text = el('p', 'mb-2');
+            var go = button('pg-button pg-button-quiet pg-button-sm', t('show_in_conversation'), 'bi-chat-left-text');
+
+            heading.appendChild(icon('bi-pin-angle', 'me-1'));
+            heading.appendChild(document.createTextNode(t('pin_card')));
+            header.appendChild(heading);
+            go.addEventListener('click', function () { self.open(channel.id, pin.id); });
+            header.appendChild(go);
+            card.appendChild(header);
+
+            if (pin.sender && pin.sender.name) {
+                text.appendChild(el('b', 'me-1', pin.sender.name + ':'));
+            }
+
+            text.appendChild(document.createTextNode(pin.text));
+            body.appendChild(text);
+            body.appendChild(el('div', 'small fg-secondary', [pin.time, pin.pinned_by ? t('pin_by', pin.pinned_by) : ''].filter(Boolean).join(' · ')));
+            card.appendChild(body);
+
+            return card;
         },
 
         search: function (query) {

@@ -2,15 +2,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - a channel's work as a board: its tasks, decisions and files as
- * cards in columns, on a tab of the channel beside the conversation. The
- * cards are grouped by status (to do, in progress, waiting, done), by kind
- * (tasks, decisions, files, the pinned message and the summary), by the
- * people on them or by when they are due.
+ * Workspace - a channel's tasks as a board: cards in columns, on a tab of the
+ * channel beside the conversation. The cards are grouped by status (to do,
+ * in progress, waiting, done), by the people on them or by when they are
+ * due. The board holds tasks only: decisions, files, the pinned message and
+ * the summary have their own tabs.
  *
  * The tasks are the channel's tasks as ws_tasks_list() gives them, so a card
- * is shown only to somebody who may see the task; the decisions and the files
- * are the messages the Decisions and Files tabs read. A finished task stays
+ * is shown only to somebody who may see the task. A finished task stays
  * on the board for WS_CHANNEL_BOARD_DONE_DAYS days, the older ones a click
  * away. Cards are sorted by priority, then by due date: there is no order of
  * the reader's own.
@@ -44,7 +43,6 @@ function ws_channel_board_groupings()
 {
     return array(
         'status' => lang('By status'),
-        'type'   => lang('By kind'),
         'person' => lang('By person'),
         'date'   => lang('By date'),
     );
@@ -174,9 +172,8 @@ function ws_channel_board_compare($a, $b)
 
 /**
  * Something that changes whenever a card of the board would: the channel's
- * tasks, its decisions and files, its pinned message and its summary. The
- * channel screen's look (ws_sync) carries it while the board is open, and the
- * board is read again when it moves. Two indexed reads.
+ * tasks. The channel screen's look (ws_sync) carries it while the board is
+ * open, and the board is read again when it moves. One indexed read.
  *
  * @param array $channel
  * @return string
@@ -186,14 +183,8 @@ function ws_channel_board_stamp($channel)
     $channel_id = (int) $channel['id'];
 
     $tasks = db_item("SELECT COUNT(*) AS n, COALESCE(MAX(updated_at), 0) AS t FROM ws_tasks WHERE channel_id = '" . $channel_id . "'");
-    $messages = db_item("SELECT COUNT(*) AS n, COALESCE(MAX(id), 0) AS m, COALESCE(MAX(marked_at), 0) AS t FROM ws_messages
-        WHERE channel_id = '" . $channel_id . "' AND deleted_at = 0 AND (kind = 'decision' OR file_id > 0)");
 
-    return md5(implode(':', array(
-        (int) ($tasks['n'] ?? 0), (int) ($tasks['t'] ?? 0),
-        (int) ($messages['n'] ?? 0), (int) ($messages['m'] ?? 0), (int) ($messages['t'] ?? 0),
-        (int) ($channel['pinned_message_id'] ?? 0), (int) ($channel['summary_updated_at'] ?? 0),
-    )));
+    return md5(implode(':', array((int) ($tasks['n'] ?? 0), (int) ($tasks['t'] ?? 0))));
 }
 
 /**
@@ -313,123 +304,6 @@ function ws_channel_board_tasks($viewer, $channel, $options)
 }
 
 /**
- * The channel's decisions as cards: the first line, who kept it and when.
- *
- * @param array  $viewer
- * @param array  $channel
- * @param string $q
- * @return array[]
- */
-function ws_channel_board_decisions($viewer, $channel, $q)
-{
-    $rows = (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel['id'] . "' AND kind = 'decision' AND deleted_at = 0
-        ORDER BY marked_at DESC, id DESC
-        LIMIT 100");
-
-    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
-    $people = ws_people(ws_mark_people_ids($rows));
-    $out = array();
-
-    foreach ($rows as $row) {
-        if (isset($hidden[(int) $row['id']])) {
-            continue;
-        }
-
-        $lines = preg_split('/\r?\n/', trim((string) $row['body']));
-        $first = '';
-
-        foreach ($lines as $line) {
-            $first = ws_plain_excerpt($viewer, $line, 160);
-
-            if ($first !== '') {
-                break;
-            }
-        }
-
-        if (($q !== '') && !ws_text_contains(ws_plain_text($viewer, (string) $row['body']), $q)) {
-            continue;
-        }
-
-        $by = ws_mark_by_name($row, $people);
-        $when = ws_time_label((int) $row['marked_at'] ?: (int) $row['created_at']);
-
-        $out[] = array(
-            'kind'       => 'decision',
-            'id'         => (int) $row['id'],
-            'title'      => $first,
-            'sub'        => ($by !== '') ? lang(array('string' => 'Kept by {var:1}, {var:2}', 'vars' => array($by, $when))) : $when,
-            'message_id' => (int) $row['id'],
-        );
-    }
-
-    return $out;
-}
-
-/**
- * The files posted in the channel as cards: the name, a small picture, who
- * posted it.
- *
- * @param array  $viewer
- * @param array  $channel
- * @param string $q
- * @return array[]
- */
-function ws_channel_board_files($viewer, $channel, $q)
-{
-    $rows = (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel['id'] . "' AND file_id > 0 AND deleted_at = 0
-        ORDER BY id DESC
-        LIMIT 100");
-
-    $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
-    $files = array();
-
-    foreach ($rows as $row) {
-        $files[] = (int) $row['file_id'];
-    }
-
-    list($people, $mail) = ws_message_rows_senders($rows);
-    $stored = array();
-
-    if (!empty($files)) {
-        foreach ((array) db_items("SELECT id, name FROM files WHERE id IN (" . implode(',', array_unique($files)) . ")") as $file) {
-            $stored[(int) $file['id']] = (string) $file['name'];
-        }
-    }
-
-    $out = array();
-
-    foreach ($rows as $row) {
-        $name = (string) $row['file_name'];
-
-        if (isset($hidden[(int) $row['id']]) || !isset($stored[(int) $row['file_id']])
-            || (($q !== '') && !ws_text_contains($name, $q))) {
-            continue;
-        }
-
-        $kind = ws_file_kind($name);
-        $url = PATH . encode_url_path($stored[(int) $row['file_id']]);
-        $by = ws_palette_sender_name($row, $people, $mail);
-        $when = ws_time_label($row['created_at']);
-
-        $out[] = array(
-            'kind'       => 'file',
-            'id'         => (int) $row['id'],
-            'title'      => $name,
-            'sub'        => ($by !== '') ? lang(array('string' => 'Posted by {var:1}, {var:2}', 'vars' => array($by, $when))) : $when,
-            'url'        => $url,
-            'file_kind'  => $kind,
-            'ext'        => strtolower((string) pathinfo($name, PATHINFO_EXTENSION)),
-            'thumb'      => ($kind === 'image') ? $url : '',
-            'message_id' => (int) $row['id'],
-        );
-    }
-
-    return $out;
-}
-
-/**
  * The board of a channel.
  *
  * @param array $viewer
@@ -541,40 +415,6 @@ function ws_channel_board($viewer, $channel, $options = array())
                 $columns[] = $column('date:' . $bucket, $title[0], $title[1], $drop, ($drop === null) ? null : array('due_date' => $drop), $items);
             }
             break;
-
-        case 'type':
-            $columns[] = $column('type:tasks', lang('Tasks'), 'bi-check2-square', null, array(), $open);
-            $columns[] = $column('type:decisions', lang('Decisions'), 'bi-patch-check', null, null, ws_channel_board_decisions($viewer, $channel, $q));
-            $columns[] = $column('type:files', lang('Files'), 'bi-paperclip', null, null, ws_channel_board_files($viewer, $channel, $q));
-
-            $notes = array();
-            $pin = ws_channel_pin_present($viewer, $channel, ws_channel_membership($channel['id'], $viewer['id']));
-
-            if ($pin && (($q === '') || ws_text_contains($pin['text'], $q))) {
-                $notes[] = array(
-                    'kind'       => 'pin',
-                    'id'         => (int) $pin['id'],
-                    'title'      => (string) $pin['text'],
-                    'sub'        => implode(' · ', array_filter(array((string) ($pin['sender']['name'] ?? ''), (string) $pin['time']), 'strlen')),
-                    'message_id' => (int) $pin['id'],
-                );
-            }
-
-            $summary = trim((string) $channel['summary']);
-
-            if (($summary !== '') && (($q === '') || ws_text_contains(ws_plain_text($viewer, $summary), $q))) {
-                $notes[] = array(
-                    'kind'  => 'summary',
-                    'id'    => (int) $channel['id'],
-                    'title' => ws_plain_excerpt($viewer, $summary, 280),
-                    'sub'   => ((int) $channel['summary_updated_at'] > 0)
-                        ? lang(array('string' => 'Updated by {var:1}, {var:2}', 'vars' => array(ws_person_name($channel['summary_updated_by']), ws_time_label($channel['summary_updated_at']))))
-                        : '',
-                );
-            }
-
-            $columns[] = $column('type:pinned', lang('Pinned message and summary'), 'bi-pin-angle', null, null, $notes);
-            break;
     }
 
     $counts = array('tasks' => count($open), 'done_hidden' => $done_hidden);
@@ -619,9 +459,6 @@ function ws_channel_board_js_strings()
         'cb_notes'         => ws_js_template('{var:1} notes', 1),
         'cb_reminder'      => lang('A reminder is set'),
         'cb_repeating'     => lang('Repeating task'),
-        'cb_open_message'  => lang('Go to the message'),
-        'cb_open_summary'  => lang('Open the summary'),
-        'cb_open_file'     => lang('Open the file'),
         'cb_no_drop'       => lang('A card cannot be put in this column.'),
         'cb_no_date_repeat' => lang('A repeating task keeps its due date: change its repeat in the task instead.'),
         'cb_lifted'        => ws_js_template('{var:1} picked up. Left and right arrows choose a column, Enter puts it down, Esc leaves it where it was.', 1),
