@@ -5,7 +5,7 @@ description: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box dist
 
 ## What is it?
 - `window.PGCanvasGuides` in `pinegrap/assets/js/pg_canvas_guides.js`: the numbers behind Measure, the spacing bands, the column handles and the equal-gap marks (plan `designer-canvas-guides`). Pure: plain boxes and numbers in, plain objects out; no element, no listener.
-- Not in a bundle yet: the step that draws the first guide puts it first in the guides part's bundle (`pg_js_bundles()`, `pg_designer_parts()`), as `pg_spacing_box.js` is in `spacing`.
+- Bundled first in the part `bands` (CG3, `designer-canvas-guides-bands.md`); a later guide's part lists it too.
 
 ## What does it take and answer?
 - A box: `{ left, top, right, bottom }` or DOMRect-like `x / y / width / height`, all in the canvas frame's zoomed space. `zoom` (default 1) turns lengths back into page CSS pixels for the numbers; positions stay in canvas space.

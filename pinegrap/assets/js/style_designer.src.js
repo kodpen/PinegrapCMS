@@ -60128,6 +60128,77 @@ const StyleDesigner = (function () {
     }
 
     // ========================= STATUS BAR =========================
+    // ── Spacing bands (canvas guides)
+    // The selection's margin and padding drawn as bands over the canvas,
+    // each band's edge a handle that steps the side through the spacing
+    // scale (the part 'bands', style_designer_bands.js). The core only says
+    // when to draw or hide them; the part loads on the first selection
+    // that can show them and holds no listener while they are hidden.
+    var _sdBandsRaf = 0;
+    function _sdBandsSoon() {
+        if (_sdBandsRaf || typeof requestAnimationFrame !== 'function') return;
+        _sdBandsRaf = requestAnimationFrame(function () {
+            _sdBandsRaf = 0;
+            _sdBandsDraw();
+        });
+    }
+
+    // One selected element the operator may change, on the Design canvas of
+    // a Bootstrap design, with no element being dragged.
+    function _sdBandsDraw() {
+        var node = (selectedNode && selectedNodes.length <= 1) ? selectedNode : null;
+        var show = !!(node && node.props && node.type !== 'root' && canvasDoc && canvasDoc.body && canvasIframe &&
+            _collab.mayEdit && !_sdProto.open && !dragData && _sdUsesBootstrap() &&
+            !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
+        if (show) {
+            _sdPartCall('bands', 'draw', [_sdBandsHost(node)]).catch(_sdPartFailed);
+        } else if (_sdPartLoaded('bands') && _sdPartApis.bands) {
+            _sdPartApis.bands.hide();
+        }
+    }
+
+    // What the part draws from: the element, the screen size the canvas
+    // width stands for, the Spacing box's commit and where the layer goes
+    // (_sdBandsGeo(), asked again on every placing).
+    function _sdBandsHost(node) {
+        var host = _sdSpBoxHost(null, [node]);
+        host.id = node._id;
+        host.el = _sdCanvasInnerOf(node);
+        host.width = canvasDoc.documentElement.clientWidth;
+        host.userId = (_design && _design.userId) || 0;
+        host.geo = _sdBandsGeo;
+        return host;
+    }
+
+    // The layer's place in the canvas wrapper over the part of the canvas
+    // frame in view, the frame's top left in it and the scale of a canvas
+    // pixel on screen (zoom and Fit, read as the link marks read them);
+    // null without a canvas.
+    function _sdBandsGeo() {
+        var frame = canvasIframe;
+        var area = (frame && canvasDoc) ? frame.closest('.sd-iframe-area') : null;
+        var wrapper = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!wrapper) return null;
+        var docEl = canvasDoc.documentElement;
+        var fr = frame.getBoundingClientRect(), ar = area.getBoundingClientRect(), hr = wrapper.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        return {
+            wrapper: wrapper,
+            area: area,
+            left: left - hr.left,
+            top: top - hr.top,
+            w: Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left,
+            h: Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top,
+            fx: fr.left - left,
+            fy: fr.top - top,
+            k: k
+        };
+    }
+
     function _ensureSizeBadge() {
         var badge = document.getElementById('sd-canvas-size-badge');
         if (!badge) {
@@ -60141,6 +60212,7 @@ const StyleDesigner = (function () {
     }
 
     function _positionSizeBadge() {
+        _sdBandsSoon();
         var badge = _ensureSizeBadge();
         if (!badge) return;
         if (!canvasDoc || !selectedNode || !canvasIframe) { badge.style.display = 'none'; return; }

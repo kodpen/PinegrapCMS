@@ -8187,6 +8187,11 @@ function pg_js_bundles()
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // The spacing bands over the canvas: the guides' and the bands'
+        // geometry (window.PGCanvasGuides, window.PGCanvasBands), what the
+        // Spacing box writes (window.PGSpacingBox), the first-use tips' state
+        // (window.PGDesignerTour), then the part that draws them.
+        'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_guides.js', 'assets/js/pg_canvas_bands.js', 'assets/js/pg_spacing_box.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8280,6 +8285,9 @@ function pg_designer_parts()
         // The spacing box of Style › Spacing and the size chooser in its
         // head, drawn when the section is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The spacing bands and their handles on the selected element over
+        // the canvas, drawn on the first selection that can show them.
+        'bands' => 'assets/js/style_designer_bands.min.js',
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.
         'pages' => 'assets/js/style_designer_pages.min.js',
