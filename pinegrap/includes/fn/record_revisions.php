@@ -47,9 +47,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The source labels a revision can carry: which path saved the item.
  *
  * edit: the panel's edit screen; restore: a revision loaded back and saved;
- * api: the external API; workspace: a change carried out in the Workspace.
+ * api: the external API; workspace: a change carried out in the Workspace;
+ * designer: a field corrected in place in the Page Design Studio's Preview.
  */
-define('PG_RECORD_REVISION_SOURCES', 'edit,restore,api,workspace');
+define('PG_RECORD_REVISION_SOURCES', 'edit,restore,api,workspace,designer');
 
 /**
  * The largest values_json (MEDIUMTEXT) and record_json (TEXT) in bytes.
@@ -927,6 +928,8 @@ function pg_record_revision_source_label($source)
             return lang('API');
         case 'workspace':
             return lang('Workspace');
+        case 'designer':
+            return lang('Page Design Studio');
         default:
             return lang('Edited');
     }
