@@ -198,7 +198,7 @@ function test_designer_home_design_picture_is_the_page_edit_opens()
 function test_designer_start_kinds_order()
 {
 	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true));
-	pg_assert_same(array('blank', 'template', 'import', 'paste'), $keys, 'blank, template, ZIP file, pasted markup');
+	pg_assert_same(array('blank', 'template', 'canva', 'import', 'paste'), $keys, 'blank, template, Canva, ZIP file, pasted markup');
 	foreach (pg_designer_start_kinds(true) as $k) {
 		pg_assert_true($k['title'] !== '' && $k['line'] !== '' && $k['icon'] !== '', $k['key'] . ': a title, one line and an icon');
 		pg_assert_same(false, $k['disabled'], $k['key'] . ': open while there are templates');
@@ -218,6 +218,7 @@ function test_designer_start_key_falls_back_to_blank()
 	$kinds = pg_designer_start_kinds(true);
 	pg_assert_same('import', pg_designer_start_key('import', $kinds), 'a known start');
 	pg_assert_same('paste', pg_designer_start_key('paste', $kinds), 'a known start');
+	pg_assert_same('canva', pg_designer_start_key('canva', $kinds), 'the Canva start');
 	pg_assert_same('blank', pg_designer_start_key('figma', $kinds), 'a start not built yet');
 	pg_assert_same('blank', pg_designer_start_key(array('x'), $kinds), 'not text');
 	pg_assert_same('blank', pg_designer_start_key('template', pg_designer_start_kinds(false)), 'a start that waits');

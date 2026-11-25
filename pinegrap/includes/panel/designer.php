@@ -1144,6 +1144,22 @@ function pg_panel_designer($request, $action)
                 : array('status' => 'success', 'key' => $fg_link['key'], 'pictures' => (object)$fg_read['pictures']));
             break;
 
+        // The Canva start of the New design window: one exported page a
+        // request, stored in the file manager as an upload and measured
+        // (canva_page); then the colours of all the pages added, for the
+        // colours card (canva_colors). No Canva call. A designer's own.
+        case 'canva_page':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(pg_canva_store_page(isset($_FILES['file']) ? $_FILES['file'] : null));
+            break;
+        case 'canva_colors':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(array(
+                'status' => 'success',
+                'colors' => pg_canva_pick_colors((isset($request['lists']) && is_array($request['lists'])) ? array_slice($request['lists'], 0, pg_canva_max_pages()) : array(), pg_canva_max_colors()),
+            ));
+            break;
+
         // A design renamed from the designs list (pg_designer_rename_design()).
         case 'design_rename':
             $dr = pg_designer_rename_design(

@@ -23,7 +23,7 @@ priority: 7
 - ST3 (M) after ST1: Figma on Connections, the file read, the frame list. Done in #11558: `ui/connections-figma-page.md`, `designer/figma-start-frame-list.md`; the start is listed once ST5 defines `pg_figma_import_start()`.
 - ST4 (M) after ST1: the Figma converter, pure: a frame's nodes to a tree; tests on stored answers. Done in #11509: `designer/figma-import-converter.md`.
 - ST5 (M) after ST3, ST4: pictures, shared components, variables, the report.
-- ST6 (M) after ST1 and SK7: the Canva upload (no connection), reference pictures, the colours. In progress.
+- ST6 (M) after ST1 and SK7: the Canva upload (no connection), reference pictures, the colours. Done in #11635: `designer/canva-start.md`; PNG only, a PDF is refused (no safe server path to turn it into pictures).
 - ST7 (S) Close-out: memory, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?

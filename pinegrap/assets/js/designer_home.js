@@ -928,7 +928,8 @@
             parts[part] = 'loading';
 
             var script = document.createElement('script');
-            script.src = (C.partBase || 'assets/js/') + 'designer_' + part + '.js' + (C.partStamp ? '?v=' + C.partStamp : '');
+            var stamp = pane.getAttribute('data-part-stamp') || C.partStamp || '';
+            script.src = (C.partBase || 'assets/js/') + 'designer_' + part + '.js' + (stamp ? '?v=' + stamp : '');
             script.onload = function () {
                 parts[part] = 'loaded';
                 ready();
@@ -1072,11 +1073,21 @@
             syncGo();
         }
 
-        function askQuestions(pane, href) {
+        // start: answers the questions open with (the Canva start's two
+        // colours); before: run just before the window leaves for the
+        // design.
+        function askQuestions(pane, href, start, before) {
+            var leave = function (url) {
+                if (before) {
+                    before();
+                }
+                window.location.href = url;
+            };
+
             questionsLoad().then(function (q) {
                 if (!q) {
                     // Without the questions the design opens as before.
-                    window.location.href = href;
+                    leave(href);
                     return;
                 }
 
@@ -1093,7 +1104,7 @@
 
                 var box = document.createElement('div');
                 var foot = document.createElement('span');
-                var hide = Array.prototype.slice.call(win.querySelectorAll('.dialog-footer > [data-bs-dismiss="dialog"], #sd-ns-go'));
+                var hide = Array.prototype.slice.call(win.querySelectorAll('.dialog-footer > [data-bs-dismiss="dialog"], #sd-ns-go, .sd-ns-part-foot, .sd-ns-count'));
 
                 foot.className = 'd-contents';
                 pane.appendChild(box);
@@ -1107,13 +1118,14 @@
                     el: box,
                     foot: foot,
                     q: q,
+                    start: start || null,
                     mode: 'window',
                     btn: { fill: 'pg-button pg-button-fill', quiet: 'pg-button pg-button-quiet', ghost: 'pg-button pg-button-ghost' },
                     back: leaveQuestions,
                     cancel: leaveQuestions,
                     done: function (answers) {
                         var any = Object.keys(answers).some(function (k) { return !!answers[k]; });
-                        window.location.href = href + (any ? '&answers=' + encodeURIComponent(JSON.stringify(answers)) : '');
+                        leave(href + (any ? '&answers=' + encodeURIComponent(JSON.stringify(answers)) : ''));
                     }
                 });
             });
@@ -1134,6 +1146,10 @@
         }
 
         pgUI.dialog.on(win, 'hidden', leaveQuestions);
+
+        // A start's own part (the Canva start) hands its pane over to the
+        // questions the same way.
+        window.sdStartAsk = askQuestions;
 
         pgUI.dialog.on(win, 'show', function (event) {
             var source = event.relatedTarget;

@@ -594,6 +594,7 @@
     "In Application Access, make an application for the agent: the agent reads and writes with that application's permissions.": "Uygulama Erişimi'nde ajan için bir uygulama oluşturun: ajan o uygulamanın izinleriyle okur ve yazar.",
     "In Aquarius, south-east after nine": "Kova'da, dokuzdan sonra güneydoğuda",
     "In Block mode, crawlers that are not recognised and not on your allowed list receive a 403 response, reducing server load and preventing visitor count inflation; in Monitor mode they are only recorded. The REST API is exempt, so your own integrations keep working.": "Engelleme modunda, tanınmayan ve izin verilenler listenizde olmayan tarayıcılar 403 yanıtı alır; bu, sunucu yükünü azaltır ve ziyaretçi sayısının şişmesini önler. İzleme modunda yalnızca kaydedilirler. REST API muaftır, bu nedenle kendi entegrasyonlarınız çalışmaya devam eder.",
+    "In Canva: Share, Download, then “PNG”.": "Canva'da: Paylaş, İndir, sonra “PNG”.",
     "In Edit dashboard the cards move by their grip, or with the arrow keys once the grip has focus.": "Panoyu düzenle'de kartlar tutamacından sürüklenir; tutamaç seçiliyken ok tuşlarıyla da taşınır.",
     "In English with Turkish subtitles": "İngilizce, Türkçe altyazılı",
     "In Figma: Share, then “Copy link”.": "Figma'da: Paylaş, ardından “Bağlantıyı kopyala”.",
