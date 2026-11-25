@@ -593,6 +593,8 @@ function pg_audit_view_labels($kind)
             'privacy_rule' => lang('Retention rule'),
             'privacy_request' => lang('Privacy request'),
             'shipment_problem' => lang('Delivery problem'),
+            'style'        => lang('Design'),
+            'shared_component' => lang('Shared component'),
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
