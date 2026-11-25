@@ -70,9 +70,14 @@ function test_designer_revision_load_every_way_asks()
 {
 	$source = designer_revision_load_test_source();
 
-	pg_assert_same(2, substr_count($source, 'var loadRefusal = _sdRevisionLoadRefusal();'), 'the History list and the comparison');
+	pg_assert_same(1, substr_count($source, 'var loadRefusal = _sdRevisionLoadRefusal();'), 'the History list');
 	pg_assert_contains("(loadRefusal ? ' disabled title=\"' + esc(loadRefusal) + '\"' : '') + '>' + esc(_sdT('Load')) + '</button>'", $source, 'the row\'s Load');
-	pg_assert_contains("(loadRefusal ? ' disabled title=\"' + esc(loadRefusal) + '\"' : '') + '>' + esc(_sdT('Load this revision'))", $source, 'Load this revision');
+
+	// The Compare window is the designer part `compare`.
+	$compare = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_compare.js');
+	pg_assert_contains('var refusal = K._sdRevisionLoadRefusal();', $compare, 'the comparison');
+	pg_assert_contains("(refusal ? ' disabled title=\"' + esc(refusal) + '\"' : '') + '>' +", $compare, 'Load this revision');
+	pg_assert_contains("esc(_sdT('Load this revision'))", $compare, 'Load this revision');
 
 	$from = strpos($source, 'function _sdRevisionRestore(');
 	pg_assert_contains('var refusal = _sdRevisionLoadRefusal();', substr($source, $from, 200), 'the restore refuses too');

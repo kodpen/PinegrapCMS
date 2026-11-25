@@ -1281,6 +1281,31 @@ function pg_panel_designer($request, $action)
             respond(array('status' => 'success', 'revision' => $rv));
             break;
 
+        // One picture of Compare's Look tab: a tree of the page (the page on
+        // the site, a revision or the draft) drawn as a whole page the way a
+        // signed-out visitor is served it, with each element's tree id
+        // (data-pg-node), through the SEO check's draft render. Nothing is
+        // written and no visit is counted. An empty html tells the editor to
+        // draw the picture itself (a page it may only view, a tree the save
+        // would refuse, a render that failed).
+        case 'compare_render':
+            $cr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            $cr_tree = (isset($request['tree_json']) && is_string($request['tree_json'])) ? $request['tree_json'] : '';
+            if ($cr_page <= 0 || !pg_designer_revision_page_ok($cr_page, $user)) {
+                respond(array('status' => 'error', 'message' => lang('Page not found.')));
+            }
+            $cr_html = '';
+            if ($cr_tree !== '' && strlen($cr_tree) <= 4000000) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+                $cr_render = pg_seo_check_draft_render($cr_page, array(), $cr_tree,
+                    (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(), $user);
+                if ($cr_render !== null && $cr_render['error'] === '' && stripos((string)$cr_render['html'], '<html') !== false) {
+                    $cr_html = (string)$cr_render['html'];
+                }
+            }
+            respond(array('status' => 'success', 'html' => $cr_html));
+            break;
+
         // Save a stylesheet as a theme: a design CSS file in the file
         // manager (design = 1 is what get_theme_options() lists), written
         // from the Themes panel's light/dark variable blocks. Nothing is
