@@ -123,16 +123,15 @@ function test_designer_parts_files_describe_every_part()
 // editor, 'off' ones never, the others while their condition is true.
 function test_designer_parts_for_follow_their_condition()
 {
-	$every = array('bands', 'code', 'focus', 'fonts', 'guides', 'import', 'interactions', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'treesearch', 'variables');
+	$every = array('bands', 'code', 'focus', 'fonts', 'guides', 'import', 'interactions', 'mirror', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'treesearch', 'variables');
 	pg_assert_same($every, pg_designer_parts_for(array()), 'nothing holds: the parts of every editor');
 	pg_assert_same($every, pg_designer_parts_for(array('always' => false, 'off' => true, 'nope' => true)), 'always and off cannot be turned');
 
 	$all = array_fill_keys(pg_designer_part_conditions(), true);
 	$given = pg_designer_parts_for($all);
-	pg_assert_false(in_array('mirror', $given, true), 'mirror is off');
-	pg_assert_same(array_values(array_diff(array_keys(pg_designer_part_files()), array('mirror'))), $given, 'everything else holds');
+	pg_assert_same(array_keys(pg_designer_part_files()), $given, 'everything holds');
 
-	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'clicks' => 'clicks', 'mirror' => 'off');
+	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'clicks' => 'clicks', 'mirror' => 'always');
 	foreach ($expect as $part => $condition) {
 		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
 	}

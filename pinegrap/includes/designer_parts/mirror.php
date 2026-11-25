@@ -8,7 +8,8 @@
  * The canvas mirrors: the draft at another width beside the canvas, drawn
  * again when the hand rests. When they are drawn again
  * (window.PGMirrorSchedule), then the part that fills their frames from the
- * canvas. Not handed until its switch is built.
+ * canvas. Every editor may open it from the View menu's "Side by side"; it
+ * loads the first time the switch is turned on.
  *
  * Memory: docs/memory/designer/designer-canvas-mirror.md
  *
@@ -27,5 +28,5 @@ return array(
 		'assets/js/pg_mirror_schedule.js',
 		'assets/js/style_designer_mirror.js',
 	),
-	'when'    => 'off',
+	'when'    => 'always',
 );

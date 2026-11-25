@@ -183,3 +183,9 @@ function test_mirror_is_a_part()
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_false(strpos($core, 'PGMirrorSchedule') !== false, 'the core holds no scheduling');
 }
+
+// Every editor gets the part's address; it runs only when the switch is on.
+function test_mirror_is_handed_to_every_editor()
+{
+	pg_assert_true(in_array('mirror', pg_designer_parts_for(array()), true), 'handed with no condition');
+}
