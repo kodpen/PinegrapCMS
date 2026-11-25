@@ -11,7 +11,7 @@ description: A visual design's look and colour palette (style.style_look / style
 - The theme file (`style.theme_id`, a `files` row with `design = 1`, "Save as theme" → `designer/theme_save`) is a separate stylesheet, chosen in the same Theme pane.
 
 ## In what order do the stylesheets load?
-- bootstrap.css → `bridge.css` (Bootstrap's literal component colours pointed at variables; loaded when a look or a palette is set) → `base.css` (the look tokens applied to every component; with a look) → the look → the palette. The design's own stylesheets, User Styles and the theme file still win.
+- bootstrap.css → `bridge.css` (Bootstrap's literal component colours pointed at variables; loaded when a look, a palette or variables are set) → `base.css` (the look tokens applied to every component; with a look or variables) → the look → the palette → the design's variables (`design-variables-tab.md`). The design's own stylesheets, User Styles and the theme file still win.
 - Every surface puts them right after the last Bootstrap link: the site through `get_page_content.php` (`pg_design_theme_links()`), the canvas through `_sdThemeApply()` (also run at the end of `applyAssetsToIframe()`, which re-adds the links), the preview through `_sdPreviewDocHtml()`.
 
 ## How does a new component style use the theme?

@@ -75604,7 +75604,8 @@ const StyleDesigner = (function () {
     // The look builder and the palette builder send choices to the server
     // and try the stylesheet it answers with on the canvas; saving writes it
     // to the file manager, where every design can pick it.
-    var _sdThemeTry = { look: '', palette: '' };   // builder output being tried on the canvas
+    var _sdThemeTry = { look: '', palette: '', variables: '' };   // builder output being tried on the canvas
+    var _sdThemePaneTab = 'look';                  // the Theme pane's tab: look or variables
     var _sdColorModeOpened = false;                // the canvas took the design's mode once
     var _sdThemeTryTimer = { look: 0, palette: 0 };
     var _sdThemeTrySeq = { look: 0, palette: 0 };
@@ -75663,14 +75664,20 @@ const StyleDesigner = (function () {
         var look = _sdThemeFind('look', _sdThemeValue('look'));
         var pal  = _sdThemeFind('palette', _sdThemeValue('palette'));
         var lookCss = _sdThemeTry.look, palCss = _sdThemeTry.palette;
-        if (!look && !pal && !lookCss && !palCss) return out;
+        // The design's variables: the tab's model being tried, else the
+        // saved file (sdDesign.themes.variables, '' for none).
+        var varCss = _sdThemeTry.variables, varUrl = varCss ? '' : (th.variables || '');
+        if (!look && !pal && !lookCss && !palCss && !varCss && !varUrl) return out;
         out.push({ id: 'pg-theme-bridge', url: th.bridge });
+        if (lookCss || look || varCss || varUrl) out.push({ id: 'pg-theme-base', url: th.base });
         if (lookCss || look) {
-            out.push({ id: 'pg-theme-base', url: th.base });
             out.push(lookCss ? { id: 'pg-theme-look', css: lookCss } : { id: 'pg-theme-look', url: look.url });
         }
         if (palCss || pal) {
             out.push(palCss ? { id: 'pg-theme-palette', css: palCss } : { id: 'pg-theme-palette', url: pal.url });
+        }
+        if (varCss || varUrl) {
+            out.push(varCss ? { id: 'pg-theme-variables', css: varCss } : { id: 'pg-theme-variables', url: varUrl });
         }
         return out;
     }
@@ -75871,9 +75878,23 @@ const StyleDesigner = (function () {
             host.innerHTML = '<p class="form-text small mb-0">' + esc(_sdT('This design is built without a framework. Looks and colour palettes dress the Bootstrap components, so they are not offered here.')) + '</p>';
             return;
         }
+        // Two tabs: the look and palette cards, and the design's variables
+        // (the part 'variables', loaded the first time its tab is shown).
+        var tabs = '<div class="btn-group btn-group-sm mb-3" role="tablist" aria-label="' + _thAttr(_sdT('Theme')) + '">';
+        [['look', _sdT('Look and colours')], ['variables', _sdT('Variables')]].forEach(function (t) {
+            var on = _sdThemePaneTab === t[0];
+            tabs += '<button type="button" class="btn ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') + '" role="tab" aria-selected="' + on + '" data-th-tab="' + t[0] + '">' + esc(t[1]) + '</button>';
+        });
+        tabs += '</div>';
+        if (_sdThemePaneTab === 'variables') {
+            host.innerHTML = tabs + '<div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
+            _sdThemeBindTabs(host);
+            _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
+            return;
+        }
         var look = _sdThemeValue('look'), pal = _sdThemeValue('palette');
         var colors = _sdThemeColors();
-        var h = '';
+        var h = tabs;
         if (!th.ready) {
             h += '<div class="sd-th-warn"><span class="bi bi-exclamation-triangle me-1"></span>' +
                  esc(_sdT('The database has not been updated yet: you can try a look and a palette on the canvas, but the choice is saved once the 2026.4.5 update has run.')) + '</div>';
@@ -76056,7 +76077,47 @@ const StyleDesigner = (function () {
         });
     }
 
+    function _sdThemeBindTabs(host) {
+        host.querySelectorAll('[data-th-tab]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (_sdThemePaneTab === b.getAttribute('data-th-tab')) return;
+                _sdThemePaneTab = b.getAttribute('data-th-tab');
+                _sdThemeRender();
+            });
+        });
+    }
+
+    // What the part 'variables' reaches of the editor: the pane it draws in,
+    // the look and palette of the moment, the stored file, the hidden input
+    // the save posts and the try-on of its stylesheet on the canvas.
+    function _sdVarsHost(el) {
+        var th = _sdThemes() || {};
+        var input = document.getElementById('sd-style-variables');
+        return {
+            el: el,
+            styleId: (_design && _design.styleId) ? _design.styleId : 0,
+            stored: !!th.variables,
+            look: function () { return _sdThemeValue('look'); },
+            palette: function () { return _sdThemeValue('palette'); },
+            model: function () {
+                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+            },
+            setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
+            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
+        };
+    }
+
+    // A changed look or palette carries the variables along (the untouched
+    // colours follow the new palette): the part works the stylesheet out
+    // again, once it has run or when the design has a saved file.
+    function _sdVarsFollowTheme() {
+        var th = _sdThemes();
+        if (!th || (!th.variables && !_sdPartLoaded('variables'))) return;
+        _sdPartCall('variables', 'refresh', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(function () {});
+    }
+
     function _sdThemeBind(host) {
+        _sdThemeBindTabs(host);
         host.querySelectorAll('[data-th-mode]').forEach(function (b) {
             b.addEventListener('click', function () { _sdColorModeChoose(b.getAttribute('data-th-mode')); });
         });
@@ -80895,6 +80956,7 @@ const StyleDesigner = (function () {
     }
 
     document.addEventListener('pg-design-theme-change', function () { _sdLivePreviewSchedule(); });
+    document.addEventListener('pg-design-theme-change', function () { _sdVarsFollowTheme(); });
 
     // ========================= AUTOSAVE =========================
     // One entry per design and page in the browser's storage (_autosaveKey()),
@@ -82466,7 +82528,7 @@ const StyleDesigner = (function () {
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
                      'style_custom_css', 'style_custom_js', 'style_custom_fonts',
-                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags'];
+                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags', 'style_variables'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');
