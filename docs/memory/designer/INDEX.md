@@ -525,6 +525,7 @@
 - designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state [decision: here]
 - designer-save-shortcut.md: Ctrl+S in the visual editor: the one save of the whole design without the Publish sheet, its two listeners, the dialogs that keep their own, and toolbar hints via _sdSetButtonTitle()
 - designer-screen-messages.md: The visual designer screen shows liveform errors, warnings and notices as its own toasts, never as the panel's alert boxes (#4892) [decision: decisions-made-panel-2.md]
+- designer-screens-side-by-side-drawing.md: The drawing of "Side by side" (plans/designer-screens-side-by-side.md, SS2 and SS3): the sheet, its six boards, which step builds which, the measures and the texts it fixes
 - designer-scroll-snap.md: Advanced › Layout's Scroll snap on a flex or grid box and Snap to on its children (DO8): classes, rules joining User Styles on first use, the scroller kept apart
 - designer-scroller-controls.md: Previous/next buttons of the scroller-cards block: the row marker, pg_scroller.js and where it is added (page, preview, canvas), one-card step, ends, reduced motion, RTL.
 - designer-scroller-wide-slides.md: The Wide slides option of a scroller row (pg-snap-wide): one large slide per stop, 85vw, centred; the Scroller section, its helper and rule
