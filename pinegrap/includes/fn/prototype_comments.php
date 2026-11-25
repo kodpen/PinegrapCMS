@@ -408,6 +408,8 @@ function pg_proto_comment_error_message($code)
             return lang('Choose Approve this page or Request changes.');
         case 'note':
             return lang('Write what should change, at most 1,000 characters.');
+        case 'changed':
+            return lang('This page changed since you opened it. Open it again to see it as it is now, then review it.');
     }
 
     return lang('Sorry, we could not accept your request.');
@@ -423,7 +425,7 @@ function pg_proto_comment_error_status($code)
 {
     $map = array(
         'method' => 405, 'origin' => 403, 'token' => 403, 'link' => 404, 'session' => 403,
-        'comments_off' => 403, 'approval_off' => 403, 'page' => 404, 'rate' => 429, 'full' => 409, 'size' => 413,
+        'comments_off' => 403, 'approval_off' => 403, 'page' => 404, 'rate' => 429, 'full' => 409, 'changed' => 409, 'size' => 413,
     );
 
     return isset($map[(string) $code]) ? $map[(string) $code] : 400;

@@ -270,6 +270,22 @@ function pg_proto_verdict_check($input)
 }
 
 /**
+ * Whether the draft the guest saw is the draft now: the viewer is drawn with
+ * the draft's fingerprint and posts it back with the verdict, so a verdict
+ * is never sealed to a version the guest did not see (the designer changed
+ * the draft while the viewer was open).
+ *
+ * @param mixed  $seen        the fingerprint the viewer posted
+ * @param string $fingerprint the draft's fingerprint now
+ * @return bool
+ */
+function pg_proto_verdict_seen_ok($seen, $fingerprint)
+{
+    return is_string($seen) && preg_match('/^[0-9a-f]{40}$/D', $seen)
+        && ((string) $fingerprint !== '') && hash_equals((string) $fingerprint, $seen);
+}
+
+/**
  * The verdict that stands on each page: the newest of the given rows of one
  * link (by created_at, then id). Rows without a page are skipped.
  *
