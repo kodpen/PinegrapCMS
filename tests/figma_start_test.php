@@ -165,3 +165,23 @@ function test_figma_frame_step_after_stop_keeps_nothing()
 	pg_assert_same(array(1), pg_figma_import_load($id)['frames'], 'the step is written');
 	@unlink($path);
 }
+
+// One image fill on many layers is fetched once, so it spends one place of
+// the import's picture budget, not one per layer.
+function test_figma_picture_budget_counts_a_fill_once()
+{
+	$pic = function ($n, $ref) {
+		return array('node' => 'sd_' . $n, 'figma' => '1:' . $n, 'kind' => 'image', 'image_ref' => $ref);
+	};
+	$frames = array(
+		array('pictures' => array($pic(1, 'logo'), $pic(2, 'logo'), $pic(3, 'hero')), 'report' => array()),
+		array('pictures' => array($pic(4, 'logo'), $pic(5, 'team'), array('node' => 'sd_6', 'figma' => '1:6', 'kind' => 'vector', 'image_ref' => '')), 'report' => array()),
+	);
+	$plan = pg_figma_picture_budget($frames, 3);
+	pg_assert_same(3, count($plan['frames'][0]['pictures']), 'the logo three times and the hero');
+	pg_assert_same(array(), $plan['frames'][0]['report'], 'nothing over the budget on the first frame');
+	pg_assert_same(2, count($plan['frames'][1]['pictures']), 'the logo again and the team picture; the vector is over');
+	pg_assert_same('pictures', $plan['frames'][1]['report'][0]['code'], 'the vector over the budget is a note');
+	pg_assert_same(array(), $plan['vectors'], 'no vector fetched');
+	pg_assert_same(true, $plan['fills'], 'image fills to ask for');
+}
