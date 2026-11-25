@@ -1,6 +1,6 @@
 ---
 name: designer-style-guide-print-links
-description: The Style guide's names as links to a variable or component and "Print or save as PDF" (SG3, #PRNUM): openVariable, openComponent, reveal, the @page head and foot
+description: The Style guide's names as links to a variable or component and "Print or save as PDF" (SG3, #11678): openVariable, openComponent, reveal, the @page head and foot
 ---
 
 ## Where does a name lead?

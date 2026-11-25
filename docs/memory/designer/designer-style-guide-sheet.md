@@ -30,4 +30,4 @@ module: design_style_guide
 - Without variables a line under the strip offers "Answer the questions": the sheet closes, Settings opens on Theme, Variables, and the start questions are asked.
 
 ## Print and names?
-- SG3 (#PRNUM): `designer-style-guide-print-links.md`.
+- SG3 (#11678): `designer-style-guide-print-links.md`.
