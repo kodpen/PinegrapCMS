@@ -21,7 +21,7 @@ priority: 7
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - SK1 (M) The reader, pure: boxes in, sections with kinds and unsure marks out. Done (#11493, `designer/sketch-reader.md`).
 - SK2 (M) The Sketch tool on the graph canvas: frame, boxes, chips, snapping. Done #11497 (designer/prototype-sketch-tool.md; box kinds `header` … `booking` in `SD_SKETCH_KINDS`, `kind: ''` left to the reader; kept per browser until SK4).
-- SK3 (M) after SK1: the builder, pure: a section list to a tree from starters, with variables.
+- SK3 (M) after SK1: the builder, pure: a section list to a tree from starters, with variables. Done #11532 (`designer/sketch-builder.md`; header and footer handed back for SK4 to make shared components, widgets placed by the caller, sample words given by the caller).
 - SK4 (M) after SK2, SK3: "Build the page", "Build again", the sketch kept with the draft.
 - SK5 (M) after SK2: "Page details".
 - SK6 (S) after SK4: the two AI actions.
