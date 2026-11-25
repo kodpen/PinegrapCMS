@@ -24,7 +24,7 @@ priority: 7
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - SE1 (S) The matcher, pure: the four ways of alike, the three places, what is left out and why. Done (#11530): `assets/js/pg_select_similar.js` (`window.PGSelectSimilar.find(tree, target, { by, where, cls, mayEdit, keepsChildren })`), in no bundle yet; SE2 makes it the first source of a part.
-- SE2 (M) after SE1 and DD13: the menu rows, the line with its two lists, Overview, the command palette, the key. Boards E1 to E4 of `designer/designer-select-similar-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
+- SE2 (M) Done (#11649, `designer/designer-select-similar-part.md`): the menu rows, the line with its two lists, Overview, the command palette, the key. Boards E1 to E4 of `designer/designer-select-similar-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
 - SE3 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
