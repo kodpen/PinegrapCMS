@@ -5,7 +5,7 @@ description: Drawing of the designer's History "Activity" tab, boards A1 and A2:
 
 ## Where is the drawing?
 - `designer/designer-activity-drawing/activity.html` with `activity-dark.jpg` and `activity-light.jpg`; five boards. A3 to A5 (the choosers, Compare, more rows, empty, narrow) are in `designer-activity-drawing-choosers.md`.
-- Step AC3 of `plans/designer-activity.md` builds it (`workflow/screen-follows-drawing.md`). The events, their sentences and who sees which are the reader's (`designer-activity-reader.md`, `designer-activity-audit-lines.md`).
+- Built as `designer-activity-tab.md` (`workflow/screen-follows-drawing.md`); the start file is `designer-activity.md`. The events, their sentences and who sees which are the reader's (`designer-activity-reader.md`, `designer-activity-audit-lines.md`).
 
 ## What are the two tabs? (A1)
 - History keeps its place, head and width. Under the head two tabs, each half the width: "This page" holds the published revisions and the local snapshots exactly as today; "Activity" is new.

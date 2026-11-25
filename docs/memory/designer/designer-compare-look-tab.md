@@ -6,7 +6,7 @@ module: seo_draft
 
 ## Where does the Compare window live?
 - Designer part `compare` (`includes/designer_parts/compare.php`, `when` always): `pg_compare_changes.js` (the reader), `pg_compare_look.js` (`window.PgCompareLook`, the pure rules) and `style_designer_compare.js` (the window). The core keeps `_sdCompareOpen(opts)` and `_sdRevisionOpenCompare(pageId, no, done)`, History's row button.
-- `opts`: `pageId`; `left` / `right` as `now` (the tab's tree), `live` (the page on the site) or `rev:<no>`, default `live` and `now`; `history` (the revision whose row opened it: its head, the side choosers, "Load this revision"); `done`. AC3 of `designer-activity.md` opens it with `left: 'rev:<n-1>', right: 'rev:<n>', history: n`.
+- `opts`: `pageId`; `left` / `right` as `now` (the tab's tree), `live` (the page on the site) or `rev:<no>`, default `live` and `now`; `history` (the revision whose row opened it: its head, the side choosers, "Load this revision"); `done`. The Activity tab (`designer-activity-tab.md`) opens it with `left: 'rev:<n-1>', right: 'rev:<n>', history: n`.
 
 ## What is the page on the site?
 - The tab's stored tree: `PgCompareLook.liveTree(p.baseline)` (the baseline is the tree's JSON, then `|` and the settings). For a page not open in a tab, the newest revision. A draft page (`page_draft` with drafts ready) or one never saved has none: the reader's `new`.
