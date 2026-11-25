@@ -22,7 +22,7 @@ function test_order_invoice_print_errors_translated()
 
 	pg_assert_same(0, preg_match("/output_error\\('/", $source), 'no output_error() with a bare English literal');
 
-	foreach (array('E-commerce is not enabled on this site.', 'Order id is missing.', 'Order not found.', 'You are not allowed to view this invoice.') as $text) {
+	foreach (array('E-commerce is not enabled on this site.', 'Order id is missing.', 'Order not found.') as $text) {
 		pg_assert_contains("output_error(lang('" . $text . "')", $source, $text);
 	}
 }

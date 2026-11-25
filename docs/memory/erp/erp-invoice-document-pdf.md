@@ -11,7 +11,7 @@ description: ERP invoice document layer (includes/erp/document.php): template sy
 - `erp_invoice_html($invoice_id)` and `erp_invoice_pdf($invoice_id)`; the latter loads dompdf via `includes/dompdf/autoload.inc.php` (needs PHP 7.1).
 
 ## Which documents are PDFs made on the server?
-- ERP documents only, with dompdf (docs/memory/core/dompdf-embedding.md): invoice, delivery note, reconciliation letter, quote, purchase order and the customer's copies (`get_account_document.php`). The customer's order receipt (`order_invoice_print.php`) and the signature receipt stay browser print (docs/memory/commerce/order-view-timeline-invoice-card.md).
+- ERP documents only, with dompdf (docs/memory/core/dompdf-embedding.md): invoice, delivery note, reconciliation letter, quote, purchase order and the customer's copies (`get_account_document.php`). The customer's order receipt (`order_invoice_print.php`) and the signature receipt stay browser print (docs/memory/commerce/order-invoice-print.md).
 
 ## What is the PDF endpoint?
 `get_erp_invoice_pdf.php`: `?id=` inline PDF, `&download=1` download, `&html=1` shows HTML. A POST `template` field previews an UNSAVED template and requires CSRF + the `settings` right. The *PDF* and *İndir* buttons in the top toolbar of `edit_erp_invoice.php` go here; a purchase invoice has neither and gets a notice page here (erp-document-archive.md).
@@ -25,4 +25,4 @@ description: ERP invoice document layer (includes/erp/document.php): template sy
 - A saved custom template stays as the operator wrote it; it must add placeholders, plain text also works.
 - Turkish-specific term keys: `VKN / TCKN` (seller/buyer), `Tax ID` → "VKN" (carrier), `VAT` → "KDV", `Discount` → "İndirim" (not the old template's "İskonto"; same as the product-wide translation).
 - Its totals box adds up to the grand total: subtotal − discount + VAT (+ second tax) = grand total, or the tax-inclusive total less withholding. Shipping and surcharge are invoice lines inside the subtotal (erp-order-invoice-header), so the box prints no row for them; `totals.shipping_total` / `has_shipping` / `surcharge_total` / `has_surcharge` stay as placeholders for custom templates. Until #4105 the box added them again (#3998: 158.64 printed against a 150.32 grand total); PDFs kept before stay as issued. Test: `tests/erp_invoice_totals_box_test.php`.
-- Never use `text-transform: uppercase` in template CSS: dompdf confuses dotless/dotted I (`i` → `I`). If capitals are needed, write the text in capitals.
+- Template CSS that dompdf reads differently from a browser: `erp-document-template-css.md`.
