@@ -2704,6 +2704,66 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-quick-card:last-child { flex: 1 1 0; }
 .sd-rcol-narrow .sd-quick-cap { display: none; }
 .sd-review-empty { margin: 0; padding: 1.5rem .75rem; font-size: 12px; color: var(--sd-text-muted); text-align: center; }
+/* "In a state" under the review list: one line per state with "Show". */
+.sd-review-states-h { padding: 12px 8px 4px; font-size: 11px; font-weight: 600; color: var(--sd-text-muted); }
+
+/* ── The Style tab's State row (Normal, Hover, Focus, Pressed) ──
+   First in the Style tab's body: the label and one group drawn as the
+   button groups are (28 high, segments 24). A state that holds a value
+   carries a ring, 7 px, a 1.5 px accent line, white on the chosen
+   segment. Under 300 px the group stands under its label. */
+.sd-state-row { display: flex; align-items: center; gap: 6px 10px; margin: 2px 0 8px; padding-left: 14px; }
+.sd-state-lbl { width: 92px; min-width: 92px; font-size: 12px; color: var(--sd-label); }
+.sd-state-grp {
+    display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; height: 28px; padding: 1px;
+    border: 1px solid var(--sd-input-border); border-radius: 9px; background: var(--sd-input-bg); box-sizing: border-box;
+}
+.sd-state-seg {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 24px; height: 24px; padding: 0 6px; border: none; border-radius: 7px;
+    background: transparent; color: var(--sd-label); font-size: 11.5px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; cursor: pointer;
+    transition: background-color .12s, color .12s, box-shadow .12s;
+}
+.sd-state-seg:hover { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-state-seg.sd-seg-on, .sd-state-seg.sd-seg-on:hover {
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); box-shadow: var(--sd-segment-shadow);
+}
+.sd-state-seg:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-state-ring {
+    display: inline-block; flex: 0 0 7px; width: 7px; height: 7px; margin-left: 5px;
+    border: 1.5px solid var(--sd-accent); border-radius: 50%; box-sizing: border-box; vertical-align: middle;
+}
+.sd-state-seg .sd-state-ring { margin-left: 0; }
+.sd-state-seg.sd-seg-on .sd-state-ring { border-color: #fff; }
+.sd-rcol-narrow .sd-state-row { flex-direction: column; align-items: stretch; }
+.sd-rcol-narrow .sd-state-lbl { width: auto; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .sd-state-seg { transition: none; } }
+/* The line under the row, the first-use line. */
+.sd-state-line, .sd-state-hint {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin: -2px 0 8px 14px; font-size: 11.5px; color: var(--sd-text-muted);
+}
+.sd-state-hint { padding: 8px 10px; border-radius: 8px; background: var(--sd-raised-bg); color: var(--sd-text); }
+.sd-state-reset, .sd-state-got {
+    flex-shrink: 0; padding: 2px 6px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--sd-accent); font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.sd-state-reset:hover, .sd-state-got:hover { background: color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-state-reset:focus-visible, .sd-state-got:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-state-reset:disabled { opacity: .4; cursor: default; }
+/* Under a state: the sections the same in every state closed and dimmed,
+   a row no state writes dimmed in place, Normal's value in grey, the
+   corners as their five rows. */
+#sd-properties .sd-state-dim { opacity: .55; }
+#sd-properties .sd-state-dim > .sd-sect-hdr { cursor: default; }
+#sd-properties .sd-state-off { opacity: .45; }
+#sd-properties .sd-state-normal .sd-prop-control { color: var(--sd-text-muted); }
+#sd-properties .sd-state-normal .sd-prop-control select,
+#sd-properties .sd-state-normal .sd-cp-label,
+#sd-properties .sd-state-normal .sd-seg { color: var(--sd-text-muted); }
+#sd-properties .sd-state-normal .sd-seg.sd-seg-on { background: var(--sd-raised-bg-2); box-shadow: none; }
+#sd-properties.sd-state-on .sd-rdb-host { display: none; }
 .sd-props-results[hidden] { display: none; }
 .sd-props-results {
     flex-shrink: 0; max-height: 264px; overflow-y: auto; padding: 4px;
@@ -7675,7 +7735,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 /* The Variables tab (style_designer_variables.js): a fold per group, a row per variable. */
 .sd-vars-group { margin-bottom: 8px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; }
 .sd-vars-summary { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #e6edf3; cursor: pointer; }
-.sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
+.sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
 .sd-vars-row .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
 .sd-vars-swatch { width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .15); }
 .sd-vars-sample { font-size: 13px; color: #8b949e; text-align: center; }
@@ -7685,6 +7745,39 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-vars-contrast { margin: 10px 0; font-size: 11.5px; color: #8b949e; }
 .sd-vars-contrast-row.is-low { color: #f0c674; }
 .sd-vars-foot { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.sd-vars-used { font-size: 11.5px; color: #c9d1d9; white-space: nowrap; }
+.sd-vars-used.is-none { color: #8b949e; }
+
+/* A colour or size control of Options that offers the design's variables
+   (_sdVarCtl()): the quiet "Variables" button, the chip of a bound control,
+   and the list (style_designer_variables.js) under the control. */
+.sd-var-ctl { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.sd-var-main { flex: 1 1 auto; min-width: 0; }
+.sd-var-lit { flex: 1 1 auto; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.sd-var-pick { flex: 0 0 auto; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--sd-text-muted); font-size: 12px; opacity: 0; }
+.sd-var-ctl:hover .sd-var-pick, .sd-var-pick:focus-visible, .sd-var-lit ~ .sd-var-pick { opacity: 1; }
+.sd-var-pick:hover { color: var(--sd-text); background: rgba(var(--sd-accent-rgb), .14); }
+.sd-var-chip { flex: 1 1 auto; min-width: 0; height: 30px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; border-radius: 9px; background: rgba(var(--sd-accent-rgb), .12); border: 1px solid rgba(var(--sd-accent-rgb), .45); }
+.sd-var-chip-name { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--sd-text); font-size: 12px; font-weight: 600; text-align: left; }
+.sd-var-chip-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-var-detach { flex: 0 0 auto; height: 22px; padding: 0 7px; border: 1px solid var(--sd-input-border); border-radius: 6px; background: var(--sd-panel-bg); color: var(--sd-text-muted); font-size: 11px; }
+.sd-var-detach:hover { color: var(--sd-text); }
+.sd-var-sw { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .2); }
+.sd-var-ic { flex: 0 0 auto; width: 14px; color: var(--sd-text-muted); font-size: 12px; text-align: center; }
+.sd-var-list { position: absolute; top: calc(100% + 4px); right: 0; z-index: 60; width: 252px; max-width: calc(100vw - 32px); max-height: 340px; overflow-y: auto; padding: 6px; background: var(--sd-panel-bg); border: 1px solid var(--sd-input-border); border-radius: 9px; box-shadow: 0 6px 18px color-mix(in srgb, var(--sd-shadow) 50%, transparent); }
+.sd-var-busy { margin: 4px; font-size: 12px; color: var(--sd-text-muted); }
+.sd-var-tip { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 6px; padding: 8px; border-radius: 7px; background: rgba(var(--sd-accent-rgb), .12); font-size: 12px; color: var(--sd-text); }
+.sd-var-tip .btn { height: 26px; padding: 0 9px; font-size: 11.5px; }
+.sd-var-search { margin-bottom: 4px; }
+.sd-var-head { padding: 6px 6px 2px; font-size: 11px; font-weight: 600; color: var(--sd-text-muted); }
+.sd-var-row { width: 100%; height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--sd-text); font-size: 12px; text-align: left; }
+.sd-var-row:hover, .sd-var-row:focus-visible { background: rgba(var(--sd-accent-rgb), .14); }
+.sd-var-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-var-val { flex: 0 0 auto; color: var(--sd-text-muted); font-size: 11.5px; }
+.sd-var-tick { flex: 0 0 14px; visibility: hidden; color: var(--sd-accent); }
+.sd-var-row.is-on .sd-var-tick { visibility: visible; }
+.sd-var-sep { height: 1px; margin: 4px 0; background: var(--sd-input-border); }
+.sd-var-typed { color: var(--sd-text-muted); }
 
 /* ========================= ASSISTANT PANEL (designer_ai.js) =========================
    Claude or Pinegrap AI changes the selected element or the whole page. The

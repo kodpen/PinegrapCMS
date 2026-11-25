@@ -7,7 +7,7 @@ module: design_themes
 ## Where is the tab?
 - Settings, Theme has two tabs at the top of `#sd-theme-picker`: "Look and colours" (the cards, as before) and "Variables". No bar button; the tab is drawn by the part `variables` (`assets/js/style_designer_variables.js`, `pg_designer_parts()`), loaded the first time the tab is shown.
 - A fold per group (Colour, Type, Spacing, Shape, then "Your own" with "Add a colour" / "Add a size", at most 24), a row per variable (swatch or "Aa" sample, a light and a dark colour picker, or the value field), the contrast rows of text and muted text on the surface, and "Back to the look and palette".
-- "Used in n places" and the Options controls offering variables are DV3; the start questions DV4; Export and Import DV5 (`plans/designer-variables.md`).
+- Each row ends with "Used in n places" (DV3, `design-variables-options.md`); the start questions are DV4, Export and Import DV5 (`plans/designer-variables.md`).
 
 ## How does a change reach the canvas?
 - The part asks `designer/variables_state` (`includes/panel/designer.php`, designers only, a clean sub-action of `page_cache.php`) with the model, look and palette; the first time with `style_id` only, and the server reads the stored file. It answers `pg_design_variables_state()`: the model made safe (rebased when it was made from another look or palette), the defaults, the stylesheet, the contrast rows and the tab's rows (`pg_design_variables_client_list()`).

@@ -8181,6 +8181,10 @@ function pg_js_bundles()
         // "Only what I changed" of the Options panel: its pure list and
         // reset loop (window.PGOptionsReview), then the part that draws it.
         'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
+        // The Options panel's states: the state rule model
+        // (window.PGOptionStates), then the part that draws the panel under
+        // a state and writes it.
+        'assets/js/style_designer_states.min.js' => array('assets/js/pg_option_states.js', 'assets/js/style_designer_states.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         // "Page details" of a sketch page: its pure values and checks
         // (window.PGSketchDetails), then the part that draws the window.
@@ -8215,6 +8219,8 @@ function pg_js_bundles()
         // and Content check (window.PgPublishContent), then the part that
         // checks the Publish sheet's pages and lists their findings.
         'assets/js/style_designer_publishcheck.min.js' => array('assets/js/pg_publish_findings.js', 'assets/js/pg_publish_content.js', 'assets/js/style_designer_publishcheck.js'),
+        // My library's Import window and the Export download.
+        'assets/js/style_designer_libraryfile.min.js' => array('assets/js/style_designer_libraryfile.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8322,6 +8328,9 @@ function pg_designer_parts()
         // The Variables tab of Settings › Theme: the design's named colours,
         // type, spacing and shape, tried on the canvas as they change.
         'variables' => 'assets/js/style_designer_variables.min.js',
+        // My library's file: the Import window (the file checked, the
+        // report, a refusal) and the Export download, designers only.
+        'libraryfile' => 'assets/js/style_designer_libraryfile.min.js',
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
@@ -8343,6 +8352,9 @@ function pg_designer_parts()
         // The Publish check: each ticked page's result in the Publish sheet,
         // its findings in five groups, a finding's element selected.
         'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
+        // The Style tab's states (Hover, Focus, Pressed): the panel under a
+        // state, its rule in User Styles and the state on the canvas.
+        'states' => 'assets/js/style_designer_states.min.js',
     );
 }
 
