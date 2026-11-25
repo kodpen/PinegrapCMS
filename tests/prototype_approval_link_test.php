@@ -337,3 +337,19 @@ function test_prototype_approval_link_same_verdict_twice_is_one()
 	$save = strpos($take, 'pg_proto_verdict_save(');
 	pg_assert_true($repeat !== false && $save !== false && $repeat < $save, 'a repeat is answered before anything is written');
 }
+
+// "Approved n of m pages" and the viewer's page marks count only the pages
+// the link shows, as the hold and the reminder do: a link for anyone never
+// shows a draft going live behind a sign-in, so that page could never be
+// approved and the count never reached m of m.
+function test_prototype_approval_link_review_counts_the_pages_it_shows()
+{
+	$access = array(4 => 'public', 5 => 'private', 6 => 'guest', 7 => 'registration');
+
+	pg_assert_same(array(4, 6), pg_proto_review_pages_shown(array(4, 5, 6, 7), 'anyone', $access));
+	pg_assert_same(array(4, 5, 6, 7), pg_proto_review_pages_shown(array(4, 5, 6, 7), 'team', $access), 'a team link shows every draft');
+	pg_assert_same(array(), pg_proto_review_pages_shown(array(8), 'anyone', $access), 'a page of unknown access is not shown');
+
+	pg_assert_contains('pg_proto_review_pages_shown(', prototype_approval_link_test_body('includes/fn/prototype_verdicts.php', 'pg_proto_link_review_states'), 'the viewer marks');
+	pg_assert_contains('pg_proto_review_pages_shown(', prototype_approval_link_test_body('includes/fn/prototype_links.php', 'pg_proto_links_panel'), 'the dialog count');
+}

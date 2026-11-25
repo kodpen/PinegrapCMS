@@ -469,9 +469,34 @@ function pg_proto_draft_fingerprints($page_ids)
 }
 
 /**
+ * The pages a link shows, in the order given: every draft for a team link,
+ * for a link for anyone only those going live in a public or guest folder
+ * (pg_proto_link_page_shown()), as the hold and the reminder read them. Pure.
+ *
+ * @param int[]  $page_ids
+ * @param string $audience prototype_links.audience
+ * @param array  $access   page id => the access control it goes live with
+ * @return int[]
+ */
+function pg_proto_review_pages_shown($page_ids, $audience, $access)
+{
+    $out = array();
+
+    foreach ((array) $page_ids as $id) {
+        $id = (int) $id;
+
+        if (($id > 0) && pg_proto_link_page_shown((string) $audience, isset($access[$id]) ? (string) $access[$id] : '')) {
+            $out[] = $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Each draft page's mark for one link asking approval
- * (pg_proto_review_page_states()), for the given draft pages; empty for a
- * link asking nothing.
+ * (pg_proto_review_page_states()), for the given draft pages the link shows
+ * (pg_proto_review_pages_shown()); empty for a link asking nothing.
  *
  * @param array $link     prototype_links row
  * @param int[] $page_ids the design's draft pages
@@ -483,6 +508,14 @@ function pg_proto_link_review_states($link, $page_ids)
         return array();
     }
 
+    // A page the link does not show cannot be reviewed on it: no mark.
+    $access = array();
+
+    foreach ((array) $page_ids as $id) {
+        $access[(int) $id] = pg_proto_link_page_access((int) $id);
+    }
+
+    $page_ids = pg_proto_review_pages_shown($page_ids, isset($link['audience']) ? (string) $link['audience'] : '', $access);
     $fingerprints = array();
     $found = pg_proto_draft_fingerprints($page_ids);
 
