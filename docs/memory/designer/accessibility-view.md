@@ -28,4 +28,4 @@ description: The designer's Accessibility view as built (AV2 #11657, AV3): the V
 ## Where is "See as"?
 - The sight filters (AV3): `accessibility-view-see-as.md`.
 
-Tests: `tests/designer_a11y_view_test.php`. Plan: `plans/designer-accessibility-view.md`; drawing: `designer-accessibility-view-drawing.md`.
+Tests: `tests/designer_a11y_view_test.php`. Rules: `accessibility-view-rules.md`; drawing: `designer-accessibility-view-drawing.md`.
