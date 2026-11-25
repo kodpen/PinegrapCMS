@@ -183,6 +183,47 @@ function test_image_focus_control_frame_shapes()
 	pg_assert_same(1.5, $res[4]['phone'], 'an aspect-ratio of one number holds too');
 }
 
+// The frames under the picture: phone and tablet share a row, the desktop
+// has the next; a row's frames have one height, the largest that fits the
+// width, at most 120 px. One frame when every screen is the same picture.
+function test_image_focus_control_frame_sizes()
+{
+	$res = image_focus_control_test_node('var typ = { phone: 0.8, tablet: 4 / 3, desktop: 2.4 };'
+		. 'var diff = M.view({ desktop: "70% 32%", tablet: "", phone: "48% 30%" }, "phone").frames;'
+		. 'var same = M.view({ desktop: "70% 32%", tablet: "", phone: "" }, "desktop").frames;'
+		. 'var sq = { phone: 1, tablet: 1, desktop: 1 };'
+		. 'out = [M.sizes(288, typ, same), M.sizes(288, { phone: 0.8, tablet: 4 / 3, desktop: 3 }, same), M.sizes(200, typ, same),'
+		. ' M.sizes(288, sq, same), M.sizes(100, sq, same), M.sizes(288, sq, diff), M.sizes(0, typ, same), M.sizes(288, { phone: 16 / 9, tablet: 16 / 9, desktop: 16 / 9 }, same)];');
+	if ($res === null) {
+		return;
+	}
+	pg_assert_same(array('one' => false, 'rows' => array(
+		array(array('s' => 'phone', 'w' => 96, 'h' => 120), array('s' => 'tablet', 'w' => 160, 'h' => 120)),
+		array(array('s' => 'desktop', 'w' => 288, 'h' => 120)),
+	)), $res[0], 'the typical shapes at 288 px reach the 120 px cap');
+	pg_assert_same(array('s' => 'desktop', 'w' => 288, 'h' => 96), $res[1]['rows'][1][0], 'a 3:1 desktop takes the width');
+	pg_assert_same(array(array('s' => 'phone', 'w' => 72, 'h' => 90), array('s' => 'tablet', 'w' => 120, 'h' => 90)), $res[2]['rows'][0], 'a narrow row shrinks to fit with its gap');
+	pg_assert_same(array('s' => 'desktop', 'w' => 199, 'h' => 83), $res[2]['rows'][1][0], 'never wider than the control');
+	pg_assert_same(array('one' => true, 'rows' => array(array(array('s' => 'every', 'w' => 140, 'h' => 140)))), $res[3], 'one shape, one focus: one frame at most 140 px tall');
+	pg_assert_same(array('s' => 'every', 'w' => 100, 'h' => 100), $res[4]['rows'][0][0], 'the one frame never wider than the control');
+	pg_assert_same(false, $res[5]['one'], 'a screen\'s own focus brings the three frames back');
+	pg_assert_same(120, $res[6]['rows'][0][0]['h'], 'no width measured: the panel\'s 288 px');
+	pg_assert_same(array('s' => 'every', 'w' => 248, 'h' => 140), $res[7]['rows'][0][0], 'a wide one frame keeps the 140 px cap');
+}
+
+// The whole picture takes the control's width, at most 200 px tall.
+function test_image_focus_control_whole_size()
+{
+	$res = image_focus_control_test_node('out = [M.whole(288, 1200, 800), M.whole(288, 600, 1200), M.whole(288, 0, 0), M.whole(288, 100, 50)];');
+	if ($res === null) {
+		return;
+	}
+	pg_assert_same(array('w' => 288, 'h' => 192), $res[0], 'a landscape picture across the control');
+	pg_assert_same(array('w' => 100, 'h' => 200), $res[1], 'a tall picture at 200 px, narrower');
+	pg_assert_same(null, $res[2], 'not loaded yet');
+	pg_assert_same(array('w' => 288, 'h' => 144), $res[3], 'a small picture grows to the width');
+}
+
 // The control is a part loaded on first use, drawn in the place the panel
 // keeps for it; without a picture the lists stay.
 function test_image_focus_control_is_a_part()

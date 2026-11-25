@@ -125,6 +125,41 @@ window.PGImageFocus = function (F) {
         return out;
     }
 
+    // The frames under the whole picture, in a control `width` px wide (the
+    // panel's 288 when not measured yet) with `shape` from shapes() and the
+    // view's `frames`. Phone and tablet share the first row, the desktop has
+    // the second; a row's frames take one height, the largest at which the
+    // row fits the width, at most 120 px. When every screen has the same
+    // shape and the same point the three would be one picture: one frame
+    // 'every', at most 140 px tall. { one, rows: [[{ s, w, h }]] }.
+    function sizes(width, shape, frames) {
+        var W = width > 0 ? width : 288, GAP = 8;
+        function row(list, cap) {
+            var sum = 0;
+            list.forEach(function (s) { sum += shape[s === 'every' ? 'desktop' : s]; });
+            var h = Math.max(1, Math.min(cap, Math.floor((W - GAP * (list.length - 1)) / sum + 1e-6)));
+            return list.map(function (s) {
+                var w = Math.floor(h * shape[s === 'every' ? 'desktop' : s] + 1e-6);
+                return { s: s, w: Math.max(1, Math.min(W, w)), h: h };
+            });
+        }
+        var p = frames && frames.phone ? frames.phone.xy : [50, 50];
+        var one = SCREENS.every(function (s) {
+            var xy = frames && frames[s] ? frames[s].xy : [50, 50];
+            return Math.abs(shape[s] - shape.phone) < 1e-6 && xy[0] === p[0] && xy[1] === p[1];
+        });
+        return one ? { one: true, rows: [row(['every'], 140)] }
+                   : { one: false, rows: [row(['phone', 'tablet'], 120), row(['desktop'], 120)] };
+    }
+
+    // The whole picture of nw x nh across a control `width` px wide, at most
+    // 200 px tall; null while its size is not known.
+    function whole(width, nw, nh) {
+        if (!(nw > 0 && nh > 0)) return null;
+        var W = width > 0 ? width : 288, h = W * nh / nw;
+        return h <= 200 ? { w: W, h: Math.round(h) } : { w: Math.round(200 * nw / nh), h: 200 };
+    }
+
     // "Set focus" on the canvas. The size a picture of nw x nh is drawn at
     // in a frame of fw x fh by its fit ("cover", "contain", "fill",
     // "scale-down", or its own size: "none", "auto", ''), how far it
@@ -182,7 +217,7 @@ window.PGImageFocus = function (F) {
     }
 
     return {
-        view: view, typed: typed, move: move, key: key, fromPointer: fromPointer, reset: reset, shapes: shapes, same: F.same,
+        view: view, typed: typed, move: move, key: key, fromPointer: fromPointer, reset: reset, shapes: shapes, sizes: sizes, whole: whole, same: F.same,
         drawn: drawn, start: start, drag: drag, nudge: nudge, offset: offset
     };
 };
