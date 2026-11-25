@@ -61024,7 +61024,38 @@ const StyleDesigner = (function () {
         host.width = canvasDoc.documentElement.clientWidth;
         host.userId = (_design && _design.userId) || 0;
         host.geo = _sdBandsGeo;
+        host.col = _sdBandsCol(node);
+        // The siblings' frames, asked for only while a margin handle moves
+        // (equal gaps).
+        host.siblings = function () {
+            var up = _sdAnyParent(node), kids = (up && up.parent && up.parent.children) || [];
+            return kids.filter(function (c) { return c !== node; }).map(_sdCanvasInnerOf).filter(Boolean);
+        };
         return host;
+    }
+
+    // A column in a row gets a handle on its end edge: its wrapper (the flex
+    // item that carries the col-* classes), the row it sits in, and the
+    // commit that writes the Column options' width for a screen size.
+    function _sdBandsCol(node) {
+        if (node.type !== 'col') return null;
+        var up = _sdAnyParent(node), parent = up && up.parent;
+        if (!parent || parent.type !== 'row') return null;
+        var wrap = _findCanvasEl(node);
+        var row = (wrap && wrap.parentElement) ? wrap.parentElement.closest('.row') : null;
+        if (!row) return null;
+        return {
+            el: wrap,
+            row: row,
+            commit: function (size, span) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                if (_sdPanelLockReason([node]) || ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'].indexOf(size) === -1) return;
+                if (String(node.props[size] || '') === String(span)) return;
+                saveState();
+                node.props[size] = String(span);
+                _sdRenderNode(node, render);
+            }
+        };
     }
 
     // The layer's place in the canvas wrapper over the part of the canvas

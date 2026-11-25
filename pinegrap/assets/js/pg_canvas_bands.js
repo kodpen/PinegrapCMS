@@ -7,8 +7,9 @@
  * where each band's handle sits, how far a dragged or stepped handle
  * changes a side, which sides Shift and Alt add, where the value label goes
  * which screen size the canvas width stands for, and the spacing scale's
- * steps. Pure: plain boxes and
- * numbers in, plain objects out; no element, no listener.
+ * steps; the column handle's grid and span over a row, and the sibling gap
+ * a dragged margin matches (equal gaps). Pure: plain boxes and numbers in,
+ * plain objects out; no element, no listener.
  *
  * - A box is { left, top, right, bottom } in the layer's screen pixels; `k`
  *   is how many screen pixels one page pixel takes (zoom and Fit).
@@ -180,7 +181,91 @@
         return 'xs';
     }
 
+    // The `count` columns of a row box drawn over it: each column's content,
+    // half a `gutter` (screen pixels) in from its column lines, as tall as
+    // the row. None for a row with no width.
+    function colGrid(row, count, gutter) {
+        var n = count || 12, u = (row.right - row.left) / n, half = num(gutter) / 2, out = [];
+        if (!(u > 0)) return out;
+        for (var i = 0; i < n; i++) {
+            out.push({ left: row.left + i * u + half, top: row.top, right: row.left + (i + 1) * u - half, bottom: row.bottom });
+        }
+        return out;
+    }
+
+    // The span a column's end edge dragged to `x` gives: the column's
+    // content box `col` grows from its start column line to the nearest
+    // line, at least 1 and at most `count` (a wider column falls to the next
+    // line, as Bootstrap lays it out). `gutter` in screen pixels; `rtl`
+    // counts from the right. 0 for a row with no width.
+    function colSpan(col, x, row, count, gutter, rtl) {
+        var n = count || 12, u = (row.right - row.left) / n;
+        if (!(u > 0)) return 0;
+        var raw = (rtl ? col.right - num(x) : num(x) - col.left) + num(gutter);
+        return Math.max(1, Math.min(n, Math.round(raw / u)));
+    }
+
+    // The span a column `width` wide takes in a row `rowWidth` wide (both
+    // the boxes between column lines): 1 to `count`.
+    function colSpanOf(width, rowWidth, count) {
+        var n = count || 12, u = num(rowWidth) / n;
+        if (!(u > 0)) return 1;
+        return Math.max(1, Math.min(n, Math.round(num(width) / u)));
+    }
+
+    // The gap a margin handle on `e` (top, bottom, left, right) changes
+    // between the selection `sel` and its neighbour, and another gap among
+    // the siblings `others` as wide (within `tol` page pixels, 0.5): only
+    // boxes that share the selection's span across the dragged axis count.
+    // { gap, match, where } with two lines { axis, from, to, at, value }
+    // (value in page pixels), drawn beside the boxes; null when the dragged
+    // side has no neighbour or no gap matches. `where` names the match:
+    // above, below, left, right.
+    function equalGap(sel, others, e, k, tol) {
+        k = num(k) > 0 ? num(k) : 1;
+        var t = tol === undefined ? 0.5 : num(tol);
+        var y = e === 'top' || e === 'bottom';
+        var lo = y ? 'top' : 'left', hi = y ? 'bottom' : 'right', a = y ? 'left' : 'top', z = y ? 'right' : 'bottom';
+        var list = [sel].concat((others || []).filter(function (o) {
+            return o && Math.min(o[z], sel[z]) - Math.max(o[a], sel[a]) > 0;
+        }));
+        list.sort(function (p, q) { return p[lo] - q[lo]; });
+        var si = list.indexOf(sel), gaps = [], side = 0;
+        list.forEach(function (box) { side = Math.max(side, box[z]); });
+        for (var i = 0; i + 1 < list.length; i++) {
+            var from = list[i][hi], to = list[i + 1][lo];
+            gaps.push(to >= from ? { i: i, axis: y ? 'y' : 'x', from: from, to: to, at: side + 24, value: (to - from) / k } : null);
+        }
+        var d = gaps[(e === 'bottom' || e === 'right') ? si : si - 1];
+        if (!d) return null;
+        var best = null;
+        gaps.forEach(function (g) {
+            if (!g || g === d || Math.abs(g.value - d.value) > t) return;
+            if (!best || Math.abs(g.i - d.i) < Math.abs(best.i - d.i)) best = g;
+        });
+        if (!best) return null;
+        var line = function (g) { return { axis: g.axis, from: g.from, to: g.to, at: g.at, value: Math.round(g.value) }; };
+        return {
+            gap: line(d),
+            match: line(best),
+            where: best.i < d.i ? (y ? 'above' : 'left') : (y ? 'below' : 'right')
+        };
+    }
+
+    // The step a drag shows when `held` (a step whose gap matched) is kept a
+    // moment: it stays until `nearest` is closer to `raw` page pixels by
+    // more than `extra`.
+    function hold(raw, held, nearest, extra) {
+        if (!held || held.step === nearest.step) return held || nearest;
+        return Math.abs(num(raw) - held.px) < Math.abs(num(raw) - nearest.px) + num(extra) ? held : nearest;
+    }
+
     window.PGCanvasBands = {
+        colGrid: colGrid,
+        colSpan: colSpan,
+        colSpanOf: colSpanOf,
+        equalGap: equalGap,
+        hold: hold,
         HANDLE: HANDLE,
         edge: edge,
         layout: layout,
