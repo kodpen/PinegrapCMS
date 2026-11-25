@@ -11,7 +11,7 @@ description: The canvas bar above the Page Design Studio's canvas (DP22, #10205)
 
 ## What does the View menu hold?
 - `#sd-vb-view-menu`, on `pgUI.overlayHost()` (a menu inside the folding bar would be cut). Switch rows named by what they do: Outline (`#sd-vb-outline`, key O), Shared parts (`#sd-vb-parts`), Snap to grid (8 px) (`#sd-vb-grid`), Dark canvas (`#sd-vb-theme`), Play animations (`#sd-vb-motion`).
-- After a line, Canvas guides (`#sd-vb-guides`, on by default) with two plain key lines under it (`.sd-vb-keyrow`: Measure Alt, Layout lines Shift+G, `designer-canvas-guides-lines.md`); and Prototype comments when that part is on.
+- After a line, Canvas guides (`#sd-vb-guides`, on by default) with two plain key lines under it (`.sd-vb-keyrow`: Measure Alt, Layout lines Shift+G, `designer-canvas-guides-lines.md`); and Prototype comments when that part is on. Last, after a line, Side by side (`#sd-vb-side`): `designer-side-by-side.md`.
 - Shared parts (#11662): on, every shared component and system widget on Design mode's canvas gets a soft wash and a 1 px line, a shared component its tag too (`body.sd-parts-lit`); off at first, kept per browser (`_sdPartsLit()`, localStorage `pinegrap_designer_shared_parts`); also "Show shared parts" / "Hide shared parts" in the command palette. Not in Preview or Prototype mode; no button, no key (`designer-shared-marks-drawing.md`).
 - A state is never written as a name: the old "Light" button with the tip "Dark canvas" became the switch "Dark canvas".
 - The menu button's badge counts the switches that are on and shown (`_sdCanvasBarBadge()`, `_sdCanvasBarSync()`).
