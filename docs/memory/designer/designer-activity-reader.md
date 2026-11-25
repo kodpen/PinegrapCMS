@@ -6,7 +6,7 @@ module: designer_activity
 
 ## What does the reader do?
 - `pg_designer_activity_read($style_id, $user, $before)` turns rows a design already leaves into one list of events, newest first, fifty at a time (`PG_DESIGNER_ACTIVITY_PAGE`). No table or column of its own. Module loaded on demand, not by `functions.php`.
-- Panel action `designer` / `activity_list` (`style_id`, `before`): answers `events`, `more`, `next`. Open to the content roles too (allow-list in `includes/panel/designer.php`), clean for the page cache.
+- Panel action `designer` / `activity_list` (`style_id`, `before`, and the tab's choosers `person`, `page`, `kind`, `designer-activity-tab.md`): answers `events`, `more`, `next`. Open to the content roles too (allow-list in `includes/panel/designer.php`), clean for the page cache.
 
 ## Which rows become events?
 - `revision`: `page_revisions` of the design's pages (and `style_id` the design), kind `version`, action the source (`publish`, `restore`, `import`, `ai`, `bundle`; an unknown label reads `publish`). A version written by applying a content change is `applied`, with `editor` named by `pg_page_revisions_editor()`. Carries `page_id` and `revision_no` for Compare.
