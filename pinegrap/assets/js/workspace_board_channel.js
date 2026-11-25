@@ -1,10 +1,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the Board tab of a channel: the channel's tasks, decisions and
- * files as cards in columns (ws_channel_board,
- * includes/workspace/channel_board.php), grouped by status, by kind, by the
- * people on them or by when they are due.
+ * Workspace - the Board tab of a channel: the channel's tasks as cards in
+ * columns (ws_channel_board, includes/workspace/channel_board.php), grouped
+ * by status, by the people on them or by when they are due.
  *
  * A task card is moved to another column by dragging it, or from the
  * keyboard: Space picks it up, the left and right arrows choose the column,
@@ -46,7 +45,13 @@
 (function () {
     'use strict';
 
-    var GROUPS = ['status', 'type', 'person', 'date'];
+    var GROUPS = ['status', 'person', 'date'];
+
+    // A grouping the board no longer offers (the former "By kind") is read
+    // as the first one.
+    function knownGroup(group) {
+        return (GROUPS.indexOf(group) === -1) ? GROUPS[0] : group;
+    }
 
     // The view chosen last, Board or List, kept per browser.
     var VIEW_KEY = 'ws-board-view';
@@ -205,6 +210,8 @@
             });
             return;
         }
+
+        prefs.group = knownGroup(prefs.group);
 
         var reading = self.source ? self.source.load({ all: self.doneAll }) : k.api('ws_channel_board', {
             channel_id: self.channel.id,
@@ -583,13 +590,11 @@
 
         if (item.kind === 'task') {
             taskCard(card, item);
-        } else if (item.kind === 'row') {
-            rowCard(card, item);
         } else {
-            otherCard(card, item);
+            rowCard(card, item);
         }
 
-        var movable = ((item.kind === 'task') || (item.kind === 'row')) && item.can_edit && (self.data.group_by !== 'type');
+        var movable = !!item.can_edit;
 
         if (movable) {
             card.draggable = true;
@@ -727,35 +732,6 @@
         });
     }
 
-    function otherCard(card, item) {
-        var k = kit();
-        var icons = { decision: 'bi-patch-check', file: 'bi-file-earmark', pin: 'bi-pin-angle', summary: 'bi-journal-text' };
-        var top = k.el('div', 'ws-cb-card-top');
-
-        if ((item.kind === 'file') && item.thumb) {
-            var picture = k.el('img', 'ws-cb-thumb');
-            picture.src = item.thumb;
-            picture.alt = '';
-            picture.loading = 'lazy';
-            card.appendChild(picture);
-        }
-
-        top.appendChild(k.icon(icons[item.kind] || 'bi-dot', 'ws-cb-kind-icon'));
-
-        if ((item.kind === 'file') && item.ext) {
-            top.appendChild(k.el('span', 'ws-file-ext', item.ext));
-        }
-
-        card.appendChild(top);
-        card.appendChild(k.el('div', 'ws-cb-title', item.title));
-
-        if (item.sub) {
-            card.appendChild(k.el('div', 'ws-cb-sub', item.sub));
-        }
-
-        card.title = (item.kind === 'file') ? t('cb_open_file') : ((item.kind === 'summary') ? t('cb_open_summary') : t('cb_open_message'));
-    }
-
     // ── Acting ──
 
     function openCard(self, item) {
@@ -763,14 +739,8 @@
 
         if (self.source) {
             self.source.open(item);
-        } else if (item.kind === 'task') {
+        } else {
             k.openTask(item.id, null, reload);
-        } else if (item.kind === 'file') {
-            window.open(item.url, '_blank', 'noopener');
-        } else if (item.kind === 'summary') {
-            self.hooks.openSummary();
-        } else if (item.message_id) {
-            self.hooks.openMessage(item.message_id);
         }
     }
 

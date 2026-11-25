@@ -71,8 +71,8 @@ function ws_channel_read_api_routes()
             'handler'     => 'ws_api_channel_board_get',
             'returns'     => 'WorkspaceChannelBoard',
             'summary'     => 'A channel\'s Board tab',
-            'description' => 'The channel\'s tasks, decisions and files as the Board tab groups them: group_by status (a column per task status; finished tasks of the last 14 days unless done_all, cancelled only with cancelled), person (a column per member and one for nobody; open tasks), date (by due date; open tasks) or type. Columns have key, title and cards; more counts finished tasks left out. A discussion and a guest\'s room have no board: 404.' . $unread,
-            'details'     => 'date columns: overdue, today, this week, later, no due date. type columns: tasks, decisions, files, and the pinned message with the summary. A card is a task (task_id, number, status, priority, due_date, assignees), a decision, a file or the pin (message_id), or the summary.',
+            'description' => 'The channel\'s tasks as the Board tab groups them: group_by status (a column per task status; finished tasks of the last 14 days unless done_all, cancelled only with cancelled), person (a column per member and one for nobody; open tasks) or date (by due date; open tasks). Columns have key, title and cards; more counts finished tasks left out. A discussion and a guest\'s room have no board: 404.' . $unread,
+            'details'     => 'date columns: overdue, today, this week, later, no due date. A card is a task (task_id, number, status, priority, due_date, assignees).',
             'params'      => array(
                 $id,
                 array('name' => 'group_by', 'in' => 'query', 'type' => 'enum', 'values' => array_keys(ws_channel_board_groupings()), 'default' => 'status'),

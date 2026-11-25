@@ -198,6 +198,7 @@ function ws_pins_js_strings()
         'unpin_message' => lang('Take the pin off'),
         'pin_replace'   => lang('Pin this message to the top of the channel? It takes the place of the one pinned now.'),
         'pin_title'     => lang('Pinned to the top'),
+        'pin_card'      => lang('Pinned message'),
         'pin_go'        => lang('Go to the message'),
         'pin_close'     => lang('Close'),
         'pin_by'        => ws_js_template('pinned by {var:1}', 1),
