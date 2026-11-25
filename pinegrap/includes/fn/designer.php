@@ -903,7 +903,7 @@ function _pg_shared_refs_replace($html, $own, $trees, $render)
             $key = $sid . ':' . $m[2];
             if (!isset($placed[$key])) {
                 $tree    = $trees[$sid];
-                $applied = pg_co_apply($tree, pg_co_safe_values($tree, pg_co_place_decode($m[2])));
+                $applied = pg_co_place_tree($tree, pg_co_place_decode($m[2]));
                 $placed[$key] = ($applied === $tree) ? $own[$sid] : call_user_func($render, $sid, $applied);
             }
             return $placed[$key];
@@ -5578,12 +5578,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             // regex-matchable on the server). See `_expand_shared_refs()` for the expander.
             // A widget placement's own content values (widgets_placement.php)
             // ride in a marker just before it; none without values.
-            // A place's own values of the component's open fields
-            // (component_overrides.php) ride in the next one; none without.
+            // A place's own values of the component's open fields and its
+            // variant (component_overrides.php) ride in the next one; none
+            // without.
             $sc_id = isset($props['sharedId']) ? (int)$props['sharedId'] : 0;
             if ($sc_id > 0) {
                 $placement = pg_sw_placement_marker(isset($props['placement']) ? $props['placement'] : null);
-                $place     = pg_co_place_marker(isset($props['_place']) ? $props['_place'] : null);
+                $place     = pg_co_place_marker(isset($props['_place']) ? $props['_place'] : null, isset($props['_variant']) ? $props['_variant'] : '');
                 $html .= $pad . $placement . $place . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
             }
             break;

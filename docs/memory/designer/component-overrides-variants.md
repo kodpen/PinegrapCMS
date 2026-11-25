@@ -1,8 +1,37 @@
 ---
 name: component-overrides-variants
-description: Named variants of a shared component (CO5): props._variants on the component's root, props._variant on a place, applying one on the site, canvas and Preview, editing one in the designer
+description: Named variants of a shared component (CO5, #11687): props._variants on its root, props._variant on a place, the site's place marker, the settings list, editing a variant, the place's "Variant" row
 module: component_overrides
 ---
 
 ## Where is a variant kept?
-- On the component's root, `props._variants`: a list of `{name, nodes}` in the order added; `nodes` maps a node's `_id` to the props the variant gives it. A place keeps only the name, `props._variant` on its placing `shared_ref`. No table or column.
+- On the component's root, `props._variants`: a list of `{name, nodes}` in the order added; `nodes` maps a node's `_id` to the props it gives that node. A place keeps only the name, `props._variant` on its placing `shared_ref`. No table or column.
+- A variant keeps classes and options only, never content, the reference or a `_…` key (`pg_co_variant_prop_ok()`); values are strings, numbers or switches.
+- Names: trimmed, at most 60 characters, unique in any case, never "Default" (`pg_co_clean_variant_name()`; the part's `nameWhy()`); at most 50 variants.
+
+## Which functions are there?
+- `includes/fn/component_overrides.php` and its twin: `pg_co_variants()`, `pg_co_variant()`, `pg_co_variant_changes()`, `pg_co_place_variant()`, `pg_co_apply_variant()` (unknown or empty: the tree as given, JS the same object), `pg_co_variant_nodes()` (what an edit keeps; a removed string or switch as `''` or `false`).
+
+## How does the site draw it?
+- `pg_co_place_marker($values, $variant)` writes the name as `_variant` in the place marker; no variant and no values write none, so every page saved before draws byte for byte as before.
+- `_pg_shared_refs_replace()` draws through `pg_co_place_tree()`: the variant first, then the place's values. A gone or empty variant gives the component's own drawing, not drawn again.
+- The save keeps a valid name only (`pg_co_clean_tree_places()`); a content editor's save keeps the stored reference, so its variant (`_pg_dm_take_place()`).
+
+## How do the canvas and Preview draw it?
+- `_sdPlaceDraw()` applies `_sdPlaceVariant(ref)`, then the values; none while that component's variant is edited (its tree carries it).
+- A component with a variant counts as having per-place choices (`_sdCoHasSid()`): its places get "This place" and its elements are read-only there until "Edit the component" (`component-overrides-this-place.md`).
+
+## Where are variants listed and edited?
+- "Shared Component" section, after "Can change per place": head "Variants", "Default" then the variants with their count, a three-dot menu (Rename, Duplicate, Delete) and "Add a variant". Without a variant and the part not loaded the core prints "Default" and the button (`_sdCoVarsHtml()`); otherwise the part fills it (`fillVariants()`).
+- Keyboard: Up, Down, Enter, F2, Delete. Delete asks nothing: a Result line with Undo.
+- Choosing a variant starts editing it (`startVariant()`): one undo step, its props put on the component's nodes, the selection moved into the component, `_sdCoVar = {sid, name, base, sig, depth}`, the line over the canvas (`.sd-co-vline`) with "Done". "Done", Escape (outside a field) or "Default" ends it (`variantDone()`): the variant keeps what differs, the component's own props go back, and the steps inside become the one start step (`_sdCoVarCommit()`).
+- Undo past the start ends it keeping nothing; Save finishes it first (`_sdCoVarFinish()` in `_flushDirtyShared()`).
+- Adding, removing or moving an element meanwhile is undone after the draw (`variantGuard()`) with the amber line; a text typed stays the component's.
+- The Options panel's dot compares with the component's own props while a variant is edited (`_sdCoVarDefaults()` in `markModifiedProps()`).
+
+## How does a place pick one?
+- "This place" starts with the row "Variant" (a list of "Default" and the variants) when the component has one; not at content level. Another than "Default" carries the dot and counts as a change; its reset returns to "Default". A gone variant: an amber line "The variant … no longer exists" until another is picked or the row is reset.
+- Command palette: "Add a variant" (component of the selection), "Variant: name" per variant for a selected place.
+
+## Tests?
+- `tests/component_overrides_variants_test.php` (model, twin, marker, site, save, the part in Node).

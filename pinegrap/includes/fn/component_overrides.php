@@ -217,7 +217,8 @@ function pg_co_clean_place($values)
 }
 
 // Every placing node of a page tree keeps only what pg_co_clean_place()
-// keeps; a place left with nothing keeps no `_place`.
+// keeps, and a variant name pg_co_clean_variant_name() keeps; a place left
+// with nothing keeps no `_place` (no `_variant`).
 function pg_co_clean_tree_places(&$node)
 {
     if (!is_array($node)) return;
@@ -226,6 +227,11 @@ function pg_co_clean_tree_places(&$node)
             $clean = pg_co_clean_place($node['props']['_place']);
             if ($clean) $node['props']['_place'] = $clean;
             else unset($node['props']['_place']);
+        }
+        if (isset($node['props']) && is_array($node['props']) && array_key_exists('_variant', $node['props'])) {
+            $name = pg_co_clean_variant_name($node['props']['_variant']);
+            if ($name !== '') $node['props']['_variant'] = $name;
+            else unset($node['props']['_variant']);
         }
         return;
     }
@@ -353,11 +359,14 @@ function pg_co_safe_values($tree, $values)
 // The marker a page body carries for a place's values, written just before
 // the place's `<!--pg-shared-ref:ID-->` (_render_tree_node()):
 // `<!--pg-place:BASE64URL-->`. Only entries with a valid id and a value of
-// a kind's shape travel; none gives '' and the body stays as it was.
-function pg_co_place_marker($values)
+// a kind's shape travel, and the place's variant name under `_variant`;
+// none gives '' and the body stays as it was.
+function pg_co_place_marker($values, $variant = '')
 {
-    if (!is_array($values) || empty($values)) return '';
     $keep = array();
+    $variant = pg_co_clean_variant_name($variant);
+    if ($variant !== '') $keep['_variant'] = $variant;
+    if (!is_array($values)) $values = array();
     foreach ($values as $id => $value) {
         if (!pg_co_valid_field_id((string) $id)) continue;
         if (is_string($value) || is_bool($value)) {
@@ -381,6 +390,18 @@ function pg_co_place_decode($payload)
     if ($json === false) return array();
     $values = json_decode($json, true);
     return is_array($values) ? $values : array();
+}
+
+// The tree a place draws, from the component's tree and a marker's
+// decoded payload: its variant first (`_variant`), then its values, as
+// they may be drawn. Nothing to apply gives the tree back as given.
+function pg_co_place_tree($tree, $decoded)
+{
+    if (!is_array($decoded) || empty($decoded)) return $tree;
+    $variant = (isset($decoded['_variant']) && is_string($decoded['_variant'])) ? $decoded['_variant'] : '';
+    unset($decoded['_variant']);
+    $tree = pg_co_apply_variant($tree, $variant);
+    return pg_co_apply($tree, pg_co_safe_values($tree, $decoded));
 }
 
 // The nodes whose text a place gives, as drawn there (hidden ones left
@@ -411,5 +432,169 @@ function pg_co_place_texts($tree, $values)
         }
     };
     $walk(pg_co_apply($tree, $safe));
+    return $out;
+}
+
+// ── Variants ─────────────────────────────────────────────────────────────
+// A component may keep named sets of its nodes' classes and options: the
+// root's `props._variants`, a list of {name, nodes} in the order added,
+// `nodes` mapping a node's id (pg_co_node_id()) to the props the variant
+// gives it. A place keeps only a variant's name, `props._variant` on its
+// placing node. Texts, pictures, links and icons stay the component's.
+
+// A variant's name as kept: trimmed, at most 60 characters; '' when it is
+// not a string or is empty.
+function pg_co_clean_variant_name($name)
+{
+    if (!is_string($name)) return '';
+    $name = trim(preg_replace('/\s+/u', ' ', $name));
+    if ($name === '') return '';
+    return function_exists('mb_substr') ? mb_substr($name, 0, 60, 'UTF-8') : substr($name, 0, 60);
+}
+
+// Whether a variant may give a node this prop: a class or an option, never
+// its content (text, picture, link, icon), its reference or the designer's
+// own keys (`_…`).
+function pg_co_variant_prop_ok($key)
+{
+    static $content = array(
+        'text' => true, 'html' => true, 'content' => true, 'code' => true, 'src' => true, 'srcset' => true,
+        'alt' => true, 'href' => true, 'iconName' => true, 'sharedId' => true, 'sharedName' => true, 'placement' => true,
+    );
+    return is_string($key) && $key !== '' && $key[0] !== '_' && !isset($content[$key]);
+}
+
+// One variant's props of a node, cleaned: allowed keys with a string,
+// number or boolean value.
+function pg_co_clean_variant_props($props)
+{
+    $out = array();
+    if (!is_array($props)) return $out;
+    foreach ($props as $key => $value) {
+        $key = (string) $key;
+        if (!pg_co_variant_prop_ok($key)) continue;
+        if (is_string($value) || is_bool($value) || is_int($value) || is_float($value)) $out[$key] = $value;
+    }
+    return $out;
+}
+
+// The component's variants, cleaned: a name (unique, any case; the first
+// keeps it) and the nodes' props; a node with nothing left is dropped. At
+// most 50.
+function pg_co_variants($tree)
+{
+    if (!is_array($tree) || !isset($tree['props']['_variants']) || !is_array($tree['props']['_variants'])) return array();
+    $out = array();
+    $names = array();
+    foreach ($tree['props']['_variants'] as $entry) {
+        if (!is_array($entry)) continue;
+        $name = pg_co_clean_variant_name(isset($entry['name']) ? $entry['name'] : null);
+        $key = function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+        if ($name === '' || isset($names[$key])) continue;
+        $names[$key] = true;
+        $nodes = array();
+        if (isset($entry['nodes']) && is_array($entry['nodes'])) {
+            foreach ($entry['nodes'] as $id => $props) {
+                $props = pg_co_clean_variant_props($props);
+                if ($props) $nodes[(string) $id] = $props;
+            }
+        }
+        $out[] = array('name' => $name, 'nodes' => $nodes);
+        if (count($out) >= 50) break;
+    }
+    return $out;
+}
+
+// The variant named $name, or null.
+function pg_co_variant($tree, $name)
+{
+    $name = pg_co_clean_variant_name($name);
+    if ($name === '') return null;
+    foreach (pg_co_variants($tree) as $variant) {
+        if ($variant['name'] === $name) return $variant;
+    }
+    return null;
+}
+
+// How many props a variant changes ("6 changes").
+function pg_co_variant_changes($variant)
+{
+    $n = 0;
+    if (is_array($variant) && isset($variant['nodes']) && is_array($variant['nodes'])) {
+        foreach ($variant['nodes'] as $props) $n += is_array($props) ? count($props) : 0;
+    }
+    return $n;
+}
+
+// The variant name a placing node keeps, or ''.
+function pg_co_place_variant($ref)
+{
+    return (is_array($ref) && isset($ref['props']['_variant'])) ? pg_co_clean_variant_name($ref['props']['_variant']) : '';
+}
+
+// The component's tree in variant $name: each node the variant names takes
+// its props (a placed component inside is not entered). An unknown name, or
+// a variant that changes nothing, gives the tree back as given.
+function pg_co_apply_variant($tree, $name)
+{
+    $variant = is_array($tree) ? pg_co_variant($tree, $name) : null;
+    if (!$variant || empty($variant['nodes'])) return $tree;
+    $nodes = $variant['nodes'];
+    $walk = function ($node, $top) use (&$walk, $nodes) {
+        if (!is_array($node)) return $node;
+        $id = pg_co_node_id($node);
+        if ($id !== '' && isset($nodes[$id])) {
+            if (!isset($node['props']) || !is_array($node['props'])) $node['props'] = array();
+            foreach ($nodes[$id] as $key => $value) $node['props'][$key] = $value;
+        }
+        if (!$top && isset($node['type']) && $node['type'] === 'shared_ref') return $node;
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $i => $child) $node['children'][$i] = $walk($child, false);
+        }
+        return $node;
+    };
+    return $walk($tree, true);
+}
+
+// What a variant keeps after it was edited: for each node of $edited that
+// $default has too, the allowed props whose value differs. A string or a
+// switch the edit removed is kept as '' or false.
+function pg_co_variant_nodes($default, $edited)
+{
+    $before = array();
+    $collect = function ($node, $top) use (&$collect, &$before) {
+        if (!is_array($node)) return;
+        $id = pg_co_node_id($node);
+        if ($id !== '') $before[$id] = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+        if (!$top && isset($node['type']) && $node['type'] === 'shared_ref') return;
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $child) $collect($child, false);
+        }
+    };
+    $collect($default, true);
+    $out = array();
+    $diff = function ($node, $top) use (&$diff, &$out, $before) {
+        if (!is_array($node)) return;
+        $id = pg_co_node_id($node);
+        if ($id !== '' && isset($before[$id])) {
+            $old = pg_co_clean_variant_props($before[$id]);
+            $new = pg_co_clean_variant_props(isset($node['props']) ? $node['props'] : array());
+            $changed = array();
+            foreach ($new as $key => $value) {
+                if (!array_key_exists($key, $old) || $old[$key] !== $value) $changed[$key] = $value;
+            }
+            foreach ($old as $key => $value) {
+                if (array_key_exists($key, $new)) continue;
+                if (is_string($value) && $value !== '') $changed[$key] = '';
+                elseif ($value === true) $changed[$key] = false;
+            }
+            if ($changed) $out[$id] = $changed;
+        }
+        if (!$top && isset($node['type']) && $node['type'] === 'shared_ref') return;
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $child) $diff($child, false);
+        }
+    };
+    $diff($edited, true);
     return $out;
 }
