@@ -14,10 +14,10 @@ description: Options panel census, part 2: gaps to place and size an element (gr
 ## Per screen size values?
 - Width, Height and their Min and Max, Overflow, Aspect Ratio, Z Index, Position, text Font Size, colours, border, corner, shadow, opacity and Object Fit hold one value for every size. Only the rows in `options-panel-census-today.md` change per size.
 - Missing: the size chooser of the Spacing box on those rows, writing `@media (min-width: …)` rules on the element's class in User Styles like the custom style does. M for lengths (one writer serves Width, Height, Position offsets, Font size); S for a row that has a Bootstrap per size class (`w-md-*` does not exist in Bootstrap 5, so Width is M; `overflow-*` has none either). Reads `--bs-breakpoint-*`.
-- Hide or show by size works today through Display None per size; a plain "Hide on phone / tablet / desktop" row is missing. S. Reads none.
+- Hide or show by size: the "Hide on" row (Phone, Tablet, Desktop) since DO3, beside Display None per size (`designer-hide-on-sticky-from.md`).
 
 ## Sticky and scroll snapping?
-- Sticky is offered twice: Position Sticky (Bootstrap class) and the Interactions effect with Top offset. Neither takes a per size top or "sticky from MD up" (`sticky-md-top` exists in Bootstrap). Missing: Sticky from size. S. Reads `--bs-breakpoint-*`.
+- Sticky is offered twice: Position Sticky (Bootstrap class) and the Interactions effect with Top offset. Position Sticky takes "Sticky from" a size (`sticky-md-top`) since DO3 (`designer-hide-on-sticky-from.md`); a per size top is the Top row by size (DO2).
 - Scroll snapping exists only inside the scroller component (`pg-snap-*`, `designer-scroller-wide-slides.md`). A designer cannot make any row of cards snap. Missing: Scroll snap on a flex or grid container (none, mandatory, proximity) and Snap align on its children. S. Reads none.
 
 ## Aspect ratio?
