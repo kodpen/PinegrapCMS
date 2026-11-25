@@ -35237,7 +35237,7 @@ const StyleDesigner = (function () {
             if (!s) return;
             el.addEventListener('change', function () {
                 if (el.getAttribute('data-sd-len')) {
-                    var why = _sdLenCheck('len', el.value);
+                    var why = _sdLenCheck(el.getAttribute('data-sd-len'), el.value);
                     _sdFieldInvalid(el, why);
                     if (why) return;
                 }
@@ -57125,6 +57125,13 @@ const StyleDesigner = (function () {
             { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, _sdT('e.g. 0')), val: p.bottom },
             { label: _sdT('Left'),   ctrl: lenInp('left', p.left, _sdT('e.g. 0')), val: p.left   }
         ];
+        // Presets of the four offsets (_sdPosPreset()), applied by
+        // _sdPosPresetApply(); the one the element matches stands on.
+        var _posOn = _sdPosPresetOf(p, cls);
+        _posSubRows.unshift({ label: _sdT('Preset'), val: '', ctrl: '<div class="sd-seg-grp" role="group">' +
+            [['fill', _sdT('Fill the parent')], ['centre', _sdT('Centre')]].map(function (o) {
+                return '<button type="button" class="sd-seg' + (_posOn === o[0] ? ' sd-seg-on' : '') + '" data-sd-pos-preset="' + o[0] + '" aria-pressed="' + (_posOn === o[0] ? 'true' : 'false') + '">' + esc(o[1]) + '</button>';
+            }).join('') + '</div>' });
         var _posHasSub = _posSubRows.some(function(sr) { return !!sr.val; });
         var _posRow = '<div class="sd-sp-row">' +
             '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel +
@@ -57171,34 +57178,23 @@ const StyleDesigner = (function () {
             }
         }
 
-        // Z-Index dropdown: common stacking values + auto. Custom values can still be
-        // typed manually via the Attrs panel's style attribute if needed.
-        var _zIndexOpts = [
-            ['',     _sdT('Default')],
-            ['auto', 'auto'],
-            ['0',    '0'],
-            ['1',    '1'],
-            ['2',    '2'],
-            ['3',    '3'],
-            ['10',   '10'],
-            ['20',   '20'],
-            ['50',   '50'],
-            ['100',  '100'],
-            ['1000', '1000'],
-            ['1050', '1050 (modal-backdrop)'],
-            ['1055', '1055 (modal)'],
-            ['1080', '1080 (toast)']
-        ];
-        var _zCur = (p.zIndex == null) ? '' : String(p.zIndex);
-        var _zIdxSel = '<select class="form-control form-control-sm" data-prop="zIndex">' +
-            _zIndexOpts.map(function(o) {
-                return '<option value="' + o[0] + '"' + (o[0] === _zCur ? ' selected' : '') + '>' + o[1] + '</option>';
-            }).join('') +
-            '</select>';
+        // Z Index: a typed whole number or auto (checked as kind 'z'), and
+        // Bootstrap's layers by name beside it (_SD_Z_LAYERS); a layer picked
+        // fills the field, which writes (_sdControlsInit()).
+        var _zCur = (p.zIndex == null || p.zIndex === 0) ? '' : String(p.zIndex);
+        var _zOn = _sdZLayerOf(_zCur);
         var _zIdxRow = '<div class="sd-sp-row">' +
             '<span class="sd-sp-toggle-spacer"></span>' +
             '<span class="sd-sp-label">' + esc(_sdT('Z Index')) + '</span>' +
-            _zIdxSel +
+            '<div class="input-group input-group-sm">' +
+            '<input type="text" inputmode="numeric" class="form-control form-control-sm" data-prop="zIndex" data-sd-len="z" value="' + esc(_zCur) + '" placeholder="' + esc(_sdT('auto')) + '">' +
+            '<select class="form-control form-control-sm" data-sd-zlayer aria-label="' + esc(_sdT('Layer')) + '">' +
+            '<option value="">' + esc(_sdT('Layer')) + '</option>' +
+            _SD_Z_LAYERS.map(function (l) {
+                var name = { Dropdown: _sdT('Dropdown'), Sticky: _sdT('Sticky'), Fixed: _sdT('Fixed'), Modal: _sdT('Modal') }[l[1]] || l[1];
+                return '<option value="' + l[0] + '"' + (l[0] === _zOn ? ' selected' : '') + '>' + esc(name) + ' (' + l[0] + ')</option>';
+            }).join('') +
+            '</select></div>' +
         '</div>';
 
         var _dsBody = '<div class="sd-sp-section">' +
@@ -64299,11 +64295,67 @@ const StyleDesigner = (function () {
         return opts.length ? { attrs: ' ' + head.replace(/\s*\bclass="[^"]*"/, '').trim(), opts: opts } : null;
     }
 
+    // ── Position presets and layers: pure helpers ──
+    // Bootstrap 5.3's layers by name: its $zindex-* numbers live in its Sass
+    // only (no --bs-* variable holds them), so the list carries them.
+    var _SD_Z_LAYERS = [['1000', 'Dropdown'], ['1020', 'Sticky'], ['1030', 'Fixed'], ['1055', 'Modal']];
+
+    // Whether a typed z-index is written: a whole number or auto, as
+    // getNodeExtraStyle() and _pg_node_sizing_decls() write it. Empty is valid.
+    function _sdZValid(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        return s === '' || /^(?:-?\d+|auto)$/i.test(s);
+    }
+
+    // The layer of _SD_Z_LAYERS a z-index value names, '' for any other.
+    function _sdZLayerOf(v) {
+        var s = String(v == null ? '' : v).trim();
+        for (var i = 0; i < _SD_Z_LAYERS.length; i++) if (_SD_Z_LAYERS[i][0] === s) return s;
+        return '';
+    }
+
+    // A Position preset ('fill' or 'centre') as the four offsets and the
+    // class list `cls` it leaves: Fill sets every offset to 0; Centre puts
+    // the top left corner at 50% / 50% and Bootstrap's translate-middle
+    // pulls the element back by half its size, Bootstrap's own way to
+    // centre a positioned element. Offsets act on a positioned element only,
+    // so one without a Position (or Static) becomes Absolute. Null for an
+    // unknown name.
+    function _sdPosPreset(name, cls) {
+        var off;
+        if (name === 'fill') off = { top: '0', right: '0', bottom: '0', left: '0' };
+        else if (name === 'centre') off = { top: '50%', right: '', bottom: '', left: '50%' };
+        else return null;
+        var list = String(cls || '').split(/\s+/).filter(function (c) { return c && c !== 'translate-middle'; });
+        if (name === 'centre') list.push('translate-middle');
+        var placed = list.some(function (c) { return /^position-(?:(?:sm|md|lg|xl|xxl)-)?(?:relative|absolute|fixed|sticky)$/.test(c); });
+        if (!placed) {
+            list = list.filter(function (c) { return c !== 'position-static'; });
+            list.push('position-absolute');
+        }
+        off.cls = list.join(' ');
+        return off;
+    }
+
+    // The preset an element's offsets and classes match, '' for none.
+    function _sdPosPresetOf(props, cls) {
+        var p = props || {};
+        var v = function (k) { var x = p[k]; return (x === undefined || x === null) ? '' : String(x).trim(); };
+        var zero = function (k) { return /^0(?:px)?$/.test(v(k)); };
+        var mid = (' ' + String(cls || '') + ' ').indexOf(' translate-middle ') !== -1;
+        if (zero('top') && zero('right') && zero('bottom') && zero('left') && !mid) return 'fill';
+        if (v('top') === '50%' && v('left') === '50%' && v('right') === '' && v('bottom') === '' && mid) return 'centre';
+        return '';
+    }
+    // ── end of position presets and layers ──
+
     // Why a length typed into the Sizing rows is not written, '' when it is
     // valid (kind 'len'): a CSS length, a bare number (pixels, _sdCssLen()),
     // a keyword or a CSS function with its brackets closed. Empty is valid.
+    // Kind 'z' is a z-index: a whole number or auto (_sdZValid()).
     function _sdLenCheck(kind, raw) {
         var s = String(raw == null ? '' : raw).trim();
+        if (kind === 'z') return _sdZValid(s) ? '' : _sdT('Use a whole number or auto.');
         if (s === '') return '';
         var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
         var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
@@ -65120,6 +65172,26 @@ const StyleDesigner = (function () {
         _sdRenderNode(nodes[0], render);
     }
 
+    // A Position preset clicked ('fill' or 'centre'): the selected element,
+    // or every selected one, takes its offsets and classes (_sdPosPreset())
+    // as one undo step.
+    function _sdPosPresetApply(name) {
+        if (!_sdPosPreset(name, '')) return;
+        var several = selectedNodes.length > 1;
+        var nodes = (several ? selectedNodes.slice() : [selectedNode]).filter(function (n) { return n && n.props; });
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!nodes.length || _sdPanelLockReason(nodes)) return;
+        var write = function (n) {
+            var r = _sdPosPreset(name, n.props.cssClass);
+            ['top', 'right', 'bottom', 'left'].forEach(function (k) { n.props[k] = r[k]; });
+            n.props.cssClass = r.cls;
+        };
+        if (several) { _sdMcCommit(nodes, write); return; }
+        saveState();
+        write(nodes[0]);
+        _sdRenderNode(nodes[0], render);
+    }
+
     // Installed once on #sd-properties: the segments' clicks, the reset
     // button's and "Make it a container", whatever part of the panel was
     // drawn later.
@@ -65129,6 +65201,8 @@ const StyleDesigner = (function () {
         panel.addEventListener('click', function (e) {
             var t = e.target;
             if (!t || !t.closest) return;
+            var pre = t.closest('[data-sd-pos-preset]');
+            if (pre && panel.contains(pre)) { _sdPosPresetApply(pre.getAttribute('data-sd-pos-preset')); return; }
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
@@ -65140,6 +65214,17 @@ const StyleDesigner = (function () {
             // Several elements: the row back to its default in all of them.
             if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
+        });
+        // A layer picked beside Z Index fills the field, whose own listener
+        // writes: 'input' for one element, 'change' for several.
+        panel.addEventListener('change', function (e) {
+            var sel = e.target;
+            if (!sel || !sel.hasAttribute || !sel.hasAttribute('data-sd-zlayer') || sel.value === '') return;
+            var inp = sel.parentNode ? sel.parentNode.querySelector('input[data-prop="zIndex"]') : null;
+            if (!inp || inp.disabled) return;
+            inp.value = sel.value;
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
         });
     }
 
