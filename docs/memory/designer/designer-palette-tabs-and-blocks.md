@@ -9,6 +9,7 @@ description: Designer palette Components tab with a Components / Blocks list swi
 - `_sdPalSwitchHTML()` draws it (`role="tablist"`, two `role="tab"` buttons with `aria-controls` on `#sd-pal-components` / `#sd-pal-blocks`, both `role="tabpanel"`); `_sdPalSwitchWire()` wires click, Arrow keys, Home and End (choose at once, roving `tabindex`), and opens on the list stored in `localStorage` `pinegrap_designer_palette_list`.
 - `.sd-pal-switch` in `style_designer.css` copies the panel switch's rules with the editor's dark tokens; `.sd-pal-list[hidden]` needs its own `display: none`, since `display: flex` beats `hidden`.
 - A design without Bootstrap has no Blocks list: the switch and `#sd-pal-blocks` are removed and the Components list stands alone.
+- "My library", the site's own saved sections, is the first group of the Blocks list (of Components without Bootstrap): `designer-my-library-overview.md`.
 
 ## How do I add a block?
 - **Write it into the `_sdBlockPaletteItems()` list; do not touch grouping.** `_sdBlockPaletteGroups()` buckets blocks by `componentType` prefix (`navbar-`, `hero-`, `cta-` ...). A block matching no prefix appears under "Diğer", so no block is invisible in the palette.
