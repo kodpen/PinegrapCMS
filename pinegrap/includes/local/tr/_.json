@@ -1953,6 +1953,7 @@
     "{var:1} prototype comments of link #{var:2} ({var:3}…) of design ({var:4}) were deleted": "tasarım ({var:4}) prototip bağlantısı #{var:2} ({var:3}…) için {var:1} yorum silindi",
     "{var:1} proxies listed": "{var:1} vekil sunucu listeli",
     "{var:1} published pages checked": "{var:1} yayındaki sayfa denetlendi",
+    "{var:1} px": "{var:1} px",
     "{var:1} queued, {var:2} refused": "{var:1} kuyruğa alındı, {var:2} reddedildi",
     "{var:1} quote(s) expire within {var:2} days.": "{var:1} teklifin süresi {var:2} gün içinde doluyor.",
     "{var:1} rate": "{var:1} oranı",

@@ -7479,6 +7479,12 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-guides" role="menuitemcheckbox" aria-checked="true"><span class="bi bi-rulers"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Canvas guides')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<div class="sd-vb-keyrow"><span class="sd-vb-row-lbl">' + esc(_sdT('Measure: point at another element')) + '</span><kbd class="sd-vb-kbd">Alt</kbd></div>' +
             '<div class="sd-vb-keyrow"><span class="sd-vb-row-lbl">' + esc(_sdT('Layout lines')) + '</span><kbd class="sd-vb-kbd">Shift+G</kbd></div>' +
+            // The canvas with a phone and a tablet beside it (_sdSideSync()),
+            // under a line; dimmed with its reason when the column is too
+            // narrow for three.
+            '<div class="sd-vb-menu-line" role="separator"></div>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-side" role="menuitemcheckbox" aria-checked="false" aria-describedby="sd-vb-side-why"><span class="bi bi-layout-three-columns"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Side by side')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<div class="sd-vb-row-why" id="sd-vb-side-why" hidden>' + esc(_sdT('Not enough room here. Close a side panel or use a wider window.')) + '</div>' +
             // Prototype comments from Design mode: shown once the comments
             // part runs (_sdProtoCommentsMark()); it switches to Prototype
             // mode with the side panel's Comments tab open.
@@ -7687,6 +7693,7 @@ const StyleDesigner = (function () {
         });
 
         _sdCanvasBarWatch();
+        _sdSideInit();
     }
 
     // ── The canvas bar's state and fold ─────────────────────────────────
@@ -7764,7 +7771,7 @@ const StyleDesigner = (function () {
         var bar = document.getElementById('sd-bp-bar');
         if (!bar) return;
         var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
-        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-guides'].map(function (id) {
+        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-guides', 'sd-vb-side'].map(function (id) {
             var el = document.getElementById(id);
             var on = !!(el && el.classList.contains('active'));
             setA(el, 'aria-checked', on ? 'true' : 'false');
@@ -7867,6 +7874,7 @@ const StyleDesigner = (function () {
             }
             return;
         }
+        _sdSideRoomMark();
         menu.hidden = false;
         btn.setAttribute('aria-expanded', 'true');
         var r = btn.getBoundingClientRect();
@@ -7885,6 +7893,179 @@ const StyleDesigner = (function () {
         var bar = document.getElementById('sd-bp-bar');
         if (bar) bar.classList.toggle('sd-bp-proto', !!proto);
         _sdViewMenuOpen(false);
+        // Prototype mode hides the mirrors; back in Design they return.
+        _sdSideSync();
+    }
+
+    // ── Side by side ────────────────────────────────────────────────────
+    //
+    // The View menu's switch "Side by side": the canvas being edited with
+    // a phone and a tablet mirror beside it (the part 'mirror', run the
+    // first time the switch is on). The core keeps the switch, the room
+    // check and the zoom to give back; the part draws the mirrors, their
+    // heads and size lists. While the switch is off nothing of it runs:
+    // the room is checked only when the View menu opens. The switch and the
+    // mirrors' widths are kept per browser (pg_sd_side, pg_sd_side_w).
+    var _sdSide = { on: false, shown: false, back: null, ro: null };
+
+    // The mirrors' widths: the stored pair when both are among the bar's
+    // five widths and differ, else a phone and a tablet. An e-mail design
+    // has one mirror, the phone, beside its 600 px canvas.
+    function _sdSideWidths(stored, email) {
+        if (email) return [375];
+        var all = [375, 576, 768, 992, 1200];
+        var w = String(stored || '').split(',').map(function (v) { return parseInt(v, 10); });
+        if (w.length === 2 && w[0] !== w[1] && all.indexOf(w[0]) !== -1 && all.indexOf(w[1]) !== -1) return w;
+        return [375, 768];
+    }
+
+    // The row in a canvas column `colW` px wide: each mirror's box (200 px
+    // for a width up to 576, else 280), the strip the mirrors take right of
+    // the canvas with 12 px around and between, the canvas's width (12 px
+    // left of it), and whether the canvas keeps its 400 px. Two mirrors
+    // need a column of 928 px, an e-mail design's one 636.
+    function _sdSideLayout(colW, widths) {
+        var boxes = (widths || []).map(function (w) { return w <= 576 ? 200 : 280; });
+        var side = 12;
+        boxes.forEach(function (b) { side += b + 12; });
+        var canvas = Math.floor(Number(colW) || 0) - side - 12;
+        return { boxes: boxes, side: side, canvas: canvas, fits: boxes.length > 0 && canvas >= 400 };
+    }
+
+    function _sdSideEmail() {
+        return !!(tree && tree.props && tree.props.pgEmail);
+    }
+
+    function _sdSideStore(key, value) {
+        try { localStorage.setItem(key, value); } catch (e) { /* kept for this visit only */ }
+    }
+
+    function _sdSideRead(key) {
+        try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+    }
+
+    // The row as the column's width and the design allow it.
+    function _sdSideNow() {
+        var wrapper = document.getElementById('sd-canvas');
+        var email = _sdSideEmail();
+        var widths = _sdSideWidths(_sdSideRead('pg_sd_side_w'), email);
+        return { wrapper: wrapper, email: email, widths: widths, layout: _sdSideLayout(wrapper ? wrapper.clientWidth : 0, widths) };
+    }
+
+    // The menu row dimmed, with its reason under it, when the column is
+    // too narrow for the row; the switch keeps its state.
+    function _sdSideRoomMark(now) {
+        var row = document.getElementById('sd-vb-side');
+        var why = document.getElementById('sd-vb-side-why');
+        if (!row) return;
+        now = now || _sdSideNow();
+        var room = !now.wrapper || !now.wrapper.clientWidth || now.layout.fits;
+        if (row.classList.contains('sd-vb-row-off') === room) row.classList.toggle('sd-vb-row-off', !room);
+        if (room) row.removeAttribute('aria-disabled'); else row.setAttribute('aria-disabled', 'true');
+        if (why && why.hidden !== room) why.hidden = room;
+    }
+
+    // The width the canvas shows, from the bar's chosen size (0: Full width).
+    function _sdSideCanvasW() {
+        var b = document.querySelector('#sd-bp-bar .sd-bp-btn.active');
+        return b ? (parseInt(b.dataset.w, 10) || 0) : 0;
+    }
+
+    // Called when the canvas column is built: the stored switch, the menu
+    // row's handler, and the mirrors of the column that was there before
+    // taken down (the part's frames went with it).
+    function _sdSideInit() {
+        var row = document.getElementById('sd-vb-side');
+        if (!row) return;
+        _sdSide.on = _sdSideRead('pg_sd_side') === '1';
+        row.classList.toggle('active', _sdSide.on);
+        row.addEventListener('click', function () {
+            if (row.getAttribute('aria-disabled') === 'true') return;
+            _sdSideSet(!_sdSide.on);
+        });
+        _sdSideHide();
+        if (_sdSide.on) _sdSideSync();
+    }
+
+    // Turns the switch on or off. On: the page is fitted to the canvas's
+    // new width as Fit does; off gives back the zoom from before.
+    function _sdSideSet(on) {
+        _sdSide.on = !!on;
+        _sdSideStore('pg_sd_side', on ? '1' : '0');
+        var row = document.getElementById('sd-vb-side');
+        if (row) row.classList.toggle('active', _sdSide.on);
+        if (on) {
+            _sdSide.back = { zoom: canvasZoom, fit: !!_sdFit };
+            _sdSideSync(true);
+            _sdStateSay(_sdT('Side by side on: phone and tablet.'));
+            return;
+        }
+        _sdSideSync();
+        var back = _sdSide.back;
+        _sdSide.back = null;
+        if (back) {
+            setCanvasZoom(back.zoom);
+            if (back.fit) _sdCanvasFit();
+        }
+    }
+
+    // Shows or takes down the mirrors as the switch, the mode and the room
+    // say. `fit`: fit the canvas once the row is laid out.
+    function _sdSideSync(fit) {
+        if (!_sdSide.on) { _sdSideHide(); return; }
+        var now = _sdSideNow();
+        _sdSideRoomMark(now);
+        if (!now.wrapper) return;
+        _sdSideWatch(true);
+        if (_sdProto.open || !now.layout.fits) { _sdSideHide(true); return; }
+        _sdSide.shown = true;
+        _sdPartCall('mirror', 'side', [{
+            column: now.wrapper,
+            widths: now.widths,
+            layout: now.layout,
+            email: now.email,
+            userId: (_design && _design.userId) || 0,
+            canvasWidth: _sdSideCanvasW,
+            // The first-use line's state module comes with the part 'bands'.
+            tour: function () { return _sdPartLoad('bands'); },
+            choose: function (widths) {
+                _sdSideStore('pg_sd_side_w', widths.join(','));
+                _sdSideSync();
+            }
+        }]).then(function () {
+            if (fit && _sdSide.shown) _sdCanvasFit();
+        }, function (e) {
+            if (window.console) console.error('[SD] side by side', e);
+            _sdSide.shown = false;
+            _sdPartFailed();
+        });
+    }
+
+    // The mirrors leave; `keepWatch` keeps watching the column, so they
+    // come back when it is wide enough again.
+    function _sdSideHide(keepWatch) {
+        if (!keepWatch) _sdSideWatch(false);
+        if (!_sdSide.shown && !_sdPartLoaded('mirror')) return;
+        _sdSide.shown = false;
+        var api = _sdPartApis.mirror;
+        if (api && typeof api.side === 'function') api.side(null);
+    }
+
+    // The column's width is watched only while the switch is on.
+    function _sdSideWatch(on) {
+        var wrapper = document.getElementById('sd-canvas');
+        if (!on || !wrapper || !window.ResizeObserver) {
+            if (_sdSide.ro) { _sdSide.ro.disconnect(); _sdSide.ro = null; }
+            return;
+        }
+        if (_sdSide.ro) return;
+        var w = wrapper.clientWidth;
+        _sdSide.ro = new ResizeObserver(function () {
+            if (wrapper.clientWidth === w) return;
+            w = wrapper.clientWidth;
+            _sdSideSync();
+        });
+        _sdSide.ro.observe(wrapper);
     }
 
     // ── Fit (D55) ───────────────────────────────────────────────────────
@@ -76542,6 +76723,8 @@ const StyleDesigner = (function () {
         document.body.classList.toggle('sd-email-design', on);
         var pick = wrapper.querySelector(on ? '.sd-bp-mail[data-w="600"]' : '.sd-bp-btn[data-w="0"]');
         if (pick) pick.click();
+        // Its one mirror, or the page's two.
+        _sdSideSync();
     }
 
     function updateBpLabel() {
@@ -90384,6 +90567,7 @@ const StyleDesigner = (function () {
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_guides', label: _sdT('Toggle Canvas guides'), icon: 'bi-rulers', action: function() { _sdGuidesSet(_sdGuidesOff()); } },
             { id: 'act_layout_lines', label: _sdT('Toggle Layout lines'), icon: 'bi-layout-three-columns', hint: 'Shift+G', action: function() { if (!_sdGuidesOff() && canvasDoc) _sdLinesShow(!_sdLines.on); } },
+            { id: 'act_side', label: _sdT('Side by side'), icon: 'bi-layout-three-columns', action: function() { var b = document.getElementById('sd-vb-side'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ]).filter(Boolean);
 
