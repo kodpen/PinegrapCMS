@@ -292,7 +292,7 @@ function test_designer_option_states_effects()
 		. 'var foreign = base.replace("color: red;", "color: red;\n  filter: drop-shadow(0 0 2px red);");'
 		. 'console.log(JSON.stringify({ a: a, h: h, readA: S.fxRead(a, c, ""), readH: S.fxRead(h, c, "hover"), readM: S.fxRead(m, c, "hover"), m: m,'
 		. ' countH: S.count(S.read(h, c, "hover")), sect: S.sections(h, c).styling, back: back, g: g, readG: S.fxRead(g, c, ""),'
-		. ' countG: S.count(S.read(g, c, "")), none: none, zero: zero,'
+		. ' countG: S.count(S.read(S.fxWrite(S.fxWrite(S.fxWrite(base, c, "hover", "bdblur", "8"), c, "hover", "blend", "screen"), c, "hover", "bgblend", "multiply"), c, "hover")), none: none, zero: zero,'
 		. ' foreign: S.fxWrite(foreign, c, "", "blur", "3") === foreign, foreignRead: S.fxRead(foreign, c, "").blur,'
 		. ' hue: S.fxRead(S.fxWrite(base, c, "", "hue", "-400"), c, "").hue, bad: S.fxWrite(base, c, "", "blend", "glow") === base,'
 		. ' css: S.fxFilter({ blur: 2, bright: 120, contrast: "", gray: "", sat: "", sepia: "", hue: 30 }),'
