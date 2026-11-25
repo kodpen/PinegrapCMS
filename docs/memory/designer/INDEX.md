@@ -377,6 +377,10 @@
 - designer-collab-notes-sync.md: How a note left in the designer reaches the other editor without a reload: presence notes map, page_notes_at counter, notes_fetch, merge rules.
 - designer-collab-view-mode.md: Designer view mode when another person holds the lock: _sdMayEdit, _sdGuardItem, hidden panels, one-item context menu, chat bubble, avatars and the narrow note_save exception.
 - designer-collapse-open-state.md: Open state an accordion item (.collapse) saves and publishes: the one its toggle is written with, not the item last clicked on the canvas; modal, offcanvas, dropdown-menu always close.
+- designer-component-overrides-drawing-fields.md: Boards C1 and C2 of the component overrides drawing (step CO3): the "Can change per place" menu row and list, the label, the mark, Overview, the list in the component's settings
+- designer-component-overrides-drawing-this-place.md: Boards C3 to C5 of the component overrides drawing (step CO4): the "This place" section, the dot and "Reset to the component", typing in place, "Edit the component", content editors, the narrow panel
+- designer-component-overrides-drawing-variants.md: Boards C6 and C7 of the component overrides drawing (step CO5): the "Variants" list in the component's settings, adding, editing and deleting a variant, the "Variant" row of a place
+- designer-component-overrides-drawing.md: The drawing of a component's open fields, "This place" and variants (plans/designer-component-overrides.md, CO3 to CO5): the sheet, its seven boards and what each step builds from it
 - designer-content-roles-panels.md: The Attributes and Styles panels at content level: read-only outside a marked area, User Styles always, _sdPanelLockReason / _sdPanelLock, the refused commit points
 - designer-content-roles-save-gate.md: Designer content roles (manager/user): what they may edit, how pg_designer_merge_restricted_tree() merges a save, note stamping, body classes, locked vs hidden.
 - designer-content-roles-text-nodes.md: Which designer nodes a manager or user may edit as text outside a marked area (_sdIsTextNode()): content, semantic, the btn and badge components; why not an old card.
@@ -464,6 +468,9 @@
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer-links.md: how prototype.php rewrites a draft's links: link kinds from pg_proto_link_target(), a bare ?query, what pg_proto_rewrite_links() skips
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
+- designer-publish-check-drawing-findings.md: Publish check drawing, boards P5 to P7 (step PC5): "Fix", "Show me", "Ignore on this page" with its reason, the Weight group with its budget bars and the list of unused rules
+- designer-publish-check-drawing-results.md: Publish check drawing, boards P1 to P4 (step PC4): the result on a row, the five groups, a finding and its path, a check that could not run, a blocking page, narrow
+- designer-publish-check-drawing.md: The drawing of the Publish check (plans/designer-publish-check.md, PC4 and PC5): the sheet, its seven boards and what each step builds from it
 - designer-publish-findings.md: The Publish check's finding shape (pg_publish_findings.js): what the four checks become, one concept kept once, the blocking table, a failed check, a page's summary
 - designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
