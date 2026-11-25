@@ -10,7 +10,8 @@
  * start questions and opens the new design with ?start=document, where the
  * designer builds the page (style_designer_document.js).
  *
- * The texts arrive translated in the pane's data-texts.
+ * The texts arrive translated in the pane's data-texts; with Pinegrap AI
+ * on (texts.sortOn) "Sort it for me" posts the rows' sections there too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -65,6 +66,14 @@
         return fetch('designer_document.php', {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); });
     }
 
+    function sort(sections) {
+        var fd = new FormData();
+        fd.append('sort', '1');
+        fd.append('sections', JSON.stringify(sections));
+        fd.append('token', token());
+        return fetch('designer_document.php', {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); });
+    }
+
     parts.document = {
         show: function (pane, win) {
             var root = pane.querySelector('.sd-doc');
@@ -92,6 +101,7 @@
                     dropArea: win,
                     css: base.replace(/js\/$/, 'css/') + 'pg_document_rows.css' + (C.partStamp ? '?v=' + C.partStamp : ''),
                     readFile: readFile,
+                    sort: texts.sortOn ? sort : null,
                     pickFile: window.pgPicker ? function () { return window.pgPicker.open({kind: 'document', title: texts.manager}); } : null,
                     cancel: function () { window.pgUI.dialog.hide(win); },
                     build: function (rows, answer) {

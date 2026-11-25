@@ -3293,6 +3293,7 @@
     "A shorter period under Visitor Tracking removes the older records a chunk at a time; their room goes back to the disk when the table is moved to InnoDB.": "Ziyaretçi Takibi altında daha kısa bir süre eski kayıtları parça parça kaldırır; alanları tablo InnoDB'ye taşındığında diske geri döner.",
     "A shorter period under Visitor Tracking removes the older records a chunk at a time; their room goes back to the disk when the table is rebuilt.": "Ziyaretçi Takibi altında daha kısa bir süre eski kayıtları parça parça kaldırır; alanları tablo yeniden kurulduğunda diske geri döner.",
     "A shorter period under Visitor Tracking removes the older records: each month then wholly older than the period goes at once and its file goes back to the disk, the rest a chunk at a time.": "Ziyaretçi Takibi altında daha kısa bir süre eski kayıtları kaldırır: o zaman tamamı süreden eski kalan her ay bir anda gider ve dosyası diske geri döner, geri kalanı parça parça silinir.",
+    "A shorter text: {var:1} words in place of {var:2}": "Daha kısa bir metin: {var:2} yerine {var:1} kelime",
     "A shortlist in five working days": "Beş iş günü içinde kısa liste",
     "A shot list planned together": "Birlikte planlanan bir çekim listesi",
     "A show for every age": "Her yaşa bir gösteri",

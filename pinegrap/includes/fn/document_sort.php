@@ -266,7 +266,7 @@ function pg_document_sort_request($posted, $user)
     $problem = pg_ai_write_problem();
 
     if ($problem !== '') {
-        return $fail(lang('Pinegrap AI is off.') . ' ' . $problem, true);
+        return $fail($problem, true);
     }
 
     $in = pg_document_sort_input($posted);
