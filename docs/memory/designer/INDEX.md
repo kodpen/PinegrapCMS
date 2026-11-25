@@ -25,6 +25,7 @@
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, kept on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
+- canva-start.md: The Canva start of the New design window (ST6): exported PNG pages uploaded, kept as reference pictures under sketch pages, their colours offered for the variables; no Canva call, no PDF
 - canvas-closed-blocks-content.md: Content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): what each opens to today and what stays closed [decision: here]
 - canvas-closed-blocks-emails.md: Designed e-mail pages and their closed parts today: the comment e-mail's System region drawn with a note (CB3), the fixed markup kept for a page with no card, the other e-mails' widget slots [decision: here]
 - canvas-closed-blocks-regions.md: Region nodes and classic page types on the canvas today: the System region converter (CB10, #10060), the nine page types with no widget, the legacy regions [decision: here]
@@ -380,7 +381,7 @@
 - designer-canvas-guides-measure.md: Measure on the designer canvas (CG2 #11570): Alt held with one element selected draws the distances to the element pointed at, in the part guides, outside the page
 - designer-canvas-guides-overview.md: Canvas guides on the designer canvas (CG1 #11517 to CG5 #11623): what is built, the rules every guide keeps, the two parts, which file holds what [decision: decisions-made-product-106.md]
 - designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
-- designer-canvas-mirror.md: The canvas mirror as the designer part 'mirror' (SS1, #11535): a frame filled from the canvas's markup without the editor, redrawn when the hand rests; its pure scheduling PGMirrorSchedule
+- designer-canvas-mirror.md: The canvas mirror, designer part 'mirror' (SS1 #11535): a frame filled from the canvas's markup without the editor, redrawn when the hand rests; its pure module PGMirrorSchedule
 - designer-canvas-open-state.md: A modal, offcanvas or dropdown menu open on the canvas is canvas state only: renderCanvas() keeps it through a redraw, the tree never holds it, preview and code view show it closed.
 - designer-canvas-overview.md: Start file for the designer-canvas-* files: the canvas, its width buttons, Dark, Animations, context bar and element toolbar, the rules that bind it, which file holds what
 - designer-canvas-page-parity.md: Canvas vs published page of a Bootstrap design: width buttons give the canvas their width, Bootstrap rules rebuilt across wrappers, sd-fx-fit, what still differs on purpose.
@@ -428,6 +429,7 @@
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
+- designer-grid-child-place.md: Advanced › Layout's Span columns, Span rows and Start at on a grid box's child (DO5): the CSS each writes, per screen size, typed values kept, the part 'grid'
 - designer-grid-columns-rows.md: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (Default, Equal, Fixed sizes, As many as fit, Custom), the CSS each writes, per screen size, the part 'grid', Gap kept
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
@@ -558,6 +560,7 @@
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
 - designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts" [decision: decisions-made-product-111.md]
+- designer-side-by-side.md: "Side by side" in the designer's View menu (SS2): the switch, the row of the canvas and two mirrors, its room (928 px, 636 for an e-mail design), the heads and their size lists
 - designer-size-per-screen.md: A length per screen size (DO2): the size chooser on Size and display and Text, @media rules on the pgs- class, what moves to the base rule, the canvas at the size, the dot
 - designer-sketch-drawing-ai.md: The Sketch tool's two AI actions as drawn (ai-and-picture.html, boards E1 to E3 and E6): the "Describe the page" window, the sketch being drawn, "Write the texts" and its messages
 - designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone [decision: here]
@@ -764,6 +767,7 @@
 - palette-lists-keyboard.md: Palette lists from the keyboard: focusable rows Enter/Space insert, header toggle buttons with aria-expanded, named search boxes, reachable bulk box, tip card on focus
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
 - photo-gallery-widget.md: Photo Gallery widget and classic page: folder setting, ?folder_id= and the Recycle Bin, photos and alt, tokens, flags, Where used, what is left out. [decision: decisions-made-widgets.md]
+- preview-as-bar.md: The "Preview as" bar in the Preview window (PW3): the part previewas, the core hooks, the choice kept per page, what each chooser sends, the lines under the bar, the narrow sheet
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
