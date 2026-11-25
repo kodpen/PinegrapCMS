@@ -1829,6 +1829,26 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     box-shadow: 0 2px 8px rgba(0,0,0,.35);
 }
 .sd-cgb-val b { margin-right: 2px; color: var(--sd-warning); }
+.sd-cgb-val i { margin-left: 2px; font-style: normal; opacity: .8; }
+/* The row's twelve columns while a column handle is held. */
+.sd-cgb-grid { position: absolute; left: 0; top: 0; }
+.sd-cgb-gc {
+    position: absolute; box-sizing: border-box;
+    background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line); border-width: 0 1px;
+}
+/* An equal gap: the gap being changed and its match, each with its number. */
+.sd-cgb-gl { position: absolute; background: var(--sd-danger); }
+.sd-cgb-gl::before, .sd-cgb-gl::after { content: ""; position: absolute; background: var(--sd-danger); top: -3px; width: 1px; height: 7px; }
+.sd-cgb-gl::before { left: 0; }
+.sd-cgb-gl::after { right: 0; }
+.sd-cgb-gl.is-v::before, .sd-cgb-gl.is-v::after { top: auto; left: -3px; width: 7px; height: 1px; }
+.sd-cgb-gl.is-v::before { top: 0; }
+.sd-cgb-gl.is-v::after { bottom: 0; }
+.sd-cgb-gn {
+    position: absolute; transform: translate(6px, -50%); height: 16px; padding: 0 5px; border-radius: 4px;
+    font: 650 10.5px/16px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+    color: var(--sd-panel-bg); background: var(--sd-danger);
+}
 .sd-cgb-first {
     display: flex; align-items: center; gap: 8px; padding: 6px 10px;
     background: var(--sd-accent-soft); border-bottom: 1px solid var(--sd-panel-border);

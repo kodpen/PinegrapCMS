@@ -321,3 +321,30 @@ function test_canvas_bands_hold_step()
 	pg_assert_same('4', $res[3]['step'], 'the held step itself');
 }
 
+// The column handle and the equal-gap marks live in the bands part; the
+// core hands a column's host only for a column in a row, and its commit
+// writes the column control's width for the size the canvas shows.
+function test_canvas_bands_column_handle_and_gaps_in_the_part()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+	pg_assert_contains('sd-cgb-col', $js, 'a column handle');
+	pg_assert_contains('sd-cgb-gc', $js, 'the twelve columns drawn over the row');
+	pg_assert_contains('C.colSpan(', $js, 'the span under the pointer');
+	pg_assert_contains('host.col.commit(', $js, 'written through the core');
+	pg_assert_contains("_sdT('{var} of 12'", $js, 'the "6 of 12" label');
+	pg_assert_contains('C.equalGap(', $js, 'equal gaps while a spacing handle moves');
+	pg_assert_contains('C.hold(', $js, 'the handle holds at an equal gap');
+	pg_assert_contains("_sdT('the gap above')", $js, 'the label names the gap');
+	pg_assert_false((bool) preg_match('/\bdoc\.(createElement|body\.appendChild)/', $js), 'nothing is put into the canvas\' page');
+
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($core, '    function _sdBandsCol(node)');
+	pg_assert_true($from !== false, 'the core gives a column\'s host');
+	$fn = substr($core, (int) $from, 1600);
+	pg_assert_contains("node.type !== 'col'", $fn, 'only for a column');
+	pg_assert_contains("parent.type !== 'row'", $fn, 'in a row');
+	pg_assert_contains('saveState();', $fn, 'one undo step');
+	pg_assert_contains('node.props[size] = ', $fn, 'the column control\'s width for the size');
+	pg_assert_contains('host.col = _sdBandsCol(node);', $core, 'handed with the bands\' host');
+	pg_assert_contains('host.siblings = ', $core, 'the siblings for the equal gaps');
+}
