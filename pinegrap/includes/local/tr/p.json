@@ -3444,6 +3444,7 @@
     "page ({var:1}) was moved to the Recycle Bin": "sayfa ({var:1}) Geri Dönüşüm Kutusuna taşındı",
     "page ({var:1}) was published": "sayfa ({var:1}) yayınlandı",
     "page ({var:1}) was published at its scheduled time": "sayfa ({var:1}) zamanı gelince yayına alındı",
+    "page ({var:1}) was published with a blocking Publish check finding: {var:2}": "sayfa ({var:1}) engelleyen bir Yayın denetimi bulgusuyla yayımlandı: {var:2}",
     "page ({var:1}) was published with the release bundle ({var:2})": "sayfa ({var:1}) yayın paketiyle ({var:2}) yayınlandı",
     "page ({var:1}) was published without the approval prototype link #{var:2} ({var:3}…) asks for: {var:4}": "sayfa ({var:1}), #{var:2} ({var:3}…) prototip bağlantısının istediği onay olmadan yayınlandı: {var:4}",
     "page ({var:1}) was replaced by the release bundle ({var:2})": "sayfa ({var:1}) yayın paketiyle ({var:2}) değiştirildi",

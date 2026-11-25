@@ -8192,6 +8192,10 @@ function pg_js_bundles()
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // The Publish check: its pure finding shape (window.PgPublishFindings)
+        // and Content check (window.PgPublishContent), then the part that
+        // checks the Publish sheet's pages and lists their findings.
+        'assets/js/style_designer_publishcheck.min.js' => array('assets/js/pg_publish_findings.js', 'assets/js/pg_publish_content.js', 'assets/js/style_designer_publishcheck.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8292,6 +8296,9 @@ function pg_designer_parts()
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
+        // The Publish check: each ticked page's result in the Publish sheet,
+        // its findings in five groups, a finding's element selected.
+        'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
     );
 }
 

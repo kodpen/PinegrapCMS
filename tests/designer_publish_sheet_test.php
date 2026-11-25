@@ -84,7 +84,7 @@ function test_designer_publish_sheet_plan_defaults()
 		return;
 	}
 
-	pg_assert_same(array('publish' => array('c', 'g'), 'hold' => array(), 'save' => true, 'reasons' => array(), 'missing' => false), $got, 'the default selection');
+	pg_assert_same(array('publish' => array('c', 'g'), 'hold' => array(), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got, 'the default selection');
 }
 
 // An unchecked changed page on the site is held out of the save; a checked
@@ -102,9 +102,9 @@ function test_designer_publish_sheet_plan_choices()
 		return;
 	}
 
-	pg_assert_same(array('publish' => array('d'), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'missing' => false), $got[0], 'a scheduled page checked, the changed page unchecked');
-	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => false, 'reasons' => array(), 'missing' => false), $got[1], 'nothing checked: nothing to do');
-	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'missing' => false), $got[2], 'an unchanged live page checked saves the design');
+	pg_assert_same(array('publish' => array('d'), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[0], 'a scheduled page checked, the changed page unchecked');
+	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => false, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[1], 'nothing checked: nothing to do');
+	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[2], 'an unchanged live page checked saves the design');
 }
 
 // A draft waiting for approval: held, unless an administrator checked it
@@ -197,7 +197,7 @@ function test_designer_publish_sheet_outcome()
 function test_designer_publish_sheet_save_feedback_wiring()
 {
 	$sheet = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_designer_publish.js');
-	pg_assert_contains('bridge.publish(p.publish, p.hold, report, p.reasons)', $sheet, 'the sheet passes its report to the save');
+	pg_assert_contains('bridge.publish(p.publish, p.hold, report, p.reasons, p.checks)', $sheet, 'the sheet passes its report to the save');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains('if (keys.length) _pgSetDraft(keys, false, hold, report);', $js, 'the drafts go on the site with the report');
@@ -210,4 +210,83 @@ function test_designer_publish_sheet_save_feedback_wiring()
 	foreach (array('busy', 'result-live', 'result-draft', 'result-kept') as $k) {
 		pg_assert_contains("'" . $k . "'", $screen, 'the text ' . $k);
 	}
+}
+
+// The Publish check's results in the plan: a ticked page still being
+// checked keeps Publish selected off; a blocking page is not selectable and
+// goes only with "Publish anyway" and its reason, which travels apart from
+// a held draft's approval reason; a blocking page on the site left out is
+// held out of the save, a blocking draft left out stays a draft.
+function test_designer_publish_sheet_plan_check_results()
+{
+	$got = designer_publish_sheet_test_eval('(function () {'
+		. 'var ck = { blocked: { b: true, c: true }, pending: { d: true } };'
+		. 'return ['
+		. 'PgDesignerPublish.plan(rows, ["d"], {}, ck),'
+		. 'PgDesignerPublish.plan(rows, ["b", "c"], {}, ck),'
+		. 'PgDesignerPublish.plan(rows, ["b", "c"], { b: "Fixed tomorrow", c: " " }, ck),'
+		. 'PgDesignerPublish.plan(rows, ["b", "c"], { b: " Fixed tomorrow ", c: "Agreed" }, ck),'
+		. 'PgDesignerPublish.plan(rows, [], {}, ck),'
+		. 'PgDesignerPublish.defaults(rows, ck)'
+		. '];})()');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_true($got[0]['waiting'], 'a page being checked keeps the button off');
+	pg_assert_same(array(), $got[1]['publish'], 'a blocking page is not selectable without Publish anyway');
+	pg_assert_same(array('b'), $got[1]['hold'], 'a blocking changed page on the site is held out');
+	pg_assert_false($got[1]['save'], 'nothing to save but the drafts left out');
+	pg_assert_true($got[2]['missing'], 'a blocking page published anyway needs its reason');
+	pg_assert_same(array('b' => 'Fixed tomorrow', 'c' => 'Agreed'), $got[3]['checks'], 'the reasons, trimmed');
+	pg_assert_same(array(), $got[3]['reasons'], 'apart from the approval reasons');
+	pg_assert_same(array('c'), $got[3]['publish'], 'the blocking draft goes on the site');
+	pg_assert_same(array(), $got[3]['hold']);
+	pg_assert_true($got[3]['save']);
+	pg_assert_false($got[3]['missing']);
+	pg_assert_false($got[3]['waiting']);
+	pg_assert_same(array('b'), $got[4]['hold'], 'left out, the blocking page stays as the site has it');
+	pg_assert_same(array('g'), $got[5], 'a blocking page never comes checked');
+}
+
+// What a row's result says: busy, Ready, n to look at, n blocking (with the
+// looks inside), or not checked; a failed check alone changes nothing.
+function test_designer_publish_sheet_result_label()
+{
+	$got = designer_publish_sheet_test_eval('['
+		. 'PgDesignerPublish.result(null, true),'
+		. 'PgDesignerPublish.result({ state: "ready", block: 0, look: 0, failed: 1 }),'
+		. 'PgDesignerPublish.result({ state: "look", block: 0, look: 3 }),'
+		. 'PgDesignerPublish.result({ state: "block", block: 2, look: 4 }),'
+		. 'PgDesignerPublish.result({ state: "failed" }),'
+		. 'PgDesignerPublish.result(null, false)'
+		. ']');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('kind' => 'run', 'text' => 'checking', 'n' => 0), $got[0]);
+	pg_assert_same(array('kind' => 'ok', 'text' => 'result-ready', 'n' => 0), $got[1]);
+	pg_assert_same(array('kind' => 'warn', 'text' => 'result-look', 'n' => 3), $got[2]);
+	pg_assert_same(array('kind' => 'bad', 'text' => 'result-block', 'n' => 2), $got[3]);
+	pg_assert_same(array('kind' => 'none', 'text' => 'result-failed', 'n' => 0), $got[4]);
+	pg_assert_same(null, $got[5], 'a page not ticked has no result');
+}
+
+// The reason a blocking page is published anyway: plain text on one line,
+// at most 500 characters, '' without one; the save logs it.
+function test_designer_publish_sheet_check_reason()
+{
+	require_once PG_FUNCTIONS_DIR . '/includes/fn/designer.php';
+	pg_assert_same('', pg_designer_publish_check_reason(array()));
+	pg_assert_same('', pg_designer_publish_check_reason(array('publish_check_reason' => array('x'))));
+	pg_assert_same('Fixed <b>tomorrow</b> & more', pg_designer_publish_check_reason(array('publish_check_reason' => "  Fixed\n &lt;b&gt;tomorrow&lt;/b&gt; <i>&amp;</i>   more ")));
+	pg_assert_same(500, mb_strlen(pg_designer_publish_check_reason(array('publish_check_reason' => str_repeat('ş', 600))), 'UTF-8'));
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	pg_assert_contains("'page ({var:1}) was published with a blocking Publish check finding: {var:2}'", $save, 'the Site Log line');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains('rec.publish_check_reason = p._publishCheckReason;', $js, 'the reason goes with the page');
 }

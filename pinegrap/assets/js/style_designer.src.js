@@ -86358,6 +86358,9 @@ const StyleDesigner = (function () {
             // An administrator's reason for publishing a draft that waits
             // for a prototype link's approval (pg_proto_approval_override_reason()).
             if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
+            // The reason a page with a blocking Publish check finding goes on
+            // the site (pg_designer_publish_check_reason()).
+            if (!rec.unchanged && p._publishCheckReason) rec.publish_check_reason = p._publishCheckReason;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -87440,24 +87443,58 @@ const StyleDesigner = (function () {
             return;
         }
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
-        window.PgDesignerPublish.open({
+        var bridge = {
             rows: _pgPublishRows,
-            publish: function (keys, hold, report, reasons) {
-                // The reasons ride on the pages for this one save only.
+            reopen: opts.reopen || '',
+            publish: function (keys, hold, report, reasons, checks) {
+                // The reasons ride on the pages for this one save only: a
+                // held draft's approval reason, a blocking page's reason.
                 var over = [];
-                Object.keys(reasons || {}).forEach(function (k) {
-                    var p = _pgPageByKey(k);
-                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                [[reasons, '_approvalOverride'], [checks, '_publishCheckReason']].forEach(function (pair) {
+                    Object.keys(pair[0] || {}).forEach(function (k) {
+                        var p = _pgPageByKey(k);
+                        if (p) { p[pair[1]] = String(pair[0][k]); over.push(p); }
+                    });
                 });
                 if (over.length) {
                     var _report = report;
-                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; delete p._publishCheckReason; }); return _report(reply); };
                 }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); }
-        });
+        };
+        // The Publish check (the part 'publishcheck'): the ticked pages'
+        // results and findings, loaded the first time the sheet checks one.
+        if (_sdPartUrls('publishcheck')) {
+            bridge.check = function (keys, done) {
+                _sdPartCall('publishcheck', 'check', [keys, done]).catch(function () {
+                    keys.forEach(function (k) { done(k, { state: 'failed' }); });
+                });
+            };
+            bridge.findings = function (key, retry) {
+                var api = _sdPartLoaded('publishcheck') ? _sdPartApis.publishcheck : null;
+                return (api && typeof api.findings === 'function') ? api.findings(key, retry) : null;
+            };
+        }
+        window.PgDesignerPublish.open(bridge);
+    }
+
+    // A Publish check finding's path: the page's tab opened, its element
+    // selected and shown. False when the element is gone.
+    function _sdSelectFound(key, nodeId, sharedId) {
+        if (key && key !== _activeKey) _pgTabsSwitch(key);
+        if (key && key !== _activeKey) return false;
+        var cached = sharedId ? _sharedCache[sharedId] : null;
+        var root = sharedId ? (cached && cached.tree) : tree;
+        var node = (root && nodeId) ? findNodeById(nodeId, root) : null;
+        if (!node) return false;
+        _sdTextInnerSelect(node, null);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        scrollCanvasToNode(node);
+        return true;
     }
 
     // The main button: Save on a draft (it stays off the site), the Publish
@@ -93049,27 +93086,33 @@ const StyleDesigner = (function () {
         if (_seoCheckCache) { draw(_seoCheckCache); return; }
         var p = _pgActivePage() || {};
         _pgReadFieldsIntoPage(p);
+        _pgApiPost('seo_check', _sdSeoCheckBody(p, tree)).then(function (res) { _seoCheckCache = res; draw(res); })
+            .catch(function () { draw(null); });
+    }
+
+    // What designer/seo_check is sent for page `p` with tree `t` (the open
+    // page's, or another tab's for the Publish check).
+    function _sdSeoCheckBody(p, t) {
         var body = {
             style_id: (_design && _design.styleId) || 0,
             page_id: p.page_id || 0, page_name: p.page_name || '', page_folder: p.page_folder || 0,
             page_title: p.page_title || '', page_meta_description: p.page_meta_description || '',
             page_search_keywords: p.page_search_keywords || '', page_search: p.page_search ? 1 : 0,
             page_sitemap: p.page_sitemap ? 1 : 0, page_noindex: p.page_noindex ? 1 : 0,
-            html: (typeof generateHTML === 'function') ? generateHTML() : ''
+            html: t ? generateHTML(undefined, undefined, t) : ''
         };
         // A saved page's draft is rendered by the server as a whole page
         // (head, shared components, system widgets): its tree and the
         // system widgets it shows, as the Preview sends them. The markup
         // above is the fallback the server judges as a fragment.
-        if (body.page_id && tree) {
-            body.tree_json = JSON.stringify(tree);
+        if (body.page_id && t) {
+            body.tree_json = JSON.stringify(t);
             var wp = null;
             _sdPreviewWidgetMarkers = true;
-            try { wp = _sdPreviewWidgetPayload(generateHTML()); } finally { _sdPreviewWidgetMarkers = false; }
+            try { wp = _sdPreviewWidgetPayload(generateHTML(undefined, undefined, t)); } finally { _sdPreviewWidgetMarkers = false; }
             body.widgets = wp ? wp.widgets : [];
         }
-        _pgApiPost('seo_check', body).then(function (res) { _seoCheckCache = res; draw(res); })
-            .catch(function () { draw(null); });
+        return body;
     }
 
     // ========================= ELEMENT LOCK (inherited model) =========================
@@ -94164,7 +94207,15 @@ const StyleDesigner = (function () {
             getNodeExtraStyle: getNodeExtraStyle,
             hasLockedAncestor: hasLockedAncestor,
             render: render,
-            saveState: saveState
+            saveState: saveState,
+            COMPONENTS: COMPONENTS,
+            validateTree: validateTree,
+            _pgPageByKey: _pgPageByKey,
+            _pgPublishSheet: _pgPublishSheet,
+            _sdBlockFamilies: _sdBlockFamilies,
+            _sdProtoTabs: _sdProtoTabs,
+            _sdSelectFound: _sdSelectFound,
+            _sdSeoCheckBody: _sdSeoCheckBody
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
