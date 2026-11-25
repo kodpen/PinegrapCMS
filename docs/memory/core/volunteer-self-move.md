@@ -11,7 +11,8 @@ module: volunteer_signup, volunteer_page_view
 ## What does a press do?
 - `pg_volunteer_self_act()` actions `pause` and `leave` run `_pg_volunteer_self_move()`: `pg_volunteer_self_move_check()` (pure) picks the state, then the coordinator's own `pg_volunteer_move()` with user id 0 writes it against the state read, so a second press is refused ("Your volunteering is already paused." for Pause).
 - `pg_volunteer_move()` writes the one log line for both paths (`… was moved to paused by themselves` when the volunteer did it); the edit screen logs no second line. No volunteer event exists for pause or leave; none was added.
-- Then every signed or waiting row of a shift not started (`pg_volunteer_give_up_rows()`, whatever the cut-off) is given up under its shift's lock by `_pg_volunteer_signup_give_up()`, the code Cancel uses: swap asked of it cancelled, a signed place to the waitlist pass, `shift.signed_up` announced after the lock.
+- Then `pg_volunteer_give_up_coming()` gives up every signed or waiting row of a shift not started (`pg_volunteer_give_up_rows()`, whatever the cut-off) under its shift's lock by `_pg_volunteer_signup_give_up()`, the code Cancel uses: swap asked of it cancelled, a signed place to the waitlist pass, `shift.signed_up` announced after the lock.
+- The coordinator's Mark as left (`edit_volunteer_programme.php`) calls the same helper after its move (#11338); `pg_volunteer_move()` itself gives nothing up.
 - One e-mail to the programme's coordinators (`pg_volunteer_self_move_mail()`, `pg_volunteer_coordinator_emails()`) names every signed place given up, never one a shift.
 - Calls stop with the state: `pg_volunteer_call_people()` asks active volunteers only; the "Shift calls" switch is left as it was for a later resume.
 

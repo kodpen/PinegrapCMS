@@ -321,9 +321,11 @@ function pg_volunteer_calls_run($now)
 }
 
 /**
- * The general job's day-before reminders: each shift of an open programme
- * due (pg_volunteer_reminder_due()) is claimed by setting reminded_at, then
- * everyone signed up on it is told, whether their calls are on or off.
+ * The general job's day-before reminders: each shift due
+ * (pg_volunteer_reminder_due()) is claimed by setting reminded_at, then
+ * everyone signed up on it is told, whether their calls are on or off. A
+ * paused programme takes no new sign-ups, but its shifts still run, so its
+ * volunteers are reminded too.
  *
  * @param string $now 'YYYY-MM-DD HH:MM:SS'
  * @return int volunteers reminded
@@ -339,7 +341,7 @@ function pg_volunteer_reminders_run($now)
 
     foreach ((array) db_items("SELECT volunteer_shifts.* FROM volunteer_shifts
         INNER JOIN volunteer_programmes ON volunteer_programmes.id = volunteer_shifts.programme_id
-        WHERE volunteer_programmes.state = 'open' AND volunteer_shifts.reminded_at = 0
+        WHERE volunteer_shifts.reminded_at = 0
             AND volunteer_shifts.start_time > '" . escape($now) . "' AND volunteer_shifts.start_time < '" . escape(pg_volunteer_add_days(substr($now, 0, 10), 2)) . "'
         ORDER BY volunteer_shifts.start_time, volunteer_shifts.id LIMIT " . (int) PG_VOLUNTEER_PASS_ROWS) as $row) {
         $shift = pg_volunteer_shift_decode($row);
@@ -403,7 +405,8 @@ function pg_volunteer_document_notice_text($kind, $valid_until, $whose)
  * The general job's document notices: a document of a volunteer who has not
  * left, ending within 30 days, gets its 30-day and its 7-day notice once
  * each (pg_volunteer_document_notice()) by e-mail, to the volunteer and the
- * programme's coordinators. The bit is claimed first: a dying pass loses a
+ * programme's coordinators. A document whose kind has a newer one valid
+ * longer (the volunteer brought the new one) is told about no more. The bit is claimed first: a dying pass loses a
  * notice, never doubles it.
  *
  * @param string $today 'YYYY-MM-DD'
@@ -422,6 +425,8 @@ function pg_volunteer_document_notices_run($today)
         LEFT JOIN contacts ON contacts.id = volunteers.contact_id
         WHERE volunteers.state <> 'left' AND volunteer_documents.notice_sent < 3
             AND volunteer_documents.valid_until >= '" . escape($today) . "' AND volunteer_documents.valid_until <= '" . escape(pg_volunteer_add_days($today, 30)) . "'
+            AND NOT EXISTS (SELECT 1 FROM volunteer_documents AS newer WHERE newer.volunteer_id = volunteer_documents.volunteer_id
+                AND newer.kind = volunteer_documents.kind AND newer.valid_until > volunteer_documents.valid_until)
         ORDER BY volunteer_documents.valid_until, volunteer_documents.id LIMIT " . (int) PG_VOLUNTEER_PASS_ROWS) as $row) {
         $notice = pg_volunteer_document_notice((string) $row['valid_until'], $today, pg_volunteer_notices_sent((int) $row['notice_sent']));
         $bit = pg_volunteer_notice_bit($notice);
