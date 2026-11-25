@@ -21,5 +21,5 @@ description: Decisions made, product part 105 (2026-11-24 on): the visual design
 
 ## Which of it is before the launch? (owner, 2026-11-24, all four ticked)
 - Design variables, the page from a drawing, quick starts with Figma, more shaping options.
-- Plans: `designer/design-variables-overview.md` (plan done), `plans/designer-sketch.md`, `plans/designer-start-import.md`, `plans/designer-options-census.md`.
+- Plans: `designer/design-variables-overview.md` (plan done), `plans/designer-sketch.md`, `designer/designer-start-import.md`, `plans/designer-options-census.md`.
 - The architect's readings, not his words: no new table or column is planned; the order DV1, SK1, ST1 and DO1 first, side by side.
