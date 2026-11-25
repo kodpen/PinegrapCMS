@@ -7,6 +7,9 @@
  * (includes/fn/security_scan.php):
  *
  *   - file_php_unknown        a PHP file the release does not carry
+ *   - file_php_retired        such a file at a place an earlier release
+ *                             carried, on the Cleanup tool's list
+ *                             (pg_clean_up_file_list())
  *   - file_upload_executable  a name in the upload folders the server may run
  *                             (.php, .phtml, .phar, a double extension)
  *   - file_picture_php        PHP tags inside a picture in the upload folders
@@ -46,6 +49,7 @@ function pg_security_file_kinds()
 {
     return array(
         'file_php_unknown' => PG_SECURITY_SEVERITY_HIGH,
+        'file_php_retired' => PG_SECURITY_SEVERITY_MEDIUM,
         'file_upload_executable' => PG_SECURITY_SEVERITY_CRITICAL,
         'file_picture_php' => PG_SECURITY_SEVERITY_HIGH,
         'file_server_config' => PG_SECURITY_SEVERITY_MEDIUM,
@@ -64,6 +68,8 @@ function pg_security_file_reason($kind)
     switch ((string) $kind) {
         case 'file_php_unknown':
             return lang('A PHP file the release does not carry.');
+        case 'file_php_retired':
+            return lang('A file of an earlier version that this version no longer uses.');
         case 'file_upload_executable':
             return lang('A file in the upload folders whose name lets the server run it.');
         case 'file_picture_php':
@@ -88,6 +94,8 @@ function pg_security_file_advice($kind)
     switch ((string) $kind) {
         case 'file_php_unknown':
             return lang('If nobody on your team put this file here, quarantine it and change the passwords of the staff and hosting accounts.');
+        case 'file_php_retired':
+            return lang('The update leaves the files of earlier versions in place. Run Clean Up in System tools to delete them, or quarantine this one.');
         case 'file_upload_executable':
             return lang('Uploads never need a name the server can run: quarantine the file, then look at who uploaded it.');
         case 'file_picture_php':
@@ -463,8 +471,13 @@ function pg_security_file_sightings($place, $in_reference, array $facts)
             ? ($in_reference === false)
             : !pg_security_php_known_outside_reference($place);
 
+        // A place an earlier release carried is reported as retired: the
+        // update writes over the files and deletes none, and Clean Up removes
+        // them. It is still reported, since a file left callable is a risk
+        // and a retired name can be a planted file; its content is read for
+        // shell marks as any file outside the reference.
         if ($unknown) {
-            $found['file_php_unknown'] = '';
+            $found[pg_clean_up_place_listed($place) ? 'file_php_retired' : 'file_php_unknown'] = '';
         }
     }
 
@@ -605,7 +618,7 @@ function pg_security_files_state($stored)
 }
 
 /**
- * The kinds a finished run may mark gone: the file kinds, without the two
+ * The kinds a finished run may mark gone: the file kinds, without the three
  * that need the release reference when the run had none.
  *
  * @param string $reference 'local', 'github' or ''
@@ -616,7 +629,7 @@ function pg_security_files_judged_kinds($reference)
     $kinds = array_keys(pg_security_file_kinds());
 
     if ((string) $reference === '') {
-        $kinds = array_values(array_diff($kinds, array('file_php_unknown', 'file_shell_mark')));
+        $kinds = array_values(array_diff($kinds, array('file_php_unknown', 'file_php_retired', 'file_shell_mark')));
     }
 
     return $kinds;

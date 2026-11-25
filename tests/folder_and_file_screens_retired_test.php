@@ -35,11 +35,9 @@ function folder_and_file_screens_retired_source($path)
 
 function test_folder_and_file_screens_retired_are_gone_and_cleaned_up()
 {
-	$clean_up = folder_and_file_screens_retired_source('clean_up.php');
-
 	foreach (folder_and_file_screens_retired_files() as $path) {
 		pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/' . $path), $path . ' is not shipped');
-		pg_assert_contains("    '" . $path . "',\n", $clean_up, 'Cleanup deletes ' . $path . ' on an updated site');
+		pg_assert_true(in_array($path, pg_clean_up_file_list(), true), 'Cleanup deletes ' . $path . ' on an updated site');
 	}
 }
 
@@ -60,11 +58,11 @@ function test_folder_and_file_screens_retired_nothing_links_to_them()
 			continue;
 		}
 
-		if (($path === 'clean_up.php') || (strpos($path, 'includes/migrations/') === 0) || (strpos($path, 'assets/lib/') === 0) || (strpos($path, 'includes/dompdf/') === 0)) {
+		if ((strpos($path, 'includes/migrations/') === 0) || (strpos($path, 'assets/lib/') === 0) || (strpos($path, 'includes/dompdf/') === 0)) {
 			continue;
 		}
 
-		$source = (string) file_get_contents($file->getPathname());
+		$source = pg_test_without_clean_up_list($path, (string) file_get_contents($file->getPathname()));
 
 		foreach ($names as $name) {
 			if (preg_match('/(?<![A-Za-z0-9_])' . preg_quote($name, '/') . '/', $source)) {

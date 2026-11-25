@@ -1,15 +1,18 @@
 ---
 name: clean-up-tool-file-list
-description: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
+description: The Cleanup tool's list (pg_clean_up_file_list()) and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
 ---
 
-## Why can't the `clean_up.php` list hold a live file name?
-- `$file_list` in `clean_up.php` means "safe to delete" and the Cleanup tool applies it literally. `image_editor_save.php` sat there as a LiveSite leftover while the same name served the previous image editor's endpoint. An operator who ran Cleanup deleted a live endpoint, and every save in that editor then returned 404. That editor was removed in #4609; its endpoint, modal script and library folder are listed now.
+## Why can't the Cleanup list hold a live file name?
+- `pg_clean_up_file_list()` (`includes/fn/files.php`) means "safe to delete": the Cleanup tool applies it literally and the Security Scan reports a PHP file at a listed place as `file_php_retired` (`waf/security-scan-retired-files.md`).
+- `image_editor_save.php` sat there as a LiveSite leftover while the same name served the previous image editor's endpoint. An operator who ran Cleanup deleted a live endpoint, and every save in that editor then returned 404. That editor was removed in #4609; its endpoint, modal script and library folder are listed now.
+- `tests/clean_up_list_test.php` fails when a listed place exists in the tree.
 - The symptom links to no cause anywhere: the tool says "cleaned", the editor says "Görsel kaydedilemedi. (404)", `error.log` has no line (there is no error, the file is gone).
 
 ## What do I check before touching the list?
 - Before adding a name verify nothing calls it: `grep -rn "<name>" --include=*.php --include=*.js .`
 - Reusing an old name for a new file reaches the same door: before giving an old name to a new file, check whether it is in the list.
+- Deleting or renaming away a PHP file directly in the software folder or under `includes/` adds its old place to the list; `tools/check_pr.php` refuses the branch otherwise.
 
 ## What about `data/temp`?
 - The same file sweeps `data/temp` as a DIRECTORY, so any new file placed there lands in the delete-without-asking list. It is the right place for regenerable cache. Anything not regenerated, or not regenerated as the SAME file, must be written to `$temp_keep` (example: `hash_reference.json`).
