@@ -224,3 +224,100 @@ function test_canvas_bands_are_a_part()
 	pg_assert_contains("_sdPartLoad('spacing').then(", $core, 'after the Spacing box\'s part, which brings PGSpacingBox');
 	pg_assert_contains("_sdPartApis.bands.hide()", $core, 'and hides it once loaded');
 }
+
+// The drawing's row (G3): 626 px wide at 36, gutter 12 px; its twelve
+// columns are drawn half a gutter in from each column line.
+function test_canvas_bands_column_grid()
+{
+	$res = canvas_bands_test_node('var g = C.colGrid({ left: 36, top: 40, right: 662, bottom: 210 }, 12, 12);'
+		. ' out = [g.length, g[0], g[11], C.colGrid({ left: 0, top: 0, right: 0, bottom: 10 }, 12, 12).length];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(12, $res[0], 'twelve columns');
+	pg_assert_same(42.0, round($res[1]['left'], 2), 'the first starts half a gutter in');
+	pg_assert_same(82.17, round($res[1]['right'], 2), 'and ends half a gutter before its line');
+	pg_assert_same(40, $res[1]['top'], 'as high as the row');
+	pg_assert_same(210, $res[1]['bottom'], 'down to its bottom');
+	pg_assert_same(656.0, round($res[2]['right'], 2), 'the last ends half a gutter before the row\'s end');
+	pg_assert_same(0, $res[3], 'a row with no width draws none');
+}
+
+// The selected column's end edge steps from column line to column line:
+// "6 of 12" in the drawing, at least 1, at most 12 (a wider column falls
+// to the next line, as Bootstrap lays it out); RTL counts from the right.
+function test_canvas_bands_column_span()
+{
+	$res = canvas_bands_test_node('var row = { left: 36, top: 40, right: 662, bottom: 210 };'
+		. ' var col = { left: 42, top: 56, right: 343, bottom: 194 };'
+		. ' var rcol = { left: 355, top: 56, right: 656, bottom: 194 };'
+		. ' out = [C.colSpan(col, 349, row, 12, 12, false), C.colSpan(col, 60, row, 12, 12, false), C.colSpan(col, 2000, row, 12, 12, false),'
+		. ' C.colSpan(col, 380, row, 12, 12, false), C.colSpan(rcol, 349, row, 12, 12, true), C.colSpan(col, 349, { left: 0, top: 0, right: 0, bottom: 0 }, 12, 12, false),'
+		. ' C.colSpanOf(313, 626, 12), C.colSpanOf(0, 626, 12), C.colSpanOf(900, 626, 12)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(6, $res[0], 'six columns at the drawing\'s pointer');
+	pg_assert_same(1, $res[1], 'never below one column');
+	pg_assert_same(12, $res[2], 'never above twelve');
+	pg_assert_same(7, $res[3], 'the nearest column line');
+	pg_assert_same(6, $res[4], 'right to left from the column\'s right edge');
+	pg_assert_same(0, $res[5], 'no row width, no span');
+	pg_assert_same(6, $res[6], 'a column\'s width read back as its span');
+	pg_assert_same(1, $res[7], 'at least one');
+	pg_assert_same(12, $res[8], 'at most twelve');
+}
+
+// Equal gaps (G3): the paragraph's bottom gap is 24 like the gap above, so
+// both are marked; only siblings on the dragged axis count.
+function test_canvas_bands_equal_gap()
+{
+	$res = canvas_bands_test_node('var above = { left: 60, top: 20, right: 360, bottom: 70 }, sel = { left: 60, top: 94, right: 360, bottom: 144 },'
+		. ' below = { left: 60, top: 168, right: 360, bottom: 218 }, far = { left: 60, top: 180, right: 360, bottom: 230 },'
+		. ' aside = { left: 400, top: 168, right: 500, bottom: 218 };'
+		. ' out = [C.equalGap(sel, [above, below], "bottom", 1), C.equalGap(sel, [above, below], "top", 1), C.equalGap(sel, [above, far], "bottom", 1),'
+		. ' C.equalGap(sel, [above], "bottom", 1), C.equalGap(sel, [above, aside], "bottom", 1), C.equalGap(sel, [above, below], "left", 1),'
+		. ' C.equalGap({ left: 120, top: 188, right: 720, bottom: 288 }, [{ left: 120, top: 40, right: 720, bottom: 140 }, { left: 120, top: 336, right: 720, bottom: 436 }], "bottom", 2)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	$m = $res[0];
+	pg_assert_same(24, $m['gap']['value'], 'the gap being dragged in page pixels');
+	pg_assert_same(array(144, 168), array($m['gap']['from'], $m['gap']['to']), 'between the selection and the one below');
+	pg_assert_same(24, $m['match']['value'], 'the gap above is as wide');
+	pg_assert_same(array(70, 94), array($m['match']['from'], $m['match']['to']), 'between the one above and the selection');
+	pg_assert_same('y', $m['gap']['axis'], 'drawn down the page');
+	pg_assert_true($m['gap']['at'] > 360, 'beside the boxes, not over them');
+	pg_assert_same('above', $m['where'], 'named for the label');
+	pg_assert_same('below', $res[1]['where'], 'dragging the top finds the gap below');
+	pg_assert_same(null, $res[2], 'a gap of another width marks nothing');
+	pg_assert_same(null, $res[3], 'no neighbour on the dragged side, nothing');
+	pg_assert_same(null, $res[4], 'a box beside, not under, is no neighbour');
+	pg_assert_same(null, $res[5], 'on the other axis there are no siblings');
+	pg_assert_same(24, $res[6]['gap']['value'], 'page pixels at zoom 2');
+	pg_assert_same('above', $res[6]['where'], 'and the match at zoom 2');
+}
+
+// A matched step holds a moment: the pointer must pass the next step by a
+// few pixels more before the value leaves it.
+function test_canvas_bands_hold_step()
+{
+	$res = canvas_bands_test_node('var held = { step: "4", px: 24 }, next = { step: "5", px: 48 };'
+		. ' out = [C.hold(37, held, next, 8), C.hold(40, held, next, 8), C.hold(37, null, next, 8), C.hold(20, held, held, 8)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('4', $res[0]['step'], 'held while the next step is not clearly nearer');
+	pg_assert_same('5', $res[1]['step'], 'let go once it is');
+	pg_assert_same('5', $res[2]['step'], 'nothing held, the nearest step');
+	pg_assert_same('4', $res[3]['step'], 'the held step itself');
+}
+
