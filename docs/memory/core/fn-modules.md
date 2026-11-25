@@ -354,6 +354,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype_links`: [[designer-prototype-share-links]], [[release-bundle-share-link]]
 - `prototype_map`: [[prototype-map-read]]
 - `prototype_phone`: [[designer-phone-preview-server]]
+- `prototype_phone_view`: [[designer-phone-preview-phone]]
 - `prototype_review_mails`: [[prototype-approval-mails]]
 - `prototype_verdicts`: [[prototype-approval]], [[prototype-approval-hold]], [[prototype-approval-review]], [[prototype-approval-round-two]], [[prototype-approval-store]]
 - `publish_weight`: [[designer-publish-weight]]
