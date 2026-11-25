@@ -114,6 +114,7 @@
 - common-region-component-scripts.md: The block scripts (theme switcher, scroller, back to top, Listen, map, interactions…) run a second time after a converted common region or a designed pop-up is drawn
 - common-region-component-usage.md: A converted common region's shared component counts as used on every page printing the region's tag; the delete confirmations and delete_many read it [decision: decisions-made-product-109.md]
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused [decision: decisions-made-product-109.md, decisions-made-product-20.md, decisions-made-product-3.md, decisions-made.md]
+- component-overrides-fields.md: Opening a shared component's field "Can change per place" in the designer (CO3): the menu and palette row, the list, labels, the marks, the settings list with order, Rename and Close the field
 - component-overrides-model.md: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
 - content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
@@ -283,6 +284,7 @@
 - design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - design-variables-model.md: A design's variables (DV1, 2026.11.0): the list, defaults from look and palette, the variables stylesheet with its pg-theme head, the reader, the text-on-surface contrast check
 - design-variables-options.md: Options controls offering a design's variables (DV3): which rows, the list, the chip and Detach, the expression a bound control holds, "Used in n places"
+- design-variables-questions.md: The design variables' five start questions (DV4, #11593): one part for the New design window and the Variables tab's "Ask me again", the answers, the model they give, how a new design carries them
 - design-variables-tab.md: The Variables tab of Settings, Theme (DV2): the part 'variables', the file design-variables-<style id>.css found by its name, the save, the canvas, Preview and site loading it after the palette
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-activity-audit-trail.md: The Activity tab's design events that leave no page version are kept in the audit trail (audit_log), no new table or column: the lines there today, the writers to add, what the tab shows [decision: here]
@@ -596,6 +598,7 @@
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
 - image-focus-control.md: The Focus control (IF2): where it shows in an Image's and a background picture's options, what it draws and writes per screen, the part 'focus' and its host, what is not built yet
+- image-focus-mode.md: "Set focus" on the canvas (IF3): the toolbar button, the mode that drags a picture under its frame, its keys, what it writes, how it is loaded, tested and measured
 - image-focus-value.md: A picture's focus point as a value: the pair of percentages, word pairs read, a value per screen size, how the Image element and a background picture write it, the pg-focus rule
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
 - image-size-props.md: How the Image element's size is written: whole-number width/height as attributes, a unit as a style, the Sizing panel's style; in a ratio box the box takes the style, the img its attributes
@@ -813,6 +816,7 @@
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - sketch-builder.md: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): sections to header, body and footer trees from palette starters, columns, heading, the section rhythm variable
+- sketch-page-details.md: "Page details" of a Prototype view sketch page (SK5): the More menu and palette row, the seven rows and defaults, checks, the sketch_details endpoint, where values are kept [decision: here]
 - sketch-read-picture.md: "Read the picture" of the Sketch tool (SK7b): the reference picture read into proposed boxes by the browser's model, nothing sent; row, first use, busy, Keep, Discard [decision: here]
 - sketch-reader.md: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, window.PGSketchReader): boxes drawn in a frame in, sections with kinds and unsure marks out; its input, rules, output and test
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
