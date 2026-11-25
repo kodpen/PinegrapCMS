@@ -25,7 +25,7 @@ priority: 7
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - FT1 (S) The model, pure: stops and their anchors per role, the order, what was seen, a stop whose control is not on the screen skipped. Done (#11531, `designer/designer-first-tour-model.md`).
-- FT2 (M) after FT1 and DD14: the card and the tour. Boards T1 to T3 and T7 of `designer/designer-first-tour-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
+- FT2 (M) after FT1 and DD14: the card and the tour. In progress. Boards T1 to T3 and T7 of `designer/designer-first-tour-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
 - FT3 (M) after FT2: "How do I…", first-use tips, the empty canvas's starts. Boards T4 to T6 of `designer/designer-first-tour-help-drawing.md`, and T7 for the phone; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
 - FT4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
