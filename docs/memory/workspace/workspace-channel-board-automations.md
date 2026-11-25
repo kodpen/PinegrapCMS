@@ -13,3 +13,6 @@ description: The Automations part of a channel's Board tab (BM5): the toolbar bu
 
 ## Where do the last runs come from?
 - `ws_board_rule_last_runs()`: the newest runs of the rules' flows (`ws_flow_runs`) the person reaches (`ws_flow_run_access()`), at most `WS_BOARD_RULE_RUNS` (5); the line is time · task · result (`ws_flow_runs_results()`, else the run's status). The task's title is shown only for a task of this channel (a task event's run has subject_type `task`).
+
+## Will the drawer come to other screens?
+- Not yet. Owner (2026-11-24): automations on the board first; the same drawer is meant later for other screens (orders, forms, contacts) as "this screen's automations", a plan of its own when he opens it (`workflow/decisions-made-workspace-51.md`).
