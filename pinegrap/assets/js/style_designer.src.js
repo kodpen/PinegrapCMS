@@ -7217,6 +7217,8 @@ const StyleDesigner = (function () {
         // Placed AFTER semantic wraps so amber dominates when a node is both locked AND
         // shared/custom-html/custom-php. Child-fallback mirrors the pattern above to survive
         // display:contents contexts.
+        // A copy from My library whose binding the site lacked (amber, solid).
+        '.sd-wrap.sd-lib-unbound > *:not(.sd-tb):not(.sd-chip-row) { outline:2px solid #f59e0b !important; outline-offset:-2px !important; }',
         '.sd-wrap.sd-locked-root { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         '.sd-wrap.sd-locked-root > *:not(.sd-tb):not(.sd-chip-row) { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         // Form inputs: sd-wrap must be layout-transparent when wrapping input/textarea/select so
@@ -12594,6 +12596,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, cached)) wrapper.classList.add('sd-lib-unbound');
 
         // Detect if this is a system widget shared_ref (has system_region_config)
         var _isSysWidget = !!(cached && cached.system_region_config);
@@ -14705,6 +14708,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, null)) wrapper.classList.add('sd-lib-unbound');
         // Custom content types get their own semantic outline color.
         if (node.type === 'content' && node.props.contentType === 'custom_html') wrapper.classList.add('sd-custom-html-wrap');
         else if (node.type === 'content' && node.props.contentType === 'custom_php') wrapper.classList.add('sd-custom-php-wrap');
@@ -19530,6 +19534,8 @@ const StyleDesigner = (function () {
     /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
+            // An item of My library: its copy (part 'mylibrary').
+            case 'library': return _sdLibNode(extra);
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
             case 'container-fluid': return createNode('container', { fluid: true, cssClass: '' }, []);
             case 'row': return createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [createNode('col', colProps('col'), [])]);
@@ -26688,6 +26694,9 @@ const StyleDesigner = (function () {
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
         _sdPalSwitchWire(compOuter);
+        // My library leads the Blocks list, or the Components list in a
+        // design without Bootstrap.
+        _sdLibInit(blockList || compList, !blockList);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -36481,7 +36490,11 @@ const StyleDesigner = (function () {
                 (path ? '<div class="sd-id-path" title="' + esc(fullPath) + '">' + path + '</div>' : '') +
             '</div>' +
             (node.type !== 'root' ? '<button type="button" class="sd-id-more bi bi-three-dots" id="sd-id-more" title="' + esc(_sdT('More actions')) + '" aria-label="' + esc(_sdT('More actions')) + '" aria-haspopup="menu"></button>' : '') +
-        '</div>';
+        '</div>' +
+        (_sdLibUnbound(node, node.type === 'shared_ref' ? _sharedCache[node.props.sharedId] : null)
+            ? '<div class="sd-lib-unbound-line" role="note"><span class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></span>' +
+                esc(_sdT('This copy came from the library and this site lacks what it was bound to. Choose a form, collection or group for it.')) + '</div>'
+            : '');
     }
 
     function _sdIdentityBind(panel, node) {
@@ -36505,8 +36518,9 @@ const StyleDesigner = (function () {
                 _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
                 _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
                 { sep: true },
-                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
-            ]));
+                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } },
+                (_sdLibOffered(node) ? { icon: 'bi-bookmark-plus', label: _sdT('Save to my library'), handler: function () { _sdLibSave(node); } } : null)
+            ].filter(Boolean)));
         });
     }
 
@@ -89108,6 +89122,10 @@ const StyleDesigner = (function () {
             { id: 'act_to_shared', label: _sdT('Convert to Shared Component'), icon: 'bi-puzzle-fill', action: function() {
                 if (selectedNode && selectedNode.type !== 'root' && selectedNode.type !== 'shared_ref') convertToShared(selectedNode);
             }},
+            (_sdLibMaySave() ? { id: 'act_library_save', label: _sdT('Save to my library'), icon: 'bi-bookmark-plus', action: function() {
+                // One item is one element with what is inside it.
+                _sdLibSave(selectedNodes.length > 1 ? null : selectedNode);
+            }} : null),
             // ── Settings / Modals ───────────────────────────────────
             { id: 'act_settings', label: _sdT('Open Settings'), icon: 'bi-gear', hint: 'Ctrl+,', action: function() {
                 var b = document.querySelector('[data-bs-target="#styleSettingsModal"]');
@@ -89116,7 +89134,7 @@ const StyleDesigner = (function () {
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
-        ];
+        ].filter(Boolean);
 
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
@@ -89322,6 +89340,9 @@ const StyleDesigner = (function () {
     function _trackRecentComp(type, extra, hintLabel, hintIcon) {
         // A widget's part or value is offered only while its widget is selected.
         if (type === 'widget_part') return;
+        // An item of My library may be renamed or deleted: it stays in its
+        // own group.
+        if (type === 'library') return;
         try {
             var id = type +
                 (extra && extra.componentType ? ':' + extra.componentType : '') +
@@ -92109,6 +92130,7 @@ const StyleDesigner = (function () {
     var _sdPalTip = { el: null, item: null, mute: null, timer: 0, closedAt: 0 };
 
     function _sdPalTipHTML(item) {
+        if (item.dataset.type === 'library') return _sdLibTip(item);
         var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
         try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
         var info = _sdPalInfo()[_sdPalKey(it)];
@@ -92374,6 +92396,7 @@ const StyleDesigner = (function () {
             if (pane) pane.hidden = !on;
         });
         if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (which === 'blocks') _sdLibMount();
         if (store) {
             try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
         }
@@ -94966,7 +94989,16 @@ const StyleDesigner = (function () {
             getNodeExtraStyle: getNodeExtraStyle,
             hasLockedAncestor: hasLockedAncestor,
             render: render,
-            saveState: saveState
+            saveState: saveState,
+            createNode: createNode,
+            _findNodeAnywhereById: _findNodeAnywhereById,
+            _sdAccess: _sdAccess,
+            _sdBlockSketch: _sdBlockSketch,
+            _sdPalSwitchShow: _sdPalSwitchShow,
+            _sdPaletteItemHTML: _sdPaletteItemHTML,
+            _sdWirePaletteItems: _sdWirePaletteItems,
+            _userStylesGet: _userStylesGet,
+            _userStylesSet: _userStylesSet
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
@@ -94990,6 +95022,82 @@ const StyleDesigner = (function () {
         if (!_sdPartLoaded('mirror')) return;
         var api = _sdPartApis.mirror;
         if (api && typeof api.rebind === 'function') api.rebind();
+    }
+
+    // ── My library ────────────────────────────────────────────────────────
+    // The part 'mylibrary' (assets/js/style_designer_mylibrary.js): "Save to
+    // my library" and the library's group in the palette. The group is
+    // drawn the first time its list is shown (at open only when that list
+    // is the one showing, once the editor has settled).
+    var _sdLib = { host: null };
+
+    function _sdLibApi() {
+        return _sdPartLoaded('mylibrary') ? (_sdPartApis.mylibrary || null) : null;
+    }
+
+    function _sdLibMaySave() {
+        return _sdAccess() === 'full' && !!_sdPartUrls('mylibrary');
+    }
+
+    // A section, a row, a card or a group: an element holding others.
+    function _sdLibOffered(node) {
+        return _sdLibMaySave() && selectedNodes.length < 2 && !!(node && node.type !== 'root' && node.type !== 'shared_ref'
+            && node.children && node.children.length);
+    }
+
+    function _sdLibSave(node) {
+        _sdPartCall('mylibrary', 'save', [node]).catch(_sdPartFailed);
+    }
+
+    function _sdLibInit(host, shown) {
+        if (!host || !_sdPartUrls('mylibrary')) return;
+        _sdLib.host = host;
+        var pane = host.closest('.sd-pal-list');
+        if (shown || (pane && !pane.hidden)) setTimeout(_sdLibMount, 1500);
+    }
+
+    function _sdLibMount() {
+        if (!_sdLib.host) return;
+        _sdPartCall('mylibrary', 'mount', [_sdLib.host]).catch(function () { /* the next showing asks again */ });
+    }
+
+    // The copy a row of the group adds (createFromPalette()); the rows are
+    // drawn by the part, so it has run when one is dragged.
+    function _sdLibNode(extra) {
+        var api = _sdLibApi();
+        return api ? api.node(extra || {}, _sdPaletteDry) : null;
+    }
+
+    function _sdLibTip(item) {
+        var api = _sdLibApi();
+        return api ? api.tip(item) : '';
+    }
+
+    // A copy whose binding the site lacked keeps its amber mark until a
+    // record of each kind cleared is chosen again (in its props, or in the
+    // widget's settings for a widget's placement).
+    function _sdLibUnbound(node, cached) {
+        var kinds = node && node.props && node.props._libraryUnbound;
+        if (!Array.isArray(kinds) || !kinds.length) return false;
+        var settings = node.props;
+        if (node.type === 'shared_ref') {
+            if (!cached || !cached.system_region_config) return true;
+            try { settings = JSON.parse(cached.system_region_config) || {}; } catch (e) { return true; }
+        }
+        var empty = false, seen = false;
+        Object.keys(settings).forEach(function (k) {
+            var kind = (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
+                : k.indexOf('folder_id') !== -1 ? 'folder'
+                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page' : '';
+            if (!kind || kinds.indexOf(kind) === -1) return;
+            seen = true;
+            if (!settings[k] || settings[k] === '0') empty = true;
+        });
+        if (seen && !empty) {
+            delete node.props._libraryUnbound;
+            return false;
+        }
+        return true;
     }
 
     // The assistant panel is the part 'ai', handed over only to the designers

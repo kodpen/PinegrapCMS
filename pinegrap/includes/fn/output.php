@@ -8199,6 +8199,7 @@ function pg_js_bundles()
         // with the part 'spacing', which the core loads first.
         'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
         'assets/js/style_designer_phone.min.js'    => array('assets/js/style_designer_phone.js'),
+        'assets/js/style_designer_mylibrary.min.js' => array('assets/js/style_designer_mylibrary.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8326,6 +8327,9 @@ function pg_designer_parts()
         // "Read the picture" of a sketch page: its reference picture read
         // by the browser's built-in model into proposed boxes.
         'sketchread' => 'assets/js/style_designer_sketchread.min.js',
+        // My library: "Save to my library" and the library's group of the
+        // palette, its hover card and the copy it adds.
+        'mylibrary' => 'assets/js/style_designer_mylibrary.min.js',
     );
 }
 
