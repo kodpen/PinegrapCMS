@@ -38,7 +38,6 @@
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-accessibility-view.md: Plan (owner 2026-11-24, level 2): the canvas shown as a keyboard, a screen reader and a colour-blind eye meet it: tab order, headings, names, sight filters; steps AV1 to AV4
 - designer-activity.md: Plan (owner 2026-11-24, level 3): an Activity tab in the designer's History: who published, restored, imported or shared what in a design, from rows that exist; steps AC1 to AC4
-- designer-canvas-guides.md: Plan (owner 2026-11-24): on the designer's canvas, distances measured with a key, spacing dragged by its bands, columns dragged over the grid, equal gaps marked; client only; steps CG1 to CG6
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
 - designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
