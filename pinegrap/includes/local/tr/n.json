@@ -1446,6 +1446,7 @@
     "No card at {var:1} carries this number (as of the last read).": "Son okumaya göre bu numarayı taşıyan bir {var:1} kartı yok.",
     "No card matches this search.": "Bu aramaya uyan kart yok.",
     "No card outline": "Kart çerçevesi yok",
+    "No card surcharge applies": "Kart ek ücreti uygulanmıyor",
     "No cards on your dashboard yet.": "Panonda henüz kart yok.",
     "No care plans on sale right now.": "Şu anda satışta bakım planı yok.",
     "No carrier label service has that key.": "Bu anahtarla bir kargo etiket servisi yok.",

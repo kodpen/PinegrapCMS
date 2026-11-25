@@ -15,13 +15,13 @@ description: Plan legacy-editable, steps LE1 to LE12 with size and order: the me
 - LE5b (M) done (#11290) the run's `types` step, a "Page types" row (`designer/legacy-types-step.md`).
 - LE6 (M) done (#11308) `pg_layout_convert()`, `pg_layout_piece_map()`, a file page dropping nothing converts in the run; form list and item view.
 - LE6b (M) done (#11331) the Region panel's dropped list and confirm, its Convert on a file page.
-- LE7 (M) done (#11335) order form. LE8a done (#11362) gallery, LE8b done (#11393) catalog, LE8c done (#11436) catalog detail. LE9a done (#11466) shopping cart. LE9b done (#11486) express order, LE9c done (#11628) the three steps. LE9d (M) in progress, order preview, view order. LE10 (M) account pages, search results.
+- LE7 (M) done (#11335) order form. LE8a-c done (#11362 gallery, #11393 catalog, #11436 catalog detail). LE9a-d done (#11466 cart, #11486 express order, #11628 the three steps, #11667 order preview). LE9e (M) view order (see LE9d's memory file). LE10 (M) account pages, search results.
 - LE11 (S) done (#11309) the "Designs moved earlier" card, its dry run drawer and run.
 - LE12 (S) close-out: `designer/legacy-editable-overview.md` written with the last numbers; `designer/legacy-overview.md`, `classic-style-to-design.md`, `canvas-closed-blocks-regions.md` and `layout-widget-offer.md` corrected; this plan's five files deleted; the changelog `[NEW]` line named in its PR.
 
 ## In which order?
 - LE1 first. Then LE2 and LE4 side by side (the run's files; the render and the editor). LE3 after LE2. LE5 after LE2. LE5b after LE5. LE6 after LE5b and LE4, LE6b after LE6. LE7 to LE10 after LE6, one at a time: each adds its types' rows to the map. LE11 after LE5b. LE12 last.
-- `style_designer.src.js` and `get_page_content.php` are entered by other plans: check the open PRs first (`workflow/held-file-bundled-sources.md`).
+- Shared sources (`style_designer.src.js`, `get_page_content.php`): check the open PRs first (`workflow/held-file-bundled-sources.md`).
 
 ## What does every step's PR carry?
 - The measure before and after on both starting sites ("fully editable N of M", the reasons of the rest).
