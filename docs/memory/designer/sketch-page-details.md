@@ -5,7 +5,7 @@ module: designer
 ---
 
 ## Where does it open?
-- From the "More" button (three dots, `.sd-sketch-more`) in a sketch page's head: its menu (`_sdSketchMoreMenu()`) has the row "Page details". SK4 adds "Build the page" beside the button and its rows to the same menu (drawing `designer-sketch-drawing.md`, B2).
+- From the "More" button (three dots, `.sd-sketch-more`, SK7's, shown on the selected page while the sketch switch is on) in a sketch page's head: the row "Page details" is one of `_sdSketchMoreRows(page)`, between the reference picture rows and "Delete the page". New rows of the menu go into that list too; SK5 has no button or menu of its own (#11545 settled its clash with SK7 #11557).
 - From the command palette: Ctrl+Shift+P works inside the Prototype view; the row "Page details" is listed first while a sketch frame is selected (`_getCpActionItems()`, `_sdSketchSelected()`).
 - No bar button. The window is the designer part `sketchdetails` (`assets/js/pg_sketch_details.js`, pure, `window.PGSketchDetails`, then `style_designer_sketchdetails.js`), handed to every editor; the core keeps the stub `_sdSketchDetails()` and the host `_sdSketchDetailsHost()`.
 

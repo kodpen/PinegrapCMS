@@ -215,3 +215,76 @@ function test_design_variables_head_stays_short()
 	$head = strtok($css, "\n");
 	pg_assert_true(strlen($head) <= PG_DESIGN_VARIABLES_HEAD_MAX, 'head under the limit: ' . strlen($head));
 }
+
+function test_design_variables_rebase_follows_a_new_palette()
+{
+	$old = pg_design_variables_defaults('', 'ocean');
+	$new = pg_design_variables_defaults('', '');
+	$m = $old;
+	$m['values']['accent'] = array('light' => '#ff0000', 'dark' => '#ff0000');
+	$r = pg_design_variables_rebase($m, $old, $new);
+	pg_assert_same($new['values']['brand'], $r['values']['brand'], 'an untouched brand follows the new palette');
+	pg_assert_same(array('light' => '#ff0000', 'dark' => '#ff0000'), $r['values']['accent'], 'a changed accent stays');
+	pg_assert_same('', $r['palette'], 'the model now names the new palette');
+}
+
+function test_design_variables_state_rebases_a_model_of_another_palette()
+{
+	$m = pg_design_variables_defaults('', 'ocean');
+	$s = pg_design_variables_state($m, '', '');
+	$d = pg_design_variables_defaults('', '');
+	pg_assert_same($d['values']['brand'], $s['model']['values']['brand'], 'brand rebased');
+	pg_assert_same($d, $s['defaults'], 'defaults of the current choice');
+	pg_assert_same(pg_design_variables_css($s['model'], $d), $s['css'], 'stylesheet of the rebased model');
+	pg_assert_true(strpos($s['css'], '--bs-primary') === false, 'untouched defaults drive no theme token');
+	pg_assert_same(4, count($s['contrast']), 'four contrast rows');
+
+	$none = pg_design_variables_state(null, '', 'ocean');
+	pg_assert_same(pg_design_variables_defaults('', 'ocean'), $none['model'], 'no model: the defaults');
+}
+
+function test_design_variables_state_keeps_a_model_of_the_same_choice()
+{
+	$m = pg_design_variables_defaults('', 'ocean');
+	$m['values']['brand'] = array('light' => '#112233', 'dark' => '#445566');
+	$s = pg_design_variables_state($m, '', 'ocean');
+	pg_assert_same(array('light' => '#112233', 'dark' => '#445566'), $s['model']['values']['brand'], 'brand kept');
+	pg_assert_true(strpos($s['css'], '--bs-primary: #112233') !== false, 'a changed brand writes the primary');
+}
+
+function test_design_variables_client_list_matches_the_list()
+{
+	$c = pg_design_variables_client_list();
+	pg_assert_same(array('color', 'type', 'spacing', 'shape'), array_column($c['groups'], 'key'), 'groups in order');
+	pg_assert_same(array_keys(pg_design_variable_list()), array_column($c['rows'], 'key'), 'rows in order');
+	foreach ($c['rows'] as $row) {
+		if ($row['key'] === 'shadow') {
+			pg_assert_same('', $row['options'][0]['value'], 'shadow starts with As the look');
+		}
+		if ($row['key'] === 'radius') {
+			pg_assert_same(array(0, 3), $row['rem'], 'radius rem bounds');
+		}
+	}
+}
+
+function test_design_variables_file_name_and_head()
+{
+	pg_assert_same('design-variables-12.css', pg_design_variables_file_name(12), 'file name of a design');
+	pg_assert_same('', pg_design_variables_file_name(0), 'no file for no design');
+	$css = pg_design_variables_css(pg_design_variables_defaults('', ''), pg_design_variables_defaults('', ''));
+	pg_assert_true(pg_design_variables_head_ok($css), 'a written file has the variables head');
+	pg_assert_false(pg_design_variables_head_ok('/*! pg-theme {"kind":"look"} */'), 'a look file is not variables');
+	pg_assert_false(pg_design_variables_head_ok('body { color: red; }'), 'a plain stylesheet is not variables');
+}
+
+function test_design_variables_load_after_the_palette()
+{
+	$ids = function ($assets) { return array_column($assets, 'id'); };
+	pg_assert_same(array(), pg_design_theme_assets('', '', 'bootstrap5', ''), 'nothing without a choice or a file');
+	pg_assert_same(array('pg-theme-bridge', 'pg-theme-base', 'pg-theme-variables'),
+		$ids(pg_design_theme_assets('', '', 'bootstrap5', '/design-variables-3.css?v=1')), 'variables alone bring the bridge and the look engine');
+	pg_assert_same(array('pg-theme-bridge', 'pg-theme-base', 'pg-theme-look', 'pg-theme-palette', 'pg-theme-variables'),
+		$ids(pg_design_theme_assets('modern-sharp', 'ocean', 'bootstrap5', '/design-variables-3.css?v=1')), 'variables last');
+	pg_assert_same(array('pg-theme-bridge', 'pg-theme-palette'),
+		$ids(pg_design_theme_assets('', 'ocean', 'bootstrap5')), 'a palette alone as before');
+}

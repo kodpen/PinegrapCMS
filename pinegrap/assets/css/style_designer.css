@@ -7548,6 +7548,20 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-th-status { margin-right: auto; font-size: 11.5px; color: #8b949e; }
 .sd-th-note { font-size: 11.5px; color: #8b949e; margin: 0; }
 
+/* The Variables tab (style_designer_variables.js): a fold per group, a row per variable. */
+.sd-vars-group { margin-bottom: 8px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; }
+.sd-vars-summary { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #e6edf3; cursor: pointer; }
+.sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
+.sd-vars-row .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
+.sd-vars-swatch { width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .15); }
+.sd-vars-sample { font-size: 13px; color: #8b949e; text-align: center; }
+.sd-vars-pair { display: flex; gap: 6px; }
+.sd-vars-color { width: 36px; height: 26px; padding: 2px; border: 1px solid #30363d; border-radius: 6px; background: #161b22; cursor: pointer; }
+.sd-vars-add { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-top: 1px solid #21262d; }
+.sd-vars-contrast { margin: 10px 0; font-size: 11.5px; color: #8b949e; }
+.sd-vars-contrast-row.is-low { color: #f0c674; }
+.sd-vars-foot { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
 /* ========================= ASSISTANT PANEL (designer_ai.js) =========================
    Claude or Pinegrap AI changes the selected element or the whole page. The
    panel floats over the canvas's lower right corner and leaves the editor
@@ -8130,16 +8144,23 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-sketch-handle-ne, .sd-sketch-handle-sw { cursor: nesw-resize; }
 .sd-sketch-handle-nw, .sd-sketch-handle-se { cursor: nwse-resize; }
 .sd-sketch-guide { position: absolute; z-index: 3; background: #ff4fa3; pointer-events: none; }
+/* The reference picture under a sketch page: dimmed, from the top, full
+   width, taking no pointer. "More" shows in the selected page's head. */
+.sd-sketch-pic {
+    position: absolute; left: 0; top: 0; width: 100%; object-fit: fill;
+    opacity: .33; pointer-events: none; user-select: none;
+}
+.sd-sketch-more {
+    display: none; align-items: center; justify-content: center;
+    width: 26px; height: 24px; margin-left: auto; padding: 0;
+    border: 0; border-radius: 4px; background: transparent; color: var(--sd-text); cursor: pointer;
+}
+.sd-sketch-mode .pgc-selected .sd-sketch-more { display: inline-flex; }
+.sd-sketch-more:hover, .sd-sketch-more:focus-visible { background: rgba(255,255,255,.1); outline: none; }
+.sd-sketch-menu-sep { margin: 4px 0; border: 0; border-top: 1px solid rgba(255,255,255,.12); opacity: 1; }
+.sd-sketch-menu-key { margin-left: auto; padding: 0 4px; background: none; color: var(--sd-text-muted); font-size: .68rem; }
 .sd-sketch-guide-x { width: 1px; }
 .sd-sketch-guide-y { height: 1px; }
-/* A sketch page's "More" button in its head. */
-.sd-sketch-more {
-    display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
-    border: 0; border-radius: 6px; background: transparent; color: var(--sd-text-muted); cursor: pointer;
-}
-.sd-sketch-more:hover { background: rgba(255,255,255,.08); color: var(--sd-text); }
-.sd-sketch-more:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
-
 /* "Page details" of a sketch page (assets/js/style_designer_sketchdetails.js):
    one window over the dimmed map, its rows the Settings window's .sd-set;
    on a phone it takes the full screen and each control goes under its

@@ -24,7 +24,7 @@ priority: 5
 - A field changed by someone else meanwhile is not overwritten: the bar shows both and asks.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- RE1 (M) Server: one item's fields written through its own writer with rights, rules, history and the changed-meanwhile check; tests.
+- RE1 (M) Server: one item's fields written through its own writer with rights, rules, history and the changed-meanwhile check; tests. Done (#11551): `designer/record-edit-in-place-server.md`. A role 2/3 change while approval is on is refused (`waits`), not held: holding one in `design_proposals` needs a record op and approve path, left for the architect before RE3.
 - RE2 (S) Pure: which bound elements of a page can be edited and with which control.
 - RE3 (M) after RE1, RE2, PW3 of the preview-as plan and DD20: the switch, the frames, the controls in place, the foot bar.
 - RE4 (S) after RE3: "Open the record" for other kinds, the canvas menu's row.

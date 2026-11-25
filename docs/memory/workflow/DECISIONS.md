@@ -166,6 +166,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-11.md: Two "Support E-mail Address" fields? (#3799)
 - decisions-made-product-11.md: Do slash commands run over the API? (#3801)
 - decisions-made-product-11.md: E-mail-a-friend daily limit off the Site Log text? (#3802)
+- decisions-made-product-110.md: Where are the rules and the earlier parts?
+- decisions-made-product-110.md: Which of the census's gaps go into the designer? (owner, 2026-11-25, in the architect's window)
+- decisions-made-product-110.md: What is the architect's reading, not his words?
+- decisions-made-product-110.md: Who draws the designer plans' sheets while no design session runs? (owner, 2026-11-25)
+- decisions-made-product-111.md: Where are the rules and the earlier parts?
+- decisions-made-product-111.md: Which model reads the Sketch tool's reference picture? (owner, 2026-11-25, agent channel poll 223, message 13373)
+- decisions-made-product-111.md: What follows for the step? (architect, 2026-11-25, agent channel message 13373)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1071,6 +1078,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/booking-deposit-late-payment.md: A booking deposit paid after its hold ran out (#10378): booked again under the staff lock while free, else an open request, deposit awaiting refund, honest widget text
 - commerce/booking-meeting-link.md: Start file of the meeting link: a staff member's "Book a time with <name>" page book_with.php and Workspace screen My meeting link; decisions, PRs, files, left out
 - commerce/card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
+- commerce/cart-link-order-owner.md: Whose account an order belongs to when a saved-cart link (?r=) is opened by someone else: whoever completes it (pg_cart_link_take_over(), PR #11463, #11435)
 - commerce/cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery
 - commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
 - commerce/cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days
@@ -1189,6 +1197,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/comment-email-pages-system-region.md: Comment e-mail pages: what their System region prints, the canvas note saying so on a page that keeps it, why the design templates keep it, the fixed markup kept
 - designer/comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - designer/comments-widget-open-slots.md: Comments widget slots opened (CB2, #9716): Pagination as page links a designer builds, shared with Search results; CAPTCHA, star rating, publish options drawn true
+- designer/common-region-component-usage.md: A converted common region's shared component counts as used on every page printing the region's tag; the delete confirmations and delete_many read it
 - designer/common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - designer/content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list
 - designer/content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same
@@ -1211,6 +1220,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - designer/design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
 - designer/designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values
+- designer/designer-activity-audit-trail.md: The Activity tab's design events that leave no page version are kept in the audit trail (audit_log), no new table or column: the lines there today, the writers to add, what the tab shows
+- designer/designer-activity-writers.md: Census for the designer's History "Activity" tab (AC1): every writer that changes a visual design, the row it leaves with who and when, the ones that leave none, and the open store question
 - designer/designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule.
 - designer/designer-blocks-map.md: The map of the "Map of places" block (#10581): the Maps switch and its tiles in Site Settings, Features, consent before any tile, the vendored Leaflet, the Firewall copy line, headers unchanged
 - designer/designer-blocks-overview.md: Start file for the designer-blocks-* files: what a block family is, the rule that binds it, every family by its palette group label, which file holds what, how a new family is added
@@ -1516,10 +1527,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed
 - workflow/architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20
 - workflow/architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back
+- workflow/architect-hand-over-work.md: Hand-over of the architect session of 2026-11-24 and 25, the work in flight: its open PRs, who holds the plans, the sheets the architect draws, what is open with other agents
 - workflow/architect-hand-over.md: Hand-over note of the architect session of 2026-11-24 and 25, written as the owner moves the architect to another account: what is owed to the owner and what he was asked
 - workflow/architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look
 - workflow/architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19)
-- workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
+- workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): only a mention in the agent channel, by the push door since 2026-11-25; no hourly check; a pause he names; economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone
@@ -1548,9 +1560,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
+- workflow/coordinator-second-paused.md: Since 2026-11-25 the second coordinator (k2) takes no new work and the design session is stopped, both for their account's quota: k1 gives out k2's open steps, the architect draws; the owner's words
 - workflow/coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs
 - workflow/coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
+- workflow/design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
 - workflow/held-file-allowed-2.md: Held files, what the architect allowed from 2026-11-20 on: auth.php, image_editor.php and custom_form.php beside their holders; one call line in a root script's top-level code
 - workflow/held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file

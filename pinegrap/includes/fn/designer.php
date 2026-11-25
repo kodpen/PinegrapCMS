@@ -4848,6 +4848,50 @@ function pg_scroller_inject($content, $src = null)
 }
 
 /**
+ * The markers of the visual editor's "Back to top" button (data-pg-to-top)
+ * and "Scroll progress" bar (data-pg-scroll-progress): the attributes
+ * themselves, not longer names that start with them. The editor's Preview
+ * tests the markup with the same expression (_SD_PAGE_SCRIPTS in
+ * assets/js/style_designer.js).
+ *
+ * @return string PCRE pattern
+ */
+function pg_page_scroll_pattern()
+{
+    return '/\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i';
+}
+
+/**
+ * The script behind "Back to top" and "Scroll progress", for a page whose
+ * HTML holds either marker (pg_page_scroll_pattern()); a page without one
+ * gets nothing. Asked once every shared component and system widget is
+ * drawn in (get_page_content.php), so the file follows the element wherever
+ * it was placed. assets/js/pg_page_scroll.js is deferred and needs no
+ * framework.
+ *
+ * @param string      $content page HTML
+ * @param string|null $src     the script's address; null builds it from the
+ *                             software directory and the file's time
+ * @return string
+ */
+function pg_page_scroll_inject($content, $src = null)
+{
+    if (stripos($content, 'data-pg-') === false || !preg_match(pg_page_scroll_pattern(), $content)) return $content;
+    if (strpos($content, '/assets/js/pg_page_scroll.js') !== false) return $content;
+
+    if ($src === null) {
+        $src = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_page_scroll.js?v='
+             . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_page_scroll.js');
+    }
+    $file = '<script src="' . h($src) . '" defer></script>' . "\n";
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    return ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
+}
+
+/**
  * Emit Fancybox v6 (Fancyapps) assets exactly once per request.
  *
  * Fancybox v6 replaces the legacy pg_lightbox custom build for the new
@@ -10105,6 +10149,159 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
 }
 
 /**
+ * Where the converted common regions among $sids are drawn: a component made
+ * from a common region (category common_region:<id>) is drawn by the
+ * region's <cregion> tag, so it is used on every page printing that tag. The
+ * tag counts in a style's code (desktop or mobile style of the page), in a
+ * page region, in a designer region that embeds it (one level, as
+ * get_page_content.php expands them), and as a common region node of a
+ * page's designer tree. Only the row that draws the region counts (the
+ * lowest id, pg_common_region_components_read()); deleting it brings the
+ * region's earlier content back on those pages.
+ *
+ * @param int[]    $sids   shared component ids
+ * @param array    $trees  page rows with page_id and tree_json, as
+ *                         pg_shared_component_usage() read them
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return array sid => list of {page_id, page_name, page_folder, style_id,
+ *               style_name, common_region}; only the sids with pages
+ */
+function pg_shared_component_region_usage_read(array $sids, array $trees, $fetch)
+{
+    $ids = array();
+    foreach ($sids as $sid) {
+        if ((int)$sid > 0) $ids[(int)$sid] = (int)$sid;
+    }
+    if (!$ids) return array();
+
+    $rows = call_user_func($fetch,
+        "SELECT id, category FROM shared_components
+         WHERE id IN (" . implode(',', $ids) . ")
+           AND category LIKE 'common\\_region:%'
+           AND ((system_region_config IS NULL) OR (system_region_config = ''))");
+    $region_of = array();
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $rid = pg_common_region_ids_from_categories(array((string)$row['category']));
+        if ($rid) $region_of[(int)$row['id']] = $rid[0];
+    }
+    if (!$region_of) return array();
+
+    // A second row made from the same region draws nothing.
+    $read = array();
+    $drawn_by = pg_common_region_components_read($read, array_values(array_unique($region_of)), $fetch);
+    foreach ($region_of as $sid => $rid) {
+        if ($drawn_by[$rid] !== $sid) unset($region_of[$sid]);
+    }
+    if (!$region_of) return array();
+
+    // Region name => the component drawing it.
+    $sid_of = array();
+    $rows = call_user_func($fetch,
+        "SELECT cregion_id, cregion_name FROM cregion WHERE cregion_id IN (" . implode(',', array_unique($region_of)) . ")");
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $sid = array_search((int)$row['cregion_id'], $region_of, true);
+        if ($sid !== false) $sid_of[(string)$row['cregion_name']] = array('sid' => $sid, 'region' => (string)$row['cregion_name']);
+    }
+    if (!$sid_of) return array();
+
+    $like = function (array $names, $column) {
+        $parts = array();
+        foreach ($names as $name) {
+            $parts[] = $column . " LIKE '%" . e(escape_like('<cregion>' . $name . '</cregion>')) . "%'";
+        }
+        return '(' . implode(' OR ', $parts) . ')';
+    };
+    $tagged = function ($html) use (&$sid_of) {
+        $found = array();
+        foreach ($sid_of as $name => $to) {
+            if (stripos((string)$html, '<cregion>' . $name . '</cregion>') !== false) $found[] = $to;
+        }
+        return $found;
+    };
+
+    // A designer region printing the tag prints the component too.
+    $rows = call_user_func($fetch,
+        "SELECT cregion_name, cregion_content FROM cregion
+         WHERE cregion_designer_type = 'yes' AND " . $like(array_keys($sid_of), 'cregion_content'));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $outer = (string)$row['cregion_name'];
+        if (isset($sid_of[$outer])) continue;
+        $inner = $tagged($row['cregion_content']);
+        if ($inner) $sid_of[$outer] = $inner[0];
+    }
+
+    // page id => sid => region name
+    $pages = array();
+    $styles = array();
+    $rows = call_user_func($fetch,
+        "SELECT style_id, style_code FROM style WHERE " . $like(array_keys($sid_of), 'style_code'));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        foreach ($tagged($row['style_code']) as $to) $styles[(int)$row['style_id']][$to['sid']] = $to['region'];
+    }
+    $rows = call_user_func($fetch,
+        "SELECT pregion_page, pregion_content FROM pregion WHERE " . $like(array_keys($sid_of), 'pregion_content'));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        foreach ($tagged($row['pregion_content']) as $to) $pages[(int)$row['pregion_page']][$to['sid']] = $to['region'];
+    }
+    foreach ($trees as $row) {
+        $json = (string)$row['tree_json'];
+        if (strpos($json, '"regionName"') === false) continue;
+        $tree = json_decode($json, true);
+        if (!is_array($tree)) continue;
+        $stack = array($tree);
+        while ($stack) {
+            $node = array_pop($stack);
+            if (!is_array($node)) continue;
+            $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+            if (isset($node['type'], $props['regionType'], $props['regionName']) && $node['type'] === 'region'
+                && in_array($props['regionType'], array('common', 'designer'), true)
+                && isset($sid_of[(string)$props['regionName']])) {
+                $to = $sid_of[(string)$props['regionName']];
+                $pages[(int)$row['page_id']][$to['sid']] = $to['region'];
+            }
+            if (!empty($node['children']) && is_array($node['children'])) {
+                foreach ($node['children'] as $child) $stack[] = $child;
+            }
+        }
+    }
+
+    $where = array();
+    if ($styles) {
+        $in = implode(',', array_keys($styles));
+        $where[] = "page.page_style IN ($in) OR page.mobile_style_id IN ($in)";
+    }
+    if ($pages) $where[] = 'page.page_id IN (' . implode(',', array_keys($pages)) . ')';
+    if (!$where) return array();
+
+    $usage = array();
+    $rows = call_user_func($fetch,
+        "SELECT page.page_id, page.page_name, page.page_folder, page.page_style AS style_id, page.mobile_style_id,
+                style.style_name
+         FROM page
+         LEFT JOIN style ON page.page_style = style.style_id
+         WHERE " . implode(' OR ', $where));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $page_id = (int)$row['page_id'];
+        $found = isset($pages[$page_id]) ? $pages[$page_id] : array();
+        foreach (array('style_id', 'mobile_style_id') as $col) {
+            $style = isset($row[$col]) ? (int)$row[$col] : 0;
+            if (isset($styles[$style])) $found += $styles[$style];
+        }
+        foreach ($found as $sid => $region) {
+            $usage[$sid][] = array(
+                'page_id'       => $page_id,
+                'page_name'     => (string)$row['page_name'],
+                'page_folder'   => (int)$row['page_folder'],
+                'style_id'      => (int)$row['style_id'],
+                'style_name'    => (string)$row['style_name'],
+                'common_region' => $region,
+            );
+        }
+    }
+    return $usage;
+}
+
+/**
  * Where shared components and system widgets are placed.
  *
  * sid → the pages whose tree references it, each with the design it belongs
@@ -10175,6 +10372,22 @@ function pg_shared_component_usage($ids = null)
                 'style_name' => (string)$row['style_name'],
                 'binned'     => $binned,
             );
+        }
+    }
+
+    // A converted common region is drawn by its tag (#11502): the pages
+    // printing the tag use the component that draws it.
+    $region_usage = pg_shared_component_region_usage_read(array_keys($usage), is_array($trees) ? $trees : array(), 'db_items');
+    foreach ($region_usage as $sid => $places) {
+        foreach ($places as $u) {
+            $binned = isset($bin_folders[$u['page_folder']]);
+            if ($binned) {
+                $original = pg_recycle_parked_original($u['page_name'], $u['page_id']);
+                if ($original !== '') $u['page_name'] = $original;
+            }
+            $u['binned'] = $binned;
+            unset($u['page_folder']);
+            $direct[$sid][] = $u;
         }
     }
 
@@ -10357,6 +10570,8 @@ function pg_designer_preview_override_rows($widgets)
         $overrides[$sid] = array(
             'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
             'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+            // The Preview's case for this widget alone ("Check all cases").
+            'case'      => (isset($w['case']) && is_string($w['case'])) ? $w['case'] : '',
         );
     }
     return $overrides;
@@ -10384,16 +10599,29 @@ function pg_designer_preview_override_rows($widgets)
  * or not: pg_comments_preview_page()). A page not saved yet has no thread:
  * the widget draws nothing.
  *
- * @param int   $page_id          the page, 0 when it has not been saved
- * @param array $widgets          [{id, tree_json, system_region_config}]
- * @param array $comment_settings the page's comment settings as the editor
- *                                holds them (pg_comment_editor_keys())
+ * "Preview as" ($preview_as, with the operator in $user): the page's
+ * choice of record, visitor and case (pg_preview_as_choice()), a widget
+ * row's own 'case' over the page's. Each widget is drawn with its setup
+ * (pg_preview_as_setup()) held for its renderers in pg_preview_as_while(),
+ * which also puts the session back after it; a single-record widget draws
+ * the record of its pick (pg_preview_as_record_target()), within what the
+ * operator may open. With no operator the default pick is drawn, as before.
+ * $setups, when given, receives sid => {case, record} of what was drawn.
+ *
+ * @param int        $page_id          the page, 0 when it has not been saved
+ * @param array      $widgets          [{id, tree_json, system_region_config, case}]
+ * @param array      $comment_settings the page's comment settings as the editor
+ *                                     holds them (pg_comment_editor_keys())
+ * @param mixed      $preview_as       {record, visitor, case, page: {access_rules, audience}}
+ * @param array|null $user             validate_user(), null for no operator
+ * @param array|null $setups           out: sid => {case, record}
  * @return array sid => html
  */
-function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
+function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array(), $preview_as = null, $user = null, &$setups = null)
 {
     $page_id   = (int)$page_id;
     $overrides = pg_designer_preview_override_rows($widgets);
+    $setups    = array();
     if (empty($overrides)) return array();
 
     $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';
@@ -10419,51 +10647,63 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
         $saved_preview = pg_comments_preview_page(array('page_id' => $page_id, 'columns' => pg_comment_editor_columns($comment_settings)));
     }
     try {
+        // The settings of every widget first: the page's choice is read
+        // back against the kinds the page holds.
+        $cfgs = array();
         foreach ($overrides as $sid => $ov) {
-            $_GET = array();
-            if ($page_name !== '') $_GET['page'] = $page_name;
-
             $cfg = $ov['cfg'];
             if (!is_array($cfg)) {
                 $cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
             }
+            $cfgs[$sid] = $cfg;
+        }
+        $kinds = array();
+        foreach ($cfgs as $cfg) $kinds[] = pg_sw_widget_kind($cfg);
+        $pa     = is_array($preview_as) ? $preview_as : array();
+        $choice = pg_preview_as_choice($pa, $kinds, (isset($pa['page']) && is_array($pa['page'])) ? $pa['page'] : array());
+
+        foreach ($overrides as $sid => $ov) {
+            $_GET = array();
+            if ($page_name !== '') $_GET['page'] = $page_name;
+
+            $cfg = $cfgs[$sid];
             // The kind: a list of recent comments reads its own source
             // pages and takes no record of this page.
             $type = pg_sw_widget_kind($cfg);
+            $own  = $choice;
+            if ($ov['case'] !== '') $own['case'] = $ov['case'];
+            $setup = pg_preview_as_setup($type, $own);
 
-            if ($type === 'form_item_view') {
-                $code = _pg_preview_newest_record_code($cfg, $page_id);
-                if ($code !== '') $_GET['r'] = $code;
+            $target = array('get' => array(), 'address' => '', 'id' => 0);
+            if ($type === 'form_item_view' || $type === 'calendar_event_view') {
+                $target = pg_preview_as_record_target($setup, $cfg, $page_id, $user);
             } elseif ($type === 'comments' && $page_id > 0) {
-                // A record page's thread is the shown record's: the newest
-                // one of the page's stored record widget, as that widget
-                // shows it here.
+                // A record page's thread is the shown record's: the record
+                // the page's stored record widget draws here.
                 $fiv = pg_sw_page_widget($page_id, 'form_item_view');
                 if ($fiv) {
-                    $code = _pg_preview_newest_record_code($fiv['cfg'], $page_id);
-                    if ($code !== '') $_GET['r'] = $code;
+                    $target = pg_preview_as_record_target(pg_preview_as_setup('form_item_view', $choice), $fiv['cfg'], $page_id, $user);
+                    $target['id'] = 0;
                 }
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {
-                $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);
-                $address = ($group > 0)
-                    ? (string)db_value("SELECT products.address_name FROM products
-                                        INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
-                                        WHERE products_groups_xref.product_group = '" . $group . "'
-                                          AND products.enabled = '1' AND products.address_name != ''
-                                        ORDER BY products.id ASC LIMIT 1")
-                    : (string)db_value("SELECT address_name FROM products WHERE enabled = '1' AND address_name != '' ORDER BY id ASC LIMIT 1");
-                if ($address !== '') $_GET['page'] = $page_name . '/' . $address;
+                $target = pg_preview_as_record_target($setup, $cfg, $page_id, $user);
+                if ($target['address'] !== '') $_GET['page'] = $page_name . '/' . $target['address'];
             }
+            foreach ($target['get'] as $k => $v) $_GET[$k] = $v;
+            $setups[(int)$sid] = array('case' => $setup['case'], 'record' => (int)$target['id']);
 
-            ob_start();
-            try {
-                $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
-                // What the widget's own layout places (nested components).
-                $html = pg_expand_nested_components($html, 'preview');
-            } catch (Throwable $t) {
-                $html = '';
-            }
-            ob_end_clean();
+            $html = pg_preview_as_while($setup, function () use ($sid) {
+                ob_start();
+                try {
+                    $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
+                    // What the widget's own layout places (nested components).
+                    $html = pg_expand_nested_components($html, 'preview');
+                } catch (Throwable $t) {
+                    $html = '';
+                }
+                ob_end_clean();
+                return $html;
+            });
             $out[(int)$sid] = pg_designer_resolve_output_placeholders((string)$html);
         }
     } finally {
@@ -10479,29 +10719,6 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
         }
     }
     return $out;
-}
-
-/**
- * The reference code of the newest record a form_item_view widget's form
- * holds and its filters let through, as the Preview shows one ('' for none).
- *
- * @param array $cfg     the widget's settings
- * @param int   $page_id the page it is drawn on
- * @return string
- */
-function _pg_preview_newest_record_code($cfg, $page_id)
-{
-    if (!is_array($cfg)) return '';
-    $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
-    if ($form_pid <= 0) return '';
-    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), (int)$page_id, true);
-    return (string)db_value(
-        "SELECT forms.reference_code FROM forms
-         {$clause['join']}
-         WHERE forms.page_id = '" . $form_pid . "'
-           {$clause['where']}
-         ORDER BY forms.id DESC
-         LIMIT 1");
 }
 
 /**

@@ -388,7 +388,7 @@ function pg_designer_screen_render($ctx)
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'sketchdetails', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'sketchdetails', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -456,7 +456,7 @@ function pg_designer_screen_render($ctx)
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
-        'themes'        => pg_design_theme_catalog(),
+        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.
@@ -563,6 +563,8 @@ function pg_designer_screen_render($ctx)
                 <input type="hidden" name="style_palette" id="sd-style-palette" value="' . h(isset($style['palette']) ? pg_design_palette_key($style['palette']) : '') . '">
                 <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
                 <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
+                <!-- The variables model the Variables tab changed (JSON); empty: unchanged. -->
+                <input type="hidden" name="style_variables" id="sd-style-variables" value="">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -1779,8 +1781,9 @@ function pg_designer_components_rows()
 
         // Where it is placed: page (design), the recycle bin marked. The
         // confirmation reads the same lines from data-usage.
-        $usage_lines = array();
-        $usage_cell  = '';
+        $usage_lines  = array();
+        $usage_cell   = '';
+        $region_drawn = false;
         foreach ((isset($comp_usage[$sid]) ? $comp_usage[$sid] : array()) as $u) {
             // A binned page of a deleted design has no design name left: the
             // page alone, never "page ()".
@@ -1788,10 +1791,18 @@ function pg_designer_components_rows()
             if ($page === '') $page = (string)$u['style_name'];
             if ($page === '') $page = '#' . (int)$u['page_id'];
             $line = ((int)$u['page_id'] > 0 && (string)$u['style_name'] !== '') ? $page . ' (' . $u['style_name'] . ')' : $page;
+            // Drawn by a converted common region's tag, not placed.
+            if (isset($u['common_region'])) {
+                $line .= ' — ' . lang(array('string' => 'common region tag "{var:1}"', 'vars' => array((string)$u['common_region'])));
+                $region_drawn = true;
+            }
             $usage_lines[] = $line;
             $usage_cell .= '<div>' . h($line)
                 . (!empty($u['binned']) ? ' <span class="badge theme-secondary">' . h(lang('Recycle Bin')) . '</span>' : '')
                 . '</div>';
+        }
+        if ($region_drawn) {
+            $usage_cell .= '<div class="small fg-secondary">' . h(lang('It draws the common region wherever its tag stands; deleting it brings back the region\'s earlier content on those pages.')) . '</div>';
         }
         if ($usage_cell === '') {
             $usage_cell = '<span class="badge theme-success">' . h(lang('Not used')) . '</span>';
@@ -3417,6 +3428,14 @@ function pg_designer_screen_post($ctx)
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        // The design's variables (Settings, Theme, Variables): the model the
+        // tab posts, or, when the tab was not used, the stored one carried
+        // over to the look and palette just saved. No file, no change.
+        $sd_vars_post = isset($_POST['style_variables']) ? trim((string)$_POST['style_variables']) : '';
+        $sd_vars_model = ($sd_vars_post !== '') ? json_decode($sd_vars_post, true) : null;
+        $sd_vars_saved = pg_design_variables_save($style_id, is_array($sd_vars_model) ? $sd_vars_model : null,
+            $style_data['look'], $style_data['palette'], $user['id']);
+        if ($sd_vars_saved !== true) $warnings[] = $sd_vars_saved;
         // An update never changes a design's framework; a converted style
         // takes the one the editor opened it with (custom: the theme keeps
         // its own Bootstrap and scripts).
