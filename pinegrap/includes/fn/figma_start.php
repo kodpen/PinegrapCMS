@@ -447,6 +447,30 @@ function pg_figma_report_frame($frame)
 }
 
 /**
+ * A frame as finish takes it: the pictures still listed were never fetched
+ * (its frame step failed or did not end), so each becomes a "picture" note
+ * naming its layer and the frame keeps no picture to fetch. Pure.
+ *
+ * @param array $frame the import's frame
+ * @return array
+ */
+function pg_figma_frame_unfetched($frame)
+{
+    if (empty($frame['pictures']) || !is_array($frame['tree'])) {
+        return $frame;
+    }
+
+    foreach ((array) $frame['pictures'] as $p) {
+        $layer = pg_figma_tree_node($frame['tree'], $p['node']);
+        $frame['report'][] = array('figma' => $p['figma'], 'name' => isset($layer['props']['customName']) ? (string) $layer['props']['customName'] : '', 'code' => 'picture');
+    }
+
+    $frame['pictures'] = array();
+
+    return $frame;
+}
+
+/**
  * The file name a fetched picture is stored under: the frame's and the
  * layer's names as a slug, and the type's extension. Pure.
  */
@@ -816,6 +840,7 @@ function pg_figma_import_finish($id, $user, $variables)
         return array('ok' => false);
     }
 
+    $data['frames'] = array_map('pg_figma_frame_unfetched', $data['frames']);
     $made = array_values(array_filter($data['frames'], function ($f) {
         return empty($f['failed']) && is_array($f['tree']);
     }));
