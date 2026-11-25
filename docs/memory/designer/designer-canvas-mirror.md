@@ -17,7 +17,7 @@ description: The canvas mirror as the designer part 'mirror' (SS1, #11535): a fr
 - The part `mirror` (`assets/js/style_designer_mirror.js`, bundle `style_designer_mirror.min.js` = the pure module, then the part; `pg_designer_parts()`). Entry points: `open(host, width)` (answers an id, draws at once), `width(id, w)`, `resize()`, `close(id)` (all with no id), `rebind()`, `draw()`, `count()`.
 - Only while a mirror is open: a MutationObserver on the canvas document, capture listeners for pointer, drag and keys on the canvas and the editor document, and `blur` on the window. The last `close()` removes them all and the timer.
 - The core holds only `_sdMirrorRebind()` (after the parts loader), called when `createCanvasIframe()` writes a new canvas document; it does nothing until the part has loaded.
-- SS1 does not hand the part to the editor: `includes/designer_screen.php` adds `'mirror'` to its parts list in SS2, with the View menu switch that opens it.
+- SS1 does not hand the part to the editor: its file `includes/designer_parts/mirror.php` has `'when' => 'off'`; SS2 gives it a condition, with the View menu switch that opens it.
 
 ## What was measured?
 - Core `style_designer.min.js`: 3,002,363 to 3,002,460 bytes (786,640 to 786,697 gzip); the part's bundle 9.3 KB (3.9 KB gzip), loaded on first use only.

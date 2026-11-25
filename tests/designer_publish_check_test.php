@@ -83,7 +83,8 @@ function test_designer_publish_check_is_a_part()
 		pg_js_bundles()['assets/js/style_designer_publishcheck.min.js']);
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_contains("(\$access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !\$sd_component) ? array('publishcheck') : array()", $screen, 'handed where the sheet is');
+	pg_assert_same('publishcheck', pg_designer_part_files()['publishcheck']['when'], 'handed where the sheet is');
+	pg_assert_contains("'publishcheck' => \$access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !\$sd_component,", $screen, 'the condition on the screen is the sheet condition');
 	pg_assert_false(strpos($screen, 'style_designer_publishcheck') !== false, 'no script tag');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');

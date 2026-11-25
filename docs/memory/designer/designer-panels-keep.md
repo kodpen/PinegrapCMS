@@ -18,7 +18,7 @@ description: What a change to the Page Design Studio's Options panel, Overview, 
 - (K12) Opening the editor loads no part (`designer-parts-on-demand.md`, `tests/designer_parts_test.php`).
 
 ## Which rules does every change keep?
-- New code a page does not need to open goes into a part (`assets/js/style_designer_<part>.js`, named in `pg_designer_parts()`); a decision into a pure module tested under Node as `pg_spacing_box.js`, `pg_options_search.js` are; the core file gets the hooks.
+- New code a page does not need to open goes into a part (`assets/js/style_designer_<part>.js`, with a file in `includes/designer_parts/`, `designer-parts-on-demand.md`); a decision into a pure module tested under Node as `pg_spacing_box.js`, `pg_options_search.js` are; the core file gets the hooks.
 - A colour is a token (`designer-chrome-tokens.md`), a size the number of `designer-chrome-measures.md`.
 - A pure function gets its test first.
 - A PR that changes how one of the four areas looks shows it beside its drawing (git history, `designer-panels-overview.md`) at 1440, 1024 and 390, with a 60-character element name and the longest Turkish labels; it names what it could not verify.

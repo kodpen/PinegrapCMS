@@ -170,7 +170,8 @@ function test_proto_comment_part_is_handed_to_designers_and_registered_once()
 	pg_assert_same('assets/js/style_designer_comments.min.js', pg_designer_parts()['comments'], 'the part is listed');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "(\$access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments')") !== false, 'handed over to designers only');
+	pg_assert_same('comments', pg_designer_part_files()['comments']['when'], 'handed over to designers only');
+	pg_assert_contains("'comments'     => \$access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready(),", $screen, 'the comments condition on the screen');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(1, substr_count($core, "_sdPartCall('comments', 'beat'"), 'one line in the core runs the part on the heartbeat');

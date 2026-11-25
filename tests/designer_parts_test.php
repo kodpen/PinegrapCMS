@@ -55,12 +55,116 @@ function test_designer_part_urls_list_the_parts_asked_for()
 }
 
 // The designer screen no longer prints the assistant's script: the editor
-// loads it as a part.
-function test_designer_screen_hands_parts_to_the_editor()
+// loads it as a part, from the parts whose condition holds.
+function test_designer_parts_handed_by_the_screen()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_false(strpos($screen, 'src="assets/js/designer_ai.js') !== false, 'no <script> tag for designer_ai.js');
-	pg_assert_true(strpos($screen, "'parts'") !== false && strpos($screen, 'pg_designer_part_urls(') !== false, 'sdDesign.parts is filled');
+	pg_assert_contains("'parts'         => (object) pg_designer_part_urls(pg_designer_parts_for(array(", $screen, 'sdDesign.parts is filled from the conditions');
+	pg_assert_false(strpos($screen, 'pg_designer_part_urls(array_merge(') !== false, 'no part listed by hand on the screen');
+
+	// Each condition of the closed list is worked out on the screen, with
+	// the rule it had when the parts were listed by hand.
+	$rules = array(
+		'designer'     => "\$access === PG_DESIGNER_ACCESS_FULL,",
+		'ai'           => "!empty(\$sd_ai['enabled']),",
+		'comments'     => "\$access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready(),",
+		'phone'        => "\$sd_phone,",
+		'publishcheck' => "\$access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !\$sd_component,",
+		'clicks'       => "!empty(\$sd_clicks),",
+	);
+
+	foreach ($rules as $condition => $rule) {
+		pg_assert_contains("'" . $condition . "' => " . $rule, preg_replace('/\s+=>\s+/', ' => ', $screen), 'the screen works out ' . $condition);
+	}
+
+	pg_assert_same(array_keys($rules), array_values(array_diff(pg_designer_part_conditions(), array('always', 'off'))), 'every condition but always and off comes from the screen');
+}
+
+// One file per part under includes/designer_parts/: the Pinegrap header,
+// the gate, and array('sources' => ..., 'when' => ...) with sources that
+// exist and a condition of the closed list.
+function test_designer_parts_files_describe_every_part()
+{
+	$files = glob(PG_FUNCTIONS_DIR . '/includes/designer_parts/*.php');
+	$read = pg_designer_part_files();
+	$conditions = pg_designer_part_conditions();
+	pg_assert_true(count($files) >= 20, 'the parts have their files');
+	pg_assert_same(count($files), count($read), 'every file is read');
+
+	foreach ($files as $path) {
+		$name = basename($path, '.php');
+		$php = (string) file_get_contents($path);
+		pg_assert_true((bool) preg_match('/^[a-z0-9]+$/', $name), $name . ' is a part name');
+		pg_assert_contains('Pinegrap - Enterprise Website Platform', $php, $name . ' has the header block');
+		pg_assert_contains("if (!defined('PG_FUNCTIONS_DIR')) {", $php, $name . ' has the gate');
+		pg_assert_true((bool) preg_match('#Memory: docs/memory/[a-z]+/[a-z0-9-]+\.md#', $php), $name . ' names its memory file');
+		pg_assert_true(isset($read[$name]), $name . ' is read');
+		pg_assert_true(in_array($read[$name]['when'], $conditions, true), $name . ': ' . $read[$name]['when'] . ' is a known condition');
+		pg_assert_true(count($read[$name]['sources']) >= 1, $name . ' has a source');
+
+		foreach ($read[$name]['sources'] as $source) {
+			pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $source), $name . ': ' . $source . ' exists');
+		}
+
+		preg_match('#Memory: docs/memory/([a-z]+/[a-z0-9-]+\.md)#', $php, $m);
+		pg_assert_true(is_file(dirname(PG_FUNCTIONS_DIR) . '/docs/memory/' . $m[1]), $name . ': its memory file exists');
+	}
+
+	pg_assert_same(array_keys($read), array_keys(pg_designer_parts()), 'pg_designer_parts() is the folder, by name');
+
+	foreach (pg_designer_parts() as $name => $bundle) {
+		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/includes/designer_parts/' . $name . '.php'), $name . ' has a file');
+		pg_assert_same($read[$name]['sources'], pg_js_bundles()[$bundle], $name . '\'s bundle is built from its file\'s sources');
+	}
+}
+
+// The parts handed for the conditions that hold: 'always' ones to every
+// editor, 'off' ones never, the others while their condition is true.
+function test_designer_parts_for_follow_their_condition()
+{
+	$every = array('bands', 'code', 'focus', 'fonts', 'guides', 'import', 'interactions', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'treesearch', 'variables');
+	pg_assert_same($every, pg_designer_parts_for(array()), 'nothing holds: the parts of every editor');
+	pg_assert_same($every, pg_designer_parts_for(array('always' => false, 'off' => true, 'nope' => true)), 'always and off cannot be turned');
+
+	$all = array_fill_keys(pg_designer_part_conditions(), true);
+	$given = pg_designer_parts_for($all);
+	pg_assert_false(in_array('mirror', $given, true), 'mirror is off');
+	pg_assert_same(array_values(array_diff(array_keys(pg_designer_part_files()), array('mirror'))), $given, 'everything else holds');
+
+	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'clicks' => 'clicks', 'mirror' => 'off');
+	foreach ($expect as $part => $condition) {
+		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
+	}
+
+	pg_assert_same(array('libraryfile', 'librarymanage'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds My library\'s file');
+	pg_assert_same(array('ai'), array_values(array_diff(pg_designer_parts_for(array('ai' => true)), $every)), 'ai adds the assistant only');
+}
+
+// The kit's keys stay in strcmp order, one per line with a trailing comma,
+// so two changes that add keys rarely touch the same lines.
+function test_designer_parts_kit_keys_are_sorted()
+{
+	$source = _test_blocks_js();
+	$from = strpos($source, '    function _sdPartKit() {');
+	$to = strpos($source, "\n    }\n", (int) $from);
+	$body = substr($source, $from, $to - $from);
+	pg_assert_true((bool) preg_match('/var kit = \{\n(.*?)\n        \};/s', $body, $lit), 'the kit\'s functions');
+	pg_assert_true((bool) preg_match('/Object\.defineProperties\(kit, \{\n(.*?)\n        \}\);/s', $body, $state), 'the kit\'s state');
+
+	foreach (array('functions' => $lit[1], 'state' => $state[1]) as $what => $block) {
+		$lines = explode("\n", $block);
+		$keys = array();
+
+		foreach ($lines as $line) {
+			pg_assert_true((bool) preg_match('/^            ([A-Za-z_$][A-Za-z0-9_$]*): .*,$/', $line, $m), $what . ': one key per line with a trailing comma: ' . trim($line));
+			$keys[] = $m[1] ?? '';
+		}
+
+		$sorted = $keys;
+		sort($sorted, SORT_STRING);
+		pg_assert_same($sorted, $keys, 'the kit\'s ' . $what . ' are sorted');
+	}
 }
 
 // Runs $script after the loader and returns the JSON lines it prints; null
@@ -218,8 +322,7 @@ function test_designer_import_is_a_part()
 	pg_assert_false(strpos($core, 'function _pgImportFindShared(') !== false, 'the core no longer holds the import');
 	pg_assert_true(strpos($core, "_sdPartCall('import', 'open'") !== false, 'the import dialog runs the part');
 	pg_assert_true(strpos($core, "_sdPartCall('import', 'apply'") !== false, 'the paste-a-page reply runs the part');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "array('import')") !== false || strpos($screen, "'import'") !== false, 'the screen hands the import part over');
+	pg_assert_same('always', pg_designer_part_files()['import']['when'], 'the screen hands the import part over');
 }
 
 // The readers of the designer's _sdT() keys read the parts too.
@@ -304,8 +407,7 @@ function test_designer_code_view_runtime_is_a_part()
 
 	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
 	pg_assert_true(strpos($part, 'function _sdCodeDocument(') !== false, 'the part holds the document');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "'code'") !== false, 'the screen hands the code part over');
+	pg_assert_same('always', pg_designer_part_files()['code']['when'], 'the screen hands the code part over');
 }
 
 // The code part's factory runs on a kit with every key the core's has and
@@ -388,8 +490,7 @@ function test_designer_theme_panel_is_a_part()
 	}
 
 	pg_assert_true(strpos($core, "_sdPartCall('theme', 'render'") !== false, 'the core runs the part to draw the tab');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "'theme'") !== false, 'the screen hands the theme part over');
+	pg_assert_same('always', pg_designer_part_files()['theme']['when'], 'the screen hands the theme part over');
 }
 
 // The theme part under Node, handed a kit with every key the core's has and
@@ -460,8 +561,7 @@ function test_designer_fonts_browser_is_a_part()
 	}
 
 	pg_assert_true(strpos($core, "_sdPartCall('fonts', 'open'") !== false, 'the core runs the part to open the browser');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "'fonts'") !== false, 'the screen hands the fonts part over');
+	pg_assert_same('always', pg_designer_part_files()['fonts']['when'], 'the screen hands the fonts part over');
 }
 
 // The fonts part under Node, handed a kit with every key the core's has and
@@ -542,8 +642,7 @@ function test_designer_interactions_are_a_part()
 	}
 
 	pg_assert_true(strpos($core, "_sdPartCall('interactions', 'fill'") !== false, 'the core runs the part to fill the section');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "'interactions'") !== false, 'the screen hands the interactions part over');
+	pg_assert_same('always', pg_designer_part_files()['interactions']['when'], 'the screen hands the interactions part over');
 }
 
 // The interactions part under Node, handed a kit with every key the core's

@@ -216,8 +216,7 @@ function test_canvas_bands_are_a_part()
 	pg_assert_false(in_array('assets/js/pg_canvas_guides.js', $files, true), 'the guides\' geometry belongs to the Measure part');
 	pg_assert_same('assets/js/style_designer_bands.js', end($files), 'the part last');
 
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_contains("'bands'", $screen, 'the screen hands the part over');
+	pg_assert_same('always', pg_designer_part_files()['bands']['when'], 'the screen hands the part over');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdPartCall('bands', 'draw', [_sdBandsHost(node)])", $core, 'the core draws through the part');

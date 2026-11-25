@@ -8061,7 +8061,7 @@ function pg_version_srcset($value, $version_of)
  */
 function pg_js_bundles()
 {
-    return array(
+    $bundles = array(
         'assets/js/workspace.min.js' => array(
             'assets/js/workspace_editor.js',
             'assets/js/workspace_recurrence.js',
@@ -8165,69 +8165,16 @@ function pg_js_bundles()
         // script that starts it and the scripts that extend it. Its block
         // family files come after the core, whose registration call they use.
         'assets/js/style_designer.min.js'          => array_merge(array('assets/js/pg_google_fonts.js'), pg_designer_js_sources()),
-        // The designer's parts not needed to open a page (pg_designer_parts()),
-        // each run by the editor the first time it is asked for.
-        'assets/js/style_designer_ai.min.js'       => array('assets/js/designer_ai.js'),
-        'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
-        'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
-        'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
-        'assets/js/style_designer_variables.min.js' => array('assets/js/style_designer_variables.js'),
-        'assets/js/style_designer_questions.min.js' => array('assets/js/designer_questions.js'),
-        'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
-        'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
-        'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
-        // The Options panel's search: its pure fold-and-match module
-        // (window.PGOptionsSearch), then the part that lists the results.
-        'assets/js/style_designer_optsearch.min.js' => array('assets/js/pg_options_search.js', 'assets/js/style_designer_optsearch.js'),
-        // "Only what I changed" of the Options panel: its pure list and
-        // reset loop (window.PGOptionsReview), then the part that draws it.
-        'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
-        // The Options panel's states: the state rule model
-        // (window.PGOptionStates), then the part that draws the panel under
-        // a state and writes it.
-        'assets/js/style_designer_states.min.js' => array('assets/js/pg_option_states.js', 'assets/js/style_designer_states.js'),
-        'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
-        // "Page details" of a sketch page: its pure values and checks
-        // (window.PGSketchDetails), then the part that draws the window.
-        'assets/js/style_designer_sketchdetails.min.js' => array('assets/js/pg_sketch_details.js', 'assets/js/style_designer_sketchdetails.js'),
-        'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
-        'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
-        // The spacing box of Style › Spacing and the corner box of Style ›
-        // Border and corner, and a length per screen size: their pure
-        // mappings (window.PGSpacingBox, window.PGCornerBox,
-        // window.PGSizeStyle), then the part that draws them.
-        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/pg_size_style.js', 'assets/js/style_designer_spacing.js'),
-        'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
-        // The canvas guides: their pure geometry (window.PGCanvasGuides),
-        // then the part that draws Measure over the canvas.
-        'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
-        // "Can change per place": the per-place model of a shared component
-        // (window.PGComponentOverrides), then the part that opens a field
-        // and lists them in the component's settings.
-        'assets/js/style_designer_overrides.min.js' => array('assets/js/pg_component_overrides.js', 'assets/js/style_designer_overrides.js'),
-        // The spacing bands over the canvas: their geometry
-        // (window.PGCanvasBands), the first-use tips' state (window.PGDesignerTour), then the part that
-        // draws them. What the Spacing box writes (window.PGSpacingBox) comes
-        // with the part 'spacing', which the core loads first.
-        'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
-        'assets/js/style_designer_phone.min.js'    => array('assets/js/style_designer_phone.js'),
-        'assets/js/style_designer_mylibrary.min.js' => array('assets/js/style_designer_mylibrary.js'),
-        // "Manage library": the window over My library.
-        'assets/js/style_designer_librarymanage.min.js' => array('assets/js/style_designer_librarymanage.js'),
-        // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
-        // then the part that fills their frames from the canvas.
-        'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
-        // The Focus control of an Image's and a background picture's
-        // options: what it shows (window.PGImageFocus), then the part.
-        'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
-        // The "Clicks" layer over the canvas, from the visitors' counts.
-        'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
-        // The Publish check: its pure finding shape (window.PgPublishFindings)
-        // and Content check (window.PgPublishContent), then the part that
-        // checks the Publish sheet's pages and lists their findings.
-        'assets/js/style_designer_publishcheck.min.js' => array('assets/js/pg_publish_findings.js', 'assets/js/pg_publish_content.js', 'assets/js/style_designer_publishcheck.js'),
-        // My library's Import window and the Export download.
-        'assets/js/style_designer_libraryfile.min.js' => array('assets/js/style_designer_libraryfile.js'),
+    );
+
+    // The designer's parts not needed to open a page, each built from the
+    // sources its file under includes/designer_parts/ lists
+    // (pg_designer_part_files()).
+    foreach (pg_designer_part_files() as $name => $part) {
+        $bundles['assets/js/style_designer_' . $name . '.min.js'] = $part['sources'];
+    }
+
+    $bundles += array(
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8245,6 +8192,8 @@ function pg_js_bundles()
         // loaded after pg_dash.min.js, whose drawing they use.
         'assets/js/pg_report_view.min.js'         => array('assets/js/pg_report_view.js'),
     );
+
+    return $bundles;
 }
 
 /**
@@ -8274,104 +8223,116 @@ function pg_designer_js_sources()
 }
 
 /**
+ * The conditions a designer part may be handed on (its file's 'when'), a
+ * closed list. 'always' is every editor and 'off' none; the designer screen
+ * works out the others for the operator (pg_designer_parts_for()):
+ * 'designer' full designer access, 'ai' the assistant on, 'comments' the
+ * prototype comments for designers, 'phone' the phone preview, 'publishcheck'
+ * the Publish sheet, 'clicks' the Clicks layer.
+ *
+ * @return array condition names
+ */
+function pg_designer_part_conditions()
+{
+    return array('always', 'designer', 'ai', 'comments', 'phone', 'publishcheck', 'clicks', 'off');
+}
+
+/**
+ * The designer's parts as their files under includes/designer_parts/ describe
+ * them, sorted by name and read once per request. A part is added by adding
+ * its file (<name>.php, returning array('sources' => array(...), 'when' =>
+ * '<condition>')): no list is edited. Its sources, in load order, build the
+ * bundle assets/js/style_designer_<name>.min.js (pg_js_bundles()).
+ *
+ * @return array part name => array('sources' => array, 'when' => string)
+ */
+function pg_designer_part_files()
+{
+    static $parts = null;
+
+    if ($parts !== null) {
+        return $parts;
+    }
+
+    $parts = array();
+    $files = glob(PG_FUNCTIONS_DIR . '/includes/designer_parts/*.php');
+
+    foreach (is_array($files) ? $files : array() as $path) {
+        $name = basename($path, '.php');
+
+        if (!preg_match('/^[a-z0-9]+$/', $name)) {
+            continue;
+        }
+
+        $part = _pg_designer_part_read($path);
+        $parts[$name] = array(
+            'sources' => (is_array($part) && isset($part['sources']) && is_array($part['sources'])) ? array_values($part['sources']) : array(),
+            'when'    => (is_array($part) && isset($part['when'])) ? (string) $part['when'] : '',
+        );
+    }
+
+    ksort($parts, SORT_STRING);
+    return $parts;
+}
+
+/**
+ * Includes one part file in a scope of its own and answers what it returns.
+ *
+ * @param string $path the part file
+ * @return mixed
+ */
+function _pg_designer_part_read($path)
+{
+    return include $path;
+}
+
+/**
  * The visual designer's parts not needed to open a page, by name: each is a
  * bundle of pg_js_bundles() kept out of style_designer.min.js. The designer
  * screen hands the addresses of the parts the operator may use to the editor
- * (sdDesign.parts, pg_designer_part_urls()); the editor runs a part's files
- * the first time something asks for it (_sdPartLoad()).
+ * (sdDesign.parts, pg_designer_parts_for(), pg_designer_part_urls()); the
+ * editor runs a part's files the first time something asks for it
+ * (_sdPartLoad()).
  *
  * @return array part name => bundle under the software directory
  */
 function pg_designer_parts()
 {
-    return array(
-        // The assistant panel (designer_ai.js), designers with the assistant on.
-        'ai' => 'assets/js/style_designer_ai.min.js',
-        // The HTML / ZIP import and the paste-a-page reply opened as tabs.
-        'import' => 'assets/js/style_designer_import.min.js',
-        // The code view's runtime: switching it on, its document and
-        // selection, the file tabs and the search in all tabs.
-        'code'   => 'assets/js/style_designer_code.min.js',
-        // The Themes tab of the assets panel: the Bootstrap variable rows,
-        // their cascade rules and "save these colours as a theme".
-        'theme'  => 'assets/js/style_designer_theme.min.js',
-        // The Google Fonts browser: the catalogue's list, the preview and
-        // the weights of a font added to the design.
-        'fonts'  => 'assets/js/style_designer_fonts.min.js',
-        // The Interactions section's rows of the properties panel: the
-        // effect, trigger and timing fields and the Play button.
-        'interactions' => 'assets/js/style_designer_interactions.min.js',
-        // The Overview's tree search: the page's elements found by name,
-        // text, class and id, listed with their path.
-        'treesearch' => 'assets/js/style_designer_treesearch.min.js',
-        // The Options panel's search: a row of any tab found by its label,
-        // section, CSS property or class prefix, listed with its path.
-        'optsearch' => 'assets/js/style_designer_optsearch.min.js',
-        // The "Move…" window: an element moved without dragging, its
-        // target searched by name, Before, Into or After.
-        'move' => 'assets/js/style_designer_move.min.js',
-        // The prototype comments of the design: the pins on the canvas and
-        // the Comments list, for designers.
-        'comments' => 'assets/js/style_designer_comments.min.js',
-        // "Page details" of a sketch page in the Prototype view; read-only
-        // for a content-level operator.
-        'sketchdetails' => 'assets/js/style_designer_sketchdetails.min.js',
-        // The spacing box of Style › Spacing and the size chooser in its
-        // head (also on Size and display and Text), drawn when the section
-        // is first shown.
-        'spacing' => 'assets/js/style_designer_spacing.min.js',
-        // The spacing bands and their handles on the selected element over
-        // the canvas, drawn on the first selection that can show them.
-        'bands' => 'assets/js/style_designer_bands.min.js',
-        // The Pages window: every page by group, searched and filtered,
-        // opened, renamed and moved into a group.
-        'pages' => 'assets/js/style_designer_pages.min.js',
-        // "Only what I changed": the list of the changed rows of all three
-        // Options tabs with their reset arrows and "Reset all".
-        'review' => 'assets/js/style_designer_review.min.js',
-        // The "Clicks" layer: badges and tenth lines over the canvas and
-        // its panel, handed only with sdDesign.clicks (who may open Visitors).
-        'clicks' => 'assets/js/style_designer_clicks.min.js',
-        // The Variables tab of Settings › Theme: the design's named colours,
-        // type, spacing and shape, tried on the canvas as they change.
-        'variables' => 'assets/js/style_designer_variables.min.js',
-        // The variables' five start questions (also the New design
-        // window's), asked by the Variables tab's "Ask me again".
-        'questions' => 'assets/js/style_designer_questions.min.js',
-        // My library's file: the Import window (the file checked, the
-        // report, a refusal) and the Export download, designers only.
-        'libraryfile' => 'assets/js/style_designer_libraryfile.min.js',
-        // The canvas mirrors: the draft at another width beside the canvas,
-        // drawn again when the hand rests.
-        'mirror' => 'assets/js/style_designer_mirror.min.js',
-        // The canvas guides: Measure, the distances drawn while Alt is held
-        // with one element selected.
-        'guides' => 'assets/js/style_designer_guides.min.js',
-        // "Can change per place": an element's open fields and the list of
-        // a shared component's open fields in its settings.
-        'overrides' => 'assets/js/style_designer_overrides.min.js',
-        // The Focus control: a picture's focus point dragged on the whole
-        // picture, with the cut on each screen, drawn when first shown.
-        'focus' => 'assets/js/style_designer_focus.min.js',
-        // The "Preview on a phone" window: the QR code of the person's
-        // phone link, its time left, "Copy link" and "End now".
-        'phone' => 'assets/js/style_designer_phone.min.js',
-        // "Read the picture" of a sketch page: its reference picture read
-        // by the browser's built-in model into proposed boxes.
-        'sketchread' => 'assets/js/style_designer_sketchread.min.js',
-        // My library: "Save to my library" and the library's group of the
-        // palette, its hover card and the copy it adds.
-        'mylibrary' => 'assets/js/style_designer_mylibrary.min.js',
-        // "Manage library": rename, move to a group, order and delete the
-        // library's items, designers only.
-        'librarymanage' => 'assets/js/style_designer_librarymanage.min.js',
-        // The Publish check: each ticked page's result in the Publish sheet,
-        // its findings in five groups, a finding's element selected.
-        'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
-        // The Style tab's states (Hover, Focus, Pressed): the panel under a
-        // state, its rule in User Styles and the state on the canvas.
-        'states' => 'assets/js/style_designer_states.min.js',
-    );
+    $out = array();
+
+    foreach (pg_designer_part_files() as $name => $part) {
+        $out[$name] = 'assets/js/style_designer_' . $name . '.min.js';
+    }
+
+    return $out;
+}
+
+/**
+ * The parts to hand to the editor: every part whose condition holds.
+ * 'always' always holds and 'off' never does, whatever $conditions says; a
+ * condition outside pg_designer_part_conditions() never holds.
+ *
+ * @param array $conditions condition name => whether it holds
+ * @return array part names, sorted
+ */
+function pg_designer_parts_for($conditions)
+{
+    $known = array_flip(pg_designer_part_conditions());
+    $out = array();
+
+    foreach (pg_designer_part_files() as $name => $part) {
+        $when = $part['when'];
+
+        if (!isset($known[$when]) || ($when === 'off')) {
+            continue;
+        }
+
+        if (($when === 'always') || !empty($conditions[$when])) {
+            $out[] = $name;
+        }
+    }
+
+    return $out;
 }
 
 /**

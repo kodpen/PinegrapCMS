@@ -104,7 +104,8 @@ function test_designer_phone_window_is_a_part_opened_from_the_preview_menu()
 	pg_assert_same('assets/js/style_designer_phone.min.js', isset($parts['phone']) ? $parts['phone'] : '', 'the window is the part phone');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "\$sd_phone ? array('phone')") !== false, 'handed to those who make share links');
+	pg_assert_same('phone', pg_designer_part_files()['phone']['when'], 'handed to those who make share links');
+	pg_assert_contains("'phone'        => \$sd_phone,", $screen, 'the phone condition on the screen');
 	pg_assert_false(strpos($screen, 'sd-vb-phone'), 'no button of its own in the page bar');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');

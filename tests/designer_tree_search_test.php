@@ -259,6 +259,5 @@ function test_designer_tree_search_is_a_part()
 	pg_assert_false(strpos($core, 'function filterOverviewTree(') !== false, 'the old row filter is gone');
 	pg_assert_true(strpos($core, "_sdPartCall('treesearch', 'search'") !== false, 'the core runs the part to search');
 	pg_assert_true(strpos($core, "_sdPartCall('treesearch', 'key'") !== false, 'and to move through the results');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "'treesearch'") !== false, 'the screen hands the part over');
+	pg_assert_same('always', pg_designer_part_files()['treesearch']['when'], 'the screen hands the part over');
 }
