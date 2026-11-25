@@ -18,6 +18,12 @@
  * out to a typed value;
  * and Detach, which puts the value of that moment in the control's place.
  *
+ * "Export" and "Import" of the tab's "More" menu: a JSON file in the Design
+ * Tokens community format, written and read by the server; a file that is
+ * read is asked about (what changes, what comes as the designer's own,
+ * what is left out) before the model takes it, a refused one leaves a red
+ * line with the reason under the tab row.
+ *
  * Not needed to open a page: the core runs this file the first time the tab
  * is shown, a control's list or Detach is asked for, or when the look or
  * palette of a design with a saved variables file changes
@@ -52,11 +58,12 @@ StyleDesigner.definePart('variables', function (K) {
 
     // Asks the server for the state of a model (null: the stored one, or
     // the defaults) on the look and palette of the moment.
-    function ask(model) {
+    function ask(model, extra) {
         var my = ++seq;
         var body = { look: H.look(), palette: H.palette() };
         if (model) body.model = model;
         else if (H.styleId) body.style_id = H.styleId;
+        for (var k in extra || {}) body[k] = extra[k];
         return _pgApiPost('variables_state', body).then(function (res) {
             if (my !== seq) return null;
             if (!res || res.status !== 'success') {
@@ -161,7 +168,7 @@ StyleDesigner.definePart('variables', function (K) {
         if (!shown() || !S) return;
         var m = current() || S.model;
         var used = H.usage ? H.usage() : {};
-        var h = '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Variables')) + '</span>' +
+        var h = noteHtml() + '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Variables')) + '</span>' +
                 '<span class="sd-th-sub">' + esc(_sdT('The named colours, type, spacing and shape of the design. Change one here and every page that uses it follows.')) + '</span></div>';
         (S.list.groups || []).forEach(function (g) {
             h += '<details class="sd-vars-group" data-group="' + attr(g.key) + '"' + (open[g.key] ? ' open' : '') + '>' +
@@ -266,6 +273,7 @@ StyleDesigner.definePart('variables', function (K) {
         el.querySelectorAll('[data-vars-act]').forEach(function (b) {
             b.addEventListener('click', function () { act(b.getAttribute('data-vars-act'), b); });
         });
+        bindNote();
     }
 
     function act(what, b) {
@@ -295,6 +303,142 @@ StyleDesigner.definePart('variables', function (K) {
         S.model = m;
         draw();
         change(m, true);
+    }
+
+    // ── Export and Import ────────────────────────────────────────────────
+
+    // The result line under the tab row: { ok, html }, kept until closed or
+    // the next Export or Import.
+    var note = null;
+    // The largest file read (PG_DESIGN_TOKENS_MAX).
+    var MAX = 262144;
+
+    function noteHtml() {
+        if (!note) return '';
+        return '<p class="sd-vars-note ' + (note.ok ? 'is-ok' : 'is-bad') + '" role="status">' +
+            '<span class="bi ' + (note.ok ? 'bi-check-circle' : 'bi-x-circle') + '" aria-hidden="true"></span>' +
+            '<span class="sd-vars-note-text">' + note.html + '</span>' +
+            (note.ok
+                ? '<button type="button" class="btn btn-sm btn-link theme-secondary" data-vars-note-x aria-label="' + attr(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>'
+                : '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-note-again>' + esc(_sdT('Choose another file')) + '</button>') +
+            '</p>';
+    }
+
+    function bindNote() {
+        var x = H.el.querySelector('[data-vars-note-x]');
+        if (x) x.addEventListener('click', function () { note = null; draw(); });
+        var again = H.el.querySelector('[data-vars-note-again]');
+        if (again) again.addEventListener('click', function () { importTokens(H); });
+    }
+
+    function showNote(ok, html) {
+        note = { ok: ok, html: html };
+        if (shown()) draw();
+    }
+
+    // Saves the design's variables as <design>.tokens.json at once.
+    function exportTokens(host) {
+        H = host;
+        return ask(current(), { 'export': 1, name: host.name ? host.name() : '' }).then(function (res) {
+            if (!res || !res['export']) return;
+            var x = res['export'];
+            var url = URL.createObjectURL(new Blob([x.text], { type: 'application/json' }));
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = x.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+            showNote(true, '<b>' + esc(x.count === 1 ? _sdT('1 variable exported') : _sdT('{var} variables exported', x.count)) + '</b> ' +
+                esc(_sdT('to {var}, in the Design Tokens format.', x.name)));
+        });
+    }
+
+    function refuse(file, reason) {
+        showNote(false, '<b>' + esc(_sdT('{var} was not imported.', file)) + '</b> ' + esc(reason));
+    }
+
+    // The browser's file box, then the file read and asked about.
+    function importTokens(host) {
+        H = host;
+        var inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.json,application/json';
+        inp.addEventListener('change', function () {
+            var f = inp.files && inp.files[0];
+            if (!f) return;
+            if (f.size > MAX) { refuse(f.name, _sdT('It is larger than a tokens file can be.')); return; }
+            var rd = new FileReader();
+            rd.onload = function () {
+                ask(current(), { tokens: String(rd.result || '') }).then(function (res) {
+                    if (!res || !res['import']) return;
+                    var r = res['import'];
+                    if (!r.ok) { refuse(f.name, r.reason); return; }
+                    confirmImport(f.name, r);
+                });
+            };
+            rd.onerror = function () { refuse(f.name, _sdT('It is not a JSON file.')); };
+            rd.readAsText(f);
+        });
+        inp.click();
+    }
+
+    // "8 colours, 6 of type, 3 of shape".
+    function groupsText(g) {
+        var parts = [];
+        if (g.color) parts.push(g.color === 1 ? _sdT('1 colour') : _sdT('{var} colours', g.color));
+        if (g.type) parts.push(_sdT('{var} of type', g.type));
+        if (g.spacing) parts.push(_sdT('{var} of spacing', g.spacing));
+        if (g.shape) parts.push(_sdT('{var} of shape', g.shape));
+        if (g.own) parts.push(_sdT('{var} of your own', g.own));
+        return parts.join(', ');
+    }
+
+    function kindsText(k) {
+        var words = {
+            color: _sdT('colour'), size: _sdT('size'), font: _sdT('font'), number: _sdT('number'), weight: _sdT('font weight'),
+            gradient: _sdT('gradient'), duration: _sdT('duration'), shadow: _sdT('shadow'), cubicbezier: _sdT('easing'),
+            typography: _sdT('type style'), border: _sdT('border'), transition: _sdT('transition'), strokestyle: _sdT('line style'),
+            reference: _sdT('reference that leads nowhere'), limit: _sdT('over the limit of 24 of your own')
+        };
+        return Object.keys(k).map(function (key) {
+            var w = words[key] || _sdT('other');
+            return k[key] > 1 ? w + ' (' + k[key] + ')' : w;
+        }).join(', ');
+    }
+
+    // The question of what the file would change, in place of the folds.
+    function confirmImport(file, r) {
+        if (!shown()) return;
+        var li = function (icon, head, rest) {
+            return '<li><span class="bi ' + icon + '" aria-hidden="true"></span><span><b>' + esc(head) + '</b>' + (rest ? ': ' + esc(rest) : '') + '</span></li>';
+        };
+        var own = [];
+        if (r.own_kinds.color) own.push(r.own_kinds.color === 1 ? _sdT('1 colour') : _sdT('{var} colours', r.own_kinds.color));
+        if (r.own_kinds.size) own.push(r.own_kinds.size === 1 ? _sdT('1 size') : _sdT('{var} sizes', r.own_kinds.size));
+        var h = '<div class="sd-vars-ask" role="dialog" aria-label="' + attr(_sdT('Import variables from {var}?', file)) + '">' +
+            '<div class="sd-vars-ask-head"><b>' + esc(_sdT('Import variables from {var}?', file)) + '</b>' +
+            '<span>' + esc(r.tokens === 1 ? _sdT('The file holds 1 token.') : _sdT('The file holds {var} tokens.', r.tokens)) + '</span></div><ul class="sd-vars-eff">' +
+            li('bi-arrow-repeat', r.changed === 1 ? _sdT('1 value of this design changes') : _sdT('{var} values of this design change', r.changed), groupsText(r.groups)) +
+            (r.own ? li('bi-plus-circle', r.own === 1 ? _sdT('1 comes as your own variable') : _sdT('{var} come as your own variables', r.own), own.join(', ')) : '') +
+            (r.left ? li('bi-dash-circle', r.left === 1 ? _sdT('1 is left out') : _sdT('{var} are left out', r.left), kindsText(r.left_kinds)) : '') +
+            '</ul><div class="sd-vars-ask-foot">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-ask="cancel">' + esc(_sdT('Cancel')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-solid theme-primary" data-vars-ask="import">' + esc(_sdT('Import')) + '</button>' +
+            '</div></div>';
+        H.el.innerHTML = h;
+        H.el.querySelector('[data-vars-ask="cancel"]').addEventListener('click', function () { draw(); });
+        var go = H.el.querySelector('[data-vars-ask="import"]');
+        go.addEventListener('click', function () {
+            var n = r.changed + r.own;
+            note = { ok: true, html: '<b>' + esc(n === 1 ? _sdT('1 variable imported') : _sdT('{var} variables imported', n)) + '</b> ' + esc(_sdT('from {var}.', file)) };
+            H.setModel(r.model);
+            S.model = r.model;
+            draw();
+            change(r.model, true);
+        });
+        go.focus();
     }
 
     // ── Entry points ─────────────────────────────────────────────────────
@@ -539,5 +683,5 @@ StyleDesigner.definePart('variables', function (K) {
         });
     }
 
-    return { render: render, refresh: refresh, pick: pick, detach: detach };
+    return { render: render, refresh: refresh, pick: pick, detach: detach, exportTokens: exportTokens, importTokens: importTokens };
 });

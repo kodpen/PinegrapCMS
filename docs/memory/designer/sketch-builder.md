@@ -6,7 +6,7 @@ description: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): section
 ## What does the builder take and give?
 - `PGSketchBuilder.build(sections, opts)`: the `sections` of `PGSketchReader.read()` (`designer/sketch-reader.md`) in, `{header, footer, body}` out. The first `header` section is the header, the last `footer` section the footer; the rest is the body, from the top.
 - A part: `section` (id), `kind`, `block` (palette type or null), `widget` (catalog, blog, booking or null), `unsure` (from the reader), `kept`, `node`. A widget part has `node: null`: the caller places it (`_createSystemWidgetNode()` is async).
-- Pure: it copies every starter with fresh ids, so a cached starter is never changed, and leaves `sections` as they were. Not in a bundle yet: SK4 loads it with the reader as a designer part.
+- Pure: it copies every starter with fresh ids, so a cached starter is never changed, and leaves `sections` as they were. Loaded with the reader in the designer part `sketchbuild` (`designer/sketch-build.md`).
 
 ## What does the caller hand it?
 - `opts.make(type)`: the starter tree (`createFromPalette()`); null falls back to a text section. `opts.node(type, props, children)`: `createNode()`; without it plain nodes `sk_<n>`.

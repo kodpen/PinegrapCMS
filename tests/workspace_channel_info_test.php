@@ -54,12 +54,13 @@ function test_workspace_channel_info_is_a_panel_beside_the_conversation()
 	pg_assert_contains('self.drawInfo(false);', workspace_channel_info_test_method('drawCenter'), 'another channel shows its own info');
 }
 
-// The parts in the drawn order: purpose, status, people, notifications,
-// read aloud, time spent, settings.
+// The parts in the drawn order: the tabs and the agents block over them,
+// purpose, status, people, the agents block where there are no tabs,
+// sharing, notifications, read aloud, time spent, settings.
 function test_workspace_channel_info_parts_in_their_order()
 {
 	$draw = workspace_channel_info_test_method('drawInfo');
-	$marks = array("section(t('purpose'))", "section(t('info_status'))", "section(t('cm_people')", "section(t('cm_agents')", "section(t('info_notify'))", "t('voice_speak')", "t('info_time')", "t('edit_channel')");
+	$marks = array('window.PGWsChannelActivity.mount(', "section(t('purpose'))", "section(t('info_status'))", "section(t('cm_people')", 'window.PGWsChannelActivity.place(body)', "t('sl_sharing')", "section(t('info_notify'))", "t('voice_speak')", "t('info_time')", "t('edit_channel')");
 	$last = -1;
 
 	foreach ($marks as $mark) {
@@ -71,6 +72,8 @@ function test_workspace_channel_info_parts_in_their_order()
 	}
 
 	pg_assert_contains("api('ws_channel_notify'", $draw, 'the notification choice is the channel menu\'s');
+	pg_assert_true(strpos($draw, 'agentInfoRow(') === false, 'the old "Agents here" list is gone: the block replaces it');
+	pg_assert_true(strpos($draw, "t('cm_agents')") === false, 'and its heading');
 	pg_assert_contains('CFG.task_time && CFG.task_time.ready', $draw, 'the time spent only where the Summary tab shows it');
 }
 

@@ -2262,6 +2262,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             }
         }
     }
+    // The Preview's case "Empty": the list as it is with no record.
+    $sql_viewer_filter .= pg_preview_as_empty_where();
 
     // ── Filters the designer set (every record must match all of them) ────
     $filter_sql   = pg_sw_form_list_filter_sql($custom_form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array(), $request);
@@ -2275,6 +2277,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // A record's rows (dynamic value 'shown record rows') stand in their
     // field's order, before the list's own.
     if (!empty($filter_sql['order'])) $order_by_sql = $filter_sql['order'] . ', ' . $order_by_sql;
+    // The Preview's case "Long": the records with the most text first.
+    $order_by_sql = pg_preview_as_order('long', '(SELECT COALESCE(SUM(CHAR_LENGTH(form_data.data)), 0) FROM form_data WHERE form_data.form_id = forms.id)') . $order_by_sql;
     // The submitter's older records leave the list before anything else
     // counts them; the address check below reads the same rows.
     $filter_where .= pg_sw_form_list_one_per_submitter_sql($cfg);
@@ -5120,6 +5124,9 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
     if ($send_to === '') $send_to = _pg_member_query_path('redirect');
 
     $lf = new liveform('login');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'login');
 
     // Already signed in: the form would only sign them in again. Editors
     // still see the form in edit mode, so the page can be worked on.
@@ -5242,6 +5249,9 @@ function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = ar
     $site_name = _pg_member_site_name();
 
     $lf     = new liveform('forgot_password');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'forgot_password');
     $screen = (string)$lf->get_field_value('screen');
     $email  = (string)$lf->get_field_value('email');
 
@@ -7134,11 +7144,15 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $page_param = pg_sw_list_page_param($cfg);
     $query = (isset($_GET[$param]) && is_scalar($_GET[$param])) ? pg_search_query_text(strip_tags((string)$_GET[$param])) : '';
 
-    $found = _pg_sw_search_collect($query, $cfg);
+    // The Preview's case "Empty" is a search that found nothing.
+    $found = pg_preview_as_flag('empty')
+        ? array('featured' => array(), 'catalog' => array(), 'pages' => array())
+        : _pg_sw_search_collect($query, $cfg);
     $rows  = array();
     foreach ($found['featured'] as $r) { $r['featured'] = '1'; $rows[] = $r; }
     foreach ($found['catalog']  as $r) { $r['featured'] = '';  $rows[] = $r; }
     foreach ($found['pages']    as $r) { $r['featured'] = '';  $rows[] = $r; }
+    $rows  = pg_preview_as_rows($rows);
     // The results start after `offset` of them; the count and the pages
     // run through what is left.
     $rows  = array_slice($rows, pg_sw_list_offset($cfg));
@@ -7309,6 +7323,9 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     if ($login_url === '') $login_url = $software . '/';
 
     $lf = new liveform('register');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'register');
 
     // Signed in: the form would open a second account. The notice a
     // sign-up just left ("you are registered") prints with it; an editor
@@ -9022,6 +9039,9 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // half of "not saved yet".
     if ($form_page_id > 0 && function_exists('pg_cf_field_map')) {
         $cf_field_map = pg_cf_field_map($form_page_id);
+        // The Preview's case "Error": as after a submission that left the
+        // first required field empty.
+        pg_preview_as_custom_form_error($cf_liveform, $cf_field_map);
         // A control set to start from a named address parameter
         // (_cf.url_param) is read here, while the controls still carry the
         // names they were drawn with; the bindings rename them to row ids.
@@ -9493,6 +9513,8 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         }
     }
     $events = array_slice($events, 0, 500);
+    // The Preview's cases "Empty" and "Long".
+    $events = pg_preview_as_rows($events);
 
     // Navigation.
     $path  = _pg_sw_current_path();

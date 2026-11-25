@@ -5,6 +5,7 @@ description: The channel's Summary and Board tabs as cards and the channel panes
 
 ## How does the Summary tab look?
 - `drawSummary()` (workspace.js) draws `.ws-summary-layout`: `section.card.ws-summary-card` with a head (`h3.h6`, Summary, Edit summary at its end) and a body (the text, the updated line), then `.ws-summary-side` with the customer card and Time spent (#8703).
+- The pinned message is the first card of `.ws-summary-side` (`summaryPinCard()`, BM2): head "Pinned message" with Show in the conversation, the writer and text, when and who pinned it. Drawn from `channel.pin` even where the reader closed the pin line; with no pin there is no card.
 - Edit summary opens the editor inside the card body (Save and Cancel as before); the pane is no longer cleared.
 - Side by side (3fr / 2fr) while the pane is wider than 48rem (`@container` on `.ws-pane-summary`), one under the other below it and on a phone. With neither side card the summary takes the width (`.ws-summary-alone`).
 - The card fills its column; `.ws-summary-view` keeps its 52rem reading width inside it.

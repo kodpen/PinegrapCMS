@@ -4,9 +4,11 @@
  *
  * Tests for the Activity tab of Channel info
  * (assets/js/workspace_channel_activity.js): when the Info and Activity tabs
- * show, which tab a channel opens on, the words of an agent's row (its
- * request, its context and its report), the 15 second brake on reads asked
- * by the channel's sync, and the hooks in workspace.js. The Node parts are
+ * show, which tab a channel opens on, the agents block over both tabs (a
+ * row's second line in each state, an opened row's facts, six rows and
+ * "n more", the context ring, no badge or pill in a row), the 15 second
+ * brake on reads asked by the channel's sync, and the hooks in
+ * workspace.js. The Node parts are
  * skipped where Node cannot run.
  *
  * @author      Erdal Güral (Kodpen)
@@ -132,69 +134,209 @@ console.log(JSON.stringify({
 	pg_assert_contains('7', $result['key7'], 'the key names the channel');
 }
 
-function test_workspace_channel_activity_js_row_words()
+// The block's pure parts with the helpers and constants they lean on.
+function workspace_channel_activity_js_test_block_parts()
 {
-	$tokens = workspace_channel_activity_js_test_function('activityTokens');
-	$context = workspace_channel_activity_js_test_function('activityContext');
-	$words = workspace_channel_activity_js_test_function('activityRowWords');
+	$parts = 'var SHOWN = 6; var STATE_RANK = { working: 0, waiting: 1, late: 2, idle: 3, paused: 4 }; var RING_R = 7; var RING_C = 2 * Math.PI * RING_R;' . "\n"
+		. workspace_channel_activity_js_test_t();
 
-	pg_assert_true($tokens !== '', 'activityTokens() is in the tab\'s script');
-	pg_assert_true($context !== '', 'activityContext() is in the tab\'s script');
-	pg_assert_true($words !== '', 'activityRowWords() is in the tab\'s script');
+	foreach (array('activityTokens', 'activityContext', 'agentsRows', 'agentsShown', 'agentsLine', 'agentsFacts', 'agentsRing') as $name) {
+		$body = workspace_channel_activity_js_test_function($name);
 
-	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_t() . $tokens . $context . $words . '
-var working = {
-	state: "working", state_words: "Working",
-	request: { message_id: 55, asked_by: { user_id: 3, name: "Ayşe" }, since: "since 09:12", note: "Running the tests" },
-	model: "opus", context: { used: 412000, size: 1000000 }, branch: "plan/x", reported: "reported 12 min ago", stale: false
-};
-var quiet = {
-	state: "idle", state_words: "Ready", request: null,
-	model: "", context: null, project: null, branch: null, reported: "", stale: false
-};
-var other = {
-	state: "working", state_words: "Working",
-	request: { message_id: null, asked_by: null, since: "since 10:00", note: "" },
-	model: "sonnet", context: { used: 190000, size: 200000 }, branch: null, reported: "reported 2 d ago", stale: true
-};
+		pg_assert_true($body !== '', $name . '() is in the block\'s script');
+		$parts .= $body;
+	}
+
+	return $parts;
+}
+
+// Agents in each state, as the read and the channel give them.
+function workspace_channel_activity_js_test_agents()
+{
+	return '
+var working = { key: "agent-1", id: 1, read: true, kind: "app", name: "Mimar", state: "working", state_words: "Working", handle: "mimar", wake_fact: "When mentioned",
+	request: { message_id: 55, asked_by: { user_id: 3, name: "Erdal" }, since: "since 14:32", note: "Drawing the sheet" },
+	model: "fable", context: { used: 412000, size: 1000000 }, branch: "development", seen: "Last knock 1 min ago", seen_state: "off",
+	reported_at: 1700000000, reported_ago: "2 min ago", reported: "reported 2 min ago", stale: false, waiting: 0 };
+var queued = Object.assign({}, working, { waiting: 2 });
+var asker = Object.assign({}, working, { request: { message_id: 55, asked_by: { user_id: 3, name: "Erdal" }, since: "since 14:51", note: "" } });
+var bare = Object.assign({}, working, { request: { message_id: null, asked_by: null, since: "since 10:00", note: "" } });
+var waiting2 = { key: "agent-2", id: 2, read: true, kind: "app", name: "K1", state: "waiting", state_words: "Waiting", waiting: 2 };
+var waiting1 = Object.assign({}, waiting2, { waiting: 1 });
+var late = { key: "agent-3", id: 3, read: true, kind: "app", name: "Test", state: "late", state_words: "Not seen", seen_rest: "last knock 3 h ago" };
+var ready = { key: "agent-4", id: 4, read: true, kind: "app", name: "PR", state: "idle", state_words: "Ready", model: "opus", reported_at: 1700000000, reported: "reported 8 min ago", stale: false };
+var stale = Object.assign({}, ready, { stale: true, reported: "reported 7 d ago" });
+var unreported = { key: "agent-5", id: 5, read: true, kind: "app", name: "K3", handle: "k3", wake_fact: "When mentioned", state: "idle", state_words: "Ready", model: "", reported_at: null, reported_ago: "", seen: "4 min ago", seen_state: "on", waiting: 0 };
+var paused = { key: "agent-6", id: 6, read: true, kind: "app", name: "K2", state: "paused", state_words: "Paused" };
+var assistant = { key: "claude", name: "Claude", handle: "Claude", assistant: true, seen: "Always ready", seen_state: "ready" };
+var early = Object.assign({}, working, { read: false });
+var earlyReady = Object.assign({}, ready, { read: false });
+';
+}
+
+// 1. Line 2 of a row at rest, in each state.
+function test_workspace_channel_activity_js_agents_line()
+{
+	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . workspace_channel_activity_js_test_agents() . '
 console.log(JSON.stringify({
-	t: [activityTokens(950), activityTokens(412000), activityTokens(1000000), activityTokens(1500000), activityTokens(12345)],
-	ctx: activityContext({ used: 412000, size: 1000000 }, t),
-	ctxHigh: activityContext({ used: 190000, size: 200000 }, t),
-	ctxBad: [activityContext(null, t), activityContext({ used: 5, size: 0 }, t)],
-	working: activityRowWords(working, t),
-	quiet: activityRowWords(quiet, t),
-	other: activityRowWords(other, t)
+	note: agentsLine(working, t), asker: agentsLine(asker, t), bare: agentsLine(bare, t),
+	w2: agentsLine(waiting2, t), w1: agentsLine(waiting1, t), late: agentsLine(late, t),
+	ready: agentsLine(ready, t), stale: agentsLine(stale, t), none: agentsLine(unreported, t),
+	paused: agentsLine(paused, t), assistant: agentsLine(assistant, t),
+	early: agentsLine(early, t), earlyReady: agentsLine(earlyReady, t)
 }));');
 
 	if ($result === null) {
 		return;
 	}
 
-	pg_assert_same(array('950', '412k', '1M', '1.5M', '12k'), $result['t'], 'tokens in short words');
-	pg_assert_same('act_context(412k,1M)', $result['ctx']['words'], 'context as "412k of 1M tokens"');
-	pg_assert_same(41, $result['ctx']['percent'], 'its share of the window');
-	pg_assert_false($result['ctx']['high'], 'under 90% is not marked');
-	pg_assert_true($result['ctxHigh']['high'], 'from 90% it is marked');
-	pg_assert_same(array(null, null), $result['ctxBad'], 'no context, or a window of none, shows none');
+	pg_assert_same(array('word' => 'Working', 'rest' => 'Drawing the sheet', 'warn' => '', 'tone' => 'blue'), $result['note'], 'working: the progress note, the word blue');
+	pg_assert_same('agents_for(Erdal,since 14:51)', $result['asker']['rest'], 'with no note: for the asker, since when');
+	pg_assert_same('since 10:00', $result['bare']['rest'], 'with no asker of this channel: since alone');
+	pg_assert_same(array('Waiting', 'agents_queue(2)', 'amber'), array($result['w2']['word'], $result['w2']['rest'], $result['w2']['tone']), 'waiting: its queue, the word amber');
+	pg_assert_same('agents_queue_one', $result['w1']['rest'], 'one request in its queue');
+	pg_assert_same(array('Not seen', 'last knock 3 h ago', 'amber'), array($result['late']['word'], $result['late']['rest'], $result['late']['tone']), 'not seen: the last knock');
+	pg_assert_same(array('Ready', 'opus', '', ''), array($result['ready']['word'], $result['ready']['rest'], $result['ready']['warn'], $result['ready']['tone']), 'ready: the model, plain');
+	pg_assert_same(array('opus', 'reported 7 d ago'), array($result['stale']['rest'], $result['stale']['warn']), 'a report older than a day: its age in amber');
+	pg_assert_same('agents_no_report', $result['none']['rest'], 'no report yet');
+	pg_assert_same(array('word' => 'Paused', 'rest' => '', 'warn' => '', 'tone' => ''), $result['paused'], 'paused: the word alone');
+	pg_assert_same(array('word' => 'cm_assistant', 'rest' => 'agents_always', 'warn' => '', 'tone' => ''), $result['assistant'], 'an assistant: Assistant · always ready');
+	pg_assert_same('', $result['early']['rest'], 'before the read lands a working row shows its word alone');
+	pg_assert_same('', $result['earlyReady']['rest'], 'and a ready one');
+}
 
-	pg_assert_same('Working', $result['working']['state'], 'the state\'s words');
-	pg_assert_same('act_asked_by(Ayşe)', $result['working']['asked'], 'who asked');
-	pg_assert_same(55, $result['working']['message_id'], 'linked to the message');
-	pg_assert_same(array('since 09:12', 'Running the tests'), $result['working']['request'], 'since when, and the progress note');
-	pg_assert_same(array('opus', 'plan/x', 'reported 12 min ago'), $result['working']['report'], 'model, branch and when it reported');
-	pg_assert_false($result['working']['stale'], 'a fresh report is not muted');
+// 2. The facts of an opened row, in their order.
+function test_workspace_channel_activity_js_agents_facts()
+{
+	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . workspace_channel_activity_js_test_agents() . '
+function keys(agent) { return agentsFacts(agent, t).map(function (fact) { return fact.key; }); }
+var lateSeen = Object.assign({}, working, { seen_state: "late" });
+console.log(JSON.stringify({
+	full: keys(working), queued: keys(queued), none: agentsFacts(unreported, t), assistant: keys(assistant),
+	facts: agentsFacts(working, t), staleFacts: agentsFacts(Object.assign({}, working, { stale: true }), t), lateFacts: agentsFacts(lateSeen, t),
+	high: agentsFacts(Object.assign({}, working, { context: { used: 186000, size: 200000 } }), t)
+}));');
 
-	pg_assert_same(null, $result['quiet']['asked'], 'a ready agent asked by nobody');
-	pg_assert_same(array(), $result['quiet']['request'], 'and holds no request');
-	pg_assert_same(array(), $result['quiet']['report'], 'an agent that never reported says nothing of it');
-	pg_assert_same(null, $result['quiet']['context'], 'nor of its context');
+	if ($result === null) {
+		return;
+	}
 
-	pg_assert_same(null, $result['other']['asked'], 'a request of another channel names nobody');
-	pg_assert_same(null, $result['other']['message_id'], 'and links no message');
-	pg_assert_same(array('since 10:00'), $result['other']['request'], 'an empty note is left out');
-	pg_assert_same(array('sonnet', 'reported 2 d ago'), $result['other']['report'], 'a null branch is left out');
-	pg_assert_true($result['other']['stale'], 'a report older than a day is muted');
+	pg_assert_same(array('doing', 'asked', 'handle', 'wakes', 'model', 'context', 'branch', 'seen', 'reported'), $result['full'], 'a working agent with everything has 9 facts in order');
+	pg_assert_same(array('doing', 'asked', 'queue', 'handle', 'wakes', 'model', 'context', 'branch', 'seen', 'reported'), $result['queued'], 'with a queue 10');
+	pg_assert_same(array('handle', 'wakes', 'seen', 'reported'), array_map(function ($fact) { return $fact['key']; }, $result['none']), 'no report: Handle, Wakes, Seen, Reported');
+	pg_assert_same('agents_not_yet', $result['none'][3]['text'], 'Reported says Not yet');
+	pg_assert_true($result['none'][3]['muted'], 'quietly');
+	pg_assert_same(array('handle', 'wakes', 'seen'), $result['assistant'], 'an assistant has 3');
+
+	$facts = array();
+
+	foreach ($result['facts'] as $fact) {
+		$facts[$fact['key']] = $fact;
+	}
+
+	pg_assert_same('Erdal', $facts['asked']['text'], 'Asked by names the asker');
+	pg_assert_same(55, $facts['asked']['message_id'], 'linked to the message');
+	pg_assert_same('since 14:32', $facts['asked']['since'], 'with since');
+	pg_assert_same('@mimar', $facts['handle']['text']);
+	pg_assert_same('agents_context(412k,1M,41)', $facts['context']['text'], 'the context as "412k of 1M · 41%"');
+	pg_assert_false($facts['context']['high']);
+	pg_assert_same('2 min ago', $facts['reported']['text'], 'the report\'s age alone');
+	pg_assert_false($facts['reported']['warn']);
+	pg_assert_true(end($result['staleFacts'])['warn'], 'a stale report in amber');
+	pg_assert_true($result['lateFacts'][7]['warn'], 'Seen in amber when not seen');
+	pg_assert_true($result['high'][5]['high'], 'the context from 90% is high');
+
+	foreach ($result['facts'] as $fact) {
+		pg_assert_true($fact['text'] !== '' && $fact['text'] !== '-', 'no fact shows a dash or nothing: ' . $fact['key']);
+	}
+}
+
+// 3. Six rows and "n more"; the order of the states, the assistants last.
+function test_workspace_channel_activity_js_agents_rows()
+{
+	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . '
+function row(id, state) { return { key: "agent-" + id, id: id, tone: id, name: "A" + id, state: state, state_words: state }; }
+var base = [{ key: "claude", name: "Claude", assistant: true, tone: 3 }, row(1, "idle"), row(2, "paused"), row(3, "late"), row(4, "waiting"), row(5, "working"), row(6, "idle"), row(7, "working"), row(8, "idle")];
+var read = [{ id: 1, name: "", state: "working", state_words: "Working", model: "opus" }];
+var rows = agentsRows(base, read);
+var six = agentsRows(base.slice(0, 6), null);
+console.log(JSON.stringify({
+	order: rows.map(function (r) { return r.key; }),
+	joined: rows[0],
+	nine: [agentsShown(rows, false).rows.length, agentsShown(rows, false).rest],
+	pressed: [agentsShown(rows, true).rows.length, agentsShown(rows, true).rest],
+	six: [agentsShown(six, false).rows.length, agentsShown(six, false).rest]
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('agent-1', 'agent-5', 'agent-7', 'agent-4', 'agent-3', 'agent-6', 'agent-8', 'agent-2', 'claude'), $result['order'], 'working, waiting, not seen, ready, paused, then the assistants; the read\'s state wins');
+	pg_assert_same('A1', $result['joined']['name'], 'an empty name from the read keeps the channel\'s');
+	pg_assert_same('opus', $result['joined']['model'], 'joined by id with the read\'s agent');
+	pg_assert_true($result['joined']['read'], 'and marked as read');
+	pg_assert_same(array(6, 3), $result['nine'], 'nine rows show six and "3 more"');
+	pg_assert_same(array(9, 0), $result['pressed'], 'pressed, all of them');
+	pg_assert_same(array(6, 0), $result['six'], 'six rows show six and no such row');
+}
+
+// 4. The context ring.
+function test_workspace_channel_activity_js_agents_ring()
+{
+	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . '
+console.log(JSON.stringify({
+	r41: agentsRing({ used: 412000, size: 1000000 }), r93: agentsRing({ used: 186000, size: 200000 }), none: [agentsRing(null), agentsRing({ used: 1, size: 0 })]
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('18.03', $result['r41']['dash'], '41% draws 41% of the circle');
+	pg_assert_same('43.98', $result['r41']['whole']);
+	pg_assert_false($result['r41']['high']);
+	pg_assert_true($result['r93']['high'], '93% is high');
+	pg_assert_same(array(null, null), $result['none'], 'no context gives no ring');
+
+	$tokens = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . '
+console.log(JSON.stringify([activityTokens(950), activityTokens(412000), activityTokens(1000000), activityTokens(1500000), activityTokens(12345)]));');
+
+	pg_assert_same(array('950', '412k', '1M', '1.5M', '12k'), $tokens, 'tokens in short words');
+}
+
+// 7. and 8. No badge, pill or button in a row; the old lists and their styles gone.
+function test_workspace_channel_activity_js_block_source()
+{
+	$row = workspace_channel_activity_js_test_function('rowNode') . workspace_channel_activity_js_test_function('factsNode') . workspace_channel_activity_js_test_function('ringNode');
+
+	pg_assert_true($row !== '', 'rowNode() is in the block\'s script');
+	pg_assert_same(0, preg_match('/badge|pg-pill|pg-button/', $row), 'no badge, pill or button inside a row');
+	pg_assert_contains("'aria-expanded'", $row, 'a row\'s button tells whether it is open');
+	pg_assert_contains("'aria-controls'", $row);
+	pg_assert_contains("role: 'img'", $row, 'the ring is an image named by its words');
+
+	$source = workspace_channel_activity_js_test_source();
+
+	pg_assert_same('', workspace_channel_activity_js_test_function('drawSummary'), 'drawSummary() is gone');
+	pg_assert_same('', workspace_channel_activity_js_test_function('drawAgents'), 'drawAgents() is gone');
+	pg_assert_contains("'aria-live', 'polite'", $source, 'a changed state is said politely');
+	pg_assert_contains("h.channelSettings(channel, 'people')", $source, 'Manage agents opens People and agents');
+
+	$screen = workspace_channel_activity_js_test_source('workspace.js');
+
+	pg_assert_same(2, substr_count($screen, 'agentInfoRow('), 'agentInfoRow() has one caller left, the people panel');
+	pg_assert_contains('window.PGWsChannelActivity.place(body)', $screen, 'drawInfo() places the block without the tabs');
+	pg_assert_contains('window.PGWsChannelActivity.forget()', $screen, 'closing the panel drops its open rows');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	foreach (array('.ws-act-agent', '.ws-act-summary-line', '.ws-act-state', '.ws-act-context') as $rule) {
+		pg_assert_same(0, preg_match('/' . preg_quote($rule, '/') . '[\s,{.:]/', $css), 'no ' . $rule . ' rule is left');
+	}
+
+	pg_assert_contains('.ws-info-agents', $css, 'the people panel keeps its rules');
+	pg_assert_contains('.ws-agents-row', $css, 'the block has its own');
 }
 
 function test_workspace_channel_activity_js_brake()
@@ -254,10 +396,12 @@ function test_workspace_channel_activity_js_strings()
 {
 	$strings = ws_channel_activity_js_strings();
 
-	foreach (array('act_tab_info', 'act_tab_activity', 'act_context', 'act_asked_by', 'act_all_decisions', 'act_more') as $key) {
+	foreach (array('act_tab_info', 'act_tab_activity', 'act_context', 'act_all_decisions', 'act_more', 'agents_title', 'agents_manage', 'agents_queue', 'agents_for', 'agents_context', 'agents_ring', 'agents_f_reported') as $key) {
 		pg_assert_true(isset($strings[$key]) && ($strings[$key] !== ''), $key . ' has its words');
 	}
 
 	pg_assert_contains('{1}', $strings['act_context'], 'the context\'s words take the numbers');
+	pg_assert_false(isset($strings['act_agents']) || isset($strings['act_asked_by']), 'the old lists\' texts are gone');
+	pg_assert_false(isset($strings['act_agents']) || isset($strings['act_asked_by']), 'the old lists\' texts are gone');
 	pg_assert_contains('ws_channel_activity_js_strings()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the screen sends them');
 }

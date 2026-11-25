@@ -30,4 +30,4 @@ priority: 7
 - FT4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
-- The drawing: `designer-drawings-levels.md`. Claim as `[plan:designer-first-tour] <step> — <topic>`.
+- The drawing: `designer/designer-first-tour-drawing.md` and `designer-first-tour-help-drawing.md`; it decides where the two differ (`workflow/screen-follows-drawing.md`). Claim as `[plan:designer-first-tour] <step> — <topic>`.

@@ -9,7 +9,7 @@ description: The New design window (#sdStartModal) on the Page Design Studio hom
 - Opened by the home's "New design" button and by each start card, on the card's own start (`data-sd-start`); `view_system_styles.php?start=<key>` opens it on load.
 
 ## Which starts does it list today?
-- In order (`pg_designer_start_kinds()`): Blank, Template, Figma (once its import is there), From a document (`document-start.md`), ZIP file, Pasted markup.
+- In order (`pg_designer_start_kinds()`): Blank, Template, Figma (once its import is there), Canva, From a document (`document-start.md`), ZIP file, Pasted markup.
 - Blank, ZIP file and Pasted markup ask the framework as choice cards (Bootstrap 5 or Custom); each radio carries the address the foot's button takes (`pg_designer_start_go_href()`: `add_system_style.php?framework=…`, plus `&start=import|paste`, plus `&from=pages`). The editor then shows its file box or paste box.
 - Template: the gallery (`pg_designer_template_gallery()`, the theme picker and the cards); each card has its own "Use This Template", so the foot's button is hidden there.
 - Without templates the Template row is shown disabled ("There are no templates.") and `?start=template` falls back to Blank (`pg_designer_start_key()`).

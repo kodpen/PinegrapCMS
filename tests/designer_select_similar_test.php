@@ -226,3 +226,85 @@ function test_select_similar_is_quick_on_the_fixture_page()
 	// a slow CI runner must not fail it.
 	pg_assert_true($res['median'] < 50, 'a walk of the 1,539-node fixture takes a few milliseconds, got ' . $res['median'] . ' ms');
 }
+
+// The `similar` part on the same page under Node, its core handed as a host:
+// the press chooses the pressed one first and what is like it, says so, and
+// draws the line: the count, the two words, what was left out and why; the
+// count of one taken out; nothing found with the next wider place.
+function select_similar_test_part($code)
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_similar.js');
+
+	return select_similar_test_node(
+		'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "similar") factory = f; } };' . "\n"
+		. $part . "\n"
+		. 'function fmt(s, v) { var l = Array.isArray(v) ? v : [v]; return String(s).replace(/\{var(?::(\d+))?\}/g, function (m, i) { return String(l[i ? i - 1 : 0]); }); }'
+		. 'var P = factory({ _sdT: fmt, esc: function (s) { return String(s); } });'
+		. 'function find(t, id) { if (t._id === id) return t; for (var i = 0; i < t.children.length; i++) { var f = find(t.children[i], id); if (f) return f; } return null; }'
+		. 'var got = { ids: null, said: "" };'
+		. 'function host(id, mayEdit) { return { node: find(T, id), tree: T, mayEdit: mayEdit || function () { return true; },'
+		. ' select: function (nodes) { got.ids = nodes.map(function (n) { return n._id; }); }, say: function (s) { got.said = s; } }; }'
+		. "\n" . $code
+	);
+}
+
+function test_select_similar_part_press_chooses_and_draws_the_line()
+{
+	$res = select_similar_test_part(
+		'P.run(host("k1"));'
+		. 'var one = { ids: got.ids, said: got.said, line: P._lineHtml(undefined, 3), less: P._lineHtml(undefined, 2) };'
+		. 'P.run(host("k1", function (n) { return n._id !== "k4"; }));'
+		. 'out = { one: one, locked: { ids: got.ids, line: P._lineHtml(undefined, 2) }, keys: Object.keys(P).sort() };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('k1', 'k2', 'k4'), $res['one']['ids'], 'the pressed card first, then the cards like it in its section');
+	pg_assert_same('3 similar elements selected: same kind and classes, in this section.', $res['one']['said'], 'read out after the press');
+	pg_assert_true(strpos($res['one']['line'], '>3 similar<') !== false, 'the count, the pressed one counted');
+	pg_assert_true(strpos($res['one']['line'], 'same kind and classes <i') !== false && strpos($res['one']['line'], 'in this section <i') !== false, 'the two lists as words');
+	pg_assert_true(strpos($res['one']['line'], '1 left out: 1 inside a shared component.') !== false, 'what was left out and why');
+	pg_assert_true(strpos($res['one']['less'], '>2 of 3 similar<') !== false, 'one taken out with Ctrl and a click');
+	pg_assert_same(array('k1', 'k2'), $res['locked']['ids'], 'an element the operator may not edit is never chosen');
+	pg_assert_true(strpos($res['locked']['line'], '2 left out: 1 you may not edit, 1 inside a shared component.') !== false, 'the reasons in their order');
+	pg_assert_same(array('_lineHtml', 'head', 'run'), $res['keys'], 'the part\'s entry points');
+}
+
+function test_select_similar_part_nothing_found_offers_the_wider_place()
+{
+	$res = select_similar_test_part(
+		'P.run(host("h1")); var sec = { ids: got.ids, said: got.said, line: P._lineHtml(undefined, 1) };'
+		. 'P.run(host("lone")); out = { sec: sec, page: { ids: got.ids, line: P._lineHtml(undefined, 1) } };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('h1'), $res['sec']['ids'], 'nothing found: the element stays chosen alone');
+	pg_assert_same('No other element like this one here', $res['sec']['said'], 'read out');
+	pg_assert_true(strpos($res['sec']['line'], 'data-sim-wider="page">Look on this page<') !== false, 'the next wider place offered');
+	pg_assert_true(strpos($res['page']['line'], 'No other element like this one on this page') !== false, 'nothing on the page either');
+	pg_assert_false(strpos($res['page']['line'], 'data-sim-wider') !== false, 'no button then');
+	pg_assert_false(strpos($res['page']['line'], 'sd-sim-why') !== false, 'nothing left out: no second row');
+}
+
+// The core offers the part where the drawing puts it: under "Select Parent"
+// in the canvas menu, before "Move…" in the Overview's, the command palette
+// while one element is chosen, the S key on the canvas and in the editor,
+// the Keyboard shortcuts row; and the line drawn from the panel's head.
+function test_select_similar_core_rows_and_key()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$row = "{ icon: 'bi-ui-checks-grid', label: _sdT('Select similar'), key: 'S', handler: function () { _sdSimOpen(node); } }";
+	pg_assert_same(2, substr_count($js, $row), 'one row in the canvas menu and one in the Overview row menu');
+	pg_assert_true(strpos($js, "scrollTreeToNode(parent);\n            }},\n            (!multi && _sdSimOffered(node)") !== false, 'the canvas row sits under Select Parent');
+	pg_assert_true(strpos($js, $row . ");\n            }\n            items.push(_sdGuardItem({ icon: 'bi-arrows-move', label: _sdT('Move…')") !== false, 'the Overview row is first in the group of Move…');
+	pg_assert_true(strpos($js, "id: 'act_select_similar'") !== false, 'a command palette row');
+	pg_assert_same(2, substr_count($js, '_sdSimKey(e))'), 'the S key in the editor and on the canvas');
+	pg_assert_true(strpos($js, "['S',                   _sdT('Select the elements like the selected one')]") !== false, 'the Keyboard shortcuts row');
+	pg_assert_true(strpos($js, 'if (_sdSim) _sdSimHead(head);') !== false, 'the line is drawn with the Options panel\'s head');
+	pg_assert_true(strpos($js, "selectedNodes.length < 2") !== false && strpos($js, 'function _sdSimOffered(node)') !== false, 'only for one element chosen');
+}

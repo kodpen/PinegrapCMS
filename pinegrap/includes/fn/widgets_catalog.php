@@ -1771,6 +1771,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // mid-page on subsequent loads.
     $order_parts[] = "products.id DESC";
     $order_by_sql  = implode(', ', $order_parts);
+    // The Preview's cases "Long" (the most text first) and "Sold out" (the
+    // products that cannot be bought first).
+    $order_by_sql  = pg_preview_as_order('long', "CHAR_LENGTH(COALESCE(products.name, '')) + CHAR_LENGTH(COALESCE(products.full_description, ''))")
+                   . pg_preview_as_order('sold_out', "products.inventory = 1 AND products.inventory_quantity = 0 AND products.backorder = 0")
+                   . $order_by_sql;
 
     // ── Build the unified WHERE conditions array ─────────────────────────
     // Always: products.enabled = 1
@@ -1842,6 +1847,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
     // Backwards-compat alias so the rest of the function keeps using $search_where
     $search_where = $extra_conditions;
+    // The Preview's case "Empty": the listing as it is with no product.
+    $search_where .= pg_preview_as_empty_where();
 
     // Group filter: when set, INNER JOIN xref WHERE xref.product_group = X.
     // Use $active_group_id (URL-overridable in drill-down mode) instead of

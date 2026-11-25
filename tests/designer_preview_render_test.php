@@ -231,3 +231,135 @@ function test_preview_render_wiring()
 	pg_assert_contains("'preview_as'", $wcase, 'the Preview takes the choice');
 	pg_assert_contains("'setups'", $wcase, 'and says what it drew');
 }
+
+// What a renderer reads of the case: outside a Preview widget every reader
+// gives back what the renderer had, so a live visitor sees what they saw.
+function test_preview_render_readers_outside_the_scope()
+{
+	$rows = array(array('name' => 'a'), array('name' => 'a much longer name'));
+	pg_assert_same('', pg_preview_as_empty_where());
+	pg_assert_same('', pg_preview_as_order('long', 'CHAR_LENGTH(x)'));
+	pg_assert_same('', pg_preview_as_order('sold_out', 'x = 0'));
+	pg_assert_same($rows, pg_preview_as_rows($rows));
+	pg_assert_same(null, pg_preview_as_rows(null));
+}
+
+function test_preview_render_readers_empty()
+{
+	$rows = array(array('name' => 'a'), array('name' => 'b'));
+	$seen = pg_preview_as_while(pg_preview_as_setup('form_list_view', array('case' => 'empty')), function () use ($rows) {
+		return array(pg_preview_as_empty_where(), pg_preview_as_rows($rows), pg_preview_as_order('long', 'x'));
+	});
+	pg_assert_same(' AND (TRUE = FALSE) ', $seen[0], 'the list statement matches nothing');
+	pg_assert_same(array(), $seen[1], 'rows read are dropped');
+	pg_assert_same('', $seen[2]);
+}
+
+function test_preview_render_readers_long()
+{
+	$rows = array(
+		array('name' => 'short', 'id' => '1'),
+		array('name' => '<b>longest of all</b>', 'id' => '2'),
+		array('name' => 'medium one', 'id' => '3'),
+		array('name' => 'mediumtwo!', 'id' => '4'),
+	);
+	$seen = pg_preview_as_while(pg_preview_as_setup('catalog_listing', array('case' => 'long')), function () use ($rows) {
+		return array(pg_preview_as_rows($rows, array('name')), pg_preview_as_order('long', 'CHAR_LENGTH(p.name)'), pg_preview_as_empty_where());
+	});
+	$ids = array();
+	foreach ($seen[0] as $r) $ids[] = $r['id'];
+	pg_assert_same(array('2', '3', '4', '1'), $ids, 'most characters first, ties keep their order, markup not counted');
+	pg_assert_same('(CHAR_LENGTH(p.name)) DESC, ', $seen[1]);
+	pg_assert_same('', $seen[2]);
+
+	$keyed = pg_preview_as_while(pg_preview_as_setup('catalog_listing', array('case' => 'long')), function () {
+		return pg_preview_as_rows(array('x' => array('t' => 'a'), 'y' => array('t' => 'abc')));
+	});
+	pg_assert_same(array('y', 'x'), array_keys($keyed), 'keyed rows keep their keys');
+
+	$sold = pg_preview_as_while(pg_preview_as_setup('catalog_listing', array('case' => 'sold_out')), function () {
+		return array(pg_preview_as_order('sold_out', 'p.q = 0'), pg_preview_as_order('long', 'x'));
+	});
+	pg_assert_same(array('(p.q = 0) DESC, ', ''), $sold);
+}
+
+function test_preview_render_row_length()
+{
+	pg_assert_same(0, pg_preview_as_row_length(null));
+	pg_assert_same(5, pg_preview_as_row_length(array('a' => 'ab', 'b' => 'çde', 'n' => 4)));
+	pg_assert_same(2, pg_preview_as_row_length(array('a' => 'ab', 'b' => 'cde'), array('a', 'missing')));
+}
+
+// A liveform stand-in: what the case "Error" marks.
+class designer_preview_render_test_form
+{
+	public $marked = array();
+	function mark_error($field, $message = '')
+	{
+		$this->marked[] = array($field, $message);
+	}
+}
+
+function test_preview_render_form_error_fields()
+{
+	foreach (array('login', 'forgot_password', 'register', 'affiliate_sign_up_form', 'shipping_address_and_arrival', 'billing_information') as $form) {
+		$mark = pg_preview_as_form_error_field($form);
+		pg_assert_true(is_array($mark) && $mark['field'] !== '' && $mark['message'] !== '', $form . ' has a required field');
+	}
+	pg_assert_same('billing_first_name', pg_preview_as_form_error_field('billing_information')['field']);
+	pg_assert_same(null, pg_preview_as_form_error_field('search_results'));
+
+	$map = array(
+		'office' => array('id' => 7, 'required' => 1, 'office_use_only' => 1, 'label' => 'Staff', 'type' => 'text box'),
+		'note'   => array('id' => 8, 'required' => 0, 'office_use_only' => 0, 'label' => 'Note', 'type' => 'text box'),
+		'name'   => array('id' => 9, 'required' => 1, 'office_use_only' => 0, 'label' => 'Name', 'type' => 'text box'),
+	);
+	pg_assert_same(9, pg_preview_as_custom_form_required($map)['id'], 'the first required field a visitor fills in');
+	pg_assert_same(null, pg_preview_as_custom_form_required(array('note' => $map['note'])));
+}
+
+function test_preview_render_form_error_marks_only_in_the_case()
+{
+	$lf = new designer_preview_render_test_form();
+	pg_preview_as_form_error($lf, 'login');
+	pg_preview_as_custom_form_error($lf, array(array('id' => 9, 'required' => 1, 'label' => 'Name', 'type' => 'text box')));
+	pg_assert_same(array(), $lf->marked, 'nothing outside the Preview');
+
+	pg_preview_as_while(pg_preview_as_setup('custom_form', array('case' => 'typical')), function () use ($lf) {
+		pg_preview_as_form_error($lf, 'login');
+	});
+	pg_assert_same(array(), $lf->marked, 'nothing in the typical case');
+
+	pg_preview_as_while(pg_preview_as_setup('custom_form', array('case' => 'error')), function () use ($lf) {
+		pg_preview_as_form_error($lf, 'login');
+		pg_preview_as_custom_form_error($lf, array(array('id' => 9, 'required' => 1, 'label' => 'Name', 'type' => 'text box')));
+	});
+	pg_assert_same('email', $lf->marked[0][0]);
+	pg_assert_same(9, $lf->marked[1][0]);
+	pg_assert_contains('Name', $lf->marked[1][1]);
+}
+
+// Every renderer of a list, a cart or a form reads the case, and the cart
+// writes nothing in a background render.
+function test_preview_render_renderers_read_the_case()
+{
+	$reads = array(
+		'includes/fn/widgets.php'                     => array('pg_preview_as_empty_where()', "pg_preview_as_order('long'", "pg_preview_as_flag('empty')", 'pg_preview_as_custom_form_error(', "pg_preview_as_form_error(\$lf, 'login')", "pg_preview_as_form_error(\$lf, 'register')", "pg_preview_as_form_error(\$lf, 'forgot_password')", 'pg_preview_as_rows($events)'),
+		'includes/fn/widgets_catalog.php'             => array('pg_preview_as_empty_where()', "pg_preview_as_order('long'", "pg_preview_as_order('sold_out'"),
+		'includes/fn/widgets_cart.php'                => array("pg_preview_as_flag('empty')", 'pg_preview_as_rows($rows', 'pg_preview_as_rows($items', '!pg_seo_rendering()'),
+		'includes/fn/widgets_photo_gallery.php'       => array('pg_preview_as_rows($rows)'),
+		'includes/fn/widgets_folder_view.php'         => array('pg_preview_as_rows($top)'),
+		'includes/fn/widgets_comments.php'            => array("pg_preview_as_flag('empty')"),
+		'includes/fn/widgets_comments_recent.php'     => array("pg_preview_as_flag('empty')"),
+		'includes/fn/widgets_affiliate_sign_up.php'   => array("pg_preview_as_form_error(\$lf, 'affiliate_sign_up_form')"),
+		'includes/fn/widgets_billing_information.php' => array("pg_preview_as_form_error(\$lf, 'billing_information')"),
+		'includes/fn/widgets_shipping_address.php'    => array("pg_preview_as_form_error(\$lf, 'shipping_address_and_arrival')"),
+	);
+	foreach ($reads as $path => $needles) {
+		$src = designer_preview_render_test_source($path);
+		foreach ($needles as $needle) pg_assert_contains($needle, $src, $path . ' reads ' . $needle);
+	}
+	$cart = designer_preview_render_test_source('includes/fn/widgets_cart.php');
+	$at   = (int) strpos($cart, 'db("UPDATE order_items');
+	pg_assert_true($at > 0 && strpos(substr($cart, $at - 400, 400), '!pg_seo_rendering()') !== false, 'the recurring defaults are not written by a background render');
+}

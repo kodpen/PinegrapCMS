@@ -1,6 +1,6 @@
 ---
 name: channel-info-agents-drawing
-description: The drawing of Channel info's one agents block for both tabs (plan channel-info-agents, step CI1): a calm two-line row that opens in place, what goes, the measures
+description: The drawing of Channel info's one agents block for both tabs (built in #11617): a calm two-line row that opens in place, what goes, the measures
 ---
 
 ## Where is the drawing?
@@ -35,4 +35,4 @@ description: The drawing of Channel info's one agents block for both tabs (plan 
 - Face 28 with corner 30%; name 13.5 px at 600; role and line 2 12.5 px, one line each, the role cut first. Ring 18 across, line 2.5. Facts: labels 76 wide, 12.5 px, 7 between. The rest is on board Z1.
 - A state that changes while the panel is open is announced once, politely.
 
-Related: docs/memory/plans/channel-info-agents.md, docs/memory/workspace/channel-activity-tab.md, docs/memory/workspace/channel-members-agents.md, docs/memory/workspace/agent-state-marks.md
+Related: docs/memory/workspace/channel-info-agents-block.md, docs/memory/workspace/channel-activity-tab.md, docs/memory/workspace/channel-members-agents.md, docs/memory/workspace/agent-state-marks.md

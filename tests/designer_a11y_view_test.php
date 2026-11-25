@@ -1,0 +1,194 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The designer's Accessibility view (the part 'accessview',
+ * assets/js/style_designer_accessview.js): a bundle of its own after the pure
+ * reader, run when the View menu's switch goes on; what its card says per
+ * kind of mark; the kept state of the switch; the marks drawn in the
+ * editor's own layer, never in the canvas's page.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+// One four-space function of a designer script, from its declaration to its
+// closing brace.
+function designer_a11y_view_fn($js, $name)
+{
+	$start = strpos($js, "\n    function " . $name . '(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start + 6);
+}
+
+// Runs a Node script after the named functions of `$file` and returns its
+// JSON output. Null without Node or when a function is missing.
+function designer_a11y_view_run($file, $names, $script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$js = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/' . $file));
+	$src = 'var _sdT = function (s) { var a = arguments; return String(s).replace(/\{var:(\d)\}/g, function (m, i) { return a[i]; }); };' . "\n";
+
+	foreach ($names as $name) {
+		$fn = designer_a11y_view_fn($js, $name);
+
+		if (!pg_assert_true($fn !== '', $file . ' has ' . $name . '()')) {
+			return null;
+		}
+
+		$src .= $fn . "\n";
+	}
+
+	$tmp = tempnam(sys_get_temp_dir(), 'pgaccessview');
+	file_put_contents($tmp, $src . $script . "\n");
+	$out = array();
+	exec('node ' . escapeshellarg($tmp) . ' 2>&1', $out, $code);
+	unlink($tmp);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	$res = json_decode(implode("\n", $out), true);
+
+	return is_array($res) ? $res : null;
+}
+
+function test_designer_a11y_view_is_a_part_after_its_reader()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_accessview.min.js', isset($parts['accessview']) ? $parts['accessview'] : null, 'the part accessview');
+
+	$bundles = pg_js_bundles();
+	pg_assert_same(array('assets/js/pg_a11y_reader.js', 'assets/js/style_designer_accessview.js'), $bundles['assets/js/style_designer_accessview.min.js'], 'the reader runs first');
+	pg_assert_false(in_array('assets/js/pg_a11y_reader.js', $bundles['assets/js/style_designer.min.js'], true), 'the reader is not in the core bundle');
+	pg_assert_false(in_array('assets/js/style_designer_accessview.js', $bundles['assets/js/style_designer.min.js'], true), 'the view is not in the core bundle');
+	pg_assert_same('always', pg_designer_part_files()['accessview']['when'], 'handed to every editor');
+}
+
+// Each kind's count, marked places and foot, as boards V1 to V4 and V6 say.
+function test_designer_a11y_view_card_says_what_each_kind_found()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('_avFirstSkip', '_avSummary'),
+		'var stops = []; for (var i = 1; i <= 15; i++) stops.push({ index: i });' . "\n"
+		. 'var page = { order: stops, jumps: stops.map(function (s, i) { return i === 1; }),' . "\n"
+		. '  headings: [{ level: 1 }, { level: 2 }, { level: 4, fault: "a11y_heading_order", from: 2 }, { level: 4 }, { level: 4 }, { level: 2 }],' . "\n"
+		. '  regions: [{}, {}, {}, {}, {}], pictures: [{ kind: "text" }, { fault: "a11y_img_alt", kind: "none" }, { kind: "decor" }, { kind: "text" }],' . "\n"
+		. '  controls: [{ kind: "button", fault: "a11y_button_name" }, { kind: "field", fault: "a11y_form_label" }, { kind: "link", name: "Prices" }] };' . "\n"
+		. 'var none = { order: [], jumps: [], headings: [], regions: [], pictures: [], controls: [] };' . "\n"
+		. 'var two = { order: [{ index: 1 }, { index: 2 }], jumps: [false, true], headings: [{ level: 2, assumed: true }], regions: [{}], pictures: [{ kind: "text" }], controls: [{ kind: "link", fault: "a11y_link_name" }] };' . "\n"
+		. 'console.log(JSON.stringify({ page: ["order", "headings", "names"].map(function (k) { return _avSummary(k, page); }),' . "\n"
+		. '  none: ["order", "headings", "names"].map(function (k) { return _avSummary(k, none); }),' . "\n"
+		. '  two: ["order", "headings", "names"].map(function (k) { return _avSummary(k, two); }) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('count' => 15, 'marked' => 1, 'bold' => '15 stops.', 'rest' => 'One step jumps back on the page.'), $res['page'][0], 'Tab order: 15 stops, one jump');
+	pg_assert_same(array('count' => 6, 'marked' => 1, 'bold' => '', 'rest' => ''), $res['page'][1], 'Headings: six, the first skip marked, the outline in the foot\'s place');
+	pg_assert_same(array('count' => 9, 'marked' => 3, 'bold' => '5 regions, 4 pictures.', 'rest' => '3 places have no name.'), $res['page'][2], 'Names: regions and pictures counted, three places without a name');
+
+	pg_assert_same('The keyboard reaches nothing on this page.', $res['none'][0]['rest'], 'nothing reached');
+	pg_assert_same('This page has no heading.', $res['none'][1]['rest'], 'no heading');
+	pg_assert_same('This page has no region, picture or unnamed control.', $res['none'][2]['rest'], 'nothing named');
+	pg_assert_same(array(0, 0, 0), array_map(function ($s) { return $s['marked']; }, $res['none']), 'nothing marked on an empty page');
+
+	pg_assert_same(array('count' => 2, 'marked' => 1, 'bold' => '2 stops.', 'rest' => 'One step jumps back on the page.'), $res['two'][0], 'one jump of two stops');
+	pg_assert_same(0, $res['two'][1]['marked'], 'an assumed heading is never marked');
+	pg_assert_same(array('count' => 2, 'marked' => 1, 'bold' => 'One region, one picture.', 'rest' => 'One place has no name.'), $res['two'][2], 'a link without a name is a place without a name');
+}
+
+// The words on the marks.
+function test_designer_a11y_view_mark_words()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('_avStopText', '_avRoleName', '_avNamed', '_avHeadingTag', '_avNoName', '_avFaultSentence', '_avRegionTagPlace'),
+		'console.log(JSON.stringify([' . "\n"
+		. '  _avStopText({ index: 2, tabindex: 0 }, true), _avStopText({ index: 1, tabindex: 1 }, false), _avStopText({ index: 7, tabindex: 0 }, false),' . "\n"
+		. '  _avNamed("link", "See the timetable"), _avNamed("navigation", "Main menu"), _avNamed("main", ""), _avNamed("contentinfo", ""),' . "\n"
+		. '  _avHeadingTag({ level: 4, from: 2 }, true), _avHeadingTag({ level: 2, assumed: true }, false), _avHeadingTag({ level: 3 }, false),' . "\n"
+		. '  _avNoName("button"), _avNoName("link"), _avNoName("field"), _avNoName("frame"),' . "\n"
+		. '  _avFaultSentence("a11y_img_alt"), _avFaultSentence("a11y_contrast"),' . "\n"
+		. '  _avRegionTagPlace("navigation"), _avRegionTagPlace("main"), _avRegionTagPlace("banner")' . "\n"
+		. ']));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'2 · jumps back', '1 · tabindex 1', '7',
+		'Link “See the timetable”', 'Navigation “Main menu”', 'Main', 'Content info',
+		'H4 · skips H3', 'H2 · assumed', 'H3',
+		'Button · no name', 'Link · no name', 'Field · no label', 'Frame · no title',
+		'Image without alternative text', '',
+		'above', 'right', 'left',
+	), $res, 'the numbers, tags and sentences of boards V2 to V4');
+}
+
+// The audit's sentence is the one pg_a11y_issue_label() gives each of the
+// reader's six rules.
+function test_designer_a11y_view_uses_the_audits_sentences()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_accessview.js');
+
+	foreach (array('a11y_heading_order', 'a11y_img_alt', 'a11y_link_name', 'a11y_button_name', 'a11y_form_label', 'a11y_frame_title') as $code) {
+		$label = pg_a11y_issue_label($code);
+		pg_assert_true($label !== $code && strpos($js, "case '" . $code . "': return _sdT('" . $label . "');") !== false, $code . ' says the audit\'s sentence');
+	}
+}
+
+// The switch's kept state: off, Tab order and unfolded unless kept
+// otherwise; an unknown kind falls back to Tab order.
+function test_designer_a11y_view_kept_state()
+{
+	$res = designer_a11y_view_run('style_designer.src.js', array('_sdA11yStateOf'),
+		'console.log(JSON.stringify([_sdA11yStateOf(null), _sdA11yStateOf({ on: true, kind: "names", fold: true }), _sdA11yStateOf({ on: "1", kind: "x" }), _sdA11yStateOf({ kind: "" })]));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('on' => false, 'kind' => 'order', 'fold' => false),
+		array('on' => true, 'kind' => 'names', 'fold' => true),
+		array('on' => false, 'kind' => 'order', 'fold' => false),
+		array('on' => false, 'kind' => '', 'fold' => false),
+	), $res, 'kept state');
+}
+
+function test_designer_a11y_view_core_hooks()
+{
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_true(strpos($core, 'id="sd-vb-a11y" role="menuitemcheckbox"') !== false, 'a switch row of the View menu');
+	pg_assert_true(strpos($core, "'sd-vb-motion', 'sd-vb-a11y'") !== false, 'counted in the View button\'s badge');
+	pg_assert_true(strpos($core, "_sdT('Show accessibility view')") !== false && strpos($core, "_sdT('Hide accessibility view')") !== false, 'a row of the command palette');
+	pg_assert_true(strpos($core, "_sdPartCall('accessview', 'show'") !== false, 'the switch runs the part');
+	pg_assert_same(3, substr_count($core, "        _sdA11ySync();\n"), 'a draw, the mode switch and the switch keep the view in step');
+}
+
+function test_designer_a11y_view_draws_outside_the_page()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_accessview.js');
+
+	pg_assert_true(strpos($js, "StyleDesigner.definePart('accessview', function (K) {") !== false, 'registers the part');
+	pg_assert_true(strpos($js, "closest('.sd-canvas-wrapper')") !== false, 'the layers go into the canvas wrapper of the editor');
+	pg_assert_false((bool) preg_match('/\bdoc\.(createElement|body\.appendChild)/', $js), 'nothing is put into the canvas\'s page');
+	pg_assert_true(strpos($js, 'V.mo.disconnect()') !== false && strpos($js, 'listen(false)') !== false, 'the observer and the listeners go with the view');
+	pg_assert_true(strpos($js, 'setTimeout(refresh, REST_MS)') !== false, 'read again when the hand rests');
+}

@@ -429,6 +429,8 @@ function pg_designer_screen_render($ctx)
         // component lists on the canvas (pg_language_switcher_editor_languages()).
         'siteLanguages' => pg_language_switcher_editor_languages(),
         'autoImport'    => !empty($ctx['auto_import']),
+        // The Canva start: the Prototype view opens with the Sketch switch on.
+        'autoSketch'    => !empty($ctx['auto_sketch']),
         'autoPasteHtml' => !empty($ctx['auto_paste']),
         // ?start=document: the page is built from the rows the New design
         // window left in this tab's sessionStorage (style_designer_document.js).
@@ -463,6 +465,9 @@ function pg_designer_screen_render($ctx)
         // Add mode from a template: the editor asks for its pages
         // (designer/template_prepare) behind the "preparing" curtain.
         'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
+        // Add mode from the Figma start: the pages, shared components and
+        // name its import made (pg_figma_import_ready()), opened as tabs.
+        'figma'         => !empty($ctx['figma']) ? $ctx['figma'] : null,
         // What to do once open, from the design chooser's link: a new page,
         // a page from another design or a copy of one (pg_designer_start_action()).
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
@@ -1232,6 +1237,16 @@ function pg_designer_home_drawing($kind, $templates = array())
                  . $window(110, 114)
                  . '<rect x="120" y="30" width="94" height="18" rx="4" class="as"/><rect x="128" y="36" width="40" height="4" rx="2" class="a"/>'
                  . '<rect x="120" y="53" width="28" height="24" rx="3" class="g"/><rect x="153" y="53" width="28" height="24" rx="3" class="g"/><rect x="186" y="53" width="28" height="24" rx="3" class="g"/>';
+        case 'canva':
+            // Pictures of pages laid under sketch frames, one a page.
+            $art = '<rect x="14" y="18" width="46" height="60" rx="6" class="p s"/><rect x="26" y="10" width="46" height="60" rx="6" class="p s"/>'
+                 . '<rect x="32" y="16" width="34" height="14" rx="3" class="as"/><rect x="32" y="34" width="34" height="5" rx="2" class="l"/>'
+                 . '<rect x="32" y="43" width="16" height="20" rx="3" class="g"/><rect x="51" y="43" width="15" height="20" rx="3" class="g"/>'
+                 . $arrow
+                 . '<rect x="110" y="10" width="114" height="76" rx="8" class="p s"/>'
+                 . '<rect x="118" y="18" width="98" height="20" rx="3" class="as"/>'
+                 . '<rect x="118" y="18" width="98" height="20" rx="3" class="dash"/><rect x="118" y="44" width="47" height="34" rx="3" class="dash"/><rect x="169" y="44" width="47" height="34" rx="3" class="dash"/>'
+                 . '<rect x="124" y="25" width="38" height="5" rx="2" class="a"/>';
             break;
         case 'paste':
             // Markup on the clipboard; it lands on the page as a section.
@@ -1871,13 +1886,20 @@ function pg_designer_components_rows()
  * @param bool $has_templates whether a template can be offered
  * @param bool $figma         whether the Figma start is listed
  *                            (pg_designer_figma_start_on())
- * @return array list of array('key', 'icon', 'title', 'line', 'drawing', 'go', 'disabled')
+ * @return array list of array('key', 'icon', 'title', 'line', 'drawing', 'go',
+ *               'disabled'), 'heading' where the pane's title is not the row's
  */
 function pg_designer_start_kinds($has_templates, $figma = false)
 {
     $figma_row = array('key' => 'figma', 'icon' => 'bi-vector-pen', 'title' => lang('Figma'),
               'line' => lang('A Figma file\'s frames become pages.'),
               'drawing' => 'figma', 'go' => '', 'disabled' => false);
+
+    // No connection: the pictures are added in the window (pg_designer_canva_pane()).
+    $canva_row = array('key' => 'canva', 'icon' => 'bi-images', 'title' => lang('Canva'),
+              'line' => lang('Pages exported from Canva become the models of sketch pages.'),
+              'heading' => lang('Start from Canva pages'),
+              'drawing' => 'canva', 'go' => '', 'disabled' => false);
 
     return array_merge(array(
         array('key' => 'blank', 'icon' => 'bi-file-earmark-plus', 'title' => lang('Blank'),
@@ -1886,9 +1908,9 @@ function pg_designer_start_kinds($has_templates, $figma = false)
         array('key' => 'template', 'icon' => 'bi-grid-1x2', 'title' => lang('Template'),
               'line' => lang('A ready-made design to change as you like.'),
               'drawing' => 'template-none', 'go' => '', 'disabled' => !$has_templates),
-    ), $figma ? array($figma_row) : array(), array(
+    ), $figma ? array($figma_row) : array(), array($canva_row), array(
         array('key' => 'document', 'icon' => 'bi-file-earmark-text', 'title' => lang('From a document'),
-              'line' => lang('A text or a Word file'),
+              'line' => lang('A text or a Word file'), 'heading' => lang('Start from a document'),
               'drawing' => 'document', 'go' => '', 'disabled' => false),
         array('key' => 'import', 'icon' => 'bi-file-earmark-zip', 'title' => lang('ZIP file'),
               'line' => lang('An HTML page or a project archive; its pages become tabs.'),
@@ -1912,6 +1934,91 @@ function pg_designer_figma_start_on()
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
 
     return function_exists('pg_figma_import_start');
+}
+
+/**
+ * The attributes of a start's pane whose form is drawn by a part of its own
+ * (assets/js/designer_<part>.js, loaded by designer_home.js the first time
+ * the start is chosen): its name and its file's stamp. '' for the others.
+ *
+ * @param string $key
+ * @return string
+ */
+function pg_designer_start_part_attrs($key)
+{
+    if (!in_array($key, array('figma', 'canva', 'document'), true)) {
+        return '';
+    }
+    return ' data-part="' . $key . '" data-part-stamp="' . h(pg_designer_asset_stamp('assets/js/designer_' . $key . '.js')) . '"';
+}
+
+/**
+ * The Canva start's pane: the one sentence that says what the pictures
+ * become, and the drop place. The pages, the busy and refused files and
+ * the colours card are drawn by assets/js/designer_canva.js; each picture
+ * is stored by designer › canva_page (includes/fn/canva_start.php).
+ * "Create design" leads to a Bootstrap 5 design that opens in the Sketch
+ * tool (add_system_style.php?start=canva).
+ *
+ * @param bool $from_pages
+ * @return string
+ */
+function pg_designer_canva_pane($from_pages)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+    $limits = pg_upload_limits();
+    $texts = array(
+        'max'        => pg_canva_max_pages(),
+        'bytes'      => (int) $limits['file_max'],
+        'href'       => pg_designer_start_go_href('canva', 'bootstrap5', $from_pages),
+        'pages'      => lang('{var:1} pages'),
+        'page1'      => lang('1 page'),
+        'files'      => lang('from {var:1} files'),
+        'file1'      => lang('from 1 file'),
+        'remove'     => lang('Remove {var:1}'),
+        'reading'    => lang('Adding the picture…'),
+        'stop'       => lang('Stop'),
+        'clear'      => lang('Clear'),
+        'notPng'     => lang('{var:1} is not a PNG. Download the page from Canva as PNG.'),
+        'pdf'        => lang('{var:1} is a PDF, which this site cannot turn into pictures. Download the pages from Canva as PNG.'),
+        'tooBig'     => lang(array('string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.', 'vars' => array('{var:1}', convert_bytes_to_string($limits['file_max'], 1)))),
+        'tooMany'    => lang(array('string' => 'One design takes {var:1} pictures; {var:2} and the files after it were not added.', 'vars' => array(pg_canva_max_pages(), '{var:2}'))),
+        'failed'     => lang('The server could not accept {var:1}. Please try again.'),
+        'network'    => lang('Network error.'),
+        'hint'       => lang('Each picture becomes the model of one page.'),
+        'next'       => lang('Next'),
+        'back'       => lang('Back'),
+        'ask'        => lang('Ask me the questions'),
+        'create'     => lang('Create design'),
+        'varsTitle'  => lang('Your design\'s variables'),
+        'varsLine'   => lang('The colours are measured from your pictures. You can change every one later in Settings, Theme, Variables.'),
+        'brand'      => lang('Brand colour'),
+        'second'     => lang('Second colour'),
+        'brandNote'  => lang('most used in your pictures'),
+        'secondNote' => lang('the next most used'),
+        'rest'       => lang('Type, feel, room'),
+        'restValue'  => lang('The site\'s default'),
+        'restNote'   => lang('a picture carries no fonts'),
+        'noColour'   => lang('No colour was found in the pictures; the site\'s default stays.'),
+        'move'       => lang('Drag to change the order, or press Alt and an arrow key.'),
+    );
+    $place = function ($small) {
+        return '<i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>'
+            . '<span class="sd-cv-drop-text"><b><span class="sdh-hint-mouse">' . h($small ? lang('Drop more files here') : lang('Drop PNG files here')) . '</span>'
+            . '<span class="sdh-hint-touch">' . h(lang('Add PNG files')) . '</span></b>'
+            . '<small>' . h($small ? lang('PNG') : lang('In Canva: Share, Download, then “PNG”.')) . '</small></span>'
+            . '<span class="pg-button pg-button-quiet' . ($small ? ' pg-button-sm' : '') . '" aria-hidden="true">' . h(lang('Choose files')) . '</span>';
+    };
+    return '<div class="sd-cv" data-texts="' . h(json_encode($texts, JSON_UNESCAPED_UNICODE)) . '">'
+        . '<p class="pg-text-2 mb-5">' . h(lang('Download the pages from Canva as PNG and add them here. Each comes in as a picture to build on, a model for the page, not layers you can edit.')) . '</p>'
+        . '<div class="sd-cv-head" hidden></div>'
+        . '<div class="sd-cv-tiles" role="list" aria-label="' . h(lang('Pages')) . '" hidden></div>'
+        . '<label class="sd-cv-drop" data-big="' . h($place(false)) . '" data-small="' . h($place(true)) . '">' . $place(false)
+        .   '<input type="file" class="visually-hidden" accept="image/png,image/jpeg,.png,.jpg,.jpeg,application/pdf,.pdf" multiple>'
+        . '</label>'
+        . '<div class="sd-cv-rows" aria-live="polite"></div>'
+        . '<div class="sd-cv-colors" hidden></div>'
+        . '</div>';
 }
 
 /**
@@ -1957,6 +2064,42 @@ function pg_designer_figma_pane($connection, $manager)
         'noLink'    => lang('This is not a Figma file link. Copy it in Figma with Share, then “Copy link”.'),
         'network'   => lang('Network error.'),
         'max'       => pg_figma_max_frames(),
+        // The import (ST5): the variables card, the running import, the report.
+        'preparing'   => lang('Reading the frames…'),
+        'varsTitle'   => lang('Your design\'s variables'),
+        'varsLead'    => lang('Found in the file. The design starts with them; change them later on the Variables tab.'),
+        'brand'       => lang('Brand colour'),
+        'second'      => lang('Second colour'),
+        'more'        => lang('More colours'),
+        'fonts'       => lang('Fonts'),
+        'feel'        => lang('Feel and room'),
+        'siteDefault' => lang('The site\'s default'),
+        'fromStyle'   => lang('Style “{var:1}”'),
+        'fromFrames'  => lang('The frames\' values'),
+        'create'      => lang('Create design'),
+        'making'      => lang('Making {var:1} pages'),
+        'waiting'     => lang('Waiting'),
+        'working'     => lang('Working…'),
+        'got'         => lang('{var:1} pictures, {var:2} vectors'),
+        'notMade'     => lang('Not made'),
+        'stop'        => lang('Stop'),
+        'stopTitle'   => lang('Stop the import?'),
+        'stopText'    => lang('No design is made, and the pictures fetched so far are removed from the file manager.'),
+        'made'        => lang('{var:1} pages made from “{var:2}”'),
+        'madeOf'      => lang('{var:1} of {var:2} pages made'),
+        'nPictures'   => lang('{var:1} pictures'),
+        'nVectors'    => lang('{var:1} vectors'),
+        'nShared'     => lang('{var:1} shared components'),
+        'nVariables'  => lang('{var:1} variables'),
+        'nNotes'      => lang('{var:1} notes'),
+        'nNotMade'    => lang('{var:1} not made'),
+        'whole'       => lang('Carried whole'),
+        'notes'       => lang('{var:1} notes'),
+        'folder'      => lang('The pictures are in the file manager, folder {var:1}.'),
+        'copy'        => lang('Copy the report'),
+        'copied'      => lang('Copied'),
+        'open'        => lang('Open the design'),
+        'openHref'    => 'add_system_style.php?framework=bootstrap5&start=figma&import=',
     );
 
     return '<div class="sd-fg" data-texts="' . h(json_encode($texts, JSON_UNESCAPED_UNICODE)) . '">'
@@ -2015,7 +2158,7 @@ function pg_designer_start_go_href($key, $framework, $from_pages)
 {
     if ($key === 'template') return '';
     $href = 'add_system_style.php?framework=' . ($framework === 'custom' ? 'custom' : 'bootstrap5');
-    if ($key === 'import' || $key === 'paste' || $key === 'document') $href .= '&start=' . $key;
+    if ($key === 'import' || $key === 'paste' || $key === 'canva' || $key === 'document') $href .= '&start=' . $key;
     return $href . ($from_pages ? '&from=pages' : '');
 }
 
@@ -2072,6 +2215,8 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_start.php');
             return '<div class="sd-doc" data-texts="' . h(json_encode(pg_document_start_texts(), JSON_UNESCAPED_UNICODE)) . '"'
                 . ' data-href="' . h(pg_designer_start_go_href('document', 'bootstrap5', $from_pages)) . '"></div>';
+        case 'canva':
+            return pg_designer_canva_pane($from_pages);
         case 'paste':
             return pg_designer_start_framework_choice('paste', $from_pages)
                 . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens with a box to paste the markup into.')) . '</p>';
@@ -2108,8 +2253,8 @@ function pg_designer_start_window($templates, $from_pages)
                . '<span class="pg-text-meta">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
-                . ' data-go="' . h($k['go']) . '"' . (($key === 'figma' || $key === 'document') ? ' data-part="' . $key . '"' : '') . ($i === 0 ? '' : ' hidden') . '>'
-                . '<h3 class="pg-sm-heading">' . h($k['title']) . '</h3>'
+                . ' data-go="' . h($k['go']) . '"' . pg_designer_start_part_attrs($key) . ($i === 0 ? '' : ' hidden') . '>'
+                . '<h3 class="pg-sm-heading">' . h(isset($k['heading']) ? $k['heading'] : $k['title']) . '</h3>'
                 . '<p class="pg-sm-desc">' . h($k['line']) . '</p>'
                 . ($k['disabled'] ? '' : pg_designer_start_pane($k, $templates, $from_pages))
                 . '</section>';

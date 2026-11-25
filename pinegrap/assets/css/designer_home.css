@@ -909,9 +909,300 @@ button.sdh-page:hover {
   }
 }
 
+/* The Canva start (pg_designer_canva_pane(), assets/js/designer_canva.js):
+   the drop place, shrunk to one row under the page tiles once a page is
+   there; a file being read or refused as a row; the colours card. A page
+   tile is the Figma frame's card with its place and a bin in its head. */
+.sd-cv-drop {
+  display: grid;
+  justify-items: center;
+  gap: .375rem;
+  padding: 2rem 1.25rem 1.75rem;
+  border: 1.5px dashed var(--pg-border-color);
+  border-radius: 14px;
+  background: var(--pg-bg-body);
+  text-align: center;
+  cursor: pointer;
+}
+
+.sd-cv-drop > .bi {
+  color: var(--pg-fg-2);
+  font-size: 1.5rem;
+}
+
+.sd-cv-drop b {
+  font-weight: 600;
+}
+
+.sd-cv-drop small {
+  display: block;
+  color: var(--pg-fg-2);
+}
+
+.sd-cv-drop .pg-button {
+  margin-top: .5rem;
+}
+
+.sd-cv-drop.is-small {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: .75rem;
+  padding: .75rem .875rem;
+  text-align: start;
+}
+
+.sd-cv-drop.is-small > .bi {
+  font-size: 1.125rem;
+}
+
+.sd-cv-drop.is-small .pg-button {
+  margin: 0 0 0 auto;
+}
+
+.sd-cv-drop.is-over,
+.sd-cv-drop:focus-within {
+  border-color: var(--pg-primary);
+  background: var(--pg-primary-bg-subtle);
+}
+
+.sd-cv-head {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+
+.sd-cv-head[hidden],
+.sd-cv-tiles[hidden],
+.sd-cv-colors[hidden] {
+  display: none;
+}
+
+.sd-cv-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.sd-cv-tile {
+  cursor: grab;
+}
+
+.sd-cv-tile.is-dragged {
+  opacity: .5;
+}
+
+.sd-cv-tile .sd-fg-tile-head {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+}
+
+.sd-cv-no {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 6px;
+  background: var(--pg-bg-2);
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.sd-cv-rows:not(:empty) {
+  margin-top: .75rem;
+}
+
+.sd-cv-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .625rem .75rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 12px;
+  background: var(--pg-bg-body);
+}
+
+.sd-cv-row + .sd-cv-row {
+  margin-top: .5rem;
+}
+
+.sd-cv-row > .bi {
+  flex: none;
+  color: var(--pg-fg-2);
+  font-size: 1.0625rem;
+}
+
+.sd-cv-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sd-cv-row-text > * {
+  display: block;
+}
+
+.sd-cv-row .progress {
+  max-width: 16rem;
+  height: .375rem;
+  margin-top: .375rem;
+}
+
+.sd-cv-row.is-bad {
+  border-color: var(--pg-danger-border-subtle);
+}
+
+.sd-cv-row.is-bad .sd-cv-row-text > span {
+  color: var(--pg-danger-fg-emphasis);
+}
+
+.sd-cv-hint {
+  margin-right: auto;
+}
+
+.sd-cv-vars {
+  max-width: 40rem;
+  padding: .125rem .875rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 14px;
+  background: var(--pg-bg-body);
+}
+
+.sd-cv-var {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+  min-height: 2.875rem;
+  padding: .5rem 0;
+}
+
+.sd-cv-var + .sd-cv-var {
+  border-top: 1px solid var(--pg-border-color);
+}
+
+.sd-cv-var-k {
+  flex: none;
+  width: 8rem;
+  font-weight: 550;
+}
+
+.sd-cv-var small {
+  margin-left: auto;
+}
+
+.sd-cv-dots {
+  display: flex;
+  gap: .5rem;
+}
+
+.sd-cv-dot {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+  cursor: pointer;
+}
+
+.sd-cv-dot[aria-checked="true"] {
+  box-shadow: 0 0 0 2px var(--pg-bg-body), 0 0 0 4px var(--pg-primary);
+}
+
+.sd-cv-dot:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 3px;
+}
+
+/* The Figma import (designer_figma.js): the variables card, the running
+   import with its bar and a row per frame, the report's folds. */
+.sd-fg-run {
+  max-width: 640px;
+}
+
+.sd-fg-var,
+.sd-fg-step,
+.sd-fg-fold summary {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+}
+
+.sd-fg-var-name {
+  flex: none;
+  width: 9rem;
+  font-weight: 600;
+}
+
+.sd-fg-var-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .375rem;
+  min-width: 0;
+}
+
+.sd-fg-swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 4px;
+}
+
+.sd-fg-bar {
+  width: 100%;
+  height: .5rem;
+  margin: .5rem 0 1rem;
+  accent-color: var(--pg-primary);
+}
+
+.sd-fg-steps {
+  padding: 0;
+  list-style: none;
+}
+
+.sd-fg-step-mark {
+  flex: none;
+  width: .625rem;
+  height: .625rem;
+  border-radius: 50%;
+  background: var(--pg-border-color);
+}
+
+.sd-fg-step.is-work .sd-fg-step-mark {
+  background: var(--pg-primary);
+}
+
+.sd-fg-step.is-done .sd-fg-step-mark {
+  background: var(--pg-success);
+}
+
+.sd-fg-step.is-failed .sd-fg-step-mark {
+  background: var(--pg-danger);
+}
+
+.sd-fg-fold {
+  margin-bottom: .5rem;
+}
+
+.sd-fg-fold summary {
+  cursor: pointer;
+}
+
+.sd-fg-notes {
+  margin: .5rem 0 0;
+  padding-left: 1.25rem;
+  font-size: .8125rem;
+}
+
 /* Narrow: two tiles a row, "Manage in Connections" leaves the account line. */
 @media (max-width: 767.98px) {
-  .sd-fg-tiles {
+  .sd-fg-tiles,
+  .sd-cv-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -16,6 +16,9 @@
  *   badge) are not.
  * - fit(): the scale that fits a mirror's width into its box, and the
  *   height its frame takes so the scaled picture fills the box.
+ * - sizes(): a mirror's list of widths, the one it shows ticked and those
+ *   the canvas or the other mirror show dimmed; pick() the widths after a
+ *   choice in it.
  *
  * Nothing runs at load but the definition of window.PGMirrorSchedule. It is
  * the first source of the designer part 'mirror'
@@ -38,7 +41,9 @@
 
     // Classes the editor puts on a canvas element to show its own state.
     var STATE_CLASSES = ['sd-selected', 'sd-multi-selected', 'sd-drop-hl', 'sd-ghost', 'sd-resizing',
-        'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn', 'sd-tb-inside', 'sd-tb-below', 'sd-tb-end'];
+        'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn', 'sd-tb-inside', 'sd-tb-below', 'sd-tb-end',
+        // The Outline lines and the snap grid drawn over the canvas body.
+        'sd-outline-grid', 'sd-grid-overlay'];
     // Elements the editor adds to the canvas around the design: element
     // toolbars, notes, badges, chips, drop zones, the align guide.
     var CHROME_CLASSES = ['sd-tb', 'sd-persistent-note', 'sd-issue-badge', 'sd-chip-row', 'sd-dz', 'sd-align-guide'];
@@ -132,7 +137,36 @@
         return { scale: scale, height: Math.round(boxH / scale) };
     }
 
+    // The canvas bar's five widths, the ones a mirror's list offers.
+    var SIZES = [375, 576, 768, 992, 1200];
+
+    // The list of mirror `index` of `widths`: each of SIZES with `on` for
+    // the width it shows and `where` 'canvas' or 'other' for a width the
+    // canvas (at `canvasW`, 0 for Full width) or another mirror shows.
+    function sizes(widths, index, canvasW) {
+        widths = widths || [];
+        return SIZES.map(function (w) {
+            var where = '';
+            if (w === canvasW) where = 'canvas';
+            else if (widths.some(function (o, i) { return i !== index && o === w; })) where = 'other';
+            return { w: w, on: widths[index] === w, where: where };
+        });
+    }
+
+    // The widths after `w` was chosen in mirror `index`'s list; a width
+    // dimmed there changes nothing.
+    function pick(widths, index, w, canvasW) {
+        var out = (widths || []).slice();
+        var row = sizes(out, index, canvasW).filter(function (r) { return r.w === w; })[0];
+        if (!row || row.where || index < 0 || index >= out.length) return out;
+        out[index] = w;
+        return out;
+    }
+
     window.PGMirrorSchedule = {
+        SIZES: SIZES,
+        sizes: sizes,
+        pick: pick,
         REST: REST,
         HOLD_MAX: HOLD_MAX,
         STATE_CLASSES: STATE_CLASSES,

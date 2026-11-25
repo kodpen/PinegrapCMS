@@ -24,7 +24,7 @@ priority: 6
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - SG1 (M) The sheet's model, pure: variables, the stylesheet's text styles and a design's components in, the blocks out; the contrast pairs. Done: PR #11540 (`designer/design-style-guide-model.md`).
-- SG2 (M) after SG1 and DV2: the sheet drawn and opened from the Preview menu, as boards G1 to G5 and G7 of `designer/designer-style-guide-drawing.md` and `designer-style-guide-blocks-drawing.md` draw it. The PR body carries a table of the boards: what was built for each, what differs and why.
+- SG2 (M) after SG1 and DV2: the sheet drawn and opened from the Preview menu, as boards G1 to G5 and G7 of `designer/designer-style-guide-drawing.md` and `designer-style-guide-blocks-drawing.md` draw it. Done: PR #11656 (`designer/designer-style-guide-sheet.md`).
 - SG3 (S) after SG2: the print sheet, the click through to a variable or component, as boards G6 and G7 draw them. The PR body carries a table of the boards: what was built for each, what differs and why.
 - SG4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 

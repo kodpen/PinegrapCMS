@@ -858,7 +858,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // shows the message alone, as a plain paragraph with a Continue Shopping
     // link to the shop (not as a success notice). The Messages area keeps
     // only what the last action left, such as "the item was removed".
-    $_pg_cart_oid   = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
+    // The Preview's case "Empty" draws the cart with no order.
+    $_pg_cart_oid   = pg_preview_as_flag('empty') ? 0 : (int)($_SESSION['ecommerce']['order_id'] ?? 0);
     $_pg_cart_empty = ($_pg_cart_oid <= 0)
         || ((int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $_pg_cart_oid . "'" . pg_order_item_active_sql()) === 0);
     if ($_pg_cart_empty) {
@@ -1042,7 +1043,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     //   • special_offer_code / reference_code → from orders row (string cols
     //                      are kept current by shopping_cart.php / our POST
     //                      handler above).
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
+    $order_id = (isset($_SESSION['ecommerce']['order_id']) && !pg_preview_as_flag('empty')) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     $sub_cents      = 0;
     $tax_cents      = 0;
     $surcharge_cents= 0;
@@ -1395,8 +1396,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // for a row the customer may not edit; the customer's own choice
         // (cart_action.php) overwrites them. A row the customer may not edit
         // gets them again once its stored start date has passed, as the
-        // legacy update rewrites them on every update.
-        if (is_array($rows)) {
+        // legacy update rewrites them on every update. A background render
+        // (the editor's Preview, the SEO score) belongs to no visit and
+        // writes nothing.
+        if (is_array($rows) && !pg_seo_rendering()) {
             foreach ($rows as $_ri => $_rr) {
                 if (!_pg_cart_recurring_needs_defaults($_rr, date('Y-m-d'))) continue;
                 $_def = _pg_cart_recurring_defaults($_rr);
@@ -1432,6 +1435,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 }
             }
         }
+        // The Preview's case "Long": the lines with the most text first.
+        if (is_array($rows)) $rows = pg_preview_as_rows($rows, array('product_name', 'short_description', 'full_description'));
         if (is_array($rows)) {
             foreach ($rows as $r) {
                 $qty        = (int)$r['quantity'];
@@ -3110,7 +3115,8 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $_eo_kvkk = pg_legal_kvkk_settings();
     if (!is_array($_eo_offers)) $_eo_offers = array();
 
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
+    // The Preview's case "Empty" draws the checkout with no order.
+    $order_id = (isset($_SESSION['ecommerce']['order_id']) && !pg_preview_as_flag('empty')) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
     // ── Prefill billing + shipping fields from saved sources ─────────────────
     // Source priority (each field independently):
@@ -3200,6 +3206,8 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
              WHERE oi.order_id = '" . (int)$order_id . "'" . pg_order_item_active_sql('oi') . "
              ORDER BY oi.id ASC"
         );
+        // The Preview's case "Long": the lines with the most text first.
+        if (is_array($items)) $items = pg_preview_as_rows($items, array('product_name', 'short_description', 'full_description'));
     }
     $cart_count = is_array($items) ? count($items) : 0;
 

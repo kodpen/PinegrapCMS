@@ -1144,6 +1144,56 @@ function pg_panel_designer($request, $action)
                 : array('status' => 'success', 'key' => $fg_link['key'], 'pictures' => (object)$fg_read['pictures']));
             break;
 
+        // The Canva start of the New design window: one exported page a
+        // request, stored in the file manager as an upload and measured
+        // (canva_page); then the colours of all the pages added, for the
+        // colours card (canva_colors). No Canva call. A designer's own.
+        case 'canva_page':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(pg_canva_store_page(isset($_FILES['file']) ? $_FILES['file'] : null));
+            break;
+        case 'canva_colors':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(array(
+                'status' => 'success',
+                'colors' => pg_canva_pick_colors((isset($request['lists']) && is_array($request['lists'])) ? array_slice($request['lists'], 0, pg_canva_max_pages()) : array(), pg_canva_max_colors()),
+            ));
+            break;
+
+        // The Figma start's import, in steps the window drives so it can
+        // show progress: start (the ticked frames read and converted, the
+        // variables found), frame (one frame's pictures fetched into the
+        // file manager), finish (shared components, pages, the report),
+        // stop (what was fetched removed). The token stays on the server.
+        case 'figma_import':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+            $fg_step = isset($request['step']) && is_string($request['step']) ? $request['step'] : '';
+            $fg_id = isset($request['id']) && is_string($request['id']) ? $request['id'] : '';
+            if ($fg_step === 'start') {
+                $fg_link = pg_figma_file_link(isset($request['link']) ? $request['link'] : null);
+                $fg_run = $fg_link ? pg_figma_import_start($fg_link['key'], isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array())
+                                   : array('ok' => false, 'error' => array('kind' => 'other', 'retry' => 0));
+                if (!$fg_run['ok']) {
+                    respond(pg_figma_refusal($fg_run['error']));
+                }
+                respond(array('status' => 'success', 'id' => $fg_run['id'], 'frames' => $fg_run['frames'], 'found' => $fg_run['found']));
+            }
+            if ($fg_step === 'frame') {
+                $fg_run = pg_figma_import_frame($fg_id, isset($request['index']) ? (int)$request['index'] : -1, $user);
+            } elseif ($fg_step === 'finish') {
+                $fg_run = pg_figma_import_finish($fg_id, $user, !empty($request['variables']));
+            } elseif ($fg_step === 'stop') {
+                $fg_run = array('ok' => pg_figma_import_stop($fg_id));
+            } else {
+                $fg_run = array('ok' => false);
+            }
+            if (!$fg_run['ok']) {
+                respond(array('status' => 'error', 'code' => 'gone', 'message' => lang('The import was not found. Start it again.')));
+            }
+            unset($fg_run['ok']);
+            respond(array('status' => 'success') + $fg_run);
+            break;
+
         // A design renamed from the designs list (pg_designer_rename_design()).
         case 'design_rename':
             $dr = pg_designer_rename_design(
@@ -1333,10 +1383,52 @@ function pg_panel_designer($request, $action)
                 $state = pg_design_variables_state(pg_design_variables_from_answers($state['model'],
                     pg_design_variables_answers($request['answers']), $state['defaults']), $look, $palette);
             }
+            // Export: the model as a Design Tokens file the editor offers
+            // as a download. Import: the text of a file, read in the
+            // browser since api.php reads JSON only, answered with the
+            // model it gives and what it would change, or the reason it is
+            // refused; the tab asks before it uses the model.
+            $extra = array();
+            if (!empty($request['export'])) {
+                $extra['export'] = array('text' => pg_design_variables_tokens_text($state['model']),
+                    'count' => pg_design_variables_tokens_export($state['model'])['count'],
+                    'name' => pg_design_variables_tokens_file_name(isset($request['name']) ? (string)$request['name'] : ''));
+            }
+            if (isset($request['tokens']) && is_string($request['tokens'])) {
+                $extra['import'] = pg_design_variables_tokens_import($request['tokens'], $state['model'], $state['defaults']);
+            }
             respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
                 'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
-                'list' => pg_design_variables_client_list())
+                'list' => pg_design_variables_client_list()) + $extra
                 + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
+            break;
+
+        // The Style guide sheet of the Preview menu
+        // (includes/fn/design_style_guide.php): the model of what the
+        // design is made of, from the variables the editor holds (or, with
+        // none sent, the stored file), the look and palette of the moment,
+        // the canvas's own stylesheet text and the shared components with
+        // the pages each is on. Reads only.
+        case 'style_guide':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+            $look    = isset($request['look']) ? (string)$request['look'] : '';
+            $palette = isset($request['palette']) ? (string)$request['palette'] : '';
+            $model   = null;
+            if (isset($request['model']) && is_array($request['model'])) {
+                $model = $request['model'];
+            } elseif (isset($request['style_id']) && (int)$request['style_id'] > 0) {
+                $model = pg_design_variables_stored((int)$request['style_id']);
+            }
+            $state = pg_design_variables_state($model, $look, $palette);
+            $css = (isset($request['css']) && is_string($request['css'])) ? substr($request['css'], 0, PG_STYLE_GUIDE_CSS_MAX) : '';
+            $sg_rows = db_items("SELECT id, name, system_region_config FROM shared_components");
+            $sg_rows = is_array($sg_rows) ? $sg_rows : array();
+            $guide = pg_style_guide_model($model === null ? null : $state['model'], $state['defaults'], $css, $sg_rows);
+            $sg_ids = array();
+            foreach ($guide['blocks']['components']['rows'] as $sg_row) $sg_ids[] = $sg_row['id'];
+            $guide['blocks']['components']['rows'] = pg_style_guide_component_pages($guide['blocks']['components']['rows'],
+                $sg_ids ? pg_shared_component_usage($sg_ids) : array());
+            respond(array('status' => 'success', 'guide' => $guide));
             break;
 
         // ── MY LIBRARY'S FILE ────────────────────────────────────────

@@ -23,14 +23,13 @@ priority: 6
 - SC5 (M) done (#11456, `waf/security-scan-stored-content.md`) Stored content: a script, hidden iframe or redirect from a host the site never used, in pages, regions, styles and settings. After SC1.
 - SC6 (M) done (#11457, `waf/security-scan-accounts-settings.md`) Accounts and settings: a new Administrator or Designer account, a new API key, a writable core folder, risky PHP settings, the PHP security fixes check joined in. After SC1.
 - SC7 (S) done (#11513, `waf/security-scan-api.md`) API read route and one MCP tool ("is the site at risk?"): findings and last run, read only. After SC3.
-- SC8 (M) The test round, below. After SC2 to SC7.
+- SC8 (M) done (#11633, `waf/security-scan-test-round.md`): the test round, below. After SC2 to SC7.
 - SC9 (S) Close-out: memory in `waf/`, this file deleted, the `[NEW]` line named.
+  - Open for SC9: retired release files on an upgraded site (`waf/security-scan-test-round.md`), for the architect.
 
 ## What does the test round try? (SC8)
-- A clean install and an upgraded site report nothing: every design template, a backup restore, the update's replace, object storage, uploads of every kept type, a custom form's files.
-- Each rule fires on its planted case and on nothing else; a quarantine and its restore leave the site as before.
-- A scan during a crawl: page times, the sitemap and robots answers unchanged; a scan cut by the time limit resumes; 50,000 files inside the budget.
-- Every false alarm found becomes a rule fix or a named exception before the plan closes.
+- Done in #11633: what it proved, the exceptions it made and what stays unverified are in `waf/security-scan-test-round.md`.
+- Every false alarm found later becomes a rule fix or a named exception before the plan closes.
 
 ## How is each drawn?
 - Look A from the Design examples screen: gathered rows with a severity pill, quiet small actions, danger only on Quarantine's confirm; the card as the Firewall card's rows.

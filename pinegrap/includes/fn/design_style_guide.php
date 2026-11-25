@@ -28,6 +28,11 @@ if (!defined('PG_STYLE_GUIDE_OWN_STYLES_MAX')) {
     define('PG_STYLE_GUIDE_OWN_STYLES_MAX', 12);
 }
 
+// The most stylesheet text the sheet reads from the editor, in bytes.
+if (!defined('PG_STYLE_GUIDE_CSS_MAX')) {
+    define('PG_STYLE_GUIDE_CSS_MAX', 262144);
+}
+
 // The sheet: array(has_variables, offer_start, blocks). $variables is the
 // design's variables model, or null for a design without a variables file:
 // then $defaults (pg_design_variables_defaults() of its look and palette)
@@ -147,11 +152,11 @@ function pg_style_guide_text_styles($css, $model)
     $styles = array();
     foreach (array(5, 4.5, 4, 3.5, 3, 2.5) as $i => $rem) {
         $n = $i + 1;
-        $styles['display-' . $n] = $style('display-' . $n, lang(array('string' => 'Display {var}', 'vars' => $n)), '.display-' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading');
+        $styles['display-' . $n] = $style('display-' . $n, lang(array('string' => 'Display {var:1}', 'vars' => $n)), '.display-' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading');
     }
     foreach (array(2.5, 2, 1.75, 1.5, 1.25, 1) as $i => $rem) {
         $n = $i + 1;
-        $styles['h' . $n] = $style('h' . $n, lang(array('string' => 'Heading {var}', 'vars' => $n)), 'h' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading', 'weight_heading');
+        $styles['h' . $n] = $style('h' . $n, lang(array('string' => 'Heading {var:1}', 'vars' => $n)), 'h' . $n, _pg_design_variable_num($rem) . 'rem', 'font_heading', 'weight_heading');
     }
     $styles['lead']  = $style('lead', lang('Lead'), '.lead', '1.25rem', 'font_body');
     $styles['body']  = $style('body', lang('Text'), 'body', $v['size_base'], 'font_body', 'weight_body', 'size_base');
@@ -206,7 +211,7 @@ function pg_style_guide_spacing($model)
     foreach (array(1, 2, 3, 4, 6, 8) as $n) {
         $rows[] = array(
             'key' => 'space_unit',
-            'name' => lang(array('string' => '{var} unit{suffix}', 'vars' => $n, 'suffix' => $n === 1 ? '' : 's')),
+            'name' => lang(array('string' => '{var:1} unit{suffix}', 'vars' => $n, 'suffix' => $n === 1 ? '' : 's')),
             'size' => $n === 1 ? $unit : _pg_style_guide_multiply($unit, $n),
             'px' => $unit_px === null ? null : _pg_style_guide_round($unit_px * $n),
             'multiple' => $n, 'custom' => false,
@@ -289,6 +294,24 @@ function pg_style_guide_components($rows)
         return $c !== 0 ? $c : $a['id'] - $b['id'];
     });
     return $out;
+}
+
+// The Components block's rows with `pages`: how many pages place each one,
+// from pg_shared_component_usage() (sid => list of places). A page counts
+// once however often it places it; a page in the recycle bin does not.
+function pg_style_guide_component_pages($rows, $usage)
+{
+    foreach ($rows as $i => $row) {
+        $seen = array();
+        $places = (is_array($usage) && isset($usage[$row['id']]) && is_array($usage[$row['id']])) ? $usage[$row['id']] : array();
+        foreach ($places as $u) {
+            if (!is_array($u) || !empty($u['binned'])) continue;
+            $key = !empty($u['page_id']) ? 'p' . (int)$u['page_id'] : 's' . (isset($u['style_id']) ? (int)$u['style_id'] : 0);
+            $seen[$key] = true;
+        }
+        $rows[$i]['pages'] = count($seen);
+    }
+    return $rows;
 }
 
 // The top-level rules of a stylesheet, comments and at-rule blocks (@media,
