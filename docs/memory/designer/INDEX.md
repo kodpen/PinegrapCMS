@@ -111,6 +111,7 @@
 - comments-widget-two-forms.md: A product page's reviews and questions widgets keep apart: form state, Messages, form id and anchor, which comment each form answers, the Reply script's scope
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
+- common-region-component-usage.md: A converted common region's shared component counts as used on every page printing the region's tag; the delete confirmations and delete_many read it [decision: decisions-made-product-109.md]
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused [decision: decisions-made-product-109.md, decisions-made-product-20.md, decisions-made-product-3.md, decisions-made.md]
 - component-overrides-model.md: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
@@ -280,6 +281,7 @@
 - design-theme-pale-colours.md: A palette colour too pale for a white page (Silver, Electric Blue's second colour): outline button border, focus ring, tick, radio dot and switch knob drawn in its readable shade
 - design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - design-variables-model.md: A design's variables (DV1, 2026.11.0): the list, defaults from look and palette, the variables stylesheet with its pg-theme head, the reader, the text-on-surface contrast check
+- design-variables-tab.md: The Variables tab of Settings, Theme (DV2): the part 'variables', the file design-variables-<style id>.css found by its name, the save, the canvas, Preview and site loading it after the palette
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-assistant-apply-answers.md: Assistant Apply's "Unexpected token '<'" (#8970): its cause, class names sent as lists (#9093), what an operation's fields accept, how the Assistant actions keep their answer JSON (#9093)
@@ -466,6 +468,7 @@
 - designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (plans/designer-phone-preview.md, PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 - designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
+- designer-position-presets.md: Options panel Size and display: Position's "Fill the parent" and "Centre" presets of the four offsets, Z Index as a typed number with Bootstrap's layers by name (DO7, #11566)
 - designer-preview-as-cases.md: The Preview's case model (PW1): the cases each widget kind has, the visitors a page offers, the choice read back from the browser, what a case sets per widget (record, visitor, flags)
 - designer-preview-as-drawing-bar.md: The "Preview as" bar as drawn (boards P1, P5, P7 of designer-preview-as-drawing): what stands in it, the one line under it, its states, the narrow window, the keyboard
 - designer-preview-as-drawing-check.md: "Check all cases" of the Preview as drawn (boards P6, P7 of designer-preview-as-drawing): where it starts, the run, the list of findings, a row opening its case, the labels
@@ -683,6 +686,7 @@
 - page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered [decision: decisions-made-product.md]
 - page-schedule-editor-and-list.md: Page schedule in the designer: Page Settings boxes and the Draft switch (forced state vs own choice), tab badge, where a tab takes the stored times, designs list badge and chips
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves [decision: here]
+- page-scroll-components.md: The "Back to top" and "Scroll progress" palette components (DO21, #11564): markup, markers, pg_page_scroll.js and when a page gets it, rules, canvas and Preview, bytes
 - page-tab-link-counts.md: A page tab's tip on the Page Design Studio's page strip lists its outgoing, incoming and broken link counts, counted from the Prototype view's own data (tabCounts()); when, words, what shows none [decision: here]
 - page-type-pane-in-designer.md: Designer settings Page Type pane: a classic page's type fields, Layout Type and form editor links via edit_page.php?properties=1 (JSON), rights shared with edit_page.php.
 - paging-list-canvas-line.md: The Page links list on the designer canvas (CB2b, #9765): one item of the pagination's line beside Previous and Next; a loop area in a nowrap flex row shares its line
