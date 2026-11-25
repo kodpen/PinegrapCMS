@@ -307,3 +307,39 @@ function pg_seo_check_a11y_rows($findings)
 
     return $rows;
 }
+
+/**
+ * The Publish check's weight of a rendered draft
+ * (pg_publish_weight_report()): the sizes of the site's own files it loads
+ * (the software folder's assets and the uploaded files), and the names the
+ * design's other pages and the shared components give their markup, so a
+ * rule of the design's own stylesheet is listed only when no page uses it.
+ *
+ * @param string $html    the rendered draft
+ * @param int    $page_id the page whose draft it is
+ * @return array
+ */
+function pg_designer_publish_weight($html, $page_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/publish_weight.php');
+    $page_id = (int)$page_id;
+    $urls = pg_publish_weight_urls($html);
+    $files = pg_publish_weight_local_files($urls, PG_FUNCTIONS_DIR, PATH . SOFTWARE_DIRECTORY . '/')
+        + pg_publish_weight_local_files($urls, FILE_DIRECTORY_PATH, PATH);
+
+    $used = array();
+    $style_id = (int)db_value("SELECT page_style FROM page WHERE page_id = '$page_id' LIMIT 1");
+    if ($style_id > 0) {
+        $rows = db_items("SELECT " . pg_page_tree_sql_expr() . " AS tree FROM page LEFT JOIN style ON style.style_id = page.page_style"
+            . " WHERE page.page_style = '$style_id' AND page.page_id <> '$page_id'" . pg_designer_not_binned_sql('page.page_folder'));
+        foreach (is_array($rows) ? $rows : array() as $r) {
+            $used += pg_publish_weight_tree_names((string)$r['tree']);
+        }
+    }
+    $shared = db_items("SELECT tree_json FROM shared_components");
+    foreach (is_array($shared) ? $shared : array() as $r) {
+        $used += pg_publish_weight_tree_names((string)$r['tree_json']);
+    }
+
+    return pg_publish_weight_report($html, $files, pg_publish_weight_own_css($html), $used, pg_publish_weight_texts());
+}

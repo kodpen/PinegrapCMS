@@ -26,8 +26,8 @@ priority: 7
 - PC1 (M) The finding shape and the four existing checks read into it, pure; the blocking table. Done in #11518.
 - PC2 (M) The weight measure, pure over a rendered page and its files' sizes; the budget. Done in #11528.
 - PC3 (S) The content check from the starters' own sample values. Done (#11537).
-- PC4 (M) after PC1 and DD7: the sheet's results, groups, select the element. Done in #11577; weight is not measured yet (its group says "Not measured") and leftovers are not asked: PC5 wires the weight into `seo_check`.
-- PC5 (M) after PC4, PC2, PC3: Fix, Show me, Ignore with its reason kept with the page's draft. In progress.
+- PC4 (M) after PC1 and DD7: the sheet's results, groups, select the element. Done in #11577; component field leftovers are not asked (no editor source gives them).
+- PC5 (M) after PC4, PC2, PC3: Fix, Show me, Ignore with its reason kept with the page's draft. Done in #11607 (`designer/designer-publish-check-fix-ignore.md`).
 - PC6 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
