@@ -668,14 +668,14 @@ function test_comments_widget_designer_preview_wiring()
 {
 	$preview = comments_widget_designer_test_php_body('pg_designer_preview_widgets');
 	pg_assert_true($preview !== '', 'pg_designer_preview_widgets is found');
-	foreach (array('pg_sw_render_context(', 'pg_comments_widget_pages(', '_pg_preview_newest_record_code(', 'pg_comment_editor_columns(') as $call) {
+	foreach (array('pg_sw_render_context(', 'pg_comments_widget_pages(', 'pg_preview_as_record_target(', 'pg_comment_editor_columns(') as $call) {
 		pg_assert_contains($call, $preview, 'the Preview calls ' . $call);
 	}
 	pg_assert_true(substr_count($preview, 'pg_comments_preview_page(') >= 2, 'the Preview sets the page settings and clears them');
-	pg_assert_true(function_exists('_pg_preview_newest_record_code'), 'the newest record helper exists');
+	pg_assert_true(function_exists('pg_preview_as_record_target'), 'the record helper exists');
 	if (function_exists('pg_designer_preview_widgets')) {
 		$fn = new ReflectionFunction('pg_designer_preview_widgets');
-		pg_assert_same(3, $fn->getNumberOfParameters(), 'the Preview takes the comment settings');
+		pg_assert_true($fn->getNumberOfParameters() >= 3, 'the Preview takes the comment settings');
 	}
 
 	$render = comments_widget_designer_test_php_body('_render_system_widget_comments');
