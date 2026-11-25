@@ -77,6 +77,7 @@ function test_designer_panels_readonly_reason()
 		. 'function _sdT(s) { return s; }'
 		. 'function _sdIsContentLevel() { return level === "content"; }'
 		. 'function _sdInClosedShared(n) { return !!(n && n.closed); }'
+		. 'function _sdCoLocked(n) { return !!(n && n.coLocked); }'
 		. 'function _sdInEditableArea(n) { return !!(n && n.area); }'
 		. 'function _sdNodeContentImage() { return null; }'
 		. $functions
@@ -96,6 +97,7 @@ function test_designer_panels_readonly_reason()
 		. 'r.design = _sdPanelLockReason([marked], "design");'
 		. '_collab.mayEdit = false; r.viewMode = _sdPanelLockReason([plain]); _collab.mayEdit = true;'
 		. 'level = "full"; r.full = _sdPanelLockReason([plain]); r.fullDesign = _sdPanelLockReason([plain], "design");'
+		. 'r.coLocked = _sdPanelLockReason([{ type: "semantic", props: {}, coLocked: true }]);'
 		. 'r.text = [_sdContentReason("area"), _sdContentReason("shared"), _sdContentReason("design")];'
 		. 'console.log(JSON.stringify(r));';
 
@@ -122,6 +124,7 @@ function test_designer_panels_readonly_reason()
 	pg_assert_same('', $r['marked'], 'inside a marked area the panels edit');
 	pg_assert_same('shared', $r['shared'], 'a closed shared component wins over a marked area');
 	pg_assert_same('area', $r['mixed'], 'a selection edits only when every element may');
+	pg_assert_same('component', $r['coLocked'], 'an element of a component with open fields is read-only until Edit the component');
 	pg_assert_same('', $r['allMarked']);
 	pg_assert_same('', $r['single'], 'one node without a list');
 	pg_assert_same('', $r['none'], 'nothing selected, nothing to lock');

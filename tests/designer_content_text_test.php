@@ -81,6 +81,7 @@ function designer_content_text_test_run($script)
 	$stubs = 'var _collab = { mayEdit: true }; var level = "content"; var closed = false;'
 		. 'function _sdIsContentLevel() { return level === "content"; }'
 		. 'function _sdInClosedShared() { return closed; }'
+		. 'function _sdCoLocked() { return false; }'
 		. 'function _sdInEditableArea() { return false; }'
 		. 'function _sdNodeContentImage() { return null; }'
 		. 'function hasLockedAncestor() { return false; }'
