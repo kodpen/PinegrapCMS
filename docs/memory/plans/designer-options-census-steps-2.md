@@ -9,7 +9,7 @@ priority: 7
 - DO10 to DO12 are built as drawn in `designer/designer-options-states-drawing.md` (the State row, Transition, Transform, a section's "More"); the drawing wins where it differs from the lines below.
 
 ## Which steps add states and shapes? (line "states and shapes")
-- DO10 (M) after DD22: States. A "State" row, first in the Style tab's body, never in the panel's head: Normal (the default), Hover, Focus, Pressed.
+- DO10 (M) after DD22, done (#11588): States. A "State" row, first in the Style tab's body, never in the panel's head: Normal (the default), Hover, Focus, Pressed.
   - Under a state, Color and background, Border and corner and Shadow and effect write `:hover`, `:focus-visible` and `:active` rules on the element's class in User Styles; the other sections are dimmed with one line saying why.
   - The canvas shows the chosen state on the selected element only; choosing another element goes back to Normal. A section holding a state's value shows a dot; "Reset this state" clears the state.
 - DO11 (S) after DO10: "Transition" in Shadow and effect: what changes (Colours, Shadow, Size and place, All), Duration and Easing, starting from `--pg-duration` and `--pg-ease`; nothing moves under reduced motion.

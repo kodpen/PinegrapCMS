@@ -159,11 +159,22 @@ function test_designer_option_states_write_read()
 	pg_assert_same(array('colors' => array('hover'), 'border' => array('hover'), 'styling' => array('focus')), $r['sections']);
 }
 
+// The states an element takes (_sdStatesFor(), the editor's block of the
+// Options states' pure helpers).
 function test_designer_option_states_for()
 {
-	$r = designer_option_states_run(
-		'console.log(JSON.stringify([S.statesFor("a", ""), S.statesFor("div", "btn btn-primary"), S.statesFor("div", "card"),'
-		. ' S.statesFor("BUTTON", ""), S.statesFor("p", "nav-link"), S.statesFor("section", "")]));'
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($src, '// ── Options states: pure helpers ──');
+	$to = strpos($src, '// ── end of the Options states pure helpers');
+	pg_assert_true($from !== false && $to !== false && $to > $from, 'the editor has the block of the Options states');
+
+	if ($from === false || $to === false || $to < $from) {
+		return;
+	}
+
+	$r = designer_option_states_run(substr($src, $from, $to - $from)
+		. 'console.log(JSON.stringify([_sdStatesFor("A", ""), _sdStatesFor("div", "btn btn-primary"), _sdStatesFor("DIV", "card"),'
+		. ' _sdStatesFor("BUTTON", ""), _sdStatesFor("p", "nav-link"), _sdStatesFor("", "")]));'
 	);
 
 	if ($r === null) {

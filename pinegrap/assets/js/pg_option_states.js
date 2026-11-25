@@ -9,7 +9,6 @@
  *
  *   PGOptionStates.STATES                       // ['hover', 'focus', 'pressed']
  *   PGOptionStates.selector(cls, st)            // '.pgs-abc123:hover'
- *   PGOptionStates.statesFor(tag, cssClass)     // the states an element takes
  *   PGOptionStates.decls(cls)                   // [[prop, value], ...] or null
  *   PGOptionStates.read(text, cls, st)          // { prop: value }
  *   PGOptionStates.match(map, group)            // the group's class the map holds, or ''
@@ -83,17 +82,6 @@
 
     function selector(cls, st) {
         return '.' + cls + (PSEUDO[st] || '');
-    }
-
-    // Hover for every element; Focus and Pressed for one a visitor can
-    // focus and press: a link, a button, a form control, a summary or an
-    // element drawn as a button.
-    function statesFor(tag, cssClass) {
-        var t = String(tag || '').toLowerCase();
-        var list = String(cssClass || '').split(/\s+/);
-        var press = /^(a|button|input|select|textarea|summary)$/.test(t) ||
-            list.indexOf('btn') !== -1 || list.indexOf('nav-link') !== -1;
-        return press ? STATES.slice() : ['hover'];
     }
 
     function textColor(c) {
@@ -261,7 +249,6 @@
         STATES: STATES,
         PSEUDO: PSEUDO,
         selector: selector,
-        statesFor: statesFor,
         decls: decls,
         read: read,
         match: match,
