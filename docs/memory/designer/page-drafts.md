@@ -20,6 +20,12 @@ description: Drafts of visual-designer pages (2026.4.7): the private Drafts fold
 - On a draft tab the main button is "Save", with `#sd-publish-page` "Publish" beside it; a live tab has one button, "Publish". Both Publish buttons open the Publish sheet (`designer-publish-sheet.md`). Save on a draft writes the whole design: it also puts the pending changes of the live pages on the site, and the message says so.
 - `_pgSetDraft()` marks nothing while shared components load or in view mode: a mark left behind would show a state the site does not have.
 
+## Can page properties or the file explorer move a draft?
+- Architect (2026-11-26, agent channel request 2989): no. A draft leaves the Drafts folder only through Publish in the Page Design Studio, past its approval, experiment and bundle holds (`prototype-approval-hold.md`); a Move is not a Publish, so neither screen calls `pg_page_draft_move()`. Bug #11702.
+- Page properties (`edit_page.php`): for a draft, Folder shows `pg_page_draft_publish_folder()` with the hint "This page is a draft. It goes to this folder when it is published."; a save writes it to `page_drafts.folder_id` (an upsert: a page moved in by hand has no row), never to `page.page_folder` (`pg_page_form_folder_write()`). Posting the Drafts folder itself is refused (`pg_page_form_folder_errors()`, also on New Page).
+- File explorer Move (`pg_explorer_move_page_refusal()`): a draft, and any page moved into the Drafts folder, is refused for that page with its own message; the other selected items still move.
+- `tests/prototype_approval_hold_test.php` lists every direct write of `page.page_folder` and fails for a new one.
+
 ## What do copies and pickers do?
 - Copying a page (`duplicate_page_f.php`) or a design (`duplicate_style.php`) also copies a draft's `page_drafts` row.
 - Folder pickers drop only the Drafts folder's own row, not its subtree: a page in a folder made inside it would otherwise open with no folder selected and be moved by the next save.

@@ -18,7 +18,7 @@ description: A Workspace channel screen as a whole: header, catch-up and pinned 
 - Messages: grouped lines, the hover bar (reaction, Reply, discussion, Make a task of it, More), the decision tag, the discussion line, Convert to text (`workspace-channel-messages.md`).
 - Writing box: one row, Aa for the marks, a phone's tools switch (`workspace-channel-composer.md`).
 - Channel info panel, in a discussion's place: Purpose, Status, Members, Add people, Notifications, Time spent (`workspace-channel-panels.md`).
-- Tabs: Board (`workspace-channel-board-tab.md`); Decisions, Files as cards (`workspace-channel-panes.md`, `workspace-channel-decisions-tab.md`, `workspace-channel-files-tab.md`); Summary, Board and Memory and the empty states (`workspace-channel-summary-board-memory.md`).
+- Tabs: Board (`workspace-channel-board-tab.md`, `-look.md`, `-automations.md`); Decisions, Files as cards (`workspace-channel-panes.md`, `workspace-channel-decisions-tab.md`, `workspace-channel-files-tab.md`); Summary, empty states (`workspace-channel-summary-board-memory.md`).
 - The card, its colour wash, pill tabs, the day chip and the send, bounce and slide-in motions: `workspace-channel-identity-motion.md`.
 - A channel's icon, set in the channel form (`workspace-channel-icon.md`), and what a template gives it (`workspace-channel-icon-templates.md`).
 - Export in the channel menu: Markdown or a print page (`workspace-channel-export.md`).

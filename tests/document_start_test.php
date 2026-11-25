@@ -186,7 +186,7 @@ function test_document_start_page_words()
 		. '{id: "p11", kind: "text", heading: "Out", out: true, items: [{type: "paragraph", text: "Gone"}]},'
 		. '{id: "p12", kind: "gallery", heading: "", items: [{src: "picture:0", alt: "Lake"}, {src: "javascript:x", alt: "Bad"}]}'
 		. ']; var nodes = P.build(rows, {make: make, src: function (s) { return s === "picture:0" ? "/lake.png" : ""; }});'
-		. 'out = [nodes.length, nodes.map(function (x) { return texts(x, []); }), nodes.every(function (x) { return /--pg-var-space_section/.test(x.props.inlineStyle); }),'
+		. 'out = [nodes.length, nodes.map(function (x) { return texts(x, []); }), nodes.every(function (x) { return /--pg-var-space-section/.test(x.props.inlineStyle); }),'
 		. ' JSON.stringify(nodes[5]).indexOf("mailto:hi@lake.com") !== -1, JSON.stringify(nodes[6]).indexOf("/lake.png") !== -1];');
 
 	if ($result === null) {

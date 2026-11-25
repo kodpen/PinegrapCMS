@@ -243,7 +243,7 @@ JS
 		return;
 	}
 
-	$rhythm = 'padding-top: var(--pg-var-space_section, 3rem); padding-bottom: var(--pg-var-space_section, 3rem)';
+	$rhythm = 'padding-top: var(--pg-var-space-section, 3rem); padding-bottom: var(--pg-var-space-section, 3rem)';
 	pg_assert_same('Fish &amp; &lt;chips&gt;', $out['heading'], 'the typed heading, escaped');
 	pg_assert_same($rhythm, $out['introStyle'], 'a body section takes the section rhythm');
 	pg_assert_same('color: red; ' . $rhythm, $out['ctaStyle'], 'its own style is kept before it');
@@ -292,4 +292,76 @@ JS
 	pg_assert_true($out['same'], 'the sections handed in are not changed');
 	pg_assert_same(array('header' => null, 'footer' => null, 'body' => array()), $out['none'], 'no list: nothing built');
 	pg_assert_same(null, $out['empty'], 'no maker: the footer falls back and has no block');
+}
+
+// What the site knows: a new header and footer of the site's name and the
+// pages' links (at most six, by address under the site path), the intro from
+// "Page details", the kind's name on a section with no typed word, and the
+// number in the heading of a copied column.
+function test_sketch_builder_site_page_and_names()
+{
+	$out = sketch_builder_test_node(<<<'JS'
+function links(node, acc) {
+	if (node.type === 'content' && node.props.contentType === 'link') acc.push([node.props.text, node.props.href]);
+	(node.children || []).forEach(function (c) { links(c, acc); });
+	return acc;
+}
+function texts(node, acc) {
+	if (node.type === 'content') acc.push(node.props.text);
+	(node.children || []).forEach(function (c) { texts(c, acc); });
+	return acc;
+}
+var pages = [{name: 'Home', address: 'home'}, {name: 'About & us', address: '/about us/'}, {name: '', address: 'x'}, {name: 'No address', address: ''}];
+for (var i = 3; i <= 9; i++) pages.push({name: 'P' + i, address: 'p' + i});
+var site = {name: 'Fish <Co>', year: 2026, path: '/shop/', pages: pages, toggle: 'Menu'};
+var list = [
+	sec('h', 'header', {buttons: 1}),
+	sec('i', 'intro'),
+	sec('f', 'features', {columns: 5}),
+	sec('g', 'gallery'),
+	sec('c', 'cta', {heading: 'Typed'}),
+	sec('o', 'footer', {columns: 3})
+];
+var page = B.build(list, {make: make, site: site, page: {title: 'Our <menu>', description: 'Fresh daily', name: 'Page 1'}, names: {features: 'Features', gallery: 'Gallery', cta: 'Call to action'}});
+function hcol(t) { return n('col', {lg: '4'}, [n('content', {contentType: 'heading', tag: 'h3', text: t})]); }
+var grid = n('semantic', {tag: 'section'}, [n('container', {}, [n('content', {contentType: 'heading', text: 'Head'}), n('row', {}, [hcol('Fast'), hcol('Fresh 2')])])]);
+var counted = B.build([sec('f', 'features', {columns: 4})], {make: function () { return grid; }});
+var cols = rowOf(counted.body[0].node).children.map(function (c) { return headingOf(c); });
+var bare = B.build([sec('i', 'intro'), sec('t', 'text')], {make: make, page: {title: '', description: '', name: 'Page 7'}, words: {heading: 'Sample', paragraph: 'Words'}});
+var noSite = B.build([sec('h', 'header')], {make: make});
+out = {
+	header: [page.header.block, page.header.node.type, page.header.node.props.tag, page.header.node.props._sketchId, links(page.header.node, [])],
+	footer: [page.footer.block, page.footer.node.props.tag, texts(page.footer.node, []).filter(function (t) { return /Fish/.test(t); }), links(page.footer.node, []).length],
+	intro: texts(page.body[0].node, []).slice(0, 2),
+	features: [page.body[1].node.props.customName, headingOf(page.body[1].node)],
+	cols: cols,
+	gallery: headingOf(page.body[2].node),
+	cta: headingOf(page.body[3].node),
+	bare: [headingOf(bare.body[0].node), headingOf(bare.body[1].node), texts(bare.body[1].node, [])[1]],
+	noSite: [noSite.header.block, made.indexOf('navbar-light-cta') === -1]
+};
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(null, 'semantic', 'nav', 'h', array(
+		array('Fish &lt;Co&gt;', '/shop/'),
+		array('Home', '/shop/home'),
+		array('About &amp; us', '/shop/about%20us'),
+		array('P3', '/shop/p3'),
+		array('P4', '/shop/p4'),
+		array('P5', '/shop/p5'),
+		array('P6', '/shop/p6'),
+	)), $out['header'], 'a new header: the brand, then at most six pages with a name and an address');
+	pg_assert_same(array(null, 'footer', array('Fish &lt;Co&gt;', '&copy; 2026 Fish &lt;Co&gt;'), 6), $out['footer'], 'a new footer: the name, the year, the same links');
+	pg_assert_same(array('Our &lt;menu&gt;', 'Fresh daily'), $out['intro'], 'the intro: the title and the description of "Page details"');
+	pg_assert_same(array('Features', 'Features'), $out['features'], 'no typed word: the kind\'s name is the heading and the name');
+	pg_assert_same(array('Fast', 'Fresh 2', 'Fresh 3', 'Fresh 4'), $out['cols'], 'a copied column takes its number in its heading');
+	pg_assert_same('Gallery', $out['gallery'], 'a gallery with no typed word');
+	pg_assert_same('Typed', $out['cta'], 'a typed word wins');
+	pg_assert_same(array('Page 7', 'Sample', 'Words'), $out['bare'], 'no title: the page\'s name; no names: the sample words');
+	pg_assert_same(array('navbar-centered-logo', true), $out['noSite'], 'without the site the starter header stays; with it no navbar starter is asked for');
 }

@@ -28,3 +28,8 @@ description: A channel's one Board tab (BM1 #11555, BM2): Tasks and Board as one
 
 ## Which address opens it?
 - `?view=board` the board, `?view=list` the List view; `?view=tasks` (the Tasks tab's) the List view, or the Tasks tab of a room without the board. `tabAddress()` writes it.
+
+## What must the tab keep?
+- No table, column or right of its own; a change that needs one asks the architect first. A rule is a flow (`workspace-channel-board-rules.md`).
+- Moving a card does what it did (status, people, due date), by pointer and by keyboard; the workflow table's board (`mountSource()`) is not touched.
+- Without the flows' gate and right there is no "Automations" button and no rule line.
