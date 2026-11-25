@@ -111,8 +111,9 @@
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
 - erp-parasut-connect-card.md: Paraşüt's boxes on its page of Connections: Connect in three steps, secret and password boxes, Save, Disconnect, which company Connect takes; Default Product/Service ID
-- erp-parasut-connection.md: How Pinegrap connects to Paraşüt (authorization code or password grant), where the token and secrets live, the token's owner stamp, the Connect endpoint
+- erp-parasut-connection.md: Paraşüt's older connection (pasted authorization code or password grant), where its token and the secrets live, the token's owner stamp, the Connect endpoint
 - erp-parasut-devhub-client.md: Paraşüt's Developer Portal (DevHub) client as its guide describes it: the application and its fixed redirect address, sign-in at id.parasut.com with PKCE, token lifetimes, the Temel package's limits
+- erp-parasut-devhub-connection.md: Paraşüt through a Developer Portal client (#11694): provider and purpose of connected accounts, the company read on return, which token the requests use, Disconnect
 - erp-parasut-driver-2.md: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Arşiv (fresh GİB lookup, the card's alias, the scenario, a failed lookup) and its request layer (token lock, retries, throttle)
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
 - erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open

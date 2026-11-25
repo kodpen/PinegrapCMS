@@ -832,6 +832,7 @@
 - prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part [decision: decisions-made-product-57.md]
 - prototype-viewer-missed-click.md: The prototype viewer's missed click (PX6): a click on nothing clickable flashes the page's links in the frame; when it does not; Play's start page and its title [decision: here]
 - prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom [decision: here]
+- record-edit-in-place-canvas-row.md: The canvas row "Edit this record's content" / "Open the record" (RE4, #11690): where it shows, preview_record_open, a click, the bar's link for a product or an event
 - record-edit-in-place-preview.md: "Edit content here" in the designer's Preview (RE3, #11677): the part recordedit, the switch, how frames find elements, the controls in place, the foot bar, a field changed meanwhile
 - record-edit-in-place-server.md: Server of a collection item's fields corrected in place from the designer's Preview (RE1, #11551): controls, rights, approval, changed-meanwhile check, write order, panel actions
 - record-edit-in-place-spots.md: Which bound elements of a page the Preview lets a person correct in place for one collection item, and with which control (RE2, #11583): PGRecordEditSpots, scopes, tokens, properties
