@@ -695,6 +695,144 @@ function pg_designer_activity_public($event)
 }
 
 /**
+ * The kinds the Kind chooser offers, in its order.
+ *
+ * @return string[]
+ */
+function pg_designer_activity_kinds()
+{
+    return array('version', 'page', 'share', 'design', 'component', 'file');
+}
+
+/**
+ * The three choosers of the Activity tab as the reader takes them. Pure.
+ *
+ * Person: '' everyone, 'me' the person asking, a user id, 'customers' (the
+ * answers and a guest's comments on share links) or 'schedule' (the
+ * scheduled job's lines). Page: a page id, '' every page. Kind: one of
+ * pg_designer_activity_kinds(), '' everything. A value it does not know
+ * widens that chooser.
+ *
+ * @param string $person
+ * @param string $page
+ * @param string $kind
+ * @param array  $user   the panel user (id)
+ * @return array person ('', 'user', 'customers', 'schedule'), user_id, page_id, kind
+ */
+function pg_designer_activity_filter($person, $page, $kind, $user)
+{
+    $person  = (string) $person;
+    $page    = (string) $page;
+    $kind    = (string) $kind;
+    $filter  = array('person' => '', 'user_id' => 0, 'page_id' => 0, 'kind' => '');
+
+    if ($person === 'me' && isset($user['id']) && (int) $user['id'] > 0) {
+        $filter['person'] = 'user';
+        $filter['user_id'] = (int) $user['id'];
+    } elseif (ctype_digit($person) && (int) $person > 0) {
+        $filter['person'] = 'user';
+        $filter['user_id'] = (int) $person;
+    } elseif ($person === 'customers' || $person === 'schedule') {
+        $filter['person'] = $person;
+    }
+
+    if (ctype_digit($page) && (int) $page > 0) {
+        $filter['page_id'] = (int) $page;
+    }
+
+    if (in_array($kind, pg_designer_activity_kinds(), true)) {
+        $filter['kind'] = $kind;
+    }
+
+    return $filter;
+}
+
+/**
+ * Whether any of the three choosers narrows the list. Pure.
+ *
+ * @param array $filter pg_designer_activity_filter()
+ * @return bool
+ */
+function pg_designer_activity_filter_narrowed($filter)
+{
+    return $filter['person'] !== '' || $filter['page_id'] > 0 || $filter['kind'] !== '';
+}
+
+/**
+ * The SQL condition the three choosers put on one part of a store's read;
+ * false when the part can hold no event they keep. Pure; the filter is
+ * normalised, so every value in it is an integer or a known word.
+ *
+ * Parts: revision (r), audit_page, audit_file, audit_style,
+ * audit_component (a), link and revoke (l), verdict (v), comment (c). A
+ * part with no page column is the design's, never one page's; a trail line
+ * the scheduled job wrote (source 'job') is the schedule's, never a
+ * person's.
+ *
+ * @param string $part
+ * @param array  $filter pg_designer_activity_filter()
+ * @return string|false
+ */
+function pg_designer_activity_filter_sql($part, $filter)
+{
+    // kind, page column, user column, customers condition, job lines
+    $parts = array(
+        'revision'        => array('version', 'r.page_id', 'r.user_id', null, false),
+        'audit_page'      => array('page', 'a.entity_id', 'a.user_id', null, true),
+        'audit_file'      => array('file', null, 'a.user_id', null, true),
+        'audit_style'     => array('design', null, 'a.user_id', null, true),
+        'audit_component' => array('component', null, 'a.user_id', null, true),
+        'link'            => array('share', null, 'l.created_by', null, false),
+        'revoke'          => array('share', null, 'l.revoked_by', null, false),
+        'verdict'         => array('share', 'v.page_id', null, '1', false),
+        'comment'         => array('share', 'c.page_id', 'c.user_id', '(c.user_id = 0)', false),
+    );
+
+    if (!isset($parts[$part])) {
+        return false;
+    }
+
+    list($kind, $page_col, $user_col, $guests, $job) = $parts[$part];
+    $where = array();
+
+    if ($filter['kind'] !== '' && $filter['kind'] !== $kind) {
+        return false;
+    }
+
+    if ($filter['page_id'] > 0) {
+        if ($page_col === null) {
+            return false;
+        }
+
+        $where[] = '(' . $page_col . ' = ' . (int) $filter['page_id'] . ')';
+    }
+
+    if ($filter['person'] === 'user') {
+        if ($user_col === null) {
+            return false;
+        }
+
+        $where[] = '(' . $user_col . ' = ' . (int) $filter['user_id'] . ($job ? " AND a.source <> 'job'" : '') . ')';
+    } elseif ($filter['person'] === 'customers') {
+        if ($guests === null) {
+            return false;
+        }
+
+        if ($guests !== '1') {
+            $where[] = $guests;
+        }
+    } elseif ($filter['person'] === 'schedule') {
+        if (!$job) {
+            return false;
+        }
+
+        $where[] = "(a.source = 'job')";
+    }
+
+    return $where ? implode(' AND ', $where) : '1';
+}
+
+/**
  * A comma list of integer ids for an IN (); '0' for none.
  *
  * @param array $ids
@@ -713,9 +851,12 @@ function _pg_designer_activity_in(array $ids)
  * @param int    $style_id the design
  * @param array  $user     the panel user (id, role)
  * @param string $before   the cursor of the page before ('' for the first)
+ * @param array  $filter   the three choosers (pg_designer_activity_filter()),
+ *                         put on each store's read so a narrowed list still
+ *                         comes fifty at a time; null for everything
  * @return array events (pg_designer_activity_public()), more, next
  */
-function pg_designer_activity_read($style_id, $user, $before = '')
+function pg_designer_activity_read($style_id, $user, $before = '', $filter = null)
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 
@@ -724,6 +865,10 @@ function pg_designer_activity_read($style_id, $user, $before = '')
     $full     = pg_designer_is_full($user);
     $over     = PG_DESIGNER_ACTIVITY_PAGE + 1;
     $empty    = array('events' => array(), 'more' => false, 'next' => '');
+    $filter   = is_array($filter) ? $filter : pg_designer_activity_filter('', '', '', $user);
+    $where    = function ($part) use ($filter) {
+        return pg_designer_activity_filter_sql($part, $filter);
+    };
 
     if ($style_id <= 0) {
         return $empty;
@@ -757,28 +902,29 @@ function pg_designer_activity_read($style_id, $user, $before = '')
     $all_in = _pg_designer_activity_in(array_keys($pages));
     $lists  = array();
 
-    if ($own && pg_page_revisions_ready()) {
-        $lists[] = _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $page_of);
+    if ($own && $where('revision') !== false && pg_page_revisions_ready()) {
+        $lists[] = _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $page_of, $where('revision'));
     }
 
     if (pg_audit_ready()) {
-        $lists[] = _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, $page_of);
+        $lists[] = _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, $page_of, $where);
     }
 
     if ($full) {
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
 
         if (pg_proto_links_ready()) {
-            $lists[] = _pg_designer_activity_links($style_id, $cursor, $over, $page_of);
+            $lists[] = _pg_designer_activity_links($style_id, $cursor, $over, $page_of, $where);
         }
     }
 
-    if ($own && pg_proto_approval_ready()) {
+    if ($own && $where('verdict') !== false && pg_proto_approval_ready()) {
         $rows = db_items(
             "SELECT v.id, v.page_id, v.verdict, v.author_name, v.created_at
              FROM prototype_verdicts AS v
              WHERE v.style_id = '$style_id' AND v.page_id IN ($own_in)
                AND " . pg_designer_activity_after_sql('verdict', $cursor, 'v.created_at', 'v.id') . "
+               AND " . $where('verdict') . "
              ORDER BY v.created_at DESC, v.id DESC
              LIMIT $over");
         $list = array();
@@ -792,13 +938,14 @@ function pg_designer_activity_read($style_id, $user, $before = '')
         $lists[] = array_filter($list);
     }
 
-    if ($own && pg_proto_comments_ready()) {
+    if ($own && $where('comment') !== false && pg_proto_comments_ready()) {
         $rows = db_items(
             "SELECT c.id, c.page_id, c.user_id, c.author_name, c.created_at, user.user_username
              FROM prototype_comments AS c
              LEFT JOIN user ON user.user_id = c.user_id
              WHERE c.style_id = '$style_id' AND c.parent_id = 0 AND c.page_id IN ($own_in)
                AND " . pg_designer_activity_after_sql('comment', $cursor, 'c.created_at', 'c.id') . "
+               AND " . $where('comment') . "
              ORDER BY c.created_at DESC, c.id DESC
              LIMIT $over");
         $list = array();
@@ -825,9 +972,10 @@ function pg_designer_activity_read($style_id, $user, $before = '')
  * The versions of the design's pages, with the editor of an applied
  * content change.
  *
+ * @param string $chosen the choosers' condition (pg_designer_activity_filter_sql())
  * @return array events
  */
-function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $page_of)
+function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $page_of, $chosen = '1')
 {
     $rows = db_items(
         "SELECT r.revision_id, r.page_id, r.revision_no, r.source, r.created_at, r.user_id, r.tree_hash,
@@ -836,6 +984,7 @@ function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $pa
          LEFT JOIN user ON user.user_id = r.user_id
          WHERE r.page_id IN ($own_in) AND r.style_id = '$style_id'
            AND " . pg_designer_activity_after_sql('revision', $cursor, 'r.created_at', 'r.revision_id') . "
+           AND $chosen
          ORDER BY r.created_at DESC, r.revision_id DESC
          LIMIT $over");
 
@@ -884,9 +1033,10 @@ function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $pa
  * design's list. A page's other edits are not read: only an `update` line
  * that names the drafts folder on one side is a move on or off the site.
  *
+ * @param callable|null $where function (string part): string|false, the choosers' condition
  * @return array events
  */
-function _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, $page_of)
+function _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, $page_of, $where = null)
 {
     $after  = pg_designer_activity_after_sql('audit', $cursor, 'a.created_at', 'a.id');
     $select = "SELECT a.id, a.created_at, a.user_id, a.source, a.action, a.entity_type, a.entity_id, a.label,
@@ -904,31 +1054,39 @@ function _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, 
     $draft  = pg_page_draft_ready() ? (int) pg_page_draft_folder_id(false) : 0;
     $folder = '%"page_folder":"' . $draft . '"%';
 
+    // Each query with the part of the trail it reads, for the choosers.
     $queries = array(
-        sprintf($select, $json, "a.entity_type = 'page' AND a.entity_id IN ($all_in) AND a.action IN ('recycle', 'restore')"),
-        sprintf($select, $json, "a.entity_type = 'page' AND a.action = 'delete' AND a.before_json LIKE '" . e($style) . "'"),
+        array('audit_page', $json, "a.entity_type = 'page' AND a.entity_id IN ($all_in) AND a.action IN ('recycle', 'restore')"),
+        array('audit_page', $json, "a.entity_type = 'page' AND a.action = 'delete' AND a.before_json LIKE '" . e($style) . "'"),
     );
 
     if ($draft > 0) {
-        $queries[] = sprintf($select, $sides, "a.entity_type = 'page' AND a.entity_id IN ($all_in) AND a.action = 'update'
+        $queries[] = array('audit_page', $sides, "a.entity_type = 'page' AND a.entity_id IN ($all_in) AND a.action = 'update'
                                                AND (a.after_json LIKE '" . e($folder) . "' OR a.before_json LIKE '" . e($folder) . "')");
     }
 
     if ($full) {
-        $queries[] = sprintf($select, $none, "a.entity_type = 'file' AND a.entity_id IN (SELECT id FROM files WHERE design = 1)");
-        $queries[] = sprintf($select, $none, "a.entity_type = 'file' AND a.action = 'delete' AND a.before_json LIKE '%\"design\":\"1\"%'");
-        $queries[] = sprintf($select, $sides, "a.entity_type = 'style' AND a.entity_id = '" . (int) $style_id . "'");
-        $queries[] = sprintf($select, $sides, "a.entity_type = 'style' AND a.action = 'create' AND a.after_json LIKE '"
+        $queries[] = array('audit_file', $none, "a.entity_type = 'file' AND a.entity_id IN (SELECT id FROM files WHERE design = 1)");
+        $queries[] = array('audit_file', $none, "a.entity_type = 'file' AND a.action = 'delete' AND a.before_json LIKE '%\"design\":\"1\"%'");
+        $queries[] = array('audit_style', $sides, "a.entity_type = 'style' AND a.entity_id = '" . (int) $style_id . "'");
+        $queries[] = array('audit_style', $sides, "a.entity_type = 'style' AND a.action = 'create' AND a.after_json LIKE '"
                                               . e('%"copied_from":"' . (int) $style_id . '"%') . "'");
-        $queries[] = sprintf($select, $sides, "a.entity_type = 'shared_component'");
+        $queries[] = array('audit_component', $sides, "a.entity_type = 'shared_component'");
     }
 
     $context = array('style_id' => (int) $style_id, 'draft_folder' => $draft);
 
     $events = array();
 
-    foreach ($queries as $sql) {
-        foreach ((array) db_items($sql) as $row) {
+    foreach ($queries as $query) {
+        list($part, $columns, $condition) = $query;
+        $chosen = $where ? $where($part) : '1';
+
+        if ($chosen === false) {
+            continue;
+        }
+
+        foreach ((array) db_items(sprintf($select, $columns, '(' . $condition . ') AND ' . $chosen)) as $row) {
             $page_id = (int) $row['entity_id'];
             $row['page_folder'] = ($row['entity_type'] === 'page') ? (int) $page_of($page_id, 'page_folder') : 0;
 
@@ -946,9 +1104,10 @@ function _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, 
 /**
  * The design's share links made and revoked.
  *
+ * @param callable|null $where function (string part): string|false, the choosers' condition
  * @return array events
  */
-function _pg_designer_activity_links($style_id, $cursor, $over, $page_of)
+function _pg_designer_activity_links($style_id, $cursor, $over, $page_of, $where = null)
 {
     $select = "SELECT l.id, l.start_page_id, l.created_at, l.created_by, l.revoked_at, l.revoked_by,
                       cu.user_username AS creator_username, ru.user_username AS revoker_username
@@ -962,11 +1121,18 @@ function _pg_designer_activity_links($style_id, $cursor, $over, $page_of)
     $events = array();
 
     foreach (array(false, true) as $revoked) {
-        $at = $revoked ? 'l.revoked_at' : 'l.created_at';
-        $where = ($revoked ? 'l.revoked_at > 0 AND ' : '')
-            . pg_designer_activity_after_sql($revoked ? 'revoke' : 'link', $cursor, $at, 'l.id');
+        $chosen = $where ? $where($revoked ? 'revoke' : 'link') : '1';
 
-        foreach ((array) db_items(sprintf($select, $where, $at)) as $row) {
+        if ($chosen === false) {
+            continue;
+        }
+
+        $at = $revoked ? 'l.revoked_at' : 'l.created_at';
+        $condition = ($revoked ? 'l.revoked_at > 0 AND ' : '')
+            . pg_designer_activity_after_sql($revoked ? 'revoke' : 'link', $cursor, $at, 'l.id')
+            . ' AND ' . $chosen;
+
+        foreach ((array) db_items(sprintf($select, $condition, $at)) as $row) {
             $row['start_page_name'] = $page_of((int) $row['start_page_id'], 'page_name');
             $events[] = pg_designer_activity_from_link($row, $revoked);
         }
