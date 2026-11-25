@@ -1757,6 +1757,7 @@
     "Its own purchases": "Kendi alışverişleri",
     "Its page is gone.": "Sayfası silinmiş.",
     "Its pages are open as tabs. Change what you like, then press Publish — nothing is created on the site until then.": "Sayfaları sekmeler halinde açıldı. İstediğinizi değiştirin, sonra Yayınla'ya basın — o zamana kadar sitede hiçbir şey oluşturulmaz.",
+    "Its pages, shared components, e-mail designs, scripts and stylesheets are read once.": "Sayfaları, ortak bileşenleri, e-posta tasarımları, betikleri ve stil dosyaları bir kez okunur.",
     "Its parent is not a flex container; the {var} rows are hidden.": "Üst öğesi flex kapsayıcı değil; {var} satırları gizli.",
     "Its parent product ({var:1}) is not in the file.": "Üst ürünü ({var:1}) dosyada yok.",
     "Its product group": "Ürün grubu",

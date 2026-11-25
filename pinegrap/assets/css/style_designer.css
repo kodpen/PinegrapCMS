@@ -8872,6 +8872,52 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-phone-narrow .sd-phone-body { justify-content: center; }
 .sd-phone-narrow .sd-phone-code { width: 176px; height: 176px; }
 .sd-phone-narrow .sd-phone-foot { flex-direction: column; align-items: stretch; }
+/* "Clean up" (style_designer_cleanup.js): four lists with a head each, a
+   row per thing nothing uses, what "Show" opens under a row, the states.
+   A list scrolls inside the window past eight rows; below 768 px the
+   window fills the screen and a row's size and "Show" go under its text. */
+.sd-cu-dialog { width: min(720px, calc(100vw - 32px)); }
+.sd-cu-sub { margin-inline-start: 10px; font-size: .8rem; font-weight: 400; color: var(--sd-text-muted); }
+.sd-cu-body { display: flex; flex-direction: column; gap: 6px; }
+.sd-cu-lead { margin: 0 0 4px; font-size: .8rem; color: var(--sd-text-muted); }
+.sd-cu-list { border: 1px solid var(--sd-panel-border); border-radius: 8px; background: var(--sd-raised-bg); }
+.sd-cu-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: .85rem; }
+.sd-cu-head .check { flex: none; }
+.sd-cu-fold { width: 20px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--sd-text-muted); }
+.sd-cu-title { font-weight: 600; }
+.sd-cu-rows { max-height: 432px; overflow: auto; border-top: 1px solid var(--sd-panel-border); }
+.sd-cu-item + .sd-cu-item { border-top: 1px solid var(--sd-panel-border); }
+.sd-cu-row { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 10px 8px 38px; cursor: pointer; }
+.sd-cu-row .check { flex: none; }
+.sd-cu-thumb { flex: none; width: 28px; height: 28px; border-radius: 4px; object-fit: cover; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--sd-panel-bg); color: var(--sd-text-muted); }
+.sd-cu-swatch { border: 1px solid var(--sd-panel-border); }
+.sd-cu-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sd-cu-name { font-size: .82rem; overflow-wrap: anywhere; }
+.sd-cu-name code { color: var(--sd-text); font-size: .78rem; }
+.sd-cu-why { font-size: .74rem; color: var(--sd-text-muted); }
+.sd-cu-end { flex: none; display: flex; align-items: center; gap: 8px; }
+.sd-cu-size { font-size: .74rem; color: var(--sd-text-muted); white-space: nowrap; }
+.sd-cu-show { margin: 0 10px 10px 76px; }
+.sd-cu-show img { display: block; max-width: 100%; max-height: 220px; border-radius: 6px; }
+.sd-cu-code { padding: 8px 10px; border-radius: 6px; background: var(--sd-panel-bg); font-size: .74rem; white-space: pre-wrap; }
+.sd-cu-frame { display: block; width: 100%; height: 180px; border: 0; border-radius: 6px; background: #fff; }
+.sd-cu-muted { margin: 0; font-size: .78rem; color: var(--sd-text-muted); }
+.sd-cu-none { padding: 8px 10px 8px 38px; }
+.sd-cu-note { display: flex; gap: 8px; margin: 0; padding: 8px 10px 8px 38px; font-size: .74rem; color: var(--sd-text-muted); border-top: 1px solid var(--sd-panel-border); }
+.sd-cu-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 16px; text-align: center; }
+.sd-cu-state-icon { font-size: 1.5rem; color: var(--sd-text-muted); }
+.sd-cu-state-head { margin: 4px 0 0; font-weight: 600; }
+.sd-cu-foot { gap: 8px; }
+.sd-cu-ticked { font-size: .78rem; color: var(--sd-text-muted); }
+.sd-pc-unused-end { display: flex; align-items: center; gap: 8px; }
+.sd-pc-unused-end .sd-pc-bar-note { flex: 1; }
+@media (max-width: 767.98px) {
+    .sd-cu-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
+    .sd-cu-row { flex-wrap: wrap; padding-inline-start: 10px; }
+    .sd-cu-end { flex-basis: 100%; padding-inline-start: 66px; }
+    .sd-cu-show, .sd-cu-none, .sd-cu-note { margin-inline-start: 10px; padding-inline-start: 10px; }
+}
 .sd-move-handle { display: none; }
 .sd-move-head { gap: 8px; }
 .sd-move-icon { color: var(--sd-accent); }

@@ -117,3 +117,61 @@ function test_design_cleanup_list_variables_only_unread_own_ones()
 	pg_assert_same('#c9773c', $list['rows'][0]['value']);
 	pg_assert_same('--pg-var-c-space-xxl', $list['rows'][1]['token']);
 }
+
+function _dc_list_js($expr)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return null;
+	}
+	$file = @tempnam(sys_get_temp_dir(), 'pgcu');
+	if ($file === false) {
+		return null;
+	}
+	file_put_contents($file, file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_design_cleanup.js')
+		. "\nconsole.log(JSON.stringify(" . $expr . '));');
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+	return json_decode(implode("\n", $out), true);
+}
+
+function test_design_cleanup_window_lists_order_keys_and_first_open()
+{
+	$answer = '{ status: "success", files: { rows: [{ id: 7, bytes: 10 }], bytes: 10 }, variables: { rows: [{ key: "x" }] }, rules: { rows: [], notes: [{ sheet: "a.css" }] } }';
+	$got = _dc_list_js('(function () { var l = PgDesignCleanup.lists(' . $answer . '); return {'
+		. ' kinds: l.map(function (x) { return x.kind; }), keys: [l[1].rows[0].key, l[3].rows[0].key], bytes: [l[0].bytes, l[2].bytes],'
+		. ' notes: l[0].notes.length, open: PgDesignCleanup.firstOpen(l, ""), fromCheck: PgDesignCleanup.firstOpen(l, "publishcheck") }; })()');
+	if ($got === null) {
+		return;
+	}
+	pg_assert_same(array('rules', 'files', 'components', 'variables'), $got['kinds'], 'always in this order');
+	pg_assert_same(array('files:7', 'variables:x'), $got['keys']);
+	pg_assert_same(array(0, null), $got['bytes'], 'only rules and files have a size');
+	pg_assert_same(1, $got['notes']);
+	pg_assert_same(array('files' => true), $got['open'], 'the first list with rows opens');
+	pg_assert_same(array('rules' => true), $got['fromCheck'], 'from the Publish check the rules open');
+}
+
+function test_design_cleanup_window_ticks_sizes_and_views()
+{
+	$got = _dc_list_js('(function () { var C = PgDesignCleanup;'
+		. ' var l = C.lists({ status: "success", rules: { rows: [{ bytes: 412 }, { bytes: 1126 }] }, components: { rows: [{ id: 3 }] } });'
+		. ' var some = { "rules:0": true }; var both = { "rules:0": true, "rules:1": true, "components:3": true };'
+		. ' return { none: C.tickState(l[0], {}), some: C.tickState(l[0], some), all: C.tickState(l[0], both), ticked: C.ticked(l, both),'
+		. ' sizes: [C.size(412), C.size(1126), C.size(1887437), C.size(25600)],'
+		. ' views: [C.view(true, true, null), C.view(false, true, null), C.view(false, false, { status: "error" }), C.view(false, false, { status: "success" }), C.view(false, false, { status: "success", rules: { rows: [], notes: [{}] } })] }; })()');
+	if ($got === null) {
+		return;
+	}
+	pg_assert_same(array('none', 'some', 'all'), array($got['none'], $got['some'], $got['all']));
+	pg_assert_same(array('count' => 3, 'bytes' => 1538, 'kinds' => array('rules' => 2, 'components' => 1)), $got['ticked']);
+	pg_assert_same(array('412 B', '1.1 KB', '1.8 MB', '25 KB'), $got['sizes']);
+	pg_assert_same(array('save', 'busy', 'failed', 'empty', 'lists'), $got['views'], 'unsaved changes come before everything');
+}

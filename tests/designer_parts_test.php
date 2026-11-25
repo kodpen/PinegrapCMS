@@ -132,12 +132,12 @@ function test_designer_parts_for_follow_their_condition()
 	pg_assert_false(in_array('mirror', $given, true), 'mirror is off');
 	pg_assert_same(array_values(array_diff(array_keys(pg_designer_part_files()), array('mirror'))), $given, 'everything else holds');
 
-	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'clicks' => 'clicks', 'mirror' => 'off');
+	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'cleanup' => 'designer', 'clicks' => 'clicks', 'mirror' => 'off');
 	foreach ($expect as $part => $condition) {
 		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
 	}
 
-	pg_assert_same(array('libraryfile', 'librarymanage'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds My library\'s file');
+	pg_assert_same(array('cleanup', 'libraryfile', 'librarymanage'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds Clean up and My library\'s file');
 	pg_assert_same(array('ai'), array_values(array_diff(pg_designer_parts_for(array('ai' => true)), $every)), 'ai adds the assistant only');
 }
 
