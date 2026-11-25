@@ -27,7 +27,7 @@ priority: 5
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - RE1 (M) Server: one item's fields written through its own writer. Done (#11551): `designer/record-edit-in-place-server.md`. A role 2/3 change while approval is on is refused (`waits`), not held.
 - RE2 (S) Pure: which bound elements of a page can be edited and with which control. Done (#11583): `designer/record-edit-in-place-spots.md`; RE3 bundles `pg_record_edit_spots.js` into its part.
-- RE3 (M) after RE1, RE2 and PW3 of the preview-as plan: boards R1 to R5 of the drawing and the narrow window of R6 (the switch, the frames, the controls, the foot bar, changed meanwhile). With `waits: true`: only the "Open the record" link where the switch would be. The PR body carries a table of the boards: what was built for each, what differs and why.
+- RE3 (M) boards R1 to R5 and the narrow window of R6. Done (#11677): `designer/record-edit-in-place-preview.md`; part `recordedit`, `waits: true` shows "Open the record".
 - RE4 (S) after RE3: "Open the record" for other kinds (board R1), the row of the canvas menu and of the command palette (board R6). The PR body carries the same table.
 - RE5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 

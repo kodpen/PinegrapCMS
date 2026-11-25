@@ -23,7 +23,7 @@ module: record_edit
 
 ## Which endpoints?
 - `api.php` actions `record_edit_read` and `record_edit_save` (`includes/panel/record_edit.php`): `any_role`, token checked, body `{item_id, changes}`. Statuses: `ok`/`saved`/`unchanged` 200, `missing` 404, `denied` 403, `conflict`/`approval` 409, `invalid`/`refused` 422.
-- Each answer after a read or save carries `record` (id, reference_code, address_name, title, form_name) and `fields` (id, name, label, control, required, rss, value, file_name); `rss` is the RSS role (RE2), so the Preview finds a bound post title or picture (`record-edit-in-place-spots.md`).
+- Each answer after a read or save carries `record` (id, form_page_id, reference_code, address_name, title, form_name) and `fields` (id, name, label, control, required, rss, value, file_name); `rss` is the RSS role (RE2), so the Preview finds a bound post title or picture (`record-edit-in-place-spots.md`).
 
 ## Which test guards it?
 - `tests/record_edit_test.php`; the `designer` source in `tests/record_revisions_test.php`.
