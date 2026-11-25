@@ -33272,6 +33272,9 @@
                 channelForm(channel, { tab: tab }, function () { app.refreshInfo(); });
             },
             peoplePicker: peoplePicker,
+            // A drawer from the right: made once by its id, shown, hidden
+            // (with what comes after it once it has closed).
+            drawer: { make: offcanvas, show: showOffcanvas, hide: hideOffcanvas },
             api: api,
             toast: toast,
             fail: fail,

@@ -661,6 +661,25 @@ function ws_channel_board_js_strings()
         'cb_drop_nobody'   => lang('Drop here: nobody on it'),
         'cb_drop_date'     => ws_js_template('Drop here: due date becomes “{var:1}”', 1),
         'cb_drop_no_date'  => lang('Drop here: no due date'),
+        // The Automations drawer (channel_board_rules.php).
+        'cb_auto'          => lang('Automations'),
+        'cb_auto_on'       => ws_js_template('{var:1} rules are on', 1),
+        'cb_auto_title'    => lang('Board automations'),
+        'cb_auto_lead'     => lang('Choose what happens when a task gets somewhere.'),
+        'cb_auto_ready'    => lang('Ready rules'),
+        'cb_auto_flows'    => lang('Flows of this channel'),
+        'cb_auto_own'      => lang('Your own rule'),
+        'cb_auto_build'    => lang('Build your own flow'),
+        'cb_auto_build_line' => lang('Opens Flows with this channel chosen'),
+        'cb_auto_ran'      => ws_js_template('Ran {var:1} times this week', 1),
+        'cb_auto_ran_one'  => lang('Ran once this week'),
+        'cb_auto_turn_on'  => lang('Turn on'),
+        'cb_auto_choose'   => lang('Choose a person'),
+        'cb_auto_open'     => ws_js_template('Open in Flows: {var:1}', 1),
+        'cb_auto_draft'    => lang('Not published yet: open it in Flows to publish it.'),
+        'cb_auto_owner'    => lang('Only its owner can turn it on or off.'),
+        'cb_auto_runs'     => lang('Last runs'),
+        'cb_auto_no_runs'  => lang('No rule has run yet.'),
     );
 
     foreach (ws_channel_board_groupings() as $key => $label) {

@@ -1,10 +1,10 @@
 ---
 name: workspace-channel-board-rules
-description: The rules of a channel's board on the server (BM4): the four ready rules, which flows are the board's rules, a rule made, published, resumed and paused, the gate, the two panel actions
+description: The rules of a channel's board on the server (BM4 #11567): the four ready rules, which flows are the rules, a rule made, published, resumed and paused, the gate, the panel actions
 ---
 
 ## Where is it?
-- `includes/workspace/channel_board_rules.php`; tests `tests/workspace_channel_board_rules_test.php`. The drawer that draws it is step BM5 of `plans/workspace-channel-board.md`.
+- `includes/workspace/channel_board_rules.php`; tests `tests/workspace_channel_board_rules_test.php`. Drawn by `assets/js/workspace_board_channel.js` (the "Automations" part).
 - Nothing is stored: no table, column or right. A rule is a flow.
 
 ## Which flows are the board's rules?
@@ -24,4 +24,6 @@ description: The rules of a channel's board on the server (BM4): the four ready 
 - `ws_board_rules_gate()`: `pg_flows_enabled()`, a public or private channel with a board that the person reads, and a flow builder on the staff (a role-3 member's flow has no home channel). Without it there is no "Automations" button.
 
 ## Which panel actions?
-- `ws_channel_board_rules` (channel_id) answers `ready`, `flows`, `on`; `ws_channel_board_rule_set` (channel_id, key or flow_id, on, answer) sets one and answers the same list. A row: flow_id, name, status, on, owner, edit, when, column (the status column its line goes under: done for a completed task, the status of a move, '' for overdue).
+- `ws_channel_board_rules` (channel_id, runs) answers `ready`, `flows`, `on`, `lines`; with runs=1 also `ran` on each row and `runs`. `ws_channel_board_rule_set` (channel_id, key or flow_id, on, answer) sets one and answers the list with runs. A row: flow_id, name, status, on, owner, edit, when, column (done for a completed task, the status of a move, '' for overdue).
+- `ws_channel_board` answers `automations` (the gate) beside the board, in both views; the action adds it, `ws_channel_board()` does not.
+- What the board draws of them: `workspace-channel-board-automations.md`.
