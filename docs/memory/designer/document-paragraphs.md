@@ -5,7 +5,7 @@ module: document_paragraphs
 ---
 
 ## What does it give?
-- `pg_document_paragraphs($path, $name)` answers `{ok, error, paragraphs, text, pictures, pictures_lost, cut, read}`. A .docx gives `paragraphs` in the shape `PGDocumentReader.read()` takes (`document-reader.md`); a .md, .markdown or .txt gives `text` (UTF-8, byte order mark left out, Windows-1254 converted), which the browser turns into paragraphs with `PGDocumentReader.paragraphs()` as it does a paste, so the Markdown rules stay in one place (PR #FD2PR).
+- `pg_document_paragraphs($path, $name)` answers `{ok, error, paragraphs, text, pictures, pictures_lost, cut, read}`. A .docx gives `paragraphs` in the shape `PGDocumentReader.read()` takes (`document-reader.md`); a .md, .markdown or .txt gives `text` (UTF-8, byte order mark left out, Windows-1254 converted), which the browser turns into paragraphs with `PGDocumentReader.paragraphs()` as it does a paste, so the Markdown rules stay in one place (PR #11601).
 - A paragraph: `{text, style}` with `style` heading (and `level` 1-6), item, quote, table (`rows`, arrays of cell texts), picture or paragraph; `lead` the bold words it starts with, when more follows. Empty paragraphs, deleted tracked text and text boxes inside drawings are left out; breaks and tabs are spaces.
 
 ## How is a .docx read?
