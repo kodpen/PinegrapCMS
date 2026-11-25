@@ -28,7 +28,7 @@ priority: 6
 - BM2 (S) after BM1: tasks only. Done #11641. "By kind" and what `ws_channel_board()` gathers for it go; a remembered "By kind" falls back to "By status". The Summary tab shows the pinned message; if it does not, this step adds it.
 - BM3 (M) after BM2: the look. Done #11670. The four figures (a pure function, in the board's answer), a figure as a filter, the columns, the cards, the drop place.
 - BM4 (M, done #11567) beside BM1 to BM3, server only: the board's rules as a pure function (this channel's flows that start on a task event, and the ready rules not made yet), making a rule from its template, publishing and pausing it, the gate.
-- BM5 (M) after BM3 and BM4: the button, the drawer, a column's rule line, the last runs.
+- BM5 (M) after BM3 and BM4: the button, the drawer, a column's rule line, the last runs. Done #11696.
 - BM6 (S) Close-out: memory in `workspace/` (the tab, the board, the rules), `workspace/workspace-channel-summary-board-memory.md` corrected, this plan's files deleted, the `[NEW]` line named.
 
 ## What does every step keep?
