@@ -45,21 +45,54 @@ function pg_picture_tr_js_round($value, $places)
 }
 
 /**
+ * The smallest share of a source text's size its translation is drawn at:
+ * 70% for a text up to 4% of the picture's shorter side, 50% from 8% of
+ * it, on a straight line between; rounded to four places, 70% without a
+ * size or a side. Twin of M.languageFloor(). Pure.
+ *
+ * @param float $size the source text's size, px
+ * @param float $side the picture's shorter side, px
+ * @return float
+ */
+function pg_picture_tr_language_floor($size, $side)
+{
+    // LANGUAGE_FLOOR, LANGUAGE_FLOOR_MIN, LANGUAGE_FLOOR_SMALL and
+    // LANGUAGE_FLOOR_LARGE of the editor's model.
+    $floor = 0.7;
+    $min = 0.5;
+    $small = 0.04;
+    $large = 0.08;
+    $size = is_numeric($size) ? (float) $size : 0.0;
+    $side = is_numeric($side) ? (float) $side : 0.0;
+
+    if (($size <= 0) || ($side <= 0)) {
+        return $floor;
+    }
+
+    $t = max(0.0, min(1.0, ($size / $side - $small) / ($large - $small)));
+
+    return pg_picture_tr_js_round($floor - ($floor - $min) * $t, 4);
+}
+
+/**
  * How much a translated text (w1 x h1 at the source's size) shrinks to fit
- * its source's box (w0 x h0): never grown, never under 70% of the size;
- * marked when it still does not fit there. Twin of M.languageFit(), run on
- * the same fixtures (tests/fixtures/picture_language/fit.json). Pure.
+ * its source's box (w0 x h0): never grown, never under the floor of the
+ * source's size on the picture's shorter side
+ * (pg_picture_tr_language_floor()); marked when it still does not fit
+ * there. Twin of M.languageFit(), run on the same fixtures
+ * (tests/fixtures/picture_language/fit.json). Pure.
  *
  * @param float $w0
  * @param float $h0
  * @param float $w1
  * @param float $h1
+ * @param float $size the source text's size, px (0: the 70% floor)
+ * @param float $side the picture's shorter side, px (0: the 70% floor)
  * @return array scale, mark
  */
-function pg_picture_tr_language_fit($w0, $h0, $w1, $h1)
+function pg_picture_tr_language_fit($w0, $h0, $w1, $h1, $size = 0.0, $side = 0.0)
 {
-    // LANGUAGE_FLOOR of the editor's model.
-    $floor = 0.7;
+    $floor = pg_picture_tr_language_floor($size, $side);
     $scale = 1;
 
     if (($w0 > 0) && ($w1 > $w0)) {
@@ -131,7 +164,8 @@ function pg_picture_tr_language_doc($doc, $texts)
 /**
  * A language's document with each changed text fitted to its source's box,
  * as the Design Canvas's drawLanguage() fits it: the size shrunk by
- * pg_picture_tr_language_fit(), the box kept on the side its text is
+ * pg_picture_tr_language_fit() (its floor by the source's size on the
+ * artboard's shorter side), the box kept on the side its text is
  * aligned to (M.textFit(): the middle for centred text), its middle kept
  * upright. Pure but for $layout.
  *
@@ -145,6 +179,11 @@ function pg_picture_tr_language_fitted($put, $layout)
 {
     $doc = $put['doc'];
     $mark = false;
+    $board = (isset($doc['artboard']) && is_array($doc['artboard'])) ? $doc['artboard'] : array();
+    $side = min(
+        (isset($board['width']) && is_numeric($board['width'])) ? (float) $board['width'] : 0.0,
+        (isset($board['height']) && is_numeric($board['height'])) ? (float) $board['height'] : 0.0
+    );
 
     foreach ($doc['layers'] as $i => $layer) {
         $id = (is_array($layer) && isset($layer['id']) && is_scalar($layer['id'])) ? (string) $layer['id'] : '';
@@ -161,7 +200,7 @@ function pg_picture_tr_language_fitted($put, $layout)
             return null;
         }
 
-        $fit = pg_picture_tr_language_fit($before['w'], $before['h'], $wide['w'], $wide['h']);
+        $fit = pg_picture_tr_language_fit($before['w'], $before['h'], $wide['w'], $wide['h'], isset($src['size']) ? $src['size'] : 0, $side);
         $size = (isset($src['size']) && is_numeric($src['size']) && ((float) $src['size'] != 0)) ? (float) $src['size'] : 1.0;
         $layer['size'] = pg_picture_tr_js_round($size * $fit['scale'], 2);
         $after = call_user_func($layout, $layer);

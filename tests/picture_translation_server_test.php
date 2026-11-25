@@ -249,8 +249,10 @@ function test_picture_server_doc_twins()
 }
 
 // Each changed text is fitted as the Design Canvas fits it: the size
-// shrunk to the source's box, never under 70% (then marked), the aligned
-// side kept across and the middle kept upright.
+// shrunk to the source's box, never under its floor (then marked), the
+// aligned side kept across and the middle kept upright. A text of 4% of
+// the artboard's shorter side keeps the 70% floor; a larger one may go
+// lower.
 function test_picture_server_fitted()
 {
 	if (!function_exists('pg_picture_tr_language_fitted')) {
@@ -265,7 +267,7 @@ function test_picture_server_fitted()
 
 		return ($l['text'] === 'no font') ? null : array('w' => round(mb_strlen($l['text']) * $size / 2, 2), 'h' => round($size * 1.25, 2));
 	};
-	$doc = array('v' => 1, 'artboard' => array('width' => 400, 'height' => 200), 'layers' => array(
+	$doc = array('v' => 1, 'artboard' => array('width' => 600, 'height' => 500), 'layers' => array(
 		array('id' => 'c', 'type' => 'text', 'text' => 'Sale', 'size' => 20, 'align' => 'center', 'x' => 100, 'y' => 50, 'w' => 40, 'h' => 25),
 		array('id' => 'r', 'type' => 'text', 'text' => 'Sale', 'size' => 20, 'align' => 'right', 'x' => 100, 'y' => 90, 'w' => 40, 'h' => 25),
 		array('id' => 'l', 'type' => 'text', 'text' => 'Sale', 'size' => 20, 'x' => 100, 'y' => 130, 'w' => 40, 'h' => 25),
@@ -301,6 +303,14 @@ function test_picture_server_fitted()
 	$one = pg_picture_tr_language_doc($doc, array(array('id' => 'l', 'field' => 'text', 'text' => 'Neue')));
 	pg_assert_same(0, pg_picture_tr_language_fitted($one, $layout)['fit'], 'every text fits: no mark');
 
+	// On a 400 x 200 artboard the same text is 10% of the shorter side: its
+	// floor is half, and "Angebot" fits at 0.5714.
+	$small = $doc;
+	$small['artboard'] = array('width' => 400, 'height' => 200);
+	$large = pg_picture_tr_language_fitted(pg_picture_tr_language_doc($small, array(array('id' => 'c', 'field' => 'text', 'text' => 'Angebot'))), $layout);
+	pg_assert_same(11.43, (float) $large['doc']['layers'][0]['size'], 'a large text shrinks under 70%');
+	pg_assert_same(0, $large['fit'], 'above its floor: no mark');
+
 	$lost = pg_picture_tr_language_doc($doc, array(array('id' => 'l', 'field' => 'text', 'text' => 'no font')));
 	pg_assert_same(null, pg_picture_tr_language_fitted($lost, $layout), 'a text the server cannot lay out leaves the picture');
 }
@@ -324,7 +334,7 @@ function test_picture_server_plan()
 	pg_assert_same(array('rect', 'text'), array_column($plain['plan']['items'], 'kind'), 'its layers');
 	pg_assert_same('Sonderangebot', $plain['plan']['items'][1]['text'], 'in the language\'s words');
 	pg_assert_true($plain['plan']['items'][1]['size'] < 60, 'the longer words are made smaller');
-	pg_assert_true($plain['plan']['items'][1]['size'] >= 42, 'never under 70%');
+	pg_assert_true($plain['plan']['items'][1]['size'] >= 30, 'never under half: 60 px is 30% of the shorter side');
 	pg_assert_same(400, $plain['plan']['width'], 'the artboard\'s size');
 
 	$short = pg_picture_tr_server_plan(json_decode(json_encode(picture_server_doc())), array(array('id' => 't1', 'field' => 'text', 'text' => 'Saldo')), $can);

@@ -9,5 +9,15 @@
 	{ "about": "just over the floor is not", "args": [100, 40, 142.857, 40], "scale": 0.7, "mark": false },
 	{ "about": "the smaller of the two shares wins", "args": [100, 30, 120, 45], "scale": 0.7, "mark": true },
 	{ "about": "a box with no width is fitted by its height only", "args": [0, 30, 500, 20], "scale": 1, "mark": false },
-	{ "about": "both sides shrink, the narrower share is taken", "args": [240, 60, 300, 66], "scale": 0.8, "mark": false }
+	{ "about": "both sides shrink, the narrower share is taken", "args": [240, 60, 300, 66], "scale": 0.8, "mark": false },
+	{ "about": "a text up to 4% of the shorter side keeps the 70% floor", "args": [200,  50,  400,  50,  43,  1080], "scale": 0.7, "mark": true },
+	{ "about": "a 86 px headline on 1080 px fits at 53%", "args": [200,  50,  380,  50,  86,  1080], "scale": 0.5263, "mark": false },
+	{ "about": "from 8% of the shorter side the floor is half", "args": [100,  40,  200,  40,  80,  1000], "scale": 0.5, "mark": false },
+	{ "about": "past 8% the floor stays half, and marked under it", "args": [200,  50,  450,  50,  100,  1000], "scale": 0.5, "mark": true },
+	{ "about": "halfway between 4% and 8% the floor is 60%", "args": [200,  50,  350,  50,  60,  1000], "scale": 0.6, "mark": true },
+	{ "about": "6% of the side fits at 62.5%", "args": [200,  50,  320,  50,  60,  1000], "scale": 0.625, "mark": false },
+	{ "about": "the floor between is a straight line, rounded to four places", "args": [100,  40,  1000,  40,  86,  1080], "scale": 0.5019, "mark": true },
+	{ "about": "exactly 4% keeps 70%", "args": [100,  40,  142.86,  40,  40,  1000], "scale": 0.7, "mark": true },
+	{ "about": "a picture with no side keeps 70%", "args": [200,  50,  300,  50,  100,  0], "scale": 0.7, "mark": true },
+	{ "about": "a text with no size keeps 70%", "args": [200,  50,  300,  50,  0,  1000], "scale": 0.7, "mark": true }
 ]
