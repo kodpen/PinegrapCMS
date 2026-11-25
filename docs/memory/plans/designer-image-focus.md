@@ -24,7 +24,7 @@ priority: 7
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - IF1 (S) The value, pure, PHP and its browser twin: the pair read and written, word pairs read, per screen size, the background's twin; site render. Done: #11523.
-- IF2 (M) after IF1 and DD10: the Focus control with the three frames.
+- IF2 (M) after IF1 and DD10: the Focus control with the three frames. Done: #11576.
 - IF3 (M) after IF2: "Set focus" on the canvas, the keys, background pictures.
 - IF4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 

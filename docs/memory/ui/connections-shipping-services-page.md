@@ -27,7 +27,7 @@ module: carrier_labels, carrier_api, connections_screen
 
 ## Who may change them, and the registry?
 - Who may open Site Settings › Ecommerce (`connections_commerce_may_manage()`).
-- Registry: `place` `connections.php`, `found_at` `#settings/commerce/pgset-shipping`. Label services by `pg_label_ready()`; carriers by `pg_carrier_api_connected()`: keys stored and, for UPS and FedEx, the switch on. ShipWorks stays on the card. No row added: `pg_connections_count()` stays 84.
+- Registry: `place` `connections.php`, `found_at` `#settings/commerce/pgset-shipping`. Label services by `pg_label_ready()`; carriers by `pg_carrier_api_connected()`: keys stored and, for UPS and FedEx, the switch on. ShipWorks stays on the card. No row added: `pg_connections_count()` unchanged.
 - Old anchors (`ups_client_id`, `label_geliver__api_token`, …) land on `pgset-shipping`. No data step, table or column.
 
 Tests: `tests/connections_shipping_services_test.php`, `tests/carrier_labels_test.php`.

@@ -1152,11 +1152,14 @@ function bs6_scope_kind($path)
 
 	// The visual editor's files. The smart completion's vocabulary and
 	// predictor (designer_vocab.php, pg_style_predict.js) describe the
-	// Bootstrap 5 API that site pages load, so their Bootstrap names are data.
+	// Bootstrap 5 API that site pages load, so their Bootstrap names are data;
+	// so are the site's font size classes the size per screen reads
+	// (pg_size_style.js).
 	$editor = array(
 		'assets/js/style_designer.src.js', 'assets/css/style_designer.css', 'includes/designer_screen.php',
 		'includes/fn/designer.php', 'includes/designer_ai.php', 'assets/js/pg_style_suggest.js',
 		'assets/js/pg_style_predict.js', 'includes/fn/designer_vocab.php', 'assets/js/pg_style_complete.js',
+		'assets/js/pg_size_style.js',
 	);
 	if (in_array($path, $editor, true)) {
 		return 'editor';

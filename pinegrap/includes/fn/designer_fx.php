@@ -36,7 +36,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_fx_effects()
 {
-    return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+    return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale',
+        'zoom-out', 'blur-in', 'rotate-in', 'reveal', 'sticky', 'parallax',
         'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene');
 }
 
@@ -124,8 +125,10 @@ function pg_fx_numbers()
  * timing and easing for sticky, parallax and the scroll-linked effects,
  * `stagger` outside load and view, `repeat` outside view, `offset` outside
  * sticky, `speed` outside parallax, `from` outside the scroll-linked
- * effects, `distance` for fade, sticky, parallax and the scroll-linked
- * effects. Count keeps its duration and delay alone, in its own ranges
+ * effects, `distance` for fade, zoom-out, reveal, sticky, parallax and the
+ * scroll-linked effects (blur-in reads it as the blur in px, rotate-in as
+ * the angle in degrees). Reveal (a clip that opens from the bottom) is an
+ * entrance only: a hover or click trigger is read as view. Count keeps its duration and delay alone, in its own ranges
  * (pg_fx_count_numbers()). Autoplay (a <video> that plays by itself,
  * muted and looping) has no field. Chapter (the page takes the section's
  * background and text colour while it holds the window's middle) keeps
@@ -181,13 +184,14 @@ function pg_fx_normalize($fx)
     $triggers = pg_fx_triggers();
     $trigger = isset($fx['trigger']) && is_string($fx['trigger']) ? strtolower($fx['trigger']) : '';
     $out['trigger'] = in_array($trigger, $triggers, true) ? $trigger : $triggers[0];
+    if ($effect === 'reveal' && ($out['trigger'] === 'hover' || $out['trigger'] === 'click')) $out['trigger'] = $triggers[0];
 
     $easings = pg_fx_easings();
     $easing = isset($fx['easing']) && is_string($fx['easing']) ? strtolower($fx['easing']) : '';
     $out['duration'] = $num('duration');
     $out['delay']    = $num('delay');
     $out['easing']   = in_array($easing, $easings, true) ? $easing : $easings[0];
-    if ($effect !== 'fade') $out['distance'] = $num('distance');
+    if (!in_array($effect, array('fade', 'zoom-out', 'reveal'), true)) $out['distance'] = $num('distance');
     if ($out['trigger'] === 'load' || $out['trigger'] === 'view') $out['stagger'] = $num('stagger');
     if ($out['trigger'] === 'view') $out['repeat'] = !empty($fx['repeat']);
 

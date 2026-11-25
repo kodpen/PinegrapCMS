@@ -10186,6 +10186,7 @@ const StyleDesigner = (function () {
         _sdTabLinksStale();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
+        _sdGuidesSync();
     }
 
     // Every cached component tree gets a snapshot of what its row holds the
@@ -10453,6 +10454,7 @@ const StyleDesigner = (function () {
         renderStylesPanel();
         updateCtxBar();
         _sdSharedBaseline();
+        _sdGuidesSync();
     }
 
     // The <details> the operator opened or closed on the canvas. A render
@@ -29452,12 +29454,13 @@ const StyleDesigner = (function () {
     }
 
     // A class nobody uses yet, on any page or in the stylesheet.
-    function _sdNewCustomStyleClass() {
+    // `text`: the User Styles being written, when not yet set.
+    function _sdNewCustomStyleClass(text) {
         var taken = {};
         _sdCustomStyleClassLists().forEach(function (l) {
             l.split(/\s+/).forEach(function (c) { if (c) taken[c] = true; });
         });
-        (_userStylesGet().match(/pgs-[a-z0-9]{6}/g) || []).forEach(function (c) { taken[c] = true; });
+        (String(text == null ? _userStylesGet() : text).match(/pgs-[a-z0-9]{6}/g) || []).forEach(function (c) { taken[c] = true; });
         return PgCustomStyle.newClass(taken);
     }
 
@@ -36927,6 +36930,7 @@ const StyleDesigner = (function () {
         _sdIlBind(selectedNode);
         _sdFxBind(selectedNode);
         _sdSpBoxBind([selectedNode]);
+        _sdFocusBind(selectedNode);
         markModifiedProps();
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
@@ -52072,8 +52076,9 @@ const StyleDesigner = (function () {
 
         var tColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','muted','body-emphasis','|','primary-emphasis','secondary-emphasis','success-emphasis','danger-emphasis','warning-emphasis','info-emphasis'];
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
+        // data-sd-szbox: the size chooser of Font Size (_sdSzBind()).
         return _sdSectKey(sect('bi-type', _sdT('Text'),
-            _alignHtml +
+            '<div data-sd-szbox hidden></div>' + _alignHtml +
             row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors)) +
@@ -55311,7 +55316,10 @@ const StyleDesigner = (function () {
                 ['bottom left',_sdT('Bottom Left')],['bottom right',_sdT('Bottom Right')]
             ];
             h += row(_sdT('Object Fit'), selStyleGroup(n.props, ['object-fit-contain','object-fit-cover','object-fit-fill','object-fit-scale-down','object-fit-none'], 'Default'));
-            h += row(_sdT('Object Pos'), '<select class="form-control form-control-sm" data-prop="objectPosition">' +
+            // With a picture the position is the Focus control (part
+            // 'focus', _sdFocusBind()); without one, the list as before.
+            if (_sdFocusTakes(n, 'image')) h += _sdFocusPlace('image');
+            else h += row(_sdT('Object Pos'), '<select class="form-control form-control-sm" data-prop="objectPosition">' +
                 objPosOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + ((n.props.objectPosition || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -56864,6 +56872,152 @@ const StyleDesigner = (function () {
         h += '</div>';
         return h;
     }
+    // ── The Focus control (Content › Image, Style › Color and background)
+    // Where a picture is cut, its position is a point dragged on the whole
+    // picture, with the cut on a phone, a tablet and a desktop beside it:
+    // the part 'focus' (style_designer_focus.js), run the first time a
+    // control is shown. The value and its writers are the _sdFocus*() twins
+    // (image-focus-value); the control writes the screen the canvas bar
+    // shows.
+
+    // True when node `n` shows a picture its frame cuts: an Image with a
+    // picture, or a background picture sized "Cover" or drawn once at its
+    // own size. Several elements keep the lists.
+    function _sdFocusTakes(n, kind) {
+        if (!n || !n.props || selectedNodes.length > 1) return false;
+        if (kind === 'image') {
+            var img = _sdNodeImage(n);
+            return n.type === 'content' && n.props.contentType === 'image' && !!(img && img.url);
+        }
+        var raw = getAttrStyleProp(n, 'background-image');
+        if (!raw || !/^url\(/i.test(raw)) return false;
+        var size = getAttrStyleProp(n, 'background-size').toLowerCase();
+        var rep = getAttrStyleProp(n, 'background-repeat').toLowerCase();
+        return size === 'cover' || (rep === 'no-repeat' && (size === '' || size === 'auto'));
+    }
+
+    function _sdFocusPlace(kind) {
+        return '<div class="sd-fc" data-sd-focus="' + kind + '"></div>';
+    }
+
+    // The screen the canvas bar shows: its chosen width (full width is a
+    // desktop), else the canvas's own width after a resize by hand.
+    function _sdFocusCanvasScreen() {
+        var on = document.querySelector('#sd-bp-bar .sd-bp-btn.active');
+        if (on) return _sdFocusScreen(parseInt(on.getAttribute('data-w'), 10) || 0);
+        var wrap = document.getElementById('sd-iframe-wrap');
+        return _sdFocusScreen(wrap ? wrap.offsetWidth : 0);
+    }
+
+    // True inside a card drawn once for every record (a loop area).
+    function _sdFocusInLoop(node) {
+        var cur = node;
+        for (var guard = 0; cur && guard < 500; guard++) {
+            var up = _sdAnyParent(cur);
+            if (!up || !up.parent) return false;
+            if (up.parent.type === 'loop_area') return true;
+            cur = up.parent;
+        }
+        return false;
+    }
+
+    function _sdFocusStyleAttr(node) {
+        var attrs = (node.props && node.props._attrs) || [];
+        for (var i = 0; i < attrs.length; i++) if (attrs[i] && attrs[i].name === 'style') return attrs[i];
+        return null;
+    }
+
+    function _sdFocusValuesOf(node, kind) {
+        if (kind === 'image') return _sdFocusValues(node.props);
+        var st = _sdFocusStyleAttr(node);
+        return _sdFocusStyleRead(st ? st.value : '');
+    }
+
+    // What the part reads and writes: the picture as the canvas draws it
+    // (a bound picture shows its sample), the values, the screen, the
+    // shape measured on the canvas; live() shows values on the canvas
+    // without writing them, commit() writes them as one undo step.
+    function _sdFocusHost(el, node, kind) {
+        var inner = _sdCanvasInnerOf(node);
+        var pic = null, src = '';
+        if (kind === 'image') {
+            pic = inner && inner.tagName === 'IMG' ? inner : (inner ? inner.querySelector('img') : null);
+            src = (pic && (pic.currentSrc || pic.src)) || (_sdNodeImage(node) || {}).url || '';
+        } else {
+            pic = inner;
+            var bg = '';
+            try { bg = inner ? inner.ownerDocument.defaultView.getComputedStyle(inner).backgroundImage : ''; } catch (e) {}
+            var m = /url\(["']?([^"')]+)["']?\)/i.exec(bg || '') || /url\(["']?([^"')]+)["']?\)/i.exec(getAttrStyleProp(node, 'background-image'));
+            src = m ? m[1] : '';
+        }
+        var box = pic ? pic.getBoundingClientRect() : null;
+        var screen = _sdFocusCanvasScreen();
+        var cssProp = kind === 'image' ? 'objectPosition' : 'backgroundPosition';
+        return {
+            el: el,
+            kind: kind,
+            src: src,
+            values: _sdFocusValuesOf(node, kind),
+            screen: screen,
+            ratio: kind === 'image' ? String(node.props.aspectRatio || '') : '',
+            measured: box && box.height > 0 ? box.width / box.height : 0,
+            bound: _sdFocusInLoop(node),
+            locked: !!_sdPanelLockReason([node]),
+            F: { parse: _sdFocusParse, format: _sdFocusFormat, forScreen: _sdFocusForScreen, set: _sdFocusSet, same: _sdFocusSameEverywhere },
+            live: function (values) {
+                if (pic && pic.isConnected) pic.style[cssProp] = _sdFocusForScreen(values, screen);
+            },
+            commit: function (values) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); renderProperties(); return; }
+                if (_sdPanelLockReason([node])) return;
+                saveState();
+                if (kind === 'image') {
+                    var next = _sdFocusImageProps(node.props, values);
+                    Object.keys(_SD_FOCUS_IMAGE_KEYS).forEach(function (s) {
+                        var k = _SD_FOCUS_IMAGE_KEYS[s];
+                        if (Object.prototype.hasOwnProperty.call(next, k)) node.props[k] = next[k];
+                        else delete node.props[k];
+                    });
+                } else {
+                    var st = _sdFocusStyleAttr(node);
+                    var text = _sdFocusStyleWrite(st ? st.value : '', values);
+                    if (st && text) st.value = text;
+                    else if (st) node.props._attrs.splice(node.props._attrs.indexOf(st), 1);
+                    else if (text) (node.props._attrs = node.props._attrs || []).push({ name: 'style', value: text });
+                    var cls = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'pg-focus'; });
+                    if (_sdFocusHasScreens(values)) cls.push('pg-focus');
+                    node.props.cssClass = cls.join(' ');
+                }
+                if (_sdFocusHasScreens(values)) _sdEnsureBlockStyles(['pg-focus']);
+                _sdRenderNode(node, render);
+            }
+        };
+    }
+
+    // Draws each Focus control of the panel. A control in a closed group
+    // (the background picture's) waits for its head to open it before the
+    // part is loaded for the first time.
+    function _sdFocusBind(node) {
+        var panel = document.getElementById('sd-properties');
+        if (!panel || !node) return;
+        panel.querySelectorAll('[data-sd-focus]').forEach(function (el) {
+            var draw = function () {
+                if (!el.isConnected) return;
+                _sdPartCall('focus', 'draw', [_sdFocusHost(el, node, el.getAttribute('data-sd-focus'))]).catch(_sdPartFailed);
+            };
+            var body = el.closest('.sd-sect-body');
+            var hdr = body ? body.previousElementSibling : null;
+            if (!_sdPartLoaded('focus') && body && body.style.display === 'none' && hdr) {
+                hdr.addEventListener('click', function first() {
+                    hdr.removeEventListener('click', first);
+                    draw();
+                });
+                return;
+            }
+            draw();
+        });
+    }
+
     // ── The spacing box (Style › Spacing)
     // The section's body holds the box's place (data-sd-spbox) and today's
     // ten rows, hidden: they still count, reset and search as before. The
@@ -56882,7 +57036,7 @@ const StyleDesigner = (function () {
             size: _sdSpSize,
             classes: nodes.map(function (n) { return (n.props && n.props.cssClass) || ''; }),
             locked: !!_sdPanelLockReason(nodes),
-            setSize: function (s) { _sdSpSize = s; },
+            setSize: _sdSpSizeSet,
             commit: function (fn) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
                 if (_sdPanelLockReason(nodes)) return;
@@ -56910,6 +57064,75 @@ const StyleDesigner = (function () {
         if (el) _sdSpBoxBindOne(el, nodes, function (host) { return _sdPartCall('spacing', 'draw', [host]); });
         var rd = panel.querySelector('[data-sd-rdbox]');
         if (rd) _sdSpBoxBindOne(rd, nodes, function (host) { return _sdPartCall('spacing', 'corners', [host]); });
+        panel.querySelectorAll('[data-sd-szbox]').forEach(function (sz) {
+            _sdSpBoxBindOne(sz, nodes, function () { return _sdPartCall('spacing', 'sizes', [_sdSzHost(sz, nodes)]); });
+        });
+    }
+
+    // ── A length per screen size (Size and display, Text › Font Size)
+    // The chosen size of the chooser is _sdSpSize; the part 'spacing'
+    // draws the chooser in the section's head and, at a size or where the
+    // class holds one, takes the rows' fields over: a value from a size up
+    // is an @media rule on the element's custom style class
+    // (pg_size_style.js). Choosing a size draws the panel again and puts
+    // the canvas at that size.
+    function _sdSpSizeSet(s) {
+        _sdSpSize = s;
+        _sdCanvasToSize(s);
+        renderProperties();
+    }
+
+    // The canvas bar's width for each size; XXL is the full width, at
+    // least 1400 px.
+    var _SD_SIZE_CANVAS_W = { xs: '375', sm: '576', md: '768', lg: '992', xl: '1200', xxl: '0' };
+    function _sdCanvasToSize(s) {
+        var wrap = document.getElementById('sd-iframe-wrap');
+        if (!wrap || !_SD_SIZE_CANVAS_W.hasOwnProperty(s)) return;
+        if (_sdBpLabelText(wrap.offsetWidth, false).split('· ')[1] === s.toUpperCase()) return;
+        var b = document.querySelector('#sd-bp-bar .sd-bp-btn:not(.sd-bp-mail)[data-w="' + _SD_SIZE_CANVAS_W[s] + '"]');
+        if (!b) return;
+        b.click();
+        if (s === 'xxl' && wrap.offsetWidth < 1400) {
+            wrap.style.maxWidth = '1400px';
+            wrap.style.width = '1400px';
+            updateBpLabel();
+        }
+    }
+
+    // What the part reads and writes: the elements, why a custom style is
+    // off for one of them, the User Styles text, a new class, the length
+    // check, and the commit of the new text with each element's changes
+    // ({ cssClass, props } or null) as one undo step.
+    function _sdSzHost(el, nodes) {
+        var off = '';
+        nodes.forEach(function (n) { off = off || _sdCustomStyleOff(n); });
+        return {
+            el: el,
+            size: _sdSpSize,
+            nodes: nodes,
+            off: off,
+            locked: !!_sdPanelLockReason(nodes) || !!_sdPanelLockReason(null, 'design'),
+            text: _userStylesGet,
+            newClass: _sdNewCustomStyleClass,
+            lenCheck: function (v) { return _sdLenCheck('len', v); },
+            setSize: _sdSpSizeSet,
+            commit: function (next, changes) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                if (_sdPanelLockReason(nodes)) return;
+                if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+                var text = _userStylesGet();
+                if (next === text && !changes.some(Boolean)) { renderProperties(); return; }
+                saveState();
+                nodes.forEach(function (n, i) {
+                    var c = changes[i];
+                    if (!c || !n.props) return;
+                    if (c.cssClass != null) n.props.cssClass = c.cssClass;
+                    Object.keys(c.props || {}).forEach(function (k) { n.props[k] = c.props[k]; });
+                });
+                if (next !== text) _userStylesSet(next);
+                render();
+            }
+        };
     }
 
     function _sdSpBoxBindOne(el, nodes, call) {
@@ -57203,7 +57426,8 @@ const StyleDesigner = (function () {
             '</select></div>' +
         '</div>';
 
-        var _dsBody = '<div class="sd-sp-section">' +
+        // data-sd-szbox: the size chooser of the lengths (_sdSzBind()).
+        var _dsBody = '<div data-sd-szbox hidden></div><div class="sd-sp-section">' +
             mkRespRow(_sdT('Display'), 'd-',     dispValues,  _sdT('Default')) +
             _posRow +
             mkRespRow(_sdT('Float'),   'float-', floatValues, _sdT('Default')) +
@@ -57546,8 +57770,11 @@ const StyleDesigner = (function () {
                 '</div>') +
             row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
                 [['',_sdT('Default')],['cover', _sdT('Cover (background)')],['contain',_sdT('Contain')],['auto',_sdT('Auto')],['100% 100%',_sdT('Stretch')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgSize===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
+            // A picture its box cuts takes the Focus control in place of the
+            // list (_sdFocusTakes()); a pattern or no picture keeps the list.
+            (_sdFocusTakes(n, 'background') ? _sdFocusPlace('background') :
             row(_sdT('Bg Pos'),    '<select class="form-control form-control-sm" data-bg-prop="background-position">' +
-                [['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
+                [['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>')) +
             row(_sdT('Bg Repeat'), '<select class="form-control form-control-sm" data-bg-prop="background-repeat">' +
                 [['',_sdT('Default')],['no-repeat',_sdT('No Repeat')],['repeat',_sdT('Repeat')],['repeat-x',_sdT('Repeat X')],['repeat-y',_sdT('Repeat Y')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgRep===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Attach'), '<select class="form-control form-control-sm" data-bg-prop="background-attachment">' +
@@ -75529,7 +75756,8 @@ const StyleDesigner = (function () {
     // autoplay and scene have no field.
     function _sdFxSpec() {
         return {
-            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale',
+                'zoom-out', 'blur-in', 'rotate-in', 'reveal', 'sticky', 'parallax',
                 'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
@@ -75563,10 +75791,12 @@ const StyleDesigner = (function () {
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
+        // Reveal is an entrance only.
+        if (effect === 'reveal' && (out.trigger === 'hover' || out.trigger === 'click')) out.trigger = spec.triggers[0];
         out.duration = num('duration');
         out.delay = num('delay');
         out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
-        if (effect !== 'fade') out.distance = num('distance');
+        if (['fade', 'zoom-out', 'reveal'].indexOf(effect) === -1) out.distance = num('distance');
         if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
         if (out.trigger === 'view') out.repeat = !!fx.repeat;
         return out;
@@ -94511,6 +94741,53 @@ const StyleDesigner = (function () {
         setTimeout(function () {
             _sdPartLoad('ai').catch(function () { /* the button asks again */ });
         }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
+    }
+
+    // ── Canvas guides: Measure ────────────────────────────────────────────
+    // With one element selected, holding Alt and pointing at another element
+    // shows the distances between them (the part 'guides',
+    // assets/js/style_designer_guides.js, run the first time Alt is pressed).
+    // The key listener is bound only while one element of the canvas is
+    // selected; the part listens to the pointer only while Alt is held.
+    var _sdGuides = { win: null };
+
+    function _sdGuidesOne() {
+        return !!(selectedNode && selectedNodes.length <= 1 && canvasDoc && canvasDoc.defaultView && !(_sdProto && _sdProto.open) && _sdPartUrls('guides'));
+    }
+
+    function _sdGuidesKey(e) {
+        if (e.key !== 'Alt' || e.repeat || e.ctrlKey || e.metaKey || e.shiftKey || !_sdGuidesOne()) return;
+        var doc = canvasDoc;
+        _sdPartCall('guides', 'measure', [{
+            doc: doc,
+            selected: function () {
+                return (canvasDoc === doc && _sdGuidesOne()) ? _findCanvasEl(selectedNode) : null;
+            },
+            rectOf: _sdBoxRect,
+            nameOf: function (wrap) {
+                var node = _sdFindNodeForEl(wrap.getAttribute('data-sd-id'), wrap);
+                return node ? getNodeLabel(node) : '';
+            }
+        }]).catch(_sdPartFailed);
+    }
+
+    // After a draw or a selection change: binds or drops the key listener.
+    function _sdGuidesSync() {
+        // A draw made while the editor's script is still being run.
+        if (!_sdGuides) return;
+        var win = _sdGuidesOne() ? canvasDoc.defaultView : null;
+        if (win === _sdGuides.win) return;
+        if (_sdGuides.win) {
+            window.removeEventListener('keydown', _sdGuidesKey, true);
+            _sdGuides.win.removeEventListener('keydown', _sdGuidesKey, true);
+        }
+        _sdGuides.win = win;
+        if (win) {
+            window.addEventListener('keydown', _sdGuidesKey, true);
+            win.addEventListener('keydown', _sdGuidesKey, true);
+        } else if (_sdPartLoaded('guides') && _sdPartApis.guides && _sdPartApis.guides.stop) {
+            _sdPartApis.guides.stop();
+        }
     }
 
     // ── The "Clicks" layer ────────────────────────────────────────────────

@@ -5,7 +5,7 @@ description: Style › Spacing as one box (DP7): outer and inner sides typed, dr
 
 ## What does Style › Spacing show?
 - One box drawing: "outer" (margin) and "inner" (padding), four sides each, the core reading "content" (several elements: "3 elements"). Today's ten rows (Padding, Padding Start…, Margin End) stay in the body, hidden (`.sd-sp-rows`), so the section's count, the row reset and the search read them as before.
-- The screen-size chooser XS, SM, MD, LG, XL, XXL sits in the section's head while it is open; a size holding a margin or padding class of any selected element is drawn lighter. The chosen size (`_sdSpSize`, XS first) holds for every element until the editor closes.
+- The screen-size chooser XS, SM, MD, LG, XL, XXL sits in the section's head while it is open; a size holding a margin or padding class of any selected element is drawn lighter, with a dot. The chosen size (`_sdSpSize`, XS first) holds for every element until the editor closes and is shared with Size and display and Text; choosing one puts the canvas at that size and draws the panel again (`designer-size-per-screen.md`).
 
 ## Why six sizes when D17 names five?
 - Today's rows write the XXL forms too (`mt-xxl-3`); a chooser without XXL could not show or change them (K1). The canvas bar has six sizes as well.

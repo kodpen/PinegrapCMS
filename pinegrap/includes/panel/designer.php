@@ -1103,6 +1103,27 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // The Figma start of the New design window: a file's frame list
+        // (figma_file), then its frames' small pictures (figma_pictures).
+        // The server reads with the token sealed on Connections; the
+        // browser gets the list and Figma's picture addresses, never the
+        // token. A designer's own (the list above does not open them).
+        case 'figma_file':
+        case 'figma_pictures':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+            $fg_link = pg_figma_file_link(isset($request['link']) ? $request['link'] : null);
+            if ($fg_link === null) {
+                respond(array('status' => 'error', 'code' => 'not_link', 'message' => lang('This is not a Figma file link. Copy it in Figma with Share, then “Copy link”.')));
+            }
+            $fg_read = ($sub === 'figma_file') ? pg_figma_read_file($fg_link['key']) : pg_figma_read_pictures($fg_link['key']);
+            if (!$fg_read['ok']) {
+                respond(pg_figma_refusal($fg_read['error']));
+            }
+            respond(($sub === 'figma_file')
+                ? array('status' => 'success', 'key' => $fg_link['key'], 'list' => $fg_read['list'])
+                : array('status' => 'success', 'key' => $fg_link['key'], 'pictures' => (object)$fg_read['pictures']));
+            break;
+
         // A design renamed from the designs list (pg_designer_rename_design()).
         case 'design_rename':
             $dr = pg_designer_rename_design(

@@ -177,7 +177,7 @@ function test_corner_box_shift_and_alt()
 function test_corner_box_is_in_the_spacing_part()
 {
 	$bundles = pg_js_bundles();
-	pg_assert_same(array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'), $bundles['assets/js/style_designer_spacing.min.js'], 'both modules, then the part');
+	pg_assert_same(array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/pg_size_style.js', 'assets/js/style_designer_spacing.js'), $bundles['assets/js/style_designer_spacing.min.js'], 'the modules, then the part');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdPartCall('spacing', 'corners', [host])", $core, 'the core draws the corners through the part');

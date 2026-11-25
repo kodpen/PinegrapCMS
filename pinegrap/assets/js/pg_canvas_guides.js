@@ -129,6 +129,30 @@
         return out;
     }
 
+    // How far the starts of two boxes that face each other are apart
+    // (Measure): side by side (apart along x, sharing height), the tops;
+    // stacked (apart along y, sharing width), the starts on the left. The
+    // line runs between the two starts at the middle of `b` and carries
+    // `guide`, a dashed line along a's start from its facing edge to b's far
+    // edge. Null when the boxes do not face each other, or the starts meet.
+    function offset(a, b, zoom) {
+        a = box(a);
+        b = box(b);
+        if (!a || !b) return null;
+        var axis = null;
+        if (apart('x', a, b) && !apart('y', a, b)) axis = 'x';
+        else if (apart('y', a, b) && !apart('x', a, b)) axis = 'y';
+        if (!axis) return null;
+        var cross = axis === 'x' ? 'y' : 'x';
+        var s = axis === 'x' ? 'left' : 'top', e = axis === 'x' ? 'right' : 'bottom';
+        var cs = axis === 'x' ? 'top' : 'left';
+        if (a[cs] === b[cs]) return null;
+        var after = b[s] >= a[e];
+        var l = line(cross, Math.min(a[cs], b[cs]), Math.max(a[cs], b[cs]), (b[s] + b[e]) / 2, zoom);
+        l.guide = { axis: axis, from: after ? a[e] : a[s], to: after ? b[e] : b[s], at: a[cs] };
+        return l;
+    }
+
     // The four distances from `child` to the inside of `parent` in page
     // pixels by side ({ t, e, b, s }), each with its line. A side where the
     // child sticks out reads negative.
@@ -284,6 +308,7 @@
         COLUMNS: COLUMNS,
         box: box,
         distances: distances,
+        offset: offset,
         inner: inner,
         scale: scale,
         nearestStep: nearestStep,
