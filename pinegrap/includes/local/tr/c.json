@@ -3870,6 +3870,8 @@
     "Continue Button Label": "Devam Et Düğmesi Etiketi",
     "Continue Shopping": "Alışverişe Devam Et",
     "Continue as a Guest": "Misafir Olarak Devam Et",
+    "Continue as a Guest (guest section)": "Misafir Olarak Devam Et (misafir bölümü)",
+    "Continue as a Guest (shown only when the link that brought the visitor allows a guest)": "Misafir Olarak Devam Et (yalnızca ziyaretçiyi getiren bağlantı misafire izin verdiğinde gösterilir)",
     "Continue it or discard it on the installation screen.": "Kurulum ekranında sürdürün ya da silin.",
     "Continue on a design made with this editor. Pages can be added to it from the tab bar.": "Bu editörle yapılmış bir tasarımda devam edin. Sekme çubuğundan sayfa eklenebilir.",
     "Continue page (send_to)": "Devam sayfası (send_to)",

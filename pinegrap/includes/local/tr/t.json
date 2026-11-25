@@ -12583,6 +12583,7 @@
     "the limit of ten tests an hour was reached. Try again in the next hour.": "saatte on deneme sınırına ulaşıldı. Bir sonraki saatte yeniden deneyin.",
     "the link of the GitHub repository {var:1} to a channel was removed": "{var:1} GitHub deposunun bir kanala bağlantısı kaldırıldı",
     "the location database": "konum veritabanı",
+    "the login form ({var:1}): the Login widget draws it": "giriş formu ({var:1}): onu Giriş bileşeni çizer",
     "the mailbox {var:1} stops being read": "{var:1} posta kutusu okunmaz",
     "the mailbox {var:1} was added": "{var:1} e-posta kutusu eklendi",
     "the mailbox {var:1} was changed": "{var:1} e-posta kutusu değiştirildi",
