@@ -20,7 +20,7 @@ priority: 7
 
 ## Which steps add the small effects? (line "small rows", after DO9)
 - DO15 (S) done #11700: Shadow and effect, under "More": Filter (Blur, Brightness, Contrast, Grayscale, Saturate, Sepia, Hue) as sliders, "Background blur" for a glass panel, "Blend" for the element and for its background.
-- DO16 (S) after DO15: Text, under "More": Text shadow, Letter spacing (a heading starts from `--pg-heading-tracking`), Font family from the design's two families, "Limit to n lines", a gradient fill and an outline on text.
+- DO16 (S) done #11720: Text, under "More": Text shadow, Letter spacing (a heading starts from `--pg-heading-tracking`), Font family from the design's two families, "Limit to n lines", a gradient fill and an outline on text.
 - DO17 (S) after DO16: "Cursor" (Pointer, Default, Not allowed) and "Let clicks through" (`pe-none`).
 
 ## Which steps add motion? (line "motion")

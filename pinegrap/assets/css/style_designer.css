@@ -3023,11 +3023,11 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     display: flex; gap: 6px; margin: 6px 0; padding: 6px 8px; border-radius: 7px;
     font-size: 11.5px; line-height: 1.4; color: var(--sd-text-muted); background: var(--sd-raised-bg);
 }
-.sd-tf-more {
+.sd-tf-more, .sd-tx-more {
     display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 4px; padding: 4px 0;
     border: 0; background: none; font-size: 11.5px; font-weight: 600; color: var(--sd-text-muted); cursor: pointer;
 }
-.sd-tf-more:hover { color: var(--sd-text); }
+.sd-tf-more:hover, .sd-tx-more:hover { color: var(--sd-text); }
 .sd-props-results[hidden] { display: none; }
 .sd-props-results {
     flex-shrink: 0; max-height: 264px; overflow-y: auto; padding: 4px;

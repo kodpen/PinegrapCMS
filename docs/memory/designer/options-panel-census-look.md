@@ -22,7 +22,7 @@ description: Options panel census, part 3: gaps to dress and move an element (ho
 - Only through Interactions' start states. Missing: Rotate, Scale, Move X and Y, Skew and Origin on the element, combined with Interactions' own transform (`pgFxBase` keeps the node's). M (composition with pg_fx and per state). Reads none.
 
 ## Text effects?
-- Missing: Text shadow (S, reads `--pg-shadow*` colours or none), Letter spacing (S, reads `--pg-heading-tracking`), Font family per element from the design's two families (S, reads `--pg-font-body`, `--pg-font-heading`), text gradient fill and stroke (S, reads the theme colours), Line clamp to N lines (S, none), Text wrap balance for headings (S, none).
+- Built by DO16 (#11720): Text shadow, Letter spacing (a heading starts from `--pg-heading-tracking`), Font family from `--pg-font-body` / `--pg-font-heading`, "Limit to lines", Gradient fill from theme colours and Outline under the Text section's "More" (`designer-options-text.md`). Still missing: Text wrap balance for headings (S, none).
 
 ## Masks and clip shapes?
 - Missing: Clip shape (circle, ellipse, inset with corners, a few polygons such as slant and arrow) and Mask (a fade to transparent at one edge, a picture as mask) on any element. M (shape editor and canvas preview). Reads `--pg-radius-*` for inset corners.
