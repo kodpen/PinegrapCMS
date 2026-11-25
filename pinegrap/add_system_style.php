@@ -40,7 +40,7 @@ $start = (isset($_GET['start']) && is_string($_GET['start'])) ? $_GET['start'] :
 // a project on another Bootstrap goes into a custom design, with its own
 // files. A link without the answer (an old bookmark, a menu) goes to the
 // question.
-if (!$_POST && ($start === 'import' || $start === 'paste') && !isset($_GET['framework'])) {
+if (!$_POST && ($start === 'import' || $start === 'paste' || $start === 'document') && !isset($_GET['framework'])) {
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_system_styles.php?start=' . $start . ($from_pages ? '&from=pages' : ''));
     exit();
 }
@@ -137,6 +137,7 @@ if (!$_POST) {
         'start_variables' => ($sd_start_vars && $sd_start_vars['model']) ? $sd_start_vars : null,
         'auto_import'    => ($start === 'import'),
         'auto_paste'     => ($start === 'paste'),
+        'start_document' => ($start === 'document'),
         'template'       => $template ? pg_design_template_summary($template) : null,
         // ?folder= from the design chooser: the first page's folder.
         'start_action'   => pg_designer_start_action($user, 0),

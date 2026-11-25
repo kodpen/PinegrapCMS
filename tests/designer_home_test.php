@@ -198,7 +198,7 @@ function test_designer_home_design_picture_is_the_page_edit_opens()
 function test_designer_start_kinds_order()
 {
 	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true));
-	pg_assert_same(array('blank', 'template', 'import', 'paste'), $keys, 'blank, template, ZIP file, pasted markup');
+	pg_assert_same(array('blank', 'template', 'document', 'import', 'paste'), $keys, 'blank, template, from a document, ZIP file, pasted markup');
 	foreach (pg_designer_start_kinds(true) as $k) {
 		pg_assert_true($k['title'] !== '' && $k['line'] !== '' && $k['icon'] !== '', $k['key'] . ': a title, one line and an icon');
 		pg_assert_same(false, $k['disabled'], $k['key'] . ': open while there are templates');

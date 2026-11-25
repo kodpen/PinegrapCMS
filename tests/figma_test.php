@@ -136,7 +136,7 @@ function test_figma_start_in_the_new_design_window()
 	require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 
 	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true, true));
-	pg_assert_same(array('blank', 'template', 'figma', 'import', 'paste'), $keys, 'Figma after Template, as the plan orders the starts');
+	pg_assert_same(array('blank', 'template', 'figma', 'document', 'import', 'paste'), $keys, 'Figma after Template, as the plan orders the starts');
 	pg_assert_false(in_array('figma', array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true)), true), 'not listed until the import is there');
 	pg_assert_same(function_exists('pg_figma_import_start'), pg_designer_figma_start_on(), 'listed once the import exists');
 

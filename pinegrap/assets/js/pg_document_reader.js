@@ -775,6 +775,8 @@
     // own kind first, the other readings of its body (the heading left
     // out), then text, which any words fill. The rows' kind list offers
     // these and nothing else.
+    var fitsMemo = {paragraphs: null, entries: []};
+
     function fits(paragraphs, sec) {
         if (!sec || !Array.isArray(sec.paragraphs)) {
             return [];
@@ -786,7 +788,12 @@
             at[i] = true;
         });
 
-        var body = prepare(paragraphs, []).filter(function (e) {
+        // The paragraphs are prepared once for all the sections of a reading.
+        if (fitsMemo.paragraphs !== paragraphs) {
+            fitsMemo = {paragraphs: paragraphs, entries: prepare(paragraphs, [])};
+        }
+
+        var body = fitsMemo.entries.filter(function (e) {
             return at[e.i];
         });
 
