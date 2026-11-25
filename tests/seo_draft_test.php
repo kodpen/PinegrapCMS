@@ -121,5 +121,5 @@ function test_preview_override_rows_are_shared_by_preview_and_draft()
 	pg_assert_same(array(5, 6), array_keys($rows));
 	pg_assert_same('{"type":"root"}', $rows[5]['tree_json']);
 	pg_assert_same(0, $rows[5]['cfg']['custom_form_page_id'], 'a tab page reads as nothing chosen');
-	pg_assert_same(array('tree_json' => '', 'cfg' => null, 'case' => ''), $rows[6]);
+	pg_assert_same(array('tree_json' => '', 'cfg' => null, 'case' => '', 'record' => 0), $rows[6]);
 }
