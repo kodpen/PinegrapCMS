@@ -23,7 +23,7 @@ module: seo_draft
 - `new`: the draft alone with "This page is not on the site yet. This is the draft alone.", no handle, no Side by side. `same`: the left picture alone, no handle. Under 768 px the window fills the screen and shows the slider alone at phone width.
 
 ## What does the foot say, and what is the Code tab?
-- The count of the reader's rows: "7 changes between the page on the site and the draft." (live against now), else "… between the two versions."; "Nothing has changed.", "The whole page is new.", or the unreadable sentence. The "What changed" list joined to the pictures is CL3.
+- The count of the reader's rows: "7 changes between the page on the site and the draft." (live against now), else "… between the two versions."; "Nothing has changed.", "The whole page is new.", or the unreadable sentence. The list beside the pictures: `designer-compare-what-changed.md`.
 - "Code": the line diff of the two sides' `generateHTML()` markup, drawn when the tab is first shown.
 
 Tests: `tests/designer_compare_look_test.php` (Node).

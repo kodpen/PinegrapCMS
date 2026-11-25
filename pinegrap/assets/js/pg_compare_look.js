@@ -19,6 +19,9 @@
  * - foot(state, count, live): the code of the foot's sentence.
  * - withBase(html, base): a server-drawn page's addresses resolved against
  *   the site.
+ * - icon(), sideOf(), handleFor(), align(), nameOf(), wordsOf(): a row of
+ *   "What changed": its icon, the picture its place is on, the handle's
+ *   place, the two pictures lined up on it, its names and its words.
  *
  * tests/designer_compare_look_test.php runs it in Node.
  *
@@ -170,6 +173,59 @@
         return html.slice(0, at) + tag + html.slice(at);
     }
 
+    // ── "What changed" ──
+    var ICONS = {
+        added: 'bi-plus-circle', removed: 'bi-dash-circle', picture: 'bi-image', words: 'bi-fonts',
+        moved_up: 'bi-arrow-up', moved_down: 'bi-arrow-down', moved_into: 'bi-arrow-return-right',
+        link: 'bi-link-45deg', look: 'bi-palette', other: 'bi-three-dots'
+    };
+
+    function icon(row) {
+        row = row || {};
+        return ICONS[row.code] || ICONS[row.kind] || ICONS.other;
+    }
+
+    // The picture a row's place is on: the draft for an added element, the
+    // page on the site for a removed one, else both.
+    function sideOf(row) {
+        var list = (row && Array.isArray(row.changes)) ? row.changes : [];
+        var one = list.length ? list[0].side : 'both';
+        for (var i = 1; i < list.length; i++) if (list[i].side !== one) return 'both';
+        return (one === 'after' || one === 'before') ? one : 'both';
+    }
+
+    // A place on one side only puts the handle at the end that shows it.
+    function handleFor(side, pos) {
+        if (side === 'after') return 0;
+        if (side === 'before') return 100;
+        return clamp(pos);
+    }
+
+    // The two pictures' shifts that put the element at the same height in
+    // both, and that height; null when neither picture has it.
+    function align(yBefore, yAfter) {
+        var hasB = typeof yBefore === 'number' && isFinite(yBefore);
+        var hasA = typeof yAfter === 'number' && isFinite(yAfter);
+        if (!hasB && !hasA) return null;
+        if (!hasB || !hasA) return { before: 0, after: 0, top: hasB ? yBefore : yAfter };
+        var top = Math.max(yBefore, yAfter);
+        return { before: top - yBefore, after: top - yAfter, top: top };
+    }
+
+    // An element named in an opened row: its kind and its own words.
+    function nameOf(change) {
+        change = change || {};
+        var what = String(change.what || '');
+        return change.words ? what + ' \u201C' + change.words + '\u201D' : what;
+    }
+
+    // The old and new words of a row of one text, null for any other row.
+    function wordsOf(row) {
+        var list = (row && Array.isArray(row.changes)) ? row.changes : [];
+        if (list.length !== 1 || list[0].kind !== 'words') return null;
+        return { before: String(list[0].before || ''), after: String(list[0].after || '') };
+    }
+
     window.PgCompareLook = {
         liveTree: liveTree,
         prefs: prefs,
@@ -184,6 +240,12 @@
         sideValues: sideValues,
         sameSide: sameSide,
         foot: foot,
-        withBase: withBase
+        withBase: withBase,
+        icon: icon,
+        sideOf: sideOf,
+        handleFor: handleFor,
+        align: align,
+        nameOf: nameOf,
+        wordsOf: wordsOf
     };
 })();

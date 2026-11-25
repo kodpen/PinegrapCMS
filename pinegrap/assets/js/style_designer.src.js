@@ -87454,6 +87454,9 @@ const StyleDesigner = (function () {
         // (_design.prototypeShare); a saved draft tab is offered as the
         // link's start page.
         var protoShare = _pgPrototypeShareReady();
+        // Compare with the live page, for a page saved here: nothing is
+        // written, so view mode has it too.
+        var comparable = saved && p.page_id > 0 && !p.pickedPending;
         // The Workspace tasks tied to this page (ws_refs page:<id>), for a
         // page saved here and a person on the team (_design.workspaceTasks).
         var wsTasks = !!(_design && _design.workspaceTasks) && saved && p.page_id > 0 && !p.pickedPending;
@@ -87488,6 +87491,7 @@ const StyleDesigner = (function () {
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
             (protoUrl ? item('prototype', 'bi-play-btn', _sdT('Preview as prototype')) : '') +
+            (comparable ? item('compare', 'bi-arrow-left-right', _sdT('Compare with the live page')) : '') +
             (protoShare ? item('share-prototype', 'bi-share', _sdT('Share prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
@@ -87542,11 +87546,12 @@ const StyleDesigner = (function () {
             if (!b || b.disabled) return;
             var act = b.dataset.act;
             _pgTabsCloseMenu();
-            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
+            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype' && act !== 'compare'
                 && act !== 'share-prototype' && act !== 'ws-tasks' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
+                case 'compare':  _sdCompareOpen({ pageId: p.page_id }); break;
                 case 'share-prototype': _pgPrototypeShareDialog((p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
@@ -90928,13 +90933,16 @@ const StyleDesigner = (function () {
                       : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
             var t = _pgTreeOf(p);
             var hold = (state === 'held') ? _pgExperimentOf(p) : null;
+            var changed = !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null);
             return {
                 key: p.key,
                 name: p.page_name || _sdT('New Page'),
                 state: state,
                 label: (hold && hold.label) || '',
                 note: (hold && hold.hold_text) || '',
-                changed: !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null),
+                changed: changed,
+                // A page on the site that changed can be compared with it.
+                compare: state === 'live' && changed && p.page_id > 0 && !p.pickedPending,
                 locked: p.access === 'locked',
                 home: !!p.page_home,
                 active: p.key === _activeKey
@@ -90974,7 +90982,12 @@ const StyleDesigner = (function () {
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
-            takeOff: function (keys) { _pgSetDraft(keys, true); }
+            takeOff: function (keys) { _pgSetDraft(keys, true); },
+            // Opened over the sheet; closing it gives the sheet back.
+            compare: function (key) {
+                var p = _pgPageByKey(key);
+                if (p && p.page_id > 0) _sdCompareOpen({ pageId: p.page_id });
+            }
         };
         // The Publish check (the part 'publishcheck'): the ticked pages'
         // results and findings, loaded the first time the sheet checks one.
@@ -92053,6 +92066,16 @@ const StyleDesigner = (function () {
                 { id: 'act_publish_page', label: _sdT('Publish this page'), icon: 'bi-rocket-takeoff', action: function () {
                     var a = _pgActivePage();
                     if (a) _pgSetDraft([a.key], false);
+                }});
+        }
+
+        // Compare with the live page, for the open page once it is saved.
+        var cmpPage = _pgActivePage();
+        if (cmpPage && cmpPage.page_id > 0 && !cmpPage.pickedPending) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_compare_live', label: _sdT('Compare with the live page'), icon: 'bi-arrow-left-right', meta: _sdT('Page'), action: function () {
+                    var a = _pgActivePage();
+                    if (a && a.page_id > 0) _sdCompareOpen({ pageId: a.page_id });
                 }});
         }
 

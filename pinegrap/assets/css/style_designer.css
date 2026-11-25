@@ -5585,12 +5585,48 @@ body.sd-resizing * { cursor: col-resize !important; }
     font-size: 13px; line-height: 1; color: #374151;
 }
 .sd-cmp-grip:focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
+/* "What changed": a 300 px column beside the pictures; a chosen row's place
+   is outlined on the window's own layer inside each picture's box. */
+.sd-cmp-main { flex: 1 1 auto; min-height: 0; display: flex; }
+.sd-cmp-main .sd-cmp-stage { flex: 1 1 auto; min-width: 0; }
+.sd-cmp-list { flex: 0 0 300px; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid #2d3648; background: #1a1f2e; }
+.sd-cmp-list-head { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: .8rem; font-weight: 600; color: #e5e7eb; border-bottom: 1px solid #2d3648; }
+.sd-cmp-list-head em { font-style: normal; font-weight: 400; color: #9ca3af; }
+.sd-cmp-rows { flex: 1 1 auto; overflow: auto; padding: 4px 0; }
+.sd-cmp-empty { margin: 0; padding: 12px 14px; font-size: .8rem; color: #9ca3af; }
+.sd-cmp-row.is-on { background: #222a3b; }
+.sd-cmp-row-btn {
+    display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 7px 14px; border: 0; background: transparent;
+    color: #e5e7eb; font-size: .8rem; text-align: left; cursor: pointer;
+}
+.sd-cmp-row-btn:hover { background: rgba(255, 255, 255, .04); }
+.sd-cmp-row-btn:focus-visible, .sd-cmp-names button:focus-visible { outline: 2px solid #60a5fa; outline-offset: -2px; }
+.sd-cmp-row-btn > .bi { flex: 0 0 auto; margin-top: 2px; color: #9ca3af; }
+.sd-cmp-row-text { flex: 1 1 auto; min-width: 0; }
+.sd-cmp-row-text small { display: block; color: #9ca3af; font-size: .74rem; }
+.sd-cmp-chev { flex: 0 0 auto; margin-top: 2px; color: #9ca3af; }
+.sd-cmp-words { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; padding: 0 14px 8px 38px; font-size: .78rem; }
+.sd-cmp-words i { font-style: normal; color: #9ca3af; }
+.sd-cmp-words span { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; color: #e5e7eb; white-space: pre-wrap; }
+.sd-cmp-names { list-style: none; margin: 0; padding: 0 14px 8px 38px; }
+.sd-cmp-names button { border: 0; background: transparent; color: #cbd5e1; font-size: .78rem; padding: 2px 0; text-align: left; cursor: pointer; }
+.sd-cmp-names button.is-current { color: #93c5fd; }
+.sd-cmp-mark { position: absolute; z-index: 1; border: 2px solid #3b82f6; border-radius: 2px; pointer-events: none; }
+.sd-cmp-mark span {
+    position: absolute; left: -2px; bottom: 100%; max-width: 260px; padding: 1px 6px; background: #3b82f6; color: #fff;
+    font-size: 11px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 2px 2px 0 0;
+}
+.sd-cmp-swap[hidden] { display: none; }
+dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; filter: none; contain: none; }
 @media (max-width: 767.98px) {
     .sd-rev-overlay { padding: 0; }
     .sd-rev-overlay .sd-rev-modal { border-radius: 0; }
     .sd-cmp-title { display: none; }
     .sd-cmp-title-short { display: inline; }
     .sd-cmp-choose { max-width: 9rem; }
+    .sd-cmp-list { display: none; flex-basis: auto; border-left: 0; }
+    .sd-cmp-is-list .sd-cmp-list { display: flex; flex: 1 1 auto; }
+    .sd-cmp-is-list .sd-cmp-main .sd-cmp-stage, .sd-cmp-is-list .sd-cmp-line, .sd-cmp-is-list .sd-cmp-note { display: none; }
 }
 
 /* ===================== PANELS READ-ONLY AT CONTENT LEVEL ===================== */
