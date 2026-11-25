@@ -25,7 +25,7 @@ priority: 7
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - PP1 (M) Server: the phone link made, found again and ended; the changed-since address with its bounds; tests for the token kept out of logs and answers. Done: #11541 (`designer/designer-phone-preview-server.md`).
 - PP2 (M) after PP1 and DD11: the window with the QR code, opened from the Preview menu.
-- PP3 (M) after PP1 and DD11: the phone's view: the thin line, redraw after a save, the stop rules.
+- PP3 (M) after PP1 and DD11: the phone's view: the thin line, redraw after a save, the stop rules. Done: #11582 (`designer/designer-phone-preview-phone.md`).
 - PP4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
