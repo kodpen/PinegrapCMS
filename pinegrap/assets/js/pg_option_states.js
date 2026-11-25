@@ -17,6 +17,9 @@
  *   PGOptionStates.clear(text, cls, st)         // the state's rule removed
  *   PGOptionStates.count(map)                   // the rows the map sets
  *   PGOptionStates.sections(text, cls)          // { colors: [states], border: [...], styling: [...] }
+ *   PGOptionStates.transRead(text, cls)         // { what, ms, ease, raw }: the element's transition
+ *   PGOptionStates.transWrite(text, cls, t)     // the new text with transition t ({ what, ms, ease })
+ *   PGOptionStates.transMaybe(text, cls)        // whether the text may hold one (no parse)
  *
  * The declarations carry !important: the Bootstrap utilities they stand in
  * for carry it too, so a state's value wins over Normal's class.
@@ -245,6 +248,136 @@
         return out;
     }
 
+    // ── Transition ──
+    // One value for the element, not a state's: what changes smoothly,
+    // the duration and the easing, as one rule on the custom style class
+    // inside `@media (prefers-reduced-motion: no-preference)`, so a
+    // visitor who asks for less motion gets none, on the site and on the
+    // canvas. Duration and easing follow the look (--pg-duration,
+    // --pg-ease) until chosen.
+    var TRANS_MEDIA = '@media (prefers-reduced-motion: no-preference)';
+    var TRANS_WHAT = {
+        colors: 'color, background-color, border-color',
+        shadow: 'box-shadow',
+        place: 'transform, width, height, inset',
+        all: 'all'
+    };
+    var TRANS_LOOK_MS = 'var(--pg-duration, 0.15s)';
+    var TRANS_LOOK_EASE = 'var(--pg-ease, ease-in-out)';
+    var EASES = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
+    var TRANS_PROPS = ['transition-property', 'transition-duration', 'transition-timing-function'];
+    var MS_MAX = 1000;
+
+    function flat(s) { return String(s || '').replace(/\s+/g, '').toLowerCase(); }
+
+    function transRule(text, cls) {
+        if (!U() || !CLASS_RE.test(cls)) return null;
+        var list = U().parse(String(text || ''));
+        for (var i = 0; i < list.length; i++) {
+            if (flat(list[i].media) === flat(TRANS_MEDIA) && flat(list[i].selector) === '.' + cls) return list[i];
+        }
+        return null;
+    }
+
+    // A duration in ms from '320ms' or '0.32s'; NaN for anything else.
+    function msOf(v) {
+        var m = /^(\d+(?:\.\d+)?|\.\d+)(ms|s)$/i.exec(String(v || '').trim());
+        if (!m) return NaN;
+        return Math.round(Number(m[1]) * (m[2].toLowerCase() === 's' ? 1000 : 1));
+    }
+
+    // { what, ms, ease, raw }: what is a TRANS_WHAT key, 'custom' for a
+    // property list no row writes (raw holds it), '' for none; ms a number
+    // or '' while it follows the look; ease an easing, '' for the look's.
+    function transRead(text, cls) {
+        var out = { what: '', ms: '', ease: '', raw: '' };
+        var rule = transRule(text, cls);
+        if (!rule) return out;
+        var map = {};
+        rule.decls.forEach(function (d) { map[d.name.toLowerCase()] = d.value.trim(); });
+        var prop = map['transition-property'];
+        if (!prop) return out;
+        Object.keys(TRANS_WHAT).forEach(function (k) {
+            if (flat(TRANS_WHAT[k]) === flat(prop)) out.what = k;
+        });
+        if (!out.what) { out.what = 'custom'; out.raw = prop; }
+        var ms = msOf(map['transition-duration']);
+        if (!isNaN(ms)) out.ms = ms;
+        var ease = String(map['transition-timing-function'] || '').trim();
+        if (ease && !/^var\(\s*--pg-ease\b/.test(ease)) out.ease = ease;
+        return out;
+    }
+
+    // A duration as written: a whole number of ms from 0 to 1,000 typed
+    // or dragged; '' (or anything else) follows the look.
+    function msClean(v) {
+        if (v === '' || v === null || v === undefined) return '';
+        var n = Math.round(Number(v));
+        if (!isFinite(n) || n < 0) return '';
+        return Math.min(n, MS_MAX);
+    }
+
+    // The text with the element's transition set to `t` ({ what, ms, ease };
+    // what '' takes the transition out). A declaration the rows do not
+    // write stays in the rule; an @media block left empty goes.
+    function transWrite(text, cls, t) {
+        text = String(text || '');
+        if (!U() || !CLASS_RE.test(cls)) return text;
+        t = t || {};
+        var rule = transRule(text, cls);
+        var was = transRead(text, cls);
+        // 'custom' keeps the property list no row writes; a curve no row
+        // offers stays while it is the one already written.
+        var prop = t.what === 'custom' ? was.raw : (TRANS_WHAT[t.what] || '');
+        if (t.what && !prop) return text;
+        var keep = [];
+        if (rule) {
+            rule.decls.forEach(function (d) {
+                if (TRANS_PROPS.indexOf(d.name.toLowerCase()) === -1) keep.push([d.name, d.value]);
+            });
+        }
+        if (!prop) {
+            if (!rule) return text;
+            if (keep.length) return text.slice(0, rule.bodyFrom) + transBody(keep) + text.slice(rule.bodyTo);
+            return dropBlock(text, rule);
+        }
+        var ms = msClean(t.ms);
+        var ease = (EASES.indexOf(t.ease) !== -1 || (t.ease && t.ease === was.ease)) ? t.ease : '';
+        keep = [
+            ['transition-property', prop],
+            ['transition-duration', ms === '' ? TRANS_LOOK_MS : ms + 'ms'],
+            ['transition-timing-function', ease || TRANS_LOOK_EASE]
+        ].concat(keep);
+        if (rule) return text.slice(0, rule.bodyFrom) + transBody(keep) + text.slice(rule.bodyTo);
+        var kept = text.replace(/\s+$/, '');
+        return (kept ? kept + '\n\n' : '') + TRANS_MEDIA + ' {\n  .' + cls + ' {' + transBody(keep) + '}\n}\n';
+    }
+
+    function transBody(list) {
+        return '\n' + list.map(function (d) { return '    ' + d[0] + ': ' + d[1] + ';'; }).join('\n') + '\n  ';
+    }
+
+    // The rule out, with its @media block when nothing else stands in it.
+    function dropBlock(text, rule) {
+        var at = text.lastIndexOf('@', rule.from);
+        var open = at === -1 ? -1 : text.indexOf('{', at);
+        var close = text.indexOf('}', rule.to);
+        if (open !== -1 && open < rule.from && close !== -1 &&
+            !text.slice(open + 1, rule.from).trim() && !text.slice(rule.to, close).trim() &&
+            flat(text.slice(at, open)) === flat(TRANS_MEDIA)) {
+            text = U().removeRule(text, { from: at, to: close + 1 });
+        } else {
+            text = U().removeRule(text, rule);
+        }
+        return text.replace(/\n{2,}$/, '\n');
+    }
+
+    // Whether the text may hold a transition for cls: a look, no parse.
+    function transMaybe(text, cls) {
+        text = String(text || '');
+        return !!cls && text.indexOf('prefers-reduced-motion') !== -1 && text.indexOf('.' + cls) !== -1;
+    }
+
     var api = {
         STATES: STATES,
         PSEUDO: PSEUDO,
@@ -256,7 +389,12 @@
         write: write,
         clear: clear,
         count: count,
-        sections: sections
+        sections: sections,
+        EASES: EASES,
+        TRANS_WHAT: TRANS_WHAT,
+        transRead: transRead,
+        transWrite: transWrite,
+        transMaybe: transMaybe
     };
 
     root.PGOptionStates = api;

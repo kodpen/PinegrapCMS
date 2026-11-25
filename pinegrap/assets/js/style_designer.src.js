@@ -25964,6 +25964,106 @@ const StyleDesigner = (function () {
         return api.review(_sdStateHost());
     }
 
+    // ── Options: the element's Transition (Shadow and effect) ──
+    // "Transition", "Duration" and "Easing" under the sub-head "Transition":
+    // one value for the element, the same in every state, written by the
+    // part 'states' (PGOptionStates.transWrite()) as a rule on the
+    // element's custom style class inside @media (prefers-reduced-motion:
+    // no-preference), so nothing moves for a visitor who asks for less
+    // motion. Nothing is parsed or loaded while the User Styles hold no
+    // such rule for the element; one that does loads the part to read it.
+    var _sdTransLoading = false;
+    var _SD_TRANS_NONE = { what: '', ms: '', ease: '', raw: '' };
+
+    function _sdTransOf(node) {
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('prefers-reduced-motion') === -1 || text.indexOf('.' + cls) === -1) return _SD_TRANS_NONE;
+        if (_sdPartLoaded('states') && window.PGOptionStates) return window.PGOptionStates.transRead(text, cls);
+        if (!_sdTransLoading) {
+            _sdTransLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTransLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTransLoading = false; _sdPartFailed(); });
+        }
+        return _SD_TRANS_NONE;
+    }
+
+    // The look's duration in ms (--pg-duration on the canvas), 150 without one.
+    function _sdTransLookMs() {
+        var v = '';
+        try { v = canvasDoc.defaultView.getComputedStyle(canvasDoc.documentElement).getPropertyValue('--pg-duration').trim(); } catch (e) {}
+        var m = /^(\d*\.?\d+)(ms|s)$/i.exec(v);
+        return m ? Math.round(Number(m[1]) * (m[2].toLowerCase() === 's' ? 1000 : 1)) : 150;
+    }
+
+    function _sdTransRowsHtml(node) {
+        var t = _sdTransOf(node);
+        var list = function (key, opts, val) {
+            return '<select class="form-control form-control-sm" data-sd-trans="' + key + '">' + opts.map(function (o) {
+                return '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            }).join('') + '</select>';
+        };
+        var whats = [['', _sdT('None')], ['colors', _sdT('Colours')], ['shadow', _sdT('Shadow')], ['place', _sdT('Size and place')], ['all', _sdT('All')]];
+        if (t.what === 'custom') whats.push(['custom', t.raw]);
+        var h = '<div class="sd-trans" data-sd-trans-box>' +
+            '<div class="sd-trans-sub">' + esc(_sdT('Transition')) + '<em class="sd-trans-all">' + esc(_sdT('every state')) + '</em></div>' +
+            row(_sdT('Transition'), list('what', whats, t.what));
+        if (t.what) {
+            var look = _sdTransLookMs();
+            var ms = t.ms === '' ? look : t.ms;
+            h += row(_sdT('Duration'), '<div class="sd-trans-ms' + (t.ms === '' ? ' sd-trans-inh' : '') + '">' +
+                '<input type="range" class="form-range-input" min="0" max="1000" step="10" value="' + Math.min(ms, 1000) + '" data-sd-trans="ms-range" aria-label="' + esc(_sdT('Duration')) + '">' +
+                '<div class="input-group input-group-sm"><input type="number" class="form-control form-control-sm" min="0" max="1000" step="10" data-sd-trans="ms" value="' + (t.ms === '' ? '' : t.ms) + '" placeholder="' + look + '">' +
+                '<span class="input-group-text">ms</span></div></div>');
+            var eases = [['', _sdT('Default')], ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
+                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]];
+            if (t.ease && !eases.some(function (e) { return e[0] === t.ease; })) eases.push([t.ease, t.ease]);
+            h += row(_sdT('Easing'), list('ease', eases, t.ease));
+        }
+        return h + '</div>';
+    }
+
+    // One row's value written: 'what' ('' takes the transition out), 'ms'
+    // ('' follows the look) or 'ease'. One undo step (_sdStateWrite()).
+    function _sdTransSet(key, value) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) {
+                var t = S.transRead(text, cls);
+                t[key] = value;
+                return S.transWrite(text, cls, t);
+            });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // Once per panel, the first time it draws the rows: the slider shows
+    // its number while dragged and writes when let go.
+    function _sdTransBind(panel) {
+        if (!panel || panel._sdTrans || !panel.querySelector('[data-sd-trans-box]')) return;
+        panel._sdTrans = true;
+        panel.addEventListener('input', function (e) {
+            var t = e.target;
+            if (!t || !t.getAttribute || t.getAttribute('data-sd-trans') !== 'ms-range') return;
+            var box = t.closest('.sd-trans-ms');
+            var num = box ? box.querySelector('[data-sd-trans="ms"]') : null;
+            if (num) num.value = t.value;
+            if (box) box.classList.remove('sd-trans-inh');
+        });
+        panel.addEventListener('change', function (e) {
+            var t = e.target;
+            var k = t && t.getAttribute ? t.getAttribute('data-sd-trans') : null;
+            if (!k) return;
+            _sdTransSet(k === 'ms-range' ? 'ms' : k, t.value);
+        });
+    }
+
     // ── "Only what I changed": the core's hooks ──
     // The switch under the Options panel counts the rows of the element
     // changed in its tabs. Switched on, the panel is drawn with every tab
@@ -37278,6 +37378,7 @@ const StyleDesigner = (function () {
         _sdFocusBind(selectedNode);
         markModifiedProps();
         _sdStateAfter(panel);
+        _sdTransBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -58544,7 +58645,9 @@ const StyleDesigner = (function () {
             row(_sdT('Placeholder'), sw('placeholderMode', !!p.placeholderMode)) +
             row(_sdT('Animation'),   sel('placeholderAnim', [['',_sdT('None')],['glow',_sdT('Glow')],['wave',_sdT('Wave')]], p.placeholderAnim || '')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)),
+            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)) +
+            // The element's Transition, one value in every state.
+            (n === selectedNode && _sdStateNode() ? _sdTransRowsHtml(n) : ''),
             _sdT('Styling')
         );
 
@@ -66092,6 +66195,16 @@ const StyleDesigner = (function () {
             }
         });
 
+        // 14. The element's Transition (_sdTransRowsHtml()): the list once
+        //     chosen, Duration and Easing once they leave the look.
+        root.querySelectorAll('[data-sd-trans="what"], [data-sd-trans="ms"], [data-sd-trans="ease"]').forEach(function (el) {
+            var r = el.closest('.sd-prop-row');
+            var lbl = r ? r.querySelector('.sd-prop-label') : null;
+            if (!lbl || el.value === '') return;
+            lbl.classList.add('sd-prop-modified');
+            lbl.dataset.resetKind = 'trans';
+        });
+
         if (!live) return;
 
         // Under 300 px the rows that would not fit beside their label stand
@@ -66144,6 +66257,13 @@ const StyleDesigner = (function () {
 
         // A state's value: the row back to Normal's (_sdStateRowReset()).
         if (kind === 'state') { _sdStateRowReset(propRow); return; }
+        // A Transition row: the list takes the transition out, Duration and
+        // Easing go back to the look.
+        if (kind === 'trans') {
+            var _tc = propRow.querySelector('[data-sd-trans="what"], [data-sd-trans="ms"], [data-sd-trans="ease"]');
+            if (_tc) _sdTransSet(_tc.getAttribute('data-sd-trans'), '');
+            return;
+        }
 
         if (kind === 'bg-color-all') {
             if (!selectedNode) return;

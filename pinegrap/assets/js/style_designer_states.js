@@ -6,8 +6,8 @@
  * background, Border and corner and Shadow and effect show and write the
  * state's rule on the element's custom style class in User Styles
  * (window.PGOptionStates); Text, Spacing and Size and display stay closed
- * and dimmed, the same in every state. The canvas shows the state on the
- * selected element. On Normal it rings the section heads a state changes.
+ * and dimmed, the same in every state; Transition stays open, one value
+ * for every state. The canvas shows the state on the selected element. On Normal it rings the section heads a state changes.
  * Not needed to open a page: the core runs this file the first time a
  * state is chosen or an element holding a state's rule is shown
  * (_sdPartLoad(), pg_designer_parts()) and hands it the panel through a
@@ -169,6 +169,9 @@ StyleDesigner.definePart('states', function (K) {
             card.querySelectorAll('.sd-bg-img-grp, #sd-bcp-row').forEach(dimRow);
             card.querySelectorAll('.sd-prop-row').forEach(function (r) {
                 if (r.closest('.sd-state-off')) return;
+                // Transition is one value for every state: open, its changed
+                // dot on Normal only (the sub-head's mark says so, CSS).
+                if (r.closest('[data-sd-trans-box]')) { unmark(r); return; }
                 var c = ctrlOf(r);
                 if (!writable(c)) { dimRow(r); return; }
                 var lbl = r.querySelector('.sd-prop-label');
