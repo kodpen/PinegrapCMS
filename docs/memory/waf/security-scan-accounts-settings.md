@@ -5,7 +5,7 @@ module: security_scan_accounts
 ---
 
 ## Where are they?
-- `includes/fn/security_scan_accounts.php`; tests `tests/security_scan_accounts_test.php`. Model: `security-scan-findings.md`. Plan: `plans/security-scan.md` SC6.
+- `includes/fn/security_scan_accounts.php`; tests `tests/security_scan_accounts_test.php`. Model: `security-scan-findings.md`. Overview: `security-scan-overview.md`.
 - `pg_security_accounts_scan($now)` reads the rows and the server and returns every sighting; the rules themselves are pure (`pg_security_accounts_sightings()`, `pg_security_settings_sightings($env)`).
 
 ## Which rules, places and severities?

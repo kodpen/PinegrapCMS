@@ -11,4 +11,4 @@ description: Decisions list, schema part 51 (2026-11-24 on): the table security_
 - `security_finding`, one row a finding: `id`; `kind` VARCHAR(40) ascii (the rule); `place` VARCHAR(500) (a path, or a record's type and id); `fingerprint` CHAR(40) ascii, unique (rule and place, so a second scan updates the row); `severity` TINYINT; `state` TINYINT (open, quarantined, ignored, gone); `detail` TEXT; `note` VARCHAR(255); `acted_by`; `first_seen`, `last_seen`, `acted_at` as Unix seconds.
 - Keys: PRIMARY KEY (`id`), UNIQUE (`fingerprint`), `idx_state` (`state`, `severity`).
 - No person's data: a finding about an account holds the user id only, so the table is not on the privacy lists. Rows in state gone are removed after 90 days.
-- The last run (time, counts, where a cut scan resumes) is one `config_text` row, no column. The step (SC1 of `plans/security-scan.md`) brings any change of these columns to the architect before it is marked ready.
+- The last run (time, counts, where a cut scan resumes) is one `config_text` row, no column. A change of these columns goes to the architect first (`waf/security-scan-overview.md`).
