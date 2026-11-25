@@ -1,6 +1,6 @@
 ---
 name: designer-phone-preview-drawing
-description: The drawing of "Preview on a phone" (plans/designer-phone-preview.md, PP2 and PP3): the sheet, its six boards, which step builds which, what is new
+description: The drawing of "Preview on a phone" (steps PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 ---
 
 ## Where is the drawing?
