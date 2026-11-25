@@ -24,5 +24,6 @@ description: Canvas guides on the designer canvas (CG1 #11517 to CG5 #11623): wh
 
 ## How is the code split?
 - Two designer parts loaded on first use (`pg_designer_parts()`): `bands` (`style_designer_bands.min.js`: `pg_canvas_bands.js`, `pg_designer_tour.js`, the part) on the first selection, with the column handles and equal gaps; `guides` (`style_designer_guides.min.js`: `pg_canvas_guides.js`, the part) on the first Alt or Shift+G, with Measure and the layout lines. The core `style_designer.src.js` only calls them.
+- Core sections in `style_designer.src.js`: `// ── Spacing bands` (`_sdBandsDraw()`, `_sdBandsCol()`), `// ── Canvas guides: Measure` (`_sdGuidesSync()`), `// ── Canvas guides: the switch and the layout lines` (`_sdGuidesOff()`, `_sdLinesKey()`).
 - They stay two parts so the first selection does not load Measure's code; a source sits in one bundle only, so `pg_canvas_bands.js` keeps its own scale and column maths (`designer-canvas-guides-columns.md`).
 - Tests: `tests/designer_canvas_guides_test.php`, `tests/designer_canvas_bands_test.php`, `tests/designer_guides_part_test.php`, `tests/designer_canvas_bar_test.php`.
