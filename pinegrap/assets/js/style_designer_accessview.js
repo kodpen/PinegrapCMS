@@ -9,6 +9,9 @@
  * no name). What is counted and named comes from window.PGA11yReader
  * (assets/js/pg_a11y_reader.js, the first file of this part); a fault is
  * named with the accessibility audit's own sentence for its rule.
+ * "See as" lays a sight filter (red-, green-, blue-weak, no colour,
+ * blurred) on the canvas frame while a pill at the canvas's foot says so;
+ * it is style on the editor's <iframe> only and is never kept.
  *
  * The card and the marks live in layers of the editor's own over the canvas
  * frame, never in the canvas's page, so nothing enters the tree, the saved
@@ -34,6 +37,9 @@ StyleDesigner.definePart('accessview', function (K) {
 
     // The kinds of mark, in the card's order.
     var KINDS = ['order', 'headings', 'names'];
+
+    // The sight filters of "See as", in the menu's order; '' is Off.
+    var SEES = ['', 'red', 'green', 'blue', 'grey', 'blur'];
 
     // How long the hand rests after a change before the page is read again.
     var REST_MS = 300;
@@ -165,6 +171,55 @@ StyleDesigner.definePart('accessview', function (K) {
         if (role === 'navigation') return 'above';
         if (role === 'main') return 'right';
         return 'left';
+    }
+
+    // A sight filter's name in the "See as" menu and select.
+    function _avSeeName(see) {
+        switch (see) {
+            case 'red': return _sdT('Red-weak');
+            case 'green': return _sdT('Green-weak');
+            case 'blue': return _sdT('Blue-weak');
+            case 'grey': return _sdT('No colour');
+            case 'blur': return _sdT('Blurred');
+        }
+        return _sdT('Off');
+    }
+
+    // How many people see so, for the two common ones (in grey in the menu).
+    function _avSeeShare(see) {
+        if (see === 'red') return _sdT('1 in 100');
+        if (see === 'green') return _sdT('5 in 100');
+        return '';
+    }
+
+    // The pill at the canvas's foot while a filter is on.
+    function _avSeePill(see) {
+        switch (see) {
+            case 'red': return _sdT('Seen as: red-weak');
+            case 'green': return _sdT('Seen as: green-weak');
+            case 'blue': return _sdT('Seen as: blue-weak');
+            case 'grey': return _sdT('Seen as: no colour');
+            case 'blur': return _sdT('Seen as: blurred');
+        }
+        return '';
+    }
+
+    // The colour matrix of a colour-weak eye (feColorMatrix values, sRGB),
+    // or '' for a filter that needs none.
+    function _avSeeMatrix(see) {
+        if (see === 'red') return '0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0';
+        if (see === 'green') return '0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0';
+        if (see === 'blue') return '0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0';
+        return '';
+    }
+
+    // The CSS filter laid on the canvas frame: a matrix of the editor's own
+    // SVG, a grey scale or a blur; '' for Off or an unknown value.
+    function _avSeeFilter(see) {
+        if (_avSeeMatrix(see)) return 'url(#sd-av-see-' + see + ')';
+        if (see === 'grey') return 'grayscale(1)';
+        if (see === 'blur') return 'blur(1.6px)';
+        return '';
     }
 
     // ── Reading the canvas ──────────────────────────────────────────────
@@ -344,6 +399,7 @@ StyleDesigner.definePart('accessview', function (K) {
         if (!v || !V.r || !V.kind) {
             layer.hidden = true;
             placeCard(v);
+            placePill(v);
             return;
         }
         if (layer.parentNode !== v.host) v.host.appendChild(layer);
@@ -359,6 +415,7 @@ StyleDesigner.definePart('accessview', function (K) {
         out.forEach(function (n) { layer.appendChild(n); });
         layer.hidden = false;
         placeCard(v);
+        placePill(v);
         if (V.pop) placePop();
     }
 
@@ -384,7 +441,9 @@ StyleDesigner.definePart('accessview', function (K) {
         if (narrow()) {
             var sel = '<select class="sd-av-sel" data-av="kind" aria-label="' + esc(_sdT('Marks')) + '"><option value="">' + esc(_sdT('No marks')) + '</option>' +
                 KINDS.map(function (k) { return '<option value="' + k + '"' + (k === kind ? ' selected' : '') + '>' + esc(_avKindName(k)) + '</option>'; }).join('') + '</select>';
-            return '<span class="bi bi-universal-access sd-av-ic" aria-hidden="true"></span>' + sel + '<span class="sd-av-sp"></span>' +
+            var see = '<select class="sd-av-sel" data-av="see" aria-label="' + esc(_sdT('See as')) + '">' +
+                SEES.map(function (k) { return '<option value="' + k + '"' + (k === V.see ? ' selected' : '') + '>' + esc(_avSeeName(k)) + '</option>'; }).join('') + '</select>';
+            return '<span class="bi bi-universal-access sd-av-ic" aria-hidden="true"></span>' + sel + see + '<span class="sd-av-sp"></span>' +
                 (r && kind ? chip(_avSummary(kind, r).marked) : '') + close;
         }
         var h = '<div class="sd-av-head"><span class="bi bi-universal-access sd-av-ic" aria-hidden="true"></span><span class="sd-av-title">' + esc(_sdT('Accessibility view')) +
@@ -399,7 +458,9 @@ StyleDesigner.definePart('accessview', function (K) {
                 '<span class="sd-av-rd" aria-hidden="true"></span><span class="sd-av-name">' + esc(_avKindName(k)) + '</span>' +
                 (s ? '<small>' + s.count + '</small>' + chip(s.marked) : '') + '</button>';
         });
-        h += '</div>';
+        h += '</div><div class="sd-av-rows sd-av-see"><div class="sd-av-row"><span class="bi bi-eye sd-av-eye" aria-hidden="true"></span><span class="sd-av-name">' + esc(_sdT('See as')) + '</span>' +
+            '<button type="button" class="sd-av-seeb" data-av="see-menu" aria-haspopup="menu" aria-expanded="' + (V.menu ? 'true' : 'false') + '" aria-label="' + esc(_sdT('See as') + ': ' + _avSeeName(V.see)) + '">' +
+            esc(_avSeeName(V.see)) + '<span class="bi bi-chevron-down" aria-hidden="true"></span></button></div></div>';
         if (!r || !kind) return h;
         var sum = _avSummary(kind, r);
         if (kind === 'headings' && r.headings.length) {
@@ -449,6 +510,138 @@ StyleDesigner.definePart('accessview', function (K) {
         c.style.left = narrow() ? px(v.left) : '';
     }
 
+    // ── "See as": the canvas's page through a filter ────────────────────
+
+    // The editor's SVG of the colour matrices, in the editor's document
+    // (a filter on the canvas frame finds it there), made on first use.
+    function seeDefs() {
+        if (document.getElementById('sd-av-see-defs')) return;
+        var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        s.setAttribute('id', 'sd-av-see-defs');
+        s.setAttribute('width', '0');
+        s.setAttribute('height', '0');
+        s.setAttribute('aria-hidden', 'true');
+        s.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+        s.innerHTML = '<defs>' + SEES.filter(_avSeeMatrix).map(function (k) {
+            return '<filter id="sd-av-see-' + k + '" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="' + _avSeeMatrix(k) + '"/></filter>';
+        }).join('') + '</defs>';
+        document.body.appendChild(s);
+    }
+
+    // Lays the chosen filter on the canvas frame: style on the editor's
+    // <iframe> only, so the page, its tree and the saved design are never
+    // touched, and the frame, the marks, the card and the panels keep their
+    // colours.
+    function applySee() {
+        var win = V.doc.defaultView;
+        var frame = win ? win.frameElement : null;
+        if (V.seeFrame && V.seeFrame !== frame) V.seeFrame.style.filter = '';
+        V.seeFrame = frame;
+        var f = _avSeeFilter(V.see);
+        if (f && _avSeeMatrix(V.see)) seeDefs();
+        if (frame) frame.style.filter = f;
+        placePill(view(V.doc));
+    }
+
+    function setSee(see) {
+        V.see = SEES.indexOf(see) === -1 ? '' : see;
+        closeMenu(false);
+        applySee();
+        drawCard();
+    }
+
+    // The pill at the foot of the canvas while a filter is on, over the
+    // narrow bar when there is one.
+    function placePill(v) {
+        if (!V.see || !v) {
+            if (V.pill && V.pill.parentNode) V.pill.parentNode.removeChild(V.pill);
+            return;
+        }
+        if (!V.pill) {
+            V.pill = document.createElement('div');
+            V.pill.className = 'sd-av-pill';
+            V.pill.setAttribute('role', 'status');
+            V.pill.addEventListener('click', function (e) {
+                if (e.target.closest('[data-av="see-off"]')) setSee('');
+            });
+        }
+        var text = _avSeePill(V.see);
+        if (V.pill._avSee !== V.see) {
+            V.pill._avSee = V.see;
+            V.pill.innerHTML = '<span>' + esc(text) + '</span><button type="button" data-av="see-off">' + esc(_sdT('Turn off')) + '</button>';
+        }
+        if (V.pill.parentNode !== v.host) v.host.appendChild(V.pill);
+        V.pill.style.left = px(v.left + v.width / 2);
+        V.pill.style.bottom = px(v.areaBottom + (narrow() ? 54 : 18));
+    }
+
+    // The menu of the card's "See as": a check on the chosen filter, how
+    // many people see so in grey. It stands above its button, outside the
+    // card, whose corners clip.
+    function openMenu() {
+        closeMenu(false);
+        var b = V.card && V.card.querySelector('[data-av="see-menu"]');
+        var v = view(V.doc);
+        if (!b || !v) return;
+        var m = document.createElement('div');
+        m.className = 'sd-av-menu';
+        m.setAttribute('role', 'menu');
+        m.setAttribute('aria-label', _sdT('See as'));
+        m.innerHTML = SEES.map(function (k) {
+            var share = _avSeeShare(k);
+            return '<button type="button" role="menuitemradio" aria-checked="' + (k === V.see ? 'true' : 'false') + '" data-see="' + k + '">' +
+                '<span class="bi' + (k === V.see ? ' bi-check-lg' : '') + '" aria-hidden="true"></span><span>' + esc(_avSeeName(k)) + '</span>' +
+                (share ? '<small>' + esc(share) + '</small>' : '') + '</button>';
+        }).join('');
+        m.addEventListener('click', function (e) {
+            var it = e.target.closest('[data-see]');
+            if (it) { setSee(it.getAttribute('data-see')); focusSeeButton(); }
+        });
+        m.addEventListener('keydown', onMenuKey);
+        v.host.appendChild(m);
+        var hr = v.host.getBoundingClientRect();
+        var br = b.getBoundingClientRect();
+        m.style.right = px(hr.right - br.right);
+        m.style.bottom = px(hr.bottom - br.top + 4);
+        V.menu = m;
+        b.setAttribute('aria-expanded', 'true');
+        var on = m.querySelector('[aria-checked="true"]') || m.querySelector('button');
+        if (on) on.focus();
+    }
+
+    function closeMenu(focusBack) {
+        if (!V || !V.menu) return;
+        if (V.menu.parentNode) V.menu.parentNode.removeChild(V.menu);
+        V.menu = null;
+        var b = V.card && V.card.querySelector('[data-av="see-menu"]');
+        if (b) b.setAttribute('aria-expanded', 'false');
+        if (focusBack) focusSeeButton();
+    }
+
+    function focusSeeButton() {
+        var b = V && V.card && V.card.querySelector('[data-av="see-menu"]');
+        if (b) b.focus();
+    }
+
+    function onMenuKey(e) {
+        var items = Array.prototype.slice.call(V.menu.querySelectorAll('[data-see]'));
+        var i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            var n = items.length;
+            items[(i + (e.key === 'ArrowDown' ? 1 : n - 1) + n) % n].focus();
+        } else if (e.key === 'Home' || e.key === 'End') {
+            e.preventDefault();
+            items[e.key === 'Home' ? 0 : items.length - 1].focus();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMenu(true);
+        } else if (e.key === 'Tab') {
+            closeMenu(false);
+        }
+    }
+
     function setKind(kind) {
         V.kind = (kind === V.kind) ? '' : kind;
         V.host.keep({ kind: V.kind });
@@ -462,6 +655,7 @@ StyleDesigner.definePart('accessview', function (K) {
         if (!b || b.tagName === 'SELECT') return;
         var what = b.getAttribute('data-av');
         if (what === 'off') V.host.off();
+        else if (what === 'see-menu') { if (V.menu) closeMenu(true); else openMenu(); }
         else if (what === 'fold') {
             V.host.keep({ fold: !V.host.state.fold });
             drawCard();
@@ -473,6 +667,7 @@ StyleDesigner.definePart('accessview', function (K) {
     }
 
     function onCardChange(e) {
+        if (e.target.getAttribute('data-av') === 'see') { setSee(e.target.value); return; }
         if (e.target.getAttribute('data-av') !== 'kind') return;
         var k = e.target.value;
         V.kind = KINDS.indexOf(k) === -1 ? '' : k;
@@ -583,6 +778,7 @@ StyleDesigner.definePart('accessview', function (K) {
     }
 
     function onDown(e) {
+        if (V && V.menu && !V.menu.contains(e.target) && !e.target.closest('[data-av="see-menu"]')) closeMenu(false);
         if (V && V.pop && !V.pop.contains(e.target) && !(V.layer && V.layer.contains(e.target))) closePop();
     }
 
@@ -631,7 +827,7 @@ StyleDesigner.definePart('accessview', function (K) {
     function onResize() {
         if (!V) return;
         var n = narrow();
-        if (n !== V.narrow) { V.narrow = n; drawCard(); }
+        if (n !== V.narrow) { V.narrow = n; closeMenu(false); drawCard(); }
         soon();
     }
 
@@ -645,10 +841,14 @@ StyleDesigner.definePart('accessview', function (K) {
             rest();
             return;
         }
+        // A new canvas document (another page) keeps the filter; turning the
+        // view off, or a reload, ends it: "See as" is never kept.
+        var see = V ? V.see : '';
         hide();
         var kind = host.state.kind;
-        V = { host: host, doc: host.doc, kind: KINDS.indexOf(kind) === -1 ? '' : kind, r: null, named: null, narrow: narrow(), layer: null, card: null, tip: null, pop: null, popRef: null, tipFor: null, frame: 0, rest: 0, mo: null };
+        V = { host: host, doc: host.doc, kind: KINDS.indexOf(kind) === -1 ? '' : kind, see: see, seeFrame: null, r: null, named: null, narrow: narrow(), layer: null, card: null, tip: null, pop: null, popRef: null, menu: null, pill: null, tipFor: null, frame: 0, rest: 0, mo: null };
         listen(true);
+        if (see) applySee();
         refresh();
     }
 
@@ -658,7 +858,10 @@ StyleDesigner.definePart('accessview', function (K) {
         clearTimeout(V.rest);
         if (V.frame) cancelAnimationFrame(V.frame);
         closePop();
-        [V.layer, V.card, V.tip].forEach(function (n) { if (n && n.parentNode) n.parentNode.removeChild(n); });
+        closeMenu(false);
+        if (V.seeFrame) V.seeFrame.style.filter = '';
+        var defs = document.getElementById('sd-av-see-defs');
+        [V.layer, V.card, V.tip, V.pill, defs].forEach(function (n) { if (n && n.parentNode) n.parentNode.removeChild(n); });
         V = null;
     }
 

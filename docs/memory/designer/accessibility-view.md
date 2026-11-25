@@ -1,6 +1,6 @@
 ---
 name: accessibility-view
-description: The designer's Accessibility view as built (AV2, #11657): the View menu switch, the part accessview, the card, the tab order, heading and name marks, the fault's card
+description: The designer's Accessibility view as built (AV2 #11657, AV3): the View menu switch, the part accessview, the card, the tab order, heading and name marks, the fault's card
 ---
 
 ## Where is it turned on?
@@ -16,7 +16,7 @@ description: The designer's Accessibility view as built (AV2, #11657): the View 
 - Three rows Tab order, Headings, Names: one choice; pressing the chosen one again clears the marks. Each row: the count and, in amber with the warning icon, the marked places.
 - Counts: Tab order = stops, marked = steps that jump back (`jumps()` on the measured boxes); Headings = headings, marked = the first skip only; Names = regions + pictures, marked = pictures without text + controls without a name.
 - Foot: "15 stops. One step jumps back on the page.", "5 regions, 4 pictures. 3 places have no name.", or the nothing-found sentence; Headings shows the outline instead (a row per heading, indented by level, scrolls past eight rows; a row chooses its heading and scrolls the canvas to it).
-- Under 768 px (window width) the card is a bar at the canvas's foot: the kind as a select, the marked count, close.
+- Under 768 px (window width) the card is a bar at the canvas's foot: the kind and "See as" as two selects, the marked count, close.
 
 ## How are the marks drawn?
 - In `.sd-av-layer`, an editor layer over the visible frame (the same geometry as the guides part); fuchsia `#c026d3`, amber `#f59e0b` dashed with the warning icon for what is marked.
@@ -25,7 +25,7 @@ description: The designer's Accessibility view as built (AV2, #11657): the View 
 - Names: dashed region outlines tagged "Navigation “Main menu”" (above), "Main" (inside top right), others inside top left; picture chips (text in quotes, italic "decoration", amber "no text"); amber "Button · no name", "Link · no name", "Field · no label", "Frame · no title" under the control; a named control's name as a tip under the pointer.
 - A mark's click chooses the element (`_sdFindNodeForEl()` on the nearest `data-sd-id`). An amber mark also opens the fault's card: the audit's sentence (`pg_a11y_issue_label()`, the same English in `_avFaultSentence()`) and "Show in the audit" (opens the audit panel at its Accessibility section). No "Fix": the audit has none for the six rules the reader raises.
 
-## What is not in it yet?
-- "See as" (AV3, board V5) and its select in the card and the narrow bar.
+## Where is "See as"?
+- The sight filters (AV3): `accessibility-view-see-as.md`.
 
 Tests: `tests/designer_a11y_view_test.php`. Plan: `plans/designer-accessibility-view.md`; drawing: `designer-accessibility-view-drawing.md`.
