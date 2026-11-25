@@ -721,6 +721,123 @@ function pg_library_groups($items)
     return array_values($groups);
 }
 
+/**
+ * The items in the order the Blocks list and "Manage library" draw them:
+ * the ones with no group first, then each group where its first item
+ * stands, every item keeping its place within its group.
+ */
+function pg_library_drawn_order($items)
+{
+    $loose = array();
+    $groups = array();
+    foreach ((array)$items as $item) {
+        $g = isset($item['group']) ? (string)$item['group'] : '';
+        if ($g === '') {
+            $loose[] = $item;
+        } else {
+            $groups[$g][] = $item;
+        }
+    }
+    $out = $loose;
+    foreach ($groups as $list) {
+        foreach ($list as $item) $out[] = $item;
+    }
+    return $out;
+}
+
+/**
+ * What a "Manage library" call changes, worked out on the items as
+ * pg_library_list() gives them (each with 'id'). Returns
+ * array('write' => id => item, 'delete' => ids) with only the items whose
+ * name, group or order changed, or a string error message.
+ *
+ *   library_rename  id, name
+ *   library_move    ids, group ('' for no group): after the group's last item
+ *   library_order   order: the drawn list as array(id, group) pairs; an item
+ *                   left out keeps its place after the ones named
+ *   library_delete  ids
+ *
+ * Every change but a delete numbers the whole library again in the drawn
+ * order, so the order kept is the order seen.
+ */
+function pg_library_manage_changes($items, $sub, $request)
+{
+    $by_id = array();
+    foreach ((array)$items as $item) $by_id[(int)$item['id']] = $item;
+    $ids = array();
+    foreach ((isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array()) as $id) {
+        $id = (int)$id;
+        if (isset($by_id[$id]) && !in_array($id, $ids, true)) $ids[] = $id;
+    }
+    $missing = lang('The library item was not found.');
+
+    if ($sub === 'library_delete') {
+        if (!$ids) return $missing;
+        return array('write' => array(), 'delete' => $ids);
+    }
+
+    $next = array_values($by_id);
+    if ($sub === 'library_rename') {
+        $id = isset($request['id']) ? (int)$request['id'] : 0;
+        if (!isset($by_id[$id])) return $missing;
+        $name = pg_library_clean_label(isset($request['name']) ? $request['name'] : '');
+        if ($name === '') return lang(array('string' => '{var:1} is required', 'vars' => lang('Name')));
+        foreach ($next as $i => $item) {
+            if ((int)$item['id'] === $id) $next[$i]['name'] = $name;
+        }
+        $next = pg_library_drawn_order($next);
+    } elseif ($sub === 'library_move') {
+        if (!$ids) return $missing;
+        $group = pg_library_clean_label(isset($request['group']) ? $request['group'] : '');
+        $stay = array();
+        $moved = array();
+        foreach (pg_library_drawn_order($next) as $item) {
+            if (in_array((int)$item['id'], $ids, true)) {
+                $item['group'] = $group;
+                $moved[] = $item;
+            } else {
+                $stay[] = $item;
+            }
+        }
+        // After the group's last item; a new group after every other.
+        $at = count($stay);
+        foreach ($stay as $i => $item) {
+            if ((string)$item['group'] === $group) $at = $i + 1;
+        }
+        if ($group === '' && !array_filter($stay, function ($it) { return (string)$it['group'] === ''; })) $at = 0;
+        array_splice($stay, $at, 0, $moved);
+        $next = pg_library_drawn_order($stay);
+    } elseif ($sub === 'library_order') {
+        $named = array();
+        $list = array();
+        foreach ((isset($request['order']) && is_array($request['order']) ? $request['order'] : array()) as $pair) {
+            $id = is_array($pair) && isset($pair['id']) ? (int)$pair['id'] : 0;
+            if (!isset($by_id[$id]) || isset($named[$id])) continue;
+            $named[$id] = true;
+            $item = $by_id[$id];
+            $item['group'] = pg_library_clean_label(isset($pair['group']) ? $pair['group'] : '');
+            $list[] = $item;
+        }
+        if (!$list) return $missing;
+        foreach (pg_library_drawn_order($next) as $item) {
+            if (!isset($named[(int)$item['id']])) $list[] = $item;
+        }
+        $next = pg_library_drawn_order($list);
+    } else {
+        return lang('Invalid action.');
+    }
+
+    $write = array();
+    foreach (array_values($next) as $i => $item) {
+        $item['order'] = $i + 1;
+        $was = $by_id[(int)$item['id']];
+        if ((int)$was['order'] !== $item['order'] || (string)$was['group'] !== (string)$item['group'] || (string)$was['name'] !== (string)$item['name']) {
+            $write[(int)$item['id']] = $item;
+        }
+    }
+    return array('write' => $write, 'delete' => array());
+}
+
 // ── The file (pure) ────────────────────────────────────────────────────
 
 // The item as the file writes it.
@@ -1081,6 +1198,9 @@ function _pg_library_request_design($request)
  *   library_prepare  an item made ready for this design ('use'): id, css,
  *                    vars; with make=1 the widgets and components it holds
  *                    are made as rows and the tree points at them
+ *   library_rename, library_move, library_order, library_delete
+ *                    "Manage library" ('manage', pg_library_manage_changes()):
+ *                    answers the items as library_list does
  */
 function pg_library_editor($sub, $request, $user)
 {
@@ -1137,6 +1257,24 @@ function pg_library_editor($sub, $request, $user)
         return array('status' => 'success', 'tree' => $out['tree'], 'css' => $out['css'], 'renamed' => $out['renamed'],
             'cleared' => (int)$out['cleared'], 'unbound' => $unbound, 'rows' => count($out['widgets']) + count($out['shared']),
             'made' => $made);
+    }
+
+    if (in_array($sub, array('library_rename', 'library_move', 'library_order', 'library_delete'), true)) {
+        if (!pg_library_may('manage', $user)) return $deny;
+        $changes = pg_library_manage_changes(pg_library_list(), $sub, $request);
+        if (!is_array($changes)) return array('status' => 'error', 'message' => $changes);
+        foreach ($changes['delete'] as $id) {
+            $done = pg_library_delete($id);
+            if ($done !== true) return array('status' => 'error', 'message' => $done);
+        }
+        foreach ($changes['write'] as $id => $item) {
+            $done = pg_library_update($id, $item, (int)$user['id']);
+            if ($done !== true) return array('status' => 'error', 'message' => $done);
+        }
+        $framework = pg_library_framework_classes();
+        $items = array();
+        foreach (pg_library_list() as $item) $items[] = pg_library_card($item, $framework);
+        return array('status' => 'success', 'items' => $items);
     }
 
     return array('status' => 'error', 'message' => lang('Invalid action.'));

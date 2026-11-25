@@ -266,3 +266,79 @@ function test_library_design_from_the_editor()
 	pg_assert_same(array('--brand' => '#c00', '--accent' => 'teal'), $d['vars'], 'the User Styles win; a value that could close its rule is dropped');
 	pg_assert_true(isset($d['framework']['row']));
 }
+
+function _library_test_shelf()
+{
+	return array(
+		array('id' => 1, 'name' => 'Opening hours', 'group' => '', 'order' => 1),
+		array('id' => 2, 'name' => 'Hero with picture', 'group' => 'Heroes', 'order' => 2),
+		array('id' => 3, 'name' => 'Hero, two buttons', 'group' => 'Heroes', 'order' => 3),
+		array('id' => 4, 'name' => 'Three plans', 'group' => 'Pricing', 'order' => 4),
+		array('id' => 5, 'name' => 'Plan comparison', 'group' => 'Pricing', 'order' => 5),
+		array('id' => 6, 'name' => 'Footer with map', 'group' => 'Footers', 'order' => 6),
+	);
+}
+
+// id => group:order of what a change writes.
+function _library_test_written($changes)
+{
+	$out = array();
+	foreach ($changes['write'] as $id => $item) $out[$id] = $item['group'] . ':' . $item['order'];
+	ksort($out);
+	return $out;
+}
+
+function test_library_drawn_order()
+{
+	$items = array(
+		array('id' => 1, 'group' => 'B'), array('id' => 2, 'group' => ''), array('id' => 3, 'group' => 'A'),
+		array('id' => 4, 'group' => 'B'), array('id' => 5, 'group' => ''),
+	);
+	pg_assert_same(array(2, 5, 1, 4, 3), array_map(function ($it) { return $it['id']; }, pg_library_drawn_order($items)),
+		'no group first, then each group where its first item stands');
+}
+
+function test_library_manage_rename()
+{
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_rename', array('id' => 2, 'name' => '  Hero with photo '));
+	pg_assert_same(array(2), array_keys($c['write']), 'only the renamed item is written');
+	pg_assert_same('Hero with photo', $c['write'][2]['name']);
+	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_rename', array('id' => 2, 'name' => '  '))), 'an empty name is not saved');
+	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_rename', array('id' => 9, 'name' => 'X'))), 'an unknown item');
+}
+
+function test_library_manage_move()
+{
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_move', array('ids' => array(2, 6), 'group' => 'Pricing'));
+	pg_assert_same(array(2 => 'Pricing:5', 3 => 'Heroes:2', 4 => 'Pricing:3', 5 => 'Pricing:4', 6 => 'Pricing:6'), _library_test_written($c),
+		'the moved items follow the group\'s last item');
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_move', array('ids' => array(4), 'group' => 'People'));
+	pg_assert_same(array(4 => 'People:6', 5 => 'Pricing:4', 6 => 'Footers:5'), _library_test_written($c), 'a new group goes after every other');
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_move', array('ids' => array(6), 'group' => ''));
+	pg_assert_same(array(2 => 'Heroes:3', 3 => 'Heroes:4', 4 => 'Pricing:5', 5 => 'Pricing:6', 6 => ':2'), _library_test_written($c), 'no group: above the groups');
+	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_move', array('ids' => array(), 'group' => 'X'))));
+}
+
+function test_library_manage_order()
+{
+	// Hero with picture dragged into Pricing, after Three plans.
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_order', array('order' => array(
+		array('id' => 1, 'group' => ''), array('id' => 3, 'group' => 'Heroes'), array('id' => 4, 'group' => 'Pricing'),
+		array('id' => 2, 'group' => 'Pricing'), array('id' => 5, 'group' => 'Pricing'), array('id' => 6, 'group' => 'Footers'),
+	)));
+	pg_assert_same(array(2 => 'Pricing:4', 3 => 'Heroes:2', 4 => 'Pricing:3'), _library_test_written($c));
+	// The last item of Heroes leaves it: the group is gone.
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_order', array('order' => array(
+		array('id' => 1, 'group' => ''), array('id' => 2, 'group' => ''), array('id' => 3, 'group' => ''),
+	)));
+	pg_assert_same(array(2 => ':2', 3 => ':3'), _library_test_written($c), 'the items left out keep their place after');
+	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_order', array('order' => array(array('id' => 77))))));
+}
+
+function test_library_manage_delete()
+{
+	$c = pg_library_manage_changes(_library_test_shelf(), 'library_delete', array('ids' => array('4', 4, 99, 5)));
+	pg_assert_same(array(4, 5), $c['delete'], 'known items, once each');
+	pg_assert_same(array(), $c['write'], 'a delete leaves the order as it is');
+	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_nothing', array())));
+}

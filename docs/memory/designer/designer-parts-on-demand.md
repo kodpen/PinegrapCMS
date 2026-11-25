@@ -11,7 +11,7 @@ module: output
 
 ## Which conditions may a part have?
 - `when` is one of `pg_designer_part_conditions()`: `always`, `designer` (full designer access), `ai` (`sdDesign.ai.enabled`), `comments` (designer and comments ready), `phone`, `publishcheck` (designer, draft table ready, not a component), `clicks` (`sdDesign.clicks` set), `off` (never handed; `mirror` until its switch).
-- `includes/designer_screen.php` computes those conditions once and hands `pg_designer_parts_for($conditions)` as `sdDesign.parts` (`pg_designer_part_urls()`: name => file addresses, the `.min.js` or the sources in `src` mode). An unknown `when` never holds. Only `libraryfile` is `designer`.
+- `includes/designer_screen.php` computes those conditions once and hands `pg_designer_parts_for($conditions)` as `sdDesign.parts` (`pg_designer_part_urls()`: name => file addresses, the `.min.js` or the sources in `src` mode). An unknown `when` never holds. Only `libraryfile` and `librarymanage` are `designer`.
 - A part whose button any editor may press is `always`: the core decides when to load it. `focus`, `overrides` and `sketchread` were missing from the old hand list and showed the part-failed toast; they are `always` now.
 
 ## How does a part load on first use?

@@ -256,3 +256,64 @@ function test_publish_weight_local_files_reads_sizes_under_the_root_only()
 	@rmdir($root);
 	@unlink(sys_get_temp_dir() . '/pgpw_outside.css');
 }
+
+// The design's own stylesheet is the one the render prints last as
+// <style id="pg-user-styles">; a page without it has none.
+function test_publish_weight_own_css_is_the_designs_stylesheet()
+{
+	$html = '<html><head><style>.a{}</style><style id="pg-user-styles">' . "\n" . '.mine{color:red}</style></head><body></body></html>';
+
+	pg_assert_same('.mine{color:red}', trim(pg_publish_weight_own_css($html)));
+	pg_assert_same('', pg_publish_weight_own_css('<html><head><style>.a{}</style></head></html>'));
+}
+
+// The names a stored page tree may give its markup: every word of its
+// string values counts as a class and an id, so a rule is never listed for
+// a class another page draws; a tree that is not one gives none.
+function test_publish_weight_tree_names_err_towards_used()
+{
+	$tree = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'component', 'props' => array('cssClass' => 'hero big-title', 'id' => 'top',
+			'_attrs' => array(array('name' => 'class', 'value' => 'extra'))), 'children' => array()),
+	)));
+	$names = pg_publish_weight_tree_names($tree);
+
+	foreach (array('.hero', '.big-title', '.extra', '#top') as $name) {
+		pg_assert_true(isset($names[$name]), $name . ' is used');
+	}
+	pg_assert_same(array(), pg_publish_weight_tree_names('not json'));
+}
+
+// The whole answer seo_check gives the Publish check: the bytes with their
+// budget and grades, the findings, the rules no page uses, and the pixel
+// size of each picture without width and height whose file is known (what
+// "Fix" writes); SVG has none.
+function test_publish_weight_report_for_the_publish_check()
+{
+	$html = publish_weight_test_page();
+	$css = '.used{} .gone{} @media (min-width:1px){.lost{}}';
+	$r = pg_publish_weight_report($html, publish_weight_test_files(), $css, array('.used' => true), array());
+
+	pg_assert_same(array('bytes', 'budget', 'grades', 'findings', 'unused', 'sizes'), array_keys($r));
+	pg_assert_same(pg_publish_weight_budget(), $r['budget']);
+	pg_assert_same('green', $r['grades']['measures']['markup']);
+	pg_assert_same(2, count($r['unused']));
+	pg_assert_same('.gone', $r['unused'][0]['selector']);
+	pg_assert_same('(min-width:1px)', trim(str_replace('@media', '', $r['unused'][1]['media'])));
+	pg_assert_same(array('n2' => array(200, 80)), $r['sizes']);
+	$codes = array_map(function ($f) { return $f['code']; }, $r['findings']);
+	pg_assert_true(in_array('css_unused', $codes, true));
+	pg_assert_true(in_array('img_no_size', $codes, true));
+}
+
+// seo_check measures the weight only when the Publish check asks, on the
+// rendered draft, with the site's own files and the other pages' names.
+function test_publish_weight_seo_check_wiring()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+
+	pg_assert_contains("!empty(\$request['weight'])", $src, 'asked for');
+	pg_assert_contains('pg_designer_publish_weight(', $src, 'measured');
+	pg_assert_contains('pg_publish_weight_report(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php'), 'on the report');
+	pg_assert_contains("'weight'          => \$weight", $src, 'answered');
+}

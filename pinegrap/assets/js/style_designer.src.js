@@ -89012,6 +89012,29 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // A Publish check "Fix", its "Undo" or an "Ignore": fn(tree) changes the
+    // page's tree as one undo step of that page. The active page goes
+    // through saveState() and is drawn again; another tab's page gets the
+    // step on its own history, taken when it is opened again. False when
+    // the page is gone or locked to this user.
+    function _sdPageEdit(key, fn) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked' || !_collab.mayEdit) return false;
+        if (key === _activeKey) {
+            saveState();
+            fn(tree);
+            render();
+            return true;
+        }
+        if (!p.tree) return false;
+        if (!Array.isArray(p.undoStack)) p.undoStack = [];
+        p.undoStack.push({ tree: JSON.stringify(p.tree), shared: {}, assets: null });
+        if (p.undoStack.length > 50) p.undoStack.shift();
+        p.redoStack = [];
+        fn(p.tree);
+        return true;
+    }
+
     // The main button: Save on a draft (it stays off the site), the Publish
     // sheet on a page on the site.
     function _pgPublishClick(opts) {
@@ -89906,6 +89929,9 @@ const StyleDesigner = (function () {
             (_sdLibMaySave() ? { id: 'act_library_save', label: _sdT('Save to my library'), icon: 'bi-bookmark-plus', action: function() {
                 // One item is one element with what is inside it.
                 _sdLibSave(selectedNodes.length > 1 ? null : selectedNode);
+            }} : null),
+            (_sdLibMaySave() ? { id: 'act_library_manage', label: _sdT('Manage library'), icon: 'bi-collection', action: function() {
+                _sdPartCall('mylibrary', 'manage', []).catch(_sdPartFailed);
             }} : null),
             // ── Settings / Modals ───────────────────────────────────
             { id: 'act_settings', label: _sdT('Open Settings'), icon: 'bi-gear', hint: 'Ctrl+,', action: function() {
@@ -95708,6 +95734,7 @@ const StyleDesigner = (function () {
             _pgPageByKey: _pgPageByKey,
             _pgPublishSheet: _pgPublishSheet,
             _pgTabsInsertAfter: _pgTabsInsertAfter,
+            _pgTabsOpenPageSettings: _pgTabsOpenPageSettings,
             _pgTabsPersistActive: _pgTabsPersistActive,
             _pgTabsRender: _pgTabsRender,
             _pgTabsSwitch: _pgTabsSwitch,
@@ -95757,9 +95784,13 @@ const StyleDesigner = (function () {
             _sdNodeSetBinding: _sdNodeSetBinding,
             _sdOpenThemeSettings: _sdOpenThemeSettings,
             _sdPageBodyAttrs: _sdPageBodyAttrs,
+            _sdPageEdit: _sdPageEdit,
             _sdPageFrameRows: _sdPageFrameRows,
             _sdPalSwitchShow: _sdPalSwitchShow,
             _sdPaletteItemHTML: _sdPaletteItemHTML,
+            _sdPartCall: _sdPartCall,
+            _sdPartFailed: _sdPartFailed,
+            _sdPartUrls: _sdPartUrls,
             _sdProtoClose: _sdProtoClose,
             _sdProtoCommentsFrame: _sdProtoCommentsFrame,
             _sdProtoCommentsMark: _sdProtoCommentsMark,

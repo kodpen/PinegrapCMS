@@ -28,6 +28,8 @@
  *                          { state: 'failed' } when the check did not run
  *   findings(key, retry)   the element listing a checked page's findings,
  *                          drawn under its row; retry() checks it again
+ * update(key, summary) redraws a page's result after a change made inside
+ * the sheet ("Fix", "Undo", "Ignore").
  * With check(), a ticked page gets its result at the end of its row; a
  * blocking page goes on the site only with "Publish anyway" and a reason
  * (publish()'s fifth argument: key => reason), as a held row does.
@@ -535,6 +537,20 @@ var PgDesignerPublish = (function () {
         return true;
     }
 
+    // A page's result changed inside the sheet (a "Fix", its "Undo", an
+    // "Ignore"): the rows are read again (the page may now be changed), the
+    // row's result and findings drawn again, and the focus put on `focus`
+    // (a selector inside the sheet) when given.
+    function update(key, sum, focus) {
+        if (!bridge || saving || !has(results, key)) return;
+        results[key] = sum || { state: 'failed' };
+        current = bridge.rows() || current;
+        if (results[key].state === 'block' && !has(anyway, key)) delete checked[key];
+        draw();
+        var f = focus && el() ? el().querySelector(focus) : null;
+        if (f) f.focus();
+    }
+
     // Closes the sheet: a press on a finding's path selects its element.
     function close() {
         var root = el();
@@ -542,5 +558,5 @@ var PgDesignerPublish = (function () {
         return Promise.resolve();
     }
 
-    return { defaults: defaults, plan: plan, outcome: outcome, result: result, open: open, close: close };
+    return { defaults: defaults, plan: plan, outcome: outcome, result: result, open: open, close: close, update: update };
 })();

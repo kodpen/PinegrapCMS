@@ -259,8 +259,10 @@ function pg_panel_designer($request, $action)
     }
 
     // My library (includes/fn/designer_library.php): the Blocks list's
-    // group, "Save to my library" and a copy added to a page.
-    if (in_array($sub, array('library_list', 'library_save', 'library_prepare'), true)) {
+    // group, "Save to my library", a copy added to a page and "Manage
+    // library" (rename, move to a group, order, delete).
+    if (in_array($sub, array('library_list', 'library_save', 'library_prepare',
+                             'library_rename', 'library_move', 'library_order', 'library_delete'), true)) {
         respond(pg_library_editor($sub, $request, $user));
     }
 
@@ -800,6 +802,13 @@ function pg_panel_designer($request, $action)
                         pg_seo_check_draft_context($row, $draft['page_type']));
                 }
             }
+            // The Publish check's weight on the same render, asked only by
+            // the Publish sheet: null when not asked or the page is not
+            // saved, false when the draft did not render.
+            $weight = null;
+            if (!empty($request['weight']) && $page_id > 0) {
+                $weight = $document ? pg_designer_publish_weight($draft['html'], $page_id) : false;
+            }
             if (!$document && trim($html) !== '') {
                 $raw = pg_seo_analyze_html($html, 'fragment', array(
                     'title'         => $row['page_title'],
@@ -878,6 +887,7 @@ function pg_panel_designer($request, $action)
                 // fragment) and the registry the panel groups everything by.
                 'a11y'            => $a11y,
                 'concepts'        => pg_seo_check_concepts(),
+                'weight'          => $weight,
             ));
             break;
 

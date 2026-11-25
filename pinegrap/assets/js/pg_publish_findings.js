@@ -338,6 +338,23 @@ var PgPublishFindings = (function () {
             found = found.concat(fromLeftovers(s.leftovers, texts));
         }
 
+        // The weight measure gives its findings already in this shape
+        // (includes/fn/publish_weight.php).
+        if (s.weight === false) {
+            found.push(failed('weight', 'weight_failed', 'weight', '', texts));
+        } else {
+            found = found.concat(list(s.weight).filter(isObject).map(function (f) {
+                var w = make('weight', str(f.code), 'weight', f);
+
+                // The measure's own id names the nth script or picture.
+                if (str(f.id) !== '') {
+                    w.id = str(f.id);
+                }
+
+                return w;
+            }));
+        }
+
         return sort(merge(found, isObject(seo) ? seo.concepts : null));
     }
 
@@ -361,8 +378,114 @@ var PgPublishFindings = (function () {
         return out;
     }
 
+    // What one press can put right without a choice: an empty heading (it
+    // goes), a picture without width and height whose pixel size the
+    // measure knows (`sizes`: node => [width, height]), a left-over value of
+    // a closed component field (it goes).
+    var FIXABLE = { 'audit:heading_empty': true, 'weight:img_no_size': true, 'component:field_leftover': true };
+
+    // A finding's one button: 'fix', 'show', or '' for a check that failed.
+    function action(f, sizes) {
+        if (!isObject(f) || f.level === 'failed') {
+            return '';
+        }
+
+        var key = str(f.source) + ':' + str(f.code);
+
+        if (!FIXABLE[key] || (key === 'weight:img_no_size' && !(isObject(sizes) && Array.isArray(sizes[str(f.node)])))) {
+            return 'show';
+        }
+
+        return 'fix';
+    }
+
+    // Only a finding to look at may be ignored on a page; a blocking one
+    // goes on the site only with "Publish anyway".
+    function canIgnore(f) {
+        return isObject(f) && f.level === 'look';
+    }
+
+    var IGNORED = '_pcIgnored';
+    var REASON_MAX = 500;
+
+    // The findings ignored on a page: id => reason, kept on the page tree's
+    // root, so the page's draft carries them (the root draws nothing).
+    function ignored(tree) {
+        var map = (isObject(tree) && isObject(tree.props) && isObject(tree.props[IGNORED])) ? tree.props[IGNORED] : {};
+        var out = {};
+
+        Object.keys(map).forEach(function (id) {
+            if (str(map[id]).trim() !== '') {
+                out[id] = str(map[id]);
+            }
+        });
+
+        return out;
+    }
+
+    // Ignores a finding on the tree with its reason (trimmed, at most 500
+    // characters), or stops ignoring it when the reason is empty. False when
+    // nothing was written.
+    function ignore(tree, id, reason) {
+        if (!isObject(tree) || str(id) === '') {
+            return false;
+        }
+
+        var why = str(reason).trim().slice(0, REASON_MAX);
+        var map = ignored(tree);
+
+        if (why === '') {
+            if (!Object.prototype.hasOwnProperty.call(map, id)) {
+                return false;
+            }
+            delete map[id];
+        } else {
+            map[id] = why;
+        }
+
+        if (!isObject(tree.props)) {
+            tree.props = {};
+        }
+
+        if (Object.keys(map).length) {
+            tree.props[IGNORED] = map;
+        } else {
+            delete tree.props[IGNORED];
+        }
+
+        return why !== '';
+    }
+
+    // A page's findings split into the ones counted (`shown`), the ignored
+    // ones with their `reason` (never a blocking one) and the `fixed` ones.
+    function split(found, ignoredMap, fixedMap) {
+        var out = { shown: [], ignored: [], fixed: [] };
+        var ig = isObject(ignoredMap) ? ignoredMap : {};
+        var fx = isObject(fixedMap) ? fixedMap : {};
+
+        list(found).filter(isObject).forEach(function (f) {
+            if (Object.prototype.hasOwnProperty.call(fx, f.id)) {
+                out.fixed.push(f);
+            } else if (canIgnore(f) && Object.prototype.hasOwnProperty.call(ig, f.id)) {
+                var copy = {};
+                Object.keys(f).forEach(function (k) { copy[k] = f[k]; });
+                copy.reason = str(ig[f.id]);
+                out.ignored.push(copy);
+            } else {
+                out.shown.push(f);
+            }
+        });
+
+        return out;
+    }
+
     return {
         groups: function () { return GROUPS.slice(); },
+        action: action,
+        canIgnore: canIgnore,
+        ignored: ignored,
+        ignore: ignore,
+        split: split,
         blocking: function () { return BLOCKING.slice(); },
         isBlocking: function (f) { return !!f && blocks(str(f.source), str(f.code)); },
         fromAudit: fromAudit,
