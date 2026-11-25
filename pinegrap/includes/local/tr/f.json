@@ -1270,6 +1270,7 @@
     "Follows the science curriculum": "Fen müfredatını izler",
     "Follows the scroll from below the window until the element reaches its middle.": "Öğe pencerenin altından ortasına gelene dek kaydırmayı izler.",
     "Follows the task's state": "Görevin durumunu izliyor",
+    "Follows {{record}}": "{{record}} görevinin ardından",
     "Font": "Yazı Tipi",
     "Font Color Button": "Yazı Rengi Düğmesi",
     "Font Family": "Yazı Tipi",
