@@ -8182,6 +8182,7 @@ function pg_js_bundles()
         // reset loop (window.PGOptionsReview), then the part that draws it.
         'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
+        'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
         // Border and corner, and a length per screen size: their pure
@@ -8322,6 +8323,9 @@ function pg_designer_parts()
         // The "Preview on a phone" window: the QR code of the person's
         // phone link, its time left, "Copy link" and "End now".
         'phone' => 'assets/js/style_designer_phone.min.js',
+        // "Read the picture" of a sketch page: its reference picture read
+        // by the browser's built-in model into proposed boxes.
+        'sketchread' => 'assets/js/style_designer_sketchread.min.js',
     );
 }
 

@@ -8281,6 +8281,26 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 }
 .sd-sketch-mode .pgc-selected .sd-sketch-more { display: inline-flex; }
 .sd-sketch-more:hover, .sd-sketch-more:focus-visible { background: rgba(255,255,255,.1); outline: none; }
+/* "Read the picture" (style_designer_sketchread.js): the busy head, the
+   boxes proposed in the accent over the picture, the foot under the frame
+   with its line and buttons. */
+.sd-sketch-read-busy { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: .72rem; color: var(--sd-text-muted); white-space: nowrap; }
+.sd-sketch-spin { display: inline-block; animation: sd-tpl-prep-spin 1s linear infinite; }
+.sd-sketch-act.btn { padding: 0 8px; font-size: .72rem; line-height: 1.6; }
+.sd-sketch-read-stop { margin: 0 4px 0 6px; }
+.sd-sketch-proposed {
+    position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--sd-accent); border-radius: 6px;
+    background: color-mix(in srgb, var(--sd-accent) 14%, transparent); color: var(--sd-text); pointer-events: none;
+}
+.sd-sketch-proposed .sd-sketch-heading { padding-top: 0; }
+.sd-sketch-foot {
+    position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 4;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px;
+    border-radius: 6px; background: #2a2f36; color: var(--sd-text); font-size: .74rem; cursor: default;
+}
+.sd-sketch-foot-text { flex: 1 1 200px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .sd-sketch-spin { animation: none; } }
 .sd-sketch-menu-sep { margin: 4px 0; border: 0; border-top: 1px solid rgba(255,255,255,.12); opacity: 1; }
 .sd-sketch-menu-key { margin-left: auto; padding: 0 4px; background: none; color: var(--sd-text-muted); font-size: .68rem; }
 .sd-sketch-guide-x { width: 1px; }

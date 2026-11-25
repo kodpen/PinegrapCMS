@@ -6390,6 +6390,7 @@
     "The picture could not be read, or it is larger than 2 MB.": "Resim okunamadı ya da 2 MB'tan büyük.",
     "The picture could not be read.": "Görsel okunamadı.",
     "The picture could not be read. Choose it again.": "Görsel okunamadı. Yeniden seçin.",
+    "The picture could not be read. Nothing was changed.": "Resim okunamadı. Hiçbir şey değiştirilmedi.",
     "The picture could not be saved.": "Resim kaydedilemedi.",
     "The picture did not come through Cloudflare: the site's address is not proxied, so nothing in between keeps a copy and no confirmation is needed.": "Resim Cloudflare üzerinden gelmedi: sitenin adresi proxy'lenmiyor, arada kopya tutan bir şey yok ve onay gerekmiyor.",
     "The picture has no width and height": "Resmin genişliği ve yüksekliği yok",
