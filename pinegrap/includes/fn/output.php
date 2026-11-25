@@ -8190,6 +8190,9 @@ function pg_js_bundles()
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
+        // The Focus control of an Image's and a background picture's
+        // options: what it shows (window.PGImageFocus), then the part.
+        'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
@@ -8292,6 +8295,9 @@ function pg_designer_parts()
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
+        // The Focus control: a picture's focus point dragged on the whole
+        // picture, with the cut on each screen, drawn when first shown.
+        'focus' => 'assets/js/style_designer_focus.min.js',
     );
 }
 
