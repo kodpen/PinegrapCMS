@@ -4,7 +4,7 @@ description: The drawing of "Select similar" (sheet DD13, step SE2): boards E1 t
 ---
 
 ## Where is the drawing?
-- `designer/designer-select-similar-drawing/select-similar.html` with `drawing.css`, on `ui/look-sheet/sheet.css`; pictures `select-similar-dark.jpg`, `select-similar-light.jpg`. Where the plan's words differ, the drawing wins.
+- `designer/designer-select-similar-drawing/select-similar.html` with `drawing.css`, on `ui/look-sheet/sheet.css`; pictures `select-similar-dark.jpg`, `select-similar-light.jpg`. Built as drawn.
 
 ## Which board belongs to step SE2?
 - E1 the row in the canvas menu, an Overview row’s menu and the command palette; the new row of Keyboard shortcuts.
@@ -38,4 +38,4 @@ description: The drawing of "Select similar" (sheet DD13, step SE2): boards E1 t
 - Read out after the press and each choice: "12 similar elements selected: same kind and classes, in this section." A list's row with its count: "Same kind, 13".
 - Keyboard shortcuts: "Select the elements like the selected one".
 
-Related: docs/memory/plans/designer-select-similar.md
+Related: docs/memory/designer/designer-select-similar-matcher.md
