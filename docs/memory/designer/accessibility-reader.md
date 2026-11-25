@@ -5,7 +5,7 @@ description: The Accessibility view's pure reader (PGA11yReader, AV1 #11529): ta
 
 ## What is it?
 - `window.PGA11yReader` in `assets/js/pg_a11y_reader.js` (#11529), pure, tested in Node by `tests/a11y_reader_test.php`. The reader of the Accessibility view (`plans/designer-accessibility-view.md`); it draws nothing.
-- Not in a bundle yet and loaded by nothing: AV2 makes it the first source of the view's designer part (`designer-parts-on-demand.md`), so the core opens no slower.
+- The first source of the part `accessview` (AV2 #11657, `accessibility-view.md`): not in the core bundle, so the core opens no slower.
 
 ## What does it read?
 - A tree of elements, not of designer nodes: `{tag, attrs, children, node, hidden, ref}`, text as `{text}` or a string. It reads what the canvas drew, so widgets, shared components and custom HTML count as the browser sees them.

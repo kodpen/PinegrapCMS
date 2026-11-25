@@ -112,6 +112,7 @@
     "Undone: {var:1} is back as it was before {var:2} changed it.": "Geri alındı: {var:1}, {var:2} değiştirmeden önceki hâline döndü.",
     "Undone: {var:1}, which {var:2} added, was taken away.": "Geri alındı: {var:2} tarafından eklenen {var:1} kaldırıldı.",
     "Undyed Wool Tote": "Boyasız Yün Çanta",
+    "Unfold": "Genişlet",
     "Unfold line": "Satırı aç",
     "Unfolded lines": "Açılan satırlar",
     "Ungroup": "Grubu dağıt",

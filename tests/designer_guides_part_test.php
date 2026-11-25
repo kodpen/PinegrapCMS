@@ -64,7 +64,7 @@ function test_designer_guides_switch_in_the_view_menu()
 	pg_assert_true((bool) preg_match('/id="sd-vb-guides" role="menuitemcheckbox"[^\n]*_sdT\(\'Canvas guides\'\)/', $core), 'a switch row named Canvas guides');
 	pg_assert_true(strpos($core, "_sdT('Measure: point at another element')) + '</span><kbd class=\"sd-vb-kbd\">Alt</kbd>") !== false, 'the Measure key under it');
 	pg_assert_true(strpos($core, "_sdT('Layout lines')) + '</span><kbd class=\"sd-vb-kbd\">Shift+G</kbd>") !== false, 'the layout lines key under it');
-	pg_assert_true(strpos($core, "'sd-vb-motion', 'sd-vb-guides', 'sd-vb-side'].map(") !== false, 'the badge counts it');
+	pg_assert_true(strpos($core, "'sd-vb-guides', 'sd-vb-side'].map(") !== false, 'the badge counts it');
 
 	$from = strpos($core, '    // ── Canvas guides: the switch and the layout lines');
 	pg_assert_true($from !== false, 'the core has the switch section');

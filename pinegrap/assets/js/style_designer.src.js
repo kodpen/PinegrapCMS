@@ -7500,6 +7500,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-a11y" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-universal-access"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Accessibility view')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             // Canvas guides: Measure, the spacing bands, the column handles
             // and the layout lines, on by default, kept per browser
             // (_sdGuidesOff()). The two lines under it name the keys; they
@@ -7648,6 +7649,10 @@ const StyleDesigner = (function () {
             _sdSyncMotionButton();
             motionBtn.addEventListener('click', function () { _sdSetMotion(_sdMotionPaused()); });
         }
+
+        // Accessibility view: its card and marks are the part 'accessview'.
+        var a11yBtn = document.getElementById('sd-vb-a11y');
+        if (a11yBtn) a11yBtn.addEventListener('click', function () { _sdA11ySet(!_sdA11yState().on); });
 
         // A drag started outside the canvas (palette, layer tree) holds the
         // canvas motion too; the canvas document binds its own drags.
@@ -7807,7 +7812,7 @@ const StyleDesigner = (function () {
         var bar = document.getElementById('sd-bp-bar');
         if (!bar) return;
         var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
-        var sw = ['sd-vb-outline', 'sd-vb-parts', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-guides', 'sd-vb-side'].map(function (id) {
+        var sw = ['sd-vb-outline', 'sd-vb-parts', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-a11y', 'sd-vb-guides', 'sd-vb-side'].map(function (id) {
             var el = document.getElementById(id);
             var on = !!(el && el.classList.contains('active'));
             setA(el, 'aria-checked', on ? 'true' : 'false');
@@ -7931,6 +7936,7 @@ const StyleDesigner = (function () {
         _sdViewMenuOpen(false);
         // Prototype mode hides the mirrors; back in Design they return.
         _sdSideSync();
+        _sdA11ySync();
     }
 
     // ── Side by side ────────────────────────────────────────────────────
@@ -10429,6 +10435,7 @@ const StyleDesigner = (function () {
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
         _sdGuidesSync();
+        _sdA11ySync();
     }
 
     // Every cached component tree gets a snapshot of what its row holds the
@@ -91007,6 +91014,7 @@ const StyleDesigner = (function () {
             { id: 'act_guides', label: _sdT('Toggle Canvas guides'), icon: 'bi-rulers', action: function() { _sdGuidesSet(_sdGuidesOff()); } },
             { id: 'act_layout_lines', label: _sdT('Toggle Layout lines'), icon: 'bi-layout-three-columns', hint: 'Shift+G', action: function() { if (!_sdGuidesOff() && canvasDoc) _sdLinesShow(!_sdLines.on); } },
             { id: 'act_side', label: _sdT('Side by side'), icon: 'bi-layout-three-columns', action: function() { var b = document.getElementById('sd-vb-side'); if (b) b.click(); } },
+            (_sdProto.open ? null : { id: 'act_a11y_view', label: _sdA11yState().on ? _sdT('Hide accessibility view') : _sdT('Show accessibility view'), icon: 'bi-universal-access', action: function () { _sdA11ySet(!_sdA11yState().on); } }),
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ]).filter(Boolean);
 
@@ -97183,6 +97191,90 @@ const StyleDesigner = (function () {
             rtl: (canvasDoc.documentElement.getAttribute('dir') || '').toLowerCase() === 'rtl',
             ended: function () { _sdLines.on = false; }
         }]).catch(_sdPartFailed);
+    }
+
+    // ── Accessibility view ──────────────────────────────────────────────
+    // A switch of the View menu (#sd-vb-a11y): a card in the canvas's
+    // corner and one kind of mark (tab order, headings, names) over the
+    // canvas, drawn by the part 'accessview'
+    // (assets/js/style_designer_accessview.js), loaded when the switch first
+    // goes on. On or off, the kind chosen and the fold are kept per browser.
+    // Design mode only. Each draw (render()) lets the part read the page
+    // again once the hand rests.
+    // Read on first use: a draw made while this file is still being run
+    // finds it undefined and reads it then.
+    var _sdA11y;
+
+    // The kept state from what the browser holds: off, Tab order, unfolded
+    // unless it says otherwise; '' is a kind (no marks).
+    function _sdA11yStateOf(s) {
+        s = (s && typeof s === 'object') ? s : {};
+        var kind = (typeof s.kind === 'string' && ['order', 'headings', 'names', ''].indexOf(s.kind) !== -1) ? s.kind : 'order';
+        return { on: s.on === true, kind: kind, fold: s.fold === true };
+    }
+
+    function _sdA11yState() {
+        if (!_sdA11y) {
+            var s = null;
+            try { s = JSON.parse(localStorage.getItem('pg_sd_a11y') || 'null'); } catch (e) {}
+            _sdA11y = _sdA11yStateOf(s);
+        }
+        return _sdA11y;
+    }
+
+    // Changes the kept state in place, so the part's host reads it live.
+    function _sdA11yKeep(patch) {
+        var st = _sdA11yState();
+        var next = _sdA11yStateOf(Object.assign({}, st, patch));
+        st.on = next.on;
+        st.kind = next.kind;
+        st.fold = next.fold;
+        try { localStorage.setItem('pg_sd_a11y', JSON.stringify(st)); } catch (e) {}
+    }
+
+    function _sdA11ySet(on) {
+        _sdA11yKeep({ on: !!on });
+        _sdA11ySync();
+    }
+
+    // What the part may reach of the editor.
+    function _sdA11yHost() {
+        return {
+            doc: canvasDoc,
+            state: _sdA11yState(),
+            keep: _sdA11yKeep,
+            off: function () { _sdA11ySet(false); },
+            select: function (el, scroll) {
+                var w = (el && el.closest) ? el.closest('[data-sd-id]') : null;
+                var n = w ? _sdFindNodeForEl(w.getAttribute('data-sd-id'), w) : null;
+                if (!n) return;
+                selectedNode = n;
+                selectedNodes = [];
+                renderSelectionOnly();
+                scrollTreeToNode(n);
+                if (scroll) scrollCanvasToNode(n);
+            },
+            audit: function () {
+                openValidationPanel(true);
+                var sec = document.getElementById('sd-val-a11y');
+                if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'nearest' });
+            }
+        };
+    }
+
+    // The switch row from the state; the part shown or hidden.
+    function _sdA11ySync() {
+        var st = _sdA11yState();
+        var btn = document.getElementById('sd-vb-a11y');
+        if (btn && btn.classList.contains('active') !== st.on) btn.classList.toggle('active', st.on);
+        if (st.on && canvasDoc && !(_sdProto && _sdProto.open) && _sdPartUrls('accessview')) {
+            _sdPartCall('accessview', 'show', [_sdA11yHost()]).catch(function () {
+                _sdA11ySet(false);
+                _sdPartFailed();
+            });
+        } else if (_sdPartLoaded('accessview') && _sdPartApis.accessview && _sdPartApis.accessview.hide) {
+            _sdPartApis.accessview.hide();
+        }
     }
 
     // ── The "Clicks" layer ────────────────────────────────────────────────
