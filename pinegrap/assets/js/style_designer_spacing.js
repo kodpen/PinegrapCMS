@@ -33,6 +33,7 @@ StyleDesigner.definePart('spacing', function (K) {
     var esc = K.esc;
     var B = window.PGSpacingBox;
     var R = window.PGCornerBox;
+    var Z = window.PGSizeStyle;
 
     // Pixels of vertical pointer travel for one step of a drag.
     var DRAG_STEP = 8;
@@ -109,12 +110,37 @@ StyleDesigner.definePart('spacing', function (K) {
     function _spbSizesHtml(host) {
         var has = {};
         host.classes.forEach(function (c) { B.held(c).forEach(function (s) { has[s] = true; }); });
+        return _spbChooserHtml(host.size, has);
+    }
+
+    // The six sizes, the chosen one pressed; a size holding a value of any
+    // element carries a dot (is-has).
+    function _spbChooserHtml(size, has) {
         return B.SIZES.map(function (s) {
-            var on = s === host.size;
-            return '<button type="button" class="sd-spb-size' + (on ? ' is-on' : '') + (has[s] && !on ? ' is-has' : '') + '" data-size="' + s + '"' +
+            var on = s === size;
+            var tip = s === 'xs' ? _sdT('Every screen size') : _sdT('From {var} up', s.toUpperCase());
+            return '<button type="button" class="sd-spb-size' + (on ? ' is-on' : '') + (has[s] ? ' is-has' : '') + '" data-size="' + s + '"' +
                 ' aria-pressed="' + (on ? 'true' : 'false') + '"' +
-                ' title="' + esc(s === 'xs' ? _sdT('Every screen size') : _sdT('From {var} up', s.toUpperCase())) + '">' + s.toUpperCase() + '</button>';
+                ' title="' + esc(tip + (has[s] ? ' · ' + _sdT('a value is set for this size') : '')) + '">' + s.toUpperCase() + '</button>';
         }).join('');
+    }
+
+    // The chooser's place in the head of the section holding el.
+    function _spbBar(el) {
+        var card = el.closest('.sd-card');
+        var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
+        if (!hdr) return null;
+        var bar = hdr.querySelector(':scope > .sd-spb-sizes');
+        if (!bar) {
+            bar = document.createElement('span');
+            bar.className = 'sd-spb-sizes';
+            bar.setAttribute('role', 'group');
+            bar.setAttribute('aria-label', _sdT('Screen size'));
+            var title = hdr.querySelector(':scope > .sd-sect-title');
+            hdr.insertBefore(bar, title ? title.nextSibling : null);
+            _spbSizesBind(bar);
+        }
+        return bar;
     }
 
     // Writes `val` on the side of the button, with the sides Shift and Alt
@@ -238,11 +264,16 @@ StyleDesigner.definePart('spacing', function (K) {
             var host = bar._spbHost;
             if (!b || !host) return;
             e.stopPropagation();
-            host.setSize(b.getAttribute('data-size'));
-            host.size = b.getAttribute('data-size');
-            draw(host);
-            var again = bar.querySelector('.sd-spb-size[data-size="' + host.size + '"]');
-            if (again) again.focus();
+            var size = b.getAttribute('data-size');
+            var card = bar.closest('[data-sd-card]');
+            var sid = card ? card.getAttribute('data-sd-card') : '';
+            // The panel is drawn again at the new size: the focus goes to
+            // the same size in the new head.
+            host.setSize(size);
+            setTimeout(function () {
+                var again = document.querySelector('#sd-properties [data-sd-card="' + sid + '"] .sd-spb-size[data-size="' + size + '"]');
+                if (again) again.focus();
+            }, 0);
         });
         // Enter and Space press the size, not the head.
         bar.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); });
@@ -326,19 +357,8 @@ StyleDesigner.definePart('spacing', function (K) {
         if (!el || !el.isConnected) return;
         el.innerHTML = _spbBoxHtml(host);
         _spbBind(host, el);
-        var card = el.closest('.sd-card');
-        var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
-        if (hdr) {
-            var bar = hdr.querySelector(':scope > .sd-spb-sizes');
-            if (!bar) {
-                bar = document.createElement('span');
-                bar.className = 'sd-spb-sizes';
-                bar.setAttribute('role', 'group');
-                bar.setAttribute('aria-label', _sdT('Screen size'));
-                var title = hdr.querySelector(':scope > .sd-sect-title');
-                hdr.insertBefore(bar, title ? title.nextSibling : null);
-                _spbSizesBind(bar);
-            }
+        var bar = _spbBar(el);
+        if (bar) {
             bar._spbHost = host;
             bar.innerHTML = _spbSizesHtml(host);
         }
@@ -350,5 +370,171 @@ StyleDesigner.definePart('spacing', function (K) {
         }
     }
 
-    return { draw: draw, corners: corners };
+
+    // ── A length per screen size (Size and display, Text › Font Size)
+
+    // The rows' fields this part reads at a size: [field, prop].
+    function _szFields(sect) {
+        var out = [];
+        sect.querySelectorAll('input[data-prop][data-sd-len]').forEach(function (f) {
+            var key = f.getAttribute('data-prop');
+            if (Z.PROPS.hasOwnProperty(key) && key !== 'fontSize') out.push([f, key]);
+        });
+        sect.querySelectorAll('select[data-stylegroup]').forEach(function (f) {
+            if (/(^|,)fs-1(,|$)/.test(f.getAttribute('data-stylegroup') || '')) out.push([f, 'fontSize']);
+        });
+        return out;
+    }
+
+    function _szSizing(v) {
+        if (typeof v === 'string') return v.trim();
+        return (typeof v === 'number' && isFinite(v) && v !== 0) ? String(v) : '';
+    }
+
+    // An image's width and height are its attributes, not a length here.
+    function _szSkips(n, key) {
+        return (key === 'width' || key === 'height') && n.type === 'content' && n.props && n.props.contentType === 'image';
+    }
+
+    // The every-size value an element holds outside User Styles: the
+    // inline length, or Bootstrap's fs-* class (it wins with !important).
+    function _szOutside(n, key) {
+        if (key === 'fontSize') {
+            var f = Z.fontValue(n.props.cssClass);
+            return f && f.cls.indexOf('fs-') === 0 ? f : null;
+        }
+        var v = _szSizing(n.props[key]);
+        return v ? { cls: '', value: Z.len(v) } : null;
+    }
+
+    // An element's value per size for a row, xs from where it is held.
+    function _szValues(text, n, key) {
+        var cls = window.PgCustomStyle.classOf(n.props.cssClass);
+        var vals = Z.read(text, cls, Z.PROPS[key]);
+        var out = _szOutside(n, key);
+        if (out) vals.xs = out.value;
+        else if (key === 'fontSize' && !vals.xs) {
+            var f = Z.fontValue(n.props.cssClass);
+            if (f) vals.xs = f.value;
+        }
+        return vals;
+    }
+
+    // Writes `value` for the row `key` at the host's size on every element,
+    // as one change: a class made where one is missing, and the every-size
+    // value moved into the base rule first, so the size's rule can win.
+    function _szWrite(host, key, value) {
+        var css = Z.PROPS[key], size = host.size;
+        var text = host.text();
+        var changes = host.nodes.map(function (n) {
+            if (!n || !n.props || _szSkips(n, key)) return null;
+            var list = String(n.props.cssClass || '').split(/\s+/).filter(Boolean);
+            var cls = window.PgCustomStyle.classOf(list);
+            var ch = { props: {} };
+            if (!cls) {
+                if (!value) return null;
+                cls = host.newClass(text);
+                if (!cls) return null;
+                list.push(cls);
+            }
+            var out = _szOutside(n, key);
+            if (out) {
+                text = Z.write(text, cls, css, 'xs', out.value);
+                if (out.cls) list = list.filter(function (c) { return c !== out.cls; });
+                else ch.props[key] = '';
+            }
+            text = Z.write(text, cls, css, size, value);
+            ch.cssClass = list.join(' ');
+            return ch;
+        });
+        host.commit(text, changes);
+    }
+
+    // The field in force at the size: its own value, else the value it
+    // takes from a smaller size as the hint; on several elements that
+    // differ, empty with "— Multiple —".
+    function _szTake(host, f, key, text) {
+        var nodes = host.nodes.filter(function (n) { return n && n.props && !_szSkips(n, key); });
+        if (!nodes.length) return;
+        var reads = nodes.map(function (n) { return Z.at(_szValues(text, n, key), host.size); });
+        var first = reads[0];
+        var mixed = reads.some(function (r) { return r.value !== first.value || r.here !== first.here; });
+        var css = Z.PROPS[key];
+        // Taken over at a size, or where a class holds this row by size
+        // (the every-size value is then its base rule, not the inline one).
+        var held = host.size !== 'xs' || nodes.some(function (n) {
+            var cls = window.PgCustomStyle.classOf(n.props.cssClass);
+            var v = Z.read(text, cls, css);
+            return Z.perSize(text, cls, css) || !!v.xs;
+        });
+        if (!held) return;
+        var at = host.size === 'xs' ? '' : _sdT('From {var} up', host.size.toUpperCase());
+        var from = !mixed && !first.here && first.size ? _sdT('from {var}', first.size.toUpperCase()) : '';
+        var nf = f.cloneNode(true);
+        nf.classList.add('sd-sz-at');
+        nf.disabled = !!host.locked;
+        if (at) nf.title = at;
+        if (f.tagName === 'SELECT') {
+            var classes = (f.getAttribute('data-stylegroup') || '').split(',').filter(Boolean);
+            var mine = mixed || !first.here ? '' : first.value;
+            var pick = mine ? Z.fontClass(mine, classes) : '';
+            if (mine && !pick) {
+                var o = document.createElement('option');
+                o.value = '=' + mine;
+                o.textContent = mine;
+                nf.appendChild(o);
+                pick = '=' + mine;
+            }
+            nf.value = pick;
+            if (!mine && nf.options[0]) {
+                var inh = mixed ? '' : Z.fontClass(first.value, classes);
+                nf.options[0].textContent = mixed ? _sdT('— Multiple —')
+                    : (inh ? nf.querySelector('option[value="' + inh + '"]').textContent + ' (' + from + ')' : (first.value ? first.value + ' (' + from + ')' : nf.options[0].textContent));
+            }
+            nf.addEventListener('change', function () {
+                var v = nf.value;
+                _szWrite(host, key, v.charAt(0) === '=' ? v.slice(1) : (v ? Z.FONT[v] || '' : ''));
+            });
+        } else {
+            nf.value = mixed || !first.here ? '' : first.value;
+            if (mixed) nf.placeholder = _sdT('— Multiple —');
+            else if (!first.here && first.value) nf.placeholder = first.value + ' (' + from + ')';
+            var was = nf.value;
+            nf.addEventListener('change', function () {
+                var why = host.lenCheck(nf.value);
+                nf.classList.toggle('is-invalid', !!why);
+                if (why) { nf.title = why; return; }
+                if (nf.value.trim() === was.trim()) return;
+                _szWrite(host, key, Z.len(nf.value));
+            });
+        }
+        f.parentNode.replaceChild(nf, f);
+    }
+
+    // The chooser in the section's head and, at a size, the rows' fields.
+    // Not drawn where a custom style is off (a system widget, a shared
+    // component): the rows stay for every size there.
+    function sizes(host) {
+        var el = host.el;
+        if (!el || !el.isConnected || host.off || !Z || !window.PgCustomStyle) return;
+        var sect = el.closest('.sd-sect-body');
+        if (!sect) return;
+        var fields = _szFields(sect);
+        if (!fields.length) return;
+        var text = host.text();
+        var has = {};
+        host.nodes.forEach(function (n) {
+            if (!n || !n.props) return;
+            var cls = window.PgCustomStyle.classOf(n.props.cssClass);
+            Z.held(text, cls, fields.map(function (fk) { return Z.PROPS[fk[1]]; })).forEach(function (s) { has[s] = true; });
+        });
+        var bar = _spbBar(el);
+        if (bar) {
+            bar._spbHost = host;
+            bar.innerHTML = _spbChooserHtml(host.size, has);
+        }
+        fields.forEach(function (fk) { _szTake(host, fk[0], fk[1], text); });
+    }
+
+    return { draw: draw, corners: corners, sizes: sizes };
 });

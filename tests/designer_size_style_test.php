@@ -200,3 +200,24 @@ function test_designer_size_style_font_and_length()
 	pg_assert_same(array('48px', '-8px', '50%', 'auto', ''), $r['len'], 'a bare number is pixels');
 	pg_assert_same(array('', '@media (min-width: 992px)'), $r['media']);
 }
+
+// The chooser is the spacing part's, on Size and display and Text: the
+// module rides in that part's bundle, the core hands the part a host and
+// puts the canvas at the chosen size.
+function test_designer_size_style_is_in_the_spacing_part()
+{
+	$bundles = pg_js_bundles();
+	pg_assert_true(in_array('assets/js/pg_size_style.js', $bundles['assets/js/style_designer_spacing.min.js'], true), 'the module is in the spacing part');
+	pg_assert_false(in_array('assets/js/pg_size_style.js', $bundles['assets/js/style_designer.min.js'], true), 'not in the core');
+
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("_sdPartCall('spacing', 'sizes', [_sdSzHost(sz, nodes)])", $core, 'the core draws the chooser through the part');
+	pg_assert_same(2, substr_count($core, "'<div data-sd-szbox hidden></div>"), 'Size and display and Text hold its place');
+	pg_assert_contains('_sdCanvasToSize(s);', $core, 'choosing a size puts the canvas at it');
+	pg_assert_contains('setSize: _sdSpSizeSet,', $core, 'one chosen size for the spacing box and the lengths');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_spacing.js');
+	pg_assert_contains('sizes: sizes', $part, 'the part draws the chooser');
+	pg_assert_contains("(has[s] ? ' is-has' : '')", $part, 'a size holding a value carries the dot');
+	pg_assert_contains('.sd-spb-size.is-has::after', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css'), 'the dot');
+}

@@ -1916,7 +1916,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     font-size: 10px; font-weight: 700; color: var(--sd-icon-quiet); cursor: pointer; display: grid; place-items: center;
 }
 .sd-spb-size:hover { color: var(--sd-text); }
-.sd-spb-size.is-has { color: var(--sd-text-muted); }
+.sd-spb-size.is-has { color: var(--sd-text-muted); position: relative; }
+/* A value set for that size: a dot under its name. */
+.sd-spb-size.is-has::after {
+    content: ''; position: absolute; left: 50%; bottom: 1px; width: 3px; height: 3px; margin-left: -1.5px;
+    border-radius: 50%; background: currentColor;
+}
 .sd-spb-size.is-on { background: var(--sd-warning-soft); color: var(--sd-warning); }
 .sd-spb-size:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; }
 /* The corners (Style › Border and corner, the same part): a side's number
