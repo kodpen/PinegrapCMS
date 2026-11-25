@@ -141,7 +141,7 @@ function test_designer_canvas_bar_keeps_ids_and_names_switches()
 		pg_assert_contains('id="' . $id . '"', $bar, 'the bar has #' . $id);
 	}
 
-	foreach (array('sd-vb-outline', 'sd-vb-theme', 'sd-vb-grid', 'sd-vb-motion') as $id) {
+	foreach (array('sd-vb-outline', 'sd-vb-theme', 'sd-vb-grid', 'sd-vb-motion', 'sd-vb-guides') as $id) {
 		pg_assert_true((bool) preg_match('/id="' . $id . '" role="menuitemcheckbox"/', $bar), '#' . $id . ' is a switch row of the View menu');
 	}
 

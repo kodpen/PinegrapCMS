@@ -4767,6 +4767,9 @@ const StyleDesigner = (function () {
                 return;
             }
 
+            // Shift+G — the layout lines.
+            if (_sdLinesKey(e)) { e.preventDefault(); return; }
+
             // P — the Prototype view with the selected element's link picked
             // (PGProtoHotspots.backKey() says where the key is left alone).
             if (window.PGProtoHotspots && window.PGProtoHotspots.backKey(e) && _sdProtoBack()) {
@@ -7468,6 +7471,14 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            // Canvas guides: Measure, the spacing bands, the column handles
+            // and the layout lines, on by default, kept per browser
+            // (_sdGuidesOff()). The two lines under it name the keys; they
+            // are not buttons and dim while the switch is off.
+            '<div class="sd-vb-sep" role="separator"></div>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-guides" role="menuitemcheckbox" aria-checked="true"><span class="bi bi-rulers"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Canvas guides')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<div class="sd-vb-keyrow"><span class="sd-vb-row-lbl">' + esc(_sdT('Measure: point at another element')) + '</span><kbd class="sd-vb-kbd">Alt</kbd></div>' +
+            '<div class="sd-vb-keyrow"><span class="sd-vb-row-lbl">' + esc(_sdT('Layout lines')) + '</span><kbd class="sd-vb-kbd">Shift+G</kbd></div>' +
             // Prototype comments from Design mode: shown once the comments
             // part runs (_sdProtoCommentsMark()); it switches to Prototype
             // mode with the side panel's Comments tab open.
@@ -7579,6 +7590,13 @@ const StyleDesigner = (function () {
                 if (canvasDoc && canvasDoc.body) canvasDoc.body.classList.toggle('sd-grid-overlay', canvasGridSnap);
                 try { localStorage.setItem('pinegrap_designer_grid_snap', canvasGridSnap ? '1' : '0'); } catch(e) {}
             });
+        }
+
+        // Canvas guides switch, kept per browser.
+        var guidesBtn = document.getElementById('sd-vb-guides');
+        if (guidesBtn) {
+            guidesBtn.classList.toggle('active', !_sdGuidesOff());
+            guidesBtn.addEventListener('click', function () { _sdGuidesSet(_sdGuidesOff()); });
         }
 
         // Animations toggle — the page's motion on the canvas, kept per
@@ -7746,7 +7764,7 @@ const StyleDesigner = (function () {
         var bar = document.getElementById('sd-bp-bar');
         if (!bar) return;
         var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
-        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion'].map(function (id) {
+        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-guides'].map(function (id) {
             var el = document.getElementById(id);
             var on = !!(el && el.classList.contains('active'));
             setA(el, 'aria-checked', on ? 'true' : 'false');
@@ -10763,8 +10781,9 @@ const StyleDesigner = (function () {
         _sdPlaceChromeOf(Array.prototype.slice.call(
             canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge), .sd-wrap:has(> .sd-chip-row)')));
         // The size badge sits at the selection's corner: placed again once
-        // the fidelity pass has moved things.
+        // the fidelity pass has moved things; so do the layout lines.
         if (selectedNode) _positionSizeBadge();
+        _sdLinesSoon();
     }
 
     // The wrapper under the pointer (the canvas mouseover handler).
@@ -61165,7 +61184,7 @@ const StyleDesigner = (function () {
     function _sdBandsDraw() {
         var node = (selectedNode && selectedNodes.length <= 1) ? selectedNode : null;
         var show = !!(node && node.props && node.type !== 'root' && canvasDoc && canvasDoc.body && canvasIframe &&
-            _collab.mayEdit && !_sdProto.open && !dragData && _sdUsesBootstrap() &&
+            _collab.mayEdit && !_sdProto.open && !dragData && !_sdGuidesOff() && _sdUsesBootstrap() &&
             !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
         if (show) {
             // The part writes through window.PGSpacingBox, which comes with
@@ -89802,7 +89821,9 @@ const StyleDesigner = (function () {
                     ['P',                   _sdT('Show the selected link in the Prototype view')],
                     ['Ctrl++  /  Ctrl+-',   _sdT('Zoom the canvas in / out')],
                     ['Ctrl+0',              _sdT('Reset the canvas zoom')],
-                    ['Ctrl+Wheel',          _sdT('Zoom with the mouse wheel')]
+                    ['Ctrl+Wheel',          _sdT('Zoom with the mouse wheel')],
+                    ['Alt',                 _sdT('Measure: point at another element')],
+                    ['Shift+G',             _sdT('Layout lines')]
                 ]},
                 { title: _sdT('Selection'), rows: [
                     ['Ctrl+Click',          _sdT('Add to / remove from the selection (multi-select)')],
@@ -89940,6 +89961,8 @@ const StyleDesigner = (function () {
             }},
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
+            { id: 'act_guides', label: _sdT('Toggle Canvas guides'), icon: 'bi-rulers', action: function() { _sdGuidesSet(_sdGuidesOff()); } },
+            { id: 'act_layout_lines', label: _sdT('Toggle Layout lines'), icon: 'bi-layout-three-columns', hint: 'Shift+G', action: function() { if (!_sdGuidesOff() && canvasDoc) _sdLinesShow(!_sdLines.on); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ]).filter(Boolean);
 
@@ -94813,6 +94836,9 @@ const StyleDesigner = (function () {
             // The Pages window (Ctrl+P); the browser's print is not the
             // editor's to give.
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') { e.preventDefault(); e.stopPropagation(); _pgPagesOpen(); return; }
+            // Shift+G — the layout lines; it changes nothing, so before the
+            // view-mode guard too. Not inside a window over the editor.
+            if (!(e.target.closest && e.target.closest('dialog')) && _sdLinesKey(e)) { e.preventDefault(); return; }
             // N — the note key the notes panel has always advertised. Before
             // the view-mode guard on purpose: leaving a note is the one thing
             // a locked-out session is invited to do.
@@ -95985,7 +96011,7 @@ const StyleDesigner = (function () {
     var _sdGuides = { win: null };
 
     function _sdGuidesOne() {
-        return !!(selectedNode && selectedNodes.length <= 1 && canvasDoc && canvasDoc.defaultView && !(_sdProto && _sdProto.open) && _sdPartUrls('guides'));
+        return !!(selectedNode && selectedNodes.length <= 1 && canvasDoc && canvasDoc.defaultView && !(_sdProto && _sdProto.open) && !_sdGuidesOff() && _sdPartUrls('guides'));
     }
 
     function _sdGuidesKey(e) {
@@ -96008,6 +96034,7 @@ const StyleDesigner = (function () {
     function _sdGuidesSync() {
         // A draw made while the editor's script is still being run.
         if (!_sdGuides) return;
+        _sdLinesSoon();
         var win = _sdGuidesOne() ? canvasDoc.defaultView : null;
         if (win === _sdGuides.win) return;
         if (_sdGuides.win) {
@@ -96021,6 +96048,64 @@ const StyleDesigner = (function () {
         } else if (_sdPartLoaded('guides') && _sdPartApis.guides && _sdPartApis.guides.stop) {
             _sdPartApis.guides.stop();
         }
+    }
+
+    // ── Canvas guides: the switch and the layout lines ────────────────────
+    // "Canvas guides" in the View menu turns Measure, the spacing bands, the
+    // column handles and the layout lines off or on; on unless this browser
+    // turned it off. Shift+G draws the page's container, its columns and
+    // gutters over the whole canvas until pressed again (or Escape), drawn by
+    // the part 'guides'; nothing runs for them while they are off.
+    var _SD_GUIDES_KEY = 'pinegrap_designer_canvas_guides';
+    var _sdLines = { on: false };
+
+    function _sdGuidesOff() {
+        try { return localStorage.getItem(_SD_GUIDES_KEY) === '0'; } catch (e) { return false; }
+    }
+
+    function _sdGuidesSet(on) {
+        try {
+            if (on) localStorage.removeItem(_SD_GUIDES_KEY);
+            else localStorage.setItem(_SD_GUIDES_KEY, '0');
+        } catch (e) { /* kept for this page only */ }
+        var btn = document.getElementById('sd-vb-guides');
+        if (btn) btn.classList.toggle('active', !!on);
+        if (!on) _sdLinesShow(false);
+        _sdBandsDraw();
+        _sdGuidesSync();
+    }
+
+    // Shift+G, from the editor or the canvas; true when it was taken.
+    function _sdLinesKey(e) {
+        if (!e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || String(e.key || '').toLowerCase() !== 'g') return false;
+        var t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return false;
+        if (_sdGuidesOff() || !canvasDoc || (_sdProto && _sdProto.open) || !_sdPartUrls('guides')) return false;
+        _sdLinesShow(!_sdLines.on);
+        return true;
+    }
+
+    function _sdLinesShow(on) {
+        _sdLines.on = !!on;
+        if (on) {
+            _sdLinesSoon();
+        } else if (_sdPartLoaded('guides') && _sdPartApis.guides && _sdPartApis.guides.linesOff) {
+            _sdPartApis.guides.linesOff();
+        }
+    }
+
+    // Drawn again after a canvas draw, a zoom or a size change; the part
+    // follows the canvas' own scroll and resize itself. The part ends the
+    // lines with Escape and tells it through `ended`.
+    function _sdLinesSoon() {
+        // A draw made while the editor's script is still being run.
+        if (!_sdLines || !_sdLines.on) return;
+        if (!canvasDoc || _sdGuidesOff() || (_sdProto && _sdProto.open)) { _sdLinesShow(false); return; }
+        _sdPartCall('guides', 'lines', [{
+            doc: canvasDoc,
+            rtl: (canvasDoc.documentElement.getAttribute('dir') || '').toLowerCase() === 'rtl',
+            ended: function () { _sdLines.on = false; }
+        }]).catch(_sdPartFailed);
     }
 
     // ── The "Clicks" layer ────────────────────────────────────────────────

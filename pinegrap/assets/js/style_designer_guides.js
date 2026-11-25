@@ -1,20 +1,22 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Visual Page Editor - the guides part: Measure on the canvas. With one
- * element selected, holding Alt and pointing at another element draws the
- * distances between their edges in page pixels; pointing at an element that
- * holds the selection draws the four inner distances. The lines sit in a
+ * Visual Page Editor - the guides part: Measure and the layout lines on the
+ * canvas. With one element selected, holding Alt and pointing at another
+ * element draws the distances between their edges in page pixels; pointing
+ * at an element that holds the selection draws the four inner distances.
+ * Shift+G draws the page's container, its twelve columns and the gutters
+ * over the whole canvas until it is pressed again. The lines sit in a
  * layer of the editor's own over the canvas frame, never in the canvas'
  * page, so nothing enters the tree, the saved markup or the Preview.
  * Measure changes no value.
  *
  * The numbers come from window.PGCanvasGuides (assets/js/pg_canvas_guides.js,
  * the first file of this part). Not needed to open a page: the editor runs
- * this part the first time Alt is pressed with one element selected
- * (_sdPartLoad(), pg_designer_parts()). It reaches the editor only through
- * the kit (_sdPartKit()) and the host handed to measure(). While nothing is
- * measured it holds no listener.
+ * this part the first time Alt is pressed with one element selected, or
+ * Shift+G (_sdPartLoad(), pg_designer_parts()). It reaches the editor only through
+ * the kit (_sdPartKit()) and the hosts handed to measure() and lines().
+ * While nothing is measured or lined it holds no listener.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -277,5 +279,146 @@ StyleDesigner.definePart('guides', function (K) {
         M = null;
     }
 
-    return { measure: measure, stop: stop };
+    // ── Layout lines ────────────────────────────────────────────────────
+    // The page's container, its columns and gutters over the whole canvas,
+    // in a layer of their own beside Measure's. `L` is set only while they
+    // show; the listeners (the canvas' scroll and resize, the editor's
+    // resize, Escape) live only as long.
+    var L = null;
+    var CONTAINER = '.container, .container-sm, .container-md, .container-lg, .container-xl, .container-xxl';
+
+    // A custom property's length in page px ('1.5rem', '24px', '2em'); a
+    // custom property is read as written, not resolved. Undefined when it
+    // is none of those.
+    function lengthPx(text, doc, cs) {
+        var m = /^\s*(-?[\d.]+)(px|rem|em)?\s*$/.exec(String(text || ''));
+        if (!m) return undefined;
+        var n = parseFloat(m[1]);
+        if (!(n >= 0)) return undefined;
+        if (m[2] === 'rem') return n * (parseFloat(doc.defaultView.getComputedStyle(doc.documentElement).fontSize) || 16);
+        if (m[2] === 'em') return n * (parseFloat(cs.fontSize) || 16);
+        return n;
+    }
+
+    // The first container on the page that has a width, in the frame's
+    // space with its paddings, and the gutter in page px; the page's own
+    // values, so a design that changed them is drawn as it is.
+    function pageGrid(doc) {
+        var win = doc.defaultView;
+        var list = doc.body ? doc.body.querySelectorAll(CONTAINER) : [];
+        for (var i = 0; i < list.length; i++) {
+            var c = list[i];
+            if (!c.offsetWidth) continue;
+            var r = c.getBoundingClientRect();
+            var s = r.width / c.offsetWidth;
+            var cs = win.getComputedStyle(c);
+            return {
+                container: {
+                    left: r.left,
+                    right: r.right,
+                    padLeft: (parseFloat(cs.paddingLeft) || 0) * s,
+                    padRight: (parseFloat(cs.paddingRight) || 0) * s
+                },
+                gutter: lengthPx(cs.getPropertyValue('--bs-gutter-x'), doc, cs)
+            };
+        }
+        return null;
+    }
+
+    function linesDraw() {
+        if (!L) return;
+        L.frame = 0;
+        var doc = L.host.doc;
+        var v = view(doc);
+        var docEl = doc.documentElement;
+        if (!v || !docEl || !docEl.clientWidth) {
+            if (L.layer) L.layer.hidden = true;
+            return;
+        }
+        var page = docEl.getBoundingClientRect();
+        var s = page.width / docEl.clientWidth || 1;
+        var found = pageGrid(doc);
+        var root = parseFloat(doc.defaultView.getComputedStyle(docEl).fontSize) || 16;
+        var g = G.layout({ left: page.left, top: 0, right: page.left + docEl.clientWidth * s, bottom: 1 }, {
+            zoom: s,
+            root: root,
+            gutter: found ? found.gutter : undefined,
+            container: found ? found.container : null,
+            rtl: !!L.host.rtl
+        });
+        if (!g) return;
+        var out = [];
+        var x = function (n) { return v.ox + n * v.k; };
+        g.columns.forEach(function (c) {
+            out.push(el('sd-gl-col', 'left:' + px(x(c.left)) + ';width:' + px((c.right - c.left) * v.k) + ';'));
+        });
+        out.push(el('sd-gl-edge', 'left:' + px(x(g.left)) + ';'));
+        out.push(el('sd-gl-edge', 'left:' + px(x(g.right) - 1) + ';'));
+        if (!L.layer) {
+            L.layer = document.createElement('div');
+            L.layer.className = 'sd-gl-layer';
+            L.layer.setAttribute('aria-hidden', 'true');
+        }
+        var layer = L.layer;
+        if (layer.parentNode !== v.host) v.host.appendChild(layer);
+        layer.style.left = px(v.left);
+        layer.style.top = px(v.top);
+        layer.style.width = px(v.width);
+        layer.style.height = px(v.height);
+        layer.textContent = '';
+        out.forEach(function (n) { layer.appendChild(n); });
+        layer.hidden = false;
+    }
+
+    function linesSoon() {
+        if (L && !L.frame) L.frame = requestAnimationFrame(linesDraw);
+    }
+
+    // Escape ends the lines and only that, outside a text being typed or a
+    // window over the editor.
+    function linesEsc(e) {
+        if (e.key !== 'Escape' || !L) return;
+        var t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || (t.closest && t.closest('dialog')))) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var ended = L.host.ended;
+        linesOff();
+        if (ended) ended();
+    }
+
+    function linesListen(on) {
+        var win = L.win;
+        var fn = on ? 'addEventListener' : 'removeEventListener';
+        [window, win].forEach(function (w) {
+            if (!w) return;
+            w[fn]('keydown', linesEsc, true);
+            w[fn]('resize', linesSoon);
+        });
+        if (win) win[fn]('scroll', linesSoon, { passive: true, capture: true });
+    }
+
+    // Shows the lines, or draws them again for the canvas `host.doc` (a
+    // canvas drawn again, a zoom, a size of the bar). `host` is { doc, rtl,
+    // ended() }.
+    function lines(host) {
+        if (!G || !host || !host.doc || !host.doc.defaultView) return;
+        if (L && L.win !== host.doc.defaultView) linesOff();
+        if (!L) {
+            L = { host: host, win: host.doc.defaultView, layer: null, frame: 0 };
+            linesListen(true);
+        }
+        L.host = host;
+        linesSoon();
+    }
+
+    function linesOff() {
+        if (!L) return;
+        linesListen(false);
+        if (L.frame) cancelAnimationFrame(L.frame);
+        if (L.layer && L.layer.parentNode) L.layer.parentNode.removeChild(L.layer);
+        L = null;
+    }
+
+    return { measure: measure, stop: stop, lines: lines, linesOff: linesOff };
 });
