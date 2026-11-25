@@ -192,3 +192,11 @@
 .hbt b { font-size: 30px; line-height: 1.15; font-weight: 700; } .hbt u { margin-top: 6px; padding: 8px 14px; border-radius: 6px; background: #1f6f54; text-decoration: none; font-weight: 600; font-size: 13px; text-shadow: none; }
 .cvs.nar { padding: 0 12px 20px; } .cvs.nar.pad { padding-top: 20px; } .cvs.nar .pgs { padding: 14px 14px 20px; } .cvs.nar .pgs > h5 { margin-bottom: 14px; }
 .ob .ofoot.colm { flex-direction: column; gap: 8px; }
+
+/* the Focus control with larger frames (board F5) */
+.fc2 { margin-top: 6px; } .fc2 .cut.whole { display: block; }
+.fcap { margin: 12px 0 8px; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: #8c96a4; }
+.ffs2 { display: grid; gap: 10px; } .ffs2 .rw { display: flex; gap: 8px; align-items: flex-start; }
+.ffr2 { display: grid; gap: 6px; font-size: 11px; line-height: 1; color: #8c96a4; } .ffr2 .cut { border-radius: 5px; box-shadow: 0 0 0 1px #343c48; }
+.ffr2 .fn { display: flex; align-items: center; gap: 5px; } .ffr2 .fn .bi { font-size: 11px; }
+.ffr2.on .cut { box-shadow: 0 0 0 2px #5b9bff; } .ffr2.on { color: #e8ebf0; } .ffr2.own .fn { color: #5b9bff; }
