@@ -28,7 +28,7 @@ priority: 7
 - ML1 (M) The item, pure: a subtree to an item and an item into a design (rule names, variables, cleared bindings); the store as files; rights. Done (#11521, `designer/designer-library-item.md`).
 - ML2 (M) after ML1 and DD9: "Save to my library" and the "My library" group with search and the hover card.
 - ML3 (M) after ML2: "Manage library".
-- ML4 (M) after ML1: Export and Import with the import's checks.
+- ML4 (M) after ML1: Export and Import with the import's checks. Done (#11580, `designer/designer-library-export-import.md`, `designer/designer-library-import-checks.md`); the Export button is the foot of "Manage library" (ML3), calling `exportItems(ids)` of the part `libraryfile`.
 - ML5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
