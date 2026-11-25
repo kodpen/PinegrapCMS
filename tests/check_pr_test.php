@@ -240,3 +240,33 @@ function test_check_pr_bundles()
 	pg_assert_true(in_array('pinegrap/assets/js/workspace.min.js', $bundles, true));
 	pg_assert_true(!in_array('pinegrap/assets/js/lazy.min.js', $bundles, true));
 }
+
+// A deleted or renamed-away PHP file of the integrity scope fails unless its
+// place joins the Cleanup tool's list; a listed folder covers what it holds,
+// and files outside the scope or not PHP pass.
+function test_check_pr_retired_problems()
+{
+	$list = array('old_screen.php', 'includes/oldlib');
+	$deleted = array(
+		'pinegrap/old_screen.php',
+		'pinegrap/includes/oldlib/a/b.php',
+		'pinegrap/gone.php',
+		'pinegrap/includes/fn/gone.php',
+		'pinegrap/assets/js/gone.js',
+		'pinegrap/install/gone.php',
+		'tools/gone.php',
+	);
+	$problems = check_pr_retired_problems($deleted, $list);
+
+	pg_assert_same(2, count($problems));
+	pg_assert_true(strpos($problems[0], "'gone.php'") !== false, 'the root file');
+	pg_assert_true(strpos($problems[1], "'includes/fn/gone.php'") !== false, 'the includes/ file');
+	pg_assert_same(array(), check_pr_retired_problems(array('pinegrap/gone.php'), array('gone.php')));
+	pg_assert_same(array('x.php', 'includes/y.PHP'), check_pr_integrity_php(array('pinegrap/x.php', 'pinegrap/includes/y.PHP', 'pinegrap/assets/z.php', 'x.php')));
+}
+
+// The list comes from pg_clean_up_file_list() of this tree.
+function test_check_pr_clean_up_list()
+{
+	pg_assert_same(pg_clean_up_file_list(), check_pr_clean_up_list());
+}

@@ -1049,6 +1049,7 @@
     "A file in the upload folders whose name lets the server run it.": "Yükleme klasörlerinde, adı sunucunun onu çalıştırmasına izin veren bir dosya.",
     "A file is at this place again, so nothing was moved back over it.": "Bu konumda yeniden bir dosya var; bu yüzden üzerine geri taşınmadı.",
     "A file no longer in Files": "Artık Dosyalar'da olmayan bir dosya",
+    "A file of an earlier version that this version no longer uses.": "Bu sürümün artık kullanmadığı, önceki bir sürüme ait dosya.",
     "A file or an address of the site already answers at this address.": "Bu adreste sitenin bir dosyası ya da adresi zaten yanıt veriyor.",
     "A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.": "Yalnızca bazı sayfaların ihtiyaç duyduğu bir dosyayı (harita, form betiği) o sayfalarla sınırlayın; diğer sayfalar daha hızlı açılır.",
     "A file the service fetches; a format offered is no account.": "Hizmetin aldığı bir dosyadır; sunulan bir biçim hesap değildir.",

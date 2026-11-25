@@ -32,6 +32,7 @@ function test_security_section_severity_face()
 function test_security_section_quarantine_takes_planted_files_only()
 {
 	pg_assert_true(pg_security_quarantinable('file_php_unknown'));
+	pg_assert_true(pg_security_quarantinable('file_php_retired'));
 	pg_assert_true(pg_security_quarantinable('file_upload_executable'));
 	pg_assert_true(pg_security_quarantinable('file_picture_php'));
 	pg_assert_true(pg_security_quarantinable('file_shell_mark'));
@@ -130,6 +131,17 @@ function test_security_rule_text_covers_every_kind()
 	}
 
 	pg_assert_same(array('reason' => '', 'advice' => ''), pg_security_rule_text('nothing_known', ''));
+}
+
+// A retired release file's "What to do" links to Clean Up; other kinds link
+// nowhere.
+function test_security_rule_link_retired_to_clean_up()
+{
+	$link = pg_security_rule_link('file_php_retired');
+
+	pg_assert_true(is_array($link) && (substr($link['url'], -12) === 'clean_up.php'), 'Clean Up');
+	pg_assert_true(strpos(pg_security_file_advice('file_php_retired'), 'Clean Up') !== false, 'the advice names it');
+	pg_assert_same(null, pg_security_rule_link('file_php_unknown'));
 }
 
 function test_settings_firewall_fold_scan_line()

@@ -103,6 +103,19 @@ function pg_assert_false($actual, $label = '')
 	return pg_test_record($actual === false, $label, 'expected false, got ' . var_export($actual, true));
 }
 
+// A product file's source with the Cleanup tool's list of retired places
+// (pg_clean_up_file_list() in includes/fn/files.php) taken out, for a test
+// that checks no file names a retired file: the list names them to delete
+// them on an updated site.
+function pg_test_without_clean_up_list($path, $source)
+{
+	if ((string) $path !== 'includes/fn/files.php') {
+		return (string) $source;
+	}
+
+	return (string) preg_replace('/\nfunction pg_clean_up_file_list\(\).*?\n\}\n/s', "\n", str_replace("\r\n", "\n", (string) $source));
+}
+
 function pg_assert_contains($needle, $haystack, $label = '')
 {
 	if (is_array($haystack)) {
