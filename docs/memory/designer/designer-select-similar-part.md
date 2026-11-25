@@ -28,4 +28,4 @@ description: "Select similar" in the designer: the menu rows, the S key, the pal
 
 Test: `tests/designer_select_similar_test.php` (the matcher, the part under Node, the core's rows and key).
 
-Related: docs/memory/designer/designer-select-similar-drawing.md, docs/memory/designer/designer-options-multiple.md, docs/memory/designer/designer-parts-on-demand.md
+Related: docs/memory/designer/designer-select-similar-matcher.md, docs/memory/designer/designer-select-similar-drawing.md, docs/memory/designer/designer-options-multiple.md, docs/memory/designer/designer-parts-on-demand.md
