@@ -33,6 +33,10 @@ StyleDesigner.definePart('focus', function (K) {
     // point (the panel is drawn anew by every change).
     var refocus = false;
     var ICONS = { phone: 'bi-phone', tablet: 'bi-tablet', desktop: 'bi-laptop' };
+    // The control drawn last (its element and its show()), which the mode
+    // moves with the picture; the mode on now, ended by a second start.
+    var shown = null;
+    var active = null;
 
     function names() {
         return { phone: _sdT('Phone'), tablet: _sdT('Tablet'), desktop: _sdT('Desktop') };
@@ -108,6 +112,7 @@ StyleDesigner.definePart('focus', function (K) {
         var pt = el.querySelector('[data-fc-pt]');
         var val = el.querySelector('.sd-fc-val');
         var pending = null, raf = 0, keyTimer = 0;
+        shown = { id: host.id, kind: host.kind, el: el, show: function (next) { show(next); }, redraw: function () { draw(host); } };
 
         // Shows `next` in the control and on the canvas without writing it.
         function show(next) {
@@ -191,5 +196,247 @@ StyleDesigner.definePart('focus', function (K) {
         if (same) same.addEventListener('click', function () { commit(M.same(values)); });
     }
 
-    return { draw: draw };
+    // ── "Set focus" on the canvas
+    // The picture shows whole, dimmed outside its frame, and is dragged
+    // under the frame; the arrows move it by 1 %, Enter or a press outside
+    // keeps, Escape puts it back. Nothing else on the canvas can be pressed
+    // while it is on; every listener goes with it. Drawn in the canvas
+    // document over the element, in fixed position against its viewport.
+
+    var Z = 2147483000;
+
+    function css(el, text) { el.style.cssText = text; return el; }
+
+    function lineButton(doc, label, main) {
+        var b = doc.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        css(b, 'height:26px;padding:0 10px;border:0;border-radius:6px;font:inherit;font-size:12px;cursor:pointer;' +
+            (main ? 'background:#2563eb;color:#fff;' : 'background:transparent;color:#c9d1d9;box-shadow:inset 0 0 0 1px #3d444d;'));
+        return b;
+    }
+
+    function natural(host) {
+        var pic = host.pic;
+        if (host.kind === 'image' && pic && pic.complete && pic.naturalWidth > 0) {
+            return Promise.resolve([pic.naturalWidth, pic.naturalHeight]);
+        }
+        return new Promise(function (resolve) {
+            var img = new Image();
+            img.onload = function () { resolve([img.naturalWidth, img.naturalHeight]); };
+            img.onerror = function () { resolve([0, 0]); };
+            img.src = host.src;
+        });
+    }
+
+    function mode(host) {
+        if (active) active.end(false);
+        var M = window.PGImageFocus(host.F);
+        var doc = host.doc, win = doc && doc.defaultView, pic = host.pic;
+        if (!win || !pic || !pic.isConnected) return Promise.resolve();
+        return natural(host).then(function (nat) {
+            if (!pic.isConnected) return;
+            open(host, M, doc, win, pic, nat);
+        });
+    }
+
+    function open(host, M, doc, win, pic, nat) {
+        var values = host.values;
+        var screen = host.screen;
+        var drawnAs = host.drawnAs();
+        var from = M.start(values, screen, drawnAs.position);
+        var xy = from.slice();
+        var moved = false;
+        var size = null, box = null;
+        // The element's own inline position, put back by Escape.
+        var prop = host.kind === 'image' ? 'object-position' : 'background-position';
+        var before = [pic.style.getPropertyValue(prop), pic.style.getPropertyPriority(prop)];
+
+        var layer = css(doc.createElement('div'), 'position:fixed;inset:0;z-index:' + Z + ';touch-action:none;cursor:default;background:rgba(238,240,242,.55);');
+        layer.setAttribute('data-sd-focus-mode', '');
+        layer.tabIndex = -1;
+        var whole = css(doc.createElement('img'), 'position:fixed;max-width:none;opacity:.34;filter:grayscale(.5);cursor:grab;user-select:none;-webkit-user-drag:none;');
+        whole.alt = '';
+        whole.draggable = false;
+        whole.src = host.src;
+        var win2 = css(doc.createElement('div'), 'position:fixed;overflow:hidden;cursor:grab;box-shadow:0 0 0 2px #0d6efd;');
+        var inner = css(doc.createElement('img'), 'position:absolute;max-width:none;user-select:none;-webkit-user-drag:none;');
+        inner.alt = '';
+        inner.draggable = false;
+        inner.src = host.src;
+        win2.appendChild(inner);
+        var grab = css(doc.createElement('span'), 'position:fixed;width:34px;height:34px;margin:-17px 0 0 -17px;display:grid;place-items:center;border-radius:50%;' +
+            'background:rgba(13,17,23,.72);color:#fff;font-size:15px;box-shadow:0 0 0 1.5px rgba(255,255,255,.75);pointer-events:none;');
+        grab.className = 'bi bi-arrows-move';
+        grab.setAttribute('aria-hidden', 'true');
+        var line = css(doc.createElement('div'), 'position:fixed;display:flex;flex-wrap:wrap;align-items:center;gap:10px;box-sizing:border-box;padding:7px 8px 7px 12px;border-radius:9px;' +
+            'background:#1f242c;color:#e6edf3;font:12.5px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:inset 0 0 0 1px #343c48,0 10px 26px rgba(0,0,0,.5);');
+        line.setAttribute('role', 'group');
+        line.setAttribute('aria-label', _sdT('Set focus'));
+        var say = doc.createElement('span');
+        var val = css(doc.createElement('em'), 'font-style:normal;color:#8c96a4;font-variant-numeric:tabular-nums;');
+        val.setAttribute('aria-live', 'polite');
+        var cancel = lineButton(doc, _sdT('Cancel'), false);
+        var keep = lineButton(doc, _sdT('Keep'), true);
+        line.appendChild(say);
+        line.appendChild(val);
+        line.appendChild(cancel);
+        line.appendChild(keep);
+        layer.appendChild(whole);
+        layer.appendChild(win2);
+        layer.appendChild(grab);
+        layer.appendChild(line);
+
+        function values2() { return M.move(values, screen, xy[0], xy[1]); }
+
+        // Measures the frame and lays the parts out on it.
+        function place() {
+            var r = pic.getBoundingClientRect();
+            box = { left: r.left, top: r.top, width: r.width, height: r.height };
+            size = M.drawn(drawnAs.fit, r.width, r.height, nat[0], nat[1]);
+            var cut = size.cut;
+            say.textContent = cut ? _sdT('Drag the picture under its frame. Arrows move it by 1%.') : _sdT('This screen shows the whole picture.');
+            whole.style.display = cut ? '' : 'none';
+            grab.style.display = cut ? '' : 'none';
+            win2.style.display = cut ? '' : 'none';
+            val.style.display = cut ? '' : 'none';
+            win2.style.left = r.left + 'px';
+            win2.style.top = r.top + 'px';
+            win2.style.width = r.width + 'px';
+            win2.style.height = r.height + 'px';
+            [whole, inner].forEach(function (im) {
+                im.style.width = size.w + 'px';
+                im.style.height = size.h + 'px';
+            });
+            grab.style.left = (r.left + r.width / 2) + 'px';
+            grab.style.top = (r.top + r.height / 2) + 'px';
+            var vw = doc.documentElement.clientWidth || win.innerWidth;
+            var vh = doc.documentElement.clientHeight || win.innerHeight;
+            var lw = Math.max(240, Math.min(r.width, vw - 16));
+            line.style.maxWidth = lw + 'px';
+            line.style.left = Math.max(8, Math.min(r.left, vw - lw - 8)) + 'px';
+            var below = r.top + r.height + 10;
+            line.style.top = (below + 90 < vh ? below : Math.max(8, Math.min(vh - 90, r.top + 8))) + 'px';
+            paint();
+        }
+
+        // Draws the picture at the point, on the canvas element too, and in
+        // the Options panel's control when it shows this element.
+        function paint() {
+            var o = M.offset(xy, size);
+            whole.style.left = (box.left + o.left) + 'px';
+            whole.style.top = (box.top + o.top) + 'px';
+            inner.style.left = o.left + 'px';
+            inner.style.top = o.top + 'px';
+            val.textContent = _sdT('{var:1}% · {var:2}%', [Math.round(xy[0]), Math.round(xy[1])]);
+            if (!moved) return;
+            var next = values2();
+            host.live(next);
+            if (shown && shown.id === host.id && shown.kind === host.kind && shown.el.isConnected) shown.show(next);
+        }
+
+        var drag = null, raf = 0;
+        function onDown(e) {
+            e.stopPropagation();
+            if (e.target === layer) {
+                // The click that follows the press selects nothing.
+                e.preventDefault();
+                var swallow = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+                doc.addEventListener('click', swallow, true);
+                win.setTimeout(function () { doc.removeEventListener('click', swallow, true); }, 400);
+                end(true);
+                return;
+            }
+            if ((e.target !== whole && e.target !== win2 && e.target !== inner) || e.button > 0 || !size.cut) return;
+            e.preventDefault();
+            drag = { x: e.clientX, y: e.clientY, from: xy.slice(), id: e.pointerId };
+            try { layer.setPointerCapture(e.pointerId); } catch (err) {}
+            whole.style.cursor = win2.style.cursor = 'grabbing';
+        }
+        function onMove(e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            xy = M.drag(drag.from, size, e.clientX - drag.x, e.clientY - drag.y);
+            moved = true;
+            if (raf) return;
+            raf = win.requestAnimationFrame(function () { raf = 0; paint(); });
+        }
+        function onUp(e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            drag = null;
+            whole.style.cursor = win2.style.cursor = 'grab';
+        }
+        // Keys reach the mode first, in both documents, and go no further.
+        function onKey(e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); end(false); return; }
+            if (e.key === 'Enter') {
+                if (e.target === cancel) return;
+                e.preventDefault(); e.stopImmediatePropagation(); end(true); return;
+            }
+            if (e.key === 'Tab' || e.key === ' ') return;
+            var next = size && size.cut ? M.nudge(xy, e.key) : null;
+            e.stopImmediatePropagation();
+            if (!next) return;
+            e.preventDefault();
+            xy = next;
+            moved = true;
+            paint();
+        }
+        function onWheel(e) { e.preventDefault(); }
+        // A press anywhere in the designer outside the canvas keeps.
+        function onOutside(e) {
+            if (e.target && e.target.nodeType === 1 && e.target.tagName === 'IFRAME') return;
+            end(true);
+        }
+        function onLost() { if (!pic.isConnected) end(false); else place(); }
+
+        var top = window;
+        function end(keepIt) {
+            if (!active || active.layer !== layer) return;
+            active = null;
+            if (raf) win.cancelAnimationFrame(raf);
+            layer.removeEventListener('pointerdown', onDown);
+            layer.removeEventListener('pointermove', onMove);
+            layer.removeEventListener('pointerup', onUp);
+            layer.removeEventListener('pointercancel', onUp);
+            layer.removeEventListener('wheel', onWheel);
+            win.removeEventListener('keydown', onKey, true);
+            win.removeEventListener('resize', onLost);
+            if (top !== win) {
+                top.removeEventListener('keydown', onKey, true);
+                top.document.removeEventListener('pointerdown', onOutside, true);
+            }
+            if (layer.parentNode) layer.parentNode.removeChild(layer);
+            if (keepIt && moved && pic.isConnected) {
+                host.commit(values2());
+            } else if (moved) {
+                // Put back: the canvas and the panel show the stored values.
+                if (pic.isConnected) pic.style.setProperty(prop, before[0], before[1]);
+                if (shown && shown.id === host.id && shown.kind === host.kind && shown.el.isConnected) shown.redraw();
+            }
+        }
+
+        // The canvas's own handlers never see a press in the mode.
+        ['click', 'mousedown', 'mouseup', 'dblclick', 'contextmenu'].forEach(function (t) {
+            layer.addEventListener(t, function (e) { e.stopPropagation(); if (t === 'contextmenu') e.preventDefault(); });
+        });
+        cancel.addEventListener('click', function () { end(false); });
+        keep.addEventListener('click', function () { end(true); });
+        layer.addEventListener('pointerdown', onDown);
+        layer.addEventListener('pointermove', onMove);
+        layer.addEventListener('pointerup', onUp);
+        layer.addEventListener('pointercancel', onUp);
+        layer.addEventListener('wheel', onWheel, { passive: false });
+        win.addEventListener('keydown', onKey, true);
+        win.addEventListener('resize', onLost);
+        if (top !== win) {
+            top.addEventListener('keydown', onKey, true);
+            top.document.addEventListener('pointerdown', onOutside, true);
+        }
+        active = { layer: layer, end: end };
+        doc.body.appendChild(layer);
+        place();
+        try { layer.focus({ preventScroll: true }); } catch (e) { layer.focus(); }
+    }
+
+    return { draw: draw, mode: mode };
 });
