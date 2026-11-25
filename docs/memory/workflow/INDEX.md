@@ -359,6 +359,7 @@
 - decisions-made-workspace-49.md: Decisions made, workspace part 49 (2026-11-23 on): a note written in a channel is the channel's; an agent channel's item shared by a link; memory search for agents; git stays the record
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-50.md: Decisions made, workspace part 50 (2026-11-24 on): calls remember the chosen devices, survive a click on an order, let several people share a screen, and get a window that grows
+- decisions-made-workspace-51.md: Decisions made, workspace part 51 (2026-11-24 on): a channel's Tasks and Board tabs become one tab "Board" holding tasks only, in a newer look, with ready automations on the board
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel
 - decisions-made-workspace-8.md: Decisions list, workspace part 8 (2026-11-07 on): note groups and tabs, PIN locks, note media; agents as people in agent channels; the owner's own account answers an agent's question
