@@ -69,3 +69,26 @@ function test_explorer_move_status()
 	pg_assert_same('partial', pg_explorer_move_status(2, array('Access denied for a.')), 'some failed');
 	pg_assert_same('error', pg_explorer_move_status(0, array('Access denied for a.')), 'all failed');
 }
+
+// A draft (in the Drafts folder 9) is not moved out of it, and no page is
+// moved into it: both are refused for that page only.
+function test_explorer_move_page_refusal()
+{
+	pg_assert_same('draft', pg_explorer_move_page_refusal(9, 6, 9), 'a draft stays a draft');
+	pg_assert_same('draft', pg_explorer_move_page_refusal(9, 9, 9), 'a draft already there is refused too');
+	pg_assert_same('into_drafts', pg_explorer_move_page_refusal(3, 9, 9), 'a live page is not made a draft');
+	pg_assert_same('', pg_explorer_move_page_refusal(3, 6, 9), 'a live page moves');
+	pg_assert_same('', pg_explorer_move_page_refusal(3, 6, 0), 'no Drafts folder');
+
+	$body = explorer_handle_items_test_body('pg_explorer_handle_move');
+	pg_assert_true(strpos($body, 'pg_explorer_move_page_refusal(') < strpos($body, 'UPDATE page SET'), 'the page is checked before it is written');
+}
+
+function explorer_handle_items_test_body($name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_items.php');
+	$start = (int) strpos($source, 'function ' . $name . '(');
+	$end = strpos($source, "\nfunction ", $start + 10);
+
+	return substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
+}
