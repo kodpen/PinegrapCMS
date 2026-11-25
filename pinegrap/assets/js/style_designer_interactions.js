@@ -75,7 +75,8 @@ StyleDesigner.definePart('interactions', function (K) {
             ['', _sdT('None')], ['fade', _sdT('Fade in')],
             ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
             ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
-            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')],
+            ['scale', _sdT('Scale')], ['zoom-out', _sdT('Zoom out')], ['blur-in', _sdT('Blur in')],
+            ['rotate-in', _sdT('Rotate in')], ['reveal', _sdT('Reveal')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')],
             ['scroll-zoom', _sdT('Zoom on scroll')], ['scroll-fade', _sdT('Fade on scroll')], ['scroll-rise', _sdT('Rise on scroll')]
         ];
         if (fx.effect === 'count' || (n.type === 'content' && _SD_FX_COUNT_TEXT.indexOf(n.props.contentType) !== -1)) {
@@ -94,10 +95,10 @@ StyleDesigner.definePart('interactions', function (K) {
         var h = row(_sdT('Effect'), select('effect', effects));
         if (fx.trigger) {
             var entrance = fx.trigger === 'load' || fx.trigger === 'view';
-            h += row(_sdT('Trigger'), select('trigger', [
-                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
-                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
-            ]));
+            // Reveal opens a clip from the bottom: an entrance only.
+            var triggers = [['view', _sdT('Scroll into view')], ['load', _sdT('Page load')]];
+            if (fx.effect !== 'reveal') triggers.push(['hover', _sdT('Hover')], ['click', _sdT('Click')]);
+            h += row(_sdT('Trigger'), select('trigger', triggers));
             h += row(_sdT('Duration'), number('duration', 'ms'));
             h += row(_sdT('Delay'), number('delay', 'ms'));
             h += row(_sdT('Easing'), select('easing', [
@@ -105,6 +106,10 @@ StyleDesigner.definePart('interactions', function (K) {
                 ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
             ]));
             if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
+            // Blur in and Rotate in read the distance as how far they start
+            // from: the blur in px, the angle in degrees (pg_fx.src.js).
+            if (fx.effect === 'blur-in') h += row(_sdT('Blur'), number('distance', 'px', entrance ? 8 : 2));
+            if (fx.effect === 'rotate-in') h += row(_sdT('Angle'), number('distance', '°', entrance ? 8 : 3));
             if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
             if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
         }

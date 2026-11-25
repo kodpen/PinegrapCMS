@@ -18,4 +18,6 @@ description: What pg_fx.src.js does: entrance start states and the observer, sta
 - Checked in Chromium for #9018 (360, 768 and 1280 px): each scroll-linked node at every 37 px against the rule, no drift over passes, a taller window, reduced motion on and off while open, scripts off. 120 nodes on a long page with the CPU slowed four times: about 2 ms of script a frame, no dropped frame. Firefox, Safari and a real phone not checked.
 - A utility class with `!important` (`opacity-50`) wins over Fade on scroll: the node keeps that opacity throughout.
 
+- Zoom out, Blur in, Rotate in, Reveal (filter and clip-path): `designer/designer-interactions-more-entrances.md`.
+
 Related: docs/memory/designer/designer-interactions.md
