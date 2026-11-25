@@ -46,7 +46,6 @@
 - designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
 - designer-record-edit-in-place.md: Plan (owner 2026-11-24, level 3): a collection item's words and pictures corrected in place in the designer's Preview, saved to the record by its own writer, apart from the design; steps RE1 to RE5
 - designer-screens-side-by-side.md: Plan (owner 2026-11-24, level 1): the designer's canvas with a phone and a tablet mirror beside it, redrawn when the hand rests, a click choosing the element; steps SS1 to SS4
-- designer-shared-marks.md: Plan (owner 2026-11-25): shared components and system widgets no longer wrapped at rest on the canvas; a frame under the pointer and when chosen, a View switch; steps SM1, SM2
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - designer-start-import.md: Plan (owner 2026-11-24, before the launch): the New design window with every start in one place, import from Figma as layers and from Canva as reference pictures and brand; steps ST1 to ST7
 - designer-style-guide.md: Plan (owner 2026-11-24, level 2): a style guide sheet drawn from a design's variables, text styles, controls and shared components, always current, printable; steps SG1 to SG4

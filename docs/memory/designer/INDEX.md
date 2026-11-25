@@ -372,7 +372,7 @@
 - designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
 - designer-canvas-absolute-position.md: Where the designer canvas places an absolutely positioned element (sd-fx-abs, sd-fx-unpos), which wrappers stop the walk, and how the chrome of see-through wrappers is placed.
 - designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6) [decision: here]
-- designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu with its badge, Find and History; its measures
+- designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu (Shared parts…) and badge, Find and History; its measures
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
@@ -850,7 +850,7 @@
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8 [decision: here]
 - shared-component-editor-cache.md: The editor's shared component cache: prefetch keeps a changed entry, the snapshot every drawn tree gets, what marks a component dirty, the flush at Save, a template placeholder.
-- shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
+- shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, colours, canvas marks.
 - shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links [decision: here]
 - shared-components-panel.md: Deleting shared components and system widgets without opening a design (designs home panel), how usage is counted, and why deleting a design leaves those rows alone (pg_designer_delete_design()).
 - shipping-address-verified-box.md: Verified shipping addresses help box of the Shipping Address widget (#3177): has_verified_addresses, the verified_addresses section, the fill script by name
