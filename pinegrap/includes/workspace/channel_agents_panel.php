@@ -161,6 +161,29 @@ function ws_channel_agent_wake_words($rule, $prefix = '')
 }
 
 /**
+ * What wakes an agent in a channel as a fact of its own, with no verb: the
+ * "Wakes" line of an opened row in Channel info's agents block. Pure but
+ * for lang().
+ *
+ * @param string $rule   mention, all, prefix, replies
+ * @param string $prefix the word of the prefix rule
+ * @return string
+ */
+function ws_channel_agent_wake_fact($rule, $prefix = '')
+{
+    switch ((string) $rule) {
+        case 'all':
+            return lang('On every message');
+        case 'prefix':
+            return lang(array('string' => 'On {var:1}', 'vars' => (string) $prefix));
+        case 'replies':
+            return lang('On replies to it');
+    }
+
+    return lang('When mentioned');
+}
+
+/**
  * An agent's own picture for the panel: a web address or a path of the
  * site, else '' and the screen draws the robot tile. Pure.
  *
@@ -558,7 +581,9 @@ function ws_channel_member_seen($can_manage, $user_ids, $now)
  * @param array      $row    ws_channel_agent_shape()
  * @param int        $now
  * @param array|null $counts ws_agent_request_counts() of the channel's agents; null leaves the brief out
- * @return array id, handle, name, role (its label, '' for none), kind, assistant, active, wake, seen, seen_state ('on', 'off', 'late', 'ready')
+ * @return array id, handle, name, role (its label, '' for none), kind, assistant, active, wake, wake_fact
+ *               (the rule with no verb), seen, seen_state ('on', 'off', 'late', 'ready'), seen_rest (the last
+ *               seen in running words)
  */
 function ws_channel_member_agent($row, $now, $counts = null)
 {
@@ -568,6 +593,7 @@ function ws_channel_member_agent($row, $now, $counts = null)
 
     if ($kind !== 'app') {
         $seen = lang('Always ready');
+        $rest = lang('always ready');
         $state = 'ready';
     } elseif ((string) ($agent['door_kind'] ?? '') === 'poll') {
         $at = (int) ($agent['seen_at'] ?? 0);
@@ -579,9 +605,16 @@ function ws_channel_member_agent($row, $now, $counts = null)
         $state = ((string) ($agent['door_error'] ?? '') !== '') ? 'late' : 'off';
     }
 
+    // The last seen in running words, after the state's word on the second
+    // line of the agents block: "Not seen · last knock 3 h ago".
+    if ($kind === 'app') {
+        $rest = ($at > 0) ? lang(array('string' => 'last knock {var:1}', 'vars' => ws_seen_ago_words($at, $now))) : lang('not knocked yet');
+    }
+
     $reach_from = (int) ($row['reach_from'] ?? 0);
     // A channel's agent in its discussion is asked there by name only.
     $wake = ($reach_from > 0) ? lang('from the channel, answers when named') : ws_channel_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
+    $wake_fact = ($reach_from > 0) ? lang('When mentioned') : ws_channel_agent_wake_fact($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
 
     $out = array(
         'id'         => (int) ($agent['id'] ?? 0),
@@ -595,8 +628,10 @@ function ws_channel_member_agent($row, $now, $counts = null)
         'assistant'  => ($kind === 'model'),
         'active'     => ((string) ($agent['status'] ?? '') === 'active'),
         'wake'       => $wake,
+        'wake_fact'  => $wake_fact,
         'seen'       => $seen,
         'seen_state' => $state,
+        'seen_rest'  => $rest,
         // In a discussion: the channel it comes from (0 for a row of its
         // own) and whether the discussion follows it.
         'reach_from' => $reach_from,

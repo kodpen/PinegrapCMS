@@ -3840,6 +3840,7 @@
     "Contents": "İçindekiler",
     "Contents of the bundle": "Paketin içeriği",
     "Context": "Bağlam",
+    "Context {var:1} ({var:2}%)": "Bağlam {var:1} (%{var:2})",
     "Context {var:1} of {var:2} tokens ({var:3}%)": "Bağlam {var:1} / {var:2} token (%{var:3})",
     "Contiguous": "Bitişik",
     "Continue": "Devam Et",
