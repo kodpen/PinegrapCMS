@@ -1797,6 +1797,50 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-lm:hover { filter: brightness(1.12); }
 .sd-lm:focus-visible { outline: none; border-color: var(--sd-accent); box-shadow: 0 0 0 3px var(--sd-accent-soft); }
 
+/* The spacing bands over the canvas (style_designer_bands.js): the
+   selection's outer spacing as a hatched amber band outside its frame, its
+   inner spacing as a plain teal band inside, each band's edge a white pill
+   handle with an accent ring, the same size at every zoom. Like the link
+   marks' layer it covers the canvas in view and lets every other click
+   through. */
+.sd-cgb-layer { position: absolute; z-index: 21; overflow: hidden; pointer-events: none; }
+.sd-cgb-band { position: absolute; box-sizing: border-box; }
+.sd-cgb-m {
+    background: repeating-linear-gradient(135deg, rgba(245,181,74,.34) 0 2px, rgba(245,181,74,.12) 2px 6px);
+    border: 1px dashed rgba(245,181,74,.7);
+}
+.sd-cgb-p { background: rgba(45,212,191,.2); }
+.sd-cgb-h {
+    position: absolute; width: 22px; height: 6px; padding: 0; margin: 0;
+    transform: translate(-50%, -50%);
+    border: 0; border-radius: 3px; background: #fff;
+    box-shadow: 0 0 0 1.5px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35);
+    cursor: ns-resize; pointer-events: auto; touch-action: none;
+}
+.sd-cgb-h::before { content: ''; position: absolute; inset: -6px; }
+.sd-cgb-h.is-v { width: 6px; height: 22px; cursor: ew-resize; }
+.sd-cgb-h.is-faint { opacity: .45; }
+.sd-cgb-h:hover, .sd-cgb-h.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35); }
+.sd-cgb-h:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 0 0 5px var(--sd-accent-soft); }
+.sd-cgb-layer.is-live .sd-cgb-h:not(.is-on) { opacity: .25; }
+.sd-cgb-val {
+    position: absolute; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    background: var(--sd-panel-bg); color: #fff; font-size: 11px; line-height: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-cgb-val b { margin-right: 2px; color: var(--sd-warning); }
+.sd-cgb-first {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    background: var(--sd-accent-soft); border-bottom: 1px solid var(--sd-panel-border);
+    color: var(--sd-text); font-size: 12px;
+}
+.sd-cgb-first > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.sd-cgb-got {
+    flex: 0 0 auto; padding: 2px 10px; border: 1px solid var(--sd-accent-line); border-radius: 4px;
+    background: transparent; color: var(--sd-accent); font-size: 12px;
+}
+.sd-cgb-got:hover { background: var(--sd-accent-soft); }
+
 /* ── Color pickers (Text Col / Bg Col / Border Color) ──
    Custom dropdown widget so each option can render a colored dot to the LEFT of the name —
    native <select><option> on Windows Chrome ignores background-image and most CSS.
@@ -7859,6 +7903,52 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-publish-row { position: relative; flex-wrap: wrap; row-gap: .25rem; padding-inline-start: 2.5rem; }
 .sd-publish-row > .check { position: absolute; inset-inline-start: 1rem; top: .625rem; }
 .sd-publish-row > .sd-publish-state { max-width: 100%; white-space: normal; text-align: start; line-height: 1.3; }
+/* The Publish check: the sheet is wider for the findings; a checked row's
+   result at its end (Checking…, Ready, n to look at, n blocking) opens the
+   page's findings under it, in five groups of cards. On a narrow sheet the
+   result goes to a second line under the name. */
+#sdPublishSheet { --bs-dialog-width: 620px; }
+.sd-publish-dim { opacity: .6; }
+.sd-publish-brk { display: none; }
+.sd-publish-result { flex: none; display: inline-flex; align-items: center; gap: .375rem; height: 1.5rem; padding: 0 .5rem 0 .5625rem; border: 0; border-radius: 6px; font-size: .75rem; font-weight: 600; background: transparent; color: #8b949e; white-space: nowrap; }
+.sd-publish-result > .bi:last-child { font-size: .5625rem; opacity: .8; }
+.sd-publish-result.is-run { font-weight: 500; padding-inline-end: 0; }
+.sd-publish-result.is-run .spinner-border { width: .6875rem; height: .6875rem; border-width: 1.5px; }
+.sd-publish-result.is-ok { color: #56d364; background: rgba(63, 185, 80, .13); }
+.sd-publish-result.is-warn { color: #e3b341; background: rgba(210, 153, 34, .15); }
+.sd-publish-result.is-bad { color: #ff8a8a; background: rgba(255, 107, 107, .15); }
+.sd-publish-result.is-none { background: rgba(139, 148, 158, .12); }
+.sd-publish-result.is-open { box-shadow: inset 0 0 0 1px currentColor; }
+.sd-publish-result:focus-visible { outline: 2px solid #58a6ff; outline-offset: 1px; }
+.sd-publish-findings { padding: .25rem .875rem .75rem 2.75rem; background: #191c21; border-top: 1px solid #30363d; }
+.sd-pc-group + .sd-pc-group { margin-top: .125rem; }
+.sd-pc-head { display: flex; align-items: center; gap: .5rem; height: 2rem; font-size: .78rem; }
+.sd-pc-head > .bi { width: 1rem; text-align: center; color: #8b949e; }
+.sd-pc-head b { color: #e6edf3; font-weight: 600; }
+.sd-pc-head small { font-size: .75rem; color: #8b949e; }
+.sd-pc-head small.sd-pc-count { min-width: 1.125rem; height: 1.125rem; padding: 0 .3125rem; border-radius: .5625rem; display: inline-grid; place-items: center; font-weight: 600; font-size: .6875rem; color: #e6edf3; background: #2f3640; }
+.sd-pc-note { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0 0 .375rem 1.5rem; font-size: .75rem; color: #8b949e; }
+.sd-pc-finding { display: flex; align-items: flex-start; gap: .5625rem; margin: 0 0 .375rem 1.5rem; padding: .5rem .625rem; border-radius: 8px; background: #1e2127; box-shadow: inset 0 0 0 1px #30363d; font-size: .78rem; line-height: 1.4; }
+.sd-pc-finding > .bi { flex: none; margin-top: 1px; font-size: .8125rem; color: #e3b341; }
+.sd-pc-finding.is-block { box-shadow: inset 0 0 0 1px rgba(255, 107, 107, .38); }
+.sd-pc-finding.is-block > .bi { color: #ff8a8a; }
+.sd-pc-body { flex: 1; min-width: 0; }
+.sd-pc-body p { margin: 0; }
+.sd-pc-text { color: #e6edf3; }
+.sd-pc-detail { margin-top: .125rem !important; font-size: .75rem; color: #8b949e; overflow-wrap: anywhere; }
+.sd-pc-path { margin-top: .1875rem !important; font-size: .75rem; color: #8b949e; }
+.sd-pc-link { padding: 0; border: 0; background: none; color: #58a6ff; font-size: inherit; text-align: start; }
+.sd-pc-link:hover { text-decoration: underline; }
+.sd-pc-link:focus-visible { outline: 2px solid #58a6ff; outline-offset: 2px; border-radius: 3px; }
+@media (max-width: 575.98px) {
+    .sd-publish-brk { display: block; flex: 1 1 100%; height: 0; }
+    .sd-publish-findings { padding-inline-start: .875rem; }
+    .sd-pc-finding, .sd-pc-note { margin-inline-start: 0; }
+}
+/* The line over the canvas after a press on a finding's path. */
+.sd-pc-line { position: fixed; left: 50%; bottom: 1.5rem; z-index: 1060; transform: translateX(-50%); display: flex; align-items: center; gap: .75rem; max-width: calc(100vw - 2rem); padding: .4375rem .5rem .4375rem .875rem; border-radius: 10px; background: #1f242c; box-shadow: inset 0 0 0 1px #343c48, 0 12px 30px rgba(0, 0, 0, .5); font-size: .78rem; color: #c9d1d9; }
+.sd-pc-line > .bi { color: #e3b341; }
+.sd-pc-line-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Palette hover card (_sdPalTipShow): what an item is, with a drawing
    of the grid and Bootstrap items. It never takes the pointer, so a drag
@@ -8289,6 +8379,26 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 }
 .sd-sketch-mode .pgc-selected .sd-sketch-more { display: inline-flex; }
 .sd-sketch-more:hover, .sd-sketch-more:focus-visible { background: rgba(255,255,255,.1); outline: none; }
+/* "Read the picture" (style_designer_sketchread.js): the busy head, the
+   boxes proposed in the accent over the picture, the foot under the frame
+   with its line and buttons. */
+.sd-sketch-read-busy { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: .72rem; color: var(--sd-text-muted); white-space: nowrap; }
+.sd-sketch-spin { display: inline-block; animation: sd-tpl-prep-spin 1s linear infinite; }
+.sd-sketch-act.btn { padding: 0 8px; font-size: .72rem; line-height: 1.6; }
+.sd-sketch-read-stop { margin: 0 4px 0 6px; }
+.sd-sketch-proposed {
+    position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--sd-accent); border-radius: 6px;
+    background: color-mix(in srgb, var(--sd-accent) 14%, transparent); color: var(--sd-text); pointer-events: none;
+}
+.sd-sketch-proposed .sd-sketch-heading { padding-top: 0; }
+.sd-sketch-foot {
+    position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 4;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px;
+    border-radius: 6px; background: #2a2f36; color: var(--sd-text); font-size: .74rem; cursor: default;
+}
+.sd-sketch-foot-text { flex: 1 1 200px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .sd-sketch-spin { animation: none; } }
 .sd-sketch-menu-sep { margin: 4px 0; border: 0; border-top: 1px solid rgba(255,255,255,.12); opacity: 1; }
 .sd-sketch-menu-key { margin-left: auto; padding: 0 4px; background: none; color: var(--sd-text-muted); font-size: .68rem; }
 .sd-sketch-guide-x { width: 1px; }
@@ -8538,6 +8648,30 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 @media (pointer: coarse) { .sd-tree-mv-b { width: 32px; height: 28px; line-height: 28px; } }
 
 .sd-move-dialog { width: min(480px, calc(100vw - 32px)); }
+/* "Preview on a phone" (style_designer_phone.js): the QR code on white,
+   its two lines, the info line, and the foot with no filled button. Below
+   768 px the window fills the screen. */
+.sd-phone-dialog { width: min(360px, calc(100vw - 32px)); }
+.sd-phone-body { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.sd-phone-code { width: 196px; height: 196px; padding: 6px; border-radius: 8px; background: #fff; color: #000;
+    display: flex; align-items: center; justify-content: center; }
+.sd-phone-code svg { display: block; width: 100%; height: 100%; }
+.sd-phone-wait { background: var(--sd-raised-bg); border: 1px dashed var(--sd-panel-border); color: var(--sd-text-muted); font-size: 2rem; }
+.sd-phone-dim svg { opacity: .2; }
+.sd-phone-head { margin: 8px 0 0; font-weight: 600; }
+.sd-phone-sub { margin: 0; font-size: .8rem; color: var(--sd-text-muted); }
+.sd-phone-sub b { color: inherit; font-weight: 600; }
+.sd-phone-act { margin: 6px 0 0; }
+.sd-phone-line { display: flex; align-items: flex-start; gap: 8px; width: 100%; margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
+    text-align: start; font-size: .78rem; background: var(--sd-accent-soft); color: var(--sd-accent); }
+.sd-phone-line > span:nth-child(2) { flex: 1; }
+.sd-phone-warn { background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-phone-foot { gap: 8px; }
+.sd-phone-note { font-size: .78rem; color: var(--sd-text-muted); }
+.sd-phone-narrow.sd-phone-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
+.sd-phone-narrow .sd-phone-body { justify-content: center; }
+.sd-phone-narrow .sd-phone-code { width: 176px; height: 176px; }
+.sd-phone-narrow .sd-phone-foot { flex-direction: column; align-items: stretch; }
 .sd-move-handle { display: none; }
 .sd-move-head { gap: 8px; }
 .sd-move-icon { color: var(--sd-accent); }
@@ -8613,3 +8747,35 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-clicks-missing li { border-color: var(--sd-panel-border) !important; }
 .sd-clicks-missing li > span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
 @media (max-width: 575.98px) { .sd-clicks-btn-txt { display: none; } }
+
+/* My library (style_designer_mylibrary.js): the group at the top of the
+   Blocks list, its own group names, its first-use line; the save window's
+   group offers; the line of a copy whose binding the site lacked. */
+.sd-lib-cat .sd-category-header { gap: .4rem; }
+.sd-lib-count {
+    margin-left: auto; padding: 0 .4rem; border-radius: 1rem;
+    font-size: .62rem; font-weight: 600; letter-spacing: 0;
+    background: rgba(var(--sd-accent-rgb), .14); color: var(--sd-text);
+}
+.sd-lib-group {
+    padding: .35rem .45rem .15rem; font-size: .64rem; font-weight: 600;
+    color: var(--sd-text-muted);
+}
+.sd-lib-group[hidden] { display: none; }
+.sd-lib-empty { margin: .2rem .45rem .45rem; font-size: .72rem; line-height: 1.45; color: var(--sd-text-muted); }
+.sd-lib-combo { position: relative; }
+.sd-lib-offers {
+    position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px);
+    max-height: 180px; overflow: auto; margin: 0; padding: 4px 0; list-style: none;
+    border: 1px solid var(--bs-border-color, #d0d7de); border-radius: 6px;
+    background: var(--bs-body-bg, #fff); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.sd-lib-offers[hidden] { display: none; }
+.sd-lib-offers li { padding: 5px 10px; cursor: pointer; }
+.sd-lib-offers li:hover,
+.sd-lib-offers li.active { background: rgba(13, 110, 253, .12); }
+.sd-lib-unbound-line {
+    margin: 0 14px 10px; padding: 7px 10px; border-radius: 6px;
+    font-size: .72rem; line-height: 1.4;
+    background: rgba(245, 158, 11, .14); color: #f59e0b;
+}

@@ -20,13 +20,15 @@ priority: 5
 ## What must it keep?
 - Design and content stay apart: a record's save never changes the page's tree, is not part of Publish or of the design's undo, and has its own Save and Discard.
 - Saved only through the item's own writer, so the field's rules, the address rename and the item's history apply (`designer/collection-revisions.md`), with the designer named as the source.
-- Only who may edit that item on its own screen sees the switch. Where content changes wait for approval (`designer/content-proposals.md`), this one waits too.
+- Only who may edit that item on its own screen sees the switch.
+- Architect (2026-11-25, agent channel message 13357): with "Content changes wait for approval" on, a role 2 or 3 person gets no "Edit content here" switch. Where the read says `waits: true` the Preview shows "Open the record" in its place (RE4's link), and the record is changed on its own screen as today, which is not held either.
+- Why: approval of collection records is left out of content approval and needs the owner's yes of its own (`designer/content-proposals-overview.md`, "What is left out?"), so no record op and no approve path go into `design_proposals`. RE1 stays as built.
 - A field changed by someone else meanwhile is not overwritten: the bar shows both and asks.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- RE1 (M) Server: one item's fields written through its own writer with rights, rules, history and the changed-meanwhile check; tests. Done (#11551): `designer/record-edit-in-place-server.md`. A role 2/3 change while approval is on is refused (`waits`), not held: holding one in `design_proposals` needs a record op and approve path, left for the architect before RE3.
-- RE2 (S) Pure: which bound elements of a page can be edited and with which control.
-- RE3 (M) after RE1, RE2, PW3 of the preview-as plan and DD20: the switch, the frames, the controls in place, the foot bar.
+- RE1 (M) Server: one item's fields written through its own writer with rights, rules, history and the changed-meanwhile check; tests. Done (#11551): `designer/record-edit-in-place-server.md`. A role 2/3 change while approval is on is refused (`waits`), not held, and stays so (the architect's line above).
+- RE2 (S) Pure: which bound elements of a page can be edited and with which control. Done (#11583): `designer/record-edit-in-place-spots.md`; RE3 bundles `pg_record_edit_spots.js` into its part.
+- RE3 (M) after RE1, RE2, PW3 of the preview-as plan and DD20: the switch, the frames, the controls in place, the foot bar. With `waits: true`: no new control, only RE4's "Open the record" link where the switch would be.
 - RE4 (S) after RE3: "Open the record" for other kinds, the canvas menu's row.
 - RE5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 

@@ -21,6 +21,13 @@
  * (ws_sync) brings back while the tab is open; when the stamp moves, the
  * board is read again. Every text comes from the #ws-config block.
  *
+ * The tab has two views under one toolbar: Board, the columns, and List,
+ * the channel's task cards the Tasks tab showed, drawn by workspace.js
+ * (hooks.listInto()). The toolbar holds the Segmented control of the two,
+ * the grouping (Board) or the open, closed or all tasks (List), the search,
+ * "Only mine", "Filter" (urgency, person, the cancelled ones) and the one
+ * filled "New task". The view chosen is kept in the browser.
+ *
  * The workflow tables screen (workspace_wtables.php) mounts the same board
  * over a table's rows by a status column (window.PGWsChannelBoard.mountSource()):
  * that screen does not load workspace.js, so the board brings its own small
@@ -41,9 +48,28 @@
 
     var GROUPS = ['status', 'type', 'person', 'date'];
 
+    // The view chosen last, Board or List, kept per browser.
+    var VIEW_KEY = 'ws-board-view';
+
+    function storedView() {
+        try {
+            return (window.localStorage.getItem(VIEW_KEY) === 'list') ? 'list' : 'board';
+        } catch (error) {
+            return 'board';
+        }
+    }
+
+    function storeView(view) {
+        try {
+            window.localStorage.setItem(VIEW_KEY, view);
+        } catch (error) {
+            // Private mode or a full store: the view holds for this page.
+        }
+    }
+
     // How the reader last grouped and filtered, for the next channel opened
     // on this page.
-    var prefs = { group: 'status', priority: '', mine: false, cancelled: false };
+    var prefs = { view: storedView(), group: 'status', status: 'open', priority: '', mine: false, cancelled: false };
 
     // The board on the screen; one at a time.
     var board = null;
@@ -157,6 +183,29 @@
         }
 
         var mine = ++self.serial;
+
+        if (self.filter) {
+            self.filter.refresh();
+        }
+
+        // The List view: the Tasks pane's cards, narrowed by the toolbar.
+        if (!self.source && (prefs.view === 'list')) {
+            clear(self.body);
+            self.hooks.listInto(self.body, {
+                status: prefs.status,
+                q: self.q,
+                priority: prefs.priority,
+                person: self.person,
+                mine: prefs.mine,
+                onChange: function () {
+                    if (self === board) {
+                        reload();
+                    }
+                }
+            });
+            return;
+        }
+
         var reading = self.source ? self.source.load({ all: self.doneAll }) : k.api('ws_channel_board', {
             channel_id: self.channel.id,
             group_by: prefs.group,
@@ -195,23 +244,39 @@
 
     // ── Drawing ──
 
+    // The one toolbar of both views, drawn once a mount: the Segmented
+    // control, the grouping or the task status, the search, "Only mine",
+    // "Filter" and "New task"; what is set behind "Filter" is a tag under
+    // it (self.filter.tags).
     function toolbar(self) {
         var k = kit();
-        var bar = k.el('div', 'pg-toolbar ws-cb-bar');
+        var bar = k.el('nav', 'pg-toolbar ws-bar ws-cb-bar');
 
-        // The choices are chips: the grouping, the urgency, the person and
-        // the two switches, each a pill that is filled while it is on.
+        var views = k.form.seg(t('cb_view'), [['board', t('cb_view_board')], ['list', t('cb_view_list')]], function (view) {
+            setView(self, view);
+        }, 'ws-cb-views');
+
+        Object.keys(views.items).forEach(function (view) {
+            views.items[view].insertBefore(k.icon((view === 'list') ? 'bi-list-ul' : 'bi-kanban', ''), views.items[view].firstChild);
+        });
+        self.views = views;
+        bar.appendChild(views.node);
+
+        // The grouping, in the Board view: chips, the pressed one filled.
         var groups = k.el('div', 'ws-cb-chips');
         groups.setAttribute('role', 'group');
         groups.setAttribute('aria-label', t('cb_group'));
 
         GROUPS.forEach(function (key) {
-            var item = k.button('btn btn-sm ws-cb-chip' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
-            item.setAttribute('aria-pressed', prefs.group === key ? 'true' : 'false');
+            var item = k.button('ws-cb-chip', t('cb_by_' + key));
+
+            item.setAttribute('data-ws-cb-group', key);
             item.addEventListener('click', function () {
                 if (prefs.group !== key) {
                     prefs.group = key;
                     self.current = 0;
+                    self.data = null;
+                    showView(self);
                     draw(self);
                     load(self);
                 }
@@ -219,76 +284,140 @@
             groups.appendChild(item);
         });
 
+        self.groups = groups;
         bar.appendChild(groups);
+
+        // Open, closed or all tasks, in the List view, as the Tasks tab had.
+        var status = k.form.select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], prefs.status, true);
+
+        status.classList.add('w-auto');
+        status.setAttribute('aria-label', t('task_status_filter'));
+        status.addEventListener('change', function () {
+            prefs.status = status.value;
+            load(self);
+        });
+        self.status = status;
+        bar.appendChild(status);
+
+        bar.appendChild(k.el('div', 'pg-toolbar-grow'));
+
+        var search = k.bar.search(t('cb_search'), function (value) {
+            self.q = String(value).trim();
+            load(self);
+        });
+
+        search.input.value = self.q;
+        bar.appendChild(search);
+        bar.appendChild(toggle(self, 'ws-cb-mine', t('cb_mine'), function () { return prefs.mine; }, function (on) { prefs.mine = on; }));
 
         // The same urgency choice as the planning board and the task lists.
         var urgency = k.priorityFilter(prefs.priority, function (value) {
             prefs.priority = value;
             load(self);
         });
-        urgency.classList.add('ws-cb-chip-select');
-        bar.appendChild(urgency);
 
         var people = [[0, t('cb_all_people')], [-1, t('cb_nobody')]];
 
-        ((self.data && self.data.members) || []).forEach(function (member) {
+        (self.channel.members || []).forEach(function (member) {
             people.push([member.id, member.name]);
         });
 
         var who = k.select(people, self.person);
-        who.classList.add('w-auto', 'ws-cb-chip-select');
+
+        who.classList.add('w-auto');
         who.setAttribute('aria-label', t('who'));
         who.addEventListener('change', function () {
             self.person = parseInt(who.value, 10) || 0;
             load(self);
         });
-        bar.appendChild(who);
 
-        bar.appendChild(toggle(self, 'ws-cb-mine', t('cb_mine'), prefs.mine, function (on) { prefs.mine = on; }));
+        var cancelled = k.form.switchRow(t('cb_cancelled'), prefs.cancelled);
 
-        if (prefs.group === 'status') {
-            bar.appendChild(toggle(self, 'ws-cb-cancelled', t('cb_cancelled'), prefs.cancelled, function (on) { prefs.cancelled = on; }));
-        }
-
-        bar.appendChild(k.el('div', 'pg-toolbar-grow'));
-
-        var searchGroup = k.el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
-        var searchIcon = k.el('span', 'form-adorn-text');
-        searchIcon.setAttribute('aria-hidden', 'true');
-        searchIcon.appendChild(k.icon('bi-search'));
-        searchGroup.appendChild(searchIcon);
-        var search = k.el('input', 'form-ghost');
-        search.type = 'search';
-        search.value = self.q;
-        search.placeholder = t('cb_search');
-        search.setAttribute('aria-label', search.placeholder);
-        search.addEventListener('input', k.debounce(function () {
-            self.q = search.value.trim();
+        cancelled.input.addEventListener('change', function () {
+            prefs.cancelled = cancelled.input.checked;
             load(self);
-        }, 300));
-        searchGroup.appendChild(search);
-        bar.appendChild(searchGroup);
+        });
+
+        self.cancelledField = {
+            label: t('cb_cancelled'),
+            row: cancelled.row,
+            tag: function () { return prefs.cancelled ? t('cb_cancelled') : ''; },
+            clear: function () { prefs.cancelled = false; cancelled.input.checked = false; }
+        };
+        self.filter = k.bar.filter({
+            fields: [
+                { label: t('priority'), control: urgency, tag: function () { return prefs.priority ? t('priority') + ': ' + k.bar.selectedText(urgency) : ''; }, clear: function () { prefs.priority = ''; urgency.value = ''; } },
+                { label: t('who'), control: who, tag: function () { return self.person ? t('who') + ': ' + k.bar.selectedText(who) : ''; }, clear: function () { self.person = 0; who.value = '0'; } },
+                self.cancelledField
+            ],
+            onChange: function () { load(self); }
+        });
+        bar.appendChild(self.filter.slot);
+
+        var add = k.button('pg-button pg-button-fill pg-button-sm ws-cb-new', t('new_task'), 'bi-plus-lg');
+
+        add.addEventListener('click', function () {
+            k.openTask(0, self.hooks.taskDefaults ? self.hooks.taskDefaults() : {}, reload);
+        });
+        bar.appendChild(add);
 
         return bar;
     }
 
-    // A switch of the toolbar as a chip: a button that says whether it is on.
-    function toggle(self, id, label, on, set) {
-        var k = kit();
-        var chip = k.button('btn btn-sm ws-cb-chip' + (on ? ' active' : ''), label, on ? 'bi-check2' : '');
-        chip.id = id;
-        chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+    // The toolbar's parts for the view and grouping chosen: the pressed
+    // segment and chip, the grouping or the task status, and "Show the
+    // cancelled ones" only while the board is by status.
+    function showView(self) {
+        var list = prefs.view === 'list';
 
-        // The chip pressed last keeps focus once load() has drawn the
-        // toolbar again with the new state.
-        if (self.refocus === id) {
-            self.refocus = '';
-            window.requestAnimationFrame(function () { chip.focus(); });
+        Object.keys(self.views.items).forEach(function (view) {
+            self.views.items[view].setAttribute('aria-pressed', (view === prefs.view) ? 'true' : 'false');
+        });
+        Array.prototype.forEach.call(self.groups.children, function (item) {
+            var on = item.getAttribute('data-ws-cb-group') === prefs.group;
+
+            item.classList.toggle('active', on);
+            item.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        self.groups.hidden = list;
+        self.status.hidden = !list;
+        self.cancelledField.off = list || (prefs.group !== 'status');
+        self.filter.refresh();
+    }
+
+    function setView(self, view) {
+        if (prefs.view === view) {
+            return;
         }
 
+        prefs.view = view;
+        storeView(view);
+        showView(self);
+        draw(self);
+        load(self);
+
+        if (self.hooks.viewChanged) {
+            self.hooks.viewChanged();
+        }
+    }
+
+    // A switch of the toolbar as a chip: a button that says whether it is
+    // on; on a phone its icon alone, its word kept for screen readers.
+    function toggle(self, id, label, isOn, set) {
+        var k = kit();
+        var chip = k.bar.label(k.button('ws-cb-chip', label, 'bi-person'));
+
+        chip.id = id;
+
+        function show() {
+            chip.classList.toggle('active', isOn());
+            chip.setAttribute('aria-pressed', isOn() ? 'true' : 'false');
+        }
+
+        show();
         chip.addEventListener('click', function () {
-            set(chip.getAttribute('aria-pressed') !== 'true');
-            self.refocus = id;
+            set(!isOn());
+            show();
             load(self);
         });
 
@@ -297,14 +426,14 @@
 
     function draw(self) {
         var k = kit();
-        var pane = self.pane;
+        var pane = self.body;
         var hadFocus = self.focusKey;
 
         clear(pane);
 
-        // A source board's controls are its screen's.
-        if (!self.source) {
-            pane.appendChild(toolbar(self));
+        // The List view draws itself once its tasks are read (load()).
+        if (!self.source && (prefs.view === 'list')) {
+            return;
         }
 
         if (!self.data) {
@@ -867,6 +996,7 @@
             q: '',
             doneAll: false,
             current: 0,
+            body: pane,
             drag: null,
             lifted: null,
             focusKey: '',
@@ -874,9 +1004,24 @@
         };
     }
 
-    // hooks: openMessage(id), openSummary(), taskDefaults(), refresh()
+    // hooks: openMessage(id), openSummary(), taskDefaults(), refresh(),
+    // listInto(body, filters) draws the List view, viewChanged(), view
+    // ('board', 'list' or '' for the one kept) the view to open on.
     function mount(pane, channel, hooks) {
         board = state(pane, channel, hooks);
+
+        if (board.hooks.view) {
+            prefs.view = (board.hooks.view === 'list') ? 'list' : 'board';
+        }
+
+        var frame = kit().el('div', 'ws-bar-frame');
+
+        frame.appendChild(toolbar(board));
+        pane.appendChild(frame);
+        pane.appendChild(board.filter.tags);
+        board.body = kit().el('div', 'ws-cb-body');
+        pane.appendChild(board.body);
+        showView(board);
         draw(board);
         load(board);
     }
@@ -908,6 +1053,8 @@
         mount: mount,
         mountSource: mountSource,
         stamp: stamp,
+        // The view the tab shows, for the screen's address.
+        view: function () { return prefs.view; },
         isOpen: function () { return !!(board && document.body.contains(board.pane)); }
     };
 })();

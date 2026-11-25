@@ -1001,6 +1001,8 @@ function pg_privacy_erase_tables()
         'form_data_cells'              => array('table' => 'form_data', 'find' => array('id' => 'cell_ids'), 'action' => 'anonymise', 'fields' => array('data' => '')),
         'form_data'                    => array('find' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
         'form_signatures'              => array('find' => array('form_id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
+        // The names a record had before (a title can name the person).
+        'form_old_address'             => array('find' => array('form_id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
         // The person's applications go with their submissions, each with the
         // reviews given on it. A juror who is erased keeps their reviews on
         // others' entries, without name, address or a working link
@@ -1186,6 +1188,7 @@ function pg_privacy_erase_labels()
         'form_data_cells'              => lang('Form answers holding the address'),
         'form_data'                    => lang('Form answers'),
         'form_signatures'              => lang('Signatures'),
+        'form_old_address'             => lang('Earlier record addresses'),
         'application_reviews'          => lang('Reviews of applications'),
         'application_entries'          => lang('Applications'),
         'application_reviewers'        => lang('Application reviewers'),

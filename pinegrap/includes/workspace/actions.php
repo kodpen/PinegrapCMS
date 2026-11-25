@@ -4871,11 +4871,17 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            return ws_action_ok(array('tasks' => ws_tasks_list($viewer, array(
+            // The Board tab's List view narrows it as the board does: the
+            // search, the urgency, a person or the reader alone.
+            $tasks = ws_tasks_list($viewer, array(
                 'scope'      => 'channel',
                 'channel_id' => $channel['id'],
                 'status'     => (string) ($request['status'] ?? 'all'),
-            ))));
+                'search'     => trim((string) ($request['q'] ?? '')),
+                'priority'   => (string) ($request['priority'] ?? ''),
+            ));
+
+            return ws_action_ok(array('tasks' => ws_tasks_for_person($tasks, !empty($request['mine']) ? (int) $viewer['id'] : (int) ($request['person'] ?? 0))));
 
         case 'ws_search':
             return ws_action_ok(array('messages' => ws_message_search($viewer, (string) ($request['q'] ?? ''), (int) ($request['channel_id'] ?? 0))));

@@ -4,10 +4,10 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 ---
 
 ## What is it?
-- `privacy_erase.php` (manager+, Contacts menu, contact screen): one person erased (KVKK/GDPR), found like the export (`pg_privacy_export_find()`). A dry run first; nothing is written until the "cannot be undone" box is ticked. Engine `pg_privacy_erase()` (`includes/fn/privacy.php`), tests `tests/privacy_erase_test.php`.
+- `privacy_erase.php` (manager+, Contacts menu, contact screen): one person erased (KVKK/GDPR) found like the export (`pg_privacy_export_find()`). A dry run first; nothing is written until the "cannot be undone" box is ticked. Engine `pg_privacy_erase()` (`includes/fn/privacy.php`), tests `tests/privacy_erase_test.php`.
 
 ## Where is the field list?
-- `pg_privacy_erase_tables()`, one entry per table (`table` names it when the key differs) in run order: `find` (column => scope list, OR), `action` (`delete` | `anonymise`), `fields`. The test pins them. `{name}` becomes `lang('Deleted customer')`, `{token}` the person token of the address the column holds; an empty comment name shows as "Anonymous".
+- `pg_privacy_erase_tables()`, one entry per table (`table` names it when the key differs) in run order: `find` (column => scope list, OR), `action` (`delete` | `anonymise`), `fields`. Tested. `{name}` becomes `lang('Deleted customer')`, `{token}` the person token of the address the column holds; an empty comment name shows as "Anonymous".
 - Orders, then contact and account, run last: the other records are found through them, so a stopped run still finds them again.
 
 ## Whose records are taken (`pg_privacy_erase_scope()`)?
@@ -19,7 +19,7 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 
 ## What stays, what goes?
 - Kept, personal fields replaced: bookings (`commerce/booking-retention.md`), orders, ship_tos (district too), order_documents (IP and user agent; the text stays), order_returns, gift_cards (bought: sender name and message; received: the address), ERP accounts and their invoices (issued too) / quotes / waybills, comments, consent_log (id-only rows: token first), ws_approval_guests, cart_quotes, audit_log. Reasons: `workflow/decisions-made-product.md`.
-- Deleted: a typed Fediverse address's comments (`api/api-fediverse.md`), uploads (row, disk), form_data, form_signatures, forms, `record_revisions`, watchers, wishlist, stock_notify, campaign recipients, mail and SMS queue, `mail_bounces`, site chats, address_book, push, passkeys, identities, two-step, auth_tokens (API devices too), opt_in, group memberships, contacts, user (rights as `delete_users.php`).
+- Deleted: a typed Fediverse address's comments (`api/api-fediverse.md`), uploads (row, disk), form_data, form_signatures, form_old_address, forms, `record_revisions`, watchers, wishlist, stock_notify, campaign recipients, mail and SMS queue, `mail_bounces`, site chats, address_book, push, passkeys, identities, two-step, auth_tokens (API devices too), opt_in, group memberships, contacts, user (rights as `delete_users.php`).
 
 ## Who may erase whom?
 - The export's rule (`pg_privacy_export_allowed()`), also applied to users whose `user_email` is one of the person's addresses but not tied to them; they are checked, not erased. Nobody erases their own account (status `self`).
@@ -29,7 +29,7 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 - Earlier lines about the person (user, order, return by id; export by address; contact: `core/audit-trail-contacts.md`): `pg_privacy_erase_audit_row()` replaces the field list's columns in before/after and clears a user's or export's label. Actor, time and action stay.
 
 ## What is not reached?
-- Paraşüt's copies, Workspace customer channels, the site log, `visitors`; an erased staff member's own workflow tables.
+- Paraşüt's copies, Workspace customer channels, the site log, `visitors`; an erased staff member's workflow tables.
 
 ## Sandbox (2026-10)?
 - MariaDB 10.11: only the person's rows changed, no dry-run write, counter sales kept, manager refused.

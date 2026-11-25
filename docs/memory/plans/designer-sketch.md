@@ -25,7 +25,7 @@ priority: 7
 - SK4 (M) after SK2, SK3: "Build the page", "Build again", the sketch kept with the draft.
 - SK5 (M) after SK2: "Page details".
 - SK6 (S) after SK4: the two AI actions.
-- SK7 (S) after SK2: the reference picture and "Read the picture". Picture done #11557 (designer/prototype-sketch-picture.md; "More" rows in `_sdSketchMoreRows()`); "Read the picture" waits on the architect: Pinegrap AI reading pictures (ui/ai-write-decisions.md).
+- SK7 (S) after SK2: the reference picture and "Read the picture". Picture done #11557 (designer/prototype-sketch-picture.md; "More" rows in `_sdSketchMoreRows()`); "Read the picture" done #11584 (designer/sketch-read-picture.md).
 - SK8 (M) after SK4: the feel round: 60 frames a second on a hundred boxes, touch and pen, every key, light and dark; measured, the numbers in the PR.
 - SK9 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 

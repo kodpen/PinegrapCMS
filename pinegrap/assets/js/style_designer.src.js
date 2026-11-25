@@ -7217,6 +7217,8 @@ const StyleDesigner = (function () {
         // Placed AFTER semantic wraps so amber dominates when a node is both locked AND
         // shared/custom-html/custom-php. Child-fallback mirrors the pattern above to survive
         // display:contents contexts.
+        // A copy from My library whose binding the site lacked (amber, solid).
+        '.sd-wrap.sd-lib-unbound > *:not(.sd-tb):not(.sd-chip-row) { outline:2px solid #f59e0b !important; outline-offset:-2px !important; }',
         '.sd-wrap.sd-locked-root { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         '.sd-wrap.sd-locked-root > *:not(.sd-tb):not(.sd-chip-row) { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         // Form inputs: sd-wrap must be layout-transparent when wrapping input/textarea/select so
@@ -12594,6 +12596,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, cached)) wrapper.classList.add('sd-lib-unbound');
 
         // Detect if this is a system widget shared_ref (has system_region_config)
         var _isSysWidget = !!(cached && cached.system_region_config);
@@ -14705,6 +14708,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, null)) wrapper.classList.add('sd-lib-unbound');
         // Custom content types get their own semantic outline color.
         if (node.type === 'content' && node.props.contentType === 'custom_html') wrapper.classList.add('sd-custom-html-wrap');
         else if (node.type === 'content' && node.props.contentType === 'custom_php') wrapper.classList.add('sd-custom-php-wrap');
@@ -15896,7 +15900,9 @@ const StyleDesigner = (function () {
         '__quick_add_label':          ['quick_add_label',          _sdT('Quick Add')],
         '__special_offer_code_label': ['special_offer_code_label', _sdT('Special Offer Code')],
         '__update_button_label':      ['update_button_label',      _sdT('Update')],
-        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')]
+        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')],
+        // The express order's purchase button (its default label).
+        '__purchase_now_button_label': ['purchase_button_label',   _sdT('Place Order')]
     };
     // What a token with no sample of its own previews as: its name, readable
     // and in angle quotes ("‹Billing city›" for __billing_city, the field's
@@ -19528,6 +19534,8 @@ const StyleDesigner = (function () {
     /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
+            // An item of My library: its copy (part 'mylibrary').
+            case 'library': return _sdLibNode(extra);
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
             case 'container-fluid': return createNode('container', { fluid: true, cssClass: '' }, []);
             case 'row': return createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [createNode('col', colProps('col'), [])]);
@@ -26686,6 +26694,9 @@ const StyleDesigner = (function () {
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
         _sdPalSwitchWire(compOuter);
+        // My library leads the Blocks list, or the Components list in a
+        // design without Bootstrap.
+        _sdLibInit(blockList || compList, !blockList);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -34919,7 +34930,8 @@ const StyleDesigner = (function () {
         // A Style or Advanced section opens by its rule when it holds for
         // every element (_sdOptOpenByDefault()).
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
-            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
+            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex,
+                snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem, visit: false };
         });
         // Layout's rows follow the same context; a row any element holds a
         // value in is drawn (rowCss()).
@@ -35256,6 +35268,7 @@ const StyleDesigner = (function () {
                 }
                 var val = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value;
                 _sdMcCommit(nodes, function (n) { _sdMcWrite(n, s, val); });
+                _sdSnapEnsure(val);
             });
         });
 
@@ -36481,7 +36494,11 @@ const StyleDesigner = (function () {
                 (path ? '<div class="sd-id-path" title="' + esc(fullPath) + '">' + path + '</div>' : '') +
             '</div>' +
             (node.type !== 'root' ? '<button type="button" class="sd-id-more bi bi-three-dots" id="sd-id-more" title="' + esc(_sdT('More actions')) + '" aria-label="' + esc(_sdT('More actions')) + '" aria-haspopup="menu"></button>' : '') +
-        '</div>';
+        '</div>' +
+        (_sdLibUnbound(node, node.type === 'shared_ref' ? _sharedCache[node.props.sharedId] : null)
+            ? '<div class="sd-lib-unbound-line" role="note"><span class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></span>' +
+                esc(_sdT('This copy came from the library and this site lacks what it was bound to. Choose a form, collection or group for it.')) + '</div>'
+            : '');
     }
 
     function _sdIdentityBind(panel, node) {
@@ -36505,8 +36522,9 @@ const StyleDesigner = (function () {
                 _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
                 _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
                 { sep: true },
-                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
-            ].concat(_sdCoMayOpen(node) ? [{ sep: true }, {
+                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } },
+                (_sdLibOffered(node) ? { icon: 'bi-bookmark-plus', label: _sdT('Save to my library'), handler: function () { _sdLibSave(node); } } : null)
+            ].filter(Boolean).concat(_sdCoMayOpen(node) ? [{ sep: true }, {
                 icon: 'bi-arrows-angle-expand',
                 label: esc(_sdT('Can change per place')) + '<i class="bi bi-chevron-right sd-ctx-car" aria-hidden="true"></i>',
                 handler: function () { _sdCoOpen(node, r); }
@@ -36748,6 +36766,8 @@ const StyleDesigner = (function () {
             text: _sdOptIsText(n.type, p.tag, p.contentType),
             flex: _sdOptIsFlex(n.type, p.cssClass),
             parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            snapBox: _sdSnapBox(n.type, p.cssClass),
+            snapItem: !!(par && _sdSnapBox(par.type, (par.props || {}).cssClass)),
             visit: _sdCondRowsOf(n).length > 0
         };
     }
@@ -40103,6 +40123,7 @@ const StyleDesigner = (function () {
                     eo_address_book_shipping:  _sdT('Saved Addresses (shipping)'),
                     eo_upsell_offers:          _sdT('Upsell Offers (alert strip)'),
                     eo_applied_offers:         _sdT('Applied Offers (promotions active in the cart)'),
+                    eo_payment_periods:        _sdT('Recurring Totals (one line per payment period)'),
                     eo_totals:                 _sdT('Order Totals'),
                     eo_submit_button:          _sdT('Complete the Order button'),
                     eo_update_button:          _sdT('Update button')
@@ -45978,7 +45999,27 @@ const StyleDesigner = (function () {
             // container.
             ['__item_has_low_stock',              _sdT('Low stock flag (for visibility)')],
             ['__item_stock_warning',              _sdT('Low stock message (e.g. "Only 3 left")')],
-            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')]
+            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')],
+            // The row's parts alone, for a classic layout's cells.
+            ['__item_form_data_html',             _sdT('Product form fields (HTML)')],
+            ['__item_gift_card_html',             _sdT('Gift card recipient fields (HTML)')],
+            ['__item_recurring_schedule_html',    _sdT('Payment schedule fields (HTML)')],
+            ['__item_recurring_period',           _sdT('Payment period of a recurring product')],
+            ['__item_out_of_stock_message',       _sdT('Out of stock message')],
+            ['__item_calendar_event_name',        _sdT('Reserved calendar event')],
+            ['__item_calendar_event_dates',       _sdT('Reserved event date and time')]
+        ]},
+        { label: _sdT('Classic express order page'), tokens: [
+            ['__shopping_cart_label',             _sdT('The page\'s word for the cart')],
+            ['__update_button_label',             _sdT('Update button label')],
+            ['__purchase_now_button_label',       _sdT('Purchase button label')],
+            ['__special_offer_code_label',        _sdT('Offer code label')],
+            ['__special_offer_code_message',      _sdT('Offer code message')],
+            ['__retrieve_order_url',              _sdT('Address that restores this cart later')],
+            ['__currency_code',                   _sdT('Currency code shown beside amounts (empty when the site shows none)')],
+            ['__currency_selector',               _sdT('Currency pick list (its own form)')],
+            ['__opt_in_label',                    _sdT('E-mail opt-in label')],
+            ['__tax_exempt_label',                _sdT('Tax exemption label')]
         ]}
     ];
 
@@ -49632,7 +49673,35 @@ const StyleDesigner = (function () {
             ['has_shipping_cost',    _sdT('There is a shipping cost')],
             ['has_gift_card',        _sdT('A gift card is applied')],
             ['has_surcharge',        _sdT('There is a card surcharge')],
-            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')]
+            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')],
+            // A classic express order layout's two tables, totals and
+            // payment part; the row flags are the cart's.
+            ['has_today_items',             _sdT('Something is charged today')],
+            ['has_today_non_donations',     _sdT('Something other than a donation is charged today')],
+            ['has_recurring_products',      _sdT('The cart has a recurring product, charged today or later')],
+            ['has_no_recurring_products',   _sdT('The cart has no recurring product')],
+            ['has_recurring_non_donations', _sdT('A recurring product is not a donation')],
+            ['has_special_offer_code',      _sdT('The offer code box is shown')],
+            ['has_currency_code',           _sdT('A currency code is shown beside amounts')],
+            ['has_subtotal_line',           _sdT('A discount, tax, shipping or gift card comes between subtotal and total')],
+            ['has_payment',                 _sdT('Something is to be paid')],
+            ['has_gift_card_code',          _sdT('Gift cards are accepted')],
+            ['can_update_contact',          _sdT('The buyer is signed in')],
+            ['has_referral_sources',        _sdT('The site lists referral sources')],
+            ['cart_item_today',                       _sdT('Row: charged today')],
+            ['cart_item_recurring',                   _sdT('Row: a recurring product')],
+            ['cart_item_recurring_only',              _sdT('Row: a recurring product first charged later')],
+            ['cart_item_donation',                    _sdT('Row: a donation')],
+            ['cart_item_not_donation',                _sdT('Row: not a donation')],
+            ['cart_item_added_by_offer',              _sdT('Row: added by an offer (quantity fixed)')],
+            ['cart_item_quantity_editable',           _sdT('Row: the visitor may change the quantity')],
+            ['cart_item_recurring_quantity_fixed',    _sdT('Row: among recurring charges, the quantity is not changed here')],
+            ['cart_item_recurring_quantity_editable', _sdT('Row: among recurring charges, the quantity is changed here')],
+            ['cart_item_recurring_donation',          _sdT('Row: among recurring charges, a donation whose amount is changed here')],
+            ['cart_item_recurring_amount',            _sdT('Row: among recurring charges, the amount is shown as text')],
+            ['cart_item_has_image',                   _sdT('Row: the product has an image')],
+            ['cart_item_out_of_stock',                _sdT('Row: the product is out of stock')],
+            ['cart_item_has_calendar_event',          _sdT('Row: a reservation for a calendar event')]
         ],
         shopping_cart: [
             ['has_items',            _sdT('The cart has items')],
@@ -52475,8 +52544,66 @@ const StyleDesigner = (function () {
             row(_sdT('Sticky position'), posH) +
             row(_sdT('Theme'), themeH) +
             row(_sdT('Expand at'), expH) +
-            _sdSmartActiveRows(n)
+            _sdSmartActiveRows(n) +
+            _sdNavScrollRows(n)
         );
+    }
+
+    // A menu's two scroll rows. Both write attributes only (props._attrs),
+    // printed by both renderers as they are; each marker brings
+    // assets/js/pg_page_scroll.js to the page (pg_page_scroll_pattern()).
+    // "Mark the section in view" is data-pg-spy: the script makes the menu
+    // the target of Bootstrap's scrollspy on the body. "After scrolling" is
+    // data-pg-scrolled="<px>" with data-pg-scrolled-class, the Bootstrap
+    // classes the menu takes past that distance. Off writes nothing.
+    var _SD_NAV_SCROLLED_AT = 80;
+    var _SD_NAV_SCROLLED_DEFAULT = 'shadow py-1';
+    // The kind of a scrolled class: its own list in the panel.
+    function _sdNavScrolledKind(c) {
+        if (/^bg-(?!opacity|gradient)/.test(c) || /^navbar-(?:dark|light)$/.test(c)) return 'bg';
+        if (/^shadow(?:-|$)/.test(c)) return 'shadow';
+        if (/^p[ytb]-/.test(c)) return 'height';
+        return '';
+    }
+    // The class list split into its three lists; what fits none is dropped.
+    function _sdNavScrolledParts(cls) {
+        var out = { bg: [], shadow: [], height: [] };
+        String(cls || '').split(/\s+/).forEach(function (c) {
+            var k = c ? _sdNavScrolledKind(c) : '';
+            if (k && out[k].indexOf(c) === -1) out[k].push(c);
+        });
+        return { bg: out.bg.join(' '), shadow: out.shadow.join(' '), height: out.height.join(' ') };
+    }
+    // The one writer of data-pg-scrolled-class: one list's value changed.
+    function _sdNavScrolledClass(cls, part, value) {
+        var p = _sdNavScrolledParts(cls);
+        if (Object.prototype.hasOwnProperty.call(p, part)) p[part] = String(value || '').trim();
+        return [p.bg, p.shadow, p.height].filter(Boolean).join(' ');
+    }
+    function _sdNavScrollRows(n) {
+        var hint = function (t) { return '<div style="font-size:.66rem;color:#888;margin:-2px 0 4px">' + esc(t) + '</div>'; };
+        var h = row(_sdT('Mark the section in view'), swAttr('data-nav-spy', _sdAttr(n, 'data-pg-spy') !== null)) +
+            hint(_sdT('For a one-page menu: the link of the section on screen is marked active.'));
+        var at = _sdAttr(n, 'data-pg-scrolled');
+        h += row(_sdT('After scrolling'), swAttr('data-nav-scrolled', at !== null));
+        if (at === null) return h + hint(_sdT('Changes the menu once the page is scrolled down.'));
+        var parts = _sdNavScrolledParts(_sdAttr(n, 'data-pg-scrolled-class'));
+        var list = function (part, opts) {
+            var v = parts[part], known = opts.some(function (o) { return o[0] === v; });
+            if (!known) opts = opts.concat([[v, v]]);
+            return '<select class="form-control form-control-sm" data-nav-scrolled-part="' + part + '">' +
+                opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                '</select>';
+        };
+        var px = parseInt(at, 10);
+        h += row(_sdT('Distance'), '<input type="number" class="form-control form-control-sm" min="0" max="5000" step="10" data-nav-scrolled-at value="' +
+            (isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.max(0, px)) + '" aria-label="' + esc(_sdT('Distance in pixels')) + '">');
+        h += row(_sdT('Background'), list('bg', [['', _sdT('Unchanged')], ['bg-body', _sdT('Page colour')], ['bg-body-tertiary', _sdT('Light')],
+            ['bg-dark navbar-dark', _sdT('Dark')], ['bg-primary navbar-dark', _sdT('Primary')]]));
+        h += row(_sdT('Shadow'), list('shadow', [['', _sdT('Unchanged')], ['shadow-none', _sdT('None')], ['shadow-sm', _sdT('Small')],
+            ['shadow', _sdT('Regular')], ['shadow-lg', _sdT('Large')]]));
+        h += row(_sdT('Height'), list('height', [['', _sdT('Unchanged')], ['py-1', _sdT('Smaller')], ['py-0', _sdT('Smallest')]]));
+        return h;
     }
 
     // Smart active state (props.smartActive): an opt-in switch on navigation
@@ -57586,7 +57713,11 @@ const StyleDesigner = (function () {
             order:        [_sdT('Flex Order'),      'order-',           orderValues],
             grow:         [_sdT('Grow'),            'flex-',            growValues],
             shrink:       [_sdT('Shrink'),          'flex-',            shrinkValues],
-            fill:         [_sdT('Fill'),            'flex-',            fillValues]
+            fill:         [_sdT('Fill'),            'flex-',            fillValues],
+            // Scroll snap (_SD_SNAP_CLASSES): one value for every size, None
+            // writes nothing; its rule joins User Styles on first use.
+            snap:         [_sdT('Scroll snap'),     'pg-scroll-snap-',  [['always',_sdT('Always')],['near',_sdT('Near')]], _sdT('None')],
+            snapTo:       [_sdT('Snap to'),         'pg-snap-to-',      [['start',_sdT('Start')],['center',_sdT('Centre')],['end',_sdT('End')]], _sdT('Default')]
         };
         var _layHeld = {};
         Object.keys(_layRows).forEach(function (id) { _layHeld[id] = _sdLayHeld(_layCls, _layRows[id][1], _layRows[id][2]); });
@@ -57595,7 +57726,13 @@ const StyleDesigner = (function () {
         _layPlan.rows.forEach(function (id, i) {
             // A line between the box rows and the element's own.
             if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
-            _fxBody += mkRespRow(_layRows[id][0], _layRows[id][1], _layRows[id][2], _sdT('Default'));
+            var _lr = _layRows[id];
+            if (!_lr[3]) { _fxBody += mkRespRow(_lr[0], _lr[1], _lr[2], _sdT('Default')); return; }
+            _fxBody += mkNonRespRow(_lr[0], _lr[2].map(function (v) { return [_lr[1] + v[0], v[1]]; }), _lr[3]);
+            if (id === 'snap' && _sdSnapNeedsScroll(_layCls, _laySeveral ? null : p)) {
+                _fxBody += '<div class="sd-lay-note" role="note"><span class="bi bi-info-circle" aria-hidden="true"></span>' +
+                    '<span class="sd-lay-note-txt">' + esc(_sdT('Snapping works once the element scrolls: set Overflow to Auto or Scroll.')) + '</span></div>';
+            }
         });
         _fxBody += _sdLayNoteHtml(_layPlan, _laySeveral) + '</div>';
         var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
@@ -59762,6 +59899,7 @@ const StyleDesigner = (function () {
                 });
                 valWords.forEach(function(w) { clsArray.push(w); });
                 tgt.props.cssClass = clsArray.join(' ').trim();
+                _sdSnapEnsure(val);
                 renderProperties();
                 renderCanvas();
                 renderAttrsPanel();
@@ -59876,6 +60014,47 @@ const StyleDesigner = (function () {
                 if (this.checked) selectedNode.props.smartActive = true;
                 else delete selectedNode.props.smartActive;
                 render();
+            });
+        });
+
+        // A menu's scroll rows (_sdNavScrollRows()): attributes only.
+        function navScrollWrite(fn) {
+            if (!selectedNode) return;
+            saveState();
+            var owner = _sdAnyParent(selectedNode);
+            if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+            fn(selectedNode);
+            render();
+        }
+        document.querySelectorAll('#sd-properties input[data-nav-spy]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-spy', on ? '' : null); });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) {
+                    _sdSetAttrOn(n, 'data-pg-scrolled', on ? String(_SD_NAV_SCROLLED_AT) : null);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', on ? _SD_NAV_SCROLLED_DEFAULT : null);
+                });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled-at]').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var px = parseInt(this.value, 10);
+                px = isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.min(5000, Math.max(0, px));
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-scrolled', String(px)); });
+            });
+        });
+        document.querySelectorAll('#sd-properties select[data-nav-scrolled-part]').forEach(function (sl) {
+            sl.addEventListener('change', function () {
+                var part = this.getAttribute('data-nav-scrolled-part'), val = this.value;
+                navScrollWrite(function (n) {
+                    var cls = _sdNavScrolledClass(_sdAttr(n, 'data-pg-scrolled-class'), part, val);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', cls);
+                });
             });
         });
 
@@ -60495,6 +60674,81 @@ const StyleDesigner = (function () {
     }
 
     // ========================= STATUS BAR =========================
+    // ── Spacing bands (canvas guides)
+    // The selection's margin and padding drawn as bands over the canvas,
+    // each band's edge a handle that steps the side through the spacing
+    // scale (the part 'bands', style_designer_bands.js). The core only says
+    // when to draw or hide them; the part loads on the first selection
+    // that can show them and holds no listener while they are hidden.
+    var _sdBandsRaf = 0;
+    function _sdBandsSoon() {
+        if (_sdBandsRaf || typeof requestAnimationFrame !== 'function') return;
+        _sdBandsRaf = requestAnimationFrame(function () {
+            _sdBandsRaf = 0;
+            _sdBandsDraw();
+        });
+    }
+
+    // One selected element the operator may change, on the Design canvas of
+    // a Bootstrap design, with no element being dragged.
+    function _sdBandsDraw() {
+        var node = (selectedNode && selectedNodes.length <= 1) ? selectedNode : null;
+        var show = !!(node && node.props && node.type !== 'root' && canvasDoc && canvasDoc.body && canvasIframe &&
+            _collab.mayEdit && !_sdProto.open && !dragData && _sdUsesBootstrap() &&
+            !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
+        if (show) {
+            // The part writes through window.PGSpacingBox, which comes with
+            // the Spacing box's part: loaded first, once.
+            _sdPartLoad('spacing').then(function () {
+                return _sdPartCall('bands', 'draw', [_sdBandsHost(node)]);
+            }).catch(_sdPartFailed);
+        } else if (_sdPartLoaded('bands') && _sdPartApis.bands) {
+            _sdPartApis.bands.hide();
+        }
+    }
+
+    // What the part draws from: the element, the screen size the canvas
+    // width stands for, the Spacing box's commit and where the layer goes
+    // (_sdBandsGeo(), asked again on every placing).
+    function _sdBandsHost(node) {
+        var host = _sdSpBoxHost(null, [node]);
+        host.id = node._id;
+        host.el = _sdCanvasInnerOf(node);
+        host.width = canvasDoc.documentElement.clientWidth;
+        host.userId = (_design && _design.userId) || 0;
+        host.geo = _sdBandsGeo;
+        return host;
+    }
+
+    // The layer's place in the canvas wrapper over the part of the canvas
+    // frame in view, the frame's top left in it and the scale of a canvas
+    // pixel on screen (zoom and Fit, read as the link marks read them);
+    // null without a canvas.
+    function _sdBandsGeo() {
+        var frame = canvasIframe;
+        var area = (frame && canvasDoc) ? frame.closest('.sd-iframe-area') : null;
+        var wrapper = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!wrapper) return null;
+        var docEl = canvasDoc.documentElement;
+        var fr = frame.getBoundingClientRect(), ar = area.getBoundingClientRect(), hr = wrapper.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        return {
+            wrapper: wrapper,
+            area: area,
+            left: left - hr.left,
+            top: top - hr.top,
+            w: Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left,
+            h: Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top,
+            fx: fr.left - left,
+            fy: fr.top - top,
+            k: k
+        };
+    }
+
     function _ensureSizeBadge() {
         var badge = document.getElementById('sd-canvas-size-badge');
         if (!badge) {
@@ -60508,6 +60762,7 @@ const StyleDesigner = (function () {
     }
 
     function _positionSizeBadge() {
+        _sdBandsSoon();
         var badge = _ensureSizeBadge();
         if (!badge) return;
         if (!canvasDoc || !selectedNode || !canvasIframe) { badge.style.display = 'none'; return; }
@@ -64441,11 +64696,13 @@ const StyleDesigner = (function () {
         { id: 'alignItems', of: 'box', name: 'alignment' },
         { id: 'alignContent', of: 'box', name: 'alignment' },
         { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'snap', of: 'box', name: '', when: 'snapBox' },
         { id: 'alignSelf', of: 'item', name: 'self' },
         { id: 'order', of: 'item', name: 'order' },
         { id: 'grow', of: 'item', name: 'grow' },
         { id: 'shrink', of: 'item', name: 'shrink' },
-        { id: 'fill', of: 'item', name: 'grow' }
+        { id: 'fill', of: 'item', name: 'grow' },
+        { id: 'snapTo', of: 'item', name: '', when: 'snapItem' }
     ];
 
     // The group of a row: 'box', 'item', or '' for no row of Layout.
@@ -64457,7 +64714,9 @@ const StyleDesigner = (function () {
     }
 
     // What Layout draws. `ctx`: { flex: the element is a flex box,
-    // parentFlex: its parent is one } (_sdOptCtx()); `held`: { id: true }
+    // parentFlex: its parent is one, snapBox / snapItem: the element / its
+    // parent takes Scroll snap } (_sdOptCtx()); a row with `when` follows
+    // that key instead of flex / parentFlex; `held`: { id: true }
     // for a row holding a value, drawn whatever the context so nothing set
     // is out of sight. Returns { rows: the ids drawn, in order; make:
     // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
@@ -64468,7 +64727,7 @@ const StyleDesigner = (function () {
         held = held || {};
         var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
         _SD_LAY_ROWS.forEach(function (r) {
-            if ((r.of === 'box' ? ctx.flex : ctx.parentFlex) || held[r.id]) {
+            if (ctx[r.when || (r.of === 'box' ? 'flex' : 'parentFlex')] || held[r.id]) {
                 out.rows.push(r.id);
                 return;
             }
@@ -64553,6 +64812,34 @@ const StyleDesigner = (function () {
         var s = ' ' + out.join(' ') + ' ';
         if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
         return out.join(' ');
+    }
+    // Scroll snap's classes, their rules in _SD_BLOCK_CSS.
+    var _SD_SNAP_CLASSES = ['pg-scroll-snap-always', 'pg-scroll-snap-near', 'pg-snap-to-start', 'pg-snap-to-center', 'pg-snap-to-end'];
+
+    // Whether an element takes Scroll snap: a flex or grid box at any size,
+    // never the scroller's row (pg-snap), which keeps its own snapping.
+    function _sdSnapBox(type, cls) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (s.indexOf(' pg-snap ') !== -1) return false;
+        return _sdOptIsFlex(type, cls) || / d-((sm|md|lg|xl|xxl)-)?(inline-)?grid /.test(s);
+    }
+
+    // The Scroll snap rules a class list (or a picked value) needs, in
+    // _SD_SNAP_CLASSES's order.
+    function _sdSnapNames(cls) {
+        var have = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        return _SD_SNAP_CLASSES.filter(function (k) { return have.indexOf(' ' + k + ' ') !== -1; });
+    }
+
+    // Whether a box with Scroll snap set does not scroll yet: no Overflow
+    // of Auto or Scroll as a prop (`props`, null for several elements) or a
+    // Bootstrap overflow class. False without Scroll snap.
+    function _sdSnapNeedsScroll(cls, props) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (!/ pg-scroll-snap-(always|near) /.test(s)) return false;
+        if (/ overflow-(x-|y-)?(auto|scroll) /.test(s)) return false;
+        var p = props || {};
+        return !['overflow', 'overflowX', 'overflowY'].some(function (k) { return /^(auto|scroll)$/.test(String(p[k] || '').trim()); });
     }
     // ── end of layout by context
 
@@ -76955,7 +77242,7 @@ const StyleDesigner = (function () {
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
-        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
@@ -77678,7 +77965,8 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
+            // The buttons of "Read the picture" (its foot, "Stop") too.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more, .sd-sketch-act',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -78513,6 +78801,7 @@ const StyleDesigner = (function () {
             body.appendChild(_sdSketchBoxEl(b, picked, on));
         });
         node.appendChild(body);
+        if (_sdPartLoaded('sketchread') && _sdPartApis.sketchread) _sdPartApis.sketchread.fill(item.id, node, head, body);
     }
 
     function _sdSketchBoxName(b) {
@@ -78582,6 +78871,7 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProto.sketchOn = !!on;
         if (!on) _sdProto.sk.sel = null;
+        if (on) _sdSketchReadReady();
         if (ui) {
             ui.sketchBtn.classList.toggle('active', !!on);
             ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -78792,6 +79082,7 @@ const StyleDesigner = (function () {
     // switch is on; Delete on a sketch frame takes the page out.
     function _sdSketchKey(event) {
         if (!_sdProto.sketchOn) return false;
+        if (event.key === 'Escape' && _sdPartLoaded('sketchread') && _sdPartApis.sketchread && _sdPartApis.sketchread.escape()) return true;
         var name = String(event.key || '');
         var ctrl = event.ctrlKey || event.metaKey;
         if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
@@ -79004,10 +79295,49 @@ const StyleDesigner = (function () {
                 delete page.pic;
                 _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
             } });
+            if (!page.pic.off && _sdProto.sk.reads === true) {
+                rows.push({ icon: 'bi-magic', text: _sdT('Read the picture'), run: function () { _sdPartCall('sketchread', 'start', [_sdSketchReadHost(), frameId]).catch(_sdPartFailed); } });
+            }
         }
         rows.push({ sep: true });
         rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
         return rows;
+    }
+
+    // Whether the browser's built-in model reads pictures, asked once when
+    // the switch first goes on (PinegrapAiWrite.imageReady(), the same
+    // check as the alt text's button): "Read the picture" is shown only
+    // then. Without "Write with AI" on the screen there is no such check
+    // and no row.
+    function _sdSketchReadReady() {
+        var sk = _sdProto.sk;
+        var ai = window.PinegrapAiWrite;
+        if (sk.reads !== undefined) return;
+        sk.reads = false;
+        if (!ai || typeof ai.imageReady !== 'function' || typeof ai.readImage !== 'function') return;
+        ai.imageReady().then(function (reads) { sk.reads = !!reads; }, function () { sk.reads = false; });
+    }
+
+    // What "Read the picture" (the part 'sketchread') reads the sketch
+    // through, and how its proposal becomes the page's boxes: one step of
+    // the sketch's history, the boxes there before replaced.
+    function _sdSketchReadHost() {
+        return {
+            page: _sdSketchPage,
+            redraw: function () { _sdSketchMount(false); },
+            announce: function (text) { if (_sdProto.canvas) _sdProto.canvas.announce(text); },
+            root: function () { return _sdProto.ui ? _sdProto.ui.root : document; },
+            el: _sdProtoEl,
+            limits: function () { return { w: SD_SKETCH.w, grid: SD_SKETCH.grid, min: SD_SKETCH.min, text: SD_SKETCH.text, boxes: SD_SKETCH.boxes }; },
+            keep: function (page, boxes) {
+                var data = _sdSketchData();
+                page.boxes = boxes.map(function (b) {
+                    return { id: data.n++, x: b.x, y: b.y, w: b.w, h: b.h, kind: '', text: b.text };
+                });
+                _sdProto.sk.sel = null;
+                _sdSketchChanged(false, page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length));
+            }
+        };
     }
 
     // A sketch page taken out, as Delete on a selected frame does.
@@ -86881,6 +87211,9 @@ const StyleDesigner = (function () {
             // An administrator's reason for publishing a draft that waits
             // for a prototype link's approval (pg_proto_approval_override_reason()).
             if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
+            // The reason a page with a blocking Publish check finding goes on
+            // the site (pg_designer_publish_check_reason()).
+            if (!rec.unchanged && p._publishCheckReason) rec.publish_check_reason = p._publishCheckReason;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -87175,6 +87508,7 @@ const StyleDesigner = (function () {
         var row = function (l) {
             var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'theme-warning' : 'theme-info') + ' me-1">' +
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
+                         (l.phone ? '<span class="badge theme-secondary me-1"><span class="bi bi-phone me-1" aria-hidden="true"></span>' + esc(_sdT('Phone preview')) + '</span>' : '') +
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
@@ -87431,7 +87765,7 @@ const StyleDesigner = (function () {
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
         var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
-        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+        ['sd-vb-phone', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
             var row = document.getElementById(id);
             if (!row) return;
             var off = rows.indexOf(id) === -1;
@@ -87443,13 +87777,15 @@ const StyleDesigner = (function () {
 
     // ── Preview menu (D58) ───────────────────────────────────────────────
     // Beside Publish, the ways to see the page outside the editor, in this
-    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
-    // on the site (the page as the site serves it, as saved), Play as a
-    // prototype and Share the prototype… (the saved drafts). The rows a page
-    // cannot use are left out, never shown dead. s: { live, play, share }.
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P),
+    // Preview on a phone (a QR code of the saved drafts, shown where sharing
+    // is), Open on the site (the page as the site serves it, as saved), Play
+    // as a prototype and Share the prototype… (the saved drafts). The rows a
+    // page cannot use are left out, never shown dead. s: { live, play, share }.
     function _sdPreviewMenuRows(s) {
         s = s || {};
         var rows = ['sd-vb-preview'];
+        if (s.share) rows.push('sd-vb-phone');
         if (s.live) rows.push('sd-vb-live');
         if (s.play) rows.push('sd-vb-play');
         if (s.share) rows.push('sd-vb-share');
@@ -87480,6 +87816,7 @@ const StyleDesigner = (function () {
         menu.hidden = true;
         menu.innerHTML =
             '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-phone" role="menuitem" hidden><span class="bi bi-phone"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview on a phone')) + '</span></button>' +
             '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
@@ -87491,6 +87828,8 @@ const StyleDesigner = (function () {
             _sdPreviewMenuOpen(false);
             if (row.id === 'sd-vb-preview') {
                 openPreview();
+            } else if (row.id === 'sd-vb-phone') {
+                _sdPhoneOpen();
             } else if (row.id === 'sd-vb-live') {
                 if (row.getAttribute('href') === '#') e.preventDefault();
             } else if (row.id === 'sd-vb-play') {
@@ -87529,6 +87868,31 @@ const StyleDesigner = (function () {
             rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
         }, true);
         window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // "Preview on a phone" (the `phone` part): the QR code of the person's
+    // phone link, starting on the page on screen when it is a saved draft.
+    function _sdPhoneOpen() {
+        if (!_pgPrototypeShareReady()) return;
+        _sdPartCall('phone', 'open', [_sdPhoneHost()]).catch(_sdPartFailed);
+    }
+
+    // What the phone part reads the editor through: the design, the page on
+    // screen (its id only when it is a saved draft of this design), whether
+    // anything is unsaved, and the designer's own save.
+    function _sdPhoneHost() {
+        var p = _pgActivePage();
+        var draft = !!(p && p.page_id > 0 && p.page_draft && !p.pickedPending);
+        return {
+            styleId: _design.styleId,
+            page: { id: draft ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
+            dirty: function () { return _pages.some(_pgPageDirty); },
+            save: function (done) {
+                var b = document.getElementById('sd-ajax-save');
+                if (!b || b.disabled) { done(); return; }
+                saveAjax({ button: b, onSuccess: function () { done(); }, onError: function () { done(); } });
+            }
+        };
     }
 
     // Opens or closes the Preview menu under its button, its right edge on
@@ -87963,24 +88327,58 @@ const StyleDesigner = (function () {
             return;
         }
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
-        window.PgDesignerPublish.open({
+        var bridge = {
             rows: _pgPublishRows,
-            publish: function (keys, hold, report, reasons) {
-                // The reasons ride on the pages for this one save only.
+            reopen: opts.reopen || '',
+            publish: function (keys, hold, report, reasons, checks) {
+                // The reasons ride on the pages for this one save only: a
+                // held draft's approval reason, a blocking page's reason.
                 var over = [];
-                Object.keys(reasons || {}).forEach(function (k) {
-                    var p = _pgPageByKey(k);
-                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                [[reasons, '_approvalOverride'], [checks, '_publishCheckReason']].forEach(function (pair) {
+                    Object.keys(pair[0] || {}).forEach(function (k) {
+                        var p = _pgPageByKey(k);
+                        if (p) { p[pair[1]] = String(pair[0][k]); over.push(p); }
+                    });
                 });
                 if (over.length) {
                     var _report = report;
-                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; delete p._publishCheckReason; }); return _report(reply); };
                 }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); }
-        });
+        };
+        // The Publish check (the part 'publishcheck'): the ticked pages'
+        // results and findings, loaded the first time the sheet checks one.
+        if (_sdPartUrls('publishcheck')) {
+            bridge.check = function (keys, done) {
+                _sdPartCall('publishcheck', 'check', [keys, done]).catch(function () {
+                    keys.forEach(function (k) { done(k, { state: 'failed' }); });
+                });
+            };
+            bridge.findings = function (key, retry) {
+                var api = _sdPartLoaded('publishcheck') ? _sdPartApis.publishcheck : null;
+                return (api && typeof api.findings === 'function') ? api.findings(key, retry) : null;
+            };
+        }
+        window.PgDesignerPublish.open(bridge);
+    }
+
+    // A Publish check finding's path: the page's tab opened, its element
+    // selected and shown. False when the element is gone.
+    function _sdSelectFound(key, nodeId, sharedId) {
+        if (key && key !== _activeKey) _pgTabsSwitch(key);
+        if (key && key !== _activeKey) return false;
+        var cached = sharedId ? _sharedCache[sharedId] : null;
+        var root = sharedId ? (cached && cached.tree) : tree;
+        var node = (root && nodeId) ? findNodeById(nodeId, root) : null;
+        if (!node) return false;
+        _sdTextInnerSelect(node, null);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        scrollCanvasToNode(node);
+        return true;
     }
 
     // The main button: Save on a draft (it stays off the site), the Publish
@@ -88874,6 +89272,10 @@ const StyleDesigner = (function () {
             { id: 'act_to_shared', label: _sdT('Convert to Shared Component'), icon: 'bi-puzzle-fill', action: function() {
                 if (selectedNode && selectedNode.type !== 'root' && selectedNode.type !== 'shared_ref') convertToShared(selectedNode);
             }},
+            (_sdLibMaySave() ? { id: 'act_library_save', label: _sdT('Save to my library'), icon: 'bi-bookmark-plus', action: function() {
+                // One item is one element with what is inside it.
+                _sdLibSave(selectedNodes.length > 1 ? null : selectedNode);
+            }} : null),
             // ── Settings / Modals ───────────────────────────────────
             { id: 'act_settings', label: _sdT('Open Settings'), icon: 'bi-gear', hint: 'Ctrl+,', action: function() {
                 var b = document.querySelector('[data-bs-target="#styleSettingsModal"]');
@@ -88882,7 +89284,7 @@ const StyleDesigner = (function () {
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
-        ]);
+        ]).filter(Boolean);
 
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
@@ -88891,6 +89293,12 @@ const StyleDesigner = (function () {
                     var a = _pgActivePage();
                     if (a) _pgSetDraft([a.key], false);
                 }});
+        }
+
+        // Preview on a phone, where the Preview menu offers it.
+        if (_pgPrototypeShareReady()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_phone', label: _sdT('Preview on a phone'), icon: 'bi-phone', action: function () { _sdPhoneOpen(); } });
         }
 
         // ── Assets-panel commands (only when the panel is mounted) ──
@@ -89082,6 +89490,9 @@ const StyleDesigner = (function () {
     function _trackRecentComp(type, extra, hintLabel, hintIcon) {
         // A widget's part or value is offered only while its widget is selected.
         if (type === 'widget_part') return;
+        // An item of My library may be renamed or deleted: it stays in its
+        // own group.
+        if (type === 'library') return;
         try {
             var id = type +
                 (extra && extra.componentType ? ':' + extra.componentType : '') +
@@ -89753,6 +90164,14 @@ const StyleDesigner = (function () {
                            '.pg-video-toggle[aria-pressed="true"] .pg-video-play { display: inline-block; }\n' +
                            '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }',
         'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
+        // Layout's Scroll snap on any flex or grid box (_SD_SNAP_CLASSES):
+        // the box snaps whichever way it scrolls, always (mandatory) or
+        // near a stop (proximity); a child names the edge it stops on.
+        'pg-scroll-snap-always': '.pg-scroll-snap-always { scroll-snap-type: both mandatory; }',
+        'pg-scroll-snap-near':   '.pg-scroll-snap-near { scroll-snap-type: both proximity; }',
+        'pg-snap-to-start':      '.pg-snap-to-start { scroll-snap-align: start; }',
+        'pg-snap-to-center':     '.pg-snap-to-center { scroll-snap-align: center; }',
+        'pg-snap-to-end':        '.pg-snap-to-end { scroll-snap-align: end; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,
         // which a transform skips.
@@ -89883,6 +90302,13 @@ const StyleDesigner = (function () {
         if (!add) return;
         if (css.indexOf(_SD_BLOCK_CSS_MARK) === -1) add = _SD_BLOCK_CSS_MARK + '\n' + add;
         _userStylesSet((css ? css.replace(/\s*$/, '\n') : '') + add);
+    }
+
+    // A Scroll snap value picked: its rule joins User Styles the first
+    // time (_SD_BLOCK_CSS), as a block rule does; an operator's edit is kept.
+    function _sdSnapEnsure(val) {
+        var names = _sdSnapNames(val);
+        if (names.length && !_sdPaletteDry) _sdEnsureBlockStyles(names);
     }
 
     // ── Palette item info: hover card and search words ──────────────────
@@ -91854,6 +92280,7 @@ const StyleDesigner = (function () {
     var _sdPalTip = { el: null, item: null, mute: null, timer: 0, closedAt: 0 };
 
     function _sdPalTipHTML(item) {
+        if (item.dataset.type === 'library') return _sdLibTip(item);
         var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
         try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
         var info = _sdPalInfo()[_sdPalKey(it)];
@@ -92119,6 +92546,7 @@ const StyleDesigner = (function () {
             if (pane) pane.hidden = !on;
         });
         if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (which === 'blocks') _sdLibMount();
         if (store) {
             try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
         }
@@ -93596,27 +94024,33 @@ const StyleDesigner = (function () {
         if (_seoCheckCache) { draw(_seoCheckCache); return; }
         var p = _pgActivePage() || {};
         _pgReadFieldsIntoPage(p);
+        _pgApiPost('seo_check', _sdSeoCheckBody(p, tree)).then(function (res) { _seoCheckCache = res; draw(res); })
+            .catch(function () { draw(null); });
+    }
+
+    // What designer/seo_check is sent for page `p` with tree `t` (the open
+    // page's, or another tab's for the Publish check).
+    function _sdSeoCheckBody(p, t) {
         var body = {
             style_id: (_design && _design.styleId) || 0,
             page_id: p.page_id || 0, page_name: p.page_name || '', page_folder: p.page_folder || 0,
             page_title: p.page_title || '', page_meta_description: p.page_meta_description || '',
             page_search_keywords: p.page_search_keywords || '', page_search: p.page_search ? 1 : 0,
             page_sitemap: p.page_sitemap ? 1 : 0, page_noindex: p.page_noindex ? 1 : 0,
-            html: (typeof generateHTML === 'function') ? generateHTML() : ''
+            html: t ? generateHTML(undefined, undefined, t) : ''
         };
         // A saved page's draft is rendered by the server as a whole page
         // (head, shared components, system widgets): its tree and the
         // system widgets it shows, as the Preview sends them. The markup
         // above is the fallback the server judges as a fragment.
-        if (body.page_id && tree) {
-            body.tree_json = JSON.stringify(tree);
+        if (body.page_id && t) {
+            body.tree_json = JSON.stringify(t);
             var wp = null;
             _sdPreviewWidgetMarkers = true;
-            try { wp = _sdPreviewWidgetPayload(generateHTML()); } finally { _sdPreviewWidgetMarkers = false; }
+            try { wp = _sdPreviewWidgetPayload(generateHTML(undefined, undefined, t)); } finally { _sdPreviewWidgetMarkers = false; }
             body.widgets = wp ? wp.widgets : [];
         }
-        _pgApiPost('seo_check', body).then(function (res) { _seoCheckCache = res; draw(res); })
-            .catch(function () { draw(null); });
+        return body;
     }
 
     // ========================= ELEMENT LOCK (inherited model) =========================
@@ -94712,6 +95146,23 @@ const StyleDesigner = (function () {
             hasLockedAncestor: hasLockedAncestor,
             render: render,
             saveState: saveState,
+            createNode: createNode,
+            _findNodeAnywhereById: _findNodeAnywhereById,
+            _sdAccess: _sdAccess,
+            _sdBlockSketch: _sdBlockSketch,
+            _sdPalSwitchShow: _sdPalSwitchShow,
+            _sdPaletteItemHTML: _sdPaletteItemHTML,
+            _sdWirePaletteItems: _sdWirePaletteItems,
+            _userStylesGet: _userStylesGet,
+            _userStylesSet: _userStylesSet,
+            COMPONENTS: COMPONENTS,
+            validateTree: validateTree,
+            _pgPageByKey: _pgPageByKey,
+            _pgPublishSheet: _pgPublishSheet,
+            _sdBlockFamilies: _sdBlockFamilies,
+            _sdProtoTabs: _sdProtoTabs,
+            _sdSelectFound: _sdSelectFound,
+            _sdSeoCheckBody: _sdSeoCheckBody,
             showCtxMenu: showCtxMenu,
             scrollTreeToNode: scrollTreeToNode,
             renderProperties: renderProperties,
@@ -94739,6 +95190,82 @@ const StyleDesigner = (function () {
         if (!_sdPartLoaded('mirror')) return;
         var api = _sdPartApis.mirror;
         if (api && typeof api.rebind === 'function') api.rebind();
+    }
+
+    // ── My library ────────────────────────────────────────────────────────
+    // The part 'mylibrary' (assets/js/style_designer_mylibrary.js): "Save to
+    // my library" and the library's group in the palette. The group is
+    // drawn the first time its list is shown (at open only when that list
+    // is the one showing, once the editor has settled).
+    var _sdLib = { host: null };
+
+    function _sdLibApi() {
+        return _sdPartLoaded('mylibrary') ? (_sdPartApis.mylibrary || null) : null;
+    }
+
+    function _sdLibMaySave() {
+        return _sdAccess() === 'full' && !!_sdPartUrls('mylibrary');
+    }
+
+    // A section, a row, a card or a group: an element holding others.
+    function _sdLibOffered(node) {
+        return _sdLibMaySave() && selectedNodes.length < 2 && !!(node && node.type !== 'root' && node.type !== 'shared_ref'
+            && node.children && node.children.length);
+    }
+
+    function _sdLibSave(node) {
+        _sdPartCall('mylibrary', 'save', [node]).catch(_sdPartFailed);
+    }
+
+    function _sdLibInit(host, shown) {
+        if (!host || !_sdPartUrls('mylibrary')) return;
+        _sdLib.host = host;
+        var pane = host.closest('.sd-pal-list');
+        if (shown || (pane && !pane.hidden)) setTimeout(_sdLibMount, 1500);
+    }
+
+    function _sdLibMount() {
+        if (!_sdLib.host) return;
+        _sdPartCall('mylibrary', 'mount', [_sdLib.host]).catch(function () { /* the next showing asks again */ });
+    }
+
+    // The copy a row of the group adds (createFromPalette()); the rows are
+    // drawn by the part, so it has run when one is dragged.
+    function _sdLibNode(extra) {
+        var api = _sdLibApi();
+        return api ? api.node(extra || {}, _sdPaletteDry) : null;
+    }
+
+    function _sdLibTip(item) {
+        var api = _sdLibApi();
+        return api ? api.tip(item) : '';
+    }
+
+    // A copy whose binding the site lacked keeps its amber mark until a
+    // record of each kind cleared is chosen again (in its props, or in the
+    // widget's settings for a widget's placement).
+    function _sdLibUnbound(node, cached) {
+        var kinds = node && node.props && node.props._libraryUnbound;
+        if (!Array.isArray(kinds) || !kinds.length) return false;
+        var settings = node.props;
+        if (node.type === 'shared_ref') {
+            if (!cached || !cached.system_region_config) return true;
+            try { settings = JSON.parse(cached.system_region_config) || {}; } catch (e) { return true; }
+        }
+        var empty = false, seen = false;
+        Object.keys(settings).forEach(function (k) {
+            var kind = (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
+                : k.indexOf('folder_id') !== -1 ? 'folder'
+                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page' : '';
+            if (!kind || kinds.indexOf(kind) === -1) return;
+            seen = true;
+            if (!settings[k] || settings[k] === '0') empty = true;
+        });
+        if (seen && !empty) {
+            delete node.props._libraryUnbound;
+            return false;
+        }
+        return true;
     }
 
     // The assistant panel is the part 'ai', handed over only to the designers

@@ -240,6 +240,9 @@ function pg_designer_screen_render($ctx)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
+    // "Preview on a phone" (the part 'phone') goes to those who make share
+    // links: administrators and designers.
+    $sd_phone = ((int) $user['role'] <= 1) && $sd_proto_share;
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
@@ -388,7 +391,7 @@ function pg_designer_screen_render($ctx)
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'guides', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'bands', 'optsearch', 'review', 'guides', 'mylibrary', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_phone ? array('phone') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? array('publishcheck') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -3046,6 +3049,13 @@ function pg_designer_publish_sheet()
         'result-kept'     => lang('Not saved: the changes stay in the editor'),
         'anyway'          => lang('Publish anyway'),
         'anyway-reason'   => lang('Why is it published without approval? The reason goes to the Site Log.'),
+        'anyway-check'    => lang('Why is it published with a blocking finding? The reason goes to the Site Log.'),
+        'checking'        => lang('Checking…'),
+        'checking-n'      => lang('Checking {n} pages…'),
+        'result-ready'    => lang('Ready'),
+        'result-look'     => lang('{n} to look at'),
+        'result-block'    => lang('{n} blocking'),
+        'result-failed'   => lang('Not checked'),
     );
     $spans = '';
     foreach ($texts as $k => $v) {
@@ -3069,6 +3079,7 @@ function pg_designer_publish_sheet()
                         <div class="d-none" aria-hidden="true">' . $spans . '</div>
                     </div>
                     <div class="dialog-footer flex-wrap gap-2" style="border-color:#30363d;">
+                        <p class="small fg-secondary w-100 mb-0 d-none" data-sdp-checking aria-live="polite"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><span data-sdp-checking-text></span></p>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . h(lang('Save this page as a draft')) . '</button>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . h(lang('Take every page of the design off the site')) . '</button>
                         <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto" data-sdp-act="publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . h(lang('Publish selected')) . '</button>

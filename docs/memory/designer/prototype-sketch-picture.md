@@ -1,6 +1,6 @@
 ---
 name: prototype-sketch-picture
-description: The Sketch tool's reference picture (SK7): "More" in the selected sketch page's head, the picture's rows, how it lies under the boxes and is kept; "Read the picture" not built
+description: The Sketch tool's reference picture (SK7): "More" in the selected sketch page's head, the picture's rows, how it lies under the boxes and is kept
 ---
 
 ## Where is it chosen?
@@ -18,8 +18,8 @@ description: The Sketch tool's reference picture (SK7): "More" in the selected s
 - On the sketch page: `pic: { src, h, off }` in the same store as the boxes (`prototype-sketch-tool.md`), cleaned by `_sdSketchClean()`. `_sdSketchPicSrc()` keeps only a site address (`/…`, not `//`) or http(s) of at most 2,000 characters without spaces, quotes or `<>`; `h` is 24 to 20,000.
 - Every change (placed, hidden, shown, removed) is one step of the sketch's history: Ctrl+Z brings a removed picture back. Nothing asks.
 
-## What is not built?
-- "Read the picture" (board E5 of `designer-sketch-drawing-picture.md`) needs a model that reads pictures. `ui/ai-write-decisions.md` keeps the Pinegrap AI picture path waiting until its connection can say its model reads images, so the step asked the architect and left it out.
+## Can the picture be read into boxes?
+- Yes, by the browser's model: "Read the picture" under the same caption (SK7b, `sketch-read-picture.md`).
 
 ## How was it checked?
 - `tests/designer_sketch_test.php` (`test_designer_sketch_reference_picture`, `test_designer_sketch_more_rows`) in Node. The menu, the chooser and the picture were not run in a browser.

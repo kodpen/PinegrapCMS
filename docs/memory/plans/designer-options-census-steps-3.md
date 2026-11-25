@@ -9,7 +9,7 @@ priority: 7
 
 ## Which steps add page components and the rest? (line "page and site")
 - DO21 (S) Done (#11564). Two palette components: "Back to top", a button shown once the page is scrolled, and "Scroll progress", a thin bar at the page's top. Their site script is printed only on a page that holds one.
-- DO22 (S) after DO21: on a menu, "Mark the section in view" for a one-page menu (Bootstrap's scrollspy, `data-bs-spy`) and "After scrolling": a distance and what changes (background, shadow, height), the navbar's scrolled state.
+- DO22 (S) Done (#11586). On a menu, "Mark the section in view" for a one-page menu (Bootstrap's scrollspy, `data-bs-spy`) and "After scrolling": a distance and what changes (background, shadow, height), the navbar's scrolled state.
 - DO23 (M) after DO22 and DD26: "New collection with pages", a row of the Pages window and of the command palette: it asks the collection's name and fields, or takes a collection that is there, and makes the collection, its list page and its detail page with the form list and detail widgets bound.
   - By `designer/collections-decisions.md`; it ends with a line naming what it made, each with its link. Nothing is made until "Create".
 - DO24 (S) after DO23: favourites: a star on a palette component pins it under "Favourites" above "Recently Used", kept per person where that list is kept.

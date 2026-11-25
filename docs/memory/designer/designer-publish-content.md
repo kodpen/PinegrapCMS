@@ -4,7 +4,7 @@ description: The Publish check's Content group (pg_publish_content.js): starters
 ---
 
 ## Where does it live, and what does it read?
-- `assets/js/pg_publish_content.js`, `PgPublishContent`: pure, no DOM, no request; loaded by no screen yet (the Publish sheet's results load it on first use, with `pg_publish_findings.js`).
+- `assets/js/pg_publish_content.js`, `PgPublishContent`: pure, no DOM, no request; loaded with `pg_publish_findings.js` in the `publishcheck` part on the Publish sheet's first check (`designer-publish-check-results.md`).
 - `samples(starters)`: the sample values from what the palette builds, a block's tree or a component's default props, so no list of sample words is kept by hand and the words are in the site's language (`_sdT()`). Answer `{ texts, images }`, plain JSON, sorted, to keep once built.
 - `check(tree, opts)`: rows `{ code, node, shared, index, where, detail, count }` of one page's tree; `opts`: `samples`, `links` (the page's link rows as `PgProtoHotspots.mark()` marks them), `page: { id, tab }`, `shared` (a shared component's id when its own tree is checked).
 
