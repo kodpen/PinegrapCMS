@@ -23,7 +23,7 @@ priority: 6
 - Sharing it by a link is not in this plan: a person prints it. A link would change what a share link shows and is asked first.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- SG1 (M) The sheet's model, pure: variables, the stylesheet's text styles and a design's components in, the blocks out; the contrast pairs.
+- SG1 (M) The sheet's model, pure: variables, the stylesheet's text styles and a design's components in, the blocks out; the contrast pairs. Done: PR #11540 (`designer/design-style-guide-model.md`).
 - SG2 (M) after SG1, DV2 and DD15: the sheet drawn and opened from the Preview menu.
 - SG3 (S) after SG2: the print sheet, the click through to a variable or component.
 - SG4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.

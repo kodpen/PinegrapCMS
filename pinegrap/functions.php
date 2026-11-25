@@ -67,6 +67,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_library.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_migration.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_themes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_style_guide.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_previews.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_theme_vars.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php');
