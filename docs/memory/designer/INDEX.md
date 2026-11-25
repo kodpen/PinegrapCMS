@@ -482,6 +482,7 @@
 - designer-options-states.md: The Options panel's State row as built (DO10, #11588): Normal, Hover, Focus, Pressed; the state's rule in User Styles, which rows write, the canvas view, the part 'states', what is not built yet
 - designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
+- designer-options-transition.md: "Transition" in Shadow and effect as built (DO11): the three rows, the rule in User Styles inside the no-preference block, the look's values, under a state, reduced motion, the part, the cost
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key>, tabs without the widget), how unsaved-tab references resolve on save, and why a page may reach the save without its tree.
@@ -513,8 +514,10 @@
 - designer-preview-as-drawing-check.md: "Check all cases" of the Preview as drawn (boards P6, P7 of designer-preview-as-drawing): where it starts, the run, the list of findings, a row opening its case, the labels
 - designer-preview-as-drawing-choosers.md: The "Record", "Visitor" and "Case" menus of the "Preview as" bar as drawn (boards P2 to P4 of designer-preview-as-drawing): rows, labels, states, what a case sets
 - designer-preview-as-drawing.md: The drawing of the "Preview as" bar (plans/designer-preview-as.md, PW3 and PW4): the sheet, where each part is described, which board belongs to which step
+- designer-preview-as-readers.md: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview, the visitor still open
 - designer-preview-as-server.md: "Preview as" on the server (PW2): preview_widgets with a choice and a case per widget, the record each pick draws, the preview_records search and rights, the scope that writes nothing
 - designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244; phone row #11578): its five rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
+- designer-preview-overview.md: Start file for the designer-preview-* files: what the designer's Preview is, which file holds the menu, links, page scripts and each part of "Preview as" (cases, server, renderer readers, drawings)
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
 - designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
@@ -645,12 +648,14 @@
 - layout-type-converter-cart.md: A shopping cart page's layout file into the Cart widget (LE9a, #11466): two tables as one list, row and layout flags, blocks printed whole, the type row's seed and state
 - layout-type-converter-catalog-detail.md: A catalog detail page's layout file into the Catalog Detail widget (LE8c, #11436): each piece, the record and cross_sell options, the widget's new flags, tokens, sections and sidebar forms
 - layout-type-converter-catalog.md: A catalog page's layout file into the Catalog widget's design elements (LE8b): each piece, the map options it brought, the listing's new flags and tokens, the run's settings order, the starting sites
+- layout-type-converter-checkout-steps.md: Billing information, shipping address and arrival, shipping method layout files into their widgets (LE9c, #11628): maps, new flags and tokens, differences, starting sites
 - layout-type-converter-editor.md: LE6b: a file page's System region in the editor, the dropped pieces listed in the Region panel, Convert to design elements from the layout file (layout_code convert_type)
 - layout-type-converter-express-order-render.md: What the Express Order widget gives a converted classic layout (LE9b, #11486): tokens, row values, flags, the type row's state, known differences, starting sites
 - layout-type-converter-express-order.md: An express order page's layout file into the Express Order widget (LE9b, #11486): the cart's map, the theme's billing markup, the widget's sections, controls
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
+- layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10): what the converter is, the rules kept, which file holds each type's map [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
