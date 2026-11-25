@@ -89,6 +89,64 @@ function pg_figma_shared_plan($frames)
 }
 
 /**
+ * The import's pictures held to its budget: each file fetched spends one
+ * place, and an image fill used on several layers is fetched once, so it
+ * spends one place however many layers show it. A picture over the budget
+ * is taken off its frame and noted in the frame's report. Pure.
+ *
+ * @param array $frames converted frames, each with 'pictures' and 'report'
+ *                      (a failed frame has no pictures)
+ * @param int   $max    pg_figma_max_pictures()
+ * @return array frames, vectors (Figma ids to ask for as SVG), fills
+ *               (whether image fills are to be asked for)
+ */
+function pg_figma_picture_budget($frames, $max)
+{
+    $left = (int) $max;
+    $refs = array();
+    $vectors = array();
+    $fills = false;
+
+    foreach ((array) $frames as $f => $frame) {
+        $kept = array();
+
+        foreach (isset($frame['pictures']) ? (array) $frame['pictures'] : array() as $p) {
+            $vector = ($p['kind'] === 'vector');
+            $ref = $vector ? '' : (string) $p['image_ref'];
+
+            if (($ref !== '') && isset($refs[$ref])) {
+                $kept[] = $p;
+                continue;
+            }
+
+            if ($left <= 0) {
+                $frames[$f]['report'][] = array('figma' => $p['figma'], 'name' => '', 'code' => 'pictures');
+                continue;
+            }
+
+            $left--;
+            $kept[] = $p;
+
+            if ($vector) {
+                $vectors[] = $p['figma'];
+            } else {
+                $fills = true;
+
+                if ($ref !== '') {
+                    $refs[$ref] = true;
+                }
+            }
+        }
+
+        if (isset($frame['pictures'])) {
+            $frames[$f]['pictures'] = $kept;
+        }
+    }
+
+    return array('frames' => $frames, 'vectors' => $vectors, 'fills' => $fills);
+}
+
+/**
  * The node of $tree with $id, depth first; null when none. Pure.
  */
 function pg_figma_tree_node($tree, $id)
@@ -552,9 +610,6 @@ function pg_figma_import_start($key, $ids)
     }
 
     $frames = array();
-    $vectors = array();
-    $fills = false;
-    $budget = pg_figma_max_pictures();
 
     foreach ($ids as $fid) {
         $answer = pg_figma_answer_frame($read['data'], $fid);
@@ -568,27 +623,13 @@ function pg_figma_import_start($key, $ids)
 
         $frame['id'] = $fid;
         $frame['failed'] = false;
-
-        // Over the import's picture budget a place stays empty, and says so.
-        foreach ($frame['pictures'] as $i => $p) {
-            if ($budget <= 0) {
-                $frame['report'][] = array('figma' => $p['figma'], 'name' => '', 'code' => 'pictures');
-                unset($frame['pictures'][$i]);
-                continue;
-            }
-
-            $budget--;
-
-            if ($p['kind'] === 'vector') {
-                $vectors[] = $p['figma'];
-            } else {
-                $fills = true;
-            }
-        }
-
-        $frame['pictures'] = array_values($frame['pictures']);
         $frames[] = $frame;
     }
+
+    $budget = pg_figma_picture_budget($frames, pg_figma_max_pictures());
+    $frames = $budget['frames'];
+    $vectors = $budget['vectors'];
+    $fills = $budget['fills'];
 
     $urls = array('fills' => array(), 'vectors' => array());
 
