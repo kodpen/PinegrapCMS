@@ -17086,7 +17086,7 @@ const StyleDesigner = (function () {
             __recipient_address_address_1: ship[3], __recipient_address_address_2: ship[4], __recipient_address_city: ship[5],
             __recipient_address_state: ship[6], __recipient_address_zip_code: ship[7], __recipient_address_country: ship[8],
             __recipient_address_phone_number: ship[9],
-            __custom_form_title: _sdT('Delivery Details'), __arrival_date_name: _sdT('Standard delivery'),
+            __custom_form_title: _sdT('Delivery Details'), __arrival_date_id: '1', __arrival_date_name: _sdT('Standard delivery'),
             __arrival_date_description: _sdT('Arrives in 2-4 working days.'), __requested_arrival_date: day,
             __shipping_method: _sdT('Standard Shipping'), __shipping_method_name: _sdT('Standard Shipping'),
             __shipping_method_description: _sdT('Arrives in 2-4 working days.'), __shipping_method_cost: _sdMoney(m.shipping),
@@ -45457,6 +45457,7 @@ const StyleDesigner = (function () {
             ['__custom_form_title',        _sdT('Custom shipping form title')]
         ]},
         { label: _sdT('Arrival Date (loop_area)'), tokens: [
+            ['__arrival_date_id',          _sdT('Arrival date ID')],
             ['__arrival_date_name',        _sdT('Arrival date name')],
             ['__arrival_date_description', _sdT('Arrival date description')]
         ]},
@@ -45475,6 +45476,16 @@ const StyleDesigner = (function () {
             ['__recipient_full_name',        _sdT('Full name')],
             ['__recipient_address',          _sdT('Address (one line)')],
             ['__recipient_address_html',     _sdT('Address (lines)')],
+            ['__recipient_salutation',       _sdT('Salutation')],
+            ['__recipient_first_name',       _sdT('First Name')],
+            ['__recipient_last_name',        _sdT('Last Name')],
+            ['__recipient_company',          _sdT('Company')],
+            ['__recipient_address_1',        _sdT('Address 1')],
+            ['__recipient_address_2',        _sdT('Address 2')],
+            ['__recipient_city',             _sdT('City')],
+            ['__recipient_state',            _sdT('State / Province')],
+            ['__recipient_zip',              _sdT('Zip / Postal Code')],
+            ['__recipient_country',          _sdT('Country')],
             ['__requested_arrival_date',     _sdT('Requested arrival date')],
             ['__no_shipping_methods_message', _sdT('Why no shipping method can be offered')]
         ]},
@@ -50249,7 +50260,8 @@ const StyleDesigner = (function () {
             ['shows_opt_in_sms',     _sdT('The SMS box is offered (SMS is on and the buyer has not said yes)')],
             ['can_update_contact',   _sdT('A signed-in member may update their contact')],
             ['has_referral_sources', _sdT('The site has referral sources')],
-            ['has_tax_exempt',       _sdT('Tax exemption can be asked for')]
+            ['has_tax_exempt',       _sdT('Tax exemption can be asked for')],
+            ['has_custom_fields',    _sdT('Custom field 1 or 2 has a label')]
         ],
         order_form: [
             ['has_products',           _sdT('At least one product of the group can be ordered')],
@@ -50281,6 +50293,9 @@ const StyleDesigner = (function () {
             ['no_shipping_methods',        _sdT('No shipping method can ship to this recipient')],
             ['has_arrival_date',           _sdT('The recipient asked for an arrival date')],
             ['shipping_method_discounted', _sdT('Row: an offer lowers the shipping cost')],
+            ['has_several_shipping_methods', _sdT('More than one shipping method can be chosen')],
+            ['recipient_has_company',      _sdT('The recipient\'s address has a company')],
+            ['recipient_has_address_2',    _sdT('The recipient\'s address has a second line')],
             ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
         shipping_address_and_arrival: [
@@ -50290,7 +50305,10 @@ const StyleDesigner = (function () {
             ['has_arrival_dates',  _sdT('An arrival date can be requested')],
             ['has_custom_form',    _sdT('The page has a custom shipping form')],
             ['has_verified_addresses', _sdT('Verified shipping addresses can be picked')],
-            ['arrival_is_custom',  _sdT('Row: the visitor picks the day')]
+            ['arrival_is_custom',  _sdT('Row: the visitor picks the day')],
+            ['arrival_is_standard', _sdT('Row: a named arrival date (no day to pick)')],
+            ['has_address_type',   _sdT('The page asks for the address type')],
+            ['offers_same_as_billing', _sdT('The "billing address is the same" box is offered')]
         ],
         wishlist: [
             ['has_items',         _sdT('Products are saved')],

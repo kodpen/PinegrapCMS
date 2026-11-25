@@ -127,9 +127,13 @@ function pg_bi_page_row_changes($row, $cfg)
  */
 function pg_bi_flags($row, $opt_in, $signed_in, $referral, $tax_exempt, $opt_in_sms = false)
 {
+    $field_1 = isset($row['custom_field_1_label']) && (string)$row['custom_field_1_label'] !== '';
+    $field_2 = isset($row['custom_field_2_label']) && (string)$row['custom_field_2_label'] !== '';
     $bi_flags = array(
-        'has_custom_field_1'   => isset($row['custom_field_1_label']) && (string)$row['custom_field_1_label'] !== '',
-        'has_custom_field_2'   => isset($row['custom_field_2_label']) && (string)$row['custom_field_2_label'] !== '',
+        'has_custom_field_1'   => $field_1,
+        'has_custom_field_2'   => $field_2,
+        // A classic layout's row around both custom fields.
+        'has_custom_fields'    => $field_1 || $field_2,
         'has_po_number'        => !empty($row['po_number']),
         'has_custom_form'      => !empty($row['form']),
         'shows_opt_in'         => (bool)$opt_in,
