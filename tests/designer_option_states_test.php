@@ -275,3 +275,57 @@ function test_designer_option_states_transform()
 	pg_assert_same(10, $r['big'], 'Scale is kept to 10');
 	pg_assert_same(array(true, false), $r['maybe']);
 }
+
+function test_designer_option_states_effects()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.fxWrite(base, c, "", "gray", "100");'
+		. 'a = S.fxWrite(a, c, "", "blur", "2");'
+		. 'var h = S.fxWrite(a, c, "hover", "gray", "0");'
+		. 'var m = S.fxWrite(h, c, "", "blur", "4");'
+		. 'var back = S.fxWrite(h, c, "hover", "gray", "");'
+		. 'var g = S.fxWrite(S.fxWrite(base, c, "", "bdblur", "12"), c, "", "blend", "multiply");'
+		. 'g = S.fxWrite(g, c, "", "bgblend", "overlay");'
+		. 'var none = S.fxWrite(S.fxWrite(S.fxWrite(g, c, "", "bdblur", "0"), c, "", "blend", "normal"), c, "", "bgblend", "");'
+		. 'var zero = S.fxWrite(S.fxWrite(a, c, "", "gray", "0"), c, "", "blur", "");'
+		. 'var foreign = base.replace("color: red;", "color: red;\n  filter: drop-shadow(0 0 2px red);");'
+		. 'console.log(JSON.stringify({ a: a, h: h, readA: S.fxRead(a, c, ""), readH: S.fxRead(h, c, "hover"), readM: S.fxRead(m, c, "hover"), m: m,'
+		. ' countH: S.count(S.read(h, c, "hover")), sect: S.sections(h, c).styling, back: back, g: g, readG: S.fxRead(g, c, ""),'
+		. ' countG: S.count(S.read(g, c, "")), none: none, zero: zero,'
+		. ' foreign: S.fxWrite(foreign, c, "", "blur", "3") === foreign, foreignRead: S.fxRead(foreign, c, "").blur,'
+		. ' hue: S.fxRead(S.fxWrite(base, c, "", "hue", "-400"), c, "").hue, bad: S.fxWrite(base, c, "", "blend", "glow") === base,'
+		. ' css: S.fxFilter({ blur: 2, bright: 120, contrast: "", gray: "", sat: "", sepia: "", hue: 30 }),'
+		. ' maybe: [S.fxMaybe(a, c), S.fxMaybe(g, c), S.fxMaybe(base, c)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$base_text = ".pgs-abc123 {\n  color: red;\n}\n";
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  filter: blur(2px) grayscale(100%);\n}\n", $r['a'], 'Normal writes one filter in a fixed order');
+	pg_assert_true(strpos($r['h'], ".pgs-abc123:hover {\n  filter: blur(2px) grayscale(0%);\n}") !== false, 'a state writes the whole list with Normal\'s other values');
+	pg_assert_same(array('blur' => 2, 'bright' => '', 'contrast' => '', 'gray' => 100, 'sat' => '', 'sepia' => '', 'hue' => '', 'bdblur' => '', 'blend' => '', 'bgblend' => ''), $r['readA']);
+	pg_assert_same(0, $r['readH']['gray']);
+	pg_assert_same('', $r['readH']['blur'], 'a state\'s value equal to Normal\'s reads as not set');
+	pg_assert_true(strpos($r['m'], ".pgs-abc123:hover {\n  filter: blur(4px) grayscale(0%);\n}") !== false, 'the state follows a change of Normal on a value it took');
+	pg_assert_same(0, $r['readM']['gray']);
+	pg_assert_same(1, $r['countH'], 'Filter counts as one row of the state');
+	pg_assert_same(array('hover'), $r['sect'], 'Shadow and effect is ringed');
+	pg_assert_same($r['a'], $r['back'], 'a state emptied goes with its rule');
+	pg_assert_true(strpos($r['g'], "backdrop-filter: blur(12px);") !== false && strpos($r['g'], "-webkit-backdrop-filter: blur(12px);") !== false, 'background blur with the prefixed twin');
+	pg_assert_true(strpos($r['g'], "mix-blend-mode: multiply;") !== false && strpos($r['g'], "background-blend-mode: overlay;") !== false);
+	pg_assert_same(12, $r['readG']['bdblur']);
+	pg_assert_same('multiply', $r['readG']['blend']);
+	pg_assert_same('overlay', $r['readG']['bgblend']);
+	pg_assert_same(3, $r['countG'], 'background blur counts once with its twin');
+	pg_assert_same($base_text, $r['none'], 'Normal\'s defaults are not written');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n}\n", $r['zero']);
+	pg_assert_true($r['foreign'], 'a filter no row reads is not written over');
+	pg_assert_same('', $r['foreignRead']);
+	pg_assert_same(-180, $r['hue'], 'Hue is kept to a half turn');
+	pg_assert_true($r['bad'], 'an unknown blend writes nothing');
+	pg_assert_same('blur(2px) brightness(120%) hue-rotate(30deg)', $r['css']);
+	pg_assert_same(array(true, true, false), $r['maybe']);
+}
