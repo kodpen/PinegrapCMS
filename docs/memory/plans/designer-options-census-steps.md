@@ -17,7 +17,7 @@ priority: 7
 - DO6 (M) after DO5 and DD23: named areas drawn as a small grid: cells dragged into an area, a child given its area from a list; per size.
 
 ## Which steps add the small layout rows? (line "small rows")
-- DO7 (S) Position: "Fill the parent" and "Centre" as presets of the four offsets; Z Index takes a typed number and offers Bootstrap's layers by name (Dropdown, Sticky, Fixed, Modal).
+- DO7 (S) Done (#PR). Position: "Fill the parent" and "Centre" as presets of the four offsets; Z Index takes a typed number and offers Bootstrap's layers by name (Dropdown, Sticky, Fixed, Modal).
 - DO8 (S) after DO7: "Scroll snap" on a flex or grid container (None, Always, Near) and "Snap to" on its children (Start, Centre, End). The scroller component keeps its own (`designer/designer-scroller-wide-slides.md`).
 - DO9 (S) after DO8: Aspect Ratio on any element as CSS `aspect-ratio` with no wrapper, adding 3:2, 2:3, 9:16 and 4:5; per size once DO2 has landed. Object Fit on a video and a background video.
   - An element that uses today's ratio wrapper stays as it is until its ratio is changed.
