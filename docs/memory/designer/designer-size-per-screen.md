@@ -4,7 +4,7 @@ description: A length per screen size (DO2): the size chooser on Size and displa
 ---
 
 ## Which rows take a value per screen size?
-- Style › Size and display: Width, Height, their Min and Max, and Position's Top, Right, Bottom, Left. Style › Text: Font Size. Plan `designer-options-census-steps.md` DO2 (#PR).
+- Style › Size and display: Width, Height, their Min and Max, and Position's Top, Right, Bottom, Left. Style › Text: Font Size. Plan `designer-options-census-steps.md` DO2 (#11571).
 - Each of those two sections has the Spacing box's size chooser (XS, SM, MD, LG, XL, XXL) in its head while it is open. One chosen size (`_sdSpSize`) serves Spacing, Size and display and Text until the editor closes.
 - A size holding a value of any selected element shows a dot under its name (`.sd-spb-size.is-has`), on the Spacing chooser too.
 
