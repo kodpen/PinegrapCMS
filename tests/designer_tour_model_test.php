@@ -277,3 +277,92 @@ function test_designer_tour_part_has_a_sentence_for_every_stop()
 	$def = include PG_FUNCTIONS_DIR . '/includes/designer_parts/tour.php';
 	pg_assert_same('assets/js/pg_designer_tour.js', $def['sources'][0], 'the model loads first');
 }
+
+function test_designer_tour_how_do_i_tasks_per_access()
+{
+	$res = designer_tour_test_node(<<<'JS'
+var a = T.tasks('full');
+a[0].pointers[0].anchors.push('#x');
+var sec = T.tasks('full')[0];
+var has = on(['#sd-pal-sw-blocks', '#sd-canvas-iframe']);
+var walk = [], at = T.first(sec.pointers, has);
+while (at) { walk.push(at.id); at = T.move(sec.pointers, at.i, 1, has); }
+out = {
+    full: T.tasks('full').map(function (t) { return t.id; }),
+    content: T.tasks('content').map(function (t) { return t.id; }),
+    three: T.tasks('full').every(function (t) { return t.pointers.length === 3; }),
+    ids: sec.pointers.map(function (p) { return p.id; }),
+    copied: T.tasks('full')[0].pointers[0].anchors,
+    walk: walk,
+    selectors: T.tasks('full').reduce(function (all, t) {
+        t.pointers.forEach(function (p) { all = all.concat(p.anchors); });
+        return all;
+    }, [])
+};
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('section', 'text', 'colours', 'phone', 'page', 'list', 'form', 'shared', 'history', 'publish'), $res['full'], 'a designer has the ten tasks in the drawing\'s order');
+	pg_assert_same(array('text', 'publish'), $res['content'], 'a content editor sees only the tasks they can do');
+	pg_assert_true($res['three'], 'each task has three pointers');
+	pg_assert_same(array('section.1', 'section.2', 'section.3'), $res['ids'], 'a pointer is named by its task and place');
+	pg_assert_same(array('#sd-pal-sw-blocks'), $res['copied'], 'a caller changing a pointer does not change the model');
+	pg_assert_same(array('section.1', 'section.3'), $res['walk'], 'a pointer whose control is not on the screen is skipped');
+
+	// Every id and class a pointer names is drawn by the editor.
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	foreach ($res['selectors'] as $sel) {
+		preg_match_all('/#([a-z0-9-]+)/', $sel, $ids);
+		preg_match_all('/\.([a-z][a-z0-9-]+)/', $sel, $classes);
+		preg_match_all('/\[([a-z-]+)="([a-z_]+)"\]/', $sel, $attrs, PREG_SET_ORDER);
+
+		foreach ($ids[1] as $id) {
+			// An id drawn whole, set on an element, or built from its prefix
+			// and a key ('id="sd-pal-sw-' + k).
+			$prefix = substr($id, 0, (int) strrpos($id, '-') + 1);
+			pg_assert_true(
+				strpos($screen, 'id="' . $id . '"') !== false || strpos($screen, ".id = '" . $id . "'") !== false
+					|| strpos($screen, 'id="' . $prefix . "' + ") !== false,
+				'the editor draws #' . $id . ' (' . $sel . ')'
+			);
+		}
+
+		foreach ($classes[1] as $class) {
+			pg_assert_true(strpos($screen, $class) !== false, 'the editor draws .' . $class . ' (' . $sel . ')');
+		}
+
+		foreach ($attrs as $a) {
+			pg_assert_true(strpos($screen, $a[1]) !== false && strpos($screen, "'" . $a[2] . "'") !== false, 'the editor draws ' . $a[0]);
+		}
+	}
+}
+
+function test_designer_tour_empty_page_starts()
+{
+	$res = designer_tour_test_node(<<<'JS'
+out = {
+    all: T.starts('full', { section: true, sketch: true, document: true }),
+    some: T.starts('full', { document: true, section: true }),
+    none: T.starts('full'),
+    truthy: T.starts('full', { section: 1, sketch: 'yes' }),
+    content: T.starts('content', { section: true, sketch: true, document: true })
+};
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('section', 'sketch', 'document'), $res['all'], 'the three starts in their order');
+	pg_assert_same(array('section', 'document'), $res['some'], 'a start only when its feature is there');
+	pg_assert_same(array(), $res['none'], 'no feature, no start');
+	pg_assert_same(array(), $res['truthy'], 'only true says a feature is there');
+	pg_assert_same(array(), $res['content'], 'a content editor sees no starts');
+}
