@@ -5,7 +5,7 @@ description: Options panel census, part 2: gaps to place and size an element (gr
 
 ## Grid tracks and areas?
 - Columns and Rows on a grid box are built (DO4, `designer-grid-columns-rows.md`): a count, equal or fixed sizes, "As many as fit" with a smallest width, per size. Gap is Layout's Gap.
-- A child cannot span or be placed: `grid-column`, `grid-row`, named areas are code only. Missing: Span columns, Span rows, Start, and named areas drawn as a small grid. M (areas), S (span and start once tracks exist). Reads none.
+- A child spans and is placed by "Span columns", "Span rows" and "Start at" (DO5 #11654, `designer-grid-child-place.md`). Missing: named areas drawn as a small grid (DO6). M. Reads none.
 
 ## Position and layer order?
 - Position has its five values and Top, Right, Bottom, Left lengths for all sizes alike; no inset shortcut (fill the parent, centre) and no per size value. Missing: inset presets (S) and offsets per size (M, written as `@media` rules on the element's `pgs-` class). Reads `--bs-breakpoint-*` for the sizes.

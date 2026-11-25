@@ -35493,7 +35493,7 @@ const StyleDesigner = (function () {
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
             return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex,
                 snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem,
-                gridBox: a.gridBox && c.gridBox, visit: false };
+                gridBox: a.gridBox && c.gridBox, gridItem: a.gridItem && c.gridItem, visit: false };
         });
         // Layout's rows follow the same context; a row any element holds a
         // value in is drawn (rowCss()).
@@ -37331,6 +37331,7 @@ const StyleDesigner = (function () {
             snapBox: _sdSnapBox(n.type, p.cssClass),
             snapItem: !!(par && _sdSnapBox(par.type, (par.props || {}).cssClass)),
             gridBox: _sdGridBox(p.cssClass),
+            gridItem: !!(par && _sdGridBox((par.props || {}).cssClass)),
             visit: _sdCondRowsOf(n).length > 0
         };
     }
@@ -58180,6 +58181,10 @@ const StyleDesigner = (function () {
         if (gr) _sdSpBoxBindOne(gr, nodes, function () {
             return _sdPartLoad('spacing').then(function () { return _sdPartCall('grid', 'draw', [_sdSzHost(gr, nodes)]); });
         }, 'grid');
+        var gi = panel.querySelector('[data-sd-griditem]');
+        if (gi) _sdSpBoxBindOne(gi, nodes, function () {
+            return _sdPartLoad('spacing').then(function () { return _sdPartCall('grid', 'drawItem', [_sdSzHost(gi, nodes)]); });
+        }, 'grid');
     }
 
     // ── A length per screen size (Size and display, Text › Font Size)
@@ -58614,6 +58619,9 @@ const StyleDesigner = (function () {
             // A grid box's Columns and Rows: drawn by the part 'grid'
             // (_sdSpBoxBind()), a value per screen size.
             if (id === 'grid') { _fxBody += '<div data-sd-gridbox hidden></div>'; return; }
+            // A grid child's Span columns, Span rows and Start at: the same
+            // part, a value per screen size.
+            if (id === 'gridItem') { _fxBody += '<div data-sd-griditem hidden></div>'; return; }
             var _lr = _layRows[id];
             if (!_lr[3]) { _fxBody += mkRespRow(_lr[0], _lr[1], _lr[2], _sdT('Default')); return; }
             _fxBody += mkNonRespRow(_lr[0], _lr[2].map(function (v) { return [_lr[1] + v[0], v[1]]; }), _lr[3]);
@@ -65619,6 +65627,7 @@ const StyleDesigner = (function () {
         { id: 'grid', of: 'box', name: '', when: 'gridBox' },
         { id: 'gap', of: 'box', name: 'gap', also: 'gridBox' },
         { id: 'snap', of: 'box', name: '', when: 'snapBox' },
+        { id: 'gridItem', of: 'item', name: '', when: 'gridItem' },
         { id: 'alignSelf', of: 'item', name: 'self' },
         { id: 'order', of: 'item', name: 'order' },
         { id: 'grow', of: 'item', name: 'grow' },
@@ -65637,7 +65646,8 @@ const StyleDesigner = (function () {
 
     // What Layout draws. `ctx`: { flex: the element is a flex box,
     // parentFlex: its parent is one, snapBox / snapItem: the element / its
-    // parent takes Scroll snap, gridBox: the element is a grid box }
+    // parent takes Scroll snap, gridBox / gridItem: the element is a grid
+    // box / the child of one }
     // (_sdOptCtx()); a row with `when` follows that key instead of flex /
     // parentFlex, one with `also` is drawn for that key too (Gap on a grid
     // box); `held`: { id: true }
