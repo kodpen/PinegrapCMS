@@ -6,7 +6,8 @@
  * inner spacing (padding) are drawn as bands around and inside its frame,
  * where each band's handle sits, how far a dragged or stepped handle
  * changes a side, which sides Shift and Alt add, where the value label goes
- * and which screen size the canvas width stands for. Pure: plain boxes and
+ * which screen size the canvas width stands for, and the spacing scale's
+ * steps. Pure: plain boxes and
  * numbers in, plain objects out; no element, no listener.
  *
  * - A box is { left, top, right, bottom } in the layer's screen pixels; `k`
@@ -33,6 +34,9 @@
     // The handle's thickness in screen pixels: a faint inner handle sits
     // this far inside the frame so it does not cover the outer one.
     var HANDLE = 6;
+    // Bootstrap 5.3's $spacers as multiples of the root font size (as
+    // PGCanvasGuides has them; kept here so this part needs no other).
+    var SPACER_REM = [0, 0.25, 0.5, 1, 1.5, 3];
     // The canvas widths where Bootstrap's screen sizes start.
     var SIZES = [['xxl', 1400], ['xl', 1200], ['lg', 992], ['md', 768], ['sm', 576]];
 
@@ -151,6 +155,22 @@
         };
     }
 
+    // The spacing scale in page pixels, steps '0' to '5'.
+    function scale(rootPx) {
+        var r = num(rootPx) > 0 ? num(rootPx) : 16;
+        return SPACER_REM.map(function (m) { return m * r; });
+    }
+
+    // The step of `steps` (a scale) nearest to `value` page pixels:
+    // { step: '0'..'5', px }; halfway between two steps takes the smaller.
+    function nearestStep(value, steps) {
+        var v = Math.max(0, num(value)), best = 0;
+        for (var i = 1; i < steps.length; i++) {
+            if (Math.abs(steps[i] - v) < Math.abs(steps[best] - v)) best = i;
+        }
+        return { step: String(best), px: steps[best] };
+    }
+
     // The screen size a canvas `width` pixels wide stands for: 'xs' to 'xxl'.
     function sizeFor(width) {
         var w = num(width);
@@ -168,6 +188,8 @@
         keyStep: keyStep,
         reach: reach,
         labelAt: labelAt,
-        sizeFor: sizeFor
+        sizeFor: sizeFor,
+        scale: scale,
+        nearestStep: nearestStep
     };
 })();

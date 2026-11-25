@@ -10,8 +10,8 @@
  * handle takes the focus with Tab: the arrow keys step it, Enter or leaving
  * it writes, Escape puts the value back. What a change writes is the
  * Spacing box's (window.PGSpacingBox) for the screen size the canvas shows,
- * one undo step per drag. The geometry is window.PGCanvasBands and
- * window.PGCanvasGuides; the first-use line is kept as the tour's tips are
+ * one undo step per drag. The geometry is
+ * window.PGCanvasBands; the first-use line is kept as the tour's tips are
  * (window.PGDesignerTour).
  *
  * Nothing of it enters the page: while a side is dragged the element on the
@@ -32,7 +32,6 @@ StyleDesigner.definePart('bands', function (K) {
     var _sdT = K._sdT;
     var esc = K.esc;
     var C = window.PGCanvasBands;
-    var G = window.PGCanvasGuides;
     var B = window.PGSpacingBox;
     var TIP = 'canvas-guides';
     var SIDES = ['t', 'e', 'b', 's'];
@@ -103,7 +102,7 @@ StyleDesigner.definePart('bands', function (K) {
     function _bdScale(el) {
         var root = 16;
         try { root = _bdPx(el.ownerDocument.defaultView.getComputedStyle(el.ownerDocument.documentElement).fontSize) || 16; } catch (e) { root = 16; }
-        return G.scale(root);
+        return C.scale(root);
     }
 
     function _bdBox(el, b) {
@@ -165,7 +164,7 @@ StyleDesigner.definePart('bands', function (K) {
         var el = S.host.el;
         var kind = h.getAttribute('data-k'), side = h.getAttribute('data-s');
         var cs = el.ownerDocument.defaultView.getComputedStyle(el);
-        var from = G.nearestStep(_bdPx(cs[PROPS[kind] + EDGE_CSS[h.getAttribute('data-e')]]), _bdScale(el));
+        var from = C.nearestStep(_bdPx(cs[PROPS[kind] + EDGE_CSS[h.getAttribute('data-e')]]), _bdScale(el));
         var keep = {};
         ['top', 'right', 'bottom', 'left'].forEach(function (e) {
             var p = PROPS[kind] + '-' + e;
@@ -241,7 +240,7 @@ StyleDesigner.definePart('bands', function (K) {
                 raf = 0;
                 if (S.live !== live) return;
                 var grow = C.growth(live.kind, live.edge, last.clientX - live.x, last.clientY - live.y, k);
-                var step = G.nearestStep(live.from.px + grow, live.scale);
+                var step = C.nearestStep(live.from.px + grow, live.scale);
                 _bdPreview(live, step, C.reach(live.side, last.shiftKey, last.altKey));
                 _bdLabel(step.step, step.px, live.reach, last.clientX - lr.left, last.clientY - lr.top);
             });

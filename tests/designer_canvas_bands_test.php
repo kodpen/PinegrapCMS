@@ -185,6 +185,24 @@ function test_canvas_bands_size_for_width()
 	pg_assert_same(array('xs', 'xs', 'sm', 'md', 'md', 'lg', 'xl', 'xl', 'xxl', 'xxl'), $res, 'sizes by width');
 }
 
+// The scale is Bootstrap 5.3's spacers; the nearest step takes the smaller
+// on a tie.
+function test_canvas_bands_scale_and_nearest_step()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16); out = [sc, C.scale(0)[5], C.nearestStep(48, sc), C.nearestStep(6, sc), C.nearestStep(-5, sc), C.nearestStep(100, sc)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, 4, 8, 16, 24, 48), $res[0], 'the six steps at 16 px');
+	pg_assert_same(48, $res[1], 'no root size reads as 16');
+	pg_assert_same(array('step' => '5', 'px' => 48), $res[2], 'exact step');
+	pg_assert_same('1', $res[3]['step'], 'a tie takes the smaller');
+	pg_assert_same('0', $res[4]['step'], 'below 0 is 0');
+	pg_assert_same('5', $res[5]['step'], 'above the scale is its top');
+}
+
 // The bands are a part of their own: the modules first, the part last; the
 // core only asks it to draw or hide, handing it a host.
 function test_canvas_bands_are_a_part()
@@ -195,6 +213,7 @@ function test_canvas_bands_are_a_part()
 	$files = $bundles['assets/js/style_designer_bands.min.js'];
 	pg_assert_true(in_array('assets/js/pg_canvas_bands.js', $files, true), 'the band module is in it');
 	pg_assert_false(in_array('assets/js/pg_spacing_box.js', $files, true), 'what the Spacing box writes comes with its own part');
+	pg_assert_false(in_array('assets/js/pg_canvas_guides.js', $files, true), 'the guides\' geometry belongs to the Measure part');
 	pg_assert_same('assets/js/style_designer_bands.js', end($files), 'the part last');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
