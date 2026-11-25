@@ -37,7 +37,6 @@
 - designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
 - designer-document-to-page.md: Plan (owner 2026-11-24, level 3): a page built from a pasted text or a document: headings, lists, questions, figures and quotes read into sections, checked in a list, then built; steps FD1 to FD5
-- designer-drawings-levels.md: Plan (owner 2026-11-24): the sheets drawn first for the ten levelled designer features, DD12 to DD21, by the design session or the architect; a screen step waits for its sheet's merge, never for a yes
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 - designer-first-tour.md: Plan (owner 2026-11-24, level 1): the designer's first tour of five stops, "How do I" pointers on the real controls, one-line first-use tips and an empty canvas that offers starts; steps FT1 to FT4
 - designer-options-census-steps-2.md: Plan designer-options-census, DO10 to DO20: states, transition, transform, background layers, clip shape and mask, the small effects, new entrances, the easing curve, page transitions
@@ -47,7 +46,6 @@
 - designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
 - designer-record-edit-in-place.md: Plan (owner 2026-11-24, level 3): a collection item's words and pictures corrected in place in the designer's Preview, saved to the record by its own writer, apart from the design; steps RE1 to RE5
 - designer-screens-side-by-side.md: Plan (owner 2026-11-24, level 1): the designer's canvas with a phone and a tablet mirror beside it, redrawn when the hand rests, a click choosing the element; steps SS1 to SS4
-- designer-select-similar.md: Plan (owner 2026-11-24, level 1): "Select similar" in the designer: every element like the chosen one, by kind, classes or component, in a section or the page; steps SE1 to SE3
 - designer-shared-marks.md: Plan (owner 2026-11-25): shared components and system widgets no longer wrapped at rest on the canvas; a frame under the pointer and when chosen, a View switch; steps SM1, SM2
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - designer-start-import.md: Plan (owner 2026-11-24, before the launch): the New design window with every start in one place, import from Figma as layers and from Canva as reference pictures and brand; steps ST1 to ST7

@@ -559,6 +559,7 @@
 - designer-scroller-wide-slides.md: The Wide slides option of a scroller row (pg-snap-wide): one large slide per stop, 85vw, centred; the Scroller section, its helper and rule
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-select-similar-drawing.md: The drawing of "Select similar" (sheet DD13, step SE2): boards E1 to E4, where the row sits, the line above the Options panel with its two lists, what it settles, the new texts and the key
+- designer-select-similar-matcher.md: Why "Select similar" exists in the designer, what is never chosen, the pure matcher PGSelectSimilar.find() (ways of alike, places, left out), not across pages; SE1 #11530, SE2 #11649 [decision: decisions-made-product-108.md]
 - designer-select-similar-part.md: "Select similar" in the designer: the menu rows, the S key, the palette row, the `similar` part and the line above the Options panel with its two lists; what ends the line
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
