@@ -4,7 +4,7 @@ description: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (W
 ---
 
 ## What was the area?
-- Hunt 16: the Workspace screens and scripts WL2 to WL7 (#11365, #11360, #11368, #11363, #11370, #11366) moved to look A's buttons (`plans/workspace-look-leftover-steps.md`). Did a handler, a busy or disabled state, a focus ring, an accessible name or the 390 px width break?
+- Hunt 16: the Workspace screens and scripts WL2 to WL7 (#11365, #11360, #11368, #11363, #11370, #11366) moved to look A's buttons (`ui/look-workspace-recipes.md`). Did a handler, a busy or disabled state, a focus ring, an accessible name or the 390 px width break?
 - Read from the six merge diffs, `backend.src.css` and the scripts; no browser run.
 
 ## What was fixed?
@@ -21,4 +21,4 @@ description: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (W
 ## What is left?
 - The scheduled agents' state filter and a text file's Write / View segments show the chosen one by `is-active` only, no `aria-pressed`; it was so before WL2. In `workspace.js`, held by WL8 then.
 
-Related: docs/memory/workflow/bug-hunt.md, docs/memory/plans/workspace-look-leftover-steps.md, docs/memory/ui/look-icon-buttons.md
+Related: docs/memory/workflow/bug-hunt.md, docs/memory/ui/look-workspace-recipes.md, docs/memory/ui/look-icon-buttons.md

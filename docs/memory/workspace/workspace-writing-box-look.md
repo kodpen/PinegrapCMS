@@ -10,7 +10,7 @@ description: Which look recipe each button of the writing box's tips and windows
 - The row of tools (`PGWsEditor.toolbar()`, `workspace-editor-toolbar.md`): `pg-icon-button pg-icon-button-sm`. A pressed mark keeps the accent tint (`.ws-rich-tools .pg-icon-button[aria-pressed="true"]`: `--ws-accent` at 15%) over the icon button's grey pressed fill; disabled undo, redo are faded with no hover.
 
 ## Why does the context menu keep `btn btn-link`?
-- `ws-ctx-item` rows are menu rows, not buttons: menus are left out of the look plan (`plans/workspace-look-leftover.md`, "What is left out?"). The same row in `workspace.js` stays too. It is the editor's one count in `tools/check_look_baseline.json`.
+- `ws-ctx-item` rows are menu rows, not buttons: menus are left out of the look plan (`ui/look-workspace-recipes.md`, "What was left out of the move?"). The same row in `workspace.js` stays too. It is the editor's one count in `tools/check_look_baseline.json`.
 
 ## What do highlights, saved replies, voice and translation draw?
 - Highlight card: Add / Edit note quiet small, Remove `pg-button-danger pg-button-sm`; the note form Save fill, Cancel ghost.

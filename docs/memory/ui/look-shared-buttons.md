@@ -11,7 +11,7 @@ module: output
 - `#button_bar` and `.pg-toolbar` give a `.pg-button` `flex: 0 0 auto` and zero an icon margin left in markup (block "Page action bar" of `backend.src.css`).
 
 ## What did it leave as it was?
-- Workspace screens and scripts (DL5f keeps Workspace out while its plans run) and `install/index.php` (no panel stylesheet).
+- Workspace screens and scripts (moved later by their own plan, `look-workspace-recipes.md`) and `install/index.php` (no panel stylesheet).
 - Icon-only toolbar buttons (the three-dots menu, Up, previous and next arrows): in the sheet an icon button is `.pg-icon-button`, a question for the architect.
 - `includes/erp/order_flow.php` step rows and the Find buttons of `privacy_export.php` / `privacy_erase.php`: not toolbars, they pair the primary with Bootstrap outline buttons; they move with their groups.
 

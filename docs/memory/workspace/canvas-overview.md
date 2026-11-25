@@ -10,7 +10,7 @@ description: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a d
 
 ## Which decisions bind it?
 - `workflow/decisions-made-workspace-18.md` (#8850): the plan and its order. `decisions-made-schema-17.md`: the five tables and columns (S1-S5, #8923-#8927). `decisions-made-workspace-20.md` (#8929): the drawings as the reference. `decisions-made-workspace-21.md`: the corrections to CO2's card.
-- Architect (2026-11-13, for the owner, channel message 2334): the phone screens of #9361 accepted, with the gaps named for DL5f (`canvas-phone.md`).
+- Architect (2026-11-13, for the owner, channel message 2334): the phone screens of #9361 accepted, with the gaps named (`canvas-phone.md`).
 
 ## How does a page reach data?
 - Only through the frame's shell, never by itself: no connection, no storage, no way to the panel (`platform/guarded-frame.md`, `canvas-bridge.md`). The card names the canvas; a page never does.
@@ -32,4 +32,4 @@ description: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a d
 
 ## What is not in it?
 - Each its own question when wanted: a share link outside the channel, a page that asks an AI in the reader's name, a file a page hands the reader, live pushes.
-- For DL5f (`canvas-phone.md`): the compact Data card and its groups, a bulk Delete or no selection, the empty Canvases line on a phone card, the 52 px floating button.
+- The phone gaps (the compact Data card and its groups, the 52 px floating button) were dropped; the bulk Delete landed in #11404 (`canvas-phone.md`). The empty Canvases line on a phone card was taken by no step.

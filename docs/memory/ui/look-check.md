@@ -18,7 +18,7 @@ description: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colour
 
 ## What does it count as an old field?
 - Only in Workspace files (a path holding `workspace`, PHP or script source): `field` = each `form-control`, `form-label` or `form-text` class; `form-control-sm` and `form-select` are not counted.
-- Why: the Workspace's old fields move to the kit's form parts (`formParts`, plan workspace-look-leftover); the count stops a new old field line.
+- Why: the Workspace's old fields move to the kit's form parts (`formParts`, `look-workspace-recipes.md`); the count stops a new old field line.
 - Not `formRow(` since WL8 (#11391): it is `field()`.
 - First counts (2026-11-24): 525 in 45 files (`workspace.js` 128, `workspace_wtables.php` 81, `workspace_flow.js` 61, `workspace_mail.js` 35). A file with fields but no old button is in the baseline with `button` and `tabs` at 0.
 

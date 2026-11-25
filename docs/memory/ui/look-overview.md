@@ -1,6 +1,6 @@
 ---
 name: look-overview
-description: Start file for the look-* files: look A and its sheet, the design-language steps (closed 2026-11-24), the screen families moved with their PRs, the open work
+description: Start file for the look-* files: look A and its sheet, the design-language steps (closed 2026-11-24), the screen families moved with their PRs (the Workspace's included), the open work
 ---
 
 ## What is look A, and where is it drawn?
@@ -20,12 +20,13 @@ description: Start file for the look-* files: look A and its sheet, the design-l
 - ERP: E1 #9695, E2 #9699, E2b #9701 (`erp/erp-list-screens-look.md`), E3 reports #9696 (`look-report-erp-screens.md`), E4 #9697, E5 #9704 (`look-mapping-grids.md`).
 - Site: S1 content #9773, S2 people #9692, S3 forms, files, calendars #10314, S4 menus, regions, logs #10316 (`look-content-screens.md`, `look-people-screens.md`, `look-forms-files-screens.md`, `look-menus-regions-screens.md`).
 - Site Settings: S5a #10426, S5b #10423, S5c #10456, S5d #10431, S5e #10458, S5f #10485 (`look-settings-categories.md`).
+- Workspace: plan workspace-look-leftover, WL1-WL11 (#11339 to #11511, closed 2026-11-25): buttons and fields by recipe (`look-workspace-recipes.md`, `look-workspace-main-script.md`, `look-workspace-fields.md`).
 - System: S6a tools #10533 (`look-system-tools.md`), S6b #10534 (`look-settings-pages-outside.md`), S6c Translations #10547. Kept screens: KS1 #9721, KS2 #9754 (`look-kept-screens.md`).
 
 ## What binds a change of look?
 - Owner (2026-11-15): old screens move to the modern look ("eski sayfaları yeni modern tasarıma geçirme olur").
 - No pictures go for approval since 2026-11-19: the owner looks on dev (`workflow/look-pictures-none.md`); a new design goes to the owner.
-- A move copies the recipes value for value and changes no behaviour, field or text; where the sheet is silent `look-sheet-silent.md`. Left out: the classic page screens (`look-field-widths.md`), the visual designer, the dashboard.
+- A move copies the recipes value for value and changes no behaviour, field or text; where the sheet is silent `look-sheet-silent.md`. Left out: the classic page screens (`look-field-widths.md`), the visual designer, the dashboard; in the Workspace, badges, list rows, cards, menus, messages and side panels (`look-workspace-recipes.md`).
 
 ## What is still open?
-- `look-open-work.md`, the Workspace leftover included.
+- `look-open-work.md`, with the Workspace's buttons and fields that stayed.
