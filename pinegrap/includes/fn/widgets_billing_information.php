@@ -210,10 +210,16 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
     }
     $order_id = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
     $ghost = !empty($_SESSION['software']['ghost']);
-    $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost;
+    $viewer = pg_preview_as_viewer();
+    $signed_in = $viewer['signed_in'] && !$ghost;
 
-    $contact = $signed_in && defined('USER_CONTACT_ID')
-        ? db_item("SELECT * FROM contacts WHERE id = '" . (int)USER_CONTACT_ID . "'") : null;
+    // The sample account of a Preview has no contact row: its own values.
+    if ($signed_in && $viewer['sample']) {
+        $contact = pg_preview_as_sample_account()['contact'];
+    } else {
+        $contact = ($signed_in && $viewer['contact_id'] > 0)
+            ? db_item("SELECT * FROM contacts WHERE id = '" . $viewer['contact_id'] . "'") : null;
+    }
     if (!is_array($contact)) $contact = array();
 
     $lf = new liveform('billing_information');

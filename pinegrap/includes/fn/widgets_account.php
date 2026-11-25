@@ -89,7 +89,9 @@ function pg_sw_page_type_widget_url($page_type)
 {
     static $cache = array();
     $page_type = (string)$page_type;
-    if (array_key_exists($page_type, $cache)) return $cache[$page_type];
+    // A Preview widget's visitor is not the request's: no cache either way.
+    $preview = pg_preview_as_viewer()['preview'];
+    if (!$preview && array_key_exists($page_type, $cache)) return $cache[$page_type];
     $cache[$page_type] = '';
 
     $map = pg_sw_page_type_widgets();
@@ -105,7 +107,7 @@ function pg_sw_page_type_widget_url($page_type)
     if (!$pages) return '';
     $anyone = ($page_type === 'set password');
     $can_view = function ($folder_id) use ($anyone) {
-        if (!$anyone && defined('USER_LOGGED_IN')) return (bool)check_view_access($folder_id, true);
+        if (!$anyone && (defined('USER_LOGGED_IN') || pg_preview_as_viewer()['preview'])) return pg_preview_as_view_access($folder_id, true);
         $type = get_access_control_type($folder_id);
         return $anyone ? ($type === 'public') : in_array($type, array('public', 'guest', 'registration'), true);
     };
@@ -194,7 +196,7 @@ function _pg_sw_open_widget_page_name($type, $style_ids = 0)
     $open = array();
     foreach (pg_sw_widget_pages($type) as $p) {
         $row = db_item("SELECT page_folder, page_style FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
-        if (!is_array($row) || (string)$row['page_folder'] === '' || !check_view_access($row['page_folder'])) continue;
+        if (!is_array($row) || (string)$row['page_folder'] === '' || !pg_preview_as_view_access($row['page_folder'])) continue;
         $open[] = array('page_name' => (string)$p['page_name'], 'page_folder' => (int)$row['page_folder'], 'page_style' => (int)$row['page_style']);
     }
     $page = pg_sw_first_viewable_page($open, function () { return true; }, (array)$style_ids);
@@ -269,7 +271,17 @@ function _pg_acct_signed_in()
     // panel request): it shows nobody's account, address book or links.
     $ctx = function_exists('pg_sw_render_context') ? pg_sw_render_context() : array();
     if (!empty($ctx['email'])) return false;
-    if (defined('USER_LOGGED_IN')) return USER_LOGGED_IN === true;
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['preview'] || defined('USER_LOGGED_IN')) return $viewer['signed_in'];
+    return function_exists('pg_session_signed_in') && pg_session_signed_in();
+}
+
+// Whether the visitor is signed in, as the sign-in, sign-up and password
+// forms ask it: in a Preview widget, the visitor the operator chose.
+function _pg_member_session_signed_in()
+{
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['preview']) return $viewer['signed_in'];
     return function_exists('pg_session_signed_in') && pg_session_signed_in();
 }
 
@@ -567,7 +579,7 @@ function _render_system_widget_logout($tree_json, $widget_id, $cfg = array(), $m
     }
     return _pg_member_apply_tokens($rendered, array(
         '__site_name' => h(_pg_member_site_name()),
-        '__username'  => h($signed_in && defined('USER_USERNAME') ? (string)USER_USERNAME : ''),
+        '__username'  => h($signed_in ? pg_preview_as_viewer()['username'] : ''),
         '__login_url' => h($login_url),
         '__home_url'  => h($home_url),
     ));
@@ -603,15 +615,16 @@ function _render_system_widget_change_password($tree_json, $widget_id, $cfg = ar
     $page_url  = function_exists('get_request_uri') ? (string)get_request_uri() : '';
     $lf        = new liveform('change_password');
 
+    $viewer = pg_preview_as_viewer();
     $password_not_set = false;
-    if ($signed_in && defined('USER_ID') && (int)USER_ID > 0) {
-        $password_not_set = ((int)db_value("SELECT user_password_algo FROM user WHERE user_id = '" . (int)USER_ID . "'") === 3);
+    if ($signed_in && $viewer['id'] > 0) {
+        $password_not_set = ((int)db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $viewer['id'] . "'") === 3);
     }
 
     if ($lf->field_in_session('token')) {
         _pg_member_fill_from_form($tree, $lf, array('current_password', 'new_password', 'new_password_verify'));
     } elseif ($signed_in) {
-        _pg_member_fill_control($tree, 'email_address', defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : '');
+        _pg_member_fill_control($tree, 'email_address', $viewer['email']);
     }
     if ($password_not_set) _pg_member_drop_control($tree, 'current_password');
     if (!(defined('PASSWORD_HINT') && PASSWORD_HINT)) _pg_member_drop_control($tree, 'password_hint');
@@ -824,8 +837,11 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
     $page_url = function_exists('get_request_uri') ? (string)get_request_uri() : '';
     $lf = new liveform('my_account_profile');
 
-    $user = db_item("SELECT user_contact, timezone FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1");
-    $contact = array();
+    // The sample account of a Preview has no row: its contact is the
+    // sample's own.
+    $viewer  = pg_preview_as_viewer();
+    $user    = ($viewer['id'] > 0) ? db_item("SELECT user_contact, timezone FROM user WHERE user_id = '" . $viewer['id'] . "' LIMIT 1") : null;
+    $contact = $viewer['sample'] ? pg_preview_as_sample_account()['contact'] : array();
     if (is_array($user) && (int)$user['user_contact'] > 0) {
         $contact = db_item("SELECT " . implode(', ', pg_sw_profile_fields()) . " FROM contacts WHERE id = '" . (int)$user['user_contact'] . "' LIMIT 1");
         if (!is_array($contact)) $contact = array();
@@ -882,10 +898,10 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
 
     return _pg_member_apply_tokens($rendered, array(
         '__site_name'      => h(_pg_member_site_name()),
-        '__username'       => h(defined('USER_USERNAME') ? (string)USER_USERNAME : ''),
-        '__email_address'  => h(defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : ''),
+        '__username'       => h($viewer['username']),
+        '__email_address'  => h($viewer['email']),
         '__my_account_url' => h($account_url),
-    ) + pg_sw_entity_account_tokens((int)USER_ID, $tree_json));
+    ) + pg_sw_entity_account_tokens($viewer['id'], $tree_json));
 }
 
 // ============================================================================
@@ -930,8 +946,12 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
     $link_id    = (isset($_GET['id']) && is_scalar($_GET['id'])) ? trim((string)$_GET['id']) : '';
     $link_sig   = (isset($_GET['sig']) && is_scalar($_GET['sig'])) ? trim((string)$_GET['sig']) : '';
 
-    if ($signed_in) {
-        $user = db_item("SELECT user_email, user_contact FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1");
+    $viewer = pg_preview_as_viewer();
+    if ($signed_in && $viewer['sample']) {
+        // The sample account: its address, on no contact and no list.
+        $email = $viewer['email'];
+    } elseif ($signed_in) {
+        $user = db_item("SELECT user_email, user_contact FROM user WHERE user_id = '" . $viewer['id'] . "' LIMIT 1");
         if (is_array($user)) {
             $email      = (string)$user['user_email'];
             $contact_id = (int)$user['user_contact'];
@@ -987,7 +1007,7 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
         _pg_member_fill_control($tree, 'opt_in_sms', '1', (bool)$lf->get_field_value('opt_in_sms'));
     } else {
         $sms_on = $sms_offered && pg_consent_sms_start_for(array(
-            'email' => $email, 'user_id' => $signed_in ? (int)USER_ID : 0, 'contact_id' => $contact_id));
+            'email' => $email, 'user_id' => $signed_in ? $viewer['id'] : 0, 'contact_id' => $contact_id));
         _pg_member_fill_control($tree, 'email_address', $email);
         _pg_member_fill_control($tree, 'opt_in', '1', $opt_in === 1);
         _pg_member_fill_control($tree, 'opt_in_sms', '1', $sms_on);
@@ -1125,7 +1145,9 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
     $self       = _pg_acct_url_without(function_exists('get_request_uri') ? (string)get_request_uri() : '', array('id'));
     $edit_id    = (isset($_GET['id']) && is_scalar($_GET['id'])) ? (int)$_GET['id'] : 0;
     $type_on    = !empty($cfg['address_type']);
-    $recipients = (array)db_items("SELECT * FROM address_book WHERE user = '" . (int)USER_ID . "' ORDER BY ship_to_name");
+    $viewer     = pg_preview_as_viewer();
+    $recipients = $viewer['sample'] ? pg_preview_as_sample_account()['recipients']
+        : (array)db_items("SELECT * FROM address_book WHERE user = '" . $viewer['id'] . "' ORDER BY ship_to_name");
     $editing    = null;
     foreach ($recipients as $r) {
         if ($edit_id > 0 && (int)$r['id'] === $edit_id) $editing = $r;
@@ -1878,7 +1900,7 @@ function _pg_acct_staff_url($staff_page_id)
     if (!is_array($staff) || (string)$staff['page_name'] === '') return '';
     if (function_exists('pg_recycle_bin_folder_ids')
         && in_array((int)$staff['page_folder'], array_map('intval', (array)pg_recycle_bin_folder_ids()), true)) return '';
-    if (!check_view_access($staff['page_folder'])) return '';
+    if (!pg_preview_as_view_access($staff['page_folder'])) return '';
     return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path((string)$staff['page_name']);
 }
 
@@ -1971,16 +1993,18 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     $links['__privacy_request_url'] = pg_schema_has('privacy_requests') ? pg_tr_script_url(_pg_acct_software_path() . '/privacy_request.php') : '';
     $out['links'] = $links;
 
-    if (defined('USER_ID') && (int)USER_ID > 0) {
+    // The sample account of a Preview (id 0) has none of these rows.
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['id'] > 0) {
         // The bookings' rows serve the section and the booking lists alike.
-        $out['bookings'] = pg_booking_customer_view_rows(pg_booking_customer_rows((int)USER_ID), time());
+        $out['bookings'] = pg_booking_customer_view_rows(pg_booking_customer_rows($viewer['id']), time());
         $out['sections']['bookings'] = pg_booking_customer_view_html($out['bookings']);
         $out['flags']['has_bookings'] = ($out['sections']['bookings'] !== '');
         $out['flags']['has_upcoming_bookings'] = !empty($out['bookings']['upcoming']);
         $out['flags']['has_past_bookings'] = !empty($out['bookings']['past']);
         // The member's volunteer programmes; the buttons post to volunteer.php,
         // which sends the member back here with a notice.
-        $volunteer_ids = pg_volunteer_account_ids(defined('USER_CONTACT_ID') ? (int)USER_CONTACT_ID : 0);
+        $volunteer_ids = pg_volunteer_account_ids($viewer['contact_id']);
         if ($volunteer_ids) {
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_volunteering.php');
             $out['volunteering'] = pg_volunteer_account_views($volunteer_ids);
@@ -1990,10 +2014,10 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         }
     }
 
-    if ($shop && defined('USER_ID') && (int)USER_ID > 0) {
+    if ($shop && $viewer['id'] > 0) {
         $orders = (array)db_items(
             "SELECT id, order_number, order_date, (total / 100) AS total, status FROM orders
-             WHERE user_id = '" . (int)USER_ID . "' AND status IN ('complete', 'exported', 'cancelled')
+             WHERE user_id = '" . $viewer['id'] . "' AND status IN ('complete', 'exported', 'cancelled')
              ORDER BY order_date DESC LIMIT 50");
         if ($orders) {
             $view = _pg_acct_page_url(0, 'view order');
@@ -2007,7 +2031,7 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         // Balance, cards with the orders that spent them, and the points
         // conversion form, which comes back here with its notice.
         // The section and the store credit lists read the same view.
-        $credit = pg_credit_account_view((int)USER_ID, _pg_acct_page_url(0, 'view order'), time());
+        $credit = pg_credit_account_view($viewer['id'], _pg_acct_page_url(0, 'view order'), time());
         $out['sections']['store_credit'] = pg_credit_account_section_html($credit);
         $out['flags']['has_store_credit'] = ($out['sections']['store_credit'] !== '');
         if ($out['flags']['has_store_credit']) {
@@ -2017,7 +2041,7 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         }
         // The actions post back to the page the member is on.
         $out['subscriptions'] = pg_subscription_customer_view_rows(
-            pg_subscription_customer_rows((int)USER_ID),
+            pg_subscription_customer_rows($viewer['id']),
             _pg_acct_software_path() . '/subscription_action.php',
             pg_safe_redirect_path(isset($_SERVER['REQUEST_URI']) ? strtok((string)$_SERVER['REQUEST_URI'], '?') : '', defined('PATH') ? PATH : '/'),
             isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
@@ -2025,13 +2049,13 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         $out['flags']['has_subscriptions'] = !empty($out['subscriptions']);
         // Orders that hold event tickets, each with its signed tickets link.
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_event_tickets.php');
-        $tickets = pg_event_tickets_account((int)USER_ID);
+        $tickets = pg_event_tickets_account($viewer['id']);
         $out['tickets'] = $tickets['view'];
         $out['sections']['tickets'] = $tickets['section'];
         $out['flags']['has_tickets'] = $tickets['has'];
         // The referral part: the link while the customer can refer, else why not.
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_referral.php');
-        $referral = pg_referral_account((int)USER_ID, defined('USER_CONTACT_ID') ? (int)USER_CONTACT_ID : 0);
+        $referral = pg_referral_account($viewer['id'], $viewer['contact_id']);
         $out['sections']['referral'] = $referral['section'];
         $out['flags']['has_referral'] = $referral['has'];
         $out['flags']['can_refer'] = $referral['can'];
@@ -2242,6 +2266,8 @@ function _pg_login_region_return_link($url, $page_url)
 // instead of the site. The rule has one copy, waf_panel_access_from_row().
 function _pg_login_region_panel_access()
 {
+    // The sample account of a Preview is a plain user, with no panel.
+    if (pg_preview_as_viewer()['preview']) return false;
     return pg_user_has_panel_access();
 }
 
@@ -2320,7 +2346,11 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
     // somebody else's request, and must not carry their name.
     $background = (function_exists('pg_seo_rendering') && pg_seo_rendering())
                || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true);
-    $signed_in  = !$background && _pg_acct_signed_in() && defined('USER_ID') && (int)USER_ID > 0;
+    // A Preview widget is a background render too, drawn for the visitor
+    // the operator chose (pg_preview_as_viewer()).
+    $viewer     = pg_preview_as_viewer();
+    $signed_in  = $viewer['preview'] ? $viewer['signed_in']
+                : (!$background && _pg_acct_signed_in() && $viewer['id'] > 0);
     $page_url   = (!$background && function_exists('get_request_uri')) ? (string)get_request_uri() : '';
     $software   = _pg_acct_software_path();
     $output     = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
@@ -2351,7 +2381,10 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
         'has_panel_access' => false,
     );
 
-    if ($signed_in) {
+    if ($signed_in && $viewer['sample']) {
+        $row = array('user_username' => $viewer['username'], 'user_email' => $viewer['email'],
+                     'first_name' => $viewer['first_name'], 'last_name' => $viewer['last_name']);
+    } elseif ($signed_in) {
         $row = db_item(
             "SELECT user.user_username, user.user_email, user.user_badge, user.user_badge_label,
                     contacts.first_name, contacts.last_name, contacts.image,
@@ -2359,10 +2392,12 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
              FROM user
              LEFT JOIN contacts ON contacts.id = user.user_contact
              LEFT JOIN files ON files.id = contacts.file_id
-             WHERE user.user_id = '" . (int)USER_ID . "'
+             WHERE user.user_id = '" . $viewer['id'] . "'
              LIMIT 1");
+    }
+    if ($signed_in) {
         if (!is_array($row)) $row = array();
-        $username = isset($row['user_username']) ? (string)$row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : '');
+        $username = isset($row['user_username']) ? (string)$row['user_username'] : $viewer['username'];
         $first    = trim(isset($row['first_name']) ? (string)$row['first_name'] : '');
         $last     = trim(isset($row['last_name']) ? (string)$row['last_name'] : '');
         $full     = trim($first . ' ' . $last);
@@ -2376,7 +2411,7 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
             $image  = (string)$row['image'];
             $avatar = preg_match('#^(https?:)?/#i', $image) ? $image : $output . $image;
         } elseif (function_exists('pg_avatar_for')) {
-            $avatar = pg_avatar_for($first, $last, $username, (string)USER_ID);
+            $avatar = pg_avatar_for($first, $last, $username, (string)$viewer['id']);
         }
 
         $badge = '';
@@ -2471,7 +2506,7 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
     foreach ($links as $k => $v) $tokens[$k] = h($v);
     // The member's own allow-listed account values: read only when the
     // tree binds one, as the region sits on every page.
-    if ($signed_in) $tokens += pg_sw_entity_account_tokens((int)USER_ID, $tree_json);
+    if ($signed_in) $tokens += pg_sw_entity_account_tokens($viewer['id'], $tree_json);
     return _pg_member_apply_tokens($rendered, $tokens);
 }
 

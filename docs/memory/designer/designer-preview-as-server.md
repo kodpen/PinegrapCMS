@@ -23,4 +23,4 @@ module: designer_preview_render
 - `tests/designer_preview_render_test.php` asserts the scope (no site search count, no visit fact, session back, flags cleared), the statements (SELECT only, limited) and the wiring.
 
 ## What do the renderers read?
-- The flags, as [[designer-preview-as-readers]] says; the visitor from step PW2c on, as `designer-preview-as-visitor.md` says.
+- The flags, as [[designer-preview-as-readers]] says; the visitor through `pg_preview_as_viewer()` (`designer-preview-as-viewer.md`).

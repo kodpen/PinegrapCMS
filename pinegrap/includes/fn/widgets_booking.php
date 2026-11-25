@@ -652,15 +652,21 @@ function pg_booking_widget_visitor()
 {
     $visitor = array('name' => '', 'email' => '', 'phone' => '', 'user_id' => 0);
 
-    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || !defined('USER_ID')) {
+    $viewer = pg_preview_as_viewer();
+    if (!$viewer['signed_in']) {
         return $visitor;
     }
 
-    $visitor['user_id'] = (int) USER_ID;
-    $visitor['email'] = defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '';
-    $contact = (defined('USER_CONTACT_ID') && USER_CONTACT_ID)
-        ? db_item("SELECT first_name, last_name, mobile_phone, home_phone, business_phone FROM contacts WHERE id = '" . (int) USER_CONTACT_ID . "'")
-        : null;
+    $visitor['user_id'] = $viewer['id'];
+    $visitor['email'] = $viewer['email'];
+    // The sample account of a Preview has no contact row: its own values.
+    if ($viewer['sample']) {
+        $contact = pg_preview_as_sample_account()['contact'];
+    } else {
+        $contact = ($viewer['contact_id'] > 0)
+            ? db_item("SELECT first_name, last_name, mobile_phone, home_phone, business_phone FROM contacts WHERE id = '" . $viewer['contact_id'] . "'")
+            : null;
+    }
 
     if (is_array($contact)) {
         $visitor['name'] = pg_contact_display_name($contact['first_name'], $contact['last_name']);
