@@ -8,9 +8,9 @@
 - security-scan-accounts-settings.md: Security Scan rules on accounts and settings: new staff account, new application key, world-writable core folder, risky PHP settings, PHP security fixes; places, severities, detail
 - security-scan-api.md: GET /security-scan and its MCP tool security_scan_read: is the site at risk, the findings and the last run of the Security Scan, read only under system:read
 - security-scan-card.md: Security Scan part of the new dashboard Firewall card (last scan, open findings by severity, Scan now) and the daily ops alert security_finding for a critical or high finding
-- security-scan-file-scan.md: Security Scan file scan - the five file rules, what each reads, the release reference it judges by, the resumable walk, the server-config baseline, the job and its state row.
+- security-scan-file-scan.md: Security Scan file scan - the six file rules, retired release files, what each reads, the release reference it judges by, the resumable walk, the server-config baseline, the job and its state row.
 - security-scan-findings.md: Security Scan findings - the security_finding table (11.0.277), the pure finding model, fingerprint, severities, states and which moves a scan or a person may make.
-- security-scan-retired-files.md: Decision (architect 2026-11-25): a PHP file an earlier release carried and this one dropped is told from an unknown file by the Clean Up tool's list; the update still deletes nothing; step SC8b [decision: here]
+- security-scan-retired-files.md: Security Scan retired release files - file_php_retired from the Cleanup tool's shared list, the list completed from the release tags, the check_pr.php rule [decision: here]
 - security-scan-section.md: Security Scan row of Site Settings › Firewall and HTTPS: the joined run and its state row, the findings list, Quarantine and Restore (data/quarantine), Ignore with a note, Scan now through api.php
 - security-scan-stored-content.md: Security Scan stored content: script, hidden frame or redirect from an unknown host in pages, regions, styles, settings; known hosts; the resumable pass
 - security-scan-test-round.md: Security Scan test round (SC8, #11633): what tests/security_scan_round_test.php proves, the false alarms it turned into exceptions, and what stays unverified or open

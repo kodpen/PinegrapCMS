@@ -964,15 +964,24 @@ function pg_panel_designer($request, $action)
             );
             // "Preview as": the page's record, visitor and case, read back
             // against the page's widgets; a record only the user may open.
+            // "Edit content here" asks for the widgets' node marks
+            // (data-pg-node), by which the Preview finds the elements of a
+            // record to frame; this answer only, never a stored page.
+            $pv_marks = !empty($request['marks']);
             $pv_setups = array();
-            $pv_html   = pg_designer_preview_widgets(
-                $pv['page_id'],
-                (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
-                $pv['comment_settings'],
-                (isset($request['preview_as']) && is_array($request['preview_as'])) ? $request['preview_as'] : null,
-                $user,
-                $pv_setups
-            );
+            if ($pv_marks) pg_designer_audit_render(true);
+            try {
+                $pv_html = pg_designer_preview_widgets(
+                    $pv['page_id'],
+                    (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
+                    $pv['comment_settings'],
+                    (isset($request['preview_as']) && is_array($request['preview_as'])) ? $request['preview_as'] : null,
+                    $user,
+                    $pv_setups
+                );
+            } finally {
+                if ($pv_marks) pg_designer_audit_render(false);
+            }
             respond(array(
                 'status' => 'success',
                 'html'   => $pv_html,

@@ -24,8 +24,8 @@ priority: 6
 - SC6 (M) done (#11457, `waf/security-scan-accounts-settings.md`) Accounts and settings: a new Administrator or Designer account, a new API key, a writable core folder, risky PHP settings, the PHP security fixes check joined in. After SC1.
 - SC7 (S) done (#11513, `waf/security-scan-api.md`) API read route and one MCP tool ("is the site at risk?"): findings and last run, read only. After SC3.
 - SC8 (M) done (#11633, `waf/security-scan-test-round.md`): the test round, below. After SC2 to SC7.
+- SC8b (S) done (#11672, `waf/security-scan-retired-files.md`): retired release files: the Cleanup tool's list shared as `pg_clean_up_file_list()`, the scan's `file_php_retired` (medium), the list completed from the release tags, the `check_pr.php` rule. After SC8.
 - SC9 (S) Close-out: memory in `waf/`, this file deleted, the `[NEW]` line named.
-  - Open for SC9: retired release files on an upgraded site (`waf/security-scan-test-round.md`), for the architect.
 
 ## What does the test round try? (SC8)
 - Done in #11633: what it proved, the exceptions it made and what stays unverified are in `waf/security-scan-test-round.md`.

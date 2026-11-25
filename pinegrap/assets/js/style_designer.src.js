@@ -8081,7 +8081,9 @@ const StyleDesigner = (function () {
             choose: function (widths) {
                 _sdSideStore('pg_sd_side_w', widths.join(','));
                 _sdSideSync();
-            }
+            },
+            select: _sdSideSelect,
+            swap: _sdSideSwap
         }]).then(function () {
             if (fit && _sdSide.shown) _sdCanvasFit();
         }, function (e) {
@@ -8089,6 +8091,35 @@ const StyleDesigner = (function () {
             _sdSide.shown = false;
             _sdPartFailed();
         });
+    }
+
+    // A click in a mirror on the element `id` (`sid`: the shared component
+    // or widget it is drawn in, '' on the page) chooses it on the canvas
+    // and brings it into view there.
+    function _sdSideSelect(id, sid) {
+        if (!canvasDoc || !id) return;
+        var q = '[data-sd-id="' + CSS.escape(String(id)) + '"]' + (sid ? '[data-sw-sid="' + CSS.escape(String(sid)) + '"]' : ':not([data-sw-sid])');
+        var el = canvasDoc.querySelector(q);
+        var node = el ? _sdFindNodeForEl(String(id), el) : null;
+        if (!node || node.type === 'root') return;
+        selectedNodes = [];
+        _sdInner = null;
+        selectedNode = node;
+        _sdSelectRender();
+        scrollCanvasToNode(node);
+    }
+
+    // "Edit at this size": `s` is the part's { widths, canvas }. The
+    // canvas takes the mirror's width with the bar's own button and the
+    // mirror the width the canvas had; nothing else moves.
+    function _sdSideSwap(s) {
+        if (!s) return;
+        var b = document.querySelector('#sd-bp-bar .sd-bp-btn:not(.sd-bp-mail)[data-w="' + s.canvas + '"]');
+        if (!b) return;
+        _sdSideStore('pg_sd_side_w', s.widths.join(','));
+        b.click();
+        _sdSideSync();
+        _sdStateSay(_sdT('Editing at {var:1} px.', s.canvas));
     }
 
     // The mirrors leave; `keepWatch` keeps watching the column, so they
@@ -77544,7 +77575,23 @@ const StyleDesigner = (function () {
         }
         if (rec) rec.to = base + h.length;
         if (_sdPicMarkers && !sink && h) h = _sdPicMarkHtml(n, h);
+        if (_sdRecEdit.emit && !sink && h) h = _sdRecEditMarkHtml(n, h);
         return h;
+    }
+
+    // "Edit content here" in the Preview (part 'recordedit') finds the
+    // elements of a record by their node: while its switch is on, the
+    // Preview's own markup marks each element's first tag with
+    // data-pg-node, as the server marks the widgets' (preview_widgets
+    // `marks`). Set only inside _sdPreviewDocHtml(): Save and Publish never
+    // see it. A reference or a wrapper is left to the element it draws.
+    /* @pg-site-output */
+    function _sdRecEditMarkHtml(n, h) {
+        if (!n || n._id === undefined || n._id === null) return h;
+        if (n.type !== 'content' && n.type !== 'semantic' && n.type !== 'component') return h;
+        var m = /^(\s*<[a-zA-Z][\w:-]*)([\s>\/])/.exec(h);
+        if (!m || /^\s*data-pg-node=/.test(h.slice(m[1].length))) return h;
+        return m[1] + ' data-pg-node="' + esc(String(n._id)) + '"' + h.slice(m[1].length);
     }
 
     // The Prototype view's picture of a page marks each link's element with
@@ -77555,6 +77602,9 @@ const StyleDesigner = (function () {
     // being written (0 for the page's own nodes).
     var _sdPicMarkers = false;
     var _sdPicShared = 0;
+    // marks: "Edit content here" is on, so the Preview's markup carries node
+    // marks (_sdRecEditMarkHtml()); emit: that markup is being written now.
+    var _sdRecEdit = { marks: false, emit: false };
 
     // `h`, a node's markup, with the markers of its links: its own link on
     // its first tag, the links of its text or custom HTML on their <a> tags
@@ -78609,7 +78659,8 @@ const StyleDesigner = (function () {
             var styleName = nameEl ? nameEl.value.trim() : '';
             var addBc     = bcEl   ? bcEl.value.trim()   : '';
             _sdPreviewWidgetMarkers = true;
-            try { html = generateHTML(styleName, addBc); } finally { _sdPreviewWidgetMarkers = false; }
+            _sdRecEdit.emit = _sdRecEdit.marks;
+            try { html = generateHTML(styleName, addBc); } finally { _sdPreviewWidgetMarkers = false; _sdRecEdit.emit = false; }
         }
         if (widgetHtml === undefined) return html;
         html = html.replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
@@ -79041,6 +79092,9 @@ const StyleDesigner = (function () {
     }
 
     function openPreview() {
+        // "Edit content here" is off each time the Preview opens.
+        if (_sdPartLoaded('recordedit')) _sdPartApis.recordedit.reset();
+        _sdRecEdit.marks = false;
         var raw = _sdPreviewDocHtml();
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
         if (!payload) { _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
@@ -83782,6 +83836,9 @@ const StyleDesigner = (function () {
     // draws the Preview again with it at once; `quiet` only keeps it (the
     // page drawn already shows it).
     function _sdPvAsChoose(c, quiet) {
+        // Changes to a record not saved yet: the foot bar asks first and
+        // chooses again once they are saved or discarded.
+        if (!quiet && _sdPartLoaded('recordedit') && _sdPartApis.recordedit.holds(c)) return;
         var plain = c.case === 'typical' && c.who === 'signed_out' && c.visit === 'first_visit' && !Object.keys(c.records || {}).length;
         try {
             if (plain) localStorage.removeItem(_sdPvAsKey());
@@ -83823,6 +83880,7 @@ const StyleDesigner = (function () {
             var id = parseInt(c.records[w.id], 10);
             if (id > 0) w.record = id;
         });
+        if (_sdRecEdit.marks) payload.marks = true;
         return payload;
     }
 
@@ -83874,6 +83932,55 @@ const StyleDesigner = (function () {
     // A new Preview document: the bar binds to it once it has loaded.
     function _sdPvAsAttach(w) {
         if (_sdPartLoaded('previewas')) _sdPartApis.previewas.attach(w);
+    }
+
+    // ── Edit content here ──
+    // A collection item's words and pictures corrected in place in the
+    // Preview (part 'recordedit', docs/memory/designer/
+    // record-edit-in-place-preview.md). The bar hands each drawn document
+    // and answer to _sdRecEditSync(); a page drawing a collection item
+    // loads the part, which reads the item and offers the switch. Its
+    // state (_sdRecEdit) is kept beside _sdPicMarkers.
+
+    // The switch's markup for the bar ('bar' or the narrow sheet's 'row'),
+    // '' until the part has read the item.
+    function _sdRecEditHtml(where) {
+        return _sdPartLoaded('recordedit') ? _sdPartApis.recordedit.html(where) : '';
+    }
+
+    // The Preview's document and the bar's last answer: the part loads the
+    // first time a form widget draws a record.
+    function _sdRecEditSync(doc, win, setups) {
+        if (!_sdPartLoaded('recordedit')) {
+            var item = Object.keys(setups || {}).some(function (sid) {
+                var s = setups[sid] || {};
+                return s.source === 'form' && parseInt(s.record, 10) > 0;
+            });
+            if (!item) return;
+        }
+        _sdPartCall('recordedit', 'sync', [doc, win, setups || {}]).catch(_sdPartFailed);
+    }
+
+    // The switch turned: the Preview is drawn again with or without marks.
+    function _sdRecEditMarks(on) {
+        if (_sdRecEdit.marks === !!on) return;
+        _sdRecEdit.marks = !!on;
+        _sdRecEditRedraw();
+    }
+
+    // The Preview drawn again from the server (a record saved, the marks
+    // turned), even when the widgets' payload did not change.
+    function _sdRecEditRedraw() {
+        if (!_sdLivePreviewOpen()) return;
+        _sdLive.sig = null;
+        clearTimeout(_sdLive.timer);
+        _sdLivePreviewRefresh();
+    }
+
+    // The bar of the Preview drawn again, or its line under it set.
+    function _sdRecEditBar(line) {
+        if (!_sdPartLoaded('previewas')) return;
+        _sdPartCall('previewas', line === undefined ? 'redraw' : 'note', line === undefined ? [] : [line]).catch(_sdPartFailed);
     }
 
     // ── Live preview ──
@@ -97278,6 +97385,11 @@ const StyleDesigner = (function () {
             _sdPvAsChoice: _sdPvAsChoice,
             _sdPvAsChoose: _sdPvAsChoose,
             _sdPvAsRecords: _sdPvAsRecords,
+            _sdRecEditBar: _sdRecEditBar,
+            _sdRecEditHtml: _sdRecEditHtml,
+            _sdRecEditMarks: _sdRecEditMarks,
+            _sdRecEditRedraw: _sdRecEditRedraw,
+            _sdRecEditSync: _sdRecEditSync,
             _sdRetargetLabels: _sdRetargetLabels,
             _sdRevisionFetch: _sdRevisionFetch,
             _sdRevisionLoadRefusal: _sdRevisionLoadRefusal,

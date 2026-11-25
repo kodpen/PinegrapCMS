@@ -20,4 +20,4 @@ module: security_scan_files
 
 ## What is not verified, or still open?
 - Not run: a live crawl during a scan (page times, sitemap, robots), object storage (local `data/files` may be empty), a backup restore and the update's replace on a real site.
-- Open: the update never deletes a PHP file a later release dropped, so an upgraded site can report it as `file_php_unknown` (high). Fixing it needs the update to remove retired files or a list of them: for the close-out (SC9) to ask the architect.
+- A PHP file a later release dropped stays on an upgraded site (the update deletes nothing); it was reported as `file_php_unknown` (high) until SC8b made it `file_php_retired` (`security-scan-retired-files.md`).

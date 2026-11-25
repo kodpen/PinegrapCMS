@@ -64,7 +64,7 @@ function pg_security_severity_face($severity)
  */
 function pg_security_quarantinable($kind)
 {
-    return in_array((string) $kind, array('file_php_unknown', 'file_upload_executable', 'file_picture_php', 'file_shell_mark'), true);
+    return in_array((string) $kind, array('file_php_unknown', 'file_php_retired', 'file_upload_executable', 'file_picture_php', 'file_shell_mark'), true);
 }
 
 /**
@@ -244,6 +244,25 @@ function pg_security_rule_text($kind, $detail)
     }
 
     return array('reason' => '', 'advice' => '');
+}
+
+/**
+ * The screen a finding's "What to do" links to, as url and label, or null.
+ * A retired release file goes to Clean Up, which deletes every file of the
+ * list at once.
+ *
+ * @param string $kind
+ * @return array|null url, label
+ */
+function pg_security_rule_link($kind)
+{
+    if ((string) $kind === 'file_php_retired') {
+        $base = (defined('PATH') && defined('SOFTWARE_DIRECTORY')) ? PATH . SOFTWARE_DIRECTORY . '/' : '';
+
+        return array('url' => $base . 'clean_up.php', 'label' => lang('Open Clean Up'));
+    }
+
+    return null;
 }
 
 /**
@@ -657,6 +676,7 @@ function pg_security_section_row(array $row)
 {
     $face = pg_security_severity_face($row['severity']);
     $text = pg_security_rule_text($row['kind'], $row['detail']);
+    $link = pg_security_rule_link($row['kind']);
     $detail = pg_security_section_detail($row['kind'], $row['detail']);
     $state = (int) $row['state'];
     $id = (int) $row['id'];
@@ -704,7 +724,7 @@ function pg_security_section_row(array $row)
                 <div class="pg-list-row-main">
                     <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($text['reason']) . '</span><span class="pg-pill ' . h($face[1]) . '">' . h($face[0]) . '</span></div>
                     <div class="pg-list-row-text"><span class="font-monospace text-break">' . h($row['place']) . '</span>' . ($detail !== '' ? ' · ' . h($detail) : '') . '</div>
-                    <div class="pg-list-row-text">' . h(lang('What to do')) . ': ' . h($text['advice']) . '</div>' . ($status !== '' ? '
+                    <div class="pg-list-row-text">' . h(lang('What to do')) . ': ' . h($text['advice']) . ($link !== null ? ' <a href="' . h($link['url']) . '">' . h($link['label']) . '</a>' : '') . '</div>' . ($status !== '' ? '
                     <div class="pg-list-row-text pg-text-meta">' . $status . '</div>' : '') . '
                     <div class="pg-list-row-actions">' . $buttons . '<span class="pg-list-row-place">' . lang(array('string' => 'Found {var:1}', 'vars' => get_relative_time(array('timestamp' => (int) $row['first_seen'], 'mid_sentence' => true)))) . '</span></div>' . $note . '
                 </div>

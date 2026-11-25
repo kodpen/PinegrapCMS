@@ -67,7 +67,7 @@ function test_brand_logo_old_image_editor_logo_only_cleaned_up()
 	$root = dirname(__DIR__) . '/pinegrap';
 
 	pg_assert_false(is_file($root . '/assets/images/icon_image_editor.png'), 'the old image editor\'s logo is gone');
-	pg_assert_true(strpos((string) file_get_contents($root . '/clean_up.php'), "'assets/images/icon_image_editor.png',") !== false, 'clean_up.php removes it from installed sites');
+	pg_assert_true(in_array('assets/images/icon_image_editor.png', pg_clean_up_file_list(), true), 'Cleanup removes it from installed sites');
 
 	foreach (array('/includes/fn/content.php', '/frontend.src.js', '/frontend.min.js') as $file) {
 		pg_assert_false(strpos((string) file_get_contents($root . $file), 'icon_image_editor.png') !== false, $file . ' no longer shows it');

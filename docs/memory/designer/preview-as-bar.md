@@ -22,5 +22,8 @@ module: designer
 - `designer/preview_records` rows `{id, label}` (at most 20, the operator's own rights); no total count and no price or date detail, so the foot reads "Type to find the others." when 20 came. The default record is the one drawn with no choice (`setups[sid].record`), marked "shown by default"; choosing it clears the choice.
 - A kept record that came back as another one (gone, or no longer allowed) is forgotten and the amber line names it. "Long" and "Empty" dim the chooser.
 
+## What does "Edit content here" add to the bar?
+- Its switch or link last in the bar's right end and as a row of the narrow sheet (`K._sdRecEditHtml()`), the document handed over on each `render()` (`K._sdRecEditSync()`), and `note()`/`redraw()` for its line (`record-edit-in-place-preview.md`).
+
 ## What is left for later steps?
 - "Check all cases" (PW4), the "Member of a group" rows (with access rules), and signed-in drawing (PW2b to PW2d read the visitor).
