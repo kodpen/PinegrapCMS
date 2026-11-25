@@ -3111,8 +3111,9 @@ function pg_office_docx_edit_refusal($zip)
  *
  * @param string $path      the document
  * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text,
- *                          format => stretches to make bold, italic or underlined (pg_office_docx_format_request())];
- *                          text or format may be left out when the other is there
+ *                          format => stretches to make bold, italic or underlined (pg_office_docx_format_request()),
+ *                          kind => normal, heading1 to heading3, bullet or number (pg_office_docx_kind_request())];
+ *                          text, format or kind may be left out when another is there
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3137,7 +3138,8 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
 
     // A paragraph named twice takes the last change. A change holds a new
     // text, a format change of stretches of the text (written after the
-    // text, counted in it: includes/fn/office_docx_format.php), or both.
+    // text, counted in it: includes/fn/office_docx_format.php), a kind
+    // (includes/fn/office_docx_kind.php), or any of them together.
     $wanted = array();
 
     foreach ($changes as $change) {
@@ -3155,9 +3157,19 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
             }
         }
 
+        $kind = null;
+
+        if (isset($change['kind'])) {
+            $kind = pg_office_docx_kind_request($change['kind']);
+
+            if ($kind === null) {
+                return $fail('none');
+            }
+        }
+
         $text = null;
 
-        if (($format === null) || isset($change['text'])) {
+        if ((($format === null) && ($kind === null)) || isset($change['text'])) {
             $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
 
             if ($text === null) {
@@ -3169,7 +3181,7 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
             }
         }
 
-        $wanted[(int) $change['p']] = array('text' => $text, 'format' => $format);
+        $wanted[(int) $change['p']] = array('text' => $text, 'format' => $format, 'kind' => $kind);
     }
 
     $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
@@ -3198,7 +3210,7 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  * in, and writes it to a file.
  *
  * @param ZipArchive $zip
- * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null]
+ * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null, kind => a kind or null]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
  * @return array ok, parts (part name => file), changed; or a refusal
@@ -3230,7 +3242,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
     }
 
     $paragraphs = pg_office_docx_paragraphs($document);
-    $changed = 0;
+    $changed = array();
 
     // Every paragraph is checked before any is written.
     $edits = array();
@@ -3263,7 +3275,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
         $budget -= ($cost <= $budget) ? $cost : 0;
 
         pg_office_docx_paragraph_write($paragraphs[$position], $edit, $text, $limit);
-        $changed++;
+        $changed[$position] = true;
     }
 
     // Formats go on the texts as they now stand.
@@ -3278,7 +3290,49 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
             return $fail($code, (string) ($position + 1));
         }
 
-        $changed += isset($edits[$position]) ? 0 : 1;
+        $changed[$position] = true;
+    }
+
+    // Kinds, in the order the paragraphs read, so a list the one before
+    // was just made into is the one a paragraph joins.
+    $parts = array();
+    $kinds = array();
+
+    foreach ($wanted as $position => $change) {
+        if ($change['kind'] !== null) {
+            $kinds[$position] = $change['kind'];
+        }
+    }
+
+    if (!empty($kinds)) {
+        ksort($kinds);
+        $context = pg_office_docx_kind_context($zip, $document);
+
+        if (!is_array($context)) {
+            return $fail($context);
+        }
+
+        foreach ($kinds as $position => $kind) {
+            if (pg_office_docx_paragraph_kind($context, $paragraphs[$position], $kind)) {
+                $changed[$position] = true;
+            }
+        }
+
+        $texts = pg_office_docx_kind_parts($zip, $context);
+
+        if ($texts === null) {
+            return $fail('kind_unusual');
+        }
+
+        foreach ($texts as $name => $text) {
+            $file = $spool($text);
+
+            if ($file === null) {
+                return $fail('save');
+            }
+
+            $parts[$name] = $file;
+        }
     }
 
     $xml = $document->saveXML();
@@ -3294,7 +3348,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
         return $fail('save');
     }
 
-    return array('ok' => true, 'parts' => array('word/document.xml' => $file), 'changed' => $changed);
+    return array('ok' => true, 'parts' => array('word/document.xml' => $file) + $parts, 'changed' => count($changed));
 }
 
 /**
@@ -3327,6 +3381,8 @@ function pg_office_docx_edit_message($code, $paragraph = '')
             return lang(array('string' => 'Paragraph {var:1} holds more than text and cannot be changed here.', 'vars' => array($paragraph)));
         case 'missing':
             return lang(array('string' => 'Paragraph {var:1} is not in the file.', 'vars' => array($paragraph)));
+        case 'kind_unusual':
+            return lang('The styles or the list numbering of this document cannot be changed here, so its paragraph styles stay as they are.');
         case 'format_range':
             return lang(array('string' => 'The text to format is not in paragraph {var:1} any more. Open the file again.', 'vars' => array($paragraph)));
         case 'unusual':

@@ -1,12 +1,13 @@
 ---
 name: bug-hunt
-description: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
+description: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR
 ---
 
 ## Is a bug hunt given out?
 - Yes, since 2026-11-15, only in an area the architect named in the agent channel. A coordinator starts no hunt of its own choice and runs at most three at a time, each in its own named area.
 - Owner (2026-11-15, in the architect's window), when the workers stood idle: "bug avı ve düzeltmesi olur."
 - Architect (2026-11-20, agent channel, answer to K2's request 1632): three in place of one. A coordinator's places stood empty while every plan line waited on a merge; the limit was the sessions' own (the owner's words are the line above), and three hunts in three areas, inside the coordinator's 8 places, are far from the seven of 2026-11-06. Plan steps and open `bug` issues still come first.
+- Owner (2026-11-24, in the architect's window, the designer plans for the launch just written): "yapabildiğimize odaklanalım öncelik hata avı yerine bunlar". Since then a hunt is the last thing a place takes: the architect names no new area while a plan step or an open `bug` issue is free, a hunt that ends is not replaced by another, and a running one finishes. The fourth hunt the architect had allowed that day while steps waited on a landing is taken back.
 - Before: none from 2026-11-06, because seven hunts started within five minutes that day and quota went off building the project. The limits below keep that from coming back.
 
 ## What does a hunt do?

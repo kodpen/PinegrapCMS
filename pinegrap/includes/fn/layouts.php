@@ -472,9 +472,38 @@ function pg_layout_widget_seed($page_type, array $row, array $field_names = arra
             $cfg['search_enabled'] = ($int('search') === 1);
             break;
 
+        case 'shopping cart':
+            // Words left empty on the page keep the widget's own.
+            foreach (array('update_button_label', 'checkout_button_label', 'shopping_cart_label') as $key) {
+                if (trim((string) ($row[$key] ?? '')) !== '') {
+                    $cfg[$key] = (string) $row[$key];
+                }
+            }
+            foreach (array('next_page_id_with_shipping', 'next_page_id_without_shipping', 'quick_add_product_group_id') as $key) {
+                if ($int($key) > 0) {
+                    $cfg[$key] = $int($key);
+                }
+            }
+            if ($int('quick_add_product_group_id') > 0) {
+                $cfg['quick_add_label'] = (string) ($row['quick_add_label'] ?? '');
+            }
+            // An empty label and message hide the offer code box, as on the
+            // classic page.
+            if ($row) {
+                $cfg['special_offer_code_label'] = (string) ($row['special_offer_code_label'] ?? '');
+                $cfg['special_offer_code_message'] = (string) ($row['special_offer_code_message'] ?? '');
+            }
+            break;
+
         case 'catalog detail':
             if ($int('next_page_id') > 0) {
                 $cfg['next_page_id'] = $int('next_page_id');
+            }
+            // The buttons' words (^^__add_button_label^^, ^^__back_label^^).
+            foreach (array('add_button_label', 'back_button_label') as $key) {
+                if (isset($row[$key]) && ((string) $row[$key] !== '')) {
+                    $cfg[$key] = (string) $row[$key];
+                }
             }
             break;
 
@@ -703,6 +732,14 @@ function pg_layout_widget_tree_apply(array $tree, array $seed)
  */
 function pg_layout_convert_state($type, $row)
 {
+    if ((string)$type === 'shopping cart') {
+        // The description the rows show, and the site's ship-to headings
+        // ('multi_recipient', put in the row by the caller).
+        return array(
+            'full_description' => (string)($row['product_description_type'] ?? '') !== 'short_description',
+            'multi_recipient'  => !empty($row['multi_recipient']),
+        );
+    }
     if ((string)$type !== 'form list view') return array();
     $on = function ($key) use ($row) {
         return !empty($row[$key]) && (int)$row[$key] === 1;
@@ -744,9 +781,61 @@ function pg_classic_widget_kinds()
 // pg_layout_widget_offers(), custom layout or not: the visual designer's
 // "Convert to design elements" on the page's own system region puts that
 // widget in the region's place.
+//
+// A page with its own layout file of a type the converter maps
+// (pg_layout_convert_types()) also gets 'file' true and 'dropped': the
+// pieces the file would lose (pg_layout_dropped_rows()), so the Region panel
+// lists them and "Convert to design elements" builds the widget from the
+// file (layout_code convert_type). A hosted site draws no layout file.
 function pg_classic_widget_offers(array $page_ids)
 {
-    return _pg_widget_offers($page_ids, pg_classic_widget_kinds());
+    $facts = _pg_widget_type_facts($page_ids, pg_classic_widget_kinds());
+    $out = _pg_widget_offers_of($facts);
+
+    if (pg_hosted()) {
+        return $out;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
+
+    foreach ($facts as $page_id => $f) {
+        $code = empty($f['modified']) ? null : pg_layout_type_file_code($page_id, $f['type']);
+        if ($code === null) {
+            continue;
+        }
+
+        $r = pg_layout_convert($f['type'], $code, array('state' => $f['state']));
+        if (!$r['ok']) {
+            continue;
+        }
+
+        $out[$page_id]['file'] = true;
+        $out[$page_id]['dropped'] = pg_layout_dropped_rows($r['dropped']);
+    }
+
+    return $out;
+}
+
+// A page's own layout file as it is on disk, null for a type the converter
+// has no piece map for (pg_layout_convert_types()) or a file that cannot be
+// read.
+function pg_layout_type_file_code($page_id, $type)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
+
+    if (!in_array((string) $type, pg_layout_convert_types(), true)) {
+        return null;
+    }
+
+    $file = pg_layout_file_name((int) $page_id);
+
+    if ($file === '' || !is_file(LAYOUT_DIRECTORY_PATH . '/' . $file)) {
+        return null;
+    }
+
+    $code = @file_get_contents(LAYOUT_DIRECTORY_PATH . '/' . $file);
+
+    return is_string($code) ? $code : null;
 }
 
 // The classic page types with a System region that no widget stands in for:
@@ -795,9 +884,15 @@ function pg_classic_no_widget_page_ids(array $page_ids)
 // The offers of pg_layout_widget_offers() for the given pages and kinds.
 function _pg_widget_offers(array $page_ids, array $kinds)
 {
+    return _pg_widget_offers_of(_pg_widget_type_facts($page_ids, $kinds));
+}
+
+// The offers of the given _pg_widget_type_facts() entries.
+function _pg_widget_offers_of(array $facts)
+{
     $out = array();
 
-    foreach (_pg_widget_type_facts($page_ids, $kinds) as $page_id => $f) {
+    foreach ($facts as $page_id => $f) {
         $out[$page_id] = array(
             'kind' => $f['kind'],
             'cfg'  => (object) $f['cfg'],
@@ -842,6 +937,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         'catalog detail' => array('catalog_detail_pages', ''),
         'form list view' => array('form_list_view_pages', " AND collection = 'a'"),
         'form item view' => array('form_item_view_pages', " AND collection = 'a'"),
+        'shopping cart'  => array('shopping_cart_pages', ''),
     );
     $out = array();
 
@@ -859,6 +955,12 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         if (isset($tables[$type])) {
             $found = db_item("SELECT * FROM " . $tables[$type][0] . " WHERE page_id = '" . $page_id . "'" . $tables[$type][1] . " LIMIT 1");
             $row = is_array($found) ? $found : array();
+        }
+
+        if ($type === 'shopping cart') {
+            // A heading per recipient: only a site that ships to several.
+            $row['multi_recipient'] = (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING)
+                && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient';
         }
 
         if (($type === 'form list view') && !empty($row['custom_form_page_id'])) {

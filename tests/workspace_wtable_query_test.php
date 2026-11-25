@@ -255,7 +255,7 @@ function test_workspace_wtable_query_screen_bar()
 	pg_assert_contains('name="q[2][c]"', $html, 'an empty line to add');
 	pg_assert_false(strpos($html, 'name="q[3][c]"') !== false);
 	pg_assert_contains('<option value="done" selected>Done</option>', $html, 'a status by its label');
-	pg_assert_contains('type="date" class="form-control form-control-sm" name="q[1][v]" value="2026-11-01"', $html);
+	pg_assert_contains('type="date" class="pg-input pg-input-sm" name="q[1][v]" value="2026-11-01"', $html);
 	pg_assert_contains('<option value="desc" selected>', $html);
 	pg_assert_contains('name="join"', $html);
 	pg_assert_contains('href="workspace_wtables.php?id=7&amp;q%5B0%5D%5Bc%5D=4', $html, 'the remove link keeps the other line');

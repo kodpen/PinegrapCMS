@@ -208,7 +208,7 @@ function pack_short_drawer(array $pack)
                     <label class="visually-hidden" for="pack_found_' . $id . '">' . h(lang('Units found')) . '</label>
                     <input type="number" class="pg-input pg-pack-found" id="pack_found_' . $id . '" name="found[' . $id . ']" value="0" min="0" max="' . PG_PACK_COUNT_MAX . '" step="1" inputmode="numeric">
                 </div>
-                <div class="pg-field-help" id="pack_fix_' . $id . '_help">' . h(lang('The units still on the shelf.')) . '</div>';
+                <div class="pg-field-help" id="pack_fix_' . $id . '_help">' . h(lang('The units still on the shelf.')) . '<br>' . h(lang('The units of orders waiting to be sent are taken off.')) . '</div>';
         }
 
         $rows .= '
@@ -224,7 +224,7 @@ function pack_short_drawer(array $pack)
     <dialog class="drawer drawer-end" id="pack_short" aria-labelledby="pack_short_title" style="width:min(480px,100%);--pg-drawer-height:80vh">
         <form class="d-flex flex-column h-100" data-pg-pack-short>
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="pack_short_title">' . h(lang('Units missing')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('The pack closes with these units missing and the address waits until it is finished.')) . '</p>
                 </div>

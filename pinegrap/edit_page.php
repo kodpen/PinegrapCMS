@@ -1335,6 +1335,9 @@ if (!$_POST) {
             }
         }
         
+        // delete the panel notifications of the page's comments, then the comments
+        pg_comment_delete_page_notifications($_POST['id'] ?? 0);
+
         // delete comments for page
         $query = "DELETE FROM comments WHERE page_id = ?";
         $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');

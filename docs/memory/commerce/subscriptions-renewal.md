@@ -10,15 +10,16 @@ module: subscription_renewal
 
 ## How is a double charge kept out?
 - `pg_subscription_renewal_run_row()`: `GET_LOCK('pg_subscription_renewal_<id>', 0)`, the row read again and charged only while due; the update is conditional on the status and `next_charge_at` read. The row moves before the order is written, so a run dying there leaves it not due. A run cut short before the update keeps `next_charge_at`: Stripe's key repeats the attempt.
-- DB and service calls go through `$io` (`pg_subscription_renewal_io()`).
+- DB and service calls go through `$io`.
 
 ## What does each answer do?
 - `pg_subscription_renewal_outcome()`: paid, pending, confirm (redirect with a link), unclear, failed; `pg_subscription_renewal_plan()` (pure): columns and event.
-- paid: `next_charge_at` = the first date of the series (first charge, then one period after another) still to come (`pg_subscription_renewal_next_at()`; a later line's series: `subscriptions-later-start.md`): late runs and paid retries keep it, a long hold skips missed periods. Each date counts from the first charge, so an hour the clocks skip never shifts later charges (#7182). `retry_count` 0, past_due → active. Event `renewed` with `order_id` and amount. A `card_ref` the answer carries that differs from the stored one is sealed again with `card_last4`.
+- paid: `next_charge_at` = the next date of the series (first charge, then period after period; `pg_subscription_renewal_next_at()`, later lines: `subscriptions-later-start.md`): late runs and paid retries keep it, a long hold skips missed periods; dates count from the first charge, so a skipped clock hour never shifts them (#7182).
+- Then `retry_count` 0, past_due → active, event `renewed` with `order_id` and amount; a new `card_ref` in the answer is sealed again with `card_last4`.
 - failed: `retry_count` + 1, retry 1/3/7 days later (`pg_subscription_retry_at()`), active → past_due; after the third retry fails: `ended`, `next_charge_at` 0. Event `renewal_failed` (service's words). Unpaid memberships lapse through `membership_job.php`.
 - confirm (Stripe `authentication_required`): past_due, held (`next_charge_at` 0, no ladder charge while the customer may still confirm), event `confirm_needed` with the link ('' over 255).
 - pending / unclear: held, status unchanged, event `renewal_pending` / `renewal_unclear`.
-- A held row is settled by Stripe's `payment_intent.succeeded` with metadata `subscription_id` (`raw.subscription_id`): `pg_payment_callback_renewal()` → `pg_subscription_renewal_confirmed()`: same lock (10 s; busy → 503, Stripe resends), only a held row of that driver with the same amount, then the paid path; event `renewed` with the pi id as `remote_event_id`. A row not held is left alone.
+- A held row is settled by Stripe's `payment_intent.succeeded` with metadata `subscription_id` (`raw.subscription_id`): `pg_payment_callback_renewal()` → `pg_subscription_renewal_confirmed()`: same lock (10 s; busy → 503, Stripe resends), only a held row of that driver with the same amount, then the paid path; event `renewed` with the pi id as `remote_event_id`. Not held: `subscriptions-completion-paths.md`; failed or no outcome in 7 days: `subscriptions-held-renewal.md`.
 - First order or its line gone: not charged, a ladder step as for a refusal.
 
 ## What is the renewal order?
@@ -29,7 +30,7 @@ module: subscription_renewal
 - Renewed, failed (incl. the confirmation link) and cancelled, once per event: `subscriptions-mails.md`.
 
 ## Tested?
-- `tests/subscriptions_renewal_test.php` (pure rules, stand-in io: lock, order of writes, one charge), `tests/subscription_series_dst_test.php`. No DB or live run.
+- `tests/subscriptions_renewal_test.php` (pure rules; stand-in io: lock, one charge), `tests/subscription_series_dst_test.php`. No DB or live run.
 - `tests/payment_stripe_webhook_test.php`: the renewal's `payment_intent.succeeded`.
 
-Related: commerce/subscriptions.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md
+Related: commerce/subscriptions-held-renewal.md, commerce/subscriptions.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md

@@ -1266,11 +1266,35 @@ $(document).ready(function () {
         }
     }
 
+    // Opens or shuts the drawer; true when it opened it.
     function toggleMenuDrawer() {
         if (isMenuDrawerOpen()) {
             closeMenuDrawer();
-        } else {
-            openMenuDrawer();
+            return false;
+        }
+
+        openMenuDrawer();
+        return true;
+    }
+
+    // The drawer comes before the bar in the page, so the focus left on the
+    // button that opened it would Tab on through the bar and never reach a
+    // row: it goes into the drawer, to the open panel's way back, else the
+    // current row, else the first. The drawer is no longer inert by now
+    // (openMenuDrawer() painted it).
+    function focusMenuDrawer() {
+        var menu = document.getElementById('menu');
+
+        if (!menu || !isMenuDrawerOpen()) {
+            return;
+        }
+
+        var target = menu.querySelector('.pg-menu-panel.is-open [data-pg-menu-back]')
+            || menu.querySelector('.pg-menu-main .list-group-item.active')
+            || menu.querySelector('.pg-menu-main .list-group-item');
+
+        if (target) {
+            target.focus({ preventScroll: true });
         }
     }
 
@@ -1428,7 +1452,11 @@ $(document).ready(function () {
 
             if (isMenuDrawerMode()) {
                 menuDrawerOpener = this;
-                toggleMenuDrawer();
+
+                if (toggleMenuDrawer()) {
+                    focusMenuDrawer();
+                }
+
                 return;
             }
 
@@ -1439,7 +1467,10 @@ $(document).ready(function () {
         $(document).on('click', '[data-pg-menu-drawer-toggle]', function (e) {
             e.preventDefault();
             menuDrawerOpener = this;
-            toggleMenuDrawer();
+
+            if (toggleMenuDrawer()) {
+                focusMenuDrawer();
+            }
         });
     }
 
@@ -4082,15 +4113,19 @@ function check_unread_notifications(refresh_type) {
                     }
 
                     $unreads = response.number_of_unread_notifications;
+                    // An open list is redrawn when the count moved since it
+                    // was drawn: something new came in, or rows were read
+                    // on another device or tab. Drawing it reads nothing; a
+                    // change made in this list sends editcallback_check and
+                    // is drawn already.
+                    if (pgUI.drawer.isOpen('#notifications')) {
+                        if ($unreads !== $unreadsCallback && refresh_type != 'editcallback_check') {
+                            get_notifications(true);
+                        }
+                    }
                     // if there is at least 1 unreaded notification that user is accessable than prepare for output notification badge.
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
-                        // An open list is redrawn when something new came in; drawing it reads nothing.
-                        if (pgUI.drawer.isOpen('#notifications')) {
-                            if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
-                                get_notifications(true);
-                            }
-                        }
                         $output_unreads = 0;
                         if ($unreads > 99) {
                             $output_unreads = '99+';
@@ -15966,6 +16001,169 @@ $(document).on('submit', 'form', function (event) {
             });
         } else {
             fallback(button, text);
+        }
+    });
+})();
+
+
+/**
+ * The Security Scan section of Site Settings > Firewall and HTTPS
+ * (includes/fn/security_scan_section.php). Scan now asks api.php for a few
+ * seconds of scanning at a time until the answer says done; Quarantine,
+ * Restore, Ignore and Reopen each send one request and draw the list again
+ * from the answer. Ignore first shows its note field. Listeners sit on
+ * document, since the pane may arrive in the settings dialog. The words
+ * come from the markup, already translated.
+ */
+(function () {
+
+    function api(body) {
+        body.token = (typeof software_token !== 'undefined') ? software_token : '';
+
+        return fetch('api.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function (response) {
+            return response.json();
+        });
+    }
+
+    function failed() {
+        var now = document.getElementById('pg_scan_now');
+
+        return now ? (now.getAttribute('data-pg-scan-failed') || '') : '';
+    }
+
+    function say(message, ok) {
+        if (!message) {
+            return;
+        }
+
+        if (typeof window.pgToast === 'function') {
+            window.pgToast({ message: message, variant: ok ? 'success' : 'danger' });
+        } else {
+            window.alert(message);
+        }
+    }
+
+    // The run line and the list from an answer; both are server markup.
+    function draw(answer) {
+        var line = document.getElementById('pg_scan_run_line');
+        var list = document.getElementById('pg_scan_list');
+
+        if (line && (typeof answer.line === 'string')) {
+            line.innerHTML = answer.line;
+        }
+
+        if (list && (typeof answer.list === 'string')) {
+            list.innerHTML = answer.list;
+        }
+    }
+
+    function step(button) {
+        api({ action: 'security_scan_step' }).then(function (answer) {
+            if (!answer || (answer.status !== 'success')) {
+                button.disabled = false;
+                say((answer && answer.message) || failed(), false);
+                return;
+            }
+
+            draw(answer);
+
+            if (answer.done) {
+                button.disabled = false;
+                return;
+            }
+
+            // Busy: the scheduled task holds the scan; ask again shortly.
+            window.setTimeout(function () { step(button); }, answer.busy ? 3000 : 0);
+        }, function () {
+            button.disabled = false;
+            say(failed(), false);
+        });
+    }
+
+    function act(button) {
+        var id = button.getAttribute('data-pg-scan-id');
+        var name = button.getAttribute('data-pg-scan-act');
+        var note = document.getElementById('pg_scan_note_' + id);
+
+        button.disabled = true;
+
+        api({ action: 'security_scan_act', id: Number(id), act: name, note: note ? note.value : '' }).then(function (answer) {
+            button.disabled = false;
+            say(answer && answer.message, answer && (answer.status === 'success'));
+
+            if (answer) {
+                draw(answer);
+            }
+        }, function () {
+            button.disabled = false;
+            say(failed(), false);
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        var target = event.target.closest ? event.target : null;
+        var now = target ? target.closest('#pg_scan_now') : null;
+
+        if (now) {
+            event.preventDefault();
+            now.disabled = true;
+            step(now);
+            return;
+        }
+
+        var button = target ? target.closest('[data-pg-scan-act]') : null;
+
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var name = button.getAttribute('data-pg-scan-act');
+
+        // Ignore shows the note field first; its own button sends.
+        if ((name === 'ignore') && !button.hasAttribute('data-pg-scan-send')) {
+            var box = document.querySelector('[data-pg-scan-note="' + button.getAttribute('data-pg-scan-id') + '"]');
+
+            if (box) {
+                box.hidden = !box.hidden;
+
+                if (!box.hidden) {
+                    box.querySelector('input').focus();
+                }
+
+                return;
+            }
+        }
+
+        var sentence = button.getAttribute('data-pg-scan-confirm') || '';
+
+        if ((sentence !== '') && (typeof window.pgConfirm === 'function')) {
+            var label = button.textContent.trim();
+
+            window.pgConfirm({ title: label, message: sentence, confirmText: label, variant: 'danger' }).then(function (ok) {
+                if (ok) {
+                    act(button);
+                }
+            });
+            return;
+        }
+
+        act(button);
+    });
+
+    // Return in the note field sends the note instead of the settings form.
+    document.addEventListener('keydown', function (event) {
+        var box = (event.key === 'Enter') && event.target.closest ? event.target.closest('[data-pg-scan-note]') : null;
+
+        if (box) {
+            event.preventDefault();
+            box.querySelector('[data-pg-scan-send]').click();
         }
     });
 })();

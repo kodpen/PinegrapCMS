@@ -1,34 +1,36 @@
 ---
 name: architect-hand-over
-description: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, plans written since, the landed steps still to look at
+description: Hand-over note of the architect session of 2026-11-24 and 25, written as the owner moves the architect to another account: what is owed to the owner and what he was asked
 ---
 
 ## Why is there a note?
-- Owner (2026-11-22, agent channel message 12178): "geliştirme şimdilik bitti, ara veriyoruz. zamanlayıcılarınızı ve yoklama kapılarınızı kaldırın." Then, in the architect's window: "sen elinde iş bırakma belki mimar başka hesaptan devam eder." A note is written only when he asks (`architect-no-hand-over.md`).
-- The session's hourly schedule is deleted and its request waiter stopped. The architect that continues starts its own (`agent-channel-wake.md`) and deletes this file once its items are done or moved to their plans.
+- Owner (2026-11-25, in the architect's window): "tasarımcı başka hesaba taşınacak yakında bu mimar oturumu da öyle o yüzden elinde birşey bırakma." A note is written only when he asks (`architect-no-hand-over.md`).
+- The work in flight is in `architect-hand-over-work.md`. The architect that continues deletes both files once their items are done or moved to their plans.
+- Owner (2026-11-25, agent channel): the architect's account is near its quota and is moved soon, "acil değil"; until then "adım adım git": one step at a time, each pushed when finished, no half work held.
 
 ## What is owed to the owner?
-- Add-on hooks: AH2, the design note from the census (`plans/addon-hook-system-steps.md`), is not written. It goes to him as a question with its picture.
-- System tools: he wrote that tools are missing under the menu row (message 12156) and named none when asked (poll 220). The menu lists the screen's 19 tools; nothing to do until he names one.
-- The lists' look: the All Orders drawing he accepted shows 14 px rows, quiet row actions and a checkbox per row; every list draws 16 px rows and boxed Action buttons from the list table driver. Told to him in the architect's window, not asked: a question for him before any plan, since it changes every list.
-- Claude Console: the set-up steps were given to him in the architect's window on 2026-11-22; the guide is on Application Access's Connect tab since #11203 (`api/application-access-console-guide.md`). His try on dev worked (agent channel message 12372, `api/claude-console-agents.md`).
+- The ease-of-use study before the launch, which he asked for in four areas, for a site owner and for an agency. The visual designer's part became the designer plans; first setup and first day, Site Settings and the daily jobs are not started.
+- The lists' look: the All Orders drawing he accepted shows 14 px rows, quiet row actions and a checkbox per row; every list draws 16 px rows and boxed Action buttons from the list table driver. A question for him before any plan, since it changes every list; the decisions list holds no answer.
+- Automations on other screens: he wants the channel board's drawer spread later (workspace part 51 of the decisions list). Nothing is planned until he opens it.
+- His report of 2026-11-25, an SQL error on the "Edit Contact" screen: bug issue #11549, given to coordinator 1. He is told when its fix has landed.
 
-## What was written on 2026-11-23, with development still paused?
-- In the architect's window the owner asked for four plans, each a 6: `plans/plan-state-channel.md` (PS1 and PS2 can start at once), `workspace/channel-note-owned.md` (built), `plans/channel-share-links.md` (its SL5 after CN1) and `plans/agent-memory-search.md`, held until he opens it. The schema of the first three is decided (`decisions-made-schema-48.md`).
-- No coordinator was told: no waiter runs. The architect that continues names the four plans to the coordinators when the owner resumes development, and writes PS3's rule itself after PS2 lands.
+## What did he decide on 2026-11-25?
+- The Options panel census: he ticked every package of the three questions (product part 110 of the decisions list, in #11548). The plan is DO2 to DO27 of `plans/designer-options-census.md`. He was told that twenty-six more steps make 1 January 2027 tighter; what slips is his to choose.
+- Who draws while no design session runs: "sen çiz mimar ve tasarımcısın" (`design-work-session.md`).
 
-## Which landed steps are still to be looked at? (`architect-looks-at-landed-screen.md`)
-- Looked at: OL2 and OL2b (their fixes landed in #11208, `commerce/orders-list-columns.md`), OS2 (its two differences fixed in OS4, `ui/order-screen-wide-layout.md`), BR3 on its merge train (as drawn; its picture is channel message 12185).
-- To look at when they land: OL3, OS3 (#11171), OS4, MI1 to MI3 of the main menu icons plan (#11172).
-- BR3's Workspace rows (the name in title weight, the rest lighter) were not seen: the sandbox had the Workspace off. They are looked at on a sandbox with it on.
+## What was he asked and has not answered? (none of it holds work)
+- Which level of the designer's ten levelled features must be finished before the launch (1 January 2027), and whether "seviyeli" was read right (`designer/designer-light-and-simple.md`).
+- The name "Güvenlik Taraması" for the security scan; his objections, if any, to CN7 and to option (b) of #11442; whether P9 is done inside 2026.11.0; whether the architect keeps an hourly wake.
+- A walk-in worker of coordinator 1 waits for his yes in its own session.
 
-## What were others told?
-- The owner's lines in order, for the coordinator that starts workers again (message 12167): OL3 after OL2b with its fixes file, OS4 after OS3 with its fixes file, MI1 once the plan has landed (#11172). Coordinator 2 starts no workers until told (message 12161).
-- A step that adds a table brings its columns to the architect before it is marked ready: SJ1b of `plans/launch-journey-steps.md` and the table steps of `plans/prototype-approval-steps.md` are the open ones.
-- The legacy-editable steps go in the order of `plans/legacy-editable-steps.md`; nothing of it waits on the architect.
+## What is held until he says so?
+- Plan `plans/agent-memory-search.md` (MS1 to MS4): held until he opens it.
+- After the launch: the add-on hooks' steps AH4 to AH8 and the Claude plugin bundle's CB3 and CB5. The mobile API goes on beside the other plans.
+- Design template plans stay paused (`coordinator-no-plans.md`).
 
-## What does a look need?
-- A sandbox (`bash tools/setup_sandbox.sh`, `ui/panel-screenshots.md`); Workspace and ERP are off on a fresh one and are switched on for the menu's and the bell's rows.
-- A drawing is an HTML sheet on `ui/look-sheet/sheet.css` with its pictures beside it (`architect-draws-new-part.md`); a question about a screen carries its picture (`owner-question-picture.md`).
+## What order of work did he set?
+- The designer plans first and far ahead ("pinegrapcms nin kalbi gibi"), before bug hunts: "yapabildiğimize odaklanalım öncelik hata avı yerine bunlar" (`bug-hunt.md`).
+- The interface modern and simple; a feature never makes the person strain (`designer/designer-light-and-simple.md`).
+- A coordinator keeps its 8 places working inside the queue limit; it does not put work down by its own choice.
 
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/architect-no-hand-over.md

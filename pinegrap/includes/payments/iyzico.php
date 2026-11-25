@@ -298,31 +298,63 @@ function pg_payment_iyzico_buyer($order, $payment)
 }
 
 /**
- * The basket iyzico is shown: one item per order line with a price, the
- * line's total in the currency the payment is made in.
+ * The basket iyzico is shown: one item per order line charged today, the
+ * items adding up to the request's price.
  *
- * @param array $lines order lines as submit_order.php reads them
- * @param float $rate  the protected currency's rate, 0 for none
+ * iyzico refuses a basket whose items do not add up to the price, and an
+ * item of no price or below zero. A subscription that starts later is not
+ * charged today and stays out, as it stays out of the subtotal. The price is
+ * shared over the lines above zero by their base totals, largest remainder
+ * first (pg_tax_spread()): a line below zero lowers the others, and in the
+ * protected currency the subtotal converted as a whole is shared instead of
+ * each unit being converted and rounded on its own. A line whose share comes
+ * to nothing is left out.
+ *
+ * @param array  $lines  order lines as submit_order.php reads them
+ * @param int    $amount the request's price in minor units, in the currency
+ *                       the payment is made in
+ * @param string $today  Y-m-d, today's date when ''
  * @return array \Iyzipay\Model\BasketItem
  */
-function pg_payment_iyzico_basket($lines, $rate)
+function pg_payment_iyzico_basket($lines, $amount, $today = '')
 {
     $items = array();
+    $kept = array();
+    $totals = array();
+    $amount = (int) $amount;
+    $today = ($today !== '') ? (string) $today : date('Y-m-d');
 
     foreach ((is_array($lines) ? $lines : array()) as $line) {
         $price_cents = (isset($line['price']) && is_numeric($line['price'])) ? (int) $line['price'] : 0;
         $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 1;
 
-        if ($price_cents <= 0) {
+        // The same rule as submit_order.php's charged-today lines.
+        if (!empty($line['recurring']) && isset($line['recurring_start_date']) && ((string) $line['recurring_start_date'] > $today)) {
             continue;
         }
 
-        if ($rate > 0) {
-            $price_cents = (int) round(($price_cents / 100.0) * $rate * 100);
+        if (($price_cents <= 0) || ($quantity <= 0)) {
+            continue;
         }
 
-        $line_cents = $price_cents * $quantity;
+        $kept[] = array($line, $quantity);
+        $totals[] = $price_cents * $quantity;
+    }
+
+    if (($amount <= 0) || empty($totals)) {
+        return array();
+    }
+
+    $totals = pg_tax_spread($amount, $totals);
+
+    foreach ($kept as $index => $pair) {
+        list($line, $quantity) = $pair;
+        $line_cents = $totals[$index];
         $description = isset($line['short_description']) ? $line['short_description'] : '';
+
+        if ($line_cents <= 0) {
+            continue;
+        }
 
         $item = new \Iyzipay\Model\BasketItem();
         // The product's id when the line has one.
@@ -746,7 +778,7 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
     $request->setShippingAddress($shipping);
 
     $request->setBillingAddress($buyer['billing']);
-    $request->setBasketItems(pg_payment_iyzico_basket(isset($payment['lines']) ? $payment['lines'] : array(), $rate));
+    $request->setBasketItems(pg_payment_iyzico_basket(isset($payment['lines']) ? $payment['lines'] : array(), $charged_subtotal));
 
     $billing_name = array(
         pg_payment_iyzico_order_value($order, 'billing_first_name'),
@@ -1173,7 +1205,7 @@ function pg_payment_pay_with_iyzico_authorize_with($order, $amount, $payment, $s
     $shipping->setZipCode(pg_payment_iyzico_order_value($order, 'billing_zip_code'));
     $request->setShippingAddress($shipping);
 
-    $request->setBasketItems(pg_payment_iyzico_basket(isset($payment['lines']) ? $payment['lines'] : array(), 0));
+    $request->setBasketItems(pg_payment_iyzico_basket(isset($payment['lines']) ? $payment['lines'] : array(), $subtotal));
     $request->setCallbackUrl(isset($payment['return_url']) ? (string) $payment['return_url'] : '');
 
     $result = \Iyzipay\Model\PayWithIyzicoInitialize::create($request, $options);

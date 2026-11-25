@@ -118,24 +118,36 @@ function convert_html_to_text($html)
 }
 function convert_text_to_html($content)
 {
-    // get all URL's so that we can later replace them with links
-    preg_match_all('/(((http|https|ftp):\/\/)(\S*?\.\S*?))(\s|\;|\)|\]|\[|\{|\}|,|"|\'|:|\<|$|\.\s)/i', $content, $matches);
-    $urls = $matches[1];
-    // if there is at least one URL, then convert all URL's to placeholders
-    if (count($urls) > 0) {
-        $content = preg_replace('/(((http|https|ftp):\/\/)(\S*?\.\S*?))(\s|\;|\)|\]|\[|\{|\}|,|"|\'|:|\<|$|\.\s)/i', '^^^placeholder^^^' . "$5", $content);
+    $content = (string) $content;
+
+    // Each address is cut out of the text by its offset, and the text
+    // between addresses is escaped piece by piece. The address is never put
+    // into a preg_replace() replacement, where a $0 or \0 it carries would be
+    // read as a back reference, and no placeholder is written into the text,
+    // where the visitor may have typed the same characters: either way a link
+    // could land inside another link's href and leave the rest of a visitor's
+    // address as bare attributes of the tag.
+    $output = '';
+    $offset = 0;
+
+    if (preg_match_all('/(((http|https|ftp):\/\/)(\S*?\.\S*?))(\s|\;|\)|\]|\[|\{|\}|,|"|\'|:|\<|$|\.\s)/i', $content, $matches, PREG_OFFSET_CAPTURE)) {
+        foreach ($matches[1] as $match) {
+            $url = $match[0];
+            $start = $match[1];
+
+            $output_url = h($url);
+
+            $output .= h(substr($content, $offset, $start - $offset))
+                . '<a href="' . $output_url . '" target="_blank" rel="nofollow">' . $output_url . '</a>';
+
+            $offset = $start + strlen($url);
+        }
     }
-    // prepare the content for HTML
-    $content = h($content);
-    // loop through the URL's in order to convert them to links
-    foreach ($urls as $url) {
-        $output_url = h($url);
-        // convert URL to link
-        $content = preg_replace('/' . preg_quote('^^^placeholder^^^') . '/', '<a href="' . $output_url . '" target="_blank" rel="nofollow">' . $output_url . '</a>', $content, 1);
-    }
+
+    $output .= h(substr($content, $offset));
+
     // convert all new lines to line breaks
-    $content = nl2br($content);
-    return $content;
+    return nl2br($output);
 }
 
 

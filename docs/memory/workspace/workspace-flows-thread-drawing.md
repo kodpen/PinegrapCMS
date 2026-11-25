@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-thread-drawing
-description: Data threads on the Flows canvas (T1, V6, FE4): read from the fields, drawn only for the box in hand, the row within the box's width, upright thread ends, tones, the strip button, the outline lines
+description: Data threads on the Flows canvas (T1, V6, FE4): read from the fields, the row within the box's width, upright ends, tones, outline lines; which are drawn: thread-focus
 ---
 
 ## Where do the threads come from?
@@ -9,7 +9,7 @@ description: Data threads on the Flows canvas (T1, V6, FE4): read from the field
 - Test `test_workspace_flows_canvas_data_threads_come_from_the_fields`.
 
 ## How are they drawn?
-- `drawData()` (end of `drawEdges()`, and `refreshNode()` as a field is typed in): under each box a row half over its bottom edge, the field chips it fills first, then the value dots it gives (14 px ring, 8 px `#`/`T`, label; 24 px grab target). The row is `aria-hidden`.
+- `drawData()` (end of `drawEdges()`, and `refreshNode()` as a field is typed in): under the box in hand (every box while Data threads is pressed, `workspace-flows-thread-focus.md`) a row half over its bottom edge, the field chips it fills first, then the value dots it gives (14 px ring, 8 px `#`/`T`, label; 24 px grab target). The row is `aria-hidden`.
 - Never wider than its box (PR #3134): `dataRowSlots(fields, outs, open)` gives each item `{ left, width }` inside the box's width (`BOX_W`, 196 px; 8 px margins): full width (chip 76, dot 84) if all fit; else the `open` unused dots (last) shrink to a ring, the rest share (#4189); else all share, never under a ring. The width is `--wsf-w`; hover or `title` shows the whole name.
 - Chips are ordered by the boxes they read from, dots by the boxes they reach, left to right. A value no thread takes is drawn only while its box is in hand (last, dashed).
 - A 1 px path from the dot to the chip (`threadPath()`, FE4): 12 px straight down from the dot (`DATA_ROW.upright`), a cubic curve whose control points stand right below both ends, 12 px straight up into the chip, so it never crosses a name.
@@ -17,9 +17,6 @@ description: Data threads on the Flows canvas (T1, V6, FE4): read from the field
 - Tests `…_data_row_stays_within_the_box`, `…_open_dots_shrink_first`, `…_thread_bends_around_a_box`, `…_data_row_drawing`.
 - Types number and text, three tones each (`.wsf-tone-<type>-<n>`, `--wsf-tone`), taken in turn; dark uses the visual spec's colours, light deeper ones.
 - A template's motion threads (`ws_flow_template_threads()`: from, to, setting) grow the paths drawn for them (`drawThreads()` matches their data attributes).
-
-## Which threads are drawn?
-- Only those of the box in hand, with a mark on other reading boxes: `workspace-flows-thread-focus.md` (FE4).
 
 ## Outline?
 - Drawing one into a field (T2): `workspace-flows-thread-binding.md`.

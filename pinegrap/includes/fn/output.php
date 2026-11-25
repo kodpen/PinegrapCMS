@@ -945,6 +945,12 @@ function pg_page_shell($properties = array())
 
     $output = output_header($properties);
 
+    // The hint line of a screen in the launch journey's catalogue, under the
+    // title, for a new person until they mark it (Don't show again).
+    if (empty($properties['hide_menu']) && function_exists('pg_launch_journey_hint_html')) {
+        $output .= pg_launch_journey_hint_html($_SERVER['SCRIPT_NAME'] ?? '', $GLOBALS['user'] ?? null);
+    }
+
     // Opt-in raw HTML printable between <body>/header and <main>.
     // Used by pages like view_log.php that render an advanced filter bar outside <main>.
     if (isset($properties['pre_main_html']) && is_string($properties['pre_main_html']) && $properties['pre_main_html'] !== '') {
@@ -8072,6 +8078,7 @@ function pg_js_bundles()
             'assets/js/workspace_mail.js',
             'assets/js/workspace_status.js',
             'assets/js/workspace_voice.js',
+            'assets/js/workspace_call_background.js',
             'assets/js/workspace_calls.js',
             'assets/js/workspace_customer.js',
             'assets/js/workspace_flow_flag.js',
@@ -8088,6 +8095,7 @@ function pg_js_bundles()
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',
             'assets/js/workspace_highlights.js',
+            'assets/js/workspace_token_retry.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),
@@ -8116,7 +8124,7 @@ function pg_js_bundles()
         'assets/js/workspace_flow.min.js'          => array('assets/js/pg_var_chips.js', 'assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'),
         // The guest page, after the call window it joins a room's call with
         // (window.PGWsCalls).
-        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'),
+        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_call_background.js', 'assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
         // team: small, and apart from the workspace's own set.
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
@@ -8163,6 +8171,7 @@ function pg_js_bundles()
         'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
         'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
+        'assets/js/style_designer_variables.min.js' => array('assets/js/style_designer_variables.js'),
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
@@ -8179,6 +8188,9 @@ function pg_js_bundles()
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
+        // then the part that fills their frames from the canvas.
+        'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
@@ -8278,6 +8290,12 @@ function pg_designer_parts()
         // The "Clicks" layer: badges and tenth lines over the canvas and
         // its panel, handed only with sdDesign.clicks (who may open Visitors).
         'clicks' => 'assets/js/style_designer_clicks.min.js',
+        // The Variables tab of Settings › Theme: the design's named colours,
+        // type, spacing and shape, tried on the canvas as they change.
+        'variables' => 'assets/js/style_designer_variables.min.js',
+        // The canvas mirrors: the draft at another width beside the canvas,
+        // drawn again when the hand rests.
+        'mirror' => 'assets/js/style_designer_mirror.min.js',
     );
 }
 

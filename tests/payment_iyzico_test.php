@@ -692,11 +692,107 @@ function test_payment_iyzico_protected_currency_converts_every_amount()
 
 	payment_iyzico_test_authorize(payment_iyzico_test_settings(array('protected_currency' => 'USD', 'protected_rate' => 0.0297)), payment_iyzico_test_payment());
 
-	pg_assert_same(
-		legacy_iyzico_payment_request(payment_iyzico_test_order(), payment_iyzico_test_lines(), 9490, 10714, 1, false, '', null, 'USD', 0.0297, 0, '1023', 7),
-		payment_iyzico_test_without_conversation($http->posts[0]['body']));
-	pg_assert_same('USD', $http->posts[0]['body']['currency']);
-	pg_assert_same('3.18', $http->posts[0]['body']['paidPrice']);
+	$body = $http->posts[0]['body'];
+	$legacy = legacy_iyzico_payment_request(payment_iyzico_test_order(), payment_iyzico_test_lines(), 9490, 10714, 1, false, '', null, 'USD', 0.0297, 0, '1023', 7);
+
+	pg_assert_same('USD', $body['currency']);
+	pg_assert_same('2.82', $body['price']);
+	pg_assert_same('3.18', $body['paidPrice']);
+
+	// iyzico refuses a basket whose items do not add up to the price. Each
+	// unit converted on its own gave 1.19 x 2 + 0.45 = 2.83 against 2.82; the
+	// lines now share the converted subtotal by their weight.
+	pg_assert_same(array('2.37', '0.45'), array_column($body['basketItems'], 'price'));
+
+	unset($body['basketItems'], $legacy['basketItems']);
+	pg_assert_same($legacy, payment_iyzico_test_without_conversation($body));
+}
+
+// The basket's items add up to the price in the protected currency, whatever
+// the units and rates.
+function test_payment_iyzico_protected_currency_basket_adds_up_to_the_price()
+{
+	$cases = array(
+		array(array(array('price' => '5', 'quantity' => '3')), 3.33),
+		array(array(array('price' => '3995', 'quantity' => '2'), array('price' => '1500', 'quantity' => '1')), 0.0297),
+		array(array(array('price' => '1', 'quantity' => '7'), array('price' => '2', 'quantity' => '5'), array('price' => '9999', 'quantity' => '3')), 41.5),
+	);
+
+	foreach ($cases as $case) {
+		list($lines, $rate) = $case;
+		$subtotal = 0;
+
+		foreach ($lines as $index => $line) {
+			$lines[$index] += array('id' => (string) $index, 'short_description' => 'Line ' . $index);
+			$subtotal += (int) $line['price'] * (int) $line['quantity'];
+		}
+
+		$charged = (int) round(($subtotal / 100.0) * $rate * 100);
+		$sum = 0;
+
+		foreach (pg_payment_iyzico_basket($lines, $charged) as $item) {
+			$sum += (int) round((float) $item->getPrice() * 100);
+		}
+
+		pg_assert_same($charged, $sum, 'basket at rate ' . $rate);
+	}
+}
+
+// A line below zero lowers the price: the lines above zero share the
+// subtotal charged today, so the items add up to it (50.00 - 15.00 = 35.00).
+function test_payment_iyzico_basket_shares_a_below_zero_line()
+{
+	$lines = array(
+		array('id' => '1', 'short_description' => 'Lamp', 'price' => '5000', 'quantity' => '1'),
+		array('id' => '2', 'short_description' => 'Coupon', 'price' => '-1500', 'quantity' => '1'),
+	);
+
+	$items = pg_payment_iyzico_basket($lines, 3500);
+
+	pg_assert_same(array('35.00'), array_map(function ($item) { return $item->getPrice(); }, $items));
+	pg_assert_same('1', $items[0]->getId());
+
+	// Two lines above zero share the lowering by their weight, largest
+	// remainder first: 30.00 and 10.00 less 15.00 is 25.00.
+	$lines = array(
+		array('id' => '1', 'short_description' => 'Lamp', 'price' => '1000', 'quantity' => '3'),
+		array('id' => '2', 'short_description' => 'Coupon', 'price' => '-1500', 'quantity' => '1'),
+		array('id' => '3', 'short_description' => 'Bulb', 'price' => '1000', 'quantity' => '1'),
+	);
+
+	pg_assert_same(array('18.75', '6.25'), array_map(function ($item) { return $item->getPrice(); }, pg_payment_iyzico_basket($lines, 2500)));
+}
+
+// A subscription that starts later is not charged today, so it is not in
+// the basket; one that starts today or earlier is.
+function test_payment_iyzico_basket_leaves_out_a_later_subscription()
+{
+	$lines = array(
+		array('id' => '1', 'short_description' => 'Lamp', 'price' => '5000', 'quantity' => '1', 'recurring' => '0', 'recurring_start_date' => '0000-00-00'),
+		array('id' => '2', 'short_description' => 'Club', 'price' => '2000', 'quantity' => '1', 'recurring' => '1', 'recurring_start_date' => '2026-12-01'),
+		array('id' => '3', 'short_description' => 'Box', 'price' => '900', 'quantity' => '1', 'recurring' => '1', 'recurring_start_date' => '2026-11-24'),
+	);
+
+	$items = pg_payment_iyzico_basket($lines, 5900, '2026-11-24');
+
+	pg_assert_same(array('1', '3'), array_map(function ($item) { return $item->getId(); }, $items));
+	pg_assert_same(array('50.00', '9.00'), array_map(function ($item) { return $item->getPrice(); }, $items));
+}
+
+// A line whose share comes to nothing is left out: iyzico refuses an item
+// of no price.
+function test_payment_iyzico_basket_drops_an_item_of_no_share()
+{
+	$lines = array(
+		array('id' => '1', 'short_description' => 'Lamp', 'price' => '10000', 'quantity' => '1'),
+		array('id' => '2', 'short_description' => 'Pin', 'price' => '1', 'quantity' => '1'),
+		array('id' => '3', 'short_description' => 'Coupon', 'price' => '-9000', 'quantity' => '1'),
+	);
+
+	$items = pg_payment_iyzico_basket($lines, 1001);
+
+	pg_assert_same(array('10.01'), array_map(function ($item) { return $item->getPrice(); }, $items));
+	pg_assert_same(array(), pg_payment_iyzico_basket($lines, 0));
 }
 
 function test_payment_iyzico_threeds_start_keeps_the_row_the_return_reads()

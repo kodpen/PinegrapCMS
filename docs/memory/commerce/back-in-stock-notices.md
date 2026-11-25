@@ -22,7 +22,7 @@ module: stock_notify
 - No stored page goes old (`pg_page_cache_request_dirties()`).
 
 ## When does the notice go out?
-- `pg_stock_notify_heard()` hears every `inventory.changed`: from `pg_announce()` (checkout, local sale, product screens, barcode, bulk edit, file manager, Workspace, ERP documents) and from the stock API right after its own `api_webhook_enqueue()`. Imports (products, marketplace orders) and ERP stock counts announce nothing, so mail nobody (plan decision (c)).
+- `pg_stock_notify_heard()` hears every `inventory.changed`: from `pg_announce()` (checkout, local sale, product screens, barcode, bulk edit, file manager, Workspace, ERP documents) and from the stock API right after its own quiet `pg_announce()`. Imports (products, marketplace orders) and ERP stock counts announce nothing, so mail nobody (plan decision (c)).
 - `pg_stock_notify_heard_product()` (pure) takes an `inventory.changed` whose `out_of_stock` is false, not from `checkout`/`local_sale` (a sale brings nothing back; no checkout waits on mail). Nobody waiting: one indexed read. A failed query (`pg_error_throws(true)`, try/catch) is logged and never breaks the writer.
 - `pg_stock_notify_send()` reads the product again, then per waiting row: claim (`UPDATE … sent_at … WHERE … AND (sent_at = 0)`, one affected row) and only then `email()`. Two announcements at once mail once; one address on two rows (guest, account), one mail; an invalid address is claimed, dropped.
 - Queued (`email(…, 'queue' => true)`) while `pg_mail_job_alive()`: 500 per announcement; without the job, sent in the request: 10. The rest wait for the product's next `inventory.changed`.

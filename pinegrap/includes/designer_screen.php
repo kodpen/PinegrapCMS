@@ -172,6 +172,12 @@ function pg_designer_screen_render($ctx)
             // A page of a classic style just opened (?classic=1): its tree is
             // not saved yet, so the tab starts unsaved and Save writes it.
             'converted'             => !empty($p['converted']) ? 1 : 0,
+            // The stored tree this tab starts from, sent back with Save: a
+            // page somebody else wrote in the meantime is not overwritten
+            // (pg_page_base_is_stale()). A converted page's tree is not the
+            // stored one, so its base is read from the row.
+            'baseHash'              => pg_page_base_hash(!empty($p['converted'])
+                                           ? pg_page_tree_json((int)$p['page_id']) : (string)$p['tree_json']),
         );
     }
     if (empty($js_pages)) {
@@ -382,7 +388,7 @@ function pg_designer_screen_render($ctx)
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -450,7 +456,7 @@ function pg_designer_screen_render($ctx)
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
-        'themes'        => pg_design_theme_catalog(),
+        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.
@@ -557,6 +563,8 @@ function pg_designer_screen_render($ctx)
                 <input type="hidden" name="style_palette" id="sd-style-palette" value="' . h(isset($style['palette']) ? pg_design_palette_key($style['palette']) : '') . '">
                 <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
                 <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
+                <!-- The variables model the Variables tab changed (JSON); empty: unchanged. -->
+                <input type="hidden" name="style_variables" id="sd-style-variables" value="">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -1213,11 +1221,12 @@ function pg_designer_home_drawing($kind, $templates = array())
 }
 
 /**
- * One of the four ways to start a design. A start opens a choice first (the
- * framework, a template): nothing loads until the operator picks.
+ * One of the four ways to start a design. Each opens the New design window
+ * (pg_designer_start_window()) on its own start: nothing loads until the
+ * operator picks.
  *
- * $opts: modal (the dialog it opens), start (import | paste, read by the
- * framework dialog), disabled (no templates to offer), id.
+ * $opts: modal (the dialog it opens), start (the start the window opens on,
+ * a key of pg_designer_start_kinds()), disabled (no templates to offer), id.
  */
 function pg_designer_home_start_card($drawing, $icon, $title, $text, $opts = array())
 {
@@ -1541,20 +1550,23 @@ function pg_designer_start_screen($ctx)
                             ? lang('A new design starts with pages of its own; the designs you have stay as they are.')
                             : lang('From a blank page, from your own HTML or from a ready-made template.')) . '</p>
                     </div>
+                    <div class="sdh-head-tools">
+                        <button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#sdStartModal" data-sd-start="blank"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New design')) . '</button>
+                    </div>
                 </div>
                 <div class="row g-5">
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', lang('Create New'),
                             lang('An empty page; add sections from the palette.'),
-                            array('modal' => '#sdNewDesignModal')) . '
+                            array('modal' => '#sdStartModal', 'start' => 'blank')) . '
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('import'), 'bi-file-earmark-zip', lang('Import HTML / ZIP'),
                             lang('An HTML page or a project archive; its pages become tabs.'),
-                            array('modal' => '#sdNewDesignModal', 'start' => 'import')) . '
+                            array('modal' => '#sdStartModal', 'start' => 'import')) . '
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('paste'), 'bi-clipboard-plus', lang('Paste HTML content'),
                             lang('The design starts from the markup you paste.'),
-                            array('modal' => '#sdNewDesignModal', 'start' => 'paste')) . '
+                            array('modal' => '#sdStartModal', 'start' => 'paste')) . '
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('template', $templates), 'bi-grid-1x2', lang('Choose a Template'),
                             lang('A ready-made design to change as you like.'),
-                            $templates ? array('modal' => '#sdTemplateModal', 'id' => 'sdh-start-template') : array('disabled' => true)) . '
+                            $templates ? array('modal' => '#sdStartModal', 'start' => 'template', 'id' => 'sdh-start-template') : array('disabled' => true)) . '
                 </div>
             </section>';
     } else {
@@ -1637,7 +1649,7 @@ function pg_designer_start_screen($ctx)
             ' . $list . '
         </main>
         ' . $comp['panel'] . '
-        ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
+        ' . ($can_create ? pg_designer_start_window($templates, $from_pages) : '') . '
         ' . ($can_tpl ? pg_designer_home_template_dialog() : '') . '
         <div class="menu sdh-menu" id="sdh-menu" role="menu" tabindex="-1"></div>
         <script type="application/json" id="sdh-config">' . json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>
@@ -1769,8 +1781,9 @@ function pg_designer_components_rows()
 
         // Where it is placed: page (design), the recycle bin marked. The
         // confirmation reads the same lines from data-usage.
-        $usage_lines = array();
-        $usage_cell  = '';
+        $usage_lines  = array();
+        $usage_cell   = '';
+        $region_drawn = false;
         foreach ((isset($comp_usage[$sid]) ? $comp_usage[$sid] : array()) as $u) {
             // A binned page of a deleted design has no design name left: the
             // page alone, never "page ()".
@@ -1778,10 +1791,18 @@ function pg_designer_components_rows()
             if ($page === '') $page = (string)$u['style_name'];
             if ($page === '') $page = '#' . (int)$u['page_id'];
             $line = ((int)$u['page_id'] > 0 && (string)$u['style_name'] !== '') ? $page . ' (' . $u['style_name'] . ')' : $page;
+            // Drawn by a converted common region's tag, not placed.
+            if (isset($u['common_region'])) {
+                $line .= ' — ' . lang(array('string' => 'common region tag "{var:1}"', 'vars' => array((string)$u['common_region'])));
+                $region_drawn = true;
+            }
             $usage_lines[] = $line;
             $usage_cell .= '<div>' . h($line)
                 . (!empty($u['binned']) ? ' <span class="badge theme-secondary">' . h(lang('Recycle Bin')) . '</span>' : '')
                 . '</div>';
+        }
+        if ($region_drawn) {
+            $usage_cell .= '<div class="small fg-secondary">' . h(lang('It draws the common region wherever its tag stands; deleting it brings back the region\'s earlier content on those pages.')) . '</div>';
         }
         if ($usage_cell === '') {
             $usage_cell = '<span class="badge theme-success">' . h(lang('Not used')) . '</span>';
@@ -1802,83 +1823,169 @@ function pg_designer_components_rows()
 }
 
 /**
- * "Create New": what the design is built on. Asked once, before the editor
- * opens, because the pages are written against it and it does not change.
+ * The starts the New design window lists, in the order it lists them. Each
+ * is one row of the list: an icon, a title, one line, a small drawing
+ * (pg_designer_home_drawing()) and the main button's words. A start built
+ * later (a sketch, an import from another service) takes its place in this
+ * list with a pane of its own in pg_designer_start_pane().
+ *
+ * @param bool $has_templates whether a template can be offered
+ * @return array list of array('key', 'icon', 'title', 'line', 'drawing', 'go', 'disabled')
  */
-function pg_designer_new_design_modal($from_pages)
+function pg_designer_start_kinds($has_templates)
 {
-    $extra = $from_pages ? '&from=pages' : '';
-    // $import_text: what the option means when the design starts from an
-    // import or a paste (the modal is shared, see the script below).
-    $option = function ($framework, $icon, $title, $text, $recommended, $import_text) use ($extra) {
-        return
-            '<div class="col-12 md:col-6">
-                <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '">
-                    <div class="card-body d-flex flex-column align-items-start gap-3">
-                        <div class="d-flex w-100 align-items-start">
-                            <i class="bi ' . h($icon) . ' fs-3xl ' . ($recommended ? 'fg-primary' : 'fg-secondary') . '" aria-hidden="true"></i>
-                            ' . ($recommended ? '<span class="badge theme-primary ms-auto">' . lang('Recommended') . '</span>' : '') . '
-                        </div>
-                        <span class="h5 mb-0 fg-body">' . h($title) . '</span>
-                        <span class="small fg-secondary sd-fw-text" data-text-new="' . h($text) . '" data-text-import="' . h($import_text) . '">' . h($text) . '</span>
-                    </div>
-                </a>
-            </div>';
+    return array(
+        array('key' => 'blank', 'icon' => 'bi-file-earmark-plus', 'title' => lang('Blank'),
+              'line' => lang('An empty page; add sections from the palette.'),
+              'drawing' => 'blank', 'go' => lang('Create design'), 'disabled' => false),
+        array('key' => 'template', 'icon' => 'bi-grid-1x2', 'title' => lang('Template'),
+              'line' => lang('A ready-made design to change as you like.'),
+              'drawing' => 'template-none', 'go' => '', 'disabled' => !$has_templates),
+        array('key' => 'import', 'icon' => 'bi-file-earmark-zip', 'title' => lang('ZIP file'),
+              'line' => lang('An HTML page or a project archive; its pages become tabs.'),
+              'drawing' => 'import', 'go' => lang('Continue'), 'disabled' => false),
+        array('key' => 'paste', 'icon' => 'bi-clipboard-plus', 'title' => lang('Pasted markup'),
+              'line' => lang('The design starts from the markup you paste.'),
+              'drawing' => 'paste', 'go' => lang('Continue'), 'disabled' => false),
+    );
+}
+
+/**
+ * The start the window opens on, from ?start= or the card that opened it: a
+ * start it lists and can offer, the blank one otherwise.
+ *
+ * @param mixed $value
+ * @param array $kinds pg_designer_start_kinds()
+ * @return string
+ */
+function pg_designer_start_key($value, $kinds)
+{
+    if (is_string($value)) {
+        foreach ($kinds as $k) {
+            if ($k['key'] === $value && !$k['disabled']) return $value;
+        }
+    }
+    return 'blank';
+}
+
+/**
+ * Where the window's main button leads for a start built on a framework. The
+ * ZIP and paste starts open the editor with its file box or its paste box on
+ * top (add_system_style.php). A template's card carries its own address, so
+ * the template start has none here.
+ *
+ * @param string $key       a start of pg_designer_start_kinds()
+ * @param string $framework bootstrap5 | custom
+ * @param bool   $from_pages
+ * @return string
+ */
+function pg_designer_start_go_href($key, $framework, $from_pages)
+{
+    if ($key === 'template') return '';
+    $href = 'add_system_style.php?framework=' . ($framework === 'custom' ? 'custom' : 'bootstrap5');
+    if ($key === 'import' || $key === 'paste') $href .= '&start=' . $key;
+    return $href . ($from_pages ? '&from=pages' : '');
+}
+
+/**
+ * The framework a design is built on, as two choice cards. Asked before the
+ * editor opens, because the pages are written against it and it does not
+ * change. An import is asked what the project is built on instead.
+ */
+function pg_designer_start_framework_choice($key, $from_pages)
+{
+    $import = ($key !== 'blank');
+    $choice = function ($framework, $tone, $icon, $title, $text, $checked) use ($key, $from_pages) {
+        $id = 'sd-ns-fw-' . $key . '-' . $framework;
+        return '<div class="form-field form-field-card">'
+            . '<input class="radio" type="radio" name="sd_ns_fw_' . h($key) . '" value="' . h($framework) . '" id="' . $id . '" aria-describedby="' . $id . '_help"'
+            . ' data-href="' . h(pg_designer_start_go_href($key, $framework, $from_pages)) . '"' . ($checked ? ' checked' : '') . '>'
+            . '<label class="pg-start-head" for="' . $id . '"><span class="pg-icon-tile pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<strong>' . h($title) . '</strong><span class="pg-start-mark" aria-hidden="true"><i class="bi bi-check"></i></span></label>'
+            . '<div class="form-text" id="' . $id . '_help">' . h($text) . '</div>'
+            . '</div>';
     };
+    return '<fieldset><legend class="pg-group-label">' . h($import ? lang('What is the project built on?') : lang('What is the design built on?')) . '</legend>'
+        . '<div class="pg-start pg-start-choice">'
+        . $choice('bootstrap5', 'violet', 'bi-bootstrap', lang('Build with Bootstrap 5'), $import
+            ? lang('For a project on Bootstrap 5. The editor\'s Bootstrap 5.3 is used; the project\'s own Bootstrap and jQuery files are left out.')
+            : lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true)
+        . $choice('custom', 'gray', 'bi-code-slash', lang('Build a Custom Design'), $import
+            ? lang('For any other project (Bootstrap 6, Tailwind, your own CSS). Its CSS and JS files come in as they are, framework included; nothing is added.')
+            : lang('No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.'), false)
+        . '</div>'
+        . '<p class="pg-field-help mb-0">' . h(lang('This cannot be changed later.')) . '</p>'
+        . '</fieldset>';
+}
+
+/**
+ * One start's pane: what the start asks before the design opens.
+ */
+function pg_designer_start_pane($kind, $templates, $from_pages)
+{
+    switch ($kind['key']) {
+        case 'template':
+            return pg_designer_template_gallery($templates, $from_pages);
+        case 'import':
+            return pg_designer_start_framework_choice('import', $from_pages)
+                . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens and asks for a single .html file or a .zip with the whole project.')) . '</p>';
+        case 'paste':
+            return pg_designer_start_framework_choice('paste', $from_pages)
+                . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens with a box to paste the markup into.')) . '</p>';
+        default:
+            return pg_designer_start_framework_choice('blank', $from_pages);
+    }
+}
+
+/**
+ * The New design window (#sdStartModal): the ways to start a design in one
+ * place. On the left the starts, each a row with its small drawing, title
+ * and one line; on the right the chosen start's pane; in the foot Cancel and
+ * the one filled button, which leads where the pane's choice says (the
+ * template start has none: each template card has its own button). The
+ * home's start cards open it on their own start (data-sd-start), and
+ * ?start=<key> opens it on load (assets/js/designer_home.js).
+ *
+ * @param array $templates pg_design_templates()
+ * @param bool  $from_pages
+ * @return string
+ */
+function pg_designer_start_window($templates, $from_pages)
+{
+    $kinds = pg_designer_start_kinds(!empty($templates));
+    $tabs  = '';
+    $panes = '';
+    foreach ($kinds as $i => $k) {
+        $key = $k['key'];
+        $tabs .= '<button type="button" class="pg-sm-link sd-ns-item' . ($i === 0 ? ' is-active' : '') . '" role="tab" id="sd-ns-tab-' . $key . '" aria-controls="sd-ns-pane-' . $key . '"'
+               . ' aria-selected="' . ($i === 0 ? 'true' : 'false') . '" tabindex="' . ($i === 0 ? '0' : '-1') . '" data-start="' . $key . '"'
+               . ($k['disabled'] ? ' aria-disabled="true"' : '') . '>'
+               . pg_designer_home_drawing($k['drawing'])
+               . '<span class="sd-ns-text"><span class="sd-ns-title"><i class="bi ' . h($k['icon']) . '" aria-hidden="true"></i>' . h($k['title']) . '</span>'
+               . '<span class="pg-text-meta">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
+               . '</button>';
+        $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
+                . ' data-go="' . h($k['go']) . '"' . ($i === 0 ? '' : ' hidden') . '>'
+                . '<h3 class="pg-sm-heading">' . h($k['title']) . '</h3>'
+                . '<p class="pg-sm-desc">' . h($k['line']) . '</p>'
+                . ($k['disabled'] ? '' : pg_designer_start_pane($k, $templates, $from_pages))
+                . '</section>';
+    }
     return '
-        <dialog class="dialog dialog-lg pg-dialog-centered" id="sdNewDesignModal" aria-labelledby="sdNewDesignModalLabel">
-                    <div class="dialog-header">
-                        <h2 class="dialog-title fs-lg" id="sdNewDesignModalLabel"><i class="bi bi-file-earmark-plus me-3 sd-fw-icon" aria-hidden="true"></i><span class="sd-fw-title" data-text-new="' . h(lang('Create New Design')) . '" data-text-import="' . h(lang('Import HTML / ZIP')) . '" data-text-paste="' . h(lang('Paste HTML content')) . '">' . lang('Create New Design') . '</span></h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
-                    </div>
-                    <div class="dialog-body">
-                        <p class="small fg-secondary mb-5 sd-fw-intro" data-text-new="' . h(lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.')) . '" data-text-import="' . h(lang('What is the project built on? Bootstrap 5 projects use the editor\'s Bootstrap; a project on another framework (Bootstrap 6, Tailwind…) or none goes into a custom design, with its own files. This cannot be changed later.')) . '">' . lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.') . '</p>
-                        <div class="row g-5">
-                            ' . $option('bootstrap5', 'bi-bootstrap', lang('Build with Bootstrap 5'),
-                                lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true,
-                                lang('For a project on Bootstrap 5. The editor\'s Bootstrap 5.3 is used; the project\'s own Bootstrap and jQuery files are left out.')) . '
-                            ' . $option('custom', 'bi-code-slash', lang('Build a Custom Design'),
-                                lang('No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.'), false,
-                                lang('For any other project (Bootstrap 6, Tailwind, your own CSS). Its CSS and JS files come in as they are, framework included; nothing is added.')) . '
-                        </div>
-                    </div>
-        </dialog>
-        <script>
-            // One modal for three starts: a blank design, an import and a
-            // paste all ask the framework first. The card that opened it says
-            // which (data-sd-start); ?start=import|paste opens it on load.
-            (function () {
-                var modal = document.getElementById("sdNewDesignModal");
-                if (!modal) return;
-                function setMode(start) {
-                    var mode = (start === "import" || start === "paste") ? start : "";
-                    var t = modal.querySelector(".sd-fw-title");
-                    if (t) t.textContent = mode === "paste" ? t.dataset.textPaste : (mode ? t.dataset.textImport : t.dataset.textNew);
-                    modal.querySelectorAll(".sd-fw-intro, .sd-fw-text").forEach(function (el) {
-                        el.textContent = mode ? el.dataset.textImport : el.dataset.textNew;
-                    });
-                    modal.querySelectorAll(".sd-fw-choice").forEach(function (a) {
-                        a.href = a.dataset.href + (mode ? "&start=" + mode : "");
-                    });
-                    var ic = modal.querySelector(".sd-fw-icon");
-                    if (ic) ic.className = "bi me-3 sd-fw-icon " + (mode === "import" ? "bi-file-earmark-zip" : (mode === "paste" ? "bi-clipboard-plus" : "bi-file-earmark-plus"));
-                }
-                pgUI.dialog.on(modal, "show", function (e) {
-                    var src = e.relatedTarget;
-                    setMode(src && src.dataset ? (src.dataset.sdStart || "") : (modal.dataset.sdStart || ""));
-                });
-                pgUI.dialog.on(modal, "hidden", function () { delete modal.dataset.sdStart; });
-                var q = new URLSearchParams(window.location.search).get("start");
-                if (q === "import" || q === "paste") {
-                    var open = function () {
-                        if (!window.pgUI) return;
-                        modal.dataset.sdStart = q;
-                        pgUI.dialog.show(modal);
-                    };
-                    if (document.readyState === "complete") open(); else window.addEventListener("load", open);
-                }
-            })();
-        </script>';
+        <dialog class="dialog dialog-xl pg-dialog-centered dialog-scrollable sd-ns-dialog" id="sdStartModal" aria-labelledby="sdStartModalLabel">
+            <div class="dialog-header">
+                <h2 class="dialog-title fs-lg" id="sdStartModalLabel"><i class="bi bi-plus-lg me-3" aria-hidden="true"></i>' . h(lang('New design')) . '</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body sd-ns">
+                <div class="sd-ns-list" role="tablist" aria-orientation="vertical" aria-label="' . h(lang('Ways to start')) . '">' . $tabs . '</div>
+                <div class="sd-ns-panes">' . $panes . '</div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                <a href="' . h(pg_designer_start_go_href('blank', 'bootstrap5', $from_pages)) . '" class="pg-button pg-button-fill" id="sd-ns-go">' . h(lang('Create design')) . '</a>
+            </div>
+        </dialog>';
 }
 
 /**
@@ -1995,11 +2102,11 @@ function pg_designer_template_theme_query($src, $look, $palette)
 }
 
 /**
- * "Choose a Template": the templates this installation ships. Choosing one
- * opens the editor with the template's pages as unsaved tabs; nothing is
- * created until the design is published.
+ * The template start's pane of the New design window: the templates this
+ * installation ships. Choosing one opens the editor with the template's
+ * pages as unsaved tabs; nothing is created until the design is published.
  */
-function pg_designer_template_modal($templates, $from_pages)
+function pg_designer_template_gallery($templates, $from_pages)
 {
     $extra = $from_pages ? '&from=pages' : '';
     $look0 = function_exists('pg_design_default_look') ? pg_design_default_look() : '';
@@ -2105,18 +2212,10 @@ function pg_designer_template_modal($templates, $from_pages)
             </div>';
     }
     return '
-        <dialog class="dialog dialog-xl pg-dialog-centered dialog-scrollable sd-tpl-dialog" id="sdTemplateModal" aria-labelledby="sdTemplateModalLabel">
-                    <div class="dialog-header">
-                        <h2 class="dialog-title fs-lg" id="sdTemplateModalLabel"><i class="bi bi-grid-1x2 me-3" aria-hidden="true"></i>' . lang('Choose a Template') . '</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
-                    </div>
-                    <div class="dialog-body">
-                        <p class="small fg-secondary mb-5">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
-                        ' . pg_designer_template_theme_picker() . '
-                        <div class="row g-5" id="sd-tpl-cards">' . $cards . '</div>
-                        <p class="small fg-secondary mb-0' . ($cards !== '' ? ' d-none' : '') . '" id="sd-tpl-empty">' . lang('There are no templates.') . '</p>
-                    </div>
-        </dialog>
+        <p class="small fg-secondary mb-5">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
+        ' . pg_designer_template_theme_picker() . '
+        <div class="row g-5" id="sd-tpl-cards">' . $cards . '</div>
+        <p class="small fg-secondary mb-0' . ($cards !== '' ? ' d-none' : '') . '" id="sd-tpl-empty">' . lang('There are no templates.') . '</p>
         <script>
             // Delete a template made from a design. The shipped ones carry no
             // button. api.php reads a JSON body.
@@ -2153,15 +2252,6 @@ function pg_designer_template_modal($templates, $from_pages)
                         .then(function (ok) { if (ok) run(); });
                 } else if (window.confirm(msg)) { run(); }
             });
-            // ?start=template, from the Choose a Template menu entry, opens the gallery on load.
-            (function () {
-                if (new URLSearchParams(window.location.search).get("start") !== "template") return;
-                var open = function () {
-                    var modal = document.getElementById("sdTemplateModal");
-                    if (modal && window.pgUI) pgUI.dialog.show(modal);
-                };
-                if (document.readyState === "complete") open(); else window.addEventListener("load", open);
-            })();
         </script>';
 }
 
@@ -2843,6 +2933,8 @@ function pg_designer_publish_sheet()
         'result-live'     => lang('On the site now'),
         'result-draft'    => lang('Stayed drafts, off the site'),
         'result-kept'     => lang('Not saved: the changes stay in the editor'),
+        'anyway'          => lang('Publish anyway'),
+        'anyway-reason'   => lang('Why is it published without approval? The reason goes to the Site Log.'),
     );
     $spans = '';
     foreach ($texts as $k => $v) {
@@ -3241,6 +3333,19 @@ function pg_designer_screen_post($ctx)
                 'vars'   => ($nm !== '' ? $nm : (string)(isset($p['page_id']) ? $p['page_id'] : ''))));
             continue;
         }
+        // The lock can lapse (a tab asleep longer than PG_COLLAB_STALE) and
+        // be claimed again after somebody else saved the page and left. The
+        // tab's tree is then older than the stored one; writing it would
+        // silently undo that save, so the page is skipped like a locked one.
+        $base_pid = isset($p['page_id']) ? (int)$p['page_id'] : 0;
+        if ($base_pid > 0 && isset($p['base_hash'])
+            && pg_page_base_is_stale($base_pid, (string)$p['base_hash'], pg_page_tree_json($base_pid))) {
+            $locked_pages[$base_pid] = true;
+            $warnings[] = lang(array(
+                'string' => 'The page "{var:1}" was changed by somebody else after you opened it, so your changes to it were not saved. Reload the editor to see the latest version.',
+                'vars'   => ($nm !== '' ? $nm : (string)$base_pid)));
+            continue;
+        }
         $r = pg_designer_save_page($style_id, $p, $user, true);
         foreach ($r['errors'] as $e) $errors[] = $e;
         foreach ($r['warnings'] as $w) $warnings[] = $w;
@@ -3323,6 +3428,14 @@ function pg_designer_screen_post($ctx)
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        // The design's variables (Settings, Theme, Variables): the model the
+        // tab posts, or, when the tab was not used, the stored one carried
+        // over to the look and palette just saved. No file, no change.
+        $sd_vars_post = isset($_POST['style_variables']) ? trim((string)$_POST['style_variables']) : '';
+        $sd_vars_model = ($sd_vars_post !== '') ? json_decode($sd_vars_post, true) : null;
+        $sd_vars_saved = pg_design_variables_save($style_id, is_array($sd_vars_model) ? $sd_vars_model : null,
+            $style_data['look'], $style_data['palette'], $user['id']);
+        if ($sd_vars_saved !== true) $warnings[] = $sd_vars_saved;
         // An update never changes a design's framework; a converted style
         // takes the one the editor opened it with (custom: the theme keeps
         // its own Bootstrap and scripts).
@@ -3583,6 +3696,14 @@ function pg_designer_screen_post($ctx)
                     'fields'   => pg_cf_load_page_fields($pid),
                     'settings' => function_exists('pg_cf_load_page_form_settings') ? pg_cf_load_page_form_settings($pid) : array(),
                 );
+            }
+        }
+        // The base the next save of each written page starts from: the tree
+        // as it is stored now, after the merges and references above.
+        foreach ($id_map as $mi => $m) {
+            $pid = (int)$m['page_id'];
+            if ($pid > 0 && in_array($pid, $written, true)) {
+                $id_map[$mi]['base_hash'] = pg_page_base_hash(pg_page_tree_json($pid));
             }
         }
         $reply = array(

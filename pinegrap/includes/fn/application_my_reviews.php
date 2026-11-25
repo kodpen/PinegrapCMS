@@ -598,7 +598,7 @@ function pg_application_review_cards_html(array $programs, callable $url)
 
         foreach ($queue as $row) {
             $rows .= '<div class="pg-card-inner-row">'
-                . '<div class="flex-grow-1 min-width-0"><a class="pg-list-row-title" href="' . h($url((int) $row['id'])) . '">' . h(pg_application_review_entry_name($program, $row)) . '</a>'
+                . '<div class="flex-grow-1 min-w-0"><a class="pg-list-row-title" href="' . h($url((int) $row['id'])) . '">' . h(pg_application_review_entry_name($program, $row)) . '</a>'
                 . (((string) $row['category'] !== '') ? '<div class="pg-text-meta">' . h($choices[$row['category']] ?? $row['category']) . '</div>' : '') . '</div>'
                 . ($pills[(int) $row['status']] ?? '') . '</div>';
         }

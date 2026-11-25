@@ -898,12 +898,12 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts, $form = nu
         $asker = ((int) $row['requested_by'] > 0) ? ws_person_name((int) $row['requested_by']) : '';
         $button = function ($action, $label, $theme) use ($form, $row) {
             return ($form !== null)
-                ? '<button type="submit" name="ws_' . $action . '" value="' . (int) $row['id'] . '" form="' . h($form) . '" class="btn btn-sm btn-text ' . $theme . '">' . h($label) . '</button>'
-                : '<button type="submit" name="ws_action" value="' . $action . '" class="btn btn-sm btn-text ' . $theme . '">' . h($label) . '</button>';
+                ? '<button type="submit" name="ws_' . $action . '" value="' . (int) $row['id'] . '" form="' . h($form) . '" class="pg-button pg-button-sm ' . $theme . '">' . h($label) . '</button>'
+                : '<button type="submit" name="ws_action" value="' . $action . '" class="pg-button pg-button-sm ' . $theme . '">' . h($label) . '</button>';
         };
-        $buttons = ($may['cancel'] ? $button('agent_request_cancel', lang('Cancel'), 'theme-danger') : '')
-            . ($may['retry'] ? $button('agent_request_retry', lang('Ask again'), 'theme-primary') : '')
-            . ($may['knock'] ? $button('agent_request_knock', lang('Knock now'), 'theme-secondary') : '');
+        $buttons = ($may['cancel'] ? $button('agent_request_cancel', lang('Cancel'), 'pg-button-danger') : '')
+            . ($may['retry'] ? $button('agent_request_retry', lang('Ask again'), 'pg-button-quiet') : '')
+            . ($may['knock'] ? $button('agent_request_knock', lang('Knock now'), 'pg-button-quiet') : '');
         $where = ($place['url'] !== '') ? '<a href="' . h($place['url']) . '">' . h($place['name']) . '</a>' : h($place['name']);
 
         $lines .= '

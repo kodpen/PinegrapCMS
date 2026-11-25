@@ -1,8 +1,8 @@
 {
     "assets/css/backend.src.css": {
-        "size": 434,
-        "weight": 228,
-        "colour": 380
+        "size": 432,
+        "weight": 222,
+        "colour": 375
     },
     "assets/css/pg_dash.src.css": {
         "size": 21,
@@ -155,112 +155,84 @@
         "tabs": 0
     },
     "assets/js/workspace.js": {
-        "button": 256,
-        "tabs": 0
-    },
-    "assets/js/workspace_acks.js": {
-        "button": 2,
-        "tabs": 0
+        "button": 4,
+        "tabs": 0,
+        "field": 15
     },
     "assets/js/workspace_approvals.js": {
-        "button": 9,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 4
     },
     "assets/js/workspace_board_channel.js": {
-        "button": 4,
-        "tabs": 0
+        "button": 2,
+        "tabs": 0,
+        "field": 1
     },
     "assets/js/workspace_customer.js": {
-        "button": 12,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
     "assets/js/workspace_editor.js": {
-        "button": 28,
-        "tabs": 0
+        "button": 1,
+        "tabs": 0,
+        "field": 6
     },
     "assets/js/workspace_flow.js": {
-        "button": 58,
-        "tabs": 0
-    },
-    "assets/js/workspace_flow_flag.js": {
-        "button": 3,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 61
     },
     "assets/js/workspace_guest.js": {
         "button": 3,
-        "tabs": 0
-    },
-    "assets/js/workspace_highlights.js": {
-        "button": 7,
-        "tabs": 0
+        "tabs": 0,
+        "field": 0
     },
     "assets/js/workspace_mail.js": {
-        "button": 25,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 2
     },
     "assets/js/workspace_note_group_shares.js": {
-        "button": 2,
-        "tabs": 0
-    },
-    "assets/js/workspace_note_groups.js": {
-        "button": 1,
-        "tabs": 0
-    },
-    "assets/js/workspace_note_lock.js": {
-        "button": 5,
-        "tabs": 0
-    },
-    "assets/js/workspace_page_card.js": {
-        "button": 16,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
     "assets/js/workspace_palette.js": {
-        "button": 4,
-        "tabs": 0
+        "button": 1,
+        "tabs": 0,
+        "field": 0
     },
     "assets/js/workspace_recurrence.js": {
-        "button": 4,
-        "tabs": 0
+        "button": 1,
+        "tabs": 0,
+        "field": 3
     },
     "assets/js/workspace_replies.js": {
-        "button": 6,
-        "tabs": 0
-    },
-    "assets/js/workspace_side.js": {
-        "button": 5,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
     "assets/js/workspace_status.js": {
-        "button": 6,
-        "tabs": 0
+        "button": 1,
+        "tabs": 0,
+        "field": 3
     },
     "assets/js/workspace_task_approval.js": {
-        "button": 4,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 2
     },
     "assets/js/workspace_task_delegate.js": {
-        "button": 7,
-        "tabs": 0
-    },
-    "assets/js/workspace_task_links.js": {
-        "button": 1,
-        "tabs": 0
-    },
-    "assets/js/workspace_task_time.js": {
-        "button": 10,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 2
     },
     "assets/js/workspace_templates.js": {
-        "button": 13,
-        "tabs": 0
-    },
-    "assets/js/workspace_translate.js": {
         "button": 1,
-        "tabs": 0
-    },
-    "assets/js/workspace_voice.js": {
-        "button": 6,
-        "tabs": 0
+        "tabs": 0,
+        "field": 2
     },
     "backups.php": {
         "button": 5,
@@ -659,7 +631,7 @@
         "tabs": 0
     },
     "includes/fn/output.php": {
-        "button": 162,
+        "button": 156,
         "tabs": 0
     },
     "includes/fn/page_bulk.php": {
@@ -687,7 +659,7 @@
         "tabs": 0
     },
     "includes/fn/prototype.php": {
-        "button": 5,
+        "button": 4,
         "tabs": 0
     },
     "includes/fn/prototype_links.php": {
@@ -806,6 +778,11 @@
         "button": 1,
         "tabs": 0
     },
+    "includes/settings/workspace_team.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 8
+    },
     "includes/templates/edit_auto_dialog.php": {
         "button": 1,
         "tabs": 0
@@ -850,73 +827,50 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/workspace/agent_activity.php": {
-        "button": 2,
-        "tabs": 0
-    },
     "includes/workspace/bulk.php": {
-        "button": 1,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 3
     },
-    "includes/workspace/calendar_sync.php": {
-        "button": 3,
-        "tabs": 0
+    "includes/workspace/calls_settings.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
-    "includes/workspace/mail_blocks.php": {
-        "button": 1,
-        "tabs": 0
+    "includes/workspace/link_preview.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 1
+    },
+    "includes/workspace/mail_add.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
     "includes/workspace/mail_list.php": {
-        "button": 6,
-        "tabs": 0
+        "button": 1,
+        "tabs": 0,
+        "field": 1
     },
     "includes/workspace/mail_pane.php": {
-        "button": 6,
-        "tabs": 0
+        "button": 1,
+        "tabs": 0,
+        "field": 0
+    },
+    "includes/workspace/mail_phone.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 3
     },
     "includes/workspace/notes.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "includes/workspace/personal_ical.php": {
-        "button": 4,
-        "tabs": 0
-    },
-    "includes/workspace/personal_plan_mail.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/workspace/screen.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/workspace/tasks.php": {
-        "button": 3,
-        "tabs": 0
+        "tabs": 0,
+        "field": 0
     },
     "includes/workspace/team_settings.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/workspace/templates.php": {
-        "button": 5,
-        "tabs": 0
-    },
-    "includes/workspace/workdays.php": {
-        "button": 7,
-        "tabs": 0
-    },
-    "includes/workspace/wtable_channel.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/workspace/wtable_query.php": {
-        "button": 3,
-        "tabs": 0
-    },
-    "includes/workspace/wtable_screen.php": {
-        "button": 1,
-        "tabs": 0
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
     "install/index.php": {
         "button": 40,
@@ -963,7 +917,7 @@
         "tabs": 0
     },
     "product_builder.php": {
-        "button": 37,
+        "button": 35,
         "tabs": 0
     },
     "router.php": {
@@ -1019,7 +973,7 @@
         "tabs": 0
     },
     "view_commissions.php": {
-        "button": 3,
+        "button": 1,
         "tabs": 0
     },
     "view_contact_groups.php": {
@@ -1027,7 +981,7 @@
         "tabs": 0
     },
     "view_contacts.php": {
-        "button": 16,
+        "button": 14,
         "tabs": 0
     },
     "view_design_files.php": {
@@ -1051,7 +1005,7 @@
         "tabs": 0
     },
     "view_log.php": {
-        "button": 5,
+        "button": 3,
         "tabs": 0
     },
     "view_menu_items.php": {
@@ -1063,11 +1017,11 @@
         "tabs": 0
     },
     "view_order.php": {
-        "button": 17,
+        "button": 12,
         "tabs": 0
     },
     "view_orders.php": {
-        "button": 19,
+        "button": 17,
         "tabs": 0
     },
     "view_pages.php": {
@@ -1111,7 +1065,7 @@
         "tabs": 0
     },
     "view_submitted_forms.php": {
-        "button": 8,
+        "button": 6,
         "tabs": 0
     },
     "view_subscriptions.php": {
@@ -1140,30 +1094,12 @@
     },
     "workspace_approval.php": {
         "button": 2,
-        "tabs": 0
-    },
-    "workspace_calendar_feed.php": {
-        "button": 7,
-        "tabs": 0
+        "tabs": 0,
+        "field": 3
     },
     "workspace_guest.php": {
         "button": 4,
-        "tabs": 0
-    },
-    "workspace_mcp.php": {
-        "button": 4,
-        "tabs": 0
-    },
-    "workspace_meeting_link.php": {
-        "button": 6,
-        "tabs": 0
-    },
-    "workspace_template.php": {
-        "button": 2,
-        "tabs": 0
-    },
-    "workspace_wtables.php": {
-        "button": 26,
-        "tabs": 0
+        "tabs": 0,
+        "field": 1
     }
 }

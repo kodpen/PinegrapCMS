@@ -561,7 +561,7 @@ function test_workspace_flow_runs_access()
 // The statuses of runs and boxes, each within its VARCHAR(16) column.
 function test_workspace_flow_runs_statuses()
 {
-	pg_assert_same(array('running', 'waiting', 'done', 'failed', 'cancelled'), array_keys(ws_flow_run_statuses()));
+	pg_assert_same(array('running', 'waiting', 'done', 'failed', 'cancelled', 'left'), array_keys(ws_flow_run_statuses()));
 	pg_assert_same(array('ready', 'running', 'waiting', 'done', 'failed', 'skipped'), array_keys(ws_flow_step_statuses()));
 
 	foreach (array_merge(array_keys(ws_flow_run_statuses()), array_keys(ws_flow_step_statuses())) as $status) {

@@ -11,7 +11,7 @@ description: A flow's draft tried from start to end without running it (ws_flow_
 ## Which record does it start with?
 - `run_id`: an earlier run of this flow the person reaches; its context (trigger, event, payload, anchor) and subject are taken over, so `{{trigger.*}}` read what really started it.
 - `contact_id`: a customer, checked as Run checks one (`ws_flow_run_contact_check()`), with the context Run would write (`ws_flow_run_context_new()`). Both together: 422 `contact_id`. Neither: the start gives no values.
-- An order or form entry that never started a run cannot be chosen: its event payload exists only when the event is sent. The record picker (FE10b) offers the flow's last runs and a contact search.
+- An order or form entry that never started a run cannot be chosen: its event payload exists only when the event is sent. The canvas's picker: [[workspace-flows-trial-canvas]].
 - The stand-in run (`ws_flow_trial_record()`, id 0) is never written; a send to the record's person reads its subject.
 
 ## How is each box settled? (`ws_flow_trial_settle()`, pure)

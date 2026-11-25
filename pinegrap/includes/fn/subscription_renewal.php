@@ -499,6 +499,14 @@ function pg_subscription_renewal_io()
             return (int) db_value("SELECT COUNT(*) FROM subscription_events
                 WHERE (subscription_id = '" . e((int) $id) . "') AND (kind = 'renewed')");
         },
+        // Whether a renewal of the row holds a payment: the event of a
+        // confirmed one, or the order of the cron's own charge.
+        'recorded' => function ($id, $transaction_id) {
+            return (int) db_value("SELECT COUNT(*) FROM subscription_events AS e
+                LEFT JOIN orders AS o ON o.id = e.order_id
+                WHERE (e.subscription_id = '" . e((int) $id) . "') AND (e.kind = 'renewed')
+                    AND ((e.remote_event_id = '" . e((string) $transaction_id) . "') OR (o.transaction_id = '" . e(mb_substr((string) $transaction_id, 0, 50)) . "'))") > 0;
+        },
         'price_notice' => 'pg_subscription_price_notice_latest',
         'notice_read' => function ($id) {
             // The SQL carries a placeholder: db_q() binds it (db_item()
@@ -730,7 +738,9 @@ function pg_subscription_renewal_is_held($row, $driver)
  * @param int    $now
  * @param array  $io     pg_subscription_renewal_io(); null for the real one
  * @return string paid, nothing, refused (the amount or the first order
- *                does not match), busy (a run holds the row: try again)
+ *                does not match), busy (a run holds the row: try again),
+ *                unrecorded (the row no longer waits and no renewal holds
+ *                this payment: staff must look at it)
  */
 function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = null)
 {
@@ -744,9 +754,17 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
     $row = call_user_func($io['read'], $id);
 
     if (!pg_subscription_renewal_is_held($row, $driver)) {
+        // A payment of this driver's row that no renewal holds: the row was
+        // cancelled while it waited for the customer's confirmation, and the
+        // customer confirmed afterwards. The cron's own paid charge is held
+        // by its order, written before this lock was let go.
+        $transaction_id = (string) ($answer['transaction_id'] ?? '');
+        $unrecorded = is_array($row) && ((string) ($row['driver'] ?? '') === (string) $driver)
+            && ($transaction_id !== '') && isset($io['recorded'])
+            && !call_user_func($io['recorded'], $id, $transaction_id);
         call_user_func($io['unlock'], $id);
 
-        return 'nothing';
+        return $unrecorded ? 'unrecorded' : 'nothing';
     }
 
     $first = call_user_func($io['first_order'], $row);
@@ -771,6 +789,174 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
     call_user_func($io['mail'], $id, (int) $event_id, 'renewed', (string) $row['status'], pg_subscription_renewal_status_after($row, $plan), $order_id, '');
 
     return 'paid';
+}
+
+/**
+ * A renewal the payment service reports as failed after the cron left the
+ * row held: the customer failed the confirmation, or a pending or unclear
+ * charge was refused. The held row goes on the 1/3/7 ladder at once, as a
+ * failure the cron met itself would (the last step ends it). A row that is
+ * not held (the cron met the failure itself and has moved it) is left alone.
+ *
+ * @param string $driver
+ * @param int    $id     the subscription
+ * @param array  $answer notify()'s answer (error: the service's words)
+ * @param int    $now
+ * @param array  $io     pg_subscription_renewal_io(); null for the real one
+ * @return string failed, nothing, busy (a run holds the row: try again)
+ */
+function pg_subscription_renewal_held_failed($driver, $id, $answer, $now, $io = null)
+{
+    $io = is_array($io) ? $io : pg_subscription_renewal_io();
+    $id = (int) $id;
+
+    if (($id <= 0) || !call_user_func($io['lock'], $id, 10)) {
+        return ($id <= 0) ? 'nothing' : 'busy';
+    }
+
+    $row = call_user_func($io['read'], $id);
+
+    if (!pg_subscription_renewal_is_held($row, $driver)) {
+        call_user_func($io['unlock'], $id);
+
+        return 'nothing';
+    }
+
+    $plan = pg_subscription_renewal_plan($row, 'failed', $answer, $now);
+
+    call_user_func($io['save'], $row, $plan);
+    $event_id = call_user_func($io['event'], $id, $plan['event'], 0, 0, $plan['detail']);
+    call_user_func($io['unlock'], $id);
+    call_user_func($io['mail'], $id, (int) $event_id, $plan['event'], (string) $row['status'], pg_subscription_renewal_status_after($row, $plan), 0, $plan['detail']);
+
+    return 'failed';
+}
+
+/**
+ * How many days a held renewal waits for an outcome before the row ends:
+ * the gap of the ladder's last retry.
+ *
+ * @return int
+ */
+function pg_subscription_renewal_hold_days()
+{
+    return 7;
+}
+
+/**
+ * The query of the held rows whose wait is over, measured from the latest
+ * event that held them (no column keeps the hold's time). Two
+ * placeholders: the hold's latest time, and how many rows.
+ *
+ * @return string
+ */
+function pg_subscription_renewal_held_sql()
+{
+    return "SELECT s.id FROM subscriptions AS s
+        WHERE s.status IN ('active', 'past_due') AND s.next_charge_at = 0
+            AND (SELECT MAX(e.created_at) FROM subscription_events AS e
+                WHERE (e.subscription_id = s.id) AND (e.kind IN ('confirm_needed', 'renewal_pending', 'renewal_unclear'))) <= ?
+        ORDER BY s.id ASC
+        LIMIT ?";
+}
+
+/**
+ * The end of a held row no outcome came for: ended as the ladder's last
+ * step ends a row, with its event (the cancelled mail, the webhook). Pure.
+ *
+ * @param array $row the subscriptions row as read
+ * @param int   $now
+ * @return array|null as pg_subscription_renewal_plan(); null when the row
+ *                    cannot end
+ */
+function pg_subscription_renewal_hold_end_plan($row, $now)
+{
+    $moved = pg_subscription_transition_fields($row, 'ended', $now);
+
+    if ($moved === null) {
+        return null;
+    }
+
+    unset($moved['status']);
+    $moved['next_charge_at'] = 0;
+
+    return array(
+        'fields' => $moved,
+        'status' => 'ended',
+        'event'  => 'renewal_failed',
+        'detail' => lang('No outcome of the renewal payment came within 7 days.'),
+    );
+}
+
+/**
+ * Ends one held row whose wait is over, under the renewal lock.
+ *
+ * @param int   $id
+ * @param int   $now
+ * @param array $io pg_subscription_renewal_io()
+ * @return string ended, or skipped (another run holds it, or it is no
+ *                longer held)
+ */
+function pg_subscription_renewal_hold_end_row($id, $now, array $io)
+{
+    $id = (int) $id;
+
+    if (!call_user_func($io['lock'], $id)) {
+        return 'skipped';
+    }
+
+    $row = call_user_func($io['read'], $id);
+    $plan = pg_subscription_renewal_is_held($row, (string) ($row['driver'] ?? '')) ? pg_subscription_renewal_hold_end_plan($row, $now) : null;
+
+    if (($plan === null) || !call_user_func($io['save'], $row, $plan)) {
+        call_user_func($io['unlock'], $id);
+
+        return 'skipped';
+    }
+
+    $event_id = call_user_func($io['event'], $id, $plan['event'], 0, 0, $plan['detail']);
+    call_user_func($io['unlock'], $id);
+    call_user_func($io['mail'], $id, (int) $event_id, $plan['event'], (string) $row['status'], 'ended', 0, $plan['detail']);
+
+    return 'ended';
+}
+
+/**
+ * Ends the held rows whose wait is over, at most $limit a run.
+ *
+ * @param int   $now
+ * @param array $io
+ * @param int   $limit
+ * @return int the rows ended
+ */
+function pg_subscription_renewal_holds_run($now, array $io, $limit = 200)
+{
+    $ended = 0;
+    $seen = array();
+    $before = (int) $now - (pg_subscription_renewal_hold_days() * 86400);
+
+    while (count($seen) < $limit) {
+        $result = db_q(pg_subscription_renewal_held_sql(), array($before, (int) min(25, $limit - count($seen))));
+        $ids = array();
+
+        while ($result && ($found = mysqli_fetch_assoc($result))) {
+            $ids[] = (int) $found['id'];
+        }
+
+        // A row that could not be ended comes back in the next batch.
+        $ids = array_values(array_diff($ids, $seen));
+
+        if (!$ids) {
+            break;
+        }
+
+        foreach ($ids as $id) {
+            $seen[] = $id;
+            $ended += (pg_subscription_renewal_hold_end_row($id, $now, $io) === 'ended') ? 1 : 0;
+        }
+    }
+
+    return $ended;
 }
 
 /* ---------------------------------------------------------------------------
@@ -820,6 +1006,9 @@ function pg_subscription_renewals_run($now, $limit = 200)
             $done++;
         }
     }
+
+    // A held renewal no outcome came for ends as the ladder's last step does.
+    $counts['ended'] += pg_subscription_renewal_holds_run($now, $io, $limit);
 
     pg_subscription_price_notices_run($now, $io);
 

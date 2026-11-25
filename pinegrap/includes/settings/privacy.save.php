@@ -188,8 +188,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
+    // A new threshold, points or pages change the stored scores and hot
+    // flags: every row is worked out again by the next scoring pass.
     if ($lead_score_text !== null) {
+        $lead_score_before = pg_config_text('lead_score');
         pg_config_text_save('lead_score', $lead_score_text);
+
+        if (pg_lead_score_settings_rework($lead_score_before, $lead_score_text)) {
+            pg_lead_score_rework_all();
+        }
     }
 
     if ($legal_kvkk_text !== null) {

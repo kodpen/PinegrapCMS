@@ -96,7 +96,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 	$done = is_array($connect);
 
 	$done_head = $done ? '
-				<div class="flex-grow-1 min-width-0" id="n_head_done">
+				<div class="flex-grow-1 min-w-0" id="n_head_done">
 					<h5 class="drawer-title mb-0">' . h($connect['title']) . '</h5>
 					<p class="small fg-2 mb-0 mt-1">' . $connect['sub'] . '</p>
 				</div>' : '';
@@ -120,7 +120,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 		<div class="drawer-header pb-1 d-block">
 			<div class="d-flex align-items-start gap-3">
 				<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" id="n_head_tile" aria-hidden="true"><i class="bi bi-plug" id="n_head_icon"></i></span>
-				<div class="flex-grow-1 min-width-0" id="n_head_main">
+				<div class="flex-grow-1 min-w-0" id="n_head_main">
 					<h5 class="drawer-title mb-0" id="api_new_title">' . lang('New Application') . '</h5>
 					<p class="small fg-2 mb-0 mt-1" id="n_head_pick">' . lang('What connects to this site? Pick one and the rest is prepared for it.') . '</p>
 					<p class="small fg-2 mb-0 mt-1" id="n_head_chosen" hidden>

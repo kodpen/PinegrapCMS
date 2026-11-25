@@ -402,6 +402,12 @@ function pg_proto_comment_error_message($code)
             return lang('This comment was resolved or deleted. Open the page again to see it.');
         case 'page':
             return lang('This page is no longer a draft of the design.');
+        case 'approval_off':
+            return lang('This prototype does not ask for approval.');
+        case 'verdict':
+            return lang('Choose Approve this page or Request changes.');
+        case 'note':
+            return lang('Write what should change, at most 1,000 characters.');
     }
 
     return lang('Sorry, we could not accept your request.');
@@ -417,7 +423,7 @@ function pg_proto_comment_error_status($code)
 {
     $map = array(
         'method' => 405, 'origin' => 403, 'token' => 403, 'link' => 404, 'session' => 403,
-        'comments_off' => 403, 'page' => 404, 'rate' => 429, 'full' => 409, 'size' => 413,
+        'comments_off' => 403, 'approval_off' => 403, 'page' => 404, 'rate' => 429, 'full' => 409, 'size' => 413,
     );
 
     return isset($map[(string) $code]) ? $map[(string) $code] : 400;
@@ -625,7 +631,7 @@ function pg_proto_comment_answer($comment_id, $text, $user_id, $username)
         return 0;
     }
 
-    return pg_proto_comment_save(array(
+    $id = pg_proto_comment_save(array(
         'link_id' => (int) $root['link_id'],
         'style_id' => (int) $root['style_id'],
         'page_id' => (int) $root['page_id'],
@@ -638,6 +644,14 @@ function pg_proto_comment_answer($comment_id, $text, $user_id, $username)
         'body' => $text,
         'resolved_at' => (int) $root['resolved_at'],
     ));
+
+    // The approver of a link asking approval hears of the answer, at most
+    // once an hour per link.
+    if ($id > 0) {
+        pg_proto_answer_mail((int) $root['link_id']);
+    }
+
+    return $id;
 }
 
 /**
@@ -1095,10 +1109,12 @@ function pg_proto_comments_list_of_style($style_id)
 
     $rows = db_items("SELECT * FROM prototype_comments WHERE style_id = '" . (int) $style_id . "' ORDER BY id LIMIT 2000");
     $rows = is_array($rows) ? $rows : array();
+    // A link asking approval adds its verdicts to the page groups.
+    $verdicts = pg_proto_verdicts_of_style($style_id);
     $ids = array();
     $link_ids = array();
 
-    foreach ($rows as $row) {
+    foreach (array_merge($rows, $verdicts) as $row) {
         $ids[(int) $row['page_id']] = (int) $row['page_id'];
         $link_ids[(int) $row['link_id']] = (int) $row['link_id'];
     }
@@ -1123,7 +1139,19 @@ function pg_proto_comments_list_of_style($style_id)
         }
     }
 
-    return pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages, $hints);
+    $groups = pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages, $hints);
+
+    if (!$verdicts) {
+        return $groups;
+    }
+
+    $verdict_pages = array();
+
+    foreach ($verdicts as $row) {
+        $verdict_pages[(int) $row['page_id']] = (int) $row['page_id'];
+    }
+
+    return pg_proto_comment_list_verdicts($groups, $verdicts, $pages, $hints, pg_proto_draft_fingerprints(array_values($verdict_pages)));
 }
 
 /**
@@ -1154,7 +1182,8 @@ function pg_proto_comments_style_stamp($style_id)
         return 0;
     }
 
-    return (int) db_value($sql);
+    // Both ids only grow, so their sum moves with a new comment or verdict.
+    return (int) db_value($sql) + pg_proto_verdicts_style_stamp($style_id);
 }
 
 /**

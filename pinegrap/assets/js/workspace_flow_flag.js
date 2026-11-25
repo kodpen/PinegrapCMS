@@ -27,7 +27,8 @@
         waiting: ['fl_run_waiting', 'bi-hourglass-split'],
         running: ['fl_run_running', 'bi-arrow-repeat'],
         failed: ['fl_run_failed', 'bi-x-octagon-fill'],
-        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
+        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle'],
+        left: ['fl_run_left_state', 'bi-box-arrow-right']
     };
     // A result longer than this many characters, or of more than one line,
     // folds behind the flag's down arrow.
@@ -109,7 +110,7 @@
         }
 
         if ((run.status === 'running') && run.can_cancel && opts.stop) {
-            var stop = kit.button('btn btn-sm btn-link', tr('fl_flag_stop'), 'bi-stop-circle');
+            var stop = kit.lookButton('pg-button pg-button-ghost pg-button-sm', tr('fl_flag_stop'), 'bi-stop-circle');
 
             stop.setAttribute('data-refocus', key + '-stop');
             stop.addEventListener('click', function () {
@@ -124,7 +125,7 @@
             return flag;
         }
 
-        var fold = kit.button('btn btn-sm btn-link wsf-flag-fold', '', 'bi-chevron-down', tr('fl_flag_more'));
+        var fold = kit.button('pg-icon-button pg-icon-button-sm wsf-flag-fold', '', 'bi-chevron-down', tr('fl_flag_more'));
         var whole = mk('div', 'wsf-flag-whole d-none');
 
         uid++;
@@ -147,7 +148,7 @@
         }
 
         if (opts.open) {
-            var link = kit.button('btn btn-sm btn-link', tr('fl_flag_open'));
+            var link = kit.lookButton('pg-button pg-button-ghost pg-button-sm', tr('fl_flag_open'), '');
 
             link.setAttribute('data-refocus', key + '-open');
             link.addEventListener('click', function () {

@@ -885,17 +885,20 @@ function submit_order($type) {
     // the order's pages read what was charged.
     $shipping_less = 0;
     $shipping_less_ship_to_id = 0;
+    $shipping_less_from = 0;
 
     if (($shipping > 0) && pg_order_charges_settle_rates()) {
         $settled = pg_order_charges_reachable($charged_lines, $discount, array('shipping' => $shipping));
 
         if ($settled['shipping'] < $shipping) {
-            $shipping_less_ship_to_id = (int) db_value(
-                "SELECT id FROM ship_tos
+            $shipping_less_row = db_item(
+                "SELECT id, shipping_cost FROM ship_tos
                 WHERE order_id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "' AND shipping_cost >= '" . ($shipping - $settled['shipping']) . "'
                 ORDER BY id DESC LIMIT 1");
 
-            if ($shipping_less_ship_to_id > 0) {
+            if (is_array($shipping_less_row) && ((int) $shipping_less_row['id'] > 0)) {
+                $shipping_less_ship_to_id = (int) $shipping_less_row['id'];
+                $shipping_less_from = (int) $shipping_less_row['shipping_cost'];
                 $shipping_less = $shipping - $settled['shipping'];
                 $shipping = $settled['shipping'];
             }
@@ -1568,6 +1571,22 @@ function submit_order($type) {
         }
     }
     
+    // The offers the order uses are asked again before the payment: the cart
+    // worked their discount out earlier, and an offer may have ended or
+    // reached its usage limit since. The limited ones stay locked until the
+    // request ends, so a second checkout using the last use waits for this
+    // one and then finds the limit reached. A payment's return is not asked
+    // again: the payment may already be taken.
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
+        $offer_use = pg_order_offer_use_check((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
+        if ($offer_use == 'changed') {
+            $liveform->add_notice(lang('An offer on your order has ended or reached its usage limit, so it was removed and the total has changed. Please review the new total and submit the order again.'));
+        } elseif ($offer_use == 'busy') {
+            $liveform->add_notice(lang('Another order is using the same offer right now. Please submit the order again in a moment.'));
+        }
+    }
+
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {
         // A hold left by an earlier submit (the visitor came back from the
@@ -1956,8 +1975,11 @@ function submit_order($type) {
                 'customer_id'              => $user_id,
                 'ip'                       => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
                 'basket_id'                => (string) $page_id,
+                // In the language the order was placed in (pg_lang): the
+                // return completes the order, sends its receipt and leads to
+                // the receipt page.
                 'return_url'               => ($payment_return_mode !== '')
-                    ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
+                    ? URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id)
                     : '',
                 // The payment service's token for a card typed into its own fields.
                 'token'                    => (isset($_POST['payment_token']) && is_string($_POST['payment_token'])) ? $_POST['payment_token'] : '',
@@ -3242,8 +3264,10 @@ function submit_order($type) {
                 
                 // if mode is not paypal_express_checkout_return, then prepare to send SetExpressCheckout request to PayPal
                 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
-                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
-                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id);
+                    // Back in the language the order was placed in, as the
+                    // other payment services' return.
+                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id);
+                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . (defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH) . get_page_name($page_id);
                     
                     $post_data =
                         'METHOD=SetExpressCheckout&' .
@@ -3518,10 +3542,15 @@ function submit_order($type) {
     }
 
     // The recipient that gave up the shipping's minor units (see the totals
-    // above) keeps the cost the order was charged.
+    // above) keeps the cost the order was charged. A compare-and-set on the
+    // cost read above: the payment service's message may complete the order
+    // and lower the same recipient while this return waits on the service
+    // (pg_order_complete_from_payment()), and the recipient is lowered once.
     if ($shipping_less > 0) {
-        db("UPDATE ship_tos SET shipping_cost = shipping_cost - " . (int) $shipping_less . "
-            WHERE id = '" . (int) $shipping_less_ship_to_id . "'");
+        db_q(
+            "UPDATE ship_tos SET shipping_cost = ?
+            WHERE id = ? AND order_id = ? AND shipping_cost = ?",
+            array((string) ($shipping_less_from - $shipping_less), (string) $shipping_less_ship_to_id, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0), (string) $shipping_less_from)) or output_error('Query failed.');
     }
 
     // Complete the order (includes/fn/order_completion.php): its values, the
@@ -3617,6 +3646,13 @@ function submit_order($type) {
     if ($order_number === null) {
         $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
+        // The payment service's message may have completed the order first,
+        // without the card this return carries: the subscriptions of its
+        // recurring lines are made here (rows already made are kept).
+        if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
+            pg_subscription_checkout_record($completed_order_id, $payment_driver, $payment_answer, $products);
+        }
+
         log_activity(pg_log_lang(array('string' => 'A second checkout of an order that was already completed changed nothing.')) . ' (' . $completed_order_id . ')');
 
         $_SESSION['ecommerce']['completed_order_id'] = $completed_order_id;
@@ -3639,11 +3675,7 @@ function submit_order($type) {
     // 'store') gets a subscription per paid recurring line, charged later
     // from the card its payment stored; a line that got none is logged.
     if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
-        foreach (pg_subscription_checkout_create((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products) as $subscription_item_id => $subscription_id) {
-            if ($subscription_id === 0) {
-                log_activity(pg_log_lang(array('string' => 'A subscription could not be created for an order line.')) . ' (' . $order_number . ', ' . $subscription_item_id . ')');
-            }
-        }
+        pg_subscription_checkout_record((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products);
     }
 
     // The frozen legacy gateways' recurring profiles need the card the

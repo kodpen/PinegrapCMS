@@ -39,6 +39,8 @@
  * - cron             ok, stalled (a job that ran stopped), never, unknown
  * - team_signed_in   bool, another user signed in at least once
  * - maintenance      bool, maintenance mode is on
+ * - broken_links     int, the seo_issue rows of code link_broken_internal,
+ *                    or 'never' when the SEO structure check has never run
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -81,7 +83,8 @@ function pg_launch_journey_purpose($purpose)
  * Every step the journey knows, set-up steps and go-live checks alike. Pure.
  *
  * - card  shown on the set-up card; false for a check only the go-live
- *         screen asks (maintenance mode, which "Go live" turns off itself)
+ *         screen asks (maintenance mode, which "Go live" turns off itself;
+ *         broken internal links, found by the SEO check)
  *
  * @return array<string,array>
  */
@@ -99,6 +102,7 @@ function pg_launch_journey_catalogue()
         'cron'          => array('card' => true),
         'team'          => array('card' => true),
         'maintenance'   => array('card' => false),
+        'broken_links'  => array('card' => false),
     );
 }
 
@@ -393,6 +397,19 @@ function pg_launch_journey_rule($key, $facts, $purpose)
             }
 
             return $facts['maintenance'] ? pg_launch_journey_answer('todo', 'blocker', 'on') : pg_launch_journey_answer('done');
+
+        case 'broken_links':
+            if (!$has('broken_links')) {
+                return $unknown;
+            }
+
+            // Never a blocker: a broken link is worth fixing, not a reason
+            // to keep the site closed.
+            if ($facts['broken_links'] === 'never') {
+                return pg_launch_journey_answer('todo', 'warning', 'never_checked');
+            }
+
+            return ((int) $facts['broken_links'] > 0) ? pg_launch_journey_answer('todo', 'warning', 'broken') : pg_launch_journey_answer('done');
     }
 
     return $unknown;
@@ -451,7 +468,8 @@ function pg_launch_journey_state($purpose, $facts, $hidden)
 /**
  * The go-live check: blockers ("Must be fixed") and warnings ("Worth a
  * look"), each a list of rows (key, state, level, reason) in the purpose's
- * order, maintenance mode first among the blockers. A hidden step's warning
+ * order, maintenance mode first among the blockers, broken internal links
+ * last among the warnings. A hidden step's warning
  * is left out; a blocker never is. Pure.
  *
  * @param string $purpose
@@ -464,7 +482,7 @@ function pg_launch_journey_golive_check($purpose, $facts, $hidden)
     $hidden = pg_launch_journey_hidden_clean($hidden);
     $check = array('blockers' => array(), 'warnings' => array());
 
-    foreach (array_merge(array('maintenance'), pg_launch_journey_steps($purpose)) as $key) {
+    foreach (array_merge(array('maintenance'), pg_launch_journey_steps($purpose), array('broken_links')) as $key) {
         $row = array('key' => $key) + pg_launch_journey_rule($key, $facts, $purpose);
 
         if ($row['level'] === 'blocker') {
@@ -662,6 +680,8 @@ function pg_launch_journey_step_face($key)
             return $face(lang('Scheduled tasks'), 'bi-clock-history', 'system', '#settings/maintenance/pgset-cron');
         case 'team':
             return $face(lang('Team'), 'bi-people', 'team', 'add_user.php');
+        case 'broken_links':
+            return $face(lang('Broken internal links'), 'bi-link-45deg', 'warning', 'view_pages.php?filter=seo_broken_links');
         default:
             return $face(lang('Maintenance mode'), 'bi-cone-striped', 'warning', '#settings/maintenance/pgset-maintenance');
     }
@@ -691,6 +711,12 @@ function pg_launch_journey_step_line($row, $facts)
         }
 
         return implode(', ', $parts);
+    }
+
+    if (($row['key'] === 'broken_links') && ($row['reason'] === 'broken')) {
+        $count = isset($facts['broken_links']) ? (int) $facts['broken_links'] : 0;
+
+        return lang(array('string' => 'Internal links point nowhere on {var:1} page{suffix:1}', 'vars' => $count, 'suffix' => (($count == 1) ? '' : 's')));
     }
 
     $lines = array(
@@ -726,6 +752,8 @@ function pg_launch_journey_step_line($row, $facts)
         'team:alone'                       => lang('Nobody else has signed in yet'),
         'maintenance:'                     => lang('Maintenance mode is off'),
         'maintenance:on'                   => lang('Maintenance mode is on'),
+        'broken_links:'                    => lang('No internal link points nowhere'),
+        'broken_links:never_checked'       => lang('The SEO check has never run on this site'),
     );
 
     $code = $row['key'] . ':' . (($row['state'] === 'done') ? '' : $row['reason']);
@@ -928,26 +956,37 @@ function pg_launch_journey_golive_left($check)
 
 /**
  * What the go-live check dialog draws: "Must be fixed" and "Worth a look"
- * as rows (key, name, line, url), the changes "Go live" makes as their
- * sentences, and the blockers it leaves, each named. Pure.
+ * as rows (key, name, line, url, action: the button's words, '' for
+ * "Fix"), the changes "Go live" makes as their sentences, and the blockers
+ * it leaves, each named. With the SEO check never run, the broken-links row
+ * runs it ("Analyze HTML Structure", which returns to the broken-links view
+ * of the Pages list). Pure.
  *
  * @param string $purpose
  * @param array  $facts
  * @param mixed  $hidden
+ * @param string $token   the session's form token, for the run link
  * @return array must, worth, changes, left
  */
-function pg_launch_journey_golive_view($purpose, $facts, $hidden)
+function pg_launch_journey_golive_view($purpose, $facts, $hidden, $token = '')
 {
     $check = pg_launch_journey_golive_check($purpose, $facts, $hidden);
-    $rows = function ($list) use ($facts) {
+    $rows = function ($list) use ($facts, $token) {
         $out = array();
         foreach ($list as $row) {
             $face = pg_launch_journey_step_face($row['key']);
+            $url = $face['url'];
+            $action = '';
+            if (($row['key'] === 'broken_links') && ($row['reason'] === 'never_checked')) {
+                $url = 'audit_run.php?pass=structure&filter=seo_broken_links&token=' . rawurlencode((string) $token);
+                $action = lang('Run the SEO check');
+            }
             $out[] = array(
-                'key'  => $row['key'],
-                'name' => $face['name'],
-                'line' => pg_launch_journey_step_line($row, $facts),
-                'url'  => $face['url'],
+                'key'    => $row['key'],
+                'name'   => $face['name'],
+                'line'   => pg_launch_journey_step_line($row, $facts),
+                'url'    => $url,
+                'action' => $action,
             );
         }
         return $out;
@@ -981,4 +1020,54 @@ function pg_launch_journey_golive_view($purpose, $facts, $hidden)
 function pg_launch_journey_golive_allowed($left, $request)
 {
     return !$left || !empty($request['anyway']);
+}
+
+/**
+ * What GET /launch answers: the purpose the steps follow, the card's status
+ * and count, every step of the purpose with its state, level, reason and
+ * line ("hidden" for "Not for this site"), the go-live check's blockers and
+ * warnings, and what "Go live" would change itself. The same rules as the
+ * set-up card and the go-live check: nothing is judged here again. live_at
+ * stays a timestamp; the caller writes it as a moment. Pure.
+ *
+ * @param array $stored pg_launch_journey_stored_read()
+ * @param array $facts
+ * @return array
+ */
+function pg_launch_journey_report($stored, $facts)
+{
+    $purpose = ($stored['purpose'] !== '') ? $stored['purpose'] : 'other';
+    $hidden = pg_launch_journey_hidden_clean($stored['hidden']);
+    $state = pg_launch_journey_state($purpose, $facts, $hidden);
+    $check = pg_launch_journey_golive_check($purpose, $facts, $hidden);
+    $row_out = function ($row) use ($facts, $hidden) {
+        return array(
+            'key'    => $row['key'],
+            'name'   => pg_launch_journey_step_face($row['key'])['name'],
+            'state'  => $row['state'],
+            'level'  => $row['level'],
+            'reason' => $row['reason'],
+            'line'   => pg_launch_journey_step_line($row, $facts),
+            'hidden' => in_array($row['key'], $hidden, true),
+        );
+    };
+    $steps = array();
+
+    foreach (pg_launch_journey_steps($purpose) as $key) {
+        $steps[] = $row_out(array('key' => $key) + pg_launch_journey_rule($key, $facts, $purpose));
+    }
+
+    return array(
+        'purpose'        => $purpose,
+        'purpose_chosen' => ($stored['purpose'] !== ''),
+        'status'         => $state['status'],
+        'done'           => $state['done'],
+        'total'          => $state['total'],
+        'finished'       => $state['finished'],
+        'live_at'        => (int) $stored['live_at'],
+        'steps'          => $steps,
+        'blockers'       => array_map($row_out, $check['blockers']),
+        'warnings'       => array_map($row_out, $check['warnings']),
+        'go_live_changes' => pg_launch_journey_golive_changes($facts),
+    );
 }

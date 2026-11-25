@@ -7,7 +7,7 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 ## Where is it?
 - `volunteer.php` (root, in `waf_sensitive_scripts()`): `?v=<volunteer id>&t=<token>` opens that volunteer's page in look A (`output_header_secure()`); no-store, noindex, no referrer, no frame; 120 opens in five minutes an address (`pg_volunteer_page_throttled()`). A wrong, withdrawn or left link is one 404 card.
 - My Account: section `volunteering` and flag `has_volunteering` in `_pg_my_account_extras()` for a signed-in member whose contact has a profile not left (`pg_volunteer_account_ids()`); drawn in the site's look by `includes/fn/widgets_volunteering.php`. Its list `account.volunteering` and designer twins: `core/volunteer-account-list.md`.
-- Rules and store: `includes/fn/volunteer_signup.php`; markup: `includes/fn/volunteer_page_view.php`. Pure parts tested in `tests/volunteer_signup_test.php`. Built in step VS4 of plan `volunteer-shifts`.
+- Rules and store: `includes/fn/volunteer_signup.php`; markup: `includes/fn/volunteer_page_view.php`. Pure parts tested in `tests/volunteer_signup_test.php`. Built in step VS4 (`volunteer-shifts.md`).
 
 ## How is the link made?
 - The profile drawer's "Send sign-up link" (active or paused volunteers) issues a new token (`pg_volunteer_link_send()`), stores only its hash in `link_hash`, and e-mails the link; a link sent before stops working.
@@ -20,13 +20,14 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 
 ## How is a place written?
 - Every action runs under `GET_LOCK('pg_volunteer_shift_<id>')` and checks the choice again (`pg_volunteer_self_act()`), so a role never goes over its count. A cancelled row of the same volunteer is used again (the unique shift-volunteer key).
-- Mark as left (`core/volunteer-programmes.md`) frees the volunteer's places on shifts not started as cancels (`pg_volunteer_left_release()`, #11338; before, the place stayed taken).
+- Mark as left and the volunteer's own Pause or Leave free coming places by one helper (`core/volunteer-self-move.md`).
 - Cancelling a signed place runs the waitlist pass for its role (`pg_volunteer_waitlist_write()`): the first waiting who still fit become signed and get an e-mail.
+- "Leave the waitlist" cancels the waiting row with no cancel stamp (`cancelled_at` = 0): the volunteer never held a place, so the Report never counts it as a late cancel (#11345; before, a leave past the cut-off did). A signed place given back keeps its stamp.
 - My Account's buttons post to `volunteer.php` with `p` (one of the member's own profiles) and `send_to`; the answer is a `my_account` liveform notice.
 
 ## How does a swap work?
 - "Take this place" writes a waiting row with `swap_from` = the offered row. When the programme's `swap_approval` is off it finishes at once; else the shift's drawer shows "Asks to take a place" with Approve and Refuse (`pg_volunteer_swap_decide()`).
-- Approve checks again that the taker fits the role (active, documents, not busy elsewhere), else says "The volunteer asking no longer fits this role on this shift…"; Refuse clears a request also when its offered place is gone with an erased volunteer (#11338).
+- Approve checks again that the taker fits the role (`pg_volunteer_fits()`), else refuses with an error; Refuse clears a request also when its offered place was erased (#11338).
 - Finishing cancels the offered row, signs the taker and e-mails both. A waiting row with `swap_from` is no waitlist place; cancelling an offered place cancels the swap asked of it.
 
-Related: docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens-own.md
+Related: docs/memory/core/volunteer-board.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/volunteer-shifts-decisions.md

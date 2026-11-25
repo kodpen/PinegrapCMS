@@ -558,3 +558,34 @@ function test_connect_renewal_only_of_the_owners_own_connection()
 	pg_assert_false(pg_connect_renewal_allowed($mine, 'microsoft', 'person', 7), 'another provider');
 	pg_assert_false(pg_connect_renewal_allowed(null, 'google', 'site', 7), 'no connection');
 }
+
+// A renewal waits for the connection's lock; one that did not get it within
+// the wait never renews beside the request that holds it (a provider that
+// rotates its refresh token would retire the one the other uses), and takes
+// a token the holder stored meanwhile.
+function test_connect_renewal_runs_only_under_the_lock()
+{
+	pg_assert_same('cached', pg_connect_renew_step(true, 'new', '', false), 'a token stored while waiting');
+	pg_assert_same('cached', pg_connect_renew_step(false, 'new', '', false), 'a token stored while waiting, lock not had');
+	pg_assert_same('cached', pg_connect_renew_step(true, 'new', 'old', true), 'forced, another request renewed it');
+	pg_assert_same('refresh', pg_connect_renew_step(true, '', '', false), 'nothing cached, lock had');
+	pg_assert_same('refresh', pg_connect_renew_step(true, 'old', 'old', true), 'forced, the refused token still cached');
+	pg_assert_same('busy', pg_connect_renew_step(false, '', '', false), 'nothing cached, lock not had');
+	pg_assert_same('busy', pg_connect_renew_step(false, 'old', 'old', true), 'forced, lock not had');
+}
+
+// Google ends the whole permission of the account for the application when
+// one of its tokens is revoked: a connection of the same account that stays
+// (the site's and a person's own, two purposes) would stop with it.
+function test_connect_revoke_spares_a_shared_grant()
+{
+	$google = pg_connect_provider('google');
+	$github = pg_connect_provider('github');
+	$anonymous = array('key' => 'mcp_3', 'identity' => false, 'revoke_ends_grant' => true);
+
+	pg_assert_true(pg_connect_revoke_allowed($google, 0), 'Google, the only connection of the account');
+	pg_assert_false(pg_connect_revoke_allowed($google, 1), 'Google, the account is connected once more');
+	pg_assert_true(pg_connect_revoke_allowed($github, 1), 'GitHub ends only the one token');
+	pg_assert_true(pg_connect_revoke_allowed($anonymous, 2), 'a provider that names no account: each owner is its own sign-in');
+	pg_assert_false(pg_connect_revoke_allowed(null, 0), 'an unknown provider');
+}

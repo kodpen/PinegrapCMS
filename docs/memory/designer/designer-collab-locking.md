@@ -17,6 +17,7 @@ Core `includes/designer_collab.php`; endpoints `api.php` -> `designer/presence|l
 - **The lock is an authority.** `pg_collab_may_edit_page()` is called on the **save path** (`includes/designer_screen.php`). Disabling the Save button is not an authorization check; the POST need not come from that screen. The external API (`includes/api/resources/design.php`) and the AI assistant (`includes/designer_ai.php`) call it with an empty key: they write a page only while no editor tab holds it.
 - **A locked page is skipped, not a save failure**, and reported as a warning. The editor saves all tabs at once.
 - **Staleness (`PG_COLLAB_STALE`, 65 s) is the real retirement mechanism**; `leave` / `lock_release` only speed up handover. A killed browser cannot say goodbye.
+- **A lock claimed again after it lapsed does not make the tab's tree current**: the save also compares the tab's base hash with the stored tree (`designer-collab-base-version.md`).
 - `pg_collab_ready()` probes both tables; on a non-upgraded install the endpoint returns `ready:false` + `may_edit:true` and the editor behaves as before.
 
 ## Who may take over a lock?

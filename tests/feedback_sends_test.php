@@ -177,7 +177,7 @@ function test_feedback_sends_mail_closed_event()
 
 function test_feedback_sends_wiring()
 {
-	pg_assert_contains('pg_feedback_heard($event, (array) $data);', pg_test_function_source('pg_announce'), 'every announcement is heard');
+	pg_assert_contains('pg_feedback_heard($event, (array) $data);', pg_test_function_source('pg_announce_listeners'), 'every announcement is heard');
 	pg_assert_contains("pg_feedback_heard('form.submitted', \$form_submitted_event);", (string) file_get_contents(PG_FUNCTIONS_DIR . '/custom_form.php'), 'a visitor\'s form, queued without pg_announce()');
 	pg_assert_contains("pg_announce('workspace.mail.closed', \$closed);", pg_test_function_source('ws_mail_conversation_set'));
 	pg_assert_contains("pg_feedback_cancel_record('conversation'", pg_test_function_source('ws_mail_conversation_set'), 'opened again');

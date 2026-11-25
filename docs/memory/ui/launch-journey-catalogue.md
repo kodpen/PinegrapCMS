@@ -5,7 +5,7 @@ module: launch_journey
 ---
 
 ## Where is it and what does it hold?
-- `includes/fn/launch_journey.php`, loaded by `functions.php`; all pure, tests in `tests/launch_journey_test.php`. The card, the go-live check and the API (SJ2, SJ3, SJ6 of `plans/launch-journey-steps.md`) read it; none of them decides a step again.
+- `includes/fn/launch_journey.php`, loaded by `functions.php`; all pure, tests in `tests/launch_journey_test.php`. The card, the go-live check and the API (`launch-journey.md`) read it; none of them decides a step again.
 - Purposes: shop, company, association, school, clinic, agency, blog, other (`pg_launch_journey_purposes()`); anything else is other (`pg_launch_journey_purpose()`).
 - Steps (`pg_launch_journey_steps()`): every path starts with domain_ssl; a shop adds payment_live, a clinic booking_hours; a blog puts search_open and search_tools before mail; then mail, legal, search_open, search_tools, backups, cron, team. maintenance is a go-live check only, never a card step.
 
@@ -15,7 +15,7 @@ module: launch_journey
 ## When does a step block, warn or neither?
 - `pg_launch_journey_rule($key, $facts, $purpose)` answers state (done, todo, unknown), level (blocker, warning, none) and a reason code.
 - Blockers: robots catch-all closed (`pg_robots_catch_all_closed()` over the robots text with its extras) or home page noindex; maintenance mode on; payment in test mode; no personal-data text on a shop or where `collects_data`; mail not sending; a scheduled task that ran and stopped.
-- Warnings: no HTTPS or a certificate expired or expiring; mail SPF, DKIM or DMARC not ok; no consent or a shop's legal documents off; no Search Console; no online payment way or its mode unknown; no booking hours; no backup or an old one; scheduled tasks never ran.
+- Warnings: no HTTPS or a certificate expired or expiring; mail SPF, DKIM or DMARC not ok; no consent or a shop's legal documents off; no Search Console; no online payment way or its mode unknown; no booking hours; no backup or an old one; scheduled tasks never ran; broken internal links or the SEO check never run (`broken_links`, go-live check only, `ui/launch-journey-go-live.md`).
 - Neither (a step, not asked by the go-live check): Analytics not connected while Search Console is; no other user signed in yet (team).
 
 ## How is payment live judged per driver?

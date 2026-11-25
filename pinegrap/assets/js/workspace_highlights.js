@@ -441,13 +441,13 @@
             var tools = h.el('div', 'ws-hl-card-tools');
 
             if (one.mine) {
-                tools.appendChild(press('btn btn-sm btn-text theme-primary px-0', one.note ? h.t('hl_edit_note') : h.t('hl_add_note'), '', function () {
+                tools.appendChild(press('pg-button pg-button-quiet pg-button-sm', one.note ? h.t('hl_edit_note') : h.t('hl_add_note'), '', function () {
                     noteForm(row, tools, one, body);
                 }));
             }
 
             if (one.can_remove) {
-                tools.appendChild(press('btn btn-sm btn-text theme-danger px-0', h.t('hl_remove'), '', function () {
+                tools.appendChild(press('pg-button pg-button-danger pg-button-sm', h.t('hl_remove'), '', function () {
                     send('ws_highlight_remove', { id: one.id }, body).then(closeCard, function () {});
                 }));
             }
@@ -474,7 +474,7 @@
     function noteForm(row, tools, one, body) {
         var h = state.h;
         var form = h.el('form', 'ws-hl-note-form');
-        var field = h.el('textarea', 'form-control form-control-sm');
+        var field = h.el('textarea', 'pg-input pg-input-sm');
         field.maxLength = NOTE_MAX;
         field.rows = 2;
         field.value = one.note || '';
@@ -482,10 +482,10 @@
         form.appendChild(field);
 
         var buttons = h.el('div', 'ws-hl-card-tools');
-        var save = h.el('button', 'btn btn-sm btn-solid theme-primary', h.t('hl_save'));
+        var save = h.el('button', 'pg-button pg-button-fill pg-button-sm', h.t('hl_save'));
         save.type = 'submit';
         buttons.appendChild(save);
-        buttons.appendChild(press('btn btn-sm btn-text theme-secondary', h.t('hl_cancel'), '', function () {
+        buttons.appendChild(press('pg-button pg-button-ghost pg-button-sm', h.t('hl_cancel'), '', function () {
             row.replaceChild(tools, form);
         }));
         form.appendChild(buttons);
@@ -864,7 +864,7 @@
 
         var allLabel = h.el('label', 'd-inline-flex align-items-center gap-2 mb-0 small');
         var allBox = h.el('input', 'check');
-        var remove = h.button('btn btn-sm btn-outline theme-danger rounded-pill', '', 'bi-trash');
+        var remove = h.button('pg-button pg-button-danger pg-button-sm', '', 'bi-trash');
 
         allBox.type = 'checkbox';
         allLabel.appendChild(allBox);
@@ -940,12 +940,16 @@
             // With no highlight at all the empty line stands alone.
             chips.classList.toggle('d-none', !counts.every);
 
+            var seg = h.el('div', 'pg-seg pg-seg-wrap');
+
+            chips.appendChild(seg);
+
             [['', 'hl_mine_all'], ['all', 'hl_mine_everyone'], ['me', 'hl_mine_only_me']].forEach(function (option) {
                 var on = option[0] === filter;
-                var chip = h.button('btn btn-sm rounded-pill ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), h.t(option[1]));
+                var chip = h.button('pg-seg-item', h.t(option[1]));
 
                 chip.setAttribute('aria-pressed', on ? 'true' : 'false');
-                chip.appendChild(h.el('span', 'ms-2 ws-hl-mine-count', String(counts[countKey(option[0])] || 0)));
+                chip.appendChild(h.el('span', 'pg-seg-count ws-hl-mine-count', String(counts[countKey(option[0])] || 0)));
                 chip.addEventListener('click', function () {
                     if (filter !== option[0]) {
                         filter = option[0];
@@ -1036,7 +1040,7 @@
             }
 
             if (more) {
-                var next = h.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', h.t('hl_mine_more'));
+                var next = h.button('pg-button pg-button-quiet pg-button-sm', h.t('hl_mine_more'));
 
                 next.addEventListener('click', function () {
                     next.disabled = true;

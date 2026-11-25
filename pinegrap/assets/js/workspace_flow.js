@@ -114,7 +114,8 @@
         waiting: ['fl_run_waiting', 'bi-hourglass-split'],
         done: ['fl_run_done', 'bi-check-circle-fill'],
         failed: ['fl_run_failed', 'bi-x-octagon-fill'],
-        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
+        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle'],
+        left: ['fl_run_left_state', 'bi-box-arrow-right']
     };
     var STEP_STATES = {
         ready: ['fl_step_ready', 'bi-hourglass'],
@@ -171,6 +172,9 @@
         agent: { name: 'fl_kind_agent', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
+        // A split leaves on each of its arms, by its place (kindOf(),
+        // ws_flow_split_arrow_outcomes()).
+        split: { name: 'fl_kind_split', group: 'logic', into: true, out: ['arm_1', 'arm_2'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
         end: { name: 'fl_kind_end', group: 'logic', into: true, out: [] },
         // A loop: the boxes the each arrow of a For each box leads into run
@@ -220,6 +224,7 @@
         ['mention', 'fl_kind_mention'],
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
+        ['split', 'fl_kind_split'],
         ['delay', 'fl_kind_delay'],
         ['for_each', 'fl_kind_for_each'],
         ['for_each_end', 'fl_kind_for_each_end'],
@@ -332,6 +337,10 @@
     // Where the boxes copied (Ctrl+C, Copy) are kept in the browser, so they
     // may be pasted into another flow.
     var CLIP_KEY = 'pg_flow_clip';
+    // The map card (px), its clear edge, the boxes from which it shows by
+    // itself, and where its choice is kept.
+    var MAP = { w: 172, h: 104, pad: 6, boxes: 12 };
+    var MAP_KEY = 'pg_wsf_map';
     // How long the pointer rests on an arrow before its "+" shows (ms).
     var PLUS_REST = 250;
 
@@ -398,6 +407,8 @@
         scheduled: null,    // the scheduled actions the list ends with: refused (count)
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
+        trial: null,        // the draft tried from its start (ws_flow_trial), nothing kept
+        counts: null,       // a live flow's counts over its boxes (ws_flow_counts), the pill chosen
         stash: null,        // what the run view put aside: the draft, selection, view, edit
         starting: false,    // a start is being asked or sent
         startToken: null,   // { flow, value } kept until a start is answered
@@ -464,16 +475,26 @@
             return { name: kind.name, group: kind.group, into: true, out: aiClasses(node.config).map(function (name, index) { return 'class_' + (index + 1); }).concat(['other', 'failed']) };
         }
 
+        // A split leaves on each of its arms.
+        if ((node.kind === 'split') && node.config) {
+            return { name: kind.name, group: kind.group, into: true, out: splitArms(node.config).map(function (arm, index) { return 'arm_' + (index + 1); }) };
+        }
+
         return kind;
     }
 
     // What an arrow is taken on, in words: a classifying Pinegrap AI box's
-    // outcome by the name it gives it.
+    // outcome by the name it gives it, a split's arm by its name.
     function outcomeText(node, on) {
         var match = /^class_([1-9][0-9]?)$/.exec(on || '');
+        var arm = /^arm_([1-9])$/.exec(on || '');
 
         if (match) {
             return aiClasses(node ? node.config : null)[parseInt(match[1], 10) - 1] || t('fl_ai_class_n', match[1]);
+        }
+
+        if (arm) {
+            return (splitArms(node ? node.config : null)[parseInt(arm[1], 10) - 1] || {}).name || splitLetter(parseInt(arm[1], 10) - 1);
         }
 
         return t(OUTCOMES[on] || 'fl_on_done');
@@ -570,7 +591,7 @@
     // The graph as the editor keeps it: every part there, a box's settings
     // an object, the notes and frames in their kept shape.
     function graphOf(source) {
-        var graph = { v: 1, nodes: [], edges: [], notes: [], frames: [] };
+        var graph = { v: 1, nodes: [], edges: [], notes: [], frames: [], leave: [] };
 
         (source && source.nodes || []).forEach(function (node) {
             var config = (node.config && !Array.isArray(node.config)) ? JSON.parse(JSON.stringify(node.config)) : {};
@@ -590,6 +611,10 @@
         ((source && Array.isArray(source.frames)) ? source.frames : []).forEach(function (frame) {
             graph.frames.push({ id: String(frame.id || ''), name: String(frame.name || ''), x: +frame.x || 0, y: +frame.y || 0,
                 w: +frame.w || 0, h: +frame.h || 0, folded: frame.folded === true });
+        });
+
+        ((source && Array.isArray(source.leave)) ? source.leave : []).forEach(function (rule) {
+            graph.leave.push({ event: String((rule && rule.event) || '') });
         });
 
         return graph;
@@ -879,6 +904,10 @@
             return aiMeta(node);
         }
 
+        if (node.kind === 'split') {
+            return splitMeta(node);
+        }
+
         if (node.kind === 'agent') {
             return agentMeta(node);
         }
@@ -1028,6 +1057,7 @@
 
         state.outline = !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
         state.threads = threadsShown();
+        state.mapChoice = mapChosen();
         layout(root);
         bindCanvas();
         bindWindow();
@@ -1151,6 +1181,13 @@
         state.marks = null;
         state.sketch = null;
         state.tries = null;
+        state.trial = null;
+
+        if (state.counts) {
+            window.clearTimeout(state.counts.timer);
+        }
+
+        state.counts = null;
     }
 
     // The editor taken off the page: the run's looks and the timers stop,
@@ -1165,6 +1202,8 @@
         window.clearTimeout(state.settleTimer);
         window.clearTimeout(state.arriving);
         window.clearTimeout(state.saveTimer);
+        window.clearTimeout(state.counts ? state.counts.timer : 0);
+        state.counts = null;
         state.settleTimer = 0;
         state.arriving = 0;
         state.saveTimer = 0;
@@ -1226,7 +1265,7 @@
             return;
         }
 
-        var back = K.button('btn btn-sm btn-text theme-secondary', label, 'bi-arrow-left');
+        var back = K.lookButton('pg-button pg-button-ghost pg-button-sm', label, 'bi-arrow-left');
 
         back.setAttribute('data-refocus', refocusKey || 'back');
         back.addEventListener('click', onBack);
@@ -1427,6 +1466,18 @@
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.empty);
         ui.stage.appendChild(ui.strip);
+        // The map at the bottom left (drawMap()): the whole flow small, the
+        // part on screen framed; a drag on it moves the canvas.
+        ui.map = el('div', 'wsf-map d-none');
+        ui.map.setAttribute('role', 'img');
+        ui.map.setAttribute('aria-label', t('fl_map'));
+        ui.mapBoxes = el('div', 'wsf-map-boxes');
+        ui.mapView = el('div', 'wsf-map-view');
+        ui.map.appendChild(ui.mapBoxes);
+        ui.map.appendChild(ui.mapView);
+        ui.map.addEventListener('pointerdown', mapPress);
+        ui.map.addEventListener('pointermove', mapMove);
+        ui.stage.appendChild(ui.map);
         drawStrip();
     }
 
@@ -1455,16 +1506,34 @@
         ui.strip.appendChild(stripButton('fl_zoom_in', 'bi-plus-lg', function () { zoomBy(1.2); }));
         ui.strip.appendChild(stripButton('fl_fit', 'bi-arrows-fullscreen', function () { fit(); }));
 
+        ui.tidy = null;
+        ui.mapButton = null;
+
         // The threads are drawn on the canvas only; the list says in words
         // what each box reads.
         if (!state.embed && state.flow) {
             ui.strip.appendChild(stripDivider());
+
+            if (addable()) {
+                ui.tidy = K.lookButton('pg-button pg-button-ghost pg-button-sm wsf-tidy', t('fl_tidy'), 'bi-magic');
+                ui.tidy.title = t('fl_tidy_hint');
+                ui.tidy.setAttribute('data-refocus', 'tidy');
+                ui.tidy.addEventListener('click', tidy);
+                ui.strip.appendChild(ui.tidy);
+            }
+
             ui.strip.appendChild(threadsButton());
+
+            if (addable()) {
+                ui.strip.appendChild(stripButton('fl_note_add', 'bi-sticky', addNote));
+            }
+
+            ui.mapButton = stripButton('fl_map', 'bi-map', mapToggle);
+            ui.mapButton.setAttribute('data-refocus', 'map');
+            ui.strip.appendChild(ui.mapButton);
         }
 
-        if (addable()) {
-            ui.strip.appendChild(stripButton('fl_note_add', 'bi-sticky', addNote));
-        }
+        drawMap();
     }
 
     function stripButton(key, iconName, action) {
@@ -1546,7 +1615,7 @@
             drawRows();
         });
         tools.appendChild(search);
-        ui.chips = el('div', 'wsf-chips');
+        ui.chips = el('div', 'pg-seg pg-seg-wrap');
         ui.chips.setAttribute('role', 'toolbar');
         ui.chips.setAttribute('aria-label', t('fl_list_filter'));
         tools.appendChild(ui.chips);
@@ -1624,9 +1693,9 @@
 
         K.clear(ui.chips);
         CHIPS.forEach(function (chip) {
-            var button = K.button('btn btn-sm rounded-pill wsf-chip' + ((state.chip === chip[0]) ? ' active' : ''), t(chip[1]) + ' ');
+            var button = K.lookButton('pg-seg-item', t(chip[1]), '');
 
-            button.appendChild(el('span', 'wsf-chip-count', String(counts[chip[0]])));
+            button.appendChild(el('em', 'pg-seg-count', String(counts[chip[0]])));
             button.setAttribute('aria-pressed', (state.chip === chip[0]) ? 'true' : 'false');
             button.setAttribute('data-refocus', 'chip-' + (chip[0] || 'all'));
             button.addEventListener('click', function () {
@@ -1655,7 +1724,7 @@
             ui.flowsQuick.classList.toggle('d-none', !offer);
 
             if (offer) {
-                ui.flowsQuick.appendChild(quickButton('btn btn-sm btn-outline theme-primary rounded-pill px-5'));
+                ui.flowsQuick.appendChild(quickButton('pg-button pg-button-quiet pg-button-sm'));
             }
         }
     }
@@ -1851,6 +1920,8 @@
     function clearScreen() {
         closeSetup();
         endRun();
+        endTrial();
+        endCounts();
         state.panel = '';
         state.flow = null;
         state.graph = graphOf(null);
@@ -2001,7 +2072,7 @@
         var label = el('label', 'wsf-start-title', t('fl_ai_sketch'));
         var help = el('span', 'wsf-start-help', t('fl_ai_sketch_help'));
         var input = el('input', 'form-control form-control-sm');
-        var go = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
+        var go = K.lookButton('pg-button pg-button-fill pg-button-sm align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
         var status = el('div', 'wsf-start-help');
 
         card.noValidate = true;
@@ -2081,7 +2152,7 @@
         var icons = el('div', 'wsf-tpl-icons');
         var start = KINDS[template.start];
         var meta = el('div', 'wsf-tpl-meta');
-        var use = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_use'), 'bi-plus-lg');
+        var use = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_tpl_use'), 'bi-plus-lg');
 
         icons.setAttribute('aria-hidden', 'true');
         template.graph.nodes.forEach(function (node) {
@@ -2126,8 +2197,8 @@
         foot.appendChild(use);
 
         if (template.saved.edit) {
-            var edit = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
-            var bin = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
+            var edit = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
+            var bin = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
 
             edit.setAttribute('data-refocus', 'tpl-edit-' + template.key);
             edit.addEventListener('click', function () { templateDialog(template); });
@@ -2171,8 +2242,8 @@
         var cross = el('button', 'btn-close');
         var body = el('div', 'dialog-body');
         var foot = el('div', 'dialog-footer');
-        var cancel = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_cancel'));
-        var submit = K.button('btn btn-sm btn-solid theme-primary', '');
+        var cancel = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_tpl_cancel'), '');
+        var submit = K.button('pg-button pg-button-fill pg-button-sm', '');
         var error = el('div', 'alert theme-danger small py-2 mb-0 d-none');
         var categories = Object.keys(FL.template_categories || {}).filter(function (key) { return key !== 'saved'; });
         var name = el('input', 'form-control form-control-sm');
@@ -2641,9 +2712,9 @@
         var flow = state.flow;
         var error = el('div', 'wsf-setup-error d-none');
         var actions = el('div', 'wsf-setup-actions');
-        var openIt = K.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('fl_tpl_open'), 'bi-bounding-box');
-        var publishIt = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_publish'), 'bi-send');
-        var close = K.button('btn btn-sm btn-text theme-secondary wsf-setup-close', '', 'bi-x-lg');
+        var openIt = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_tpl_open'), 'bi-bounding-box');
+        var publishIt = K.lookButton('pg-button pg-button-fill pg-button-sm', t('fl_tpl_publish'), 'bi-send');
+        var close = K.button('pg-icon-button pg-icon-button-sm wsf-setup-close', '', 'bi-x-lg', t('close'));
         var title = el('h2', 'wsf-setup-title', t('fl_tpl_setup'));
 
         closeSetup();
@@ -2779,7 +2850,7 @@
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
         if (options.edit) {
-            var edit = K.button('btn btn-sm btn-outline theme-secondary', t('edit'), 'bi-pencil');
+            var edit = K.lookButton(BAR_QUIET, t('edit'), 'bi-pencil');
             edit.addEventListener('click', options.edit);
             ui.bar.appendChild(edit);
         }
@@ -2929,11 +3000,13 @@
         window.clearTimeout(state.saveTimer);
         closeSetup();
         endRun();
+        endTrial();
         state.openSeq++;
 
         // The runs panel stays open while the same flow is shown again
         // (after Publish or Pause); another flow starts without it.
         if (!same) {
+            endCounts();
             state.panel = '';
             state.runs = { flow: flow.id, items: [], next: null, loading: false, error: '' };
         }
@@ -3019,7 +3092,7 @@
             return;
         }
 
-        var create = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_new'), 'bi-plus-lg');
+        var create = K.lookButton(BAR_FILL, t('fl_new'), 'bi-plus-lg');
 
         create.setAttribute('data-refocus', 'new');
         create.addEventListener('click', function () {
@@ -3034,7 +3107,7 @@
         ui.bar.appendChild(create);
 
         if (quickOffered()) {
-            ui.bar.appendChild(quickButton('btn btn-sm btn-outline theme-secondary rounded-pill px-5'));
+            ui.bar.appendChild(quickButton(BAR_QUIET));
         }
     }
 
@@ -3046,7 +3119,7 @@
     }
 
     function quickButton(className) {
-        var button = K.button(className, t('fl_quick_title'), 'bi-magic');
+        var button = K.lookButton(className, t('fl_quick_title'), 'bi-magic');
 
         button.addEventListener('click', function () { openQuick(button); });
 
@@ -3241,7 +3314,7 @@
         // Somebody who only reads the flow has no save state: the bar says
         // in its place why nothing can be changed. A run shown says so in
         // its own bar above the canvas.
-        if (!state.edit && !state.run) {
+        if (!state.edit && !state.run && !state.trial) {
             ui.bar.appendChild(el('span', 'small fg-secondary', t('fl_read_only')));
         }
 
@@ -3251,6 +3324,19 @@
 
         ui.sideProblems = null;
 
+        // While the draft is tried, the bar says so and how to end it;
+        // nothing else is done with the flow meanwhile.
+        if (state.trial) {
+            trialBar();
+            ui.publish = null;
+
+            if (state.pop) {
+                openPop(state.pop);
+            }
+
+            return;
+        }
+
         if (state.edit) {
             ui.problemButton = barButton(BAR_QUIET, '', '');
             ui.bar.appendChild(barWindow('problems', ui.problemButton, t('fl_problems_list'), showProblems));
@@ -3258,6 +3344,8 @@
         }
 
         runsButton();
+        countsButton();
+        tryButton();
         runButton(!publishing);
 
         // Only the owner publishes: a published flow runs with the owner's
@@ -3557,7 +3645,7 @@
         ui.save.classList.toggle('fg-secondary', !(state.saveError || state.conflict));
 
         if (state.saveError && !state.saving) {
-            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'), '');
             retry.addEventListener('click', function () {
                 state.saveError = '';
                 state.dirty = true;
@@ -3625,6 +3713,7 @@
         drawPalette();
         markSelected();
         markProblems();
+        mapLater();
     }
 
     // A box of the core (box()): its ports, focus and name are the core's;
@@ -3683,6 +3772,8 @@
         paintMark(box, box.querySelector('.wsf-node-head'), node);
         paintTry(box, node);
         paintRun(box, node);
+        paintTrial(box, node);
+        paintCounts(box, node);
     }
 
     // A box as the run shown left it: the tone, mark and word of its state,
@@ -3821,6 +3912,11 @@
                 group.classList.add('wsf-edge-taken');
             }
 
+            // In a trial, an arrow a walked box left on.
+            if (state.trial && state.trial.marked && (state.trial.marked.taken.indexOf(index) !== -1)) {
+                group.classList.add('wsf-edge-taken');
+            }
+
             if (edgeNamed(from, edge.on)) {
                 edgePill(group, path, outcomeText(from, edge.on));
             }
@@ -3835,11 +3931,11 @@
     }
 
     // An arrow names its outcome when its box has more than one (done or
-    // failed, yes or no, a class of the AI box), and on always, each and
-    // other, which say how it is taken; the only outcome of a box goes
-    // unnamed.
+    // failed, yes or no, a class of the AI box, a split's arm), and on
+    // always, each and other, which say how it is taken; the only outcome of
+    // a box goes unnamed.
     function edgeNamed(from, on) {
-        return (kindOf(from).out.length > 1) || (on === 'cancelled') || (on === 'failed') || (on === 'always') || (on === 'each') || (on === 'other') || /^class_/.test(on || '');
+        return (kindOf(from).out.length > 1) || (on === 'cancelled') || (on === 'failed') || (on === 'always') || (on === 'each') || (on === 'other') || /^(class|arm)_/.test(on || '');
     }
 
     // The outcome's name on a pill at the middle of its arrow, measured
@@ -4892,7 +4988,7 @@
                 // thread; the focus goes to the box's title after it, or
                 // to its line in the outline when its settings are closed.
                 if (state.edit && !state.run) {
-                    var remove = K.button('btn btn-sm btn-text theme-secondary py-0', t('fl_thread_remove_short'), 'bi-x-lg');
+                    var remove = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_thread_remove_short'), 'bi-x-lg');
 
                     remove.setAttribute('aria-label', t('fl_thread_remove_of', thread.label));
                     remove.title = remove.getAttribute('aria-label');
@@ -4957,7 +5053,7 @@
         return paletteItems().map(function (item) {
             var add = K.button(className, t(item[1]));
 
-            add.insertBefore(K.flowIcon(item[0], 'me-1'), add.firstChild);
+            add.insertBefore(K.flowIcon(item[0], ''), add.firstChild);
 
             // One box starts a flow; a second would be a problem to fix.
             if (startTaken(item[0])) {
@@ -5614,7 +5710,7 @@
 
         ids.forEach(function (id) {
             var node = nodeById(id);
-            var go = K.button('btn btn-sm btn-text theme-secondary wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
+            var go = K.button('pg-button pg-button-ghost pg-button-sm wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
 
             go.appendChild(nameText(node));
             go.title = t(state.marks.boxes[id] === 'added' ? 'fl_ai_added_long' : 'fl_ai_changed_long');
@@ -5626,7 +5722,7 @@
             ui.marksBox.appendChild(go);
         });
 
-        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_hide'));
+        var hide = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto', t('fl_ai_hide'), '');
 
         hide.addEventListener('click', hideMarks);
         ui.marksBox.appendChild(hide);
@@ -5644,7 +5740,7 @@
         }
 
         var text = el('p', 'wsf-ai-marks-text mb-0');
-        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_sketch_hide'));
+        var hide = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto', t('fl_ai_sketch_hide'), '');
 
         text.tabIndex = -1;
         text.setAttribute('data-refocus', 'ai-sketch');
@@ -7097,15 +7193,19 @@
         }
 
         K.clear(ui.side);
-        ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run));
+        ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run && !state.trial));
         ui.app.classList.remove('wsf-side-open');
 
         if (!state.flow) {
             return;
         }
 
-        if (state.run) {
+        if (state.trial) {
+            trialSide();
+        } else if (state.run) {
             runSide();
+        } else if (countShown()) {
+            countsSide();
         } else if ((state.panel === 'runs') && (!selected || state.outline)) {
             runsSide();
         } else if (selected && (selected.type === 'node') && nodeById(selected.id) && !state.outline) {
@@ -7326,6 +7426,7 @@
         box.appendChild(el('p', 'pg-text-meta fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
 
         homeField(box);
+        leaveField(box);
 
         var keys = el('details', 'pg-text-meta wsf-keys');
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
@@ -7814,7 +7915,11 @@
 
     // The boxes a frame holds: those whose middle lies in its rectangle.
     function frameInside(frame) {
-        return state.graph.nodes.filter(function (node) {
+        return framedIn(frame, state.graph.nodes);
+    }
+
+    function framedIn(frame, nodes) {
+        return nodes.filter(function (node) {
             var mx = node.x + BOX_W / 2;
             var my = node.y + BOX_H / 2;
 
@@ -8022,6 +8127,208 @@
         var bottom = Math.max.apply(null, nodes.map(function (node) { return node.y + BOX_H; })) + FRAME_PAD.bottom;
 
         return { x: coord(left), y: coord(top), w: Math.round(right - left), h: Math.round(bottom - top) };
+    }
+
+    // Tidy on the strip: the boxes placed again by the server's layout
+    // (ws_flow_tidy(): columns by the longest way in), or only the boxes
+    // chosen when there are several; frames drawn again round their boxes,
+    // notes left. One undo step; the whole flow is fitted after.
+    function tidy() {
+        var flow = state.flow;
+        var button = ui.tidy;
+        var chosen = canvas.chosen();
+
+        if (!addable() || state.tidying) {
+            return;
+        }
+
+        state.tidying = true;
+        button.disabled = true;
+        K.api('ws_flow_tidy', { flow_id: flow.id, graph: draftOf(), chosen: chosen }).then(function (data) {
+            if ((state.flow !== flow) || !addable()) {
+                return;
+            }
+
+            if (!tidyPlaces(state.graph, data.places || {})) {
+                announce(t('fl_tidy_none'));
+                return;
+            }
+
+            changed(true);
+
+            if (chosen.length < 2) {
+                fit();
+            }
+
+            announce(t('fl_tidied'));
+        }).catch(function (error) {
+            K.toast(error.message, 'danger');
+        }).then(function () {
+            state.tidying = false;
+            button.disabled = false;
+        });
+    }
+
+    // Tidy's places (id => [x, y]) put on the boxes of graph: each frame
+    // drawn again round the boxes it held before, its name and fold kept; a
+    // frame holding none stays. Answers how many boxes moved.
+    function tidyPlaces(graph, places) {
+        var held = graph.frames.map(function (frame) { return framedIn(frame, graph.nodes); });
+        var moved = 0;
+
+        graph.nodes.forEach(function (node) {
+            var place = places[node.id];
+
+            if (place && ((node.x !== place[0]) || (node.y !== place[1]))) {
+                node.x = coord(place[0]);
+                node.y = coord(place[1]);
+                moved++;
+            }
+        });
+
+        graph.frames.forEach(function (frame, index) {
+            if (held[index].length) {
+                Object.assign(frame, frameRound(held[index]));
+            }
+        });
+
+        return moved;
+    }
+
+    // The map's choice kept in this browser: 'on', 'off', or '' to show it
+    // from MAP.boxes boxes up.
+    function mapChosen() {
+        try {
+            var kept = window.localStorage.getItem(MAP_KEY);
+
+            return ((kept === 'on') || (kept === 'off')) ? kept : '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    function mapShown() {
+        if (!ui.map || state.embed || state.outline || !state.flow || !state.graph) {
+            return false;
+        }
+
+        return state.mapChoice ? (state.mapChoice === 'on') : (state.graph.nodes.length >= MAP.boxes);
+    }
+
+    // Map on the strip: the map shown or hidden, the choice kept.
+    function mapToggle() {
+        state.mapChoice = mapShown() ? 'off' : 'on';
+
+        try {
+            window.localStorage.setItem(MAP_KEY, state.mapChoice);
+        } catch (error) {
+            // Not kept: the map follows the count of boxes next time.
+        }
+
+        drawMap();
+    }
+
+    // The map drawn once the view or the boxes settle (one frame later).
+    function mapLater() {
+        if (ui.map && !state.mapFrame) {
+            state.mapFrame = window.requestAnimationFrame ? window.requestAnimationFrame(drawMap) : window.setTimeout(drawMap, 16);
+        }
+    }
+
+    function drawMap() {
+        state.mapFrame = 0;
+
+        if (!ui.map) {
+            return;
+        }
+
+        var shown = mapShown();
+
+        ui.map.classList.toggle('d-none', !shown);
+
+        if (ui.mapButton) {
+            ui.mapButton.setAttribute('aria-pressed', shown ? 'true' : 'false');
+        }
+
+        if (!shown) {
+            return;
+        }
+
+        var rect = ui.viewport.getBoundingClientRect();
+        var away = state.foldedAway || {};
+        var drawn = mapDrawing(state.graph.nodes.filter(function (node) { return !away[node.id]; }), state.view, { w: rect.width, h: rect.height });
+
+        K.clear(ui.mapBoxes);
+        drawn.boxes.forEach(function (box) {
+            var block = el('span', 'wsf-map-box');
+
+            placeDecor(block, box);
+            ui.mapBoxes.appendChild(block);
+        });
+        placeDecor(ui.mapView, drawn.view);
+        ui.map.mapDrawing = drawn;
+    }
+
+    // The map's drawing: the boxes and the part of the canvas the viewport
+    // shows (port: its width and height in px at view v) scaled into the
+    // card, MAP.pad px clear; a canvas point p is at { x: x + p.x * k,
+    // y: y + p.y * k } on the card.
+    function mapDrawing(nodes, v, port) {
+        var seen = { x: -v.x / v.k, y: -v.y / v.k, w: port.w / v.k, h: port.h / v.k };
+        var left = seen.x;
+        var top = seen.y;
+        var right = seen.x + seen.w;
+        var bottom = seen.y + seen.h;
+
+        nodes.forEach(function (node) {
+            left = Math.min(left, node.x);
+            top = Math.min(top, node.y);
+            right = Math.max(right, node.x + BOX_W);
+            bottom = Math.max(bottom, node.y + BOX_H);
+        });
+
+        var k = Math.min((MAP.w - 2 * MAP.pad) / Math.max(1, right - left), (MAP.h - 2 * MAP.pad) / Math.max(1, bottom - top));
+        var x = (MAP.w - (right - left) * k) / 2 - left * k;
+        var y = (MAP.h - (bottom - top) * k) / 2 - top * k;
+        var at = function (item) {
+            return { x: Math.round(x + item.x * k), y: Math.round(y + item.y * k), w: Math.max(2, Math.round(item.w * k)), h: Math.max(2, Math.round(item.h * k)) };
+        };
+
+        return {
+            k: k,
+            x: x,
+            y: y,
+            boxes: nodes.map(function (node) { return at({ x: node.x, y: node.y, w: BOX_W, h: BOX_H }); }),
+            view: at(seen)
+        };
+    }
+
+    // A press or drag on the map puts the point under the pointer in the
+    // middle of the canvas.
+    function mapPress(event) {
+        if ((event.button !== 0) || !ui.map.mapDrawing) {
+            return;
+        }
+
+        event.preventDefault();
+        ui.map.setPointerCapture(event.pointerId);
+        mapMove(event);
+    }
+
+    function mapMove(event) {
+        var drawn = ui.map.mapDrawing;
+
+        if (!drawn || !ui.map.hasPointerCapture || !ui.map.hasPointerCapture(event.pointerId)) {
+            return;
+        }
+
+        var card = ui.map.getBoundingClientRect();
+        var port = ui.viewport.getBoundingClientRect();
+        var v = state.view;
+
+        v.x = port.width / 2 - (event.clientX - card.left - ui.map.clientLeft - drawn.x) / drawn.k * v.k;
+        v.y = port.height / 2 - (event.clientY - card.top - ui.map.clientTop - drawn.y) / drawn.k * v.k;
+        applyView();
     }
 
     // A note's or frame's × (a frame's boxes stay); one undo step.
@@ -8412,6 +8719,90 @@
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
     }
 
+    // "Leaving the flow" in the name's window: rules "if this happens, the
+    // run ends", each an event that names a person or a record (FL.leave);
+    // a run about the same contact or record then ends as left
+    // (flow_leave.php). Kept on the graph, so published with a version.
+    function leaveField(box) {
+        var offered = FL.leave || [];
+        var limit = (FL.limits && FL.limits.leave) || 10;
+        var part = el('div', 'wsf-leave mb-5');
+        var named = {};
+
+        if (!state.graph.leave) {
+            state.graph.leave = [];
+        }
+
+        if (!offered.length && !state.graph.leave.length) {
+            return;
+        }
+
+        offered.forEach(function (pair) { named[pair[0]] = pair[1]; });
+
+        function draw() {
+            var rules = state.graph.leave;
+            var taken = rules.map(function (rule) { return rule.event; });
+
+            K.clear(part);
+            part.appendChild(el('h3', 'wsf-side-sub', t('fl_exit')));
+            part.appendChild(el('p', 'pg-text-meta fg-secondary mb-2', t('fl_exit_help')));
+
+            rules.forEach(function (rule, index) {
+                var row = el('div', 'wsf-link-row');
+
+                row.appendChild(K.icon('bi-box-arrow-right'));
+                row.appendChild(el('span', 'flex-grow-1', named[rule.event] || rule.event));
+
+                if (state.edit) {
+                    var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_exit_remove', named[rule.event] || rule.event));
+
+                    remove.addEventListener('click', function () {
+                        state.graph.leave.splice(index, 1);
+                        changed(true);
+                        draw();
+                        (part.querySelector('select') || part).focus();
+                    });
+                    row.appendChild(remove);
+                }
+
+                part.appendChild(row);
+            });
+
+            if (state.edit && (rules.length < limit)) {
+                var free = offered.filter(function (pair) { return taken.indexOf(pair[0]) < 0; });
+                var group = el('div', 'wsf-link-add');
+                var pick = K.select([['', t('fl_exit_pick')]].concat(free), '');
+                var add = K.button('pg-button pg-button-ghost pg-button-sm', t('fl_exit_add'), 'bi-plus-lg');
+
+                pick.className = 'pg-input pg-input-sm wsf-connect';
+                pick.setAttribute('aria-label', t('fl_exit_pick'));
+                add.addEventListener('click', function () {
+                    if (!pick.value) {
+                        pick.focus();
+                        return;
+                    }
+
+                    state.graph.leave.push({ event: pick.value });
+                    changed(true);
+                    announce(t('fl_exit_added', named[pick.value] || pick.value));
+                    draw();
+                    part.querySelector('select').focus();
+                });
+                group.appendChild(pick);
+                group.appendChild(add);
+                part.appendChild(group);
+            }
+
+            if ((state.flow.left_30 !== null) && (state.flow.left_30 !== undefined)) {
+                part.appendChild(el('p', 'pg-text-meta fg-secondary mt-2 mb-0', t('fl_exit_count', state.flow.left_30)));
+            }
+        }
+
+        part.tabIndex = -1;
+        draw();
+        box.appendChild(part);
+    }
+
     // A box's settings; the outline adds its connections, Try and Remove
     // under them, the right panel has tabs and a menu for those (settingsOnly).
     function nodeForm(node, settingsOnly) {
@@ -8537,6 +8928,10 @@
             conditionFields(box, node);
         }
 
+        if (node.kind === 'split') {
+            splitFields(box, node);
+        }
+
         if (node.kind === 'delay') {
             delayFields(box, node);
         }
@@ -8566,6 +8961,7 @@
         }
 
         retryFields(box, node);
+        hoursFields(box, node);
 
         if (node.kind === 'schedule') {
             scheduleFields(box, node);
@@ -8608,7 +9004,7 @@
 
             box.appendChild(connections(node));
 
-            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_box'), 'bi-trash');
+            var remove = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_remove_box'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'node', id: node.id }); });
             box.appendChild(remove);
         }
@@ -8624,7 +9020,7 @@
         var flow = state.flow;
         var wrap = el('div', 'wsf-try border-top pt-5 mb-5');
         var runs = K.select([['0', t('fl_try_no_run')]], '0');
-        var go = K.button('btn btn-sm btn-outline theme-secondary', t('fl_try'), 'bi-eye');
+        var go = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_try'), 'bi-eye');
         var out = el('div', 'wsf-try-out small mt-3');
         var listed = false;
 
@@ -9897,7 +10293,7 @@
                 row.value = text;
                 refreshNode(node);
             });
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
 
             name.placeholder = t('fl_constants_name');
             name.setAttribute('aria-label', t('fl_constants_name'));
@@ -9927,7 +10323,7 @@
         box.appendChild(el('div', 'form-label small fw-semibold', t('fl_constants_rows')));
         box.appendChild(list);
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_constants_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_constants_add'), 'bi-plus-lg');
 
         add.setAttribute('data-refocus', 'constants-add-' + node.id);
         add.disabled = config.rows.length >= ((FL.limits && FL.limits.constants) || 20);
@@ -10075,6 +10471,103 @@
         });
         box.appendChild(field(t('fl_self_retry'), times, t('fl_self_retry_help')));
         box.appendChild(field(t('fl_self_retry_after'), after, t('fl_self_retry_after_help')));
+    }
+
+    // The sending hours as kept (ws_flow_hours_normalize()): off, Monday to
+    // Friday, 09:00 to 20:00, waiting for the next hour that fits. Pure.
+    function hoursOf(config) {
+        var hours = (config && config.hours && typeof config.hours === 'object') ? config.hours : {};
+
+        return {
+            on: !!hours.on,
+            days: Array.isArray(hours.days) ? hours.days.slice() : [1, 2, 3, 4, 5],
+            from: hours.from || '09:00',
+            to: hours.to || '20:00',
+            outside: hours.outside === 'skip' ? 'skip' : 'wait'
+        };
+    }
+
+    // What the folded row shows: off, or the hours. Pure.
+    function hoursShown(hours) {
+        return hours.on ? hours.from + '–' + hours.to : t('fl_hours_off');
+    }
+
+    // Sending hours of a box that sends (Post a message, Send an e-mail, an
+    // SMS, a WhatsApp message): a folded row, off at first; on, the days,
+    // from and to in the site's time zone and what it does outside them.
+    function hoursFields(box, node) {
+        if (((FL.steps || {}).hours_kinds || []).indexOf(node.kind) < 0) {
+            return;
+        }
+
+        var hours = hoursOf(node.config);
+        var fold = el('details', 'wsf-fold mb-5');
+        var summary = el('summary', 'wsf-fold-head small fw-semibold');
+        var shown = el('span', 'wsf-fold-shows fw-normal fg-secondary text-truncate', hoursShown(hours));
+        var on = el('input', 'check m-0');
+        var parts = el('div', hours.on ? '' : 'd-none');
+        var days = el('div', 'wsf-people-list');
+        var outside = K.select([['wait', t('fl_hours_wait')], ['skip', t('fl_hours_skip')]], hours.outside);
+        var keep = function () {
+            node.config.hours = hours;
+            shown.textContent = hoursShown(hours);
+            parts.classList.toggle('d-none', !hours.on);
+            refreshNode(node);
+        };
+
+        fold.open = hours.on;
+        summary.appendChild(el('i', 'bi bi-chevron-right'));
+        summary.appendChild(el('span', '', t('fl_hours')));
+        summary.appendChild(shown);
+        fold.appendChild(summary);
+
+        on.type = 'checkbox';
+        on.checked = hours.on;
+        on.addEventListener('change', function () {
+            hours.on = on.checked;
+            keep();
+        });
+        fold.appendChild(field(t('fl_hours_on'), on, t('fl_hours_help')));
+
+        days.setAttribute('role', 'group');
+        days.setAttribute('aria-label', t('fl_hours_days'));
+        [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+            var row = el('label', 'wsf-person');
+            var check = el('input', 'check m-0');
+
+            check.type = 'checkbox';
+            check.checked = hours.days.indexOf(day) !== -1;
+            check.disabled = !state.edit;
+            check.addEventListener('change', function () {
+                hours.days = hours.days.filter(function (item) { return item !== day; });
+
+                if (check.checked) {
+                    hours.days.push(day);
+                }
+
+                hours.days.sort();
+                keep();
+            });
+            row.appendChild(check);
+            row.appendChild(document.createTextNode(t(DAYS[day])));
+            days.appendChild(row);
+        });
+        parts.appendChild(field(t('fl_hours_days'), days));
+
+        [['from', 'fl_cond_from'], ['to', 'fl_cond_to']].forEach(function (pair) {
+            parts.appendChild(field(t(pair[1]), dateInput('time', hours[pair[0]], function (typed) {
+                hours[pair[0]] = typed;
+                keep();
+            })));
+        });
+
+        outside.addEventListener('change', function () {
+            hours.outside = outside.value;
+            keep();
+        });
+        parts.appendChild(field(t('fl_hours_outside'), outside));
+        fold.appendChild(parts);
+        box.appendChild(fold);
     }
 
     // An approval box: the channel it asks in, the people asked, the text,
@@ -10403,7 +10896,7 @@
                 refreshNode(node);
             });
             var type = K.select([['text', t('fl_constants_text')], ['number', t('fl_constants_number')]], (item.type === 'number') ? 'number' : 'text');
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', item.key || String(index + 1)));
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_constants_remove', item.key || String(index + 1)));
 
             name.placeholder = t('fl_web_field_name');
             name.setAttribute('aria-label', t('fl_web_field_name'));
@@ -10429,7 +10922,7 @@
         box.appendChild(el('div', 'form-label small fw-semibold', t('fl_web_fields')));
         box.appendChild(list);
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_web_field_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_web_field_add'), 'bi-plus-lg');
 
         add.setAttribute('data-refocus', 'web-add-' + node.id);
         add.disabled = config.fields.length >= ((FL.limits && FL.limits.web_fields) || 20);
@@ -10449,7 +10942,7 @@
     function webAddressField(box) {
         var flow = state.flow;
         var url = el('input', 'form-control form-control-sm font-monospace');
-        var renew = K.button('btn btn-sm btn-outline theme-secondary mt-2', t('fl_web_address_make'), 'bi-arrow-repeat');
+        var renew = K.lookButton('pg-button pg-button-quiet pg-button-sm mt-2', t('fl_web_address_make'), 'bi-arrow-repeat');
         var show = function (address) {
             url.value = address || '';
             url.placeholder = t('fl_web_address_none');
@@ -10973,7 +11466,7 @@
             var op = K.select(ops.concat(((item.op !== '') && (ops.indexOf(item.op) === -1)) ? [item.op] : []).map(function (key) {
                 return [key, info.operators[key] || key];
             }), item.op);
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_rows_where_remove'));
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_rows_where_remove'));
 
             pick.setAttribute('aria-label', t('fl_rows_where_column'));
             pick.setAttribute('data-refocus', 'rows-where-' + node.id + '-' + index);
@@ -11016,7 +11509,7 @@
             box.appendChild(wrap);
         });
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_rows_where_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_rows_where_add'), 'bi-plus-lg');
 
         add.setAttribute('data-refocus', 'rows-where-add-' + node.id);
         add.disabled = !state.edit || !table || (list.length >= (info.most || 10));
@@ -11411,7 +11904,7 @@
                     config.classes[index] = value;
                     refreshNode(node);
                 });
-                var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_ai_class_remove', name || String(index + 1)));
+                var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_ai_class_remove', name || String(index + 1)));
 
                 input.setAttribute('aria-label', t('fl_ai_class_n', String(index + 1)));
                 input.setAttribute('data-refocus', 'ai-class-' + node.id + '-' + index);
@@ -11442,7 +11935,7 @@
             box.appendChild(el('div', 'form-label small fw-semibold', t('fl_ai_classes')));
             box.appendChild(list);
 
-            var add = K.button('btn btn-sm btn-outline theme-secondary mb-2', t('fl_ai_class_add'), 'bi-plus-lg');
+            var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-2', t('fl_ai_class_add'), 'bi-plus-lg');
 
             add.setAttribute('data-refocus', 'ai-class-add-' + node.id);
             add.disabled = !state.edit || (config.classes.length >= 8);
@@ -11468,6 +11961,115 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_ai_closes'), hours, t('fl_ai_closes_help')));
+    }
+
+    // The arms of a Split box, as the server keeps them.
+    function splitArms(config) {
+        return ((config && Array.isArray(config.arms)) ? config.arms : []).filter(function (arm) { return arm && (typeof arm === 'object'); });
+    }
+
+    // The letter an arm is called by at its place: A to E.
+    function splitLetter(index) {
+        return String.fromCharCode(65 + Math.max(0, Math.min(25, index)));
+    }
+
+    // The arms and their shares: A 50% · B 50%.
+    function splitMeta(node) {
+        return splitArms(node.config).map(function (arm, index) {
+            return t('fl_split_arm_share', (String(arm.name || '').trim() || splitLetter(index)), String(parseInt(arm.share, 10) || 0));
+        }).join(' · ');
+    }
+
+    // The shares of the arms added up. Pure.
+    function splitTotal(arms) {
+        return arms.reduce(function (sum, arm) { return sum + (parseInt(arm.share, 10) || 0); }, 0);
+    }
+
+    // The arrows of a box after the arm at a place is taken away: one on
+    // that arm goes, one on a later arm moves up with it. Pure.
+    function splitEdgesWithout(edges, id, index) {
+        return edges.filter(function (edge) {
+            return !((edge.from === id) && (edge.on === 'arm_' + (index + 1)));
+        }).map(function (edge) {
+            var match = (edge.from === id) ? /^arm_([1-9])$/.exec(edge.on) : null;
+
+            return (match && (parseInt(match[1], 10) > index + 1)) ? Object.assign({}, edge, { on: 'arm_' + (parseInt(match[1], 10) - 1) }) : edge;
+        });
+    }
+
+    // A Split box (flow_split.php): its arms, two to five, each a name and a
+    // share in whole percent, each an arrow of its own; the total says
+    // whether the shares add up to 100.
+    function splitFields(box, node) {
+        var config = node.config;
+        var list = el('div', 'wsf-split-arms mb-2');
+        var total = el('p', 'small mb-2');
+
+        if (!Array.isArray(config.arms)) {
+            config.arms = [];
+        }
+
+        function showTotal() {
+            var sum = splitTotal(config.arms);
+
+            total.textContent = t('fl_split_total', String(sum));
+            total.className = 'small mb-2 ' + ((sum === 100) ? 'fg-secondary' : 'fg-danger');
+        }
+
+        config.arms.forEach(function (arm, index) {
+            var line = el('div', 'input-group input-group-sm mb-1');
+            var name = textInput(arm.name || '', 60, function (value) {
+                arm.name = value;
+                refreshNode(node);
+            });
+            var share = el('input', 'pg-input pg-input-sm wsf-number');
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_split_arm_remove', arm.name || splitLetter(index)));
+
+            name.setAttribute('aria-label', t('fl_split_arm_n', splitLetter(index)));
+            name.setAttribute('data-refocus', 'split-arm-' + node.id + '-' + index);
+            share.type = 'number';
+            share.min = '1';
+            share.max = '99';
+            share.value = String(parseInt(arm.share, 10) || 0);
+            share.disabled = !state.edit;
+            share.setAttribute('aria-label', t('fl_split_share_n', arm.name || splitLetter(index)));
+            share.addEventListener('input', function () {
+                arm.share = clamp(parseInt(share.value, 10) || 0, 0, 100);
+                showTotal();
+                refreshNode(node);
+            });
+            remove.disabled = !state.edit || (config.arms.length <= 2);
+            remove.addEventListener('click', function () {
+                config.arms.splice(index, 1);
+                state.graph.edges = splitEdgesWithout(state.graph.edges, node.id, index);
+                state.refocus = 'split-arm-add-' + node.id;
+                changed(true);
+                drawSettings();
+            });
+            line.appendChild(name);
+            line.appendChild(share);
+            line.appendChild(el('span', 'input-group-text', '%'));
+            line.appendChild(remove);
+            list.appendChild(line);
+        });
+
+        box.appendChild(el('div', 'pg-field-label', t('fl_split_arms')));
+        box.appendChild(list);
+        showTotal();
+        box.appendChild(total);
+
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-2', t('fl_split_arm_add'), 'bi-plus-lg');
+
+        add.setAttribute('data-refocus', 'split-arm-add-' + node.id);
+        add.disabled = !state.edit || (config.arms.length >= 5);
+        add.addEventListener('click', function () {
+            config.arms.push({ name: splitLetter(config.arms.length), share: 0 });
+            state.refocus = 'split-arm-' + node.id + '-' + (config.arms.length - 1);
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(add);
+        box.appendChild(el('p', 'small fg-secondary', t('fl_split_help')));
     }
 
     // The agent an agent box asks, from the list the server sent.
@@ -12129,7 +12731,7 @@
             var row = field(meta.label, input);
 
             if (state.edit) {
-                var remove = K.button('btn btn-sm btn-link px-0', t('fl_change_remove'), 'bi-x');
+                var remove = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_change_remove'), 'bi-x');
 
                 remove.addEventListener('click', function () {
                     delete config.fields[name];
@@ -12328,7 +12930,7 @@
             row.appendChild(K.icon('bi-arrow-right'));
             row.appendChild(nameText(nodeById(edge.to), 'wsf-link-name text-truncate'));
 
-            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
+            var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg');
 
             nameLabel(remove, 'fl_remove_arrow_to', nodeById(edge.to));
             remove.title = remove.getAttribute('aria-label');
@@ -12356,7 +12958,7 @@
         var targets = candidates(node);
         var group = el('div', 'input-group input-group-sm');
         var pick = K.select([['', t('fl_connect_pick')]].concat(targets.map(function (target) { return [target.id, nameOf(target)]; })), '');
-        var add = K.button('btn btn-outline theme-secondary', t('fl_connect_add'), 'bi-plus-lg');
+        var add = K.lookButton('pg-button pg-button-quiet', t('fl_connect_add'), 'bi-plus-lg');
 
         pick.classList.add('wsf-connect');
         nameLabel(pick, 'fl_connect_title', node);
@@ -12419,7 +13021,7 @@
         }
 
         if (state.edit) {
-            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_arrow'), 'bi-trash');
+            var remove = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_remove_arrow'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'edge', id: index }); });
             box.appendChild(remove);
         }
@@ -12435,7 +13037,7 @@
         box.appendChild(el('p', 'small mb-3', thread.from ? text : text + ' ' + t(thread.gone ? 'fl_values_gone' : 'fl_values_missing')));
 
         if (state.edit && !state.run) {
-            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_thread_remove'), 'bi-trash');
+            var remove = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_thread_remove'), 'bi-trash');
 
             remove.addEventListener('click', function () { removeSelected({ type: 'thread', id: threadKey(thread) }); });
             box.appendChild(remove);
@@ -12545,7 +13147,7 @@
 
             adds.setAttribute('role', 'group');
             adds.setAttribute('aria-label', t('fl_palette'));
-            paletteButtons('btn btn-sm btn-outline theme-secondary').forEach(function (add) {
+            paletteButtons('pg-button pg-button-quiet pg-button-sm').forEach(function (add) {
                 adds.appendChild(add);
             });
             ui.outlineBox.appendChild(adds);
@@ -12609,6 +13211,7 @@
         }
 
         saver.changed();
+        mapLater();
 
         // A change that folds (typing, an arrow-key move) is recorded once
         // the changes pause; one that is its own step first records what
@@ -12872,6 +13475,9 @@
             config = { group_id: (groups.length === 1) ? groups[0].id : 0, way: 'add', contact: '' };
         } else if (kind === 'ai') {
             config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
+        } else if (kind === 'split') {
+            // Two arms, half the runs each.
+            config = { arms: [{ name: 'A', share: 50 }, { name: 'B', share: 50 }] };
         } else if (kind === 'agent') {
             var agents = stepLists().agents;
             var only = (agents.length === 1) ? agents[0] : null;
@@ -13664,7 +14270,7 @@
         ui.conflictBox.appendChild(K.icon('bi-exclamation-triangle'));
         ui.conflictBox.appendChild(el('span', 'flex-grow-1', state.conflict));
 
-        var reload = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reload'), 'bi-arrow-clockwise');
+        var reload = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_reload'), 'bi-arrow-clockwise');
 
         reload.addEventListener('click', function () {
             state.dirty = false;
@@ -13826,7 +14432,7 @@
         var title = el('h2', 'dialog-title fs-md');
         var cross = el('button', 'btn-close');
         var foot = el('div', 'dialog-footer');
-        var close = K.button('btn btn-sm btn-text theme-secondary', t('fl_share_close'));
+        var close = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_share_close'), '');
 
         modal.id = 'wsf-share';
         modal.tabIndex = -1;
@@ -13970,7 +14576,7 @@
         row.appendChild(level);
 
         if (manage) {
-            var remove = K.button('btn btn-sm btn-text theme-secondary wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
+            var remove = K.button('pg-icon-button pg-icon-button-sm wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
 
             remove.setAttribute('data-share-focus', 'remove-' + share.id);
             remove.addEventListener('click', function () {
@@ -14078,7 +14684,7 @@
         var picker = K.peoplePicker([], others);
         var row = el('div', 'd-flex flex-wrap align-items-center gap-3 mt-3');
         var level = K.select(Object.keys(LEVELS).map(function (key) { return [key, t(LEVELS[key])]; }), 'run');
-        var add = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_share'), 'bi-share');
+        var add = K.lookButton('pg-button pg-button-fill pg-button-sm', t('fl_share'), 'bi-share');
 
         picker.setAttribute('role', 'group');
         picker.setAttribute('aria-label', t('fl_share_people'));
@@ -14155,7 +14761,7 @@
         var choice = K.select(channels.map(function (channel) {
             return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
         }), channels[0].id);
-        var add = K.button('btn btn-sm btn-outline theme-secondary', t('fl_share'), 'bi-hash');
+        var add = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_share'), 'bi-hash');
 
         choice.classList.add('w-auto', 'max-w-100');
         choice.setAttribute('aria-label', t('fl_share_channel'));
@@ -14243,6 +14849,38 @@
         var nodes = orderedNodes();
 
         return nodes.filter(function (node) { return !kindOf(node).pure; }).concat(nodes.filter(function (node) { return kindOf(node).pure; }));
+    }
+
+    // The marks of a trial on the canvas (ws_flow_trial's steps, of which
+    // the first `shown` are walked): each walked box done with its outcome,
+    // a Wait passed, a box that would fail failed; the step in turn next.
+    // The arrows a walked box left on are taken: its outcome's, and always
+    // unless it failed. Pure.
+    function trialMarks(steps, shown, edges) {
+        var marks = {};
+        var taken = [];
+        var list = steps || [];
+        var walked = Math.min(Math.max(0, shown || 0), list.length);
+
+        list.slice(0, walked).forEach(function (step) {
+            var failed = step.status === 'failed';
+
+            marks[step.node_id] = { state: failed ? 'failed' : ((step.kind === 'delay') ? 'passed' : 'done'), outcome: step.outcome || '' };
+        });
+
+        if (steps && (walked < list.length)) {
+            marks[list[walked].node_id] = { state: 'next', outcome: '' };
+        }
+
+        (edges || []).forEach(function (edge, index) {
+            var mark = marks[edge.from];
+
+            if (mark && (mark.state !== 'next') && mark.outcome && ((edge.on === mark.outcome) || ((edge.on === 'always') && (mark.state !== 'failed')))) {
+                taken.push(index);
+            }
+        });
+
+        return { marks: marks, taken: taken };
     }
 
     // A run's flag (assets/js/workspace_flow_flag.js, in the workspace
@@ -14489,6 +15127,12 @@
         if (state.panel) {
             state.selected = null;
             markSelected();
+
+            // The button lists every run, never a count's narrowed list.
+            if (state.runs.filter) {
+                state.runs = { flow: state.flow.id, items: [], next: null, loading: false, error: '' };
+            }
+
             loadRuns(false);
         }
 
@@ -14516,7 +15160,7 @@
         list.loading = true;
         list.error = '';
 
-        K.api('ws_flow_runs_list', { flow_id: flow.id, before_id: more ? (list.next || 0) : 0 }).then(function (data) {
+        K.api('ws_flow_runs_list', Object.assign({ flow_id: flow.id, before_id: more ? (list.next || 0) : 0 }, list.filter ? { node: list.filter.node, state: list.filter.state, days: list.filter.days } : {})).then(function (data) {
             var runs = data.runs || [];
 
             list.items = more ? list.items.concat(runs) : runs;
@@ -14549,7 +15193,8 @@
 
         noteLastRun(run);
 
-        if (!state.flow || (list.flow !== run.flow_id)) {
+        // A list narrowed to a count is read as the server counts it.
+        if (!state.flow || (list.flow !== run.flow_id) || list.filter) {
             return;
         }
 
@@ -14572,6 +15217,24 @@
         }
     }
 
+    // Which count the runs list is narrowed to, and the way to every run.
+    function runsFilterLine(list) {
+        var line = el('p', 'small fg-secondary d-flex flex-wrap align-items-center gap-2');
+        var every = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_counts_every_run'));
+
+        line.appendChild(el('span', 'text-break', t('fl_counts_only', list.filter.label)));
+        every.setAttribute('data-refocus', 'runs-every');
+        every.addEventListener('click', function () {
+            state.runs = { flow: state.flow.id, items: [], next: null, loading: false, error: '' };
+            state.refocus = 'runs-title';
+            loadRuns(false);
+            drawSettings();
+        });
+        line.appendChild(every);
+
+        return line;
+    }
+
     function runsSide() {
         var list = state.runs;
         var head = el('div', 'wsf-side-title', t('fl_runs_title'));
@@ -14581,12 +15244,16 @@
         head.setAttribute('data-refocus', 'runs-title');
         ui.side.appendChild(head);
 
+        if (list.filter) {
+            ui.side.appendChild(runsFilterLine(list));
+        }
+
         // A load that failed is not "has not run yet": the reason, and a
         // way to load the list again. The redraw shows "Loading…" at once,
         // which loadRuns() itself does not draw.
         if (!list.items.length && list.error && !list.loading) {
             var failed = el('p', 'small fg-danger', t('fl_runs_failed') + ' ' + list.error);
-            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'), '');
 
             retry.setAttribute('data-refocus', 'runs-retry');
             retry.addEventListener('click', function () {
@@ -14631,7 +15298,7 @@
         ui.side.appendChild(rows);
 
         if (list.next) {
-            var more = K.button('btn btn-sm btn-text theme-secondary', t('fl_runs_more'), 'bi-chevron-down');
+            var more = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_runs_more'), 'bi-chevron-down');
 
             more.setAttribute('data-refocus', 'runs-more');
             more.disabled = list.loading;
@@ -14668,8 +15335,13 @@
         return K.api('ws_flow_run_get', { run_id: id }).then(function (data) {
             busy(false);
 
-            if ((seq !== state.openSeq) || state.run || !runsShown()) {
+            if ((seq !== state.openSeq) || state.run || !(runsShown() || countShown())) {
                 return;
+            }
+
+            // A run opened from a count's list goes back to it when closed.
+            if (countShown()) {
+                state.counts.back = true;
             }
 
             state.refocus = 'run-title';
@@ -14695,6 +15367,7 @@
 
         state.openSeq++;
         settle();
+        endTrial();
 
         if (!state.stash) {
             state.stash = { graph: state.graph, selected: state.selected, view: { x: state.view.x, y: state.view.y, k: state.view.k }, edit: state.edit };
@@ -14745,6 +15418,11 @@
         state.openSeq++;
         endRun();
 
+        if (!panel && state.counts && state.counts.back) {
+            panel = state.counts.chosen ? 'counts' : '';
+            state.counts.back = false;
+        }
+
         // The list asked for shows in the side panel only with nothing
         // selected; back to the flow, the box selected before comes back.
         if (stash) {
@@ -14781,7 +15459,7 @@
             return;
         }
 
-        var close = K.button('btn btn-sm btn-outline theme-secondary', t('fl_run_close'), 'bi-x-lg');
+        var close = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_run_close'), 'bi-x-lg');
 
         ui.runBox.appendChild(runBadge(RUN_STATES, run.status));
         ui.runBox.appendChild(el('span', 'flex-grow-1', t('fl_run_shown', run.id, run.version)));
@@ -14805,7 +15483,7 @@
         var line = el('div', 'w-100 small ' + (note.lost ? 'fg-danger' : 'fg-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
 
         if (!note.lost) {
-            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'), '');
 
             retry.setAttribute('data-refocus', 'run-retry');
             retry.addEventListener('click', function () {
@@ -14840,14 +15518,14 @@
         ui.side.appendChild(facts);
 
         if (run.can_cancel) {
-            var cancel = K.button('btn btn-sm btn-outline theme-warning', t('fl_run_cancel'), 'bi-x-circle');
+            var cancel = K.lookButton('pg-button pg-button-danger pg-button-sm', t('fl_run_cancel'), 'bi-x-circle');
 
             cancel.setAttribute('data-refocus', 'run-cancel');
             cancel.addEventListener('click', function () { cancelRun(cancel); });
             tools.appendChild(cancel);
         }
 
-        var all = K.button('btn btn-sm btn-text theme-secondary', t('fl_run_all'), 'bi-clock-history');
+        var all = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_run_all'), 'bi-clock-history');
 
         all.setAttribute('data-refocus', 'run-all');
         all.addEventListener('click', function () {
@@ -14905,16 +15583,16 @@
         }
 
         if (step && taskShown(step)) {
-            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'step-task'));
+            wrap.appendChild(taskLink(step, node, 'pg-button pg-button-quiet pg-button-sm', 'step-task'));
         }
 
         // A failed box (one that stopped half way too) is tried again or
         // skipped by the flow's owner, in whose name it runs; a run done or
         // cancelled takes neither.
-        if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled'].indexOf(state.run.status) < 0)) {
+        if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled', 'left'].indexOf(state.run.status) < 0)) {
             var mend = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var retry = K.button('btn btn-sm btn-outline theme-primary', t('fl_step_retry'), 'bi-arrow-repeat');
-            var skip = K.button('btn btn-sm btn-outline theme-secondary', t('fl_step_skip'), 'bi-skip-forward');
+            var retry = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_step_retry'), 'bi-arrow-repeat');
+            var skip = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_step_skip'), 'bi-skip-forward');
 
             retry.setAttribute('data-refocus', 'step-retry');
             skip.setAttribute('data-refocus', 'step-skip');
@@ -14949,7 +15627,7 @@
             }
 
             if (state.stash && state.stash.edit && item.token) {
-                var fix = K.button('btn btn-sm btn-outline theme-primary', t('fl_reason_fallback'), 'bi-input-cursor-text');
+                var fix = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_reason_fallback'), 'bi-input-cursor-text');
 
                 fix.setAttribute('data-refocus', 'reason-fix-' + index);
                 fix.addEventListener('click', function () { fixEmpty(node, item); });
@@ -14957,7 +15635,7 @@
             }
 
             if (item.node_id && nodeById(item.node_id)) {
-                var open = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reason_open'), 'bi-box-arrow-in-right');
+                var open = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_reason_open'), 'bi-box-arrow-in-right');
 
                 open.setAttribute('data-refocus', 'reason-open-' + index);
                 open.addEventListener('click', function () {
@@ -15097,7 +15775,7 @@
         }
 
         if (step && (step.status === 'waiting') && taskShown(step)) {
-            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'run-otask-' + node.id));
+            box.appendChild(taskLink(step, node, 'pg-button pg-button-quiet pg-button-sm', 'run-otask-' + node.id));
         }
 
         return box;
@@ -15264,7 +15942,7 @@
                 wrap.appendChild(el('p', 'small mb-1 wsf-run-result', runFilled(item.text, reads)));
             }
 
-            var toggle = K.button('btn btn-sm btn-link p-0 mb-2', t(shown[id] ? 'fl_run_template_hide' : 'fl_run_template_show'));
+            var toggle = K.lookButton('pg-button pg-button-ghost pg-button-sm mb-2', t(shown[id] ? 'fl_run_template_hide' : 'fl_run_template_show'), '');
 
             toggle.setAttribute('aria-expanded', shown[id] ? 'true' : 'false');
             toggle.setAttribute('data-refocus', 'run-template-' + id);
@@ -15501,13 +16179,15 @@
     // The optional customer of a run, asked under Run's question: a search
     // among the contacts the person reads (ws_ref_search), one picked at a
     // time. The server checks the pick again (ws_flow_run_contact_check()).
-    function customerPicker() {
+    // options: help, the line under the search; onPick(found), told of each
+    // pick (the trial's record).
+    function customerPicker(options) {
         var picked = { id: 0 };
         var wrap = el('div', 'wsf-run-customer');
         var id = 'wsf-run-customer-' + Date.now();
         var label = el('label', 'form-label small fw-semibold mb-1', t('fl_run_customer'));
         var input = el('input', 'form-control form-control-sm');
-        var help = el('div', 'form-text', t('fl_run_customer_help'));
+        var help = el('div', 'form-text', (options && options.help) || t('fl_run_customer_help'));
         var list = el('div', 'list-group mt-1 d-none');
         var chip = el('div', 'd-flex align-items-center gap-2 mt-1 d-none');
         var serial = 0;
@@ -15532,7 +16212,7 @@
                 return;
             }
 
-            var clear = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
+            var clear = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg');
 
             clear.setAttribute('aria-label', t('fl_run_customer_clear'));
             clear.title = t('fl_run_customer_clear');
@@ -15543,6 +16223,10 @@
             chip.appendChild(el('span', 'fw-semibold', found.label));
             chip.appendChild(clear);
             clear.focus();
+
+            if (options && options.onPick) {
+                options.onPick(found);
+            }
         }
 
         input.addEventListener('input', K.debounce(function () {
@@ -15587,6 +16271,897 @@
         });
 
         return { node: wrap, picked: picked };
+    }
+
+    // ── Counts: where a live flow's runs are, over its boxes ───────────
+
+    // The days the counts are read over: ended runs are kept 30 days
+    // (WS_FLOW_RUNS_KEEP), so no longer choice is offered.
+    var COUNTS_DAYS = [7, 30];
+    var COUNTS_FIRST = 30;
+    // How often the counts shown are read again.
+    var COUNTS_EVERY = 60000;
+
+    // A box's pills from its line of ws_flow_counts (null when no run
+    // reached it): runs waiting now, passes done and passes failed in the
+    // days, each only when there is one; a start's passes are runs started.
+    function countPills(line, start) {
+        var out = [];
+
+        if (!line) {
+            return out;
+        }
+
+        [['waiting', 'amber', 'fl_counts_waiting'], ['passed', 'gray', start ? 'fl_counts_started' : 'fl_counts_passed'], ['failed', 'rose', 'fl_counts_failed']].forEach(function (item) {
+            var n = +line[item[0]] || 0;
+
+            if (n > 0) {
+                out.push({ state: item[0], n: n, tone: item[1], text: item[2] });
+            }
+        });
+
+        return out;
+    }
+
+    // The runs of a pill in the side panel, unless a selection took it over.
+    function countShown() {
+        return !!(!state.run && (state.panel === 'counts') && state.counts && state.counts.chosen && (!state.selected || state.outline));
+    }
+
+    // Counts are read by whoever reads the flow's runs, on a flow with a
+    // live version, while neither a run nor a trial is shown.
+    function canCount() {
+        return !!(state.flow && (state.flow.version > 0) && !state.run && !state.trial && !state.embed);
+    }
+
+    // "Counts" in the bar, pressed while they are shown; beside it the days.
+    function countsButton() {
+        if (!canCount()) {
+            return;
+        }
+
+        var on = !!(state.counts && (state.counts.flow === state.flow.id));
+        var button = barButton(BAR_QUIET, '', 'bi-bar-chart');
+
+        button.appendChild(el('span', 'd-none xl:d-inline', t('fl_counts')));
+        button.title = t('fl_counts_help');
+        button.setAttribute('aria-label', t('fl_counts'));
+        button.setAttribute('data-refocus', 'counts');
+        pressedLook(button, on);
+        button.addEventListener('click', toggleCounts);
+        ui.bar.appendChild(button);
+
+        if (on) {
+            ui.bar.appendChild(countsDays());
+        }
+    }
+
+    // The days counted, as a segmented choice.
+    function countsDays() {
+        var group = el('div', 'pg-seg wsf-counts-days');
+
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', t('fl_counts_days'));
+
+        COUNTS_DAYS.forEach(function (days) {
+            var choice = barButton('pg-seg-item', t('fl_counts_days_n', days), '');
+
+            choice.setAttribute('aria-pressed', (state.counts.days === days) ? 'true' : 'false');
+            choice.setAttribute('data-refocus', 'counts-days-' + days);
+            choice.addEventListener('click', function () {
+                if (state.counts.days === days) {
+                    return;
+                }
+
+                state.counts.days = days;
+                state.counts.chosen = null;
+                state.refocus = 'counts-days-' + days;
+
+                if (state.panel === 'counts') {
+                    state.panel = '';
+                }
+
+                drawBar();
+                drawSettings();
+                loadCounts();
+            });
+            group.appendChild(choice);
+        });
+
+        return group;
+    }
+
+    function toggleCounts() {
+        if (state.counts) {
+            endCounts();
+            state.refocus = 'counts';
+            drawBar();
+            paintCountsAll();
+            drawSettings();
+            announce(t('fl_counts_hidden'));
+            return;
+        }
+
+        state.counts = { flow: state.flow.id, days: COUNTS_FIRST, data: null, error: '', seq: 0, timer: 0, chosen: null, list: null, back: false };
+        state.refocus = 'counts';
+        drawBar();
+        loadCounts();
+    }
+
+    // The counts put away: the timer stopped, their panel closed. Nothing
+    // is drawn.
+    function endCounts() {
+        var counts = state.counts;
+
+        if (!counts) {
+            return;
+        }
+
+        window.clearTimeout(counts.timer);
+        state.counts = null;
+
+        if (state.panel === 'counts') {
+            state.panel = '';
+        }
+    }
+
+    // The counts read again (ws_flow_counts), then every COUNTS_EVERY ms
+    // while they are shown; a look is skipped while the page is hidden or a
+    // run or trial covers the canvas. Only the last question asked is drawn.
+    function loadCounts() {
+        var counts = state.counts;
+        var seq;
+
+        if (!counts) {
+            return;
+        }
+
+        window.clearTimeout(counts.timer);
+        counts.timer = window.setTimeout(loadCounts, COUNTS_EVERY);
+
+        if (document.hidden || !canCount()) {
+            return;
+        }
+
+        seq = ++counts.seq;
+        K.api('ws_flow_counts', { flow_id: counts.flow, days: counts.days }).then(function (data) {
+            if ((state.counts !== counts) || (seq !== counts.seq)) {
+                return;
+            }
+
+            var lines = {};
+
+            ((data.counts && data.counts.boxes) || []).forEach(function (line) {
+                lines[line.node] = line;
+            });
+            counts.data = lines;
+            counts.error = '';
+            keepFocus(paintCountsAll);
+        }).catch(function (error) {
+            if ((state.counts !== counts) || (seq !== counts.seq)) {
+                return;
+            }
+
+            // Kept, so the pills read last stay; said once.
+            if (!counts.error) {
+                counts.error = (error && error.message) || t('error_generic');
+                K.fail(error);
+            }
+        });
+    }
+
+    function paintCountsAll() {
+        if (!ui.boxes) {
+            return;
+        }
+
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.pgc-node[data-node]'), function (box) {
+            var node = nodeById(box.getAttribute('data-node'));
+
+            if (node) {
+                paintCounts(box, node);
+            }
+        });
+    }
+
+    // The pills over a box: each a button listing its runs in the panel.
+    function paintCounts(box, node) {
+        var old = box.querySelector('.wsf-counts');
+        var counts = state.counts;
+
+        if (old) {
+            old.remove();
+        }
+
+        if (!counts || !counts.data || !canCount() || kindOf(node).pure) {
+            return;
+        }
+
+        var pills = countPills(counts.data[node.id], kindOf(node).group === 'start');
+
+        if (!pills.length) {
+            return;
+        }
+
+        var wrap = el('div', 'wsf-counts');
+
+        pills.forEach(function (pill) {
+            var label = t(pill.text, pill.n);
+            var button = el('button', 'pg-pill pg-tone-' + pill.tone + ' wsf-count', label);
+            var chosen = (state.panel === 'counts') && counts.chosen && (counts.chosen.node === node.id) && (counts.chosen.state === pill.state);
+
+            button.type = 'button';
+            button.setAttribute('aria-label', t('fl_counts_of', label, nameOf(node)));
+            button.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+            button.setAttribute('data-refocus', 'count-' + node.id + '-' + pill.state);
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                openCount(node, pill);
+            });
+            wrap.appendChild(button);
+        });
+
+        box.appendChild(wrap);
+    }
+
+    // A pill pressed: its runs in the panel, a page of 20 at a time; the
+    // same pill again closes them.
+    function openCount(node, pill) {
+        var counts = state.counts;
+        var chosen = counts.chosen;
+
+        if (chosen && (state.panel === 'counts') && (chosen.node === node.id) && (chosen.state === pill.state)) {
+            closeCount();
+            return;
+        }
+
+        counts.chosen = { node: node.id, state: pill.state, n: pill.n, label: t(pill.text, pill.n), days: counts.days };
+        counts.list = { items: [], next: null, loading: false, error: '' };
+        state.openSeq++;
+        state.panel = 'counts';
+        state.selected = null;
+        markSelected();
+        state.refocus = 'counts-title';
+        paintCountsAll();
+        drawSettings();
+        loadCountRuns(false);
+    }
+
+    function closeCount() {
+        var chosen = state.counts ? state.counts.chosen : null;
+
+        if (state.counts) {
+            state.counts.chosen = null;
+        }
+
+        state.panel = '';
+        paintCountsAll();
+        state.refocus = chosen ? 'count-' + chosen.node + '-' + chosen.state : '';
+        drawSettings();
+    }
+
+    // The runs of the count chosen; more: the next page.
+    function loadCountRuns(more) {
+        var counts = state.counts;
+        var chosen = counts && counts.chosen;
+        var list = counts && counts.list;
+
+        if (!chosen || !list || list.loading) {
+            return;
+        }
+
+        list.loading = true;
+        list.error = '';
+
+        K.api('ws_flow_runs_list', { flow_id: counts.flow, before_id: more ? (list.next || 0) : 0, node: chosen.node, state: chosen.state, days: chosen.days }).then(function (data) {
+            var runs = data.runs || [];
+
+            list.items = more ? list.items.concat(runs) : runs;
+            list.next = data.next || null;
+
+            if (more && runs.length) {
+                state.refocus = 'run-' + runs[0].id;
+            }
+        }).catch(function (error) {
+            list.error = (error && error.message) || t('error_generic');
+        }).then(function () {
+            list.loading = false;
+
+            if ((state.counts === counts) && (counts.list === list) && (state.panel === 'counts') && !state.run) {
+                keepFocus(drawSettings);
+            }
+        });
+    }
+
+    // What a run of the list did at the box: when its Wait looks again or
+    // since when it waits, when it passed or failed there.
+    function countRunLine(run) {
+        var at = run.at || {};
+
+        if (at.status === 'waiting') {
+            return at.wake_at ? t('fl_counts_wakes', when(at.wake_at)) : t('fl_counts_since', when(at.since));
+        }
+
+        return at.finished_at ? t((at.status === 'failed') ? 'fl_counts_failed_at' : 'fl_counts_passed_at', when(at.finished_at)) : '';
+    }
+
+    // The panel of a count: the box and the count, its runs (the record's
+    // name, or the run's number when it is about nobody the person reads),
+    // each opening the run; more, and all of them in Flow runs.
+    function countsSide() {
+        var counts = state.counts;
+        var chosen = counts.chosen;
+        var list = counts.list;
+        var node = nodeById(chosen.node);
+        var top = el('div', 'd-flex align-items-start gap-2 mb-3');
+        var heading = el('div', 'flex-grow-1 min-w-0');
+        var head = el('div', 'wsf-side-title', chosen.label);
+        var close = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_counts_close'));
+
+        head.id = 'wsf-counts-title';
+        head.tabIndex = -1;
+        head.setAttribute('data-refocus', 'counts-title');
+        heading.appendChild(el('div', 'small fg-secondary text-truncate', node ? nameOf(node) : ''));
+        heading.appendChild(head);
+        close.setAttribute('aria-label', t('fl_counts_close'));
+        close.title = t('fl_counts_close');
+        close.addEventListener('click', closeCount);
+        top.appendChild(heading);
+        top.appendChild(close);
+        ui.side.appendChild(top);
+
+        if (chosen.state !== 'waiting') {
+            ui.side.appendChild(el('p', 'small fg-secondary mb-2', t('fl_counts_days_n', chosen.days)));
+        }
+
+        if (!list.items.length) {
+            var line = el('p', 'small ' + (list.error ? 'fg-danger' : 'fg-secondary'), list.error || (list.loading ? t('loading') : t('fl_counts_none')));
+
+            if (list.error && !list.loading) {
+                var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'));
+
+                retry.setAttribute('data-refocus', 'counts-retry');
+                retry.addEventListener('click', function () {
+                    state.refocus = 'counts-title';
+                    loadCountRuns(false);
+                    drawSettings();
+                });
+                line.appendChild(retry);
+            }
+
+            ui.side.appendChild(line);
+            return;
+        }
+
+        var rows = el('ul', 'list-unstyled mb-3 wsf-run-list');
+
+        rows.setAttribute('aria-labelledby', head.id);
+        list.items.forEach(function (run) {
+            var item = el('button', 'wsf-run-item');
+            var row = el('span', 'wsf-run-item-top');
+            var said = countRunLine(run);
+
+            item.type = 'button';
+            item.disabled = !!state.opening[run.id];
+            item.setAttribute('data-refocus', 'run-' + run.id);
+            row.appendChild(el('span', 'fw-semibold text-truncate', run.about || t('fl_run_name', run.id)));
+            row.appendChild(K.icon('bi-chevron-right', 'ms-auto fg-secondary'));
+            item.appendChild(row);
+
+            if (said) {
+                item.appendChild(el('span', 'wsf-run-item-line', said));
+            }
+
+            item.addEventListener('click', function () {
+                openRun(run.id);
+            });
+            rows.appendChild(el('li')).appendChild(item);
+        });
+        ui.side.appendChild(rows);
+
+        var foot = el('div', 'd-flex flex-wrap align-items-center gap-2');
+
+        if (list.next) {
+            var more = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_runs_more'), 'bi-chevron-down');
+
+            more.setAttribute('data-refocus', 'counts-more');
+            more.disabled = list.loading;
+            more.addEventListener('click', function () {
+                more.disabled = true;
+                loadCountRuns(true);
+            });
+            foot.appendChild(more);
+        }
+
+        var all = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto', t('fl_counts_all'), 'bi-clock-history');
+
+        all.setAttribute('data-refocus', 'counts-all');
+        all.addEventListener('click', function () {
+            openCountInRuns(chosen);
+        });
+        foot.appendChild(all);
+        ui.side.appendChild(foot);
+    }
+
+    // "Open all in Flow runs": the runs list narrowed to the count, with
+    // the way back to every run.
+    function openCountInRuns(chosen) {
+        var node = nodeById(chosen.node);
+
+        state.openSeq++;
+        state.runs = { flow: state.flow.id, items: [], next: null, loading: false, error: '',
+            filter: { node: chosen.node, state: chosen.state, days: chosen.days, label: (node ? nameOf(node) + ' · ' : '') + chosen.label } };
+        state.counts.chosen = null;
+        state.panel = 'runs';
+        state.refocus = 'runs-title';
+        paintCountsAll();
+        loadRuns(false);
+        drawBar();
+        drawSettings();
+    }
+
+    // ── The trial: the draft tried from its start ──────────────────────
+
+    // How a box of the trial is marked on the canvas and in the panel: its
+    // tone (a run state's), its mark and its word.
+    var TRIAL_MARKS = {
+        done: ['done', 'bi-check-circle-fill', 'fl_trial_walked'],
+        passed: ['skipped', 'bi-skip-forward', 'fl_trial_passed'],
+        failed: ['failed', 'bi-x-octagon-fill', 'fl_trial_failed'],
+        next: ['running', 'bi-arrow-right-circle', 'fl_trial_next']
+    };
+
+    // The texts of a message read as its heading in a preview.
+    var TRIAL_HEADS = ['subject', 'fallback_subject', 'title'];
+
+    // Try is the flow owner's while they edit the draft, as a box's Try
+    // tab is: the server looks at every box with the owner's rights.
+    function canTry() {
+        return !!(state.flow && state.edit && state.flow.manage && !state.run && !state.trial && !state.embed && state.graph);
+    }
+
+    // "Try" in the bar, beside Run.
+    function tryButton() {
+        if (!canTry()) {
+            return;
+        }
+
+        var button = barButton(BAR_QUIET, t('fl_trial'), 'bi-play-circle');
+
+        button.title = t('fl_trial_help');
+        button.setAttribute('data-refocus', 'trial');
+        button.addEventListener('click', startTrial);
+        ui.bar.appendChild(button);
+    }
+
+    // The bar while the draft is tried: that nothing is sent, and the way
+    // back to editing it.
+    function trialBar() {
+        var note = el('span', 'small fw-semibold fg-primary wsf-trial-note');
+        var end = barButton(BAR_FILL, t('fl_trial_end'), 'bi-x-lg');
+
+        note.appendChild(K.icon('bi-eye', 'me-1'));
+        note.appendChild(document.createTextNode(t('fl_trial_on')));
+        end.setAttribute('data-refocus', 'trial-end');
+        end.addEventListener('click', closeTrial);
+        ui.bar.appendChild(note);
+        ui.bar.appendChild(end);
+    }
+
+    // The trial begins once the draft is saved, as the server walks the
+    // draft it keeps; the canvas is read-only until it ends.
+    function startTrial() {
+        var flow = state.flow;
+
+        if (!canTry()) {
+            return;
+        }
+
+        settle();
+        flush().then(function () {
+            if ((state.flow !== flow) || !canTry()) {
+                return;
+            }
+
+            state.trial = { flow: flow.id, edit: state.edit, record: null, outcomes: {}, answer: null, marked: trialMarks(null, 0, []), shown: 0, busy: false, seq: 0, error: '', runs: [] };
+            state.edit = false;
+            state.selected = null;
+            state.panel = '';
+            canvas.cancel();
+            ui.app.classList.add('wsf-trial', 'wsf-readonly');
+            state.refocus = 'trial-title';
+            drawBar();
+            drawAll();
+            announce(t('fl_trial_on'));
+            loadTrial(0);
+            loadTrialRuns();
+        }).catch(K.fail);
+    }
+
+    // The trial ends without drawing anything (another flow, a run shown);
+    // gives what it was, null when none was on.
+    function endTrial() {
+        var trial = state.trial;
+
+        if (!trial) {
+            return null;
+        }
+
+        state.trial = null;
+        state.edit = trial.edit;
+
+        if (ui.app) {
+            ui.app.classList.remove('wsf-trial');
+            ui.app.classList.toggle('wsf-readonly', !state.edit);
+        }
+
+        return trial;
+    }
+
+    // "End the trial": back to the draft, Try focused.
+    function closeTrial() {
+        if (!endTrial()) {
+            return;
+        }
+
+        state.refocus = 'trial';
+        drawBar();
+        drawAll();
+        announce(t('fl_trial_ended_note'));
+    }
+
+    // The walk asked of the server again (ws_flow_trial) with the record and
+    // the outcomes chosen; `shown` steps are walked once it answers. Only
+    // the last question asked is drawn.
+    function loadTrial(shown) {
+        var trial = state.trial;
+        var seq = ++trial.seq;
+        var record = trial.record || {};
+
+        trial.busy = true;
+        trial.error = '';
+        keepFocus(drawTrialViews);
+
+        K.api('ws_flow_trial', { flow_id: state.flow.id, run_id: record.run_id || 0, contact_id: record.contact_id || 0, outcomes: JSON.stringify(trial.outcomes) }).then(function (data) {
+            if ((state.trial !== trial) || (seq !== trial.seq)) {
+                return;
+            }
+
+            trial.busy = false;
+            trial.answer = data.trial || { steps: [], skipped: [], state: 'failed' };
+            trial.shown = Math.min(shown, trial.answer.steps.length);
+            keepFocus(drawTrialViews);
+        }).catch(function (error) {
+            if ((state.trial !== trial) || (seq !== trial.seq)) {
+                return;
+            }
+
+            trial.busy = false;
+            trial.answer = null;
+            trial.error = (error && error.message) || t('error_generic');
+            keepFocus(drawTrialViews);
+        });
+    }
+
+    // The flow's last five runs, offered first as the trial's record.
+    function loadTrialRuns() {
+        var trial = state.trial;
+
+        if (!(state.flow.version > 0)) {
+            return;
+        }
+
+        K.api('ws_flow_runs_list', { flow_id: state.flow.id, before_id: 0 }).then(function (data) {
+            if (state.trial === trial) {
+                trial.runs = (data.runs || []).slice(0, 5);
+                keepFocus(drawSettings);
+            }
+        }).catch(function () {});
+    }
+
+    // The marks, the arrows taken and the panel as the trial now stands.
+    function drawTrialViews() {
+        var trial = state.trial;
+
+        if (!trial) {
+            return;
+        }
+
+        trial.marked = trialMarks(trial.answer ? trial.answer.steps : null, trial.shown, state.graph.edges);
+
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.pgc-node[data-node]'), function (box) {
+            var node = nodeById(box.getAttribute('data-node'));
+
+            if (node) {
+                fillBox(box, node);
+            }
+        });
+
+        drawEdges();
+        drawSettings();
+    }
+
+    // A box as the trial left it: the tone, mark and word of its mark (a
+    // condition's outcome in place of the word). paintRun() has taken the
+    // last ones off.
+    function paintTrial(box, node) {
+        var mark = (state.trial && state.trial.marked) ? state.trial.marked.marks[node.id] : null;
+
+        if (!mark) {
+            return;
+        }
+
+        var badge = trialBadge(node, mark);
+
+        box.classList.add('wsf-run-' + TRIAL_MARKS[mark.state][0]);
+        box.querySelector('.wsf-node-head').appendChild(badge);
+        box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + badge.textContent + '.');
+    }
+
+    // A trial's mark as a mark and a word, never the colour alone: a box
+    // with outcomes of its own says the one it left on.
+    function trialBadge(node, mark) {
+        var look = TRIAL_MARKS[mark.state];
+        var named = (mark.state === 'done') && mark.outcome && node && edgeNamed(node, mark.outcome);
+        var badge = el('span', 'wsf-run-badge wsf-run-' + look[0]);
+
+        badge.appendChild(K.icon(look[1]));
+        badge.appendChild(document.createTextNode(named ? outcomeText(node, mark.outcome) : t(look[2])));
+
+        return badge;
+    }
+
+    // The trial's panel: the record, then the steps walked, the one in
+    // turn, Next step and To the end.
+    function trialSide() {
+        var trial = state.trial;
+        var head = el('div', 'wsf-side-title', t('fl_trial_title'));
+
+        head.tabIndex = -1;
+        head.setAttribute('data-refocus', 'trial-title');
+        ui.side.appendChild(head);
+        ui.side.appendChild(el('p', 'small fg-secondary mb-4', t('fl_trial_lead')));
+        ui.side.appendChild(trialRecord(trial));
+        ui.side.appendChild(trialSteps(trial));
+    }
+
+    // Who the trial is about: the record chosen, the last runs' records
+    // first, a contact search after them.
+    function trialRecord(trial) {
+        var wrap = el('section', 'wsf-trial-record mb-5');
+        var current = el('div', 'd-flex align-items-center gap-2 small mb-3');
+        var record = trial.record;
+
+        wrap.appendChild(el('div', 'small fw-semibold mb-1', t('fl_trial_record')));
+        current.appendChild(K.icon(record ? (record.run_id ? 'bi-clock-history' : 'bi-person-vcard') : 'bi-dash-circle'));
+        current.appendChild(el('span', 'flex-grow-1 text-break', record ? record.label : t('fl_trial_record_none')));
+
+        if (record) {
+            var clear = K.lookButton('pg-button pg-button-ghost pg-button-sm', t('fl_trial_record_clear'));
+
+            clear.setAttribute('data-refocus', 'trial-record');
+            clear.addEventListener('click', function () {
+                chooseRecord(null);
+            });
+            current.appendChild(clear);
+        }
+
+        wrap.appendChild(current);
+
+        if (trial.runs.length) {
+            var runs = el('div', 'd-flex flex-wrap gap-2 mb-3');
+
+            runs.setAttribute('role', 'group');
+            runs.setAttribute('aria-label', t('fl_trial_recent'));
+            wrap.appendChild(el('div', 'small fg-secondary mb-1', t('fl_trial_recent')));
+            trial.runs.forEach(function (run) {
+                var label = t('fl_try_run_item', run.id, runWord(run.status));
+                var pick = K.lookButton('pg-button pg-button-quiet pg-button-sm', label);
+
+                pick.title = t('fl_run_at', when(run.started_at));
+                pick.setAttribute('data-refocus', 'trial-run-' + run.id);
+                pressedLook(pick, !!(record && (record.run_id === run.id)));
+                pick.addEventListener('click', function () {
+                    chooseRecord({ run_id: run.id, label: label });
+                });
+                runs.appendChild(pick);
+            });
+            wrap.appendChild(runs);
+        }
+
+        wrap.appendChild(customerPicker({
+            help: t('fl_trial_customer_help'),
+            onPick: function (found) {
+                if (found) {
+                    chooseRecord({ contact_id: found.id, label: found.label });
+                }
+            }
+        }).node);
+
+        return wrap;
+    }
+
+    // Another record starts the trial over: the outcomes chosen were for
+    // the walk of the one before.
+    function chooseRecord(record) {
+        state.trial.record = record;
+        state.trial.outcomes = {};
+        state.refocus = 'trial-title';
+        loadTrial(0);
+    }
+
+    // The steps walked, each in its Try's words; the one in turn named;
+    // then Next step and To the end, or how the run would end.
+    function trialSteps(trial) {
+        var wrap = el('section', 'wsf-trial-steps');
+        var answer = trial.answer;
+        var steps = answer ? answer.steps : [];
+        var tools = el('div', 'd-flex flex-wrap gap-2 mt-3');
+        var line = el('p', 'small mb-0');
+
+        line.setAttribute('aria-live', 'polite');
+        wrap.appendChild(el('div', 'small fw-semibold mb-1', t('fl_trial_steps')));
+
+        if (trial.error) {
+            var retry = K.lookButton('pg-button pg-button-ghost pg-button-sm ms-1', t('fl_retry'));
+
+            line.className = 'small fg-danger mb-0';
+            line.textContent = trial.error;
+            retry.setAttribute('data-refocus', 'trial-retry');
+            retry.addEventListener('click', function () {
+                loadTrial(trial.shown);
+            });
+            line.appendChild(retry);
+            wrap.appendChild(line);
+
+            return wrap;
+        }
+
+        if (!answer) {
+            line.className = 'small fg-secondary mb-0';
+            line.textContent = t('fl_trial_loading');
+            wrap.appendChild(line);
+
+            return wrap;
+        }
+
+        var list = el('ol', 'list-unstyled mb-0 wsf-trial-list');
+
+        steps.slice(0, trial.shown).forEach(function (step, index) {
+            list.appendChild(trialStep(trial, step, index));
+        });
+
+        if (trial.shown < steps.length) {
+            var next = steps[trial.shown];
+            var item = el('li', 'd-flex align-items-center gap-2 small fg-secondary wsf-trial-step');
+
+            item.appendChild(trialBadge(nodeById(next.node_id), { state: 'next', outcome: '' }));
+            item.appendChild(el('span', 'text-break', next.name || next.label));
+            list.appendChild(item);
+        }
+
+        wrap.appendChild(list);
+
+        var done = trial.shown >= steps.length;
+        var step = K.lookButton('pg-button pg-button-fill pg-button-sm', t('fl_trial_step'), 'bi-arrow-right');
+        var all = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_trial_all'), 'bi-skip-end');
+
+        step.setAttribute('data-refocus', 'trial-step trial-again');
+        all.setAttribute('data-refocus', 'trial-all trial-again');
+        step.disabled = done || trial.busy;
+        all.disabled = done || trial.busy;
+        step.addEventListener('click', function () {
+            walkTrial(trial.shown + 1);
+        });
+        all.addEventListener('click', function () {
+            walkTrial(steps.length);
+        });
+
+        if (!done) {
+            tools.appendChild(step);
+            tools.appendChild(all);
+        } else {
+            var again = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_trial_again'), 'bi-arrow-counterclockwise');
+
+            line.textContent = t('fl_trial_result', runWord(answer.state)) + ((answer.skipped || []).length ? ' ' + t('fl_trial_skipped', answer.skipped.length) : '');
+            again.setAttribute('data-refocus', 'trial-again trial-step');
+            again.addEventListener('click', function () {
+                walkTrial(0);
+            });
+            wrap.appendChild(line);
+            tools.appendChild(again);
+        }
+
+        wrap.appendChild(tools);
+
+        return wrap;
+    }
+
+    // One step walked: its mark, its box's name, what it would do, why it
+    // would fail, the values it lacks; the outcome a person would choose,
+    // to change; Preview for a message.
+    function trialStep(trial, step, index) {
+        var node = nodeById(step.node_id);
+        var mark = trial.marked.marks[step.node_id] || { state: (step.status === 'failed') ? 'failed' : 'done', outcome: step.outcome };
+        var item = el('li', 'small mb-3 wsf-trial-step');
+        var top = el('div', 'd-flex align-items-center gap-2 mb-1');
+
+        top.appendChild(trialBadge(node, mark));
+        top.appendChild(el('span', 'fw-semibold text-break', step.name || step.label));
+        item.appendChild(top);
+
+        if (step.said) {
+            item.appendChild(el('div', 'text-break', step.said));
+        }
+
+        if (step.refusal) {
+            item.appendChild(el('div', 'fg-danger text-break', t('fl_try_fails', step.refusal)));
+        }
+
+        if ((step.empty || []).length) {
+            item.appendChild(el('div', 'fg-secondary', t('fl_try_empty', step.empty.join(', '))));
+        }
+
+        if ((step.choices || []).length > 1) {
+            var choice = K.select(step.choices.map(function (on) { return [on, outcomeText(node, on)]; }), step.outcome);
+            var chosen = field(t('fl_trial_outcome'), choice, t('fl_trial_outcome_help'));
+
+            chosen.classList.remove('mb-5');
+            chosen.classList.add('mt-2');
+            choice.setAttribute('data-refocus', 'trial-choice-' + step.node_id);
+            choice.addEventListener('change', function () {
+                trial.outcomes[step.node_id] = choice.value;
+                state.refocus = 'trial-choice-' + step.node_id;
+                loadTrial(index + 1);
+            });
+            item.appendChild(chosen);
+        }
+
+        if (node && (kindOf(node).group === 'message') && (step.texts || []).length) {
+            var preview = K.lookButton('pg-button pg-button-ghost pg-button-sm mt-1', t('fl_trial_preview'), 'bi-envelope-open');
+
+            preview.addEventListener('click', function () {
+                previewStep(trial, step);
+            });
+            item.appendChild(preview);
+        }
+
+        return item;
+    }
+
+    // Next step and To the end walk on; 0 starts over. The steps walked
+    // are told to screen readers.
+    function walkTrial(shown) {
+        var trial = state.trial;
+        var steps = trial.answer ? trial.answer.steps : [];
+        var from = trial.shown;
+
+        trial.shown = Math.min(Math.max(0, shown), steps.length);
+        state.refocus = (trial.shown >= steps.length) ? 'trial-again' : 'trial-step';
+        keepFocus(drawTrialViews);
+        announce(steps.slice(from, trial.shown).map(function (step) {
+            return t('fl_run_pair', step.name || step.label, step.refusal ? t('fl_trial_failed') : t('fl_trial_walked'));
+        }).join('. ') || t('fl_trial_on'));
+    }
+
+    // A message as its person would get it: its heading, then its words,
+    // filled with the record's values; what only a real send knows is
+    // named under it.
+    function previewStep(trial, step) {
+        var card = el('div', 'border rounded-4 p-4 wsf-trial-preview');
+
+        (step.texts || []).forEach(function (text) {
+            var shown = el('div', (TRIAL_HEADS.indexOf(text.key) !== -1) ? 'fw-semibold mb-2 text-break' : 'mb-2 text-break', text.text);
+
+            shown.style.whiteSpace = 'pre-wrap';
+            card.appendChild(shown);
+        });
+
+        if ((step.empty || []).length) {
+            card.appendChild(el('div', 'small fg-secondary', t('fl_try_empty', step.empty.join(', '))));
+        }
+
+        K.ask(trial.record ? t('fl_trial_preview_for', step.name || step.label, trial.record.label) : t('fl_trial_preview_title', step.name || step.label), t('fl_trial_preview_close'), false, card, { info: true });
     }
 
     // Run: asked first, then started once. A second click while it is asked
@@ -15882,6 +17457,8 @@
                 state.view = next;
             }
 
+            mapLater();
+
             return state.view;
         },
         items: function () {
@@ -15890,7 +17467,7 @@
         // A link on a box (the task of a waiting box) and the last run's
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
-        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus, .wsf-several, .wsf-note-text, .wsf-note button, .wsf-frame-head input, .wsf-frame-head button',
+        ownClicks: '.pgc-node a[href], .wsf-counts button, .wsf-flag-canvas, .wsf-plus, .wsf-several, .wsf-note-text, .wsf-note button, .wsf-frame-head input, .wsf-frame-head button',
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,

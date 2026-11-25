@@ -2226,8 +2226,10 @@ body:not(.toolbar) .software-content > #footer {
 }
 /* The rail's rules skip a drawer-only screen (.menu-drawer-only, below):
    its menu is the drawer at every width. :where() keeps their weight. */
+/* Hidden from sight only: visibility or display would take the label out
+   of the row's name, and a row with a count would be read as its number. */
 :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .list-group-text {
-  visibility: hidden;
+  opacity: 0;
 }
 
 /* A count on a menu entry (the ERP's overdue receivables). Expanded, it sits
@@ -2879,7 +2881,7 @@ body:not(.toolbar) .software-content > #footer {
   /* The drawer is always full width while open, so labels never hide down here
      regardless of the saved desktop rail state. */
   #menu:not(.expanded) .list-group .list-group-item .list-group-text {
-    visibility: visible;
+    opacity: 1;
   }
   /* And a count goes back into the line with them, before the arrow. */
   #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
@@ -13043,7 +13045,7 @@ body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
 .ws-app.ws-thread-resizing iframe {
   pointer-events: none;
 }
-.ws-send-group .btn {
+.ws-send-group .pg-button {
   white-space: nowrap;
 }
 .ws-thread-panel > .ws-head,
@@ -13972,10 +13974,6 @@ b.ws-agent-card-anchor:focus-visible {
   font-size: .85rem;
 }
 /* The person's own quiet hours under a channel's notifications. */
-.ws-info-qh .form-label {
-  margin-bottom: .25rem;
-  font-size: .85em;
-}
 .ws-info-qh-actions {
   display: flex;
   flex-wrap: wrap;
@@ -14011,7 +14009,8 @@ b.ws-agent-card-anchor:focus-visible {
   text-transform: uppercase;
   color: var(--pg-fg-2);
 }
-.ws-thread-source-head .btn-link {
+.ws-thread-source-head .btn-link,
+.ws-thread-source-head .pg-button {
   font-size: .75rem;
   text-transform: none;
   letter-spacing: 0;
@@ -14841,7 +14840,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 /* Versions of a conversation: one list in a settings card, the current
    conversation first. */
-.ws-era-row > .btn {
+.ws-era-row > .btn,
+.ws-era-row > .pg-button {
   flex-shrink: 0;
 }
 /* Channel settings: the segmented control at the top places its tabs
@@ -14875,7 +14875,7 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: var(--ws-space-2);
 }
-.ws-look-row > .form-control {
+.ws-look-row > .pg-input {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -15164,7 +15164,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-head-icon {
   background: var(--bs-warning-base);
   color: var(--bs-warning-contrast);
 }
-.ws-head-share {
+.pg-icon-button.ws-head-share {
   color: var(--bs-warning-fg-emphasis);
 }
 .ws-avatars {
@@ -15825,7 +15825,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   display: none;
 }
 /* Send goes right even where nothing grows before it. */
-.ws-composer-tools > .btn-solid.theme-primary:last-child {
+.ws-composer-tools > .pg-button-fill:last-child {
   margin-left: auto;
 }
 .ws-pane-messages {
@@ -16123,6 +16123,9 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   padding-block: 0;
   font-size: .78rem;
 }
+.ws-pane-decisions > .ws-msg .ws-msg-meta > .pg-button {
+  margin-inline-start: auto;
+}
 .ws-pane-decisions > .ws-msg .ws-msg-quote {
   margin-bottom: .45rem;
 }
@@ -16348,8 +16351,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   color: var(--pg-fg-body);
 }
 /* A message's text to select and copy by hand. 16px keeps iOS from zooming
-   in on the field. */
-.ws-copy-area {
+   in on the field. Two classes to outrank the field recipe's own size. */
+.pg-input.ws-copy-area {
   font-size: 16px;
   resize: vertical;
   max-height: 60vh;
@@ -16538,6 +16541,19 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   .ws-table-wrap > .ws-table > :not(caption) > * > *,
   .ws-table-wrap > .ws-table code {
     overflow-wrap: anywhere;
+  }
+}
+/* Below 768px the frame is as tall as its table up to 90vh and scrolls the
+   rest inside, so a long table always shows at least 70vh of rows and a
+   short one keeps its own height. It never shrinks under its table in a
+   flex column (flex: none), whose scroll-container items may otherwise be
+   squeezed to a sliver. Vertical overscroll still chains to the
+   conversation, so a swipe on a full table moves on past it. */
+@media (max-width: 767.98px) {
+  .ws-table-wrap {
+    flex: none;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 }
 .ws-checklist {
@@ -16775,11 +16791,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   gap: .4rem;
   margin-top: .4rem;
 }
-.ws-poll-send > :not(.btn) {
+.ws-poll-send > :not(.btn, .pg-button) {
   flex: 1 1 10rem;
   min-width: 0;
 }
-.ws-poll-send > .btn {
+.ws-poll-send > .btn,
+.ws-poll-send > .pg-button {
   flex: 0 0 auto;
   margin-left: auto;
 }
@@ -16802,7 +16819,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-poll-foot-label {
   margin-left: .25rem;
 }
-.ws-poll-foot > .btn {
+.ws-poll-foot > .btn,
+.ws-poll-foot > .pg-button {
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -16820,7 +16838,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     flex-basis: 100%;
     padding-left: 1.5rem;
   }
-  .ws-poll-foot > .btn {
+  .ws-poll-foot > .btn,
+  .ws-poll-foot > .pg-button {
     padding-inline: .35rem;
   }
   .ws-poll-foot-tight .ws-poll-foot-label {
@@ -16842,7 +16861,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
     flex-basis: 100%;
     padding-left: 1.5rem;
   }
-  .ws-poll-foot > .btn {
+  .ws-poll-foot > .btn,
+  .ws-poll-foot > .pg-button {
     padding-inline: .35rem;
   }
   .ws-poll-foot-tight .ws-poll-foot-label {
@@ -16985,7 +17005,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border: 1px solid var(--pg-border-color);
   border-radius: var(--ws-radius-xs);
 }
-.ws-poll-form-more > .btn {
+.ws-poll-form-more > .btn,
+.ws-poll-form-more > .pg-button {
   justify-self: start;
 }
 .ws-poll-form-links {
@@ -17466,9 +17487,6 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   margin-bottom: .5rem;
 }
 .ws-sa-view .ws-sa-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
   margin-bottom: .5rem;
 }
 .ws-sa-list-item {
@@ -17806,7 +17824,10 @@ html[data-bs-theme="dark"] .ws-hl {
 .ws-msg-tr .bi {
   font-size: 11px;
 }
-.ws-msg-tr-toggle {
+.ws-msg-tr .ws-msg-tr-toggle {
+  display: inline;
+  height: auto;
+  padding: 0;
   font-size: inherit;
   line-height: inherit;
   vertical-align: baseline;
@@ -18340,16 +18361,17 @@ a.ws-chip-message:hover,
   font-weight: 600;
 }
 /* A mark the caret or the selection has, on a button of a box's row of
-   tools: the tint of the bar over a selection. Undo and redo with nothing to
-   take back draw no frame: .btn-text.theme-secondary leaves the disabled
-   border colour at initial, so the border would fall back to the text
-   colour. */
-.ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"] {
-  background: rgba(var(--ws-accent-rgb), .15);
-  color: rgba(var(--ws-accent-rgb), 1);
+   tools: the tint of the bar over a selection, in place of the icon
+   button's grey pressed fill. Undo and redo with nothing to take back are
+   faded and draw no hover. */
+.ws-rich-tools .pg-icon-button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ws-accent) 15%, transparent);
+  color: var(--ws-accent);
+  box-shadow: none;
 }
-.ws-rich-tools .btn-text.theme-secondary:disabled {
-  border-color: transparent;
+.ws-rich-tools .pg-icon-button:disabled {
+  opacity: .45;
+  pointer-events: none;
 }
 
 /* The writing box: formatted text, chips and cards, and still a chat field.
@@ -18593,10 +18615,10 @@ a.ws-chip-message:hover,
   width: min(24rem, calc(100vw - 16px));
   padding: .35rem;
 }
-.ws-link-tip .form-control {
+.ws-link-tip .pg-input {
   min-width: 0;
 }
-.ws-link-tip .btn {
+.ws-link-tip :is(.pg-button, .pg-icon-button) {
   flex-shrink: 0;
 }
 /* The find tip of a writing box and the matches it paints. */
@@ -18693,19 +18715,17 @@ a.ws-chip-message:hover,
   flex: 1 1 auto;
   min-width: 0;
 }
-.ws-check-edit-row > .btn {
-  flex-shrink: 0;
-  padding: .3rem .45rem;
+.ws-check-edit-row > .pg-icon-button {
   opacity: .45;
 }
-.ws-check-edit-row:hover > .btn,
-.ws-check-edit-row:focus-within > .btn {
+.ws-check-edit-row:hover > .pg-icon-button,
+.ws-check-edit-row:focus-within > .pg-icon-button {
   opacity: 1;
 }
 .ws-code-language {
   max-width: 12rem;
 }
-.ws-code-edit {
+.pg-input.ws-code-edit {
   min-height: 16rem;
   font-family: var(--pg-font-mono);
   font-size: .85rem;
@@ -18721,8 +18741,9 @@ a.ws-chip-message:hover,
    whose own size it has to outrank. */
 @media (pointer: coarse) {
   .ws-emoji-search,
-  #ws-poll-form .form-control,
-  .ws-code-edit {
+  #ws-poll-form .pg-input,
+  .pg-input.ws-code-edit,
+  .pg-input.ws-tip-touch {
     font-size: var(--pg-text-field-touch);
   }
 }
@@ -18831,11 +18852,6 @@ a.ws-chip-message:hover,
    half, the line above the box that says some wait, and their cards. */
 .ws-composer-tools > .ws-send-group {
   margin-left: auto;
-}
-.ws-send-group .ws-send-later {
-  padding-left: .55rem;
-  padding-right: .65rem;
-  border-left: 1px solid rgba(255, 255, 255, .35);
 }
 .ws-sm-bar {
   display: flex;
@@ -20363,11 +20379,8 @@ a.ws-chip-message:hover,
 .ws-voice audio {
   display: none;
 }
-.ws-voice-play {
+.ws-voice > .ws-voice-play {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: var(--ws-avatar);
   height: var(--ws-avatar);
   padding: 0;
@@ -20418,18 +20431,12 @@ a.ws-chip-message:hover,
   font-variant-numeric: tabular-nums;
   color: var(--pg-fg-2);
 }
-.ws-voice .btn-sm {
+.ws-voice-tools > :is(.pg-button, .pg-icon-button) {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
-.ws-voice-speed {
+.ws-voice .ws-voice-speed {
   min-width: 2.75rem;
-  padding-left: .35rem;
-  padding-right: .35rem;
-  font-size: .75rem;
-  font-weight: 600;
+  padding-inline: .35rem;
   font-variant-numeric: tabular-nums;
 }
 /* Convert to text (pg_voice_text.js): a small "Aa" in the player's row. */
@@ -20525,6 +20532,29 @@ a.ws-chip-message:hover,
 }
 .ws-call-tile.is-lost {
   opacity: .5;
+}
+/* A raised hand and a weak connection, at the tile's top left. */
+.ws-call-tile-marks {
+  position: absolute;
+  top: var(--ws-space-1);
+  left: var(--ws-space-1);
+  display: flex;
+  gap: var(--ws-space-1);
+}
+.ws-call-tile-mark {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  color: var(--pg-warning-fg-emphasis);
+  font-size: var(--pg-text-meta);
+}
+.ws-call-tile-mark.is-weak {
+  color: var(--pg-danger-fg-emphasis);
+}
+.ws-call-tile-mark[hidden] {
+  display: none;
 }
 .ws-call-video {
   position: absolute;
@@ -20698,6 +20728,24 @@ a.ws-chip-message:hover,
 .ws-call.is-showing .ws-call-stage[data-count] .ws-call-tile.is-self .ws-call-tile-name {
   display: block;
 }
+/* Another share at the rail's end: a button that puts it on the stage;
+   its screen shows in voice calls too and is never cut. */
+.ws-call-tile.is-screen {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ws-call-tile.is-screen:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
+}
+.ws-call-tile.is-screen .ws-call-video {
+  visibility: visible;
+  object-fit: contain;
+}
 .ws-call.is-stage {
   width: min(72rem, calc(100vw - 2rem));
   height: min(45rem, calc(100vh - 2rem));
@@ -20714,6 +20762,77 @@ a.ws-chip-message:hover,
   align-content: start;
   overflow-y: auto;
 }
+/* Made larger with nothing on the stage: the grid fills the window. A
+   tile clicked is pinned large in the share's place, the others in the
+   rail; one's own tile can be hidden on this screen. The head holds the
+   size, full screen and the window's menu. */
+.ws-call.is-stage:not(.is-showing) .ws-call-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-stage[data-count] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-stage[data-count="1"],
+.ws-call[data-kind="video"].is-stage:not(.is-showing) .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-tile {
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.ws-call[data-kind="video"].is-stage:not(.is-showing) .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
+  aspect-ratio: 16 / 9;
+}
+.ws-call:fullscreen {
+  border-radius: 0;
+}
+.ws-call-tile[hidden],
+.ws-call-tile.is-pinned,
+.ws-call-share > .bi[hidden],
+.ws-call-share-tools > [hidden] {
+  display: none;
+}
+.ws-call-tile-pin {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+.ws-call-tile-pin:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: calc(-1 * var(--pg-focus-ring-width));
+}
+.ws-call-tile-name,
+.ws-call-tile-marks {
+  z-index: 1;
+  pointer-events: none;
+}
+.ws-call-share > .bi {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
+}
+.ws-call-bar .pg-icon-button {
+  flex: 0 0 auto;
+}
+.ws-call-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.ws-call-menu {
+  top: 100%;
+  right: 0;
+  z-index: 2;
+}
 @media (max-width: 991.98px) {
   .ws-call.is-stage {
     inset: 0;
@@ -20729,7 +20848,7 @@ a.ws-chip-message:hover,
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: visible;
   }
-  .ws-call.is-stage .ws-call-tile {
+  .ws-call.is-stage.is-showing .ws-call-tile {
     height: 4.5rem;
     aspect-ratio: auto;
   }
@@ -20766,6 +20885,31 @@ a.ws-chip-message:hover,
   .ws-call:not(.is-stage) .ws-call-stage[data-count="4"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+/* Popped out: the call window fills its small Picture-in-Picture window,
+   which shows the tiles, Mute, camera and Hang up only. */
+.ws-call-pip {
+  margin: 0;
+  overflow: hidden;
+  background: var(--pg-bg-body);
+}
+.ws-call.is-popped,
+.ws-call.is-popped.is-stage {
+  position: static;
+  inset: auto;
+  width: 100%;
+  height: 100vh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ws-call.is-popped .ws-call-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ws-call.is-popped .ws-call-not-popped {
+  display: none;
 }
 /* The head's Join button in a narrow head: its words give way first. */
 @container (max-width: 40rem) {
@@ -21402,6 +21546,11 @@ button.ws-file-name {
   border-bottom: 1px solid var(--pg-border-color-translucent);
   background: var(--pg-bg-1);
 }
+/* The paragraph style choice in a document's format bar. */
+.office-format .office-kind {
+  width: auto;
+  max-width: 12rem;
+}
 /* The tools over a workbook's grid: find in the workbook, the sheet's sort
    and filter with Clear, Download as CSV at the end. Wraps on a phone. */
 .office-tools {
@@ -21570,6 +21719,21 @@ button.ws-file-name {
 .office-doc .office-lvl-2 { margin-left: 2.4rem; }
 .office-doc .office-lvl-3 { margin-left: 3.6rem; }
 .office-doc .office-lvl-4, .office-doc .office-lvl-5, .office-doc .office-lvl-6, .office-doc .office-lvl-7, .office-doc .office-lvl-8 { margin-left: 4.8rem; }
+/* A paragraph given another kind, shown so until the save draws it again:
+   the heading sizes above, a list's mark before it, a list item's own
+   mark taken off. */
+.office-doc [data-kind] {
+  font-size: 1em;
+  font-weight: 400;
+}
+.office-doc li[data-kind] {
+  list-style: none;
+}
+.office-doc [data-kind="heading1"] { font-size: 1.5em; font-weight: 650; }
+.office-doc [data-kind="heading2"] { font-size: 1.25em; font-weight: 650; }
+.office-doc [data-kind="heading3"] { font-size: 1.1em; font-weight: 650; }
+.office-doc [data-kind="bullet"]::before { content: "\2022\00a0\00a0"; }
+.office-doc [data-kind="number"]::before { content: "1.\00a0"; }
 .office-doc .office-table {
   border-collapse: collapse;
   margin: .6rem 0;
@@ -22025,10 +22189,6 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   font-weight: 600;
   color: var(--pg-fg-2);
 }
-.ws-when .form-label {
-  margin-bottom: .2rem;
-  font-size: .8rem;
-}
 .ws-when-custom,
 .ws-when-end {
   margin-top: .5rem;
@@ -22225,6 +22385,22 @@ button.ws-cal-more {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 16px;
+}
+.ws-plan-field.ws-field-flush {
+  margin-bottom: 0;
+}
+/* A look A field joined to its buttons in an .input-group: the field
+   takes the room left, a button is as tall as the field. The joined
+   corners come from the restated .input-group.input-group rules. */
+.input-group > .pg-input {
+  flex: 1 1 auto;
+  width: 1%;
+}
+.input-group > :is(.pg-button, .pg-icon-button) {
+  height: auto;
+}
+.input-group > .pg-input:focus {
+  z-index: 5;
 }
 .ws-plan-pair {
   display: grid;
@@ -22630,9 +22806,9 @@ button.ws-cal-more {
   max-height: 28rem;
   overflow-y: auto;
 }
-.ws-days .btn {
-  padding: .1rem .35rem;
-  font-size: .72rem;
+/* Seven day segments sit in a drawer's narrow column. */
+.ws-days > .pg-seg-item {
+  padding: 0 7px;
 }
 .ws-task-card-hidden {
   color: var(--pg-fg-2);
@@ -22660,6 +22836,13 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+  /* The channel view's full window height (.ws-app:not(:has(.ws-home))
+     above) is the more specific selector: without this, 100dvh, which the
+     on-screen keyboard does not shorten, beat --ws-fit-h and left the
+     writing box under the keyboard. */
+  .ws-app:not(:has(.ws-home)) {
+    height: var(--ws-fit-h, calc(100vh - 3.125rem));
   }
   body.workspace_channels {
     overflow: hidden;
@@ -22711,7 +22894,9 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   /* Narrow pads keep the inserts, Send and Send later on one line at
      375 px; the row still wraps where even that has no room. 44 px high,
      the touch target a finger hits; the height costs no width. */
-  .ws-composer-tools .btn {
+  .ws-composer-tools .btn,
+  .ws-composer-tools .pg-button,
+  .ws-composer-tools .pg-icon-button {
     min-height: 2.75rem;
     padding: .3rem .4rem;
   }
@@ -22721,7 +22906,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     padding: .3rem .35rem;
   }
   /* Send keeps its icon and a narrow pad, so the row fits a phone. */
-  .ws-composer-tools .btn.px-5 {
+  .ws-composer-tools .pg-button-fill {
     padding-inline: .6rem;
   }
   /* A recording row as tall as the box it stands in for, with buttons a
@@ -22729,8 +22914,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-voice-rec {
     min-height: 3.4rem;
   }
-  .ws-voice-rec .btn,
-  .ws-voice .btn-sm {
+  .ws-voice-rec :is(.pg-button, .pg-icon-button),
+  .ws-voice-tools > :is(.pg-button, .pg-icon-button) {
     min-width: 2.5rem;
     min-height: 2.5rem;
   }
@@ -23922,9 +24107,9 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   padding-right: 0;
   text-align: start;
 }
-/* Two squares beside the name, so the solid New channel button is a circle:
-   narrowed to 1.625rem and still 1.9rem tall it was an upright oval against
-   the menu's edge. A little smaller than the list's buttons, so the name
+/* Two squares beside the name: the New channel button narrowed to
+   1.625rem and still 1.9rem tall was an upright oval against the menu's
+   edge. A little smaller than the list's buttons, so the name
    keeps to one line when a long list gives the menu body a classic
    scrollbar; still over the 24px target size. */
 #menu .pg-menu-panel-head .ws-side-head-tools .ws-side-tool {
@@ -24481,7 +24666,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-rich [data-ws-calc-input] {
   cursor: inherit;
 }
-.ws-calc-live-input {
+.pg-input.ws-calc-live-input {
   display: inline-block;
   width: 7.5rem;
   padding: 0 .35rem;
@@ -24529,10 +24714,10 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   gap: .35rem .6rem;
   margin-bottom: .4rem;
 }
-.ws-calc-settings :is(select.form-control) {
+.ws-calc-settings select.pg-input {
   width: auto;
 }
-.ws-calc-settings .form-control {
+.ws-calc-settings .pg-input {
   width: 7rem;
 }
 .ws-calc-names {
@@ -24547,14 +24732,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   font-size: .75rem;
   color: var(--pg-fg-2);
 }
-.ws-calc-name {
-  padding: .05rem .5rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 999px;
-  font-size: .75rem;
-}
 .ws-calc-name:hover {
-  border-color: var(--ws-accent);
   color: var(--ws-accent);
 }
 /* A note's earlier versions */
@@ -25514,7 +25692,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     color: var(--pg-primary);
     text-decoration: underline;
 }
-.ws-text-area {
+/* Two classes: the field recipe's textarea height and size come later. */
+.pg-input.ws-text-area {
     min-height: 60vh;
     font-family: var(--pg-font-mono);
     font-size: .875rem;
@@ -25553,8 +25732,15 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     color: var(--pg-fg-2);
     font-size: 1.1rem;
 }
+/* A bare search box in the palette's head: the head draws the frame. */
 .ws-palette-input,
 .ws-palette-input:focus {
+    flex: 1;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: 0;
+    color: var(--pg-fg-body);
     padding: .35rem 0;
     border: 0;
     background: transparent;
@@ -25573,6 +25759,15 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     gap: .4rem .75rem;
     padding: .45rem .9rem;
     border-bottom: 1px solid var(--pg-border-color);
+}
+/* "Only in #channel" carries the channel's name: the control and its
+   segment shrink to the palette's width and the name is cut. */
+.ws-palette-scope {
+    max-width: 100%;
+    min-width: 0;
+}
+.ws-palette-scope > .pg-seg-item {
+    min-width: 0;
 }
 .ws-palette-kinds {
     display: flex;
@@ -26142,7 +26337,7 @@ a.ws-tag-card-head:hover span {
     flex-wrap: wrap;
     gap: .3rem;
 }
-.ws-tpl-note-body {
+.pg-input.ws-tpl-note-body {
     font-family: var(--pg-font-mono);
     font-size: .8125rem;
 }
@@ -26843,25 +27038,6 @@ html.ws-flow-layer-on body {
 .wsf-flows-search {
   flex: 0 1 18rem;
 }
-.wsf-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ws-space-2);
-}
-.wsf-chip {
-  border: 1px solid var(--pg-border-color);
-  color: var(--pg-fg-body);
-}
-.wsf-chip.active {
-  border-color: var(--ws-accent);
-  background: var(--ws-soft);
-  color: var(--ws-accent);
-  font-weight: 600;
-}
-.wsf-chip-count {
-  color: var(--pg-fg-2);
-  font-variant-numeric: tabular-nums;
-}
 .wsf-flow-table th,
 .wsf-flow-table td {
   vertical-align: top;
@@ -27442,7 +27618,7 @@ html.ws-flow-layer-on body {
   max-width: 50%;
   text-align: right;
 }
-.wsf-share-level :is(select.form-control) {
+.wsf-share-level :is(select.form-control, select.pg-input) {
   width: auto;
 }
 .wsf-main {
@@ -28361,6 +28537,40 @@ html.ws-flow-layer-on body {
   transform: translateX(-50%);
   white-space: nowrap;
 }
+/* The map (drawMap()): a 172 by 104 px card at the canvas's bottom left,
+   the flow's boxes as small blocks, the part on screen framed. */
+.wsf-map {
+  position: absolute;
+  z-index: 4;
+  bottom: 16px;
+  left: 16px;
+  width: 172px;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-sm);
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  cursor: pointer;
+  touch-action: none;
+  pointer-events: auto;
+}
+.wsf-map-boxes {
+  position: absolute;
+  inset: 0;
+}
+.wsf-map-box,
+.wsf-map-view {
+  position: absolute;
+  border-radius: 2px;
+}
+.wsf-map-box {
+  background: color-mix(in srgb, var(--pg-fg-2) 40%, transparent);
+}
+.wsf-map-view {
+  border: 1.5px solid var(--pg-primary);
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+}
 .wsf-strip-divider {
   width: 1px;
   height: 20px;
@@ -28450,7 +28660,7 @@ html.ws-flow-layer-on body {
 .wsf-tpl-start {
   font-weight: 600;
 }
-.wsf-tpl-card > .btn {
+.wsf-tpl-card > .pg-button {
   align-self: flex-start;
 }
 .wsf-palette-template {
@@ -28951,7 +29161,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   flex: 1 1 0;
   min-width: 0;
 }
-.wsf-link > .btn {
+.wsf-link > .pg-icon-button {
   flex: none;
 }
 .wsf-link-on {
@@ -29041,7 +29251,8 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-run-done { --wsf-run-fg: var(--pg-success-fg-emphasis); --wsf-run-bg: var(--pg-success-bg-subtle); --wsf-run-line: var(--pg-success-border-subtle); }
 .wsf-run-failed { --wsf-run-fg: var(--pg-danger-fg-emphasis); --wsf-run-bg: var(--pg-danger-bg-subtle); --wsf-run-line: var(--pg-danger-border-subtle); }
 .wsf-run-skipped,
-.wsf-run-cancelled { --wsf-run-fg: var(--pg-secondary-fg-emphasis); --wsf-run-bg: var(--pg-secondary-bg-subtle); --wsf-run-line: var(--pg-secondary-border-subtle); }
+.wsf-run-cancelled,
+.wsf-run-left { --wsf-run-fg: var(--pg-secondary-fg-emphasis); --wsf-run-bg: var(--pg-secondary-bg-subtle); --wsf-run-line: var(--pg-secondary-border-subtle); }
 .wsf-run-none { --wsf-run-fg: var(--pg-fg-2); --wsf-run-bg: transparent; --wsf-run-line: var(--pg-border-color); }
 .wsf-run-badge {
   display: inline-flex;
@@ -29107,8 +29318,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wsf-flag .btn {
+.wsf-flag .pg-button,
+.wsf-flag .pg-icon-button {
   flex: 0 0 auto;
+  width: auto;
+  height: auto;
   padding: 0 .25rem;
   color: inherit;
   font-size: inherit;
@@ -29124,7 +29338,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.wsf-flag-whole .btn { padding: 0; text-decoration: underline; }
+.wsf-flag-whole .pg-button { padding: 0; text-decoration: underline; }
 /* Above the flow's last box on the canvas, as wide as the box. */
 .wsf-flag-canvas {
   position: absolute;
@@ -29141,7 +29355,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wsf-run-view .pgc-node {
+.wsf-run-view .pgc-node,
+.wsf-trial .pgc-node {
   border-color: var(--wsf-run-line, var(--pg-border-color));
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
@@ -29152,7 +29367,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .wsf-run-view .pgc-node.wsf-run-none .wsf-node-title {
   color: var(--pg-fg-2);
 }
-.wsf-run-view .pgc-node.pgc-selected {
+.wsf-run-view .pgc-node.pgc-selected,
+.wsf-trial .pgc-node.pgc-selected {
   box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--pgc-ring);
 }
 .wsf-run-task {
@@ -29161,15 +29377,43 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   font-weight: 600;
   cursor: pointer;
 }
-.wsf-run-view .pgc-edge-line {
+/* A trial marks its boxes and arrows as a run shown does: the arrows
+   walked green, the others faint. */
+.wsf-run-view .pgc-edge-line,
+.wsf-trial .pgc-edge-line {
   opacity: .45;
 }
-.wsf-run-view .pgc-edge.wsf-edge-taken .pgc-edge-line {
+.wsf-run-view .pgc-edge.wsf-edge-taken .pgc-edge-line,
+.wsf-trial .pgc-edge.wsf-edge-taken .pgc-edge-line {
   stroke: var(--pg-success);
   opacity: 1;
   marker-end: url(#wsf-arrow-taken);
 }
 .wsf-arrowhead-taken { fill: var(--pg-success); }
+/* A live flow's counts: the pills (look A's .pg-pill) stand in a row
+   above their box, each a button listing its runs; the one listed is
+   ringed in its tone. */
+.pgc-node .wsf-counts {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 4px;
+  display: flex;
+  gap: 5px;
+  max-width: 260px;
+  pointer-events: none;
+}
+.wsf-counts .wsf-count {
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.wsf-counts .wsf-count[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--pg-tone), 0 0 0 3px color-mix(in srgb, var(--pg-tone) 26%, transparent);
+}
+.wsf-counts .wsf-count:focus-visible {
+  outline: 2px solid var(--pg-focus-ring-color, var(--pg-primary));
+  outline-offset: 2px;
+}
 .wsf-run-bar {
   display: flex;
   flex-wrap: wrap;
@@ -29403,7 +29647,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .pg-sale-switch .btn.active,
     .pg-sale-switch .btn[aria-pressed="true"],
     .pg-sale-method[aria-pressed="true"],
-    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-rich-tools .pg-icon-button[aria-pressed="true"],
     .ws-format-tool.active,
     .btn-check:checked + .pg-role-card,
     .ws-status-choice.btn-check:has(input:checked)
@@ -29429,7 +29673,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .pg-sale-switch .btn.active,
     .pg-sale-switch .btn[aria-pressed="true"],
     .pg-sale-method[aria-pressed="true"],
-    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-rich-tools .pg-icon-button[aria-pressed="true"],
     .ws-format-tool.active,
     .btn-check:checked + .pg-role-card
   ) *,
@@ -32201,6 +32445,15 @@ select.pg-input {
   height: 28px;
   border-radius: 8px;
   font-size: 14px;
+}
+/* Disabled or busy: faded and without hover, as .pg-button; a segment
+   whose hidden input is disabled (a checkbox segment) the same. */
+.pg-icon-button:disabled,
+.pg-icon-button.disabled,
+.pg-seg-item:disabled,
+.pg-seg-item:has(> input:disabled) {
+  opacity: 0.5;
+  pointer-events: none;
 }
 .pg-icon-button:hover,
 .pg-icon-button.is-active,

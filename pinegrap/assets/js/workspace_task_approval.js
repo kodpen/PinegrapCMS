@@ -26,6 +26,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     var STATES = {
         pending: ['bi-hourglass-split', 'apv_pending'],
         approved: ['bi-check-circle-fill', 'apv_has_approved'],
@@ -85,7 +97,7 @@
             row.appendChild(badge);
 
             if (who.can_resend) {
-                var again = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
+                var again = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-envelope', t('apv_guest_resend'));
 
                 again.addEventListener('click', function () {
                     again.disabled = true;
@@ -133,7 +145,7 @@
             var box = el('div', 'ws-task-approvals-form');
             var field = function (label, input, help) {
                 var row = el('div', 'mb-3');
-                var caption = el('label', 'form-label small mb-1', label);
+                var caption = el('label', 'pg-field-label', label);
 
                 input.id = h.nextId('ws-tap-');
                 caption.htmlFor = input.id;
@@ -147,7 +159,7 @@
                 return row;
             };
             var input = function (type, max, value) {
-                var node = el('input', 'form-control form-control-sm');
+                var node = el('input', 'pg-input pg-input-sm');
 
                 node.type = type;
                 node.maxLength = max;
@@ -159,7 +171,7 @@
             var subject = input('text', 255, task.title);
             var name = input('text', 60);
             var mail = input('email', 255);
-            var text = el('textarea', 'form-control form-control-sm');
+            var text = el('textarea', 'pg-input pg-input-sm');
             var date = h.dateField(input('text', 10), 'date');
             var grid = el('div', 'row g-3');
             var nameCell = el('div', 'sm:col-5');
@@ -182,8 +194,8 @@
             box.appendChild(el('div', 'form-text mb-3', t('tap_help')));
 
             var buttons = el('div', 'd-flex gap-1 justify-content-end');
-            var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
-            var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('tap_send'), 'bi-send');
+            var cancel = h.button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+            var send = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('tap_send'), 'bi-send');
 
             cancel.addEventListener('click', function () {
                 box.remove();
@@ -235,7 +247,7 @@
             });
 
             if (data.can_ask) {
-                var ask = h.button('btn btn-sm btn-outline theme-secondary mt-3', t('tap_ask'), 'bi-envelope-paper');
+                var ask = lookButton(h, 'pg-button pg-button-quiet pg-button-sm mt-3', t('tap_ask'), 'bi-envelope-paper');
 
                 ask.addEventListener('click', function () {
                     var opened = form(ask);

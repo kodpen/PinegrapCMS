@@ -29,8 +29,8 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 ## How is an account recovered?
 - Recovery codes; `edit_user.php` "reset two-step verification" (`pg_mfa_reset`, also removes passkeys): own account or a lower role (administrators: any); a requiring role sets it up again at next sign-in.
 - While logged in as another user (`logged_in_as_different_user`) the account screen cannot change the second factor.
-- Last resort: delete the account's `user_mfa` row.
+- Last resort: delete its `user_mfa` row.
 
 ## What breaks it?
 - Resetting the encryption key (Settings › Commerce) re-encrypts only card numbers; every TOTP key becomes unreadable and those accounts need a reset. The settings screen warns when `user_mfa` has enabled rows.
-- Turning the second factor on or off (`pg_mfa_revoke_other_sessions()`) drops the account's other remember-me tokens and all its API devices; this browser keeps its token.
+- Turning the second factor on or off (`pg_mfa_revoke_other_sessions()`) drops the account's other remember-me tokens (with their push, #11452) and all its API devices; this browser keeps its token.

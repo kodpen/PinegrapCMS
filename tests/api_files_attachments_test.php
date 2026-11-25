@@ -23,9 +23,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/files.php');
 // The shared condition keeps the public-folder rule and leaves attachments out.
 function test_api_files_public_clause_leaves_out_attachments()
 {
-	$clause = api_files_public_clause();
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/files.php');
+	$clause = pg_files_public_sql_for(array(2));
 
-	pg_assert_contains("folder.folder_access_control_type = 'public'", $clause, 'public folders only');
+	pg_assert_contains('return pg_files_public_sql();', $source, 'the resolved public folders');
+	pg_assert_contains('(files.folder IN (2))', $clause, 'public folders only');
 	pg_assert_contains("files.attachment = '0'", $clause, 'form and comment uploads left out');
 }
 

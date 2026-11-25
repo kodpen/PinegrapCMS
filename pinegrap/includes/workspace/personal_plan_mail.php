@@ -214,7 +214,7 @@ function ws_mail_invitation_tools_html($item_id, $state)
     $tools = array(
         'add'    => $button('', 'bi-calendar-plus', lang('Add to my calendar')),
         'in'     => '<span class="small"><i class="bi bi-calendar-check me-1" aria-hidden="true"></i>' . h(lang('In your calendar')) . '</span>'
-            . '<button type="button" class="btn btn-sm btn-text theme-primary px-0" data-ws-mail-calendar="' . (int) $item_id . '" data-ws-mail-calendar-mode="open">' . h(lang('Open the plan')) . '</button>',
+            . '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-calendar="' . (int) $item_id . '" data-ws-mail-calendar-mode="open">' . h(lang('Open the plan')) . '</button>',
         'update' => $button('update', 'bi-calendar2-week', lang('Update my plan')),
         'remove' => $button('remove', 'bi-calendar-x', lang('Remove from my calendar')),
     );

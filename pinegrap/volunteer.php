@@ -100,6 +100,16 @@ $vo_content = '';
 
 if ($vo_post) {
     $vo_answer = $vo_act($vo_linked);
+
+    // A volunteer who left has no page any more: the link stops working, so
+    // the answer is shown here instead of on the page.
+    if ($vo_answer === 'left') {
+        print output_header_secure(array('title' => $vo_title))
+            . pg_secure_card('bi-person-heart', $vo_title, '<p>' . h(pg_volunteer_answer_text($vo_answer)[0]) . '</p>')
+            . output_footer_secure();
+        exit;
+    }
+
     go($vo_link . '&done=' . rawurlencode($vo_answer));
 }
 

@@ -53,7 +53,7 @@ function test_artifact_canvas_name_is_translated()
 	$map = pg_test_language_map('tr');
 
 	pg_assert_same('Yapıt Tuvali', $map['Artifact Canvas'] ?? null, 'the name');
-	pg_assert_same('Bu görseli Yapıt Tuvali\'nde düzenle', $map['Edit this image in the Artifact Canvas'] ?? null, 'a sentence is built around the name');
+	pg_assert_same('Yapıt Tuvalinde Düzenle', $map['Edit in Artifact Canvas'] ?? null, 'the edit buttons\' words are built around the name');
 	pg_assert_same('Yapıt Tuvali yükleniyor…', $map['The Artifact Canvas is loading…'] ?? null, 'the channel\'s loading text');
 
 	foreach ($map as $english => $turkish) {
@@ -102,8 +102,7 @@ function test_artifact_canvas_name_replaces_design_canvas_in_the_texts_of_the_ed
 	// The page script asks for its texts by their English: the dictionary
 	// get_page_content.php prints holds the keys both twins ask for.
 	$page = file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
-	pg_assert_true(strpos($page, '"Artifact Canvas":"\' . lang(\'Artifact Canvas\')') !== false, 'the page dictionary has the name');
-	pg_assert_true(strpos($page, '"Edit the image in the Artifact Canvas":"\' . lang(\'Edit the image in the Artifact Canvas\')') !== false, 'the page dictionary has the button title');
+	pg_assert_true(strpos($page, '"Edit in Artifact Canvas":"\' . lang(\'Edit in Artifact Canvas\')') !== false, 'the page dictionary has the button\'s title and alt text');
 	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js'), 'Software Image Editor') === false, 'the built twin uses the source\'s alt text');
 }
 

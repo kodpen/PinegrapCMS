@@ -576,7 +576,7 @@ function api_product_groups_update($params) {
 		'vars'   => array($existing['name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	api_webhook_enqueue('product_group.updated', array('id' => $id, 'name' => $existing['name']));
+	pg_announce('product_group.updated', array('id' => $id, 'name' => $existing['name']), array('listeners' => false));
 
 	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
 
@@ -1170,7 +1170,7 @@ function api_product_groups_products($params) {
 			'vars'   => array($group['name'], $app['name'], $app['api_key'])
 		)), $app['owner']['username']);
 
-		api_webhook_enqueue('product_group.updated', array('id' => $id, 'name' => $group['name']));
+		pg_announce('product_group.updated', array('id' => $id, 'name' => $group['name']), array('listeners' => false));
 
 		foreach (array_merge($to_add, $to_remove) as $product_id) {
 
@@ -1281,7 +1281,7 @@ function api_product_groups_delete($params) {
 			'vars'   => array($group['name'], $app['name'], $app['api_key'])
 		)), $app['owner']['username']);
 
-		api_webhook_enqueue('product_group.deleted', array('id' => $id, 'name' => $group['name'], 'recycled' => true));
+		pg_announce('product_group.deleted', array('id' => $id, 'name' => $group['name'], 'recycled' => true), array('listeners' => false));
 
 		api_ok(array('id' => $id, 'deleted' => false, 'recycled' => true));
 
@@ -1309,7 +1309,7 @@ function api_product_groups_delete($params) {
 		'vars'   => array($group['name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	api_webhook_enqueue('product_group.deleted', array('id' => $id, 'name' => $group['name'], 'recycled' => false));
+	pg_announce('product_group.deleted', array('id' => $id, 'name' => $group['name'], 'recycled' => false), array('listeners' => false));
 
 	api_ok(array('id' => $id, 'deleted' => true, 'recycled' => false));
 

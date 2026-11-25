@@ -114,7 +114,7 @@
                 return node;
             },
             select: function (options, value) {
-                var node = el('select', 'form-control form-control-sm');
+                var node = el('select', 'pg-input pg-input-sm');
 
                 options.forEach(function (option) {
                     var item = el('option', '', option[1]);
@@ -383,7 +383,7 @@
 
         // A new task with the column's value: its status, its person, its day.
         if (column.add && self.data.can_post) {
-            var add = k.button('btn btn-sm btn-text theme-secondary ws-cb-add', '', 'bi-plus-lg', t('cb_add'));
+            var add = k.button('pg-icon-button pg-icon-button-sm ws-cb-add', '', 'bi-plus-lg', t('cb_add'));
             add.addEventListener('click', function () { newTask(self, column); });
             head.appendChild(add);
         }
@@ -404,7 +404,7 @@
         node.appendChild(list);
 
         if (column.more) {
-            var more = k.button('btn btn-sm btn-link ws-cb-more', t('cb_more_done', column.more));
+            var more = k.button('pg-button pg-button-ghost pg-button-sm ws-cb-more', t('cb_more_done', column.more));
             more.addEventListener('click', function () {
                 self.doneAll = true;
                 load(self);

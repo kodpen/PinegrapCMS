@@ -597,7 +597,7 @@ if ($_POST) {
 		// row of POST /webhooks (api_webhook_create_check(),
 		// api_webhook_store()). What comes back opens the drawer on that tab
 		// again: the form with its error, or the secret once.
-		$owner_app = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
+		$owner_app = db_item("SELECT id, name, scopes FROM api_apps WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
 
 		$hook_url = isset($_POST['hook_url']) ? (string)$_POST['hook_url'] : '';
 
@@ -611,7 +611,7 @@ if ($_POST) {
 
 		} else {
 
-			$checked = api_webhook_create_check($hook_url, $hook_events, api_webhook_held_count($app_id));
+			$checked = api_webhook_create_check($hook_url, $hook_events, api_webhook_held_count($app_id), json_decode((string)$owner_app['scopes'], true));
 
 			$made = ($checked['refusal'] === null)
 				? api_webhook_store($app_id, $checked['url'], $checked['events'])
@@ -672,7 +672,7 @@ if ($_POST) {
 
 			$payloads = api_webhook_event_payloads();
 
-			$refusal = api_webhook_test_refusal($hook, $event, $payloads);
+			$refusal = api_webhook_test_refusal($hook, $event, $payloads, json_decode((string)db_value("SELECT scopes FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1"), true));
 
 			$queued = ($refusal === null) ? api_webhook_test_queue((int)$hook['id'], $event, $payloads[$event]['sample']) : null;
 
@@ -1120,6 +1120,18 @@ if (is_array($hooks) && !empty($hooks)) {
 
 	}
 
+	// What each application may read, for the events its subscriptions are
+	// not sent (api_webhook_hook_blocked()).
+	$hook_app_scopes = array();
+
+	foreach ($apps as $scope_app) {
+
+		$hook_app_scopes[(int)$scope_app['id']] = json_decode((string)$scope_app['scopes'], true);
+
+	}
+
+	$hook_event_scopes = api_webhook_event_scopes();
+
 	foreach ($hooks as $hook) {
 
 		$key = (int)$hook['app_id'];
@@ -1147,6 +1159,7 @@ if (is_array($hooks) && !empty($hooks)) {
 			'given_up'     => $state['given_up'],
 			'held'         => $state['held'],
 			'error'        => $state['error'],
+			'blocked'      => array_keys(api_webhook_hook_blocked($events, isset($hook_app_scopes[$key]) ? $hook_app_scopes[$key] : array(), $hook_event_scopes)),
 			'channel_group_id' => isset($hook['channel_group_id']) ? (int)$hook['channel_group_id'] : 0
 		);
 
@@ -2178,6 +2191,8 @@ echo '
 	// the page once, in the tab itself).
 	var HOOK_EVENTS = ' . json_encode($hook_catalogue, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
 	var HOOK_LIMIT = ' . (int)api_webhook_subscription_limit() . ';
+	var HOOK_BLOCKED_TEXT = ' . json_encode(lang(array('string' => 'Not delivered: the application lacks {var:1}. Give it that permission and save.', 'vars' => '{1}')), JSON_UNESCAPED_UNICODE) . ';
+	var HOOK_BLOCKED_ACT = ' . json_encode(lang('Open Permissions'), JSON_UNESCAPED_UNICODE) . ';
 	var HOOK_MAX_EVENTS = ' . (int)$hook_bounds['events'] . ';
 	var HOOKS_BACK = ' . json_encode(is_array($hooks_back) ? array(
 		'app_id' => (int)$hooks_back['app_id'],
@@ -2270,6 +2285,13 @@ echo '
 				}).join("") + "</div>" +
 				(meta.length ? "<div class=\'api-hook-meta\'>" + meta.join(" &middot; ") + "</div>" : "") +
 				(h.error ? "<div class=\'api-hook-error\'><i class=\'bi bi-exclamation-triangle me-1\'></i>" + esc(h.error) + "</div>" : "") +
+				// Events held back for a scope the application lacks, each
+				// scope with the way to give it.
+				(h.blocked || []).map(function (scope) {
+					return "<div class=\'api-hook-error\'><i class=\'bi bi-slash-circle me-1\' aria-hidden=\'true\'></i>" +
+						esc(HOOK_BLOCKED_TEXT.replace("{1}", scope)) +
+						" <button type=\'button\' class=\'pg-button pg-button-ghost pg-button-sm api-hook-perms\'>" + esc(HOOK_BLOCKED_ACT) + "</button></div>";
+				}).join("") +
 				((flash && flash.webhook_id === h.id)
 					? "<div class=\'alert theme-" + (flash.ok ? "success" : "danger") + " py-3 px-5 small mt-3 mb-0\' role=\'status\'>" +
 						"<i class=\'bi bi-" + (flash.ok ? "check2" : "exclamation-triangle") + " me-1\' aria-hidden=\'true\'></i>" + esc(flash.text) + "</div>"
@@ -2588,6 +2610,13 @@ echo '
 		document.getElementById("d_action").value = "device_revoke";
 		document.getElementById("d_device_id").value = button.dataset.id;
 		document.getElementById("d_action").form.submit();
+	});
+
+	// "Open Permissions" under a subscription held back for a scope: the
+	// drawer\'s own Permissions tab, where the scope is given and saved.
+	document.addEventListener("click", function (e) {
+		if (!e.target.closest(".api-hook-perms")) { return; }
+		document.getElementById("d_perms_label").click();
 	});
 
 	document.addEventListener("click", function (e) {

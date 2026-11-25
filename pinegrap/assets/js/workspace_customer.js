@@ -29,6 +29,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     // A record's name: a link when it comes with an address.
     function named(h, className, label, url) {
         var node = h.el(url ? 'a' : 'span', className, label);
@@ -271,11 +283,11 @@
     // for and page by page (ws_customer_history(), customer_history.php).
     function historyPart(h, channelId) {
         var part = h.el('div', 'mt-5');
-        var open = h.button('btn btn-sm btn-outline theme-secondary', h.t('cust_history'), 'bi-clock-history');
+        var open = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('cust_history'), 'bi-clock-history');
         var list = h.el('div', '');
 
         function page(before) {
-            var more = h.button('btn btn-sm btn-link px-0', h.t('cust_older'));
+            var more = h.button('pg-button pg-button-ghost pg-button-sm', h.t('cust_older'));
 
             return h.api('ws_channel_customer_history', { channel_id: channelId, before: before }).then(function (data) {
                 var history = data.history;
@@ -346,7 +358,7 @@
     // A field of the reminder form with its label.
     function field(h, label, input, className) {
         var wrap = h.el('div', className);
-        var caption = h.el('label', 'form-label small mb-1', label);
+        var caption = h.el('label', 'pg-field-label', label);
 
         input.id = h.nextId('ws-cust-remind-');
         caption.htmlFor = input.id;
@@ -361,7 +373,7 @@
     // pick (ws_customer_followup_open(), includes/workspace/followups.php).
     function remindPart(h, channel) {
         var part = h.el('div', 'card-body border-bottom d-none');
-        var open = h.button('btn btn-sm btn-outline theme-secondary', h.t('cust_remind'), 'bi-alarm', h.t('cust_remind_help'));
+        var open = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('cust_remind'), 'bi-alarm', h.t('cust_remind_help'));
 
         function close() {
             h.clear(part);
@@ -370,7 +382,7 @@
 
         function done(task) {
             var row = h.el('div', 'd-flex flex-wrap align-items-center gap-3 small');
-            var go = h.button('btn btn-sm btn-link p-0', h.t('open_task'));
+            var go = h.button('pg-button pg-button-ghost pg-button-sm', h.t('open_task'));
 
             go.addEventListener('click', function () {
                 h.openTask(task.id);
@@ -385,11 +397,11 @@
 
         function form() {
             var box = h.el('form', 'd-flex flex-wrap align-items-end gap-3');
-            var what = h.el('input', 'form-control form-control-sm');
-            var day = h.el('input', 'form-control form-control-sm');
-            var time = h.el('input', 'form-control form-control-sm');
-            var save = h.el('button', 'btn btn-sm btn-solid theme-primary', h.t('cust_remind_save'));
-            var cancel = h.button('btn btn-sm btn-outline theme-secondary', h.t('cancel'));
+            var what = h.el('input', 'pg-input pg-input-sm');
+            var day = h.el('input', 'pg-input pg-input-sm');
+            var time = h.el('input', 'pg-input pg-input-sm');
+            var save = h.el('button', 'pg-button pg-button-fill pg-button-sm', h.t('cust_remind_save'));
+            var cancel = h.button('pg-button pg-button-ghost pg-button-sm', h.t('cancel'));
             var actions = h.el('div', 'd-flex gap-3');
             var inputs = { title: what, due_date: day, due_time: time };
 
@@ -452,10 +464,10 @@
     // for whoever may make cart quotes and only for a contact they may see;
     // the quote is made, and its link shown once, on that screen.
     function cartQuoteLink(h, url) {
-        var link = h.el('a', 'btn btn-sm btn-outline theme-secondary');
+        var link = h.el('a', 'pg-button pg-button-quiet pg-button-sm');
 
         link.href = url;
-        link.appendChild(h.icon('bi-cart-plus', 'me-1'));
+        link.appendChild(h.icon('bi-cart-plus', ''));
         link.appendChild(document.createTextNode(h.t('cust_cart_quote_new')));
 
         return link;
@@ -466,7 +478,7 @@
     // only to a team member who may open the customer's contact.
     function roadmapPart(h, offer) {
         var part = h.el('div', 'card-body border-bottom d-none');
-        var open = h.button('btn btn-sm btn-outline theme-secondary', h.t('cust_roadmap_new'), 'bi-signpost-split');
+        var open = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('cust_roadmap_new'), 'bi-signpost-split');
 
         open.setAttribute('aria-expanded', 'false');
         open.addEventListener('click', function () {
@@ -480,9 +492,9 @@
                 return;
             }
 
-            var empty = h.el('a', 'btn btn-sm btn-solid theme-primary');
+            var empty = h.el('a', 'pg-button pg-button-quiet pg-button-sm');
             empty.href = offer.new_url;
-            empty.appendChild(h.icon('bi-plus-lg', 'me-1'));
+            empty.appendChild(h.icon('bi-plus-lg', ''));
             empty.appendChild(document.createTextNode(h.t('cust_roadmap_empty')));
             part.appendChild(empty);
 
@@ -491,11 +503,11 @@
                 // A copy opens the New plan drawer filled; nothing is written
                 // before its Save.
                 offer.copies.forEach(function (plan) {
-                    var copy = h.el('a', 'btn btn-sm btn-link px-0 d-block text-start text-truncate');
+                    var copy = h.el('a', 'pg-button pg-button-ghost pg-button-sm d-flex justify-content-start max-w-100');
 
                     copy.href = offer.new_url + '&from=' + plan.id;
-                    copy.appendChild(h.icon('bi-copy', 'me-1'));
-                    copy.appendChild(document.createTextNode(plan.title));
+                    copy.appendChild(h.icon('bi-copy', ''));
+                    copy.appendChild(h.el('span', 'text-truncate', plan.title));
                     part.appendChild(copy);
                 });
             }
@@ -524,11 +536,11 @@
 
         templates.forEach(function (template, index) {
             var row = h.el('div', 'd-flex align-items-center gap-2 ws-roadmap-template' + (index >= TEMPLATE_ROWS ? ' d-none' : ''));
-            var use = h.el('a', 'btn btn-sm btn-link px-0 text-start text-truncate flex-grow-1');
+            var use = h.el('a', 'pg-button pg-button-ghost pg-button-sm justify-content-start overflow-hidden flex-grow-1');
 
             use.href = offer.new_url + '&template=' + template.id;
-            use.appendChild(h.icon('bi-signpost-2', 'me-1'));
-            use.appendChild(document.createTextNode(template.title));
+            use.appendChild(h.icon('bi-signpost-2', ''));
+            use.appendChild(h.el('span', 'text-truncate', template.title));
             row.appendChild(use);
             row.appendChild(h.el('span', 'pg-text-meta text-nowrap', h.t('cust_template_meta', template.steps, template.maker)));
 
@@ -560,7 +572,7 @@
 
         // The first five, then the rest on "Show all (n)".
         if (templates.length > TEMPLATE_ROWS) {
-            var all = h.button('btn btn-sm btn-link px-0', h.t('cust_template_all', templates.length));
+            var all = h.button('pg-button pg-button-ghost pg-button-sm', h.t('cust_template_all', templates.length));
 
             all.addEventListener('click', function () {
                 rows.forEach(function (row) { row.classList.remove('d-none'); });

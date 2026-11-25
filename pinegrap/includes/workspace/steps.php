@@ -447,7 +447,7 @@ function ws_step_config_normalize($kind, $config)
             return array(
                 'channel_id' => (is_numeric($config['channel_id'] ?? 0) && ((int) ($config['channel_id'] ?? 0) === -1)) ? -1 : $number($config['channel_id'] ?? 0),
                 'body'       => ws_flow_lines($config['body'] ?? '', 4000),
-            );
+            ) + ws_flow_hours_config($config);
 
         // The person of the run's record is read when the box runs, never
         // typed (flow_mail_person.php); marketing only with their consent.
@@ -469,13 +469,14 @@ function ws_step_config_normalize($kind, $config)
                 'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
                 'group_id'  => ($recipient === 'group') ? $number($config['group_id'] ?? 0) : 0,
                 'records'   => (($recipient === 'group') && is_string($config['records'] ?? null) && ws_flow_node_id_valid($config['records'])) ? $config['records'] : '',
-            ) + (function_exists('ws_flow_mail_sender_normalize') ? ws_flow_mail_sender_normalize($config) : array());
+            ) + (function_exists('ws_flow_mail_sender_normalize') ? ws_flow_mail_sender_normalize($config) : array()) + ws_flow_hours_config($config);
 
+        // Sending hours: flow_send_hours.php.
         case 'sms':
-            return ws_step_sms_normalize($config);
+            return ws_step_sms_normalize($config) + ws_flow_hours_config($config);
 
         case 'whatsapp':
-            return ws_step_whatsapp_normalize($config);
+            return ws_step_whatsapp_normalize($config) + ws_flow_hours_config($config);
 
         case 'notify':
             return array(
@@ -2074,6 +2075,12 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
+    // A sending box outside its sending hours waits for them or sends
+    // nothing, before it begins (flow_send_hours.php).
+    if (ws_flow_hours_hold($step, $node, $graph)) {
+        return;
+    }
+
     // Taken by this request alone (the claim); a row another request settled
     // meanwhile is left as it is.
     db("UPDATE ws_flow_run_steps SET effect = '" . e(WS_STEP_BEGAN . $kind) . "'
@@ -2561,10 +2568,11 @@ function ws_flow_box_try($viewer, $flow, $data)
             return ws_step_list_records_try($action, $flow) + array('outcome' => 'done', 'empty' => $tried['empty']) + $answer;
         }
 
-        // An e-mail to a contact group is mailed to the person trying alone.
+        // An e-mail to a contact group is mailed to the person trying alone;
+        // a sending box says when it would send outside its sending hours.
         if (($kind === 'email') && (($config['recipient'] ?? '') === 'group')) {
-            return array('texts' => $tried['texts'], 'empty' => $tried['empty'])
-                + ws_flow_mail_group_try($viewer, $owner, ws_flow_mail_campaign_action($action, $config, $owner, array(), $values, array()), $config, $values, $graph, $flow) + $answer;
+            return ws_flow_hours_try(array('texts' => $tried['texts'], 'empty' => $tried['empty'])
+                + ws_flow_mail_group_try($viewer, $owner, ws_flow_mail_campaign_action($action, $config, $owner, array(), $values, array()), $config, $values, $graph, $flow) + $answer, $node);
         }
 
         // As the run sends it: a notice names the flow it comes from.
@@ -2598,12 +2606,12 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_scheduled_action_text($owner, $action);
         }
 
-        return array(
+        return ws_flow_hours_try(array(
             'outcome' => 'done',
             'said'    => $said,
             'texts'   => $tried['texts'],
             'empty'   => $tried['empty'],
-        ) + $answer;
+        ) + $answer, $node);
     }
 
     if ($kind === 'condition') {
@@ -2630,6 +2638,18 @@ function ws_flow_box_try($viewer, $flow, $data)
                 ? lang(array('string' => 'The condition held: {var:1}.', 'vars' => ws_scheduled_rule_text($owner, $check['rule'])))
                 : (string) $held['reason'],
         ) + $answer;
+    }
+
+    // A split takes one arm by its shares; a try takes the first.
+    if ($kind === 'split') {
+        $split = ws_flow_split_normalize($node['config']);
+        $problems = ws_flow_split_problems($split, ws_flow_box_name($node));
+
+        if (!empty($problems)) {
+            return array('refusal' => (string) $problems[0]) + $answer;
+        }
+
+        return array('outcome' => 'arm_1', 'said' => ws_flow_split_text($split)) + $answer;
     }
 
     if (isset(ws_flow_anchor_kinds()[$kind])) {

@@ -420,6 +420,50 @@ function pg_pick_wave_rule_clean(array $in, $today)
 }
 
 /**
+ * A pick list line's shelf address at its location. An address kept at
+ * location 0 was typed before the first location was added and belongs to
+ * the default location only: another location without its own address has
+ * none, never the default location's shelf.
+ *
+ * @param array $bins                location_id => address of one product
+ * @param int   $location_id         where the line is picked
+ * @param int   $default_location_id the default location, 0 without
+ *                                   locations
+ * @return string '' when none
+ */
+function pg_pick_line_bin(array $bins, $location_id, $default_location_id)
+{
+    $location_id = (int) $location_id;
+
+    if (isset($bins[$location_id])) {
+        return (string) $bins[$location_id];
+    }
+
+    return ($location_id === (int) $default_location_id && isset($bins[0])) ? (string) $bins[0] : '';
+}
+
+/**
+ * Names each pick list line's location when the list spans more than one,
+ * so two lines of one product at two locations are told apart.
+ *
+ * @param array $lines pg_pick_list_totals() lines
+ * @param array $names location_id => name
+ * @return array the lines, each with 'location' ('' on a list of one
+ *               location)
+ */
+function pg_pick_list_location_names(array $lines, array $names)
+{
+    $several = count(array_unique(array_map('intval', array_column($lines, 'location_id')))) > 1;
+
+    foreach ($lines as $i => $line) {
+        $id = (int) (isset($line['location_id']) ? $line['location_id'] : 0);
+        $lines[$i]['location'] = ($several && isset($names[$id])) ? (string) $names[$id] : '';
+    }
+
+    return $lines;
+}
+
+/**
  * The key of a pick list line, as the wave's picked list keeps it.
  *
  * @param int $product_id
@@ -513,6 +557,22 @@ function pg_pick_wave_status_after($status, $done, $total)
 }
 
 /**
+ * A wave's status from the lines on its list now and its ticked keys: what
+ * a tick works out, and what an order leaving the wave changes.
+ *
+ * @param int   $status PG_WAVE_*
+ * @param array $lines  the wave's pick list lines
+ * @param array $picked the wave's ticked line keys
+ * @return int PG_WAVE_*
+ */
+function pg_pick_wave_status_now($status, array $lines, array $picked)
+{
+    $list = pg_pick_list_ticked($lines, $picked);
+
+    return pg_pick_wave_status_after($status, $list['done'], $list['total']);
+}
+
+/**
  * How a ship-by day reads against today: 'late' before today, 'today' on
  * it, '' after it or when no day is known.
  *
@@ -572,7 +632,8 @@ function pg_pick_single_item_address(array $rows, $product_id)
  * The verdict on one product scan at the pack screen.
  *
  * Codes: 'good' (counts one unit on 'line'), 'not_found' (no product has the
- * code), 'binned' (the product is in the Recycle Bin), 'too_many' (every
+ * code), 'binned' (a product in the Recycle Bin that the address does not
+ * want), 'too_many' (every
  * unit of the product on the address is scanned already), 'wrong_variant'
  * (another product of a variant group the address wants: 'line' is the
  * wanted line, 'options' what was scanned, 'wanted_options' what the line
@@ -593,10 +654,6 @@ function pg_pack_scan_verdict(array $lines, $product)
         return array('verdict' => 'not_found', 'line' => null);
     }
 
-    if (!empty($product['binned'])) {
-        return array('verdict' => 'binned', 'line' => null);
-    }
-
     $id = (int) $product['id'];
     $on_address = false;
 
@@ -614,6 +671,12 @@ function pg_pack_scan_verdict(array $lines, $product)
 
     if ($on_address) {
         return array('verdict' => 'too_many', 'line' => null);
+    }
+
+    // Only a product the address does not want: one moved to the Recycle
+    // Bin after the order was paid is still sent.
+    if (!empty($product['binned'])) {
+        return array('verdict' => 'binned', 'line' => null);
     }
 
     $group_id = (int) (isset($product['group_id']) ? $product['group_id'] : 0);
@@ -973,6 +1036,55 @@ function pg_pack_count_fixes($on, $found, array $missing, array $tracked)
 }
 
 /**
+ * The units of a product that paid orders waiting to be sent hold at a
+ * location: a short pick's count is the shelf less these. Each other
+ * address counts what its lines took from the stock; the short pack's own
+ * address counts only its units not yet scanned and not missing, as those
+ * scanned are in the box and those missing are not on the shelf.
+ *
+ * @param array $rows           pg_pack_held_rows(): 'ship_to_id',
+ *                              'location_id', 'units'
+ * @param int   $location_id    the location counted, 0 without locations
+ * @param int   $own_ship_to_id the short pack's address
+ * @param int   $own_off        the short pack's scanned and missing units
+ *                              of the product
+ * @return int
+ */
+function pg_pack_held_units(array $rows, $location_id, $own_ship_to_id, $own_off)
+{
+    $held = 0;
+
+    foreach ($rows as $row) {
+        if ((int) $row['location_id'] !== (int) $location_id) {
+            continue;
+        }
+
+        $units = max(0, (int) $row['units']);
+
+        if ((int) $row['ship_to_id'] === (int) $own_ship_to_id) {
+            $units = max(0, $units - max(0, (int) $own_off));
+        }
+
+        $held += $units;
+    }
+
+    return $held;
+}
+
+/**
+ * The count a short pick writes: the units found on the shelf less those
+ * held by orders waiting to be sent, never below 0.
+ *
+ * @param int $shelf units found on the shelf
+ * @param int $held  pg_pack_held_units()
+ * @return int
+ */
+function pg_pack_count_after($shelf, $held)
+{
+    return max(0, (int) $shelf - max(0, (int) $held));
+}
+
+/**
  * A short pack's missing lines as short texts, "Cap × 2", in product order.
  *
  * @param array  $missing    product_id => units (pg_pack_missing_decode())
@@ -1096,4 +1208,33 @@ function pg_pack_card_figures(array $waiting, array $packs, $today)
         'packed_today' => $packed_today,
         'packers' => $rows,
     );
+}
+
+/**
+ * Whether a "Packing only" user may open one label's document: only the
+ * active outbound label of an address whose pack is checked (packed) and
+ * was checked by that user, the label the Pack screen opens. Users who see
+ * orders pass the order screen's own gate and never reach this.
+ *
+ * @param array      $user  validate_user()'s row
+ * @param array      $label shipment_labels row
+ * @param array|null $pack  order_packs row of the label's address, null without one
+ * @return bool
+ */
+function pg_pack_label_user_can(array $user, array $label, $pack)
+{
+    if (((int) ($user['role'] ?? 4) !== 3) || empty($user['manage_packing']) || ((int) ($user['id'] ?? 0) <= 0)) {
+        return false;
+    }
+
+    if (!is_array($pack) || !empty($label['is_return']) || !empty($label['label_removed_at'])) {
+        return false;
+    }
+
+    $ship_to_id = (int) ($label['ship_to_id'] ?? 0);
+
+    return ($ship_to_id > 0)
+        && ((int) ($pack['ship_to_id'] ?? 0) === $ship_to_id)
+        && ((int) ($pack['status'] ?? 0) === 1)
+        && ((int) ($pack['packer_id'] ?? 0) === (int) $user['id']);
 }

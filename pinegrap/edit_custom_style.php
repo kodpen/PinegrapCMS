@@ -213,17 +213,16 @@ else
         $row = mysqli_fetch_row($result);
         $folders_using_style = $row[0];
         
-        // Find if style is being used by a page
-        $query =
-            "SELECT
-                COUNT(page_id)
+        // Find if style is being used by a page; a page in the bin no
+        // longer holds it once the bin keeps styles (pg_style_pages_holding_sql()).
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/style_usage.php');
+        // The condition carries the id cast to an integer, so no value is bound.
+        $result = db_q(
+            "SELECT COUNT(page_id)
             FROM page
-            WHERE
-                (page_style = ?)
-                OR (mobile_style_id = ?)";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            WHERE " . pg_style_pages_holding_where((int) ($_POST['id'] ?? 0))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
-        $pages_using_style = $row[0];
+        $pages_using_style = (int) $row[0];
 
         // if style is being used by either a folder or a page
         if (($folders_using_style > 0) || ($pages_using_style > 0)) {

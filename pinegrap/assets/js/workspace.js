@@ -251,6 +251,7 @@
         agent: ['M3.5 5.5h9v7.5h-9z', 'M8 2.5v3', 'M6 9v.5M10 9v.5', 'M6.5 11.25h3'],
         approval: ['M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7c-3-1-5.5-3.5-5.5-7v-4z', 'M5.5 8l1.75 1.75l3.5-3.5'],
         condition: ['M8 14.5V9L3.5 4.5M8 9l4.5-4.5', 'M3 7.5V4h3.5M13 7.5V4H9.5'],
+        split: ['M1.5 8h5', 'M6.5 8l7-5.5M6.5 8l7 0M6.5 8l7 5.5', 'M11.5 2.5h2v2M11.5 13.5h2v-2'],
         delay: ['M4 1.75h8M4 14.25h8', 'M5 1.75c0 3 6 3.5 6 6.25s-6 3.25-6 6.25M11 1.75c0 3-6 3.5-6 6.25s6 3.25 6 6.25'],
         end: ['M3.5 14.5V2', 'M3.5 2.5h9l-2 3l2 3h-9'],
         for_each: ['M13.25 8a5.25 5.25 0 1 1 -1.55 -3.7', 'M12.25 1.5v2.75H9.5', 'M6.5 6.25l2.25 1.75l-2.25 1.75'],
@@ -490,12 +491,14 @@
         return badgedIcon(name, channel.icon_badge || '', extra);
     }
 
+    // A button; one of the look's recipes (.pg-button, .pg-seg-item)
+    // spaces its icon with its own gap, so the icon carries no margin there.
     function button(className, label, iconName, title) {
         var node = el('button', className);
         node.type = 'button';
 
         if (iconName) {
-            node.appendChild(icon(iconName, label ? 'me-1' : ''));
+            node.appendChild(icon(iconName, (label && !/(^|\s)pg-(button|seg-item)(\s|$)/.test(className)) ? 'me-1' : ''));
         }
 
         if (label) {
@@ -1139,10 +1142,40 @@
         return emptyScreen({ tone: 'gray', icon: 'bi-funnel', title: t('bar_found_none'), text: text, action: { label: t('bar_clear'), icon: 'bi-x-lg', onClick: onClear } });
     }
 
+    // One renewal of the page's form token at a time, shared by every
+    // request refused for it (assets/js/workspace_token_retry.js).
+    var renewToken = null;
+
     // options.keepalive: the request is finished even when the page is left
     // meanwhile (a save as the page closes); browsers refuse such a body over
-    // 64 KiB.
+    // 64 KiB. A request refused for a stale token (the person signed in again
+    // by the remember-me cookie since the page was drawn) is sent once more
+    // with the session's current token; a refusal of the session itself
+    // reaches the caller, which keeps what was typed.
     function api(action, data, options) {
+        var retry = window.PGWsTokenRetry;
+
+        if (!retry) {
+            return apiOnce(action, data, options);
+        }
+
+        if (!renewToken) {
+            renewToken = retry.renewer(function () {
+                return apiOnce('session_token').then(function (answer) {
+                    return answer.token;
+                });
+            }, function (token) {
+                CFG.token = token;
+            });
+        }
+
+        return retry.send(function () {
+            return apiOnce(action, data, options);
+        }, renewToken);
+    }
+
+    // One request with the token the page holds now.
+    function apiOnce(action, data, options) {
         var payload = { action: action, token: CFG.token };
 
         Object.keys(data || {}).forEach(function (key) {
@@ -1285,7 +1318,7 @@
 
         // Or a button that acts on it (Undo); the notice closes once pressed.
         if (action && action.onClick) {
-            var act = button('btn btn-sm btn-text fg-reset fw-semibold text-nowrap flex-shrink-0 my-auto', action.label, '');
+            var act = button('pg-button pg-button-ghost pg-button-sm fg-reset flex-shrink-0 my-auto', action.label, '');
             act.addEventListener('click', function () {
                 act.disabled = true;
                 action.onClick();
@@ -1385,7 +1418,7 @@
         var fill = bar.firstChild;
         var row = el('div', 'd-flex justify-content-between align-items-center gap-3 small mt-2');
         var bytes = el('span');
-        var stop = button('btn btn-sm btn-text fg-reset', t('upload_cancel'));
+        var stop = button('pg-button pg-button-ghost pg-button-sm fg-reset', t('upload_cancel'));
         var gone = false;
 
         // The step is announced, not every percent.
@@ -1470,8 +1503,8 @@
                 dialog.tabIndex = -1;
                 dialog.setAttribute('aria-labelledby', 'ws-ask-text');
                 dialog.innerHTML = '<div class="dialog-body"><p class="mb-3" id="ws-ask-text" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
-                    + '<div class="dialog-footer"><button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
-                    + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-ask-ok></button></div>';
+                    + '<div class="dialog-footer"><button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
+                    + '<button type="button" class="pg-button pg-button-fill pg-button-sm" data-ws-ask-ok></button></div>';
                 document.body.appendChild(dialog);
 
                 pgUI.dialog.on(dialog, 'show', function () {
@@ -1502,7 +1535,7 @@
             var cancel = dialog.querySelector('[data-ws-ask-cancel]');
 
             ok.textContent = okLabel || t('ok');
-            ok.className = 'btn btn-sm rounded-pill px-5 ' + (danger ? 'btn-outline theme-warning' : 'btn-solid theme-primary');
+            ok.className = 'pg-button pg-button-sm ' + (danger ? 'pg-button-danger' : 'pg-button-fill');
             cancel.textContent = t('cancel');
             cancel.hidden = !!(options && options.info);
 
@@ -1646,8 +1679,8 @@
             copyModal = el('dialog', 'dialog ws-copy-modal pg-dialog-centered');
             copyModal.tabIndex = -1;
             copyModal.innerHTML = '<div class="dialog-header py-3"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
-                + '<div class="dialog-body"><p class="small fg-secondary mb-3" data-ws-copy-note></p><textarea class="form-control ws-copy-area" readonly></textarea></div>'
-                + '<div class="dialog-footer py-3"><button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-copy-all></button></div>';
+                + '<div class="dialog-body"><p class="small fg-secondary mb-3" data-ws-copy-note></p><textarea class="pg-input ws-copy-area" readonly></textarea></div>'
+                + '<div class="dialog-footer py-3"><button type="button" class="pg-button pg-button-fill pg-button-sm" data-ws-copy-all></button></div>';
             document.body.appendChild(copyModal);
         }
 
@@ -1925,8 +1958,8 @@
             previewModal.tabIndex = -1;
             previewModal.innerHTML = '<div class="dialog-header py-3"><h5 class="dialog-title text-truncate"></h5>'
                 + '<span class="ws-preview-table ms-auto"></span>'
-                + '<a class="btn btn-sm btn-text theme-secondary" data-ws-open target="_blank" rel="noopener"></a>'
-                + '<a class="btn btn-sm btn-text theme-secondary" data-ws-download></a>'
+                + '<a class="pg-button pg-button-ghost pg-button-sm" data-ws-open target="_blank" rel="noopener"></a>'
+                + '<a class="pg-button pg-button-ghost pg-button-sm" data-ws-download></a>'
                 + '<button type="button" class="btn-close ms-1" data-bs-dismiss="dialog"></button></div>'
                 + '<div class="dialog-body p-0"></div><div class="dialog-footer py-3 d-none"></div>';
             document.body.appendChild(previewModal);
@@ -2059,7 +2092,7 @@
                 footer.classList.remove('d-none');
                 footer.appendChild(el('div', 'ws-grow small fg-secondary', data.can_replace ? t('file_text_mine_help') : t('file_text_copy_help')));
 
-                save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', data.can_replace ? t('file_text_save') : t('file_text_send'), data.can_replace ? 'bi-check2' : 'bi-send');
+                save = button('pg-button pg-button-fill pg-button-sm', data.can_replace ? t('file_text_save') : t('file_text_send'), data.can_replace ? 'bi-check2' : 'bi-send');
                 save.disabled = true;
 
                 save.addEventListener('click', function () {
@@ -2250,7 +2283,7 @@
     // The density switch in the overview's header: comfortable or compact,
     // changed at once on every Workspace part of this page.
     function densityButton() {
-        var opener = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-arrows-collapse-vertical', t('density')));
+        var opener = menuButton(button('pg-icon-button pg-icon-button-sm', '', 'bi-arrows-collapse-vertical', t('density')));
 
         opener.addEventListener('click', function (event) {
             var box = opener.getBoundingClientRect();
@@ -3390,7 +3423,7 @@
     // group one tab away.
     function emojiPicker(x, y, onPick, above) {
         var content = el('div', 'ws-emoji');
-        var search = el('input', 'form-control form-control-sm ws-emoji-search');
+        var search = el('input', 'pg-input pg-input-sm ws-emoji-search');
         var tabs = el('div', 'ws-emoji-tabs');
         var title = el('div', 'ws-emoji-title');
         var grid = el('div', 'ws-emoji-grid');
@@ -5664,12 +5697,12 @@
         head.appendChild(document.createTextNode(t('remind_head')));
         wrap.appendChild(head);
 
-        var time = el('input', 'form-control form-control-sm');
+        var time = el('input', 'pg-input pg-input-sm');
         pgDateField(time, 'time');
         time.id = nextId('ws-task-time-');
         time.value = info.due_time || '';
 
-        var amount = el('input', 'form-control form-control-sm');
+        var amount = el('input', 'pg-input pg-input-sm');
         amount.type = 'number';
         amount.min = '0';
         amount.step = '1';
@@ -5696,8 +5729,6 @@
         var row = el('div', 'row g-3');
         [[formRow(t('remind_time'), time), 'col-5'], [formRow(t('remind_before'), group), 'col-7']].forEach(function (pair) {
             var cell = el('div', pair[1]);
-            pair[0].classList.remove('mb-5');
-            pair[0].classList.add('mb-3');
             cell.appendChild(pair[0]);
             row.appendChild(cell);
         });
@@ -5848,32 +5879,11 @@
         return !!(control.id && root.querySelector && root.querySelector('label[for="' + control.id + '"]'));
     }
 
+    // A form row in look A: the drawer form parts' field, so every form
+    // built on formRow() (here and in the scripts that get it through
+    // featureHelpers()) takes the same label, gap and help line.
     function formRow(label, control, help) {
-        var row = el('div', 'mb-5');
-        var caption = el('label', 'form-label', label);
-        var field = labelTarget(control);
-
-        // A wrapper's field that is named already (a radio with its own
-        // label, a search box with an aria-label) keeps its name.
-        if (field && (field === control || !hasName(field))) {
-            if (!field.id) {
-                field.id = nextId('ws-field-');
-            }
-
-            caption.htmlFor = field.id;
-        } else if (!field && control.getAttribute('role') && !hasName(control)) {
-            caption.id = nextId('ws-caption-');
-            control.setAttribute('aria-labelledby', caption.id);
-        }
-
-        row.appendChild(caption);
-        row.appendChild(control);
-
-        if (help) {
-            row.appendChild(el('div', 'form-text', help));
-        }
-
-        return row;
+        return formParts.field(label, control, help);
     }
 
     // The person's own quiet hours under a channel's Notifications, for all
@@ -5885,14 +5895,14 @@
         var grid = el('div', 'row g-3');
         var fromCell = el('div', 'col-6');
         var toCell = el('div', 'col-6');
-        var from = pgDateField(el('input', 'form-control form-control-sm'), 'time');
-        var to = pgDateField(el('input', 'form-control form-control-sm'), 'time');
+        var from = pgDateField(el('input', 'pg-input pg-input-sm'), 'time');
+        var to = pgDateField(el('input', 'pg-input pg-input-sm'), 'time');
         var off = el('div', 'form-field mb-0 ws-info-check');
         var offBox = el('input', 'check');
         var offLabel = el('label', '', t('qh_off_days'));
         var actions = el('div', 'ws-info-qh-actions');
-        var save = button('btn btn-sm btn-solid theme-primary', t('qh_save'), 'bi-check2');
-        var clear = button('btn btn-sm btn-text theme-secondary', t('qh_clear'), 'bi-x-circle');
+        var save = button('pg-button pg-button-fill pg-button-sm', t('qh_save'), 'bi-check2');
+        var clear = button('pg-button pg-button-ghost pg-button-sm', t('qh_clear'), 'bi-x-circle');
         var hint = el('div', 'form-text mt-0 mb-3', t('qh_hint'));
 
         from.id = nextId('ws-qh-from-');
@@ -5911,8 +5921,8 @@
         part.appendChild(hint);
         fromCell.appendChild(formRow(t('qh_from'), from));
         toCell.appendChild(formRow(t('qh_to'), to));
-        fromCell.firstChild.classList.replace('mb-5', 'mb-0');
-        toCell.firstChild.classList.replace('mb-5', 'mb-0');
+        fromCell.firstChild.classList.add('ws-field-flush');
+        toCell.firstChild.classList.add('ws-field-flush');
         grid.appendChild(fromCell);
         grid.appendChild(toCell);
         part.appendChild(grid);
@@ -5960,7 +5970,7 @@
     }
 
     function select(options, value) {
-        var node = el('select', 'form-control form-control-sm');
+        var node = el('select', 'pg-input pg-input-sm');
 
         options.forEach(function (option) {
             var item = el('option', '', option[1]);
@@ -5983,16 +5993,26 @@
     // textarea, a select, a pair of fields side by side, a switch row, a
     // segmented choice and the footer's buttons. My calendar's plan drawer,
     // its roadmap and the plan item form ("Add to the plan") are built from
-    // them; formRow() stays for the forms in Bootstrap's small look.
+    // them; formRow() hands every other form to field().
     var formParts = {
-        // A field: its caption bound to the control (an id is given when it
-        // has none), then an optional muted help line.
+        // A field: its caption bound to the control, or to the first field
+        // inside a wrapper (an id is given when it has none), then an
+        // optional muted help line.
         field: function (label, control, help) {
             var row = el('div', 'ws-plan-field');
             var caption = el('label', 'pg-field-label', label);
+            var field = labelTarget(control);
 
-            control.id = control.id || nextId('ws-plan-');
-            caption.htmlFor = control.id;
+            // A wrapper's field that is named already (a radio with its own
+            // label, a search box with an aria-label) keeps its name.
+            if (field && (field === control || !hasName(field))) {
+                field.id = field.id || nextId('ws-plan-');
+                caption.htmlFor = field.id;
+            } else if (!field && control.getAttribute('role') && !hasName(control)) {
+                caption.id = nextId('ws-caption-');
+                control.setAttribute('aria-labelledby', caption.id);
+            }
+
             row.appendChild(caption);
             row.appendChild(control);
 
@@ -6533,7 +6553,7 @@
         var body = clear(node.querySelector('.drawer-body'));
         // The drawer body is a scrolling flex column: without flex-shrink-0 a
         // long list squeezes the input to a thin line.
-        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
+        var search = el('input', 'pg-input pg-input-sm flex-shrink-0 mb-3');
         var list = el('div', 'ws-pull-list');
         var serial = 0;
 
@@ -6643,13 +6663,13 @@
             // checklist. Callers
             // add their own (save, cancel) to the row it answers.
             tools: function (withList) {
-                var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
+                var mention = button('pg-icon-button pg-icon-button-sm', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
 
-                var tag = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
+                var tag = button('pg-icon-button pg-icon-button-sm', '', 'bi-hash', t('tag_record'));
                 tag.addEventListener('click', function () { field.insertTrigger('#'); });
 
-                var emoji = button('btn btn-sm btn-text theme-secondary', '', 'bi-emoji-smile', t('insert_emoji'));
+                var emoji = button('pg-icon-button pg-icon-button-sm', '', 'bi-emoji-smile', t('insert_emoji'));
                 emoji.addEventListener('click', function (event) {
                     var box = emoji.getBoundingClientRect();
 
@@ -6742,8 +6762,8 @@
     function refSearchField(types, onPick, placeholder) {
         var wrap = el('div', 'ws-ref-search-box');
         var group = el('div', 'input-group input-group-sm');
-        var typeSelect = el('select', 'form-control form-control-sm');
-        var input = el('input', 'form-control form-control-sm');
+        var typeSelect = el('select', 'pg-input pg-input-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var list = null;
 
         typeSelect.style.maxWidth = '9rem';
@@ -6885,7 +6905,7 @@
             line.appendChild(el('span', 'small fg-secondary me-1', t('lighter_people')));
 
             check.suggestions.forEach(function (suggestion) {
-                var pick = button('btn btn-sm btn-outline theme-secondary', suggestion.label, 'bi-person-plus');
+                var pick = button('pg-button pg-button-quiet pg-button-sm', suggestion.label, 'bi-person-plus');
                 pick.addEventListener('click', function () { onSuggest(suggestion); });
                 line.appendChild(pick);
             });
@@ -6993,14 +7013,14 @@
                             return;
                         }
 
-                        var move = button('btn btn-sm ' + (status === 'done' ? 'btn-outline theme-success' : 'btn-text theme-secondary'), BOOT.statuses[status]);
+                        var move = button('pg-button pg-button-sm ' + (status === 'done' ? 'pg-button-quiet' : 'pg-button-ghost'), BOOT.statuses[status]);
                         move.addEventListener('click', function () { self.setStatus(status); });
                         quick.appendChild(move);
                     });
 
                     body.appendChild(quick);
                 } else if (editable) {
-                    var reopen = button('btn btn-sm btn-text theme-secondary mb-5', t('reopen'), 'bi-arrow-counterclockwise');
+                    var reopen = button('pg-button pg-button-ghost pg-button-sm mb-5', t('reopen'), 'bi-arrow-counterclockwise');
                     reopen.addEventListener('click', function () { self.setStatus('todo'); });
                     body.appendChild(reopen);
                 }
@@ -7025,7 +7045,7 @@
 
             var f = self.fields = {};
 
-            f.title = el('input', 'form-control');
+            f.title = el('input', 'pg-input');
             f.title.id = nextId('ws-task-title-');
             f.title.maxLength = 255;
             f.title.value = task ? task.title : (defaults.title || '');
@@ -7046,7 +7066,7 @@
                 descWrap.appendChild(descRich.tools(true));
                 f.description = descRich;
             } else {
-                var descArea = el('textarea', 'form-control');
+                var descArea = el('textarea', 'pg-input');
                 descArea.id = nextId('ws-task-desc-');
                 descArea.rows = 3;
                 descArea.value = descStart;
@@ -7071,12 +7091,12 @@
                 grid.appendChild(cell);
             }
 
-            f.start = el('input', 'form-control form-control-sm');
+            f.start = el('input', 'pg-input pg-input-sm');
             pgDateField(f.start, 'date');
             f.start.id = nextId('ws-task-start-');
             f.start.value = task ? (task.start_date || '') : (defaults.start_date || '');
 
-            f.due = el('input', 'form-control form-control-sm');
+            f.due = el('input', 'pg-input pg-input-sm');
             pgDateField(f.due, 'date');
             f.due.id = nextId('ws-task-due-');
             f.due.value = task ? (task.due_date || '') : (defaults.due_date || '');
@@ -7128,7 +7148,7 @@
                 }
             }
 
-            f.estimate = el('input', 'form-control form-control-sm');
+            f.estimate = el('input', 'pg-input pg-input-sm');
             f.estimate.type = 'number';
             f.estimate.min = '0';
             f.estimate.step = '0.25';
@@ -7200,7 +7220,7 @@
             body.appendChild(formRow(t('people'), f.people, t('people_help')));
 
             var refsWrap = el('div', 'mb-5');
-            refsWrap.appendChild(el('label', 'form-label', t('about_records')));
+            refsWrap.appendChild(el('label', 'pg-field-label', t('about_records')));
             f.refs = el('div', 'ws-refs-field mb-3');
             refsWrap.appendChild(f.refs);
             refsWrap.appendChild(refSearchField(BOOT.ref_types, function (item) {
@@ -7266,11 +7286,11 @@
                 self.drawWork(task);
             }
 
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', task ? t('save') : t('create_task'), 'bi-check2');
+            var save = button('pg-button pg-button-fill pg-button-sm', task ? t('save') : t('create_task'), 'bi-check2');
             save.disabled = !editable;
             save.addEventListener('click', function () { self.save(false); });
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
 
             footer.appendChild(cancel);
@@ -7444,7 +7464,7 @@
                         hint.appendChild(icon('bi-check2-all', 'me-1'));
                         hint.appendChild(el('span', 'ws-grow', t('all_items_done')));
 
-                        var finish = button('btn btn-sm btn-solid theme-success rounded-pill px-5', t('mark_done'), 'bi-check2-circle');
+                        var finish = button('pg-button pg-button-fill pg-button-sm', t('mark_done'), 'bi-check2-circle');
                         finish.addEventListener('click', function () { self.setStatus('done'); });
                         hint.appendChild(finish);
                         box.appendChild(hint);
@@ -7515,8 +7535,8 @@
         itemAdder: function (task) {
             var self = this;
             var row = el('div', 'ws-item-add input-group input-group-sm');
-            var input = el('input', 'form-control');
-            var add = button('btn btn-outline theme-secondary', '', 'bi-plus-lg', t('add_item'));
+            var input = el('input', 'pg-input');
+            var add = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-plus-lg', t('add_item'));
 
             input.type = 'text';
             input.maxLength = 500;
@@ -7661,7 +7681,7 @@
                 var tools = el('span', 'ws-task-note-tools');
 
                 if (note.can_edit) {
-                    var edit = button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-pencil', t('edit'));
+                    var edit = button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', t('edit'));
                     edit.addEventListener('click', function () {
                         main.replaceChild(self.noteComposer(note), text);
                         tools.remove();
@@ -7670,7 +7690,7 @@
                 }
 
                 if (note.can_delete) {
-                    var remove = button('btn btn-sm btn-text theme-secondary py-0 px-1 ws-tool-danger', '', 'bi-trash', t('delete'));
+                    var remove = button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-trash', t('delete'));
                     remove.addEventListener('click', function () {
                         ask(t('delete_note_confirm'), t('delete'), true).then(function (yes) {
                             if (!yes) {
@@ -7730,7 +7750,7 @@
                 actions.appendChild(el('span', 'ws-grow'));
             }
 
-            var input = rich ? rich.input : el('textarea', 'form-control form-control-sm');
+            var input = rich ? rich.input : el('textarea', 'pg-input pg-input-sm');
 
             if (!rich) {
                 input.rows = 2;
@@ -7760,11 +7780,11 @@
             }
 
             if (!rich) {
-                var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
+                var mention = button('pg-icon-button pg-icon-button-sm', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
                 actions.appendChild(mention);
 
-                var tag = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
+                var tag = button('pg-icon-button pg-icon-button-sm', '', 'bi-hash', t('tag_record'));
                 tag.addEventListener('click', function () { field.insertTrigger('#'); });
                 actions.appendChild(tag);
 
@@ -7772,12 +7792,12 @@
             }
 
             if (note) {
-                var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+                var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
                 cancel.addEventListener('click', function () { self.drawNotes(self.task); });
                 actions.appendChild(cancel);
             }
 
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', note ? t('save') : t('add_note'), note ? 'bi-check2' : 'bi-plus-lg');
+            var save = button('pg-button pg-button-fill pg-button-sm', note ? t('save') : t('add_note'), note ? 'bi-check2' : 'bi-plus-lg');
 
             function submit() {
                 var body = (rich ? rich.value() : field.tokens(input.value)).trim();
@@ -7987,7 +8007,7 @@
     // search leaves, and Enter in the search takes the first of them.
     function iconPicker(value, kindIcon) {
         var box = el('div', 'ws-icon-picker');
-        var search = el('input', 'form-control form-control-sm ws-icon-search');
+        var search = el('input', 'pg-input pg-input-sm ws-icon-search');
         var grid = el('div', 'ws-icon-grid');
         var empty = el('div', 'ws-icon-empty d-none', t('icon_nothing'));
         var current = value || '';
@@ -8233,7 +8253,7 @@
             line.appendChild(text);
 
             if (row.actions.indexOf('clear') !== -1) {
-                var clearButton = button('btn btn-sm btn-outline theme-warning rounded-pill px-4', t('era_clear_short'), 'bi-eraser');
+                var clearButton = button('pg-button pg-button-quiet pg-button-sm', t('era_clear_short'), 'bi-eraser');
 
                 clearButton.title = t('era_clear');
                 clearButton.addEventListener('click', function () {
@@ -8256,10 +8276,10 @@
             line.appendChild(text);
 
             if (row.actions.indexOf('rename') !== -1) {
-                var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
+                var rename = button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', t('era_rename'));
 
                 rename.addEventListener('click', function () {
-                    var input = el('input', 'form-control form-control-sm');
+                    var input = el('input', 'pg-input pg-input-sm');
                     input.maxLength = 160;
                     input.value = era.title || '';
                     input.placeholder = t('era_title');
@@ -8273,7 +8293,7 @@
                 line.appendChild(rename);
             }
 
-            var read = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('era_open'), 'bi-book');
+            var read = button('pg-button pg-button-quiet pg-button-sm', t('era_open'), 'bi-book');
 
             read.addEventListener('click', function () {
                 closeDrawer();
@@ -8459,7 +8479,7 @@
             }
 
             if (member.id !== channel.owner_id && member.id !== BOOT.me.id) {
-                var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
+                var remove = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('member_remove', member.name));
 
                 remove.addEventListener('click', function () {
                     api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(refresh).catch(fail);
@@ -8477,7 +8497,7 @@
 
         if (outside.length && (channel.kind === 'public' || channel.joined)) {
             var picker = peoplePicker([], outside);
-            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people_confirm'), 'bi-person-plus');
+            var add = button('pg-button pg-button-fill pg-button-sm mt-2', t('add_people_confirm'), 'bi-person-plus');
 
             add.addEventListener('click', function () {
                 var ids = picker.value();
@@ -8491,7 +8511,7 @@
 
             var addRow = formRow(t('add_people'), picker);
 
-            addRow.classList.remove('mb-5');
+            addRow.classList.add('ws-field-flush');
             adding.appendChild(addRow);
             adding.appendChild(add);
             box.appendChild(adding);
@@ -8509,8 +8529,8 @@
         node.querySelector('.drawer-title').textContent = channel ? t('edit_channel') : t('new_channel');
         defaults = defaults || {};
 
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var save = button('pg-button pg-button-fill pg-button-sm', channel ? t('save') : t('create_channel'), 'bi-check2');
+        var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -8528,7 +8548,7 @@
 
         body.appendChild(general);
 
-        var name = el('input', 'form-control');
+        var name = el('input', 'pg-input');
         name.id = nextId('ws-ch-name-');
         name.maxLength = 80;
         name.value = channel ? channel.name : (defaults.name || '');
@@ -8549,7 +8569,7 @@
 
         if (!channel) {
             kind = el('div', 'mb-5');
-            kind.appendChild(el('div', 'form-label', t('channel_kind')));
+            kind.appendChild(el('div', 'pg-field-label', t('channel_kind')));
 
             [['public', t('kind_public'), t('kind_public_help')], ['private', t('kind_private'), t('kind_private_help')]].forEach(function (option, index) {
                 var wrap = el('div', 'form-field');
@@ -8581,7 +8601,7 @@
             // A conversation with somebody who has no account is a room of
             // its own, made by its own form.
             if ((CFG.guests || {}).can_host && !defaults.note_id) {
-                var toGuest = button('btn btn-link btn-sm p-0 mb-5 text-decoration-none', t('guest_start'), 'bi-door-open');
+                var toGuest = button('pg-button pg-button-ghost pg-button-sm mb-5', t('guest_start'), 'bi-door-open');
 
                 toGuest.addEventListener('click', function () {
                     pgUI.drawer.on(node, 'hidden', function () {
@@ -8593,7 +8613,7 @@
             }
         }
 
-        var topic = el('input', 'form-control');
+        var topic = el('input', 'pg-input');
         topic.id = nextId('ws-ch-topic-');
         topic.maxLength = 255;
         topic.value = channel ? channel.topic : (defaults.topic || '');
@@ -8612,7 +8632,7 @@
         } : null);
         var customerLinks = channel && channel.customer ? channel.customer.links : null;
         var contactBox = el('div', 'mb-5');
-        contactBox.appendChild(el('label', 'form-label', t('customer')));
+        contactBox.appendChild(el('label', 'pg-field-label', t('customer')));
         var contactShown = el('div', 'ws-refs-field mb-3');
         var linksShown = el('div', 'ws-customer-links');
         contactBox.appendChild(contactShown);
@@ -8786,7 +8806,7 @@
             var memoryCard = el('div', 'pg-card-inner mb-5');
             var memoryRow = memoryCard.appendChild(el('div', 'pg-card-inner-row ws-switch-row'));
             var memoryText = el('div', 'flex-grow-1 min-w-0');
-            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('cs_open'), 'bi-journal-bookmark');
+            var memoryOpen = button('pg-button pg-button-quiet pg-button-sm', t('cs_open'), 'bi-journal-bookmark');
             memoryOpen.addEventListener('click', function () {
                 hideOffcanvas(node, function () {
                     app.tab = 'memory';
@@ -9004,13 +9024,13 @@
         var group = nextId('ws_guest_mode_');
         var mode = 'once';
 
-        box.appendChild(el('div', 'form-label', t('guest_mode')));
+        box.appendChild(el('div', 'pg-field-label', t('guest_mode')));
 
         var duration = select((durations || []).map(function (option) { return [option.v, option.t]; }), '604800');
         duration.id = nextId('ws-guest-duration-');
 
         var durationRow = el('div', 'ws-guest-duration d-none');
-        var durationLabel = el('label', 'form-label small mb-1', t('guest_duration'));
+        var durationLabel = el('label', 'pg-field-label', t('guest_duration'));
         durationLabel.htmlFor = duration.id;
         durationRow.appendChild(durationLabel);
         durationRow.appendChild(duration);
@@ -9068,14 +9088,14 @@
         }
 
         var group = el('div', 'input-group');
-        var field = el('input', 'form-control font-monospace');
+        var field = el('input', 'pg-input font-monospace');
         field.type = 'text';
         field.readOnly = true;
         field.value = url;
         field.setAttribute('aria-label', t('guest_link_help'));
         field.addEventListener('focus', function () { field.select(); });
 
-        var copy = button('btn btn-outline theme-primary', t('guest_copy'), 'bi-clipboard');
+        var copy = button('pg-button pg-button-quiet', t('guest_copy'), 'bi-clipboard');
         copy.addEventListener('click', function () {
             var done = function () {
                 clear(copy);
@@ -9108,13 +9128,13 @@
 
         body.appendChild(el('div', 'alert theme-info small py-3', t('guest_start_help')));
 
-        var name = el('input', 'form-control');
+        var name = el('input', 'pg-input');
         name.id = nextId('ws-guest-name-');
         name.maxLength = 60;
         name.autocomplete = 'off';
         body.appendChild(formRow(t('guest_name'), name));
 
-        var topic = el('input', 'form-control');
+        var topic = el('input', 'pg-input');
         topic.id = nextId('ws-guest-topic-');
         topic.maxLength = 120;
         body.appendChild(formRow(t('guest_topic'), topic));
@@ -9133,8 +9153,8 @@
             body.appendChild(formRow(t('guest_staff'), members));
         }
 
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('guest_create'), 'bi-door-open');
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var save = button('pg-button pg-button-fill pg-button-sm', t('guest_create'), 'bi-door-open');
+        var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -9192,8 +9212,8 @@
         var grid = el('div', 'row g-3');
         var fromCell = el('div', 'col-6');
         var toCell = el('div', 'col-6');
-        var from = el('input', 'form-control form-control-sm');
-        var to = el('input', 'form-control form-control-sm');
+        var from = el('input', 'pg-input pg-input-sm');
+        var to = el('input', 'pg-input pg-input-sm');
 
         pgDateField(from, 'date');
         pgDateField(to, 'date');
@@ -9206,7 +9226,7 @@
         body.appendChild(grid);
 
         var choices = el('div', 'mb-5');
-        choices.appendChild(el('div', 'form-label', t('chx_format')));
+        choices.appendChild(el('div', 'pg-field-label', t('chx_format')));
 
         [['markdown', t('chx_markdown'), 'bi-filetype-md'], ['print', t('chx_print'), 'bi-printer']].forEach(function (option) {
             var wrap = el('div', 'form-field');
@@ -9229,8 +9249,8 @@
 
         body.appendChild(choices);
 
-        var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('chx_go'), 'bi-download');
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var go = button('pg-button pg-button-fill pg-button-sm', t('chx_go'), 'bi-download');
+        var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(go);
@@ -9270,14 +9290,14 @@
         node.querySelector('.drawer-title').textContent = t('share_start') + ' · #' + channel.name;
         body.appendChild(el('div', 'alert theme-info small py-3', t('share_help')));
 
-        var name = el('input', 'form-control');
+        var name = el('input', 'pg-input');
         name.id = nextId('ws-share-name-');
         name.maxLength = 60;
         name.autocomplete = 'off';
         body.appendChild(formRow(t('guest_name'), name));
 
         var choices = el('div', 'mb-5');
-        choices.appendChild(el('div', 'form-label', t('share_access')));
+        choices.appendChild(el('div', 'pg-field-label', t('share_access')));
 
         [['read', t('share_read'), t('share_read_help'), 'bi-eye'], ['write', t('share_write'), t('share_write_help'), 'bi-chat-dots']].forEach(function (option) {
             var wrap = el('div', 'form-field ws-share-choice');
@@ -9304,8 +9324,8 @@
         var link = guestLinkFields(conf.durations);
         body.appendChild(link);
 
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('share_create'), 'bi-link-45deg');
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var save = button('pg-button pg-button-fill pg-button-sm', t('share_create'), 'bi-link-45deg');
+        var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -9353,7 +9373,7 @@
 
         footer.classList.remove('d-none');
 
-        var all = button('btn btn-sm btn-text theme-secondary', t('mark_all_read'), 'bi-check2-all');
+        var all = button('pg-button pg-button-ghost pg-button-sm', t('mark_all_read'), 'bi-check2-all');
         all.addEventListener('click', function () {
             api('ws_inbox_read', { ids: 'all' }).then(function () {
                 hideOffcanvas(node);
@@ -9392,7 +9412,7 @@
 
                 // A meeting about to start: its call, one tap away.
                 if (item.join) {
-                    var join = el('span', 'btn btn-sm btn-solid theme-primary rounded-pill align-self-start mt-1', t('meeting_join'));
+                    var join = el('span', 'pg-button pg-button-quiet pg-button-sm align-self-start mt-1', t('meeting_join'));
                     join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
                     join.tabIndex = 0;
                     join.setAttribute('role', 'button');
@@ -9520,6 +9540,7 @@
             ice: (CFG.calls && CFG.calls.ice) || [],
             ring: (CFG.calls && CFG.calls.ring) || 45,
             max: (CFG.calls && CFG.calls.max) || 4,
+            background: (CFG.calls && CFG.calls.background) || null,
             soundOn: function () { return soundOn(CFG.api_url, CFG.me); },
             openChannel: function (channelId) { app.open(channelId, 0); }
         };
@@ -9764,7 +9785,7 @@
                     onContext(link, function () { return self.channelActions(channel); });
                 },
                 decorateGroup: function (head, group) {
-                    var more = menuButton(button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more')));
+                    var more = menuButton(button('pg-icon-button pg-icon-button-sm ws-group-more', '', 'bi-three-dots', t('more')));
 
                     more.addEventListener('click', function (event) {
                         event.stopPropagation();
@@ -9830,7 +9851,7 @@
                 bar.appendChild(pinAck);
             }
 
-            var close = button('btn btn-sm btn-text theme-secondary py-0 ws-pin-close', '', 'bi-x-lg', t('pin_close'));
+            var close = button('pg-icon-button pg-icon-button-sm ws-pin-close', '', 'bi-x-lg', t('pin_close'));
             close.addEventListener('click', function () {
                 if (self.channel.joined) {
                     api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
@@ -9893,14 +9914,14 @@
             text.addEventListener('click', function () { go(first); });
             bar.appendChild(text);
 
-            var goButton = button('btn btn-sm btn-outline theme-secondary rounded-pill ws-open-go', '', 'bi-arrow-down-circle', t('open_go_title'));
+            var goButton = button('pg-button pg-button-quiet pg-button-sm ws-open-go', '', 'bi-arrow-down-circle', t('open_go_title'));
 
             goButton.appendChild(el('span', 'ws-open-label', t('open_go')));
             goButton.addEventListener('click', function () { go(first); });
             bar.appendChild(goButton);
 
             // The count, which lists every item; on a phone also for one.
-            var count = menuButton(button('btn btn-sm btn-outline theme-secondary rounded-pill ws-open-count', '', 'bi-list-ul', t('open_list')));
+            var count = menuButton(button('pg-button pg-button-quiet pg-button-sm ws-open-count', '', 'bi-list-ul', t('open_list')));
             var mine = items.filter(function (item) { return item.mine; }).length;
 
             count.appendChild(el('span', 'ws-open-number', String(items.length)));
@@ -10049,20 +10070,20 @@
             bar.appendChild(el('span', 'ws-select-count', count ? t('sel_count', count) : t('sel_help')));
 
             if (self.channel.can_post && !self.era) {
-                var reply = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('sel_reply'), 'bi-reply');
+                var reply = button('pg-button pg-button-quiet pg-button-sm', t('sel_reply'), 'bi-reply');
                 reply.disabled = none;
                 reply.addEventListener('click', function () { self.replyToSelected(); });
                 bar.appendChild(reply);
             }
 
-            var forward = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('sel_forward'), 'bi-forward');
+            var forward = button('pg-button pg-button-quiet pg-button-sm', t('sel_forward'), 'bi-forward');
             forward.disabled = none;
             forward.addEventListener('click', function () { self.forwardForm(self.selectedMessages()); });
             bar.appendChild(forward);
 
             // Forward as e-mail: the New e-mail form filled with them (workspace_mail.js).
             if (CFG.mail_forward && window.PGWsMail) {
-                var mail = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('mail_fwd'), 'bi-envelope-arrow-up');
+                var mail = button('pg-button pg-button-quiet pg-button-sm', t('mail_fwd'), 'bi-envelope-arrow-up');
                 mail.disabled = none;
                 mail.addEventListener('click', function () {
                     var ids = self.selectedMessages().map(function (message) { return message.id; });
@@ -10072,19 +10093,19 @@
                 bar.appendChild(mail);
             }
 
-            var copy = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('sel_copy'), 'bi-copy');
+            var copy = button('pg-button pg-button-quiet pg-button-sm', t('sel_copy'), 'bi-copy');
             copy.disabled = none;
             copy.addEventListener('click', function () { self.copySelected(); });
             bar.appendChild(copy);
 
             if (CFG.notes) {
-                var note = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('sel_to_note'), 'bi-journal-plus');
+                var note = button('pg-button pg-button-quiet pg-button-sm', t('sel_to_note'), 'bi-journal-plus');
                 note.disabled = none;
                 note.addEventListener('click', function () { self.noteForwardForm(self.selectedMessages()); });
                 bar.appendChild(note);
             }
 
-            var done = button('btn btn-sm btn-text theme-secondary ms-auto', t('sel_cancel'), 'bi-x-lg');
+            var done = button('pg-button pg-button-ghost pg-button-sm ms-auto', t('sel_cancel'), 'bi-x-lg');
             done.addEventListener('click', function () { self.endSelect(); });
             bar.appendChild(done);
 
@@ -10165,7 +10186,7 @@
                 return [item.id, (item.kind === 'private' ? '🔒 ' : '#') + item.name];
             });
             var target = select(channels, (source && source.kind !== 'guest') ? source.id : (channels[0] || [0])[0]);
-            var comment = el('textarea', 'form-control form-control-sm');
+            var comment = el('textarea', 'pg-input pg-input-sm');
 
             target.id = nextId('ws-fwd-to-');
             comment.rows = 3;
@@ -10188,8 +10209,8 @@
                 body.appendChild(el('div', 'alert theme-warning small py-3', t('fwd_private')));
             }
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
-            var send = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sel_forward'), 'bi-forward');
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+            var send = button('pg-button pg-button-fill pg-button-sm', t('sel_forward'), 'bi-forward');
 
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
@@ -10228,7 +10249,7 @@
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
             var slot = el('div');
-            var comment = el('textarea', 'form-control form-control-sm');
+            var comment = el('textarea', 'pg-input pg-input-sm');
             var picker = null;
 
             footer.classList.remove('d-none');
@@ -10253,8 +10274,8 @@
                 slot.appendChild(el('div', 'small fg-danger', error.message));
             });
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sel_to_note'), 'bi-journal-plus');
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+            var save = button('pg-button pg-button-fill pg-button-sm', t('sel_to_note'), 'bi-journal-plus');
 
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
@@ -10295,7 +10316,7 @@
                 head.appendChild(document.createTextNode(card.channel ? t('fwd_from', card.channel.name) : t('fwd_from_hidden')));
 
                 if (card.can_open) {
-                    var open = button('btn btn-sm btn-link py-0 ms-auto', t('fwd_open'), 'bi-box-arrow-up-right');
+                    var open = button('pg-button pg-button-ghost pg-button-sm ms-auto', t('fwd_open'), 'bi-box-arrow-up-right');
                     open.addEventListener('click', function (event) {
                         event.stopPropagation();
 
@@ -10478,7 +10499,7 @@
             defaults = defaults || {};
             footer.classList.remove('d-none');
 
-            var name = el('input', 'form-control');
+            var name = el('input', 'pg-input');
             name.id = nextId('ws-grp-name-');
             name.maxLength = 80;
             name.value = group ? group.name : '';
@@ -10491,8 +10512,8 @@
             parent.id = nextId('ws-grp-parent-');
             body.appendChild(formRow(t('grp_parent'), parent, t('grp_levels', CFG.groups.depth)));
 
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var save = button('pg-button pg-button-fill pg-button-sm', t('save'), 'bi-check2');
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
             footer.appendChild(save);
@@ -10582,7 +10603,7 @@
 
                     row.appendChild(text);
 
-                    var take = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('grp_access_take'));
+                    var take = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('grp_access_take'));
                     take.addEventListener('click', function () {
                         ask(t('grp_access_take_confirm', data.path, person.name), t('grp_access_take'), true).then(function (yes) {
                             if (yes) {
@@ -10617,7 +10638,7 @@
                 var picker = peoplePicker([], allowed);
                 body.appendChild(formRow(t('grp_access_give'), picker));
 
-                var give = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('grp_access_give'), 'bi-key');
+                var give = button('pg-button pg-button-fill pg-button-sm', t('grp_access_give'), 'bi-key');
                 give.addEventListener('click', function () {
                     var ids = picker.value();
 
@@ -10896,7 +10917,7 @@
 
         clearConversation: function (channel, after) {
             var self = this;
-            var title = el('input', 'form-control form-control-sm');
+            var title = el('input', 'pg-input pg-input-sm');
             var details = el('div');
 
             title.id = nextId('ws-era-title-');
@@ -11021,7 +11042,7 @@
                     // A member of staff is in it: it is listed, its button
                     // stays greyed out.
                     if (channel.locked) {
-                        var lockedButton = button('btn btn-sm btn-outline theme-secondary', t('open_for_audit'), 'bi-eye-slash');
+                        var lockedButton = button('pg-button pg-button-quiet pg-button-sm', t('open_for_audit'), 'bi-eye-slash');
                         lockedButton.disabled = true;
                         lockedButton.title = t('audit_locked');
 
@@ -11034,7 +11055,7 @@
                         return;
                     }
 
-                    var openButton = button('btn btn-sm ' + (channel.opened ? 'btn-text theme-secondary' : 'btn-outline theme-warning'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
+                    var openButton = button('pg-button pg-button-sm ' + (channel.opened ? 'pg-button-ghost' : 'pg-button-quiet'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
                     openButton.addEventListener('click', function () {
                         var go = function () {
                             hideOffcanvas(node);
@@ -11771,7 +11792,7 @@
         startThread: function (message) {
             var self = this;
             var box = el('div');
-            var title = el('input', 'form-control');
+            var title = el('input', 'pg-input');
 
             title.maxLength = 80;
             title.placeholder = self.plain(message.html).slice(0, 80);
@@ -12083,13 +12104,13 @@
 
             if (info.can_host) {
                 var tools = el('div', 'd-flex flex-wrap gap-3');
-                var relink = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('guest_relink'), 'bi-link-45deg');
+                var relink = button('pg-button pg-button-quiet pg-button-sm', t('guest_relink'), 'bi-link-45deg');
                 relink.addEventListener('click', function () { self.guestRelink(channel); });
                 tools.appendChild(relink);
                 bar.appendChild(tools);
 
                 if (!info.ended) {
-                    var end = button('btn btn-sm btn-outline theme-danger rounded-pill px-5', t('guest_end'), 'bi-door-closed');
+                    var end = button('pg-button pg-button-danger pg-button-sm', t('guest_end'), 'bi-door-closed');
 
                     end.addEventListener('click', function () {
                         ask(t('guest_end_confirm'), t('guest_end'), true).then(function (yes) {
@@ -12141,7 +12162,7 @@
             bar.appendChild(text);
 
             if (info.can_host) {
-                var manage = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('share_manage'), 'bi-gear');
+                var manage = button('pg-button pg-button-quiet pg-button-sm', t('share_manage'), 'bi-gear');
                 manage.addEventListener('click', function () { self.shareManage(channel); });
                 bar.appendChild(manage);
             }
@@ -12160,7 +12181,7 @@
                 return null;
             }
 
-            var notice = button('btn btn-sm btn-text theme-warning ws-head-share', '', 'bi-exclamation-circle', t('share_bar_closed'));
+            var notice = button('pg-icon-button pg-icon-button-sm ws-head-share', '', 'bi-exclamation-circle', t('share_bar_closed'));
 
             notice.title = t('share_bar_closed');
 
@@ -12220,7 +12241,7 @@
                 row.appendChild(el('div', 'small fg-secondary', guest.label + (guest.seen ? ' · ' + t('guest_seen', guest.seen) : '')));
 
                 var tools = el('div', 'd-flex flex-wrap gap-1 mt-1');
-                var relink = button('btn btn-sm btn-text theme-secondary', t('guest_relink'), 'bi-link-45deg');
+                var relink = button('pg-button pg-button-ghost pg-button-sm', t('guest_relink'), 'bi-link-45deg');
                 relink.addEventListener('click', function () {
                     var fields = guestLinkFields(info.durations);
 
@@ -12241,7 +12262,7 @@
                 tools.appendChild(relink);
 
                 if (guest.open) {
-                    var end = button('btn btn-sm btn-text theme-secondary fg-danger', t('share_end'), 'bi-x-circle');
+                    var end = button('pg-button pg-button-danger pg-button-sm', t('share_end'), 'bi-x-circle');
                     end.addEventListener('click', function () {
                         hideOffcanvas(node);
                         ask(t('share_end_confirm', guest.name), t('share_end'), true).then(function (yes) {
@@ -12263,7 +12284,7 @@
             });
 
             if (channel.can_share) {
-                var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('share_add'), 'bi-plus-lg');
+                var add = button('pg-button pg-button-fill pg-button-sm', t('share_add'), 'bi-plus-lg');
                 add.addEventListener('click', function () {
                     hideOffcanvas(node);
                     shareForm(channel, function () { self.reloadChannels(channel.id); });
@@ -12338,22 +12359,22 @@
                 actions.appendChild(sharing);
             }
 
-            var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
+            var faces = button('pg-button pg-button-ghost pg-button-sm ws-head-faces ws-head-wide', '', '', t('members'));
             memberFaces(faces, channel);
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
 
-            var find = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-search', t('channel_search'));
+            var find = button('pg-icon-button pg-icon-button-sm ws-head-wide', '', 'bi-search', t('channel_search'));
             find.addEventListener('click', function () { self.searchChannel(); });
             actions.appendChild(find);
 
-            var info = button('btn btn-sm btn-text theme-secondary ws-head-wide ws-head-info', '', 'bi-info-circle', t('channel_info'));
+            var info = button('pg-icon-button pg-icon-button-sm ws-head-wide ws-head-info', '', 'bi-info-circle', t('channel_info'));
             info.setAttribute('aria-pressed', self.infoOpen ? 'true' : 'false');
             info.classList.toggle('active', !!self.infoOpen);
             info.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(info);
 
-            var addTask = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-check2-square', t('new_task'));
+            var addTask = button('pg-icon-button pg-icon-button-sm ws-head-wide', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
 
@@ -12367,7 +12388,7 @@
             // The tour shows the workspace around this screen, so it is
             // played again from here; its last step points at this button.
             if (self.tourReady()) {
-                var tour = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-signpost-split', t('tour_start'));
+                var tour = button('pg-icon-button pg-icon-button-sm ws-head-wide', '', 'bi-signpost-split', t('tour_start'));
                 tour.setAttribute('data-ws-tour', '1');
                 tour.addEventListener('click', function () { self.startTour(); });
                 actions.appendChild(tour);
@@ -12391,7 +12412,7 @@
             } else if (!channel.joined && channel.kind === 'public' && !self.era) {
                 var joinBar = el('div', 'alert theme-info rounded-0 m-0 py-3 small d-flex align-items-center gap-3');
                 joinBar.appendChild(el('span', 'flex-grow-1', t('not_joined')));
-                var join = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('join'));
+                var join = button('pg-button pg-button-fill pg-button-sm', t('join'));
                 join.addEventListener('click', function () {
                     api('ws_channel_join', { channel_id: channel.id }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                 });
@@ -12421,7 +12442,7 @@
                 var eraBar = el('div', 'alert theme-secondary rounded-0 m-0 py-3 small d-flex align-items-center gap-3 ws-era-bar');
                 eraBar.appendChild(icon('bi-clock-history'));
                 eraBar.appendChild(el('span', 'flex-grow-1', t('era_bar', self.era.label, self.era.from_text, self.era.to_text)));
-                var eraBack = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('era_back'), 'bi-arrow-return-left');
+                var eraBack = button('pg-button pg-button-quiet pg-button-sm', t('era_back'), 'bi-arrow-return-left');
                 eraBack.addEventListener('click', function () { self.open(channel.id, 0); });
                 eraBar.appendChild(eraBack);
                 card.appendChild(eraBar);
@@ -12738,7 +12759,7 @@
             var self = this;
             var channel = self.channel;
             var wrap = el('div', 'pg-menu-wrap');
-            var toggle = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
+            var toggle = button('pg-icon-button pg-icon-button-sm', '', 'bi-three-dots-vertical', t('more'));
             toggle.setAttribute('data-bs-toggle', 'menu');
             toggle.setAttribute('data-bs-placement', 'bottom-end');
             wrap.appendChild(toggle);
@@ -13113,7 +13134,7 @@
             title.tabIndex = -1;
             head.appendChild(title);
 
-            var shut = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('info_close'));
+            var shut = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('info_close'));
             shut.addEventListener('click', function () { self.closeInfo(); });
             head.appendChild(shut);
             panel.appendChild(head);
@@ -13227,7 +13248,7 @@
                 var outside = BOOT.people.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
 
                 if (outside.length) {
-                    var addOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill mt-2', t('add_people'), 'bi-person-plus');
+                    var addOpen = button('pg-button pg-button-quiet pg-button-sm mt-2', t('add_people'), 'bi-person-plus');
 
                     addOpen.setAttribute('data-info-key', 'add-open');
                     var addBox = el('div', 'ws-info-add');
@@ -13240,7 +13261,7 @@
                     });
 
                     var picker = peoplePicker([], outside);
-                    var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people_confirm'), 'bi-check2');
+                    var add = button('pg-button pg-button-fill pg-button-sm mt-2', t('add_people_confirm'), 'bi-check2');
 
                     add.addEventListener('click', function () {
                         var ids = picker.value();
@@ -13425,7 +13446,7 @@
             }
 
             if (channel.can_manage) {
-                var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
+                var settings = button('pg-button pg-button-quiet pg-button-sm w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
 
                 settings.addEventListener('click', function () {
                     channelForm(channel, {}, function () { self.refreshInfo(); });
@@ -13705,7 +13726,7 @@
             var pane = clear(self.pane);
 
             if (self.hasMore) {
-                var older = button('btn btn-sm btn-text theme-secondary d-block mx-auto mb-3', t('older_messages'), 'bi-arrow-up');
+                var older = button('pg-button pg-button-ghost pg-button-sm d-block mx-auto mb-3', t('older_messages'), 'bi-arrow-up');
                 older.addEventListener('click', function () { self.loadOlder(older); });
                 pane.appendChild(older);
             }
@@ -13831,7 +13852,7 @@
                     label = (count === 1) ? t('apl_one') : t('apl_count', count);
                 }
 
-                var toggle = button('btn btn-sm btn-text theme-secondary', label, opened ? 'bi-chevron-contract' : 'bi-chevron-expand');
+                var toggle = button('pg-button pg-button-ghost pg-button-sm', label, opened ? 'bi-chevron-contract' : 'bi-chevron-expand');
 
                 toggle.setAttribute('aria-expanded', opened ? 'true' : 'false');
                 toggle.addEventListener('click', function () {
@@ -14200,6 +14221,7 @@
                 setHtml(body, message.html);
                 chipMenus(body, self.channel);
                 self.bindChecks(body, message);
+                self.shareTextMarks(body, message);
             }
 
             // Changed after it was sent: said at its end, where it shows
@@ -14632,7 +14654,7 @@
                 // A picture is edited in the image editor: in place in the
                 // person's own message, as a copy of their own otherwise.
                 if (message.file.image && self.channel.can_post) {
-                    items.push({ icon: 'pg-design-canvas', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
+                    items.push({ icon: 'pg-design-canvas', label: t('file_edit_image'), action: function () { self.editImage(message); } });
                 }
 
                 if (message.file.text) {
@@ -14641,6 +14663,9 @@
 
                 items = items.concat(self.shareItems(message));
             }
+
+            // Its tables and checklists in an agent channel.
+            items = items.concat(self.shareTextItems(message));
 
             if (message.can_edit || message.can_delete || message.can_hide) {
                 items.push('-');
@@ -14810,7 +14835,7 @@
 
             // A labelled button that keeps only its icon on a phone.
             function action(label, iconName, handler) {
-                var node = button('btn btn-sm btn-outline theme-secondary rounded-pill ws-catchup-action', '', iconName, label);
+                var node = button('pg-button pg-button-quiet pg-button-sm ws-catchup-action', '', iconName, label);
 
                 node.appendChild(el('span', 'ws-catchup-label', label));
                 node.addEventListener('click', handler);
@@ -14962,7 +14987,7 @@
                     mark.appendChild(el('span', '', t('canvas_edited_by', file.canvas_edit.handle)));
 
                     if (file.canvas_edit.can_undo) {
-                        var undo = button('btn btn-sm btn-text theme-secondary py-0', t('canvas_undo'), 'bi-arrow-counterclockwise');
+                        var undo = button('pg-button pg-button-ghost pg-button-sm', t('canvas_undo'), 'bi-arrow-counterclockwise');
 
                         undo.addEventListener('click', function () {
                             ask(t('canvas_undo_ask'), t('canvas_undo')).then(function (yes) {
@@ -15022,12 +15047,12 @@
                 bar.appendChild(barName);
 
                 if (kind === 'video') {
-                    var large = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-arrows-fullscreen', t('preview'));
+                    var large = button('pg-icon-button pg-icon-button-sm', '', 'bi-arrows-fullscreen', t('preview'));
                     large.addEventListener('click', function () { previewFile(file); });
                     bar.appendChild(large);
                 }
 
-                var save = el('a', 'btn btn-sm btn-text theme-secondary py-0');
+                var save = el('a', 'pg-icon-button pg-icon-button-sm');
                 save.href = file.url;
                 save.setAttribute('download', file.name);
                 save.title = t('download');
@@ -15084,7 +15109,7 @@
 
             // A .csv or .tsv: its sheet in the preview, its text here.
             if (file.text && (way === 'window')) {
-                var read = button('btn btn-sm btn-outline theme-secondary', t('file_edit_text'), 'bi-file-earmark-text');
+                var read = button('pg-button pg-button-quiet pg-button-sm', t('file_edit_text'), 'bi-file-earmark-text');
                 read.addEventListener('click', function () { self.openText(message); });
                 tools.appendChild(read);
             }
@@ -15137,7 +15162,7 @@
             box.appendChild(icon('bi-person-exclamation'));
             box.appendChild(el('span', 'ws-grow', t('mention_not_here', names)));
 
-            var invite = button('btn btn-sm btn-outline theme-primary rounded-pill py-0 px-3', t('mention_invite'), 'bi-person-plus', t('mention_invite_help'));
+            var invite = button('pg-button pg-button-quiet pg-button-sm', t('mention_invite'), 'bi-person-plus', t('mention_invite_help'));
             invite.addEventListener('click', function (event) {
                 event.stopPropagation();
                 invite.disabled = true;
@@ -15215,9 +15240,9 @@
                 }
 
                 var form = el('form', 'ws-agent-feedback-form');
-                var reason = el('textarea', 'form-control form-control-sm');
-                var save = button('btn btn-sm btn-solid theme-primary rounded-pill py-0 px-3', t('af_save'));
-                var cancel = button('btn btn-sm btn-text rounded-pill py-0 px-2', t('af_cancel'));
+                var reason = el('textarea', 'pg-input pg-input-sm');
+                var save = button('pg-button pg-button-fill pg-button-sm', t('af_save'));
+                var cancel = button('pg-button pg-button-ghost pg-button-sm', t('af_cancel'));
                 var actions = el('div', 'ws-agent-feedback-actions');
 
                 reason.rows = 2;
@@ -15355,7 +15380,8 @@
         // the message's file, or the channel's note whose card it is.
         // file.share / note_card.share: open (the link: id, until,
         // can_revoke) or null, and can_make; null outside an agent channel
-        // and on a person's note.
+        // and on a person's note. text_shares: the same for each table and
+        // checklist of the text (kind, item_id = its number, name).
 
         // The item of a message a link is made to: kind, id, name, share;
         // null when it has none.
@@ -15407,9 +15433,13 @@
         // The item menu's entry: Share by link... while no link is open and
         // the reader may post, Stop sharing for who may take the open one
         // back. done() runs once the change is made (the Files tab redraws).
-        shareItems: function (message, done) {
+        // A table or a checklist of the text is given as item, with its own
+        // words for the entries.
+        shareItems: function (message, done, item, words) {
             var self = this;
-            var item = self.shareItem(message);
+
+            item = item || self.shareItem(message);
+
             var share = item && item.share;
 
             if (!share || message.deleted || message.past || self.era) {
@@ -15417,15 +15447,66 @@
             }
 
             if (share.open) {
-                return share.open.can_revoke ? [{ icon: 'bi-link-45deg', label: t('sl_stop'), action: function () { self.shareStop(message, done); } }] : [];
+                return share.open.can_revoke ? [{ icon: 'bi-link-45deg', label: words ? words.stop : t('sl_stop'), action: function () { self.shareStopLink(share.open.id, done); } }] : [];
             }
 
-            return share.can_make ? [{ icon: 'bi-link-45deg', label: t('sl_share'), action: function () { self.shareDialog(message, done); } }] : [];
+            return share.can_make ? [{ icon: 'bi-link-45deg', label: words ? words.share : t('sl_share'), action: function () { self.shareDialog(message, done, item); } }] : [];
+        },
+
+        // The tables and checklists of a message's text as items: kind, id
+        // (the number of its kind), name, share.
+        shareTextList: function (message) {
+            return (message.text_shares || []).map(function (share) {
+                return { kind: share.kind, id: share.item_id, name: share.name, share: share };
+            });
+        },
+
+        // The menu's entries of the tables and checklists: "Share table by
+        // link..." / "Stop sharing the table", with the name added when the
+        // text holds more than one block.
+        shareTextItems: function (message) {
+            var self = this;
+            var list = self.shareTextList(message);
+            var items = [];
+
+            list.forEach(function (item) {
+                var table = (item.kind === 'table');
+                var more = (list.length > 1) ? ' · ' + item.name : '';
+
+                items = items.concat(self.shareItems(message, null, item, {
+                    share: (table ? t('sl_share_table') : t('sl_share_list')) + more,
+                    stop: (table ? t('sl_stop_table') : t('sl_stop_list')) + more
+                }));
+            });
+
+            return items;
+        },
+
+        // The mark on each shared table and checklist drawn in the text: on
+        // its titled block, else on the table's frame or the list.
+        shareTextMarks: function (body, message) {
+            var self = this;
+            var list = self.shareTextList(message);
+
+            if (!list.length) {
+                return;
+            }
+
+            var found = { table: body.querySelectorAll('.ws-table-wrap'), list: body.querySelectorAll('ul.ws-checklist') };
+
+            list.forEach(function (item) {
+                var node = found[item.kind] ? found[item.kind][item.id - 1] : null;
+
+                if (node && item.share.open) {
+                    var titled = node.parentNode && node.parentNode.classList.contains('ws-block-titled') ? node.parentNode : null;
+                    self.shareMark(titled || node, item);
+                }
+            });
         },
 
         // The small dialog: the item's name and the end as three choices;
         // Create makes the link, then the same dialog shows its address once.
-        shareDialog: function (message, done) {
+        shareDialog: function (message, done, picked) {
             var self = this;
             var choices = String(t('sl_day_choices')).split(',');
             var days = String(t('sl_day_default'));
@@ -15444,7 +15525,7 @@
 
             press();
 
-            var item = self.shareItem(message);
+            var item = picked || self.shareItem(message);
 
             ask(item.name, t('sl_create'), false, formParts.group(t('sl_ends'), seg.node)).then(function (yes) {
                 if (!yes) {
@@ -15472,11 +15553,6 @@
             row.appendChild(copy);
 
             ask(t('sl_shown_once', until), t('sl_done'), false, row, { info: true });
-        },
-
-        // Stop sharing, asked once: the address stops working at once.
-        shareStop: function (message, done) {
-            this.shareStopLink(this.shareItem(message).share.open.id, done);
         },
 
         // Stop sharing a link by its id, asked once (the item's menu, the
@@ -15647,7 +15723,7 @@
 
                 var body = node.querySelector('.dialog-body');
                 var footer = node.querySelector('.dialog-footer');
-                var area = el('textarea', 'form-control ws-text-area');
+                var area = el('textarea', 'pg-input ws-text-area');
                 var view = el('div', 'ws-msg-body ws-text-view d-none');
                 var writable = !!(data.can_replace || data.can_send);
 
@@ -15657,21 +15733,21 @@
                 area.setAttribute('aria-label', data.name);
 
                 if (data.markdown) {
-                    var tabs = el('div', 'btn-group btn-group-sm mb-3 ws-text-tabs');
-                    var write = button('btn btn-outline theme-secondary active', t('file_text_write'), 'bi-pencil');
-                    var read = button('btn btn-outline theme-secondary', t('file_text_view'), 'bi-eye');
+                    var tabs = el('div', 'pg-seg mb-3 ws-text-tabs');
+                    var write = button('pg-seg-item is-active', t('file_text_write'), 'bi-pencil');
+                    var read = button('pg-seg-item', t('file_text_view'), 'bi-eye');
 
                     write.addEventListener('click', function () {
-                        write.classList.add('active');
-                        read.classList.remove('active');
+                        write.classList.add('is-active');
+                        read.classList.remove('is-active');
                         area.classList.remove('d-none');
                         view.classList.add('d-none');
                         area.focus();
                     });
 
                     read.addEventListener('click', function () {
-                        read.classList.add('active');
-                        write.classList.remove('active');
+                        read.classList.add('is-active');
+                        write.classList.remove('is-active');
                         view.classList.remove('d-none');
                         area.classList.add('d-none');
                         setHtml(view, '');
@@ -15692,14 +15768,14 @@
 
                 footer.appendChild(el('div', 'ws-grow small fg-secondary', data.can_replace ? t('file_text_mine_help') : (data.can_send ? t('file_text_copy_help') : t('file_text_readonly'))));
 
-                var close = button('btn btn-sm btn-text theme-secondary', t('close'));
+                var close = button('pg-button pg-button-ghost pg-button-sm', t('close'));
                 close.setAttribute('data-bs-dismiss', 'dialog');
                 footer.appendChild(close);
 
                 var instance = null;
 
                 if (writable) {
-                    var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', data.can_replace ? t('file_text_save') : t('file_text_send'), data.can_replace ? 'bi-check2' : 'bi-send');
+                    var save = button('pg-button pg-button-fill pg-button-sm', data.can_replace ? t('file_text_save') : t('file_text_send'), data.can_replace ? 'bi-check2' : 'bi-send');
 
                     save.addEventListener('click', function () {
                         if (area.value === data.text) {
@@ -16446,8 +16522,8 @@
                 }
 
                 var bar = el('div', 'ws-fd-bar');
-                var larger = button('btn btn-sm btn-text', '');
-                var close = button('btn btn-sm btn-text', t('close'), 'bi-x-lg');
+                var larger = button('pg-button pg-button-ghost pg-button-sm', '');
+                var close = button('pg-button pg-button-ghost pg-button-sm', t('close'), 'bi-x-lg');
                 var detail = el('div', 'ws-fd-detail ws-draft-meta', t('fd_box_pick'));
 
                 detail.setAttribute('aria-live', 'polite');
@@ -16458,7 +16534,7 @@
                 function size() {
                     stage.classList.toggle('is-large', open.large);
                     clear(larger);
-                    larger.appendChild(icon(open.large ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand', 'me-1'));
+                    larger.appendChild(icon(open.large ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand'));
                     larger.appendChild(document.createTextNode(t(open.large ? 'fd_smaller' : 'fd_larger')));
                     larger.setAttribute('aria-pressed', open.large ? 'true' : 'false');
                 }
@@ -16567,7 +16643,7 @@
 
             if (view.flow_id && view.can_try && drawn && drawn['try']) {
                 var answer = el('div', 'ws-fd-try');
-                var go = button('btn btn-sm btn-text theme-primary', t('fd_box_try'), 'bi-play');
+                var go = button('pg-button pg-button-ghost pg-button-sm', t('fd_box_try'), 'bi-play');
 
                 go.addEventListener('click', function () {
                     go.disabled = true;
@@ -16894,7 +16970,7 @@
                 var actions = el('div', 'ws-draft-actions');
 
                 if (change.can_apply) {
-                    var apply = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('change_apply'), 'bi-check2');
+                    var apply = button('pg-button pg-button-fill pg-button-sm', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
                         var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : (change.bulk.create ? 'bulk_create_warning' : 'bulk_warning'), change.bulk.total) : change.warning;
@@ -16928,7 +17004,7 @@
                 // who asked, on the Flows canvas; what the flow keeps
                 // otherwise is told before it opens.
                 if (change.draft) {
-                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-diagram-3');
+                    var open = button('pg-button pg-button-fill pg-button-sm', t('sa_draft_open'), 'bi-diagram-3');
 
                     open.addEventListener('click', function () {
                         open.disabled = true;
@@ -16947,7 +17023,7 @@
                 var dismiss = null;
 
                 if (change.can_dismiss) {
-                    dismiss = button('btn btn-sm btn-text theme-secondary', t('change_dismiss'), 'bi-x-lg');
+                    dismiss = button('pg-button pg-button-ghost pg-button-sm', t('change_dismiss'), 'bi-x-lg');
 
                     dismiss.addEventListener('click', function () {
                         dismiss.disabled = true;
@@ -16963,7 +17039,7 @@
                 // A call of an MCP server's tool (mcp_ask.php) runs with the
                 // asker's own account, connected from here.
                 if (change.connect) {
-                    var connect = button('btn btn-sm btn-outline theme-primary rounded-pill px-5', t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
+                    var connect = button('pg-button pg-button-quiet pg-button-sm', t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
 
                     connect.addEventListener('click', function () {
                         connect.disabled = true;
@@ -17028,7 +17104,7 @@
                     // Applied at once within the agent's tier: a member who
                     // may change the record puts it back for 7 days.
                     if (change.can_undo) {
-                        var undo = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5 mt-2', t('change_undo'), 'bi-arrow-counterclockwise');
+                        var undo = button('pg-button pg-button-quiet pg-button-sm mt-2', t('change_undo'), 'bi-arrow-counterclockwise');
 
                         undo.addEventListener('click', function () {
                             ask(t('change_undo_ask'), t('change_undo'), true).then(function (yes) {
@@ -17102,18 +17178,18 @@
                 var actions = el('div', 'ws-draft-actions');
 
                 if (proposal.can_open && proposal.edit_url) {
-                    var preview = el('a', 'btn btn-sm btn-text theme-secondary', '');
+                    var preview = el('a', 'pg-button pg-button-ghost pg-button-sm', '');
                     preview.href = proposal.edit_url;
                     preview.target = '_blank';
                     preview.rel = 'noopener';
-                    preview.appendChild(icon('bi-eye', 'me-1'));
+                    preview.appendChild(icon('bi-eye'));
                     preview.appendChild(document.createTextNode(t('design_open')));
                     actions.appendChild(preview);
                 }
 
                 var buttons = [];
                 var act = function (label, iconName, name, question, done) {
-                    var b = button(name === 'apply' ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-text theme-secondary', label, iconName);
+                    var b = button(name === 'apply' ? 'pg-button pg-button-fill pg-button-sm' : 'pg-button pg-button-ghost pg-button-sm', label, iconName);
 
                     b.addEventListener('click', function () {
                         var go = question ? ask(question, label, name !== 'dismiss') : Promise.resolve(true);
@@ -17216,8 +17292,8 @@
 
                 if (draft.can_decide) {
                     var actions = el('div', 'ws-draft-actions');
-                    var accept = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('claude_draft_open'), 'bi-plus-lg');
-                    var dismiss = button('btn btn-sm btn-text theme-secondary', t('claude_draft_dismiss'), 'bi-x-lg');
+                    var accept = button('pg-button pg-button-fill pg-button-sm', t('claude_draft_open'), 'bi-plus-lg');
+                    var dismiss = button('pg-button pg-button-ghost pg-button-sm', t('claude_draft_dismiss'), 'bi-x-lg');
 
                     accept.addEventListener('click', function () {
                         accept.disabled = dismiss.disabled = true;
@@ -17242,7 +17318,7 @@
                     actions.appendChild(dismiss);
                     card.appendChild(actions);
                 } else if (draft.status === 'accepted') {
-                    var opened = button('btn btn-sm btn-link p-0 ws-draft-done', t('claude_draft_accepted', draft.task_number, draft.decided_by));
+                    var opened = button('pg-button pg-button-ghost pg-button-sm ws-draft-done', t('claude_draft_accepted', draft.task_number, draft.decided_by));
                     opened.addEventListener('click', function () {
                         taskDrawer.open(draft.task_id, null, function () { self.sync(); });
                     });
@@ -17413,7 +17489,7 @@
                 data.flows.forEach(function (flow) {
                     var item = el('div', 'ws-flow-start-item');
                     var row = el('div', 'd-flex align-items-center gap-3');
-                    var go = button('btn btn-sm btn-solid theme-primary', t('fl_run_do'), 'bi-play-fill');
+                    var go = button('pg-button pg-button-fill pg-button-sm', t('fl_run_do'), 'bi-play-fill');
 
                     row.appendChild(el('b', 'ws-grow', flow.name));
                     row.appendChild(go);
@@ -17487,10 +17563,10 @@
         concludeOfferNode: function () {
             var self = this;
             var row = el('div', 'ws-conclude-offer mt-2');
-            var button = el('button', 'btn btn-sm btn-outline theme-primary');
+            var button = el('button', 'pg-button pg-button-quiet pg-button-sm');
 
             button.type = 'button';
-            button.appendChild(icon('bi-check2-circle', 'me-1'));
+            button.appendChild(icon('bi-check2-circle'));
             button.appendChild(document.createTextNode(t('th_conclude')));
             button.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -17515,7 +17591,7 @@
                 return document.createTextNode('');
             }
 
-            var undo = el('button', 'btn btn-sm btn-text theme-secondary py-0 ms-2', t('page_bind_undo'));
+            var undo = el('button', 'pg-button pg-button-ghost pg-button-sm ms-2', t('page_bind_undo'));
 
             undo.type = 'button';
             undo.addEventListener('click', function () {
@@ -17887,7 +17963,7 @@
 
         // The three-dot button that opens the asker's actions.
         pollAskerMenu: function (items) {
-            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
+            var more = menuButton(button('pg-icon-button pg-icon-button-sm', '', 'bi-three-dots', t('more')));
 
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
@@ -18073,7 +18149,7 @@
                 // The voter's own words, asked under the "Other" row.
                 if (option.other && poll.can_vote) {
                     otherBox = el('div', 'ws-poll-other' + (option.mine ? '' : ' d-none'));
-                    otherInput = el('input', 'form-control form-control-sm');
+                    otherInput = el('input', 'pg-input pg-input-sm');
                     otherInput.maxLength = 255;
                     otherInput.value = option.my_text || '';
                     otherInput.placeholder = t('poll_other_placeholder');
@@ -18085,7 +18161,7 @@
                         }
                     });
 
-                    var post = button('btn btn-sm btn-solid theme-primary', t('send'));
+                    var post = button('pg-button pg-button-fill pg-button-sm', t('send'));
 
                     post.addEventListener('click', send);
                     otherBox.appendChild(otherInput);
@@ -18100,7 +18176,7 @@
             // label hides and the icon keeps it as its name, so the foot
             // keeps one line.
             function footButton(label, iconName) {
-                var node = button('btn btn-sm btn-text theme-secondary', '', iconName, label);
+                var node = button('pg-button pg-button-ghost pg-button-sm', '', iconName, label);
 
                 node.appendChild(el('span', 'ws-poll-foot-label', label));
 
@@ -18137,7 +18213,7 @@
             var asker = self.pollAskerItems(message);
 
             if (poll.can_close) {
-                var shut = button('btn btn-sm btn-outline theme-secondary', t('poll_close'), 'bi-lock');
+                var shut = button('pg-button pg-button-quiet pg-button-sm', t('poll_close'), 'bi-lock');
                 shut.addEventListener('click', function () {
                     ask(t('poll_close_confirm'), t('poll_close')).then(function (yes) {
                         if (!yes) {
@@ -18201,13 +18277,13 @@
 
             function finish() {
                 if (poll.again_of_message) {
-                    var earlier = button('btn btn-sm btn-text theme-secondary', t('poll_earlier'), 'bi-arrow-up');
+                    var earlier = button('pg-button pg-button-ghost pg-button-sm', t('poll_earlier'), 'bi-arrow-up');
                     earlier.addEventListener('click', function () { self.jumpTo(poll.again_of_message); });
                     foot.appendChild(earlier);
                 }
 
                 if (poll.asked_again_message) {
-                    var newer = button('btn btn-sm btn-text theme-secondary', t('poll_asked_again'), 'bi-arrow-down');
+                    var newer = button('pg-button pg-button-ghost pg-button-sm', t('poll_asked_again'), 'bi-arrow-down');
                     newer.addEventListener('click', function () { self.jumpTo(poll.asked_again_message); });
                     foot.appendChild(newer);
                 }
@@ -18395,10 +18471,10 @@
             // Several answers or "Other": tick, write, and one Send.
             if (layout.send) {
                 var sendRow = el('div', 'ws-poll-send');
-                var send = button('btn btn-sm btn-solid theme-primary ws-poll-send-button', t('send'));
+                var send = button('pg-button pg-button-fill pg-button-sm ws-poll-send-button', t('send'));
 
                 if (otherOption) {
-                    otherInput = el('input', 'form-control form-control-sm');
+                    otherInput = el('input', 'pg-input pg-input-sm');
                     otherInput.maxLength = 255;
                     otherInput.placeholder = t('poll_other_placeholder');
                     otherInput.setAttribute('aria-label', otherOption.label);
@@ -18515,7 +18591,7 @@
                 body.appendChild(el('div', 'ws-poll-note mb-3', t('poll_again_help')));
             }
 
-            var question = el('textarea', 'form-control form-control-sm');
+            var question = el('textarea', 'pg-input pg-input-sm');
             question.rows = 2;
             question.maxLength = 1000;
             question.id = nextId('ws-poll-q-');
@@ -18531,8 +18607,8 @@
             var pictureRow = el('div', 'ws-poll-form-picture');
             var pictureShown = el('span', 'ws-poll-thumb');
             var pictureFile = el('input', 'd-none');
-            var pictureUpload = button('btn btn-sm btn-text theme-secondary', t('poll_question_picture_upload'), 'bi-upload');
-            var pictureDrop = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('poll_option_picture_remove'));
+            var pictureUpload = button('pg-button pg-button-ghost pg-button-sm', t('poll_question_picture_upload'), 'bi-upload');
+            var pictureDrop = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('poll_option_picture_remove'));
 
             function showQuestionPicture(url, name) {
                 clear(pictureShown);
@@ -18583,7 +18659,7 @@
 
             var optionsWrap = el('div');
             var optionsBox = el('div', 'ws-poll-form-options');
-            var addOption = button('btn btn-sm btn-text theme-secondary', t('poll_add_option'), 'bi-plus-lg');
+            var addOption = button('pg-button pg-button-ghost pg-button-sm', t('poll_add_option'), 'bi-plus-lg');
             var channelPictures = null;
 
             function renumber() {
@@ -18614,9 +18690,9 @@
 
             function linkRow(holder, link) {
                 var row = el('div', 'input-group input-group-sm ws-poll-form-link');
-                var url = el('input', 'form-control');
-                var text = el('input', 'form-control');
-                var drop = button('btn btn-outline theme-secondary', '', 'bi-x-lg', t('remove'));
+                var url = el('input', 'pg-input');
+                var text = el('input', 'pg-input');
+                var drop = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-x-lg', t('remove'));
 
                 url.type = 'url';
                 url.maxLength = 500;
@@ -18642,7 +18718,7 @@
             // under the option's label until asked for.
             function optionMore(line, option) {
                 var more = el('div', 'ws-poll-form-more' + ((option.description || option.picture || (option.links && option.links.length) || option.recommended) ? '' : ' d-none'));
-                var description = el('input', 'form-control form-control-sm ws-poll-form-desc');
+                var description = el('input', 'pg-input pg-input-sm ws-poll-form-desc');
 
                 description.maxLength = 500;
                 description.value = option.description || '';
@@ -18653,8 +18729,8 @@
                 // The picture: chosen from the channel's own pictures.
                 var pictureRow = el('div', 'ws-poll-form-picture');
                 var shown = el('span', 'ws-poll-thumb');
-                var choose = button('btn btn-sm btn-text theme-secondary', t('poll_option_picture_choose'), 'bi-image');
-                var unset = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('poll_option_picture_remove'));
+                var choose = button('pg-button pg-button-ghost pg-button-sm', t('poll_option_picture_choose'), 'bi-image');
+                var unset = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('poll_option_picture_remove'));
                 var grid = el('div', 'ws-poll-pick d-none');
 
                 function setPicture(picture) {
@@ -18718,7 +18794,7 @@
 
                 // Up to three links.
                 var links = el('div', 'ws-poll-form-links');
-                var addLink = button('btn btn-sm btn-text theme-secondary', t('poll_option_link_add'), 'bi-link-45deg');
+                var addLink = button('pg-button pg-button-ghost pg-button-sm', t('poll_option_link_add'), 'bi-link-45deg');
 
                 links.addEventListener('ws-links-changed', function () {
                     addLink.disabled = links.children.length >= 3;
@@ -18761,9 +18837,9 @@
                 var voted = (option.count > 0);
                 var line = el('div', 'ws-poll-form-option mb-1');
                 var group = el('div', 'input-group input-group-sm');
-                var input = el('input', 'form-control ws-poll-form-label' + (voted ? ' fg-secondary' : ''));
-                var details = button('btn btn-outline theme-secondary', '', 'bi-sliders', t('poll_option_more'));
-                var remove = button('btn btn-outline theme-secondary', '', voted ? 'bi-lock' : 'bi-x-lg', voted ? t('poll_option_voted') : t('remove'));
+                var input = el('input', 'pg-input ws-poll-form-label' + (voted ? ' fg-secondary' : ''));
+                var details = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-sliders', t('poll_option_more'));
+                var remove = button('pg-button pg-button-quiet pg-button-sm', '', voted ? 'bi-lock' : 'bi-x-lg', voted ? t('poll_option_voted') : t('remove'));
                 var more = optionMore(line, option);
 
                 input.maxLength = 255;
@@ -18888,8 +18964,8 @@
             var grid = el('div', 'row g-3 mt-1');
             var dateCell = el('div', 'col-7');
             var timeCell = el('div', 'col-5');
-            var date = el('input', 'form-control form-control-sm');
-            var time = el('input', 'form-control form-control-sm');
+            var date = el('input', 'pg-input pg-input-sm');
+            var time = el('input', 'pg-input pg-input-sm');
 
             pgDateField(date, 'date');
             date.id = nextId('ws-poll-date-');
@@ -18918,7 +18994,7 @@
             outcome.appendChild(document.createTextNode(t('poll_result_help')));
             body.appendChild(outcome);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
@@ -18949,7 +19025,7 @@
                 return options;
             }
 
-            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', changing ? t('save') : (again ? t('poll_ask_again') : t('start_poll')), changing ? 'bi-check2' : 'bi-send');
+            var create = button('pg-button pg-button-fill pg-button-sm', changing ? t('save') : (again ? t('poll_ask_again') : t('start_poll')), changing ? 'bi-check2' : 'bi-send');
             create.addEventListener('click', function () {
                 var settings = {
                     multiple: multiple.checked ? 1 : 0,
@@ -19699,7 +19775,7 @@
 
             // A file from this device, or one of the file manager's; a note
             // written here (workspace_channel_notes.js) for who may post.
-            var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
+            var attach = button('pg-icon-button pg-icon-button-sm', '', 'bi-paperclip', t('attach'));
             var noteHere = !!CFG.notes && !!window.PGWsChannelNotes && !self.isThread && !self.era && !!self.channel && !!self.channel.can_post;
             // An empty workbook or document posted here and opened for
             // editing (ws_file_office_new), where the preview can edit it.
@@ -19731,15 +19807,15 @@
             });
             parts.push(attach);
 
-            var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
+            var mention = button('pg-icon-button pg-icon-button-sm', '', 'bi-at', t('mention'));
             mention.addEventListener('click', function () { self.insertTrigger('@'); });
             parts.push(mention);
 
-            var record = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
+            var record = button('pg-icon-button pg-icon-button-sm', '', 'bi-hash', t('tag_record'));
             record.addEventListener('click', function () { self.insertTrigger('#'); });
             parts.push(record);
 
-            var emoji = button('btn btn-sm btn-text theme-secondary', '', 'bi-emoji-smile', t('insert_emoji'));
+            var emoji = button('pg-icon-button pg-icon-button-sm', '', 'bi-emoji-smile', t('insert_emoji'));
             emoji.addEventListener('click', function (event) {
                 var box = emoji.getBoundingClientRect();
 
@@ -19755,7 +19831,7 @@
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
-            var insert = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-plus-circle', t('insert')));
+            var insert = menuButton(button('pg-icon-button pg-icon-button-sm', '', 'bi-plus-circle', t('insert')));
             insert.addEventListener('click', function (event) {
                 var box = insert.getBoundingClientRect();
 
@@ -19805,7 +19881,7 @@
             });
             parts.push(insert);
 
-            var command = button('btn btn-sm btn-text theme-secondary', '', 'bi-slash-square', t('commands'));
+            var command = button('pg-icon-button pg-icon-button-sm', '', 'bi-slash-square', t('commands'));
             command.addEventListener('click', function () {
                 // Empty: a / to start a command. Only a / (or its list is
                 // open): the second press takes it back.
@@ -19843,7 +19919,7 @@
             self.meterState = 'none';
             parts.push(self.meter, self.meterLive);
 
-            var send = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('send'), 'bi-send');
+            var send = button('pg-button pg-button-fill pg-button-sm', t('send'), 'bi-send');
             send.addEventListener('click', function () { self.send(); });
             self.sendButton = send;
 
@@ -19851,10 +19927,8 @@
             // (scheduled_messages.php).
             if (CFG.scheduled_messages && !self.era) {
                 var sendGroup = el('div', 'btn-group ws-send-group');
-                var later = menuButton(button('btn btn-sm btn-solid theme-primary rounded-end-pill ws-send-later', '', 'bi-clock', t('sm_send_later')));
+                var later = menuButton(button('pg-button pg-button-fill pg-button-sm pg-button-split-more ws-send-later', '', 'bi-clock', t('sm_send_later')));
 
-                send.classList.remove('rounded-pill');
-                send.classList.add('rounded-start-pill');
                 later.addEventListener('click', function (event) {
                     var place = later.getBoundingClientRect();
                     var items = [{ header: t('sm_schedule') }];
@@ -19904,7 +19978,7 @@
             self.voiceBox = null;
 
             if (window.PGWsVoice && window.PGWsVoice.supported() && !self.era) {
-                var mic = button('btn btn-sm btn-solid theme-primary rounded-pill px-5 ws-voice-mic', '', 'bi-mic', t('voice_record'));
+                var mic = button('pg-icon-button pg-icon-button-sm ws-voice-mic', '', 'bi-mic', t('voice_record'));
 
                 mic.addEventListener('click', function () { self.voiceRecord(); });
                 parts.push(mic);
@@ -20123,7 +20197,7 @@
             }
 
             var id = 'ws_ai_rewrite_' + (++aiRewriteSeq);
-            var node = button('btn btn-sm btn-text theme-secondary pg-ai-write-btn ws-ai-rewrite d-none', '', 'bi-stars', t('tool_ai_rewrite'));
+            var node = button('pg-icon-button pg-icon-button-sm pg-ai-write-btn ws-ai-rewrite d-none', '', 'bi-stars', t('tool_ai_rewrite'));
 
             node.setAttribute('data-pg-ai-write', JSON.stringify({ target: 'ws_message', record: 'message', record_id: 0, field: id, format: 'message' }));
             node.setAttribute('aria-expanded', 'false');
@@ -20577,6 +20651,22 @@
             }, 400);
         },
 
+        // A refused send. The box keeps what was typed: it is emptied only
+        // after the server took the message. A stale page token was already
+        // renewed and the message sent again (api()); a refusal that still
+        // names the session means the sign-in ended, so the notice says the
+        // words are kept and the draft is written now, for the reload after
+        // signing in again.
+        sendFailed: function (error) {
+            if (error && (error.code === 'session')) {
+                this.flushDraft();
+                toast(t('send_signed_out'), 'danger');
+                return;
+            }
+
+            fail(error);
+        },
+
         flushDraft: function () {
             clearTimeout(this.draftTimer);
 
@@ -20741,7 +20831,7 @@
                 waiting.appendChild(icon('bi-clock'));
                 waiting.appendChild(el('span', '', t('sm_editing') + ' · ' + t('sm_at', self.editingScheduled.when)));
 
-                var stop = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('cancel'));
+                var stop = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('cancel'));
                 stop.addEventListener('click', function () { self.cancelCompose(); });
                 waiting.appendChild(stop);
                 bar.appendChild(waiting);
@@ -20761,7 +20851,7 @@
             } else if (!self.editing && self.reply.sender && self.reply.sender.mcp) {
                 row.appendChild(el('span', 'fg-secondary ms-1', t('mcp_reply_hint', self.reply.sender.mcp)));
             }
-            var cancel = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('cancel'));
+            var cancel = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('cancel'));
             cancel.addEventListener('click', function () { self.cancelCompose(); });
             row.appendChild(cancel);
             bar.appendChild(row);
@@ -20939,7 +21029,7 @@
                     toast(t('sm_saved', data.item ? data.item.when : waiting.when), 'success');
                 }).catch(function (error) {
                     self.busy = false;
-                    fail(error);
+                    self.sendFailed(error);
                 });
                 return;
             }
@@ -20958,7 +21048,7 @@
                     self.mentionNotice(data.notice);
                 }).catch(function (error) {
                     self.busy = false;
-                    fail(error);
+                    self.sendFailed(error);
                 });
                 return;
             }
@@ -21133,7 +21223,7 @@
                 if (result.command && result.command.type === 'ephemeral') {
                     var box = el('div', 'ws-ephemeral');
                     setHtml(box, result.command.html);
-                    var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
+                    var close = button('pg-icon-button pg-icon-button-sm float-end', '', 'bi-x-lg', t('close'));
                     close.addEventListener('click', function () { box.remove(); });
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
@@ -21199,7 +21289,7 @@
                 }
             }).catch(function (error) {
                 self.busy = false;
-                fail(error);
+                self.sendFailed(error);
             });
         },
 
@@ -21212,7 +21302,7 @@
             }
 
             var box = el('div', 'ws-ephemeral', text);
-            var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
+            var close = button('pg-icon-button pg-icon-button-sm float-end', '', 'bi-x-lg', t('close'));
             close.addEventListener('click', function () { box.remove(); });
             box.insertBefore(close, box.firstChild);
             this.pane.appendChild(box);
@@ -21315,11 +21405,11 @@
             };
 
             if (!hard) {
-                var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('create_task'), 'bi-check2');
+                var create = button('pg-button pg-button-fill pg-button-sm', t('create_task'), 'bi-check2');
                 create.addEventListener('click', function () { self.send(pending.confirm()); });
                 actions.appendChild(create);
             } else if (command.may_override) {
-                var force = button('btn btn-sm btn-outline theme-warning', t('create_anyway'), 'bi-exclamation-triangle');
+                var force = button('pg-button pg-button-quiet pg-button-sm', t('create_anyway'), 'bi-exclamation-triangle');
                 force.addEventListener('click', function () {
                     var options = pending.confirm();
 
@@ -21329,7 +21419,7 @@
                 actions.appendChild(force);
             }
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -21640,7 +21730,7 @@
             });
 
             box.appendChild(list);
-            var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
+            var close = button('pg-icon-button pg-icon-button-sm float-end', '', 'bi-x-lg', t('close'));
             close.addEventListener('click', function () { box.remove(); });
             box.insertBefore(close, box.firstChild);
             this.pane.appendChild(box);
@@ -23513,7 +23603,7 @@
 
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
-                    var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
+                    var jump = button('pg-button pg-button-ghost pg-button-sm', t('show_in_conversation'), 'bi-arrow-right-short');
                     var meta = node.querySelector('.ws-msg-meta');
 
                     jump.addEventListener('click', function () { self.open(message.channel_id || channel.id, message.id); });
@@ -23659,7 +23749,7 @@
                     items.push({ icon: 'bi-chat-left-text', label: t('show_in_conversation'), action: function () { self.open(self.channel.id, message.id); } });
 
                     if (message.file.image && self.channel.can_post) {
-                        items.push({ icon: 'pg-design-canvas', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
+                        items.push({ icon: 'pg-design-canvas', label: t('file_edit_image'), action: function () { self.editImage(message); } });
                     }
 
                     if (message.file.text) {
@@ -23857,7 +23947,7 @@
 
                         row.appendChild(fileAction(t('download'), 'bi-download', message.file));
 
-                        var jump = button('btn btn-sm btn-text theme-secondary', '', 'bi-chat-left-text', t('show_in_conversation'));
+                        var jump = button('pg-icon-button pg-icon-button-sm', '', 'bi-chat-left-text', t('show_in_conversation'));
                         jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                         row.appendChild(jump);
 
@@ -23899,7 +23989,7 @@
             });
             bar.appendChild(status);
 
-            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-plus-lg');
+            var add = button('pg-button pg-button-fill pg-button-sm', t('new_task'), 'bi-plus-lg');
             add.addEventListener('click', function () {
                 taskDrawer.open(0, self.taskDefaults(), function () { self.drawCenter(); });
             });
@@ -23956,7 +24046,7 @@
             pane.appendChild(layout);
 
             if (channel.can_post) {
-                var edit = button('btn btn-sm btn-outline theme-secondary', t('edit_summary'), 'bi-pencil');
+                var edit = button('pg-button pg-button-quiet pg-button-sm', t('edit_summary'), 'bi-pencil');
                 edit.addEventListener('click', function () {
                     // The editor opens inside the card, in place of the text.
                     clear(body);
@@ -23974,7 +24064,7 @@
                         wrap.appendChild(rich.input);
                         wrap.appendChild(rich.tools(true));
                     } else {
-                        area = el('textarea', 'form-control');
+                        area = el('textarea', 'pg-input');
                         area.rows = 14;
                         area.value = channel.summary || '';
                         wrap.appendChild(area);
@@ -23983,7 +24073,7 @@
                     body.appendChild(wrap);
 
                     var actions = el('div', 'd-flex gap-3 mt-3');
-                    var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
+                    var save = button('pg-button pg-button-fill pg-button-sm', t('save'), 'bi-check2');
                     save.addEventListener('click', function () {
                         api('ws_channel_summary', { channel_id: channel.id, summary: rich ? rich.value() : area.value }).then(function (data) {
                             self.channel = data.channel;
@@ -23991,7 +24081,7 @@
                             toast(t('summary_saved'), 'success');
                         }).catch(fail);
                     });
-                    var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+                    var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
                     cancel.addEventListener('click', function () { self.drawCenter(); });
                     actions.appendChild(save);
                     actions.appendChild(cancel);
@@ -24740,14 +24830,14 @@
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('th_people'));
+            var faces = button('pg-button pg-button-ghost pg-button-sm', '', '', t('th_people'));
             faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', (channel.members || []).length));
             faces.addEventListener('click', function () { self.showPeople(); });
             actions.appendChild(faces);
             actions.appendChild(self.threadMenu());
 
-            var shut = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('th_close_panel'));
+            var shut = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('th_close_panel'));
             shut.addEventListener('click', function () { self.close(); });
             actions.appendChild(shut);
             head.appendChild(actions);
@@ -24773,7 +24863,7 @@
 
             sourceHead.appendChild(el('span', '', t('th_about')));
 
-            var go = button('btn btn-sm btn-link p-0', t('th_go_message'), 'bi-arrow-left-short');
+            var go = button('pg-button pg-button-ghost pg-button-sm', t('th_go_message'), 'bi-arrow-left-short');
             go.addEventListener('click', function () {
                 if (window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
                     self.close();
@@ -24825,7 +24915,7 @@
             var self = this;
             var channel = self.channel;
             var thread = channel.thread || {};
-            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more')));
+            var more = menuButton(button('pg-icon-button pg-icon-button-sm', '', 'bi-three-dots-vertical', t('more')));
 
             more.addEventListener('click', function (event) {
                 var place = more.getBoundingClientRect();
@@ -24870,8 +24960,8 @@
 
             if (thread.can_follow) {
                 var change = thread.follow
-                    ? button('btn btn-sm btn-outline theme-secondary rounded-pill', t('th_follow_stop'), '', t('th_follow_stop_label', handle))
-                    : button('btn btn-sm btn-outline theme-secondary rounded-pill', t('th_follow_again'), 'bi-stars', t('th_follow_again_label', handle));
+                    ? button('pg-button pg-button-quiet pg-button-sm', t('th_follow_stop'), '', t('th_follow_stop_label', handle))
+                    : button('pg-button pg-button-quiet pg-button-sm', t('th_follow_again'), 'bi-stars', t('th_follow_again_label', handle));
 
                 change.addEventListener('click', function () {
                     change.disabled = true;
@@ -24891,7 +24981,7 @@
 
         view.rename = function () {
             var self = this;
-            var field = el('input', 'form-control');
+            var field = el('input', 'pg-input');
 
             field.maxLength = 80;
             field.value = self.channel.name;
@@ -24978,14 +25068,14 @@
                 var outside = readers.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
 
                 if (outside.length) {
-                    body.appendChild(el('div', 'form-label mt-5', t('th_add_people')));
+                    body.appendChild(el('div', 'pg-field-label mt-5', t('th_add_people')));
                     body.appendChild(el('div', 'form-text mt-0 mb-3', t('th_add_people_help')));
 
                     var picker = peoplePicker([], outside);
                     body.appendChild(picker);
                     footer.classList.remove('d-none');
 
-                    var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('th_add_people'), 'bi-person-plus');
+                    var add = button('pg-button pg-button-fill pg-button-sm', t('th_add_people'), 'bi-person-plus');
                     add.addEventListener('click', function () {
                         var ids = picker.value();
 
@@ -25052,7 +25142,7 @@
     // the name it is shown with.
     function saRecordPicker(tag, id, label) {
         var box = el('div', 'ws-sa-picker');
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var list = el('div', 'ws-sa-picker-list');
         var chosen = { id: id || 0, label: label || '' };
 
@@ -25132,7 +25222,7 @@
             input = select([['1', t('sa_yes')], ['0', t('sa_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
         } else if (meta.kind === 'lines') {
             // One line each; the server also takes them separated by commas.
-            input = el('textarea', 'form-control form-control-sm');
+            input = el('textarea', 'pg-input pg-input-sm');
             input.rows = 3;
             input.placeholder = t('qe_lines_help');
             input.value = Array.isArray(value) ? value.join('\n') : (value || '');
@@ -25143,11 +25233,11 @@
             // unless its value already holds a line break (a panel textarea stores
             // one in a meta description): a one-line input drops it, and saving any
             // other field of the record would send the value back without it.
-            input = el('textarea', 'form-control form-control-sm');
+            input = el('textarea', 'pg-input pg-input-sm');
             input.rows = 3;
             input.value = value || '';
         } else {
-            input = el('input', 'form-control form-control-sm');
+            input = el('input', 'pg-input pg-input-sm');
             if (meta.kind === 'date' || meta.kind === 'datetime') {
                 pgDateField(input, (meta.kind === 'date') ? 'date' : 'datetime-local');
             } else {
@@ -25220,7 +25310,7 @@
 
     function saLabelled(label, node, help) {
         var wrap = el('div', 'ws-sa-field');
-        var caption = el('label', 'form-label small mb-1', label);
+        var caption = el('label', 'pg-field-label', label);
         var field = labelTarget(node);
 
         if (field && (field === node || !hasName(field))) {
@@ -25246,16 +25336,16 @@
     // through PGWsKit). It offers no New: a new rule is a flow, started
     // from New flow. The list is read again while it is still on the page.
     function scheduledList(body) {
-        var filters = el('div', 'ws-sa-filters');
+        var filters = el('div', 'pg-seg pg-seg-wrap ws-sa-filters');
         var list = el('div', 'ws-sa-list');
         var status = '';
 
         [['', t('sa_all')], ['active', t('sa_state_active')], ['paused', t('sa_state_paused')], ['done', t('sa_state_done')], ['failed', t('sa_state_failed')], ['cancelled', t('sa_state_cancelled')]].forEach(function (option) {
-            var chip = button('btn btn-sm rounded-pill ' + (option[0] === status ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary'), option[1]);
+            var chip = button('pg-seg-item' + (option[0] === status ? ' is-active' : ''), option[1]);
             chip.addEventListener('click', function () {
                 status = option[0];
                 Array.prototype.forEach.call(filters.children, function (node) {
-                    node.className = 'btn btn-sm rounded-pill ' + (node === chip ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary');
+                    node.className = 'pg-seg-item' + (node === chip ? ' is-active' : '');
                 });
                 load();
             });
@@ -25392,7 +25482,7 @@
         // step and follow-ups are boxes; one not converted yet is converted
         // first (scheduledEdit()).
         if (item.can_edit) {
-            var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
+            var edit = button('pg-button pg-button-ghost pg-button-sm', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
                 if (item.flow) {
                     flowGo(item.flow.id, { opener: edit });
@@ -25405,7 +25495,7 @@
         }
 
         if (item.status === 'active' || item.status === 'paused') {
-            var pause = button('btn btn-sm btn-text theme-secondary', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
+            var pause = button('pg-button pg-button-ghost pg-button-sm', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
             pause.addEventListener('click', function () {
                 api('ws_scheduled_status', { id: item.id, status: item.status === 'active' ? 'paused' : 'active' }).then(refresh).catch(fail);
             });
@@ -25413,7 +25503,7 @@
         }
 
         if (item.can_edit) {
-            var run = button('btn btn-sm btn-text theme-secondary', t('sa_run_now'), 'bi-lightning');
+            var run = button('pg-button pg-button-ghost pg-button-sm', t('sa_run_now'), 'bi-lightning');
             run.addEventListener('click', function () {
                 ask(t('sa_run_now_confirm'), t('sa_run_now')).then(function (yes) {
                     if (yes) {
@@ -25431,7 +25521,7 @@
         // A copy to start a new one from: a new flow of one's own, opened on
         // the canvas.
         if (CFG.scheduled) {
-            var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
+            var copy = button('pg-button pg-button-ghost pg-button-sm', t('sa_duplicate'), 'bi-copy');
             copy.addEventListener('click', function () {
                 copy.disabled = true;
                 api('ws_flow_scheduled_copy', { id: item.id }).then(function (result) {
@@ -25448,14 +25538,14 @@
         // actions section of Flows, where workspace_flow.js is loaded. A
         // converted one opens as its flow (Edit).
         if (!item.flow && (CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
-            var canvas = button('btn btn-sm btn-text theme-secondary', t('sa_show_canvas'), 'bi-diagram-3');
+            var canvas = button('pg-button pg-button-ghost pg-button-sm', t('sa_show_canvas'), 'bi-diagram-3');
             canvas.addEventListener('click', function () {
                 scheduledGraph(item.id);
             });
             tools.appendChild(canvas);
         }
 
-        var history = button('btn btn-sm btn-text theme-secondary', t('sa_history'), 'bi-clock-history');
+        var history = button('pg-button pg-button-ghost pg-button-sm', t('sa_history'), 'bi-clock-history');
         var historyBox = el('div', 'ws-sa-history');
         historyBox.hidden = true;
         history.addEventListener('click', function () {
@@ -25484,7 +25574,7 @@
         tools.appendChild(history);
 
         if (item.status === 'active' || item.status === 'paused' || item.status === 'failed') {
-            var cancelButton = button('btn btn-sm btn-text theme-secondary fg-danger', t('sa_cancel'), 'bi-x-circle');
+            var cancelButton = button('pg-button pg-button-danger pg-button-sm', t('sa_cancel'), 'bi-x-circle');
             cancelButton.addEventListener('click', function () {
                 ask(t('sa_cancel_confirm'), t('sa_cancel'), true).then(function (yes) {
                     if (yes) {
@@ -25664,12 +25754,12 @@
     // A date and a time, for "Choose a time…" and for changing one.
     function smWhenFields(date, time) {
         var box = el('div', 'row g-3');
-        var dateInput = el('input', 'form-control form-control-sm');
-        var timeInput = el('input', 'form-control form-control-sm');
+        var dateInput = el('input', 'pg-input pg-input-sm');
+        var timeInput = el('input', 'pg-input pg-input-sm');
         var dateCol = el('div', 'col-7');
         var timeCol = el('div', 'col-5');
-        var dateLabel = el('label', 'form-label small mb-1', t('sm_date'));
-        var timeLabel = el('label', 'form-label small mb-1', t('sm_time'));
+        var dateLabel = el('label', 'pg-field-label', t('sm_date'));
+        var timeLabel = el('label', 'pg-field-label', t('sm_time'));
 
         pgDateField(dateInput, 'date');
         dateInput.id = nextId('ws-sm-date-');
@@ -25736,7 +25826,7 @@
         }
 
         var tools = el('div', 'ws-sm-tools');
-        var sendNow = button('btn btn-sm btn-text theme-secondary', t('sm_send_now'), 'bi-send');
+        var sendNow = button('pg-button pg-button-ghost pg-button-sm', t('sm_send_now'), 'bi-send');
         sendNow.addEventListener('click', function () {
             sendNow.disabled = true;
             api('ws_scheduled_message_send', { id: item.id }).then(function () {
@@ -25749,7 +25839,7 @@
         });
         tools.appendChild(sendNow);
 
-        var move = button('btn btn-sm btn-text theme-secondary', t('sm_reschedule'), 'bi-calendar-event');
+        var move = button('pg-button pg-button-ghost pg-button-sm', t('sm_reschedule'), 'bi-calendar-event');
         move.addEventListener('click', function () {
             smAskWhen(item.date, item.time).then(function (when) {
                 if (!when) {
@@ -25765,12 +25855,12 @@
         tools.appendChild(move);
 
         if (onEdit) {
-            var edit = button('btn btn-sm btn-text theme-secondary', t('sm_edit_text'), 'bi-pencil');
+            var edit = button('pg-button pg-button-ghost pg-button-sm', t('sm_edit_text'), 'bi-pencil');
             edit.addEventListener('click', function () { onEdit(item); });
             tools.appendChild(edit);
         }
 
-        var remove = button('btn btn-sm btn-text theme-secondary fg-danger', t('sm_delete'), 'bi-trash');
+        var remove = button('pg-button pg-button-danger pg-button-sm', t('sm_delete'), 'bi-trash');
         remove.addEventListener('click', function () {
             ask(t('sm_delete_confirm'), t('sm_delete'), true).then(function (yes) {
                 if (!yes) {
@@ -25907,7 +25997,7 @@
             row.appendChild(avatarStack('', task.assignees, 4));
 
             if (task.can_edit && task.open) {
-                var done = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-circle', t('mark_done'));
+                var done = button('pg-icon-button pg-icon-button-sm', '', 'bi-check2-circle', t('mark_done'));
                 done.addEventListener('click', function (event) {
                     event.stopPropagation();
                     api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
@@ -27136,13 +27226,13 @@
             node.querySelector('.drawer-title').textContent = day.label;
             footer.classList.remove('d-none');
 
-            var addEvent = button('btn btn-sm btn-text theme-secondary', t('add_plan_item'), 'bi-calendar-plus');
+            var addEvent = button('pg-button pg-button-ghost pg-button-sm', t('add_plan_item'), 'bi-calendar-plus');
             addEvent.addEventListener('click', function () {
                 hideOffcanvas(node);
                 eventForm(null, { start: day.date, people: forWhom() }, load);
             });
 
-            var addTask = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-check2-square');
+            var addTask = button('pg-button pg-button-fill pg-button-sm', t('new_task'), 'bi-check2-square');
             addTask.addEventListener('click', function () {
                 hideOffcanvas(node);
                 taskDrawer.open(0, { due_date: day.date, assignees: forWhom() }, load);
@@ -27210,7 +27300,7 @@
                     row.appendChild(main);
 
                     if (event.meeting_url) {
-                        var join = el('a', 'btn btn-sm btn-outline theme-primary rounded-pill text-nowrap', t('meeting_join'));
+                        var join = el('a', 'pg-button pg-button-quiet pg-button-sm', t('meeting_join'));
                         join.href = event.meeting_url;
                         join.target = '_blank';
                         join.rel = 'noopener noreferrer';
@@ -27345,7 +27435,7 @@
             peopleHead.appendChild(el('h3', 'ws-side-card-title ws-grow mb-0', t('people_this_month')));
 
             if (state.person_id) {
-                var all = button('btn btn-sm btn-text theme-secondary py-0', t('everyone'), 'bi-x');
+                var all = button('pg-button pg-button-ghost pg-button-sm', t('everyone'), 'bi-x');
                 all.addEventListener('click', function () {
                     state.person_id = 0;
                     load();
@@ -27732,7 +27822,7 @@
     function eventCustomerPicker(contact, readOnly) {
         var picked = { id: contact && !contact.hidden ? contact.id : 0, changed: false };
         var wrap = el('div');
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var list = el('div', 'list-group mt-1 d-none');
         var chip = el('div', 'd-flex align-items-center gap-2 d-none');
         var serial = 0;
@@ -27759,7 +27849,7 @@
                 return;
             }
 
-            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('event_customer_clear'));
+            var remove = button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('event_customer_clear'));
             remove.addEventListener('click', function () {
                 picked.id = 0;
                 picked.changed = true;
@@ -27850,7 +27940,7 @@
             quickEditLoad(fieldsBox, type, id, !!(options && options.edit), reopen);
         }
 
-        var newTask = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-check2-square');
+        var newTask = button('pg-button pg-button-fill pg-button-sm', t('new_task'), 'bi-check2-square');
         newTask.addEventListener('click', function () {
             hideOffcanvas(node);
             taskDrawer.open(0, { refs: [ref], title: label || '' }, reopen);
@@ -27860,7 +27950,7 @@
         // A contact, a user or a current account can be the customer of a
         // channel of its own.
         if ((type === 'contact') || (CFG.customer && ((type === 'user_account') || (type === 'erp_account')))) {
-            var newChannel = button('btn btn-sm btn-outline theme-secondary', t('customer_channel'), 'bi-hash');
+            var newChannel = button('pg-button pg-button-quiet pg-button-sm', t('customer_channel'), 'bi-hash');
             newChannel.addEventListener('click', function () {
                 hideOffcanvas(node);
                 channelForm(null, {
@@ -27971,11 +28061,11 @@
                     return [channel.id, '#' + channel.name + (channel.kind === 'private' ? ' (' + t('kind_private') + ')' : '')];
                 }), 0);
                 share.appendChild(target);
-                var note = el('textarea', 'form-control form-control-sm mt-3');
+                var note = el('textarea', 'pg-input pg-input-sm mt-3');
                 note.rows = 2;
                 note.placeholder = t('share_placeholder');
                 share.appendChild(note);
-                var send = button('btn btn-sm btn-outline theme-secondary mt-3', t('share'), 'bi-send');
+                var send = button('pg-button pg-button-quiet pg-button-sm mt-3', t('share'), 'bi-send');
                 send.addEventListener('click', function () {
                     api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token, as_text: 1 }).then(function (result) {
                         // The line is a message, never a command: say it was
@@ -28064,7 +28154,7 @@
         var section = el('div', 'ws-record-section ws-qe');
         var head = el('div', 'd-flex align-items-center justify-content-between');
         var title = el('div', 'ws-record-title mb-0', t('qe_title'));
-        var toggle = button('btn btn-sm btn-text theme-secondary', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
+        var toggle = button('pg-button pg-button-ghost pg-button-sm', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
         var form = el('div', 'ws-qe-form mt-3' + (open ? '' : ' d-none'));
         var fields = data.fields.slice();
         var short = data.short || [];
@@ -28100,7 +28190,7 @@
             form.classList.toggle('d-none', !opening);
             glance.classList.toggle('d-none', opening);
             toggle.textContent = '';
-            toggle.appendChild(icon(opening ? 'bi-chevron-up' : 'bi-pencil-square', 'me-1'));
+            toggle.appendChild(icon(opening ? 'bi-chevron-up' : 'bi-pencil-square'));
             toggle.appendChild(document.createTextNode(opening ? t('close') : t('qe_edit')));
         });
 
@@ -28147,7 +28237,7 @@
         form.appendChild(shortBox);
 
         if (moreBox.childNodes.length) {
-            var more = button('btn btn-sm btn-text theme-secondary mb-3', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
+            var more = button('pg-button pg-button-ghost pg-button-sm mb-3', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
 
             if (!short.length) {
                 moreBox.classList.remove('d-none');
@@ -28157,7 +28247,7 @@
                 var showing = moreBox.classList.contains('d-none');
                 moreBox.classList.toggle('d-none', !showing);
                 more.textContent = '';
-                more.appendChild(icon(showing ? 'bi-chevron-up' : 'bi-chevron-down', 'me-1'));
+                more.appendChild(icon(showing ? 'bi-chevron-up' : 'bi-chevron-down'));
                 more.appendChild(document.createTextNode(showing ? t('qe_fewer') : t('qe_more')));
             });
 
@@ -28183,7 +28273,7 @@
         }
 
         var bar = el('div', 'd-flex align-items-center gap-3 mt-1');
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qe_save'), 'bi-check2');
+        var save = button('pg-button pg-button-fill pg-button-sm', t('qe_save'), 'bi-check2');
         var status = el('span', 'small fg-secondary');
         bar.appendChild(save);
         bar.appendChild(status);
@@ -28376,13 +28466,13 @@
         section.appendChild(shortBox);
 
         if (moreBox.childNodes.length) {
-            var more = button('btn btn-sm btn-text theme-secondary mb-3', t('qe_more'), 'bi-chevron-down');
+            var more = button('pg-button pg-button-ghost pg-button-sm mb-3', t('qe_more'), 'bi-chevron-down');
 
             more.addEventListener('click', function () {
                 var showing = moreBox.classList.contains('d-none');
                 moreBox.classList.toggle('d-none', !showing);
                 more.textContent = '';
-                more.appendChild(icon(showing ? 'bi-chevron-up' : 'bi-chevron-down', 'me-1'));
+                more.appendChild(icon(showing ? 'bi-chevron-up' : 'bi-chevron-down'));
                 more.appendChild(document.createTextNode(showing ? t('qe_fewer') : t('qe_more')));
             });
 
@@ -28410,7 +28500,7 @@
         }
 
         var bar = el('div', 'd-flex align-items-center gap-3 mt-1');
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+        var save = button('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
         var status = el('span', 'small fg-secondary');
         bar.appendChild(save);
         bar.appendChild(status);
@@ -28534,7 +28624,7 @@
         var dates = el('div', 'd-flex gap-1 ws-tl-dates');
         dates.setAttribute('role', 'group');
         var dateField = function (key, label) {
-            var input = el('input', 'form-control form-control-sm');
+            var input = el('input', 'pg-input pg-input-sm');
             pgDateField(input, 'date');
             input.value = state[key];
             input.title = label;
@@ -28607,7 +28697,7 @@
         root.appendChild(filter.tags);
         root.appendChild(layout);
 
-        var moreButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('tl_more'), 'bi-arrow-down');
+        var moreButton = button('pg-button pg-button-quiet pg-button-sm', t('tl_more'), 'bi-arrow-down');
         moreButton.addEventListener('click', function () { load(false); });
         moreWrap.appendChild(moreButton);
 
@@ -28736,7 +28826,7 @@
             summary.appendChild(el('span', '', t(state.notes ? 'tl_total_notes' : 'tl_total', data.total || 0)));
 
             if (filtered()) {
-                var reset = button('btn btn-sm btn-link p-0', t('tl_clear'), 'bi-x-circle');
+                var reset = button('pg-button pg-button-ghost pg-button-sm', t('tl_clear'), 'bi-x-circle');
                 reset.addEventListener('click', clearFilters);
                 summary.appendChild(reset);
             }
@@ -28775,7 +28865,7 @@
                 row.appendChild(name);
                 row.appendChild(el('span', 'fg-secondary', t('tl_hidden_row', channel.count, channel.owner)));
 
-                var open = button('btn btn-sm ' + (channel.locked ? 'btn-outline theme-secondary' : 'btn-outline theme-warning') + ' ms-auto', t('open_for_audit'), channel.locked ? 'bi-eye-slash' : 'bi-eye');
+                var open = button('pg-button pg-button-quiet pg-button-sm ms-auto', t('open_for_audit'), channel.locked ? 'bi-eye-slash' : 'bi-eye');
 
                 if (channel.locked) {
                     open.disabled = true;
@@ -28904,9 +28994,9 @@
                 foot.appendChild(el('span', '', t('edited')));
             }
 
-            var jump = el('a', 'btn btn-sm btn-text theme-secondary ms-auto');
+            var jump = el('a', 'pg-button pg-button-ghost pg-button-sm ms-auto');
             jump.href = item.url;
-            jump.appendChild(icon('bi-arrow-right-short', 'me-1'));
+            jump.appendChild(icon('bi-arrow-right-short'));
             jump.appendChild(document.createTextNode(t('show_in_conversation')));
             foot.appendChild(jump);
 
@@ -29088,7 +29178,7 @@
             }
 
             if (note.access === 'owner' || note.access === 'edit') {
-                var edit = el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill ms-auto', t('notes_open'));
+                var edit = el('a', 'pg-button pg-button-quiet pg-button-sm ms-auto', t('notes_open'));
                 edit.href = CFG.urls.notes + '?note=' + note.id;
                 footer.appendChild(edit);
             }
@@ -29567,7 +29657,7 @@
 
         // Back to the list over the lock pane, on a phone (as a note's head).
         function lockBack() {
-            var back = button('btn btn-sm btn-text theme-secondary lg:d-none mb-3', t('notes_back'), 'bi-arrow-left');
+            var back = button('pg-button pg-button-ghost pg-button-sm lg:d-none mb-3', t('notes_back'), 'bi-arrow-left');
 
             back.addEventListener('click', function () {
                 current = null;
@@ -29583,7 +29673,7 @@
         // The button in a closed locked group's folder: the lock pane for
         // the list.
         function lockListButton() {
-            var open = button('btn btn-sm btn-text theme-secondary ws-nb-lock-list', t('nlock_unlock_list'), 'bi-unlock');
+            var open = button('pg-button pg-button-ghost pg-button-sm ws-nb-lock-list', t('nlock_unlock_list'), 'bi-unlock');
 
             open.addEventListener('click', function () {
                 save().then(function () {
@@ -29844,7 +29934,7 @@
             box = el('div', 'alert theme-warning d-flex flex-wrap align-items-center gap-3 py-3 ws-nb-conflict');
             box.appendChild(el('span', 'me-auto', message || t('notes_conflict')));
 
-            var load = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('notes_conflict_load'));
+            var load = button('pg-button pg-button-quiet pg-button-sm', t('notes_conflict_load'));
             load.addEventListener('click', function () {
                 dirty = false;
                 box.remove();
@@ -29852,7 +29942,7 @@
             });
             box.appendChild(load);
 
-            var keep = button('btn btn-sm btn-solid theme-warning rounded-pill', t('notes_conflict_keep'));
+            var keep = button('pg-button pg-button-fill pg-button-sm', t('notes_conflict_keep'));
             keep.addEventListener('click', function () {
                 box.remove();
                 dirty = true;
@@ -30070,7 +30160,7 @@
             box.appendChild(icon('bi-journal-richtext'));
             box.appendChild(el('div', '', t('notes_pick')));
 
-            var start = button('btn btn-sm btn-outline theme-primary rounded-pill px-5', t('notes_new'), 'bi-plus-lg');
+            var start = button('pg-button pg-button-quiet pg-button-sm', t('notes_new'), 'bi-plus-lg');
             start.addEventListener('click', function () { startNew(); });
             box.appendChild(start);
             pane.appendChild(box);
@@ -30084,7 +30174,7 @@
 
             clear(headNode);
 
-            var back = button('btn btn-sm btn-text theme-secondary lg:d-none', '', 'bi-arrow-left', t('notes_back'));
+            var back = button('pg-icon-button pg-icon-button-sm lg:d-none', '', 'bi-arrow-left', t('notes_back'));
             back.addEventListener('click', function () {
                 save();
                 current = null;
@@ -30099,7 +30189,7 @@
                 headNode.appendChild(noteFaces(current, 5));
             }
 
-            var title = el('input', 'form-control ws-nb-title');
+            var title = el('input', 'pg-input ws-nb-title');
             title.type = 'text';
             title.maxLength = 200;
             title.placeholder = t('notes_title');
@@ -30117,7 +30207,7 @@
             setStatus(dirty ? 'unsaved' : (current.id && editable() ? 'saved' : ''));
 
             if (current.access === 'owner' || !current.id) {
-                var share = menuButton(button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send'));
+                var share = menuButton(button('pg-button pg-button-ghost pg-button-sm', t('notes_share'), 'bi-send'));
                 share.disabled = !current.id;
                 share.addEventListener('click', function (event) {
                     var box = share.getBoundingClientRect();
@@ -30137,7 +30227,7 @@
             // action items): its own button to bring them into a channel.
             if (CFG.meetings && current.id && editable() && /<#plan:\d+>/.test(current.body || '')
                 && ((current.body || '').indexOf('::: ' + t('meeting_decisions')) !== -1 || (current.body || '').indexOf('::: ' + t('meeting_actions')) !== -1)) {
-                var transfer = button('btn btn-sm btn-text theme-secondary', t('meeting_transfer'), 'bi-box-arrow-in-right');
+                var transfer = button('pg-button pg-button-ghost pg-button-sm', t('meeting_transfer'), 'bi-box-arrow-in-right');
                 transfer.addEventListener('click', function () { meetingTransfer(current); });
                 headNode.appendChild(transfer);
             }
@@ -30145,12 +30235,12 @@
             // What the note held before: kept on the server, put back as a
             // step the person can undo.
             if (current.id && current.versions) {
-                var versions = button('btn btn-sm btn-text theme-secondary', '', 'bi-clock-history', t('notes_versions'));
+                var versions = button('pg-icon-button pg-icon-button-sm', '', 'bi-clock-history', t('notes_versions'));
                 versions.addEventListener('click', function () { showVersions(current); });
                 headNode.appendChild(versions);
             }
 
-            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
+            var more = menuButton(button('pg-icon-button pg-icon-button-sm', '', 'bi-three-dots', t('more')));
             more.disabled = !current.id;
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
@@ -30246,11 +30336,11 @@
 
             view.appendChild(el('div', 'small fg-secondary', t('notes_version_pick')));
 
-            var close = button('btn btn-sm btn-text theme-secondary', t('close'));
+            var close = button('pg-button pg-button-ghost pg-button-sm', t('close'));
             close.setAttribute('data-bs-dismiss', 'dialog');
             footer.appendChild(close);
 
-            var restore = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_version_restore'), 'bi-arrow-counterclockwise');
+            var restore = button('pg-button pg-button-fill pg-button-sm', t('notes_version_restore'), 'bi-arrow-counterclockwise');
             restore.disabled = true;
             restore.classList.toggle('d-none', !editable());
             footer.appendChild(restore);
@@ -30467,7 +30557,7 @@
             }
 
             function closeButton(label) {
-                var close = button('btn btn-sm btn-text theme-secondary', label || t('cancel'));
+                var close = button('pg-button pg-button-ghost pg-button-sm', label || t('cancel'));
                 close.setAttribute('data-bs-dismiss', 'dialog');
                 return close;
             }
@@ -30764,7 +30854,7 @@
                 if (picked.length) {
                     var head = el('div', 'd-flex align-items-baseline gap-3 mt-5 mb-1');
                     var heading = t('notes_import_picked', picked.length, sizeLabel(result.total));
-                    var clearAll = button('btn btn-sm btn-link p-0', t('notes_import_clear'));
+                    var clearAll = button('pg-button pg-button-ghost pg-button-sm', t('notes_import_clear'));
                     var list = el('div', 'list-group ws-nb-import-list');
 
                     if (result.over) {
@@ -30833,7 +30923,7 @@
                     body.appendChild(notice);
                 }
 
-                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_import_upload'), 'bi-cloud-arrow-up');
+                var go = button('pg-button pg-button-fill pg-button-sm', t('notes_import_upload'), 'bi-cloud-arrow-up');
 
                 go.disabled = !result.files.length || !!result.error;
                 go.addEventListener('click', upload);
@@ -30867,11 +30957,11 @@
                     return;
                 }
 
-                var row = el('div', 'd-flex flex-wrap gap-2 mb-4');
+                var row = el('div', 'pg-seg pg-seg-wrap mb-4');
 
                 tabs.forEach(function (tab) {
                     var on = (tab[0] === current);
-                    var item = button('btn btn-sm rounded-pill px-4 ' + (on ? 'btn-solid theme-primary' : 'btn-text theme-secondary'), tab[1], tab[2]);
+                    var item = button('pg-seg-item' + (on ? ' is-active' : ''), tab[1], tab[2]);
 
                     item.setAttribute('aria-pressed', on ? 'true' : 'false');
                     item.addEventListener('click', function () {
@@ -30936,8 +31026,8 @@
                 body.appendChild(el('p', 'small fg-secondary', t('notes_notion_intro')));
 
                 var form = el('form', 'd-flex gap-2 mb-4');
-                var input = el('input', 'form-control form-control-sm');
-                var find = button('btn btn-sm btn-text theme-secondary', t('notes_notion_search'), 'bi-search');
+                var input = el('input', 'pg-input pg-input-sm');
+                var find = button('pg-button pg-button-ghost pg-button-sm', t('notes_notion_search'), 'bi-search');
 
                 input.type = 'search';
                 input.value = notion.query;
@@ -30950,7 +31040,7 @@
                 var list = el('div', 'list-group ws-nb-import-list');
                 var note = el('div', 'small fg-secondary');
                 var max = notion.state.max || 25;
-                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', '', 'bi-box-arrow-in-down');
+                var go = button('pg-button pg-button-fill pg-button-sm', '', 'bi-box-arrow-in-down');
 
                 function count() {
                     return Object.keys(notion.chosen).length;
@@ -30960,7 +31050,7 @@
                     var picked = count();
 
                     go.textContent = '';
-                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(icon('bi-box-arrow-in-down'));
                     go.appendChild(document.createTextNode(t('notes_notion_go', picked)));
                     go.disabled = !picked || picked > max;
                     note.textContent = (picked > max) ? t('notes_notion_max', max) : '';
@@ -31159,7 +31249,7 @@
                             form.appendChild(input);
                         });
 
-                        var connect = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_onenote_connect'), 'bi-microsoft');
+                        var connect = button('pg-button pg-button-fill pg-button-sm', t('notes_onenote_connect'), 'bi-microsoft');
 
                         connect.type = 'submit';
                         form.appendChild(connect);
@@ -31181,14 +31271,14 @@
                 var list = el('div', 'list-group ws-nb-import-list');
                 var note = el('div', 'small fg-secondary');
                 var max = onenote.state.max || 25;
-                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', '', 'bi-box-arrow-in-down');
+                var go = button('pg-button pg-button-fill pg-button-sm', '', 'bi-box-arrow-in-down');
                 var first = null;
 
                 function update() {
                     var picked = onenoteCount();
 
                     go.textContent = '';
-                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(icon('bi-box-arrow-in-down'));
                     go.appendChild(document.createTextNode(t('notes_notion_go', picked)));
                     go.disabled = !picked || picked > max;
                     note.textContent = (picked > max) ? t('notes_notion_max', max) : '';
@@ -31220,7 +31310,7 @@
                         });
                     });
                 } else {
-                    var back = button('btn btn-sm btn-text theme-secondary mb-3', t('notes_onenote_back'), 'bi-arrow-left');
+                    var back = button('pg-button pg-button-ghost pg-button-sm mb-3', t('notes_onenote_back'), 'bi-arrow-left');
 
                     back.addEventListener('click', function () {
                         onenote.section = null;
@@ -31306,7 +31396,7 @@
                 var bytes = el('span');
                 var bar = progressBar({ percent: 0 }, false, t('uploading'));
                 var fill = bar.firstChild;
-                var stop = button('btn btn-sm btn-text theme-secondary', t('notes_import_cancel_upload'));
+                var stop = button('pg-button pg-button-ghost pg-button-sm', t('notes_import_cancel_upload'));
 
                 // The step is announced, not every percent.
                 label.setAttribute('role', 'status');
@@ -31514,7 +31604,7 @@
                 // Files exported from here: brought up to date, or copies.
                 if (counts.update || counts.same) {
                     var modeRow = el('div', 'd-flex flex-wrap align-items-center gap-3 mb-3');
-                    var select = el('select', 'form-control form-control-sm w-auto');
+                    var select = el('select', 'pg-input pg-input-sm w-auto');
                     var modeLabel = el('label', 'small fg-secondary', t('notes_import_mode'));
 
                     select.id = 'ws-nb-import-mode';
@@ -31558,7 +31648,7 @@
                 var list = el('div', 'list-group ws-nb-import-list');
                 body.appendChild(list);
 
-                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', '', 'bi-box-arrow-in-down');
+                var go = button('pg-button pg-button-fill pg-button-sm', '', 'bi-box-arrow-in-down');
                 var cancel = closeButton();
 
                 footer.appendChild(cancel);
@@ -31665,7 +31755,7 @@
                     var selectableCount = rows.filter(selectable).length;
 
                     clear(go);
-                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(icon('bi-box-arrow-in-down'));
                     go.appendChild(document.createTextNode(t('notes_import_go', chosen)));
                     go.disabled = (chosen === 0);
 
@@ -31767,7 +31857,7 @@
                 footer.appendChild(closeButton(t('close')));
 
                 if (data && data.first) {
-                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_open'), 'bi-box-arrow-in-right');
+                    var open = button('pg-button pg-button-fill pg-button-sm', t('notes_open'), 'bi-box-arrow-in-right');
 
                     open.addEventListener('click', function () {
                         pgUI.dialog.hide(node);
@@ -32084,7 +32174,7 @@
         function toolbar() {
             var rich = field.rich;
             var tool = function (iconName, label, action) {
-                var node = button('btn btn-sm btn-text theme-secondary', '', iconName, label);
+                var node = button('pg-icon-button pg-icon-button-sm', '', iconName, label);
                 node.addEventListener('click', action);
                 return node;
             };
@@ -32405,7 +32495,7 @@
         function sharesList(note) {
             var box = el('div', 'ws-nb-shares');
 
-            box.appendChild(el('div', 'form-label mb-1', t('notes_shares')));
+            box.appendChild(el('div', 'pg-field-label', t('notes_shares')));
 
             if (!(note['with'] || []).length && !(note['in'] || []).length) {
                 box.appendChild(el('div', 'small fg-secondary', t('notes_only_you')));
@@ -32425,7 +32515,7 @@
                 }
 
                 if (share.share_id) {
-                    var remove = button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-x-lg', t('notes_unshare'));
+                    var remove = button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-x-lg', t('notes_unshare'));
                     remove.addEventListener('click', function () {
                         api('ws_note_unshare', { note_id: note.id, share_id: share.share_id }).then(function () {
                             row.remove();
@@ -32519,11 +32609,11 @@
 
             footer.classList.remove('d-none');
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
-            var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('meeting_transfer_go'), 'bi-box-arrow-in-right');
+            var go = button('pg-button pg-button-fill pg-button-sm', t('meeting_transfer_go'), 'bi-box-arrow-in-right');
             footer.appendChild(go);
 
             function row(group, item, text, sub, blocked) {
@@ -32564,14 +32654,14 @@
                     }
 
                     if (data.decisions.length) {
-                        list.appendChild(el('div', 'form-label mt-3', t('meeting_decisions')));
+                        list.appendChild(el('div', 'pg-field-label mt-3', t('meeting_decisions')));
                         data.decisions.forEach(function (item) {
                             list.appendChild(row('decisions', item, item.text, item.done ? t('meeting_transfer_done') : '', item.done));
                         });
                     }
 
                     if (data.actions.length) {
-                        list.appendChild(el('div', 'form-label mt-3', t('meeting_actions')));
+                        list.appendChild(el('div', 'pg-field-label mt-3', t('meeting_actions')));
                         data.actions.forEach(function (item) {
                             var sub = item.done ? t('meeting_transfer_task') : (item.error || [item.people.map(function (who) { return who.name; }).join(', '), item.due].filter(Boolean).join(' · '));
                             list.appendChild(row('actions', item, item.title || '…', sub, item.done || !!item.error));
@@ -32887,14 +32977,14 @@
             opener: options.opener || document.activeElement,
             layer: el('div', 'ws-flow-layer'),
             title: el('h2', 'ws-flow-layer-title', t('fl_nav')),
-            link: el('a', 'btn btn-sm btn-text theme-secondary'),
+            link: el('a', 'pg-button pg-button-ghost pg-button-sm'),
             body: el('div', 'ws-flow-layer-body'),
             instance: null,
             inerted: [],
             closing: false
         };
         var bar = el('div', 'ws-flow-layer-bar');
-        var close = button('btn btn-sm btn-outline theme-secondary', t('close'), 'bi-x-lg');
+        var close = button('pg-button pg-button-quiet pg-button-sm', t('close'), 'bi-x-lg');
 
         open.layer.setAttribute('role', 'dialog');
         open.layer.setAttribute('aria-modal', 'true');

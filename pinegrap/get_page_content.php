@@ -249,8 +249,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         && pg_lbs_layout_output_applies($style_layout, $pg_design_fw['key'], $email);
     // The design's look and colour palette (2026.4.5): stylesheets loaded
     // right after the framework's, so everything the design adds still wins.
+    // Its variables file, when it saved one, comes last of them.
     $pg_theme_links = ($style_layout === 'visual_designer' && function_exists('pg_design_theme_links'))
-        ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '')
+        ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '',
+            pg_design_variables_url($style_id))
         : '';
     // The design's colour mode (2026.11.0, 11.0.186): light, dark or the
     // visitor's system on <html>; '' (and a database before the column)
@@ -675,6 +677,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_scroller_inject($content);
     }
 
+    // ── Back to top and Scroll progress ─────────────────────────────────────────
+    // Both carry a marker and no script; the page brings it
+    // (pg_page_scroll_inject()), checked once everything is drawn in. Not in
+    // an e-mail.
+    if (!$email && stripos($content, 'data-pg-') !== false && function_exists('pg_page_scroll_inject')) {
+        $content = pg_page_scroll_inject($content);
+    }
+
     // ── Listen ──────────────────────────────────────────────────────────────────
     // A "Listen" block carries data-pg-listen and no script; the page brings
     // the script and its labels (pg_listen_inject()), checked once everything
@@ -1057,12 +1067,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'form list view':
 
                 // If there is a specific page number for this page, then use it.
-                if (isset($_GET[$page_id . '_page_number']) && is_string($_GET[$page_id . '_page_number']) && $_GET[$page_id . '_page_number'] != '' and $_GET[$page_id . '_page_number'] > 1) {
-                    $query_string = '?' . $page_id . '_page_number=' . urlencode(trim($_GET[$page_id . '_page_number']));
+                // Only a whole number above 1 names a later page.
+                if (($pg_canonical_page = pg_canonical_page_number($_GET[$page_id . '_page_number'] ?? null)) > 0) {
+                    $query_string = '?' . $page_id . '_page_number=' . $pg_canonical_page;
 
                 // Otherwise if there is a general page number, then use it.
-                } else if (isset($_GET['page_number']) && is_string($_GET['page_number']) && $_GET['page_number'] != '' and $_GET['page_number'] > 1) {
-                    $query_string = '?page_number=' . urlencode(trim($_GET['page_number']));
+                } else if (($pg_canonical_page = pg_canonical_page_number($_GET['page_number'] ?? null)) > 0) {
+                    $query_string = '?page_number=' . $pg_canonical_page;
                 }
 
                 break;
@@ -1266,13 +1277,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 "System Region Footer":"' . lang('System Region Footer') . '",
                 "Your updates have been <strong>canceled</strong>":"' . lang('Your updates have been <strong>canceled</strong>') . '",
                 "Your updates have been <strong>saved</strong>.":"' . lang('Your updates have been <strong>saved</strong>.') . '",
-                "Artifact Canvas":"' . lang('Artifact Canvas') . '",
                 "WARNING: If you leave this page, then your unsaved changes will be lost.":"' . lang('WARNING: If you leave this page, then your unsaved changes will be lost.') . '",
                 "Saving... (please wait)":"' . lang('Saving... (please wait)') . '",
                 "Sorry, your updates could not be saved. Please try again later.":"' . lang('Sorry, your updates could not be saved. Please try again later.') . '",
                 "Save current page edits":"' . lang('Save current page edits') . '",
                 "Cancel current page edits.":"' . lang('Cancel current page edits.') . '",
-                "Edit the image in the Artifact Canvas":"' . lang('Edit the image in the Artifact Canvas') . '",';
+                "Edit in Artifact Canvas":"' . lang('Edit in Artifact Canvas') . '",';
         }
 
 
@@ -1952,7 +1962,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // assumes there is only one current menu item.  If multiple are set,
             // then menu items do not collapse properly.  We should eventually spend some time and resolve this
             // in order to add support for multiple current menu items.
-            $query =  "SELECT id FROM menu_items WHERE (link_page_id = ?) AND (menu_id = ?)";
+            $query =  "SELECT id FROM menu_items WHERE (link_page_id = ?) AND (menu_id = ?) ORDER BY id LIMIT 1";
             $result = db_q($query, array((string) $page_id, (string) $menu_id)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             if(isset($row)){
@@ -2177,7 +2187,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         keyword,
                         COUNT(keyword) AS count
                     FROM tag_cloud_keywords
-                    WHERE (item_type = 'page')
+                    WHERE (item_type = 'page')" . pg_tcw_hidden_page_sql(pg_page_off_site_folder_ids()) . "
                    GROUP BY keyword
                    ORDER BY
                        count DESC,
@@ -2808,21 +2818,22 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $jsonld['gtin'] = $item['gtin'];
                             }
 
-                            // if the inventory is enabled for the product,
-                            // and the product is out of stock
-                            if (($item['inventory'] == 1) && ($item['inventory_quantity'] == 0)) {
-                                $availability = ($item['backorder'] == 1)
-                                    ? 'https://schema.org/PreOrder'
-                                    : 'https://schema.org/OutOfStock';
-                            } else {
-                                $availability = 'https://schema.org/InStock';
-                            }
+                            // In stock, out of stock (an oversold product
+                            // too) or on back order.
+                            $availability = pg_product_jsonld_availability($item['inventory'], $item['inventory_quantity'], $item['backorder']);
+
+                            // The offer price everybody gets is the price
+                            // the page shows.
+                            $jsonld_offer_prices = get_discounted_product_prices(false);
+                            $jsonld_price_cents = pg_product_jsonld_price_cents(
+                                (int) str_replace(',', '', $item['price']),
+                                (is_array($jsonld_offer_prices) && isset($jsonld_offer_prices[$item['id']])) ? $jsonld_offer_prices[$item['id']] : null);
 
                             $jsonld['offers'] = array(
                                 '@type'           => 'Offer',
                                 'url'             => $canonical_url,
                                 'priceCurrency'   => BASE_CURRENCY_CODE,
-                                'price'           => sprintf('%01.2f', ((int) str_replace(',', '', $item['price'])) / 100),
+                                'price'           => sprintf('%01.2f', $jsonld_price_cents / 100),
                                 'priceValidUntil' => date('Y-m-d', strtotime('+1 year')),
                                 'itemCondition'   => 'https://schema.org/NewCondition',
                                 'availability'    => $availability,
@@ -3384,6 +3395,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 if (!empty($n['children']) && is_array($n['children'])) foreach ($n['children'] as $c) $pg_cf_find($c);
                             };
                             $pg_cf_find($pg_cf_tree);
+                        }
+                        // A widget inside a shared component the page places
+                        // (a contact section holding the form) counts too.
+                        if (!empty($pg_cf_sids)) {
+                            $pg_cf_sids = pg_shared_component_reach_read($pg_cf_sids, 'db_items');
                         }
                         if (!empty($pg_cf_sids)) {
                             $pg_custom_form_widget_active = (int) db_value(
@@ -5948,23 +5964,23 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $page_title = pg_sw_error_title($pg_error_screen['code'], $page_title);
     }
 
-    // If this page has a title then use that for title tag. Escaped for the
-    // replacement string as well: "$1" in a title is text, not a back reference.
+    // If this page has a title then use that for the head's title tag. Only
+    // the head's: an inline drawing's <title> in the body is its own name.
     if ($page_title != '') {
-        $content = preg_replace('/<title>.*?<\/title>/i', pg_regex_replacement('<title>' . h($page_title) . '</title>'), $content);
+        $content = pg_head_title_replace($content, h($page_title));
 
     // else page does not have a title set, so let's look elsewhere for a title
     } else {
-        // look for a title in the style
-        preg_match('/<title>(.*?)<\/title>/i', $content, $matches);
+        // look for a title in the style's head
+        $pg_style_title = pg_head_title_text($content);
 
         // if title in style for page does not contain a title, add default title
         // We store the title so we can include it in the open graph tag.
-        if (empty($matches[1])) {
-            $content = preg_replace('/<title>.*?<\/title>/i', pg_regex_replacement('<title>' . h(TITLE) . '</title>'), $content);
+        if ($pg_style_title === '') {
+            $content = pg_head_title_replace($content, h(TITLE));
             $page_title = TITLE;
         } else {
-            $page_title = unhtmlspecialchars(trim($matches[1]));
+            $page_title = unhtmlspecialchars($pg_style_title);
         }
     }
 
@@ -6195,6 +6211,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         if ($robots_content !== '') {
             $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+        }
+
+        // noindex as a header too: the page's PDF, or a page that answers
+        // JSON or XML, has no tag a crawler reads. Not during the SEO pass,
+        // which draws pages inside another request.
+        $pg_robots_header = pg_page_robots_header($robots_content);
+
+        if (($pg_robots_header !== '') && !pg_seo_rendering() && !headers_sent()) {
+            header($pg_robots_header);
         }
     }
 

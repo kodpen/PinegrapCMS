@@ -5,7 +5,7 @@ module: volunteer_documents
 ---
 
 ## Where is it?
-- Under "My documents" on the signed page `volunteer.php` and in My Account's volunteering section: a folded "Upload a new one" form (Document, Document number (optional), Valid until, File), one multipart POST to `volunteer.php` with `action=document`. Built in step VS4c of plan `volunteer-shifts`.
+- Under "My documents" on the signed page `volunteer.php` and in My Account's volunteering section: a folded "Upload a new one" form (Document, Document number (optional), Valid until, File), one multipart POST to `volunteer.php` with `action=document`. Built in step VS4c (`volunteer-shifts.md`).
 - Code: `includes/fn/volunteer_documents.php` (loaded by `volunteer_page_view.php`), tested in `tests/volunteer_documents_test.php`.
 - Shown only when the programme's roles need a document kind (`pg_volunteer_programme_kinds()`); the kind is chosen from those, never typed.
 

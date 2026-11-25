@@ -102,3 +102,20 @@ function test_look_markup_files_are_panel_sources_only()
 	pg_assert_false(pg_look_markup_file('includes/design_templates/x/parts.php', 'site'), 'site output');
 	pg_assert_false(pg_look_markup_file('liveform.class.php', 'shared'), 'a file shared with the site');
 }
+
+function test_look_markup_counts_old_fields_in_workspace_files()
+{
+	$js = "/* formRow('x', input) form-control */\n"
+		. "function formRow(label, control, help) {\n"
+		. "  return '<label class=\"form-label\">' + label + '</label>' + control + '<div class=\"form-text\">' + help + '</div>';\n"
+		. "}\n"
+		. "var a = formRow('Name', '<input class=\"form-control form-control-sm\">');\n"
+		. "var b = h.formRow('Mail', '<select class=\"form-select\"></select>');\n"
+		. "var c = '<span class=\"pg-form-control form-labels myformRow(\"></span>';\n";
+	pg_assert_same(array('button' => 0, 'tabs' => 0, 'field' => 3), pg_look_markup_counts($js, 'js', array(), 'assets/js/workspace_mail.js'), 'three field classes; formRow( calls (built from the form parts), comments and lookalikes left out');
+
+	$php = "<?php\necho '<input class=\"form-control\"><label class=\"form-label\">';\n";
+	pg_assert_same(array('button' => 0, 'tabs' => 0, 'field' => 2), pg_look_markup_counts($php, 'php', array(), 'includes/workspace/notes.php'), 'a Workspace PHP file is counted');
+	pg_assert_same(array('button' => 0, 'tabs' => 0), pg_look_markup_counts($php, 'php', array(), 'api_settings.php'), 'outside the Workspace fields are not counted');
+	pg_assert_same(array('button' => 0, 'tabs' => 0), pg_look_markup_counts($php, 'php'), 'no path, no field count');
+}

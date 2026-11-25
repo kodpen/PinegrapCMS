@@ -26,7 +26,7 @@ function test_mail_phone_views_wrap()
 	// 619 px wide in 358 and Blocked and Drafts lay out of sight.
 	$toolbar = ws_mail_list_filters_html(ws_mail_list_filters(array()), array(), true, true, array(), true, true, true);
 
-	pg_assert_contains('<div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('View')) . '">', $toolbar, 'the views wrap onto a second line');
+	pg_assert_contains('<span class="pg-seg pg-seg-wrap" role="group" aria-label="' . h(lang('View')) . '">', $toolbar, 'the views wrap onto a second line');
 	pg_assert_contains('data-ws-mail-new', $toolbar, 'the toolbar is the sending one');
 }
 

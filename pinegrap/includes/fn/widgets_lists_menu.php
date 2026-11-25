@@ -41,6 +41,7 @@ function pg_sw_list_menu_sources()
                 array('__menu_item_id', lang('Menu item ID')),
                 array('__menu_item_url', lang('Menu item address')),
                 array('__menu_item_target', lang('Menu item window (_blank or empty)')),
+                array('__menu_item_rel', lang('Menu item link relation (noopener or empty)')),
                 array('__menu_item_has_children', lang('Has sub-items (1 or empty)')),
                 array('__menu_item_is_current', lang('Links to the page shown (1 or empty)')),
                 array('__menu_item_holds_current', lang('Holds the item of the page shown (1 or empty)')),
@@ -54,15 +55,17 @@ function pg_sw_list_menu_sources()
 // lists draw. $items: the menu's rows as pg_menu_tree() reads them (id,
 // parent_id, name, link_page_id, link_page_name, link_page_folder_id,
 // link_url, link_target, security), in sort order. As the classic menu
-// draws them: an item with security on that links to a page the visitor
-// may not view is left out with everything under it ($can_view(folder id),
-// null: every page may be viewed); the address is the page's (its name
+// draws them (pg_menu_item_shown()): an item linked to a page that is gone,
+// or with security on or linked to an offline page ($offline(folder id),
+// null: none is) that the visitor may not view ($can_view(folder id), null:
+// every page may be viewed), is left out with everything under it; the address is the page's (its name
 // encoded as a path: it may hold ?, # or %), else the
-// URL, else '#'; a new window only for an item that links somewhere. The
+// URL, else '#'; a new window, with rel noopener, only for an item that
+// links somewhere. The
 // item of the page shown is the first by id that links to $page_id; the
 // items above it hold it. $name_of translates a name (null: as stored).
 // Raw values: the renderer and the list pass escape them once.
-function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = null)
+function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = null, $offline = null)
 {
     $base      = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $page_id   = (int)$page_id;
@@ -91,27 +94,28 @@ function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = nul
 
     $out  = array();
     $seen = array();
-    $walk = function ($parent) use (&$walk, &$out, &$seen, $children, $can_view, $name_of, $current, $holds, $base) {
+    $walk = function ($parent) use (&$walk, &$out, &$seen, $children, $can_view, $name_of, $offline, $current, $holds, $base) {
         if (empty($children[$parent])) return;
         foreach ($children[$parent] as $item) {
             $id = (int)$item['id'];
             if (isset($seen[$id])) continue;
             $seen[$id] = true;
             $page = isset($item['link_page_name']) ? (string)$item['link_page_name'] : '';
-            if (!empty($item['security']) && $page !== '' && $can_view !== null
-                && !call_user_func($can_view, isset($item['link_page_folder_id']) ? $item['link_page_folder_id'] : 0)) {
+            if (!pg_menu_item_shown($item, $can_view, $offline)) {
                 continue;
             }
             $walk($id);
             $url  = isset($item['link_url']) ? (string)$item['link_url'] : '';
             $href = ($page !== '') ? $base . encode_url_path($page) : (($url !== '') ? $url : '');
+            $target = ($href !== '' && isset($item['link_target']) && $item['link_target'] === 'New Window') ? '_blank' : '';
             $name = isset($item['name']) ? (string)$item['name'] : '';
             if ($name_of !== null) $name = (string)call_user_func($name_of, $name);
             $out[$parent][] = array(
                 '__menu_item_name'          => $name,
                 '__menu_item_id'            => (string)$id,
                 '__menu_item_url'           => ($href !== '') ? $href : '#',
-                '__menu_item_target'        => ($href !== '' && isset($item['link_target']) && $item['link_target'] === 'New Window') ? '_blank' : '',
+                '__menu_item_target'        => $target,
+                '__menu_item_rel'           => pg_menu_link_rel($target),
                 '__menu_item_has_children'  => !empty($out[$id]) ? '1' : '',
                 '__menu_item_is_current'    => ($id === $current) ? '1' : '',
                 '__menu_item_holds_current' => isset($holds[$id]) ? '1' : '',

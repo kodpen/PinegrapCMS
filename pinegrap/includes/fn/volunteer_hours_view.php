@@ -84,7 +84,7 @@ function pg_volunteer_day_html(array $programme, array $rows, $now)
                 $buttons .= '<button type="submit" name="submit_check_out" value="' . (int) $row['id'] . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Check out')) . '</button>';
             }
 
-            $lines .= '<div class="pg-card-inner-row flex-wrap gap-2"><span class="flex-grow-1 min-width-0"><span class="pg-text-2">' . h($row['name']) . '</span> <span class="pg-text-meta">' . h(pg_volunteer_role_name($programme, (string) $row['role'])) . '</span></span>'
+            $lines .= '<div class="pg-card-inner-row flex-wrap gap-2"><span class="flex-grow-1 min-w-0"><span class="pg-text-2">' . h($row['name']) . '</span> <span class="pg-text-meta">' . h(pg_volunteer_role_name($programme, (string) $row['role'])) . '</span></span>'
                 . '<span class="pg-pill pg-tone-' . $state[1] . '">' . h($state[0] . $time) . '</span>' . $buttons . '</div>';
         }
 
@@ -119,7 +119,7 @@ function pg_volunteer_hours_queue_html(array $programme, array $queue)
             : lang('Outside a shift') . ' · ' . get_absolute_time(array('timestamp' => strtotime((string) $row['worked_on']), 'type' => 'date', 'format' => 'plain_text'));
         $html .= '<div class="pg-card-inner-row flex-wrap gap-2">'
             . '<input type="checkbox" class="pg-checkbox" name="approve_hours[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Choose {var:1}', 'vars' => array($row['name'])))) . '">'
-            . '<span class="flex-grow-1 min-width-0"><span class="pg-text-2 d-block">' . h($row['name']) . '</span><span class="pg-text-meta">' . h($what . (((string) $row['note'] !== '') ? ' · ' . $row['note'] : '')) . '</span></span>'
+            . '<span class="flex-grow-1 min-w-0"><span class="pg-text-2 d-block">' . h($row['name']) . '</span><span class="pg-text-meta">' . h($what . (((string) $row['note'] !== '') ? ' · ' . $row['note'] : '')) . '</span></span>'
             . '<span class="pg-tabular pg-text-2">' . h(pg_volunteer_duration_text($row['minutes_worked'])) . '</span>'
             . '<button type="submit" name="submit_hours_approve" value="' . $id . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Approve')) . '</button></div>';
     }
@@ -146,7 +146,7 @@ function pg_volunteer_posters_html(array $programme, array $places)
     $html .= '<div class="d-flex flex-wrap gap-2">';
 
     foreach ($places as $place) {
-        $html .= '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="edit_volunteer_programme.php?id=' . (int) $programme['id'] . '&amp;view=poster&amp;place=' . h(rawurlencode($place)) . '"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h($place) . '</a>';
+        $html .= '<a class="pg-button pg-button-quiet pg-button-sm max-w-100" target="_blank" rel="noopener" title="' . h($place) . '" href="edit_volunteer_programme.php?id=' . (int) $programme['id'] . '&amp;view=poster&amp;place=' . h(rawurlencode($place)) . '"><i class="bi bi-qr-code" aria-hidden="true"></i><span class="text-truncate">' . h($place) . '</span></a>';
     }
 
     return $html . '</div></section>';

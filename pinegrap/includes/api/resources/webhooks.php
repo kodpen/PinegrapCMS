@@ -191,7 +191,7 @@ function api_webhooks_create($params) {
 
 	// The checks a subscription is made with, the same for the panel's "New
 	// subscription" form (api_webhook_create_check()).
-	$checked = api_webhook_create_check($params['url'], $params['events'], api_webhook_held_count($app['id']));
+	$checked = api_webhook_create_check($params['url'], $params['events'], api_webhook_held_count($app['id']), $app['scopes']);
 
 	if ($checked['refusal'] !== null) {
 
@@ -278,7 +278,7 @@ function api_webhook_fail($refusal) {
 //
 // Answers refusal (null when every check passed), the trimmed url and the
 // events de-duplicated.
-function api_webhook_create_check($url, $events, $held, $check_url = 'api_http_check_url') {
+function api_webhook_create_check($url, $events, $held, $granted, $check_url = 'api_http_check_url') {
 
 	$bounds = api_webhook_create_bounds();
 
@@ -346,6 +346,14 @@ function api_webhook_create_check($url, $events, $held, $check_url = 'api_http_c
 	}
 
 	$out['events'] = $cleaned['events'];
+
+	$out['refusal'] = api_webhook_scope_refusal($out['events'], $granted);
+
+	if ($out['refusal'] !== null) {
+
+		return $out;
+
+	}
 
 	if (api_webhook_subscription_limit_reached($held)) {
 
@@ -431,6 +439,29 @@ function api_webhook_owned($id) {
 	}
 
 	return $row;
+
+}
+
+// 403 when $granted (the application's scopes) lacks the scope that reads the
+// data of one of $events, naming the first such scope; null otherwise. A
+// subscription would hand the application what GET would refuse it
+// (api_webhook_event_scopes()).
+function api_webhook_scope_refusal($events, $granted) {
+
+	$blocked = api_webhook_hook_blocked($events, $granted, api_webhook_event_scopes());
+
+	if (empty($blocked)) {
+
+		return null;
+
+	}
+
+	$scope = (string)key($blocked);
+
+	return api_webhook_refusal(403, 'insufficient_scope', 'events', lang(array(
+		'string' => 'The application lacks {var:1}, which reads the data of {var:2}. Give it that permission first.',
+		'vars'   => array($scope, implode(', ', $blocked[$scope]))
+	)));
 
 }
 
@@ -530,6 +561,14 @@ function api_webhooks_update($params) {
 	if (array_key_exists('events', $params)) {
 
 		$events = api_webhook_clean_events($params['events']);
+
+		$scope_refusal = api_webhook_scope_refusal($events, $app['scopes']);
+
+		if ($scope_refusal !== null) {
+
+			api_webhook_fail($scope_refusal);
+
+		}
 
 		$set[] = "events = '" . escape(json_encode($events)) . "'";
 
@@ -638,7 +677,7 @@ function api_webhooks_test($params) {
 
 	$payloads = api_webhook_event_payloads();
 
-	$refusal = api_webhook_test_refusal($row, $event, $payloads);
+	$refusal = api_webhook_test_refusal($row, $event, $payloads, api_current_app()['scopes']);
 
 	if ($refusal !== null) {
 
@@ -670,7 +709,9 @@ function api_webhooks_test($params) {
 // What refuses a test delivery to a subscription, or null: for POST
 // /webhooks/{id}/test and the panel's "Send a sample". $row is the
 // subscription (status, events as stored); $event '' asks for webhook.test.
-function api_webhook_test_refusal($row, $event, $payloads) {
+// $granted: the application's scopes; a sample is refused as the event is
+// held back from a subscriber lacking the scope of its data.
+function api_webhook_test_refusal($row, $event, $payloads, $granted) {
 
 	// The dispatcher drops whatever is queued for a switched-off subscription,
 	// so queueing a test for one would report a delivery that is never
@@ -701,7 +742,7 @@ function api_webhook_test_refusal($row, $event, $payloads) {
 
 	}
 
-	return null;
+	return api_webhook_scope_refusal(array($event), $granted);
 
 }
 

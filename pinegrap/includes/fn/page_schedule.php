@@ -102,7 +102,19 @@ function pg_page_schedule_parse($value)
     $text = $m[1] . 'T' . $m[2] . ((isset($m[3]) && $m[3] !== '') ? substr($m[3], 0, 3) : ':00');
 
     if (!isset($m[4]) || $m[4] === '') {
+        // Checked against the calendar in UTC, which has no clock changes:
+        // the hour a site's clocks skip in spring (02:30 the night they go
+        // forward) is offered by the datetime-local box and is read in the
+        // site's zone as the moment right after the jump, not refused.
+        $utc = DateTime::createFromFormat('!Y-m-d\TH:i:s', $text, new DateTimeZone('UTC'));
+
+        if ($utc === false || $utc->format('Y-m-d\TH:i:s') !== $text) {
+            return $fail;
+        }
+
         $date = DateTime::createFromFormat('!Y-m-d\TH:i:s', $text);
+
+        return ($date === false) ? $fail : pg_page_schedule_in_range($date->getTimestamp());
     } else {
         $offset = (strtoupper($m[4]) === 'Z') ? '+00:00' : ((strlen($m[4]) === 5) ? substr($m[4], 0, 3) . ':' . substr($m[4], 3) : $m[4]);
 
@@ -325,11 +337,12 @@ function pg_page_schedule_save_plan($page_id, $page, $restricted, $draft_plan, $
  *
  * @param int|null $now
  * @param int      $limit pages per direction
- * @return array published (names), unpublished (names), home (names kept on the site), cleared (count)
+ * @return array published (names), unpublished (names), home (names kept on the site),
+ *               held (names of drafts a prototype link holds until approved), cleared (count)
  */
 function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
 {
-    $out = array('published' => array(), 'unpublished' => array(), 'home' => array(), 'cleared' => 0);
+    $out = array('published' => array(), 'unpublished' => array(), 'home' => array(), 'held' => array(), 'cleared' => 0);
 
     if (!pg_page_schedule_ready() || !pg_page_draft_ready()) {
         return $out;
@@ -363,6 +376,10 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
             if ($column === 'publish_at') {
                 if ($draft && pg_page_draft_move($page_id, false, (int) $r['page_folder'], null)) {
                     $out['published'][] = (string) $r['page_name'];
+                } elseif ($draft && function_exists('pg_proto_approval_hold') && pg_proto_approval_hold($page_id)) {
+                    // A prototype link holds the draft until it is approved:
+                    // it stays a draft and its time is spent.
+                    $out['held'][] = (string) $r['page_name'];
                 } else {
                     $out['cleared']++;
                 }

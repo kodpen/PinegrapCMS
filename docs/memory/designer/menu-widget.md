@@ -13,12 +13,12 @@ module: widgets_lists_menu, widgets_menu
 - The renderer publishes every level at once (`pg_sw_list_menu_rows()`: parent id => rows); the list pass reads them, no query is added.
 
 ## What does a row hold?
-- `__menu_item_name` (first: A to Z sorts by it), `__menu_item_id`, `__menu_item_url`, `__menu_item_target`, `__menu_item_has_children`, `__menu_item_is_current`, `__menu_item_holds_current`; the last three are `1` or empty, for conditions (`show_if` in the main loop and in lists alike, `eo_visible_if` in lists too: [[widget-list-flags]]).
-- Address: the page's (`OUTPUT_PATH` + page name), else the URL, else `#`. Window: `_blank` for "New Window" on an item that links somewhere. `pg_mw_stamp_targets()` puts `^^__menu_item_target^^` in the target prop of every link bound to `__menu_item_url` without one; an empty target is dropped from the main loop's markup, a list row keeps `target=""` (the same window).
+- `__menu_item_name` (first: A to Z sorts by it), `__menu_item_id`, `__menu_item_url`, `__menu_item_target`, `__menu_item_rel`, `__menu_item_has_children`, `__menu_item_is_current`, `__menu_item_holds_current`; the last three are `1` or empty, for conditions (`show_if` in the main loop and in lists alike, `eo_visible_if` in lists too: [[widget-list-flags]]).
+- Address: the page's (`OUTPUT_PATH` + page name), else the URL, else `#`. Window: `_blank` for "New Window" on an item that links somewhere. `pg_mw_stamp_targets()` puts `^^__menu_item_target^^` in the target prop of every link bound to `__menu_item_url` without one; an empty target is dropped from the main loop's markup, a list row keeps `target=""` (the same window). The rel the same way: `^^__menu_item_rel^^`, `noopener` for a new window (`pg_menu_link_rel()`, #11428).
 - Current item: the first item by id linking to the page shown, as the classic menu marks it; the items above it hold it. Names translated with `pg_tr_text()` on a page in another language.
 
 ## Who sees which item?
-- As `get_menu_content()`: an item with security on that links to a page the visitor may not view (`check_view_access()`) is left out with everything under it. Flags `has_menu_items` / `no_menu_items`.
+- As `get_menu_content()`, through `pg_menu_item_shown()`: an item linked to a deleted page is left out; one with security on, or linked to a page in the Recycle Bin or the drafts folder (`pg_menu_page_offline()`), is left out with everything under it when the visitor may not view the page (`check_view_access()`; a manager may). #11428. Flags `has_menu_items` / `no_menu_items`.
 
 ## What does the starter look like?
 - A Bootstrap navbar: toggler, collapse, `ul.navbar-nav` with `smartActive` (the link to the page shown gets `active` and `aria-current`), an item with sub-items as a dropdown whose menu is a `menu.children` list. No Messages block (`_SW_NO_MESSAGES`; the server names it `menu_region`).

@@ -98,6 +98,169 @@ function pg_cart_empty_state_html($message, $shop_url)
 }
 
 /**
+ * The flags a cart row is shown by: which of a classic layout's two tables
+ * it stands in (today's charges, the recurring charges) and which of its
+ * controls it draws there, decided as the classic cart decides. A recurring
+ * product whose first payment is today stands in both; its quantity and
+ * amount are edited in the first only. Pure.
+ *
+ * @param array $item   a row of the widget's items: 'selection_type',
+ *                      'added_by_offer', 'recurring', 'is_recurring' (charged
+ *                      later), 'image'
+ * @param array $values its row values: '__item_out_of_stock_message',
+ *                      '__item_calendar_event_name', '__item_calendar_event_dates'
+ * @return array flag => bool
+ */
+function pg_cart_row_flags($item, $values = array())
+{
+    $donation = (string)($item['selection_type'] ?? '') === 'donation';
+    $offer = !empty($item['added_by_offer']);
+    $recurring = !empty($item['recurring']);
+    $today = empty($item['is_recurring']);
+    $later_donation = $donation && !$today;
+    $_cart_row_flags = array(
+        'cart_item_today'                       => $today,
+        'cart_item_recurring'                   => $recurring,
+        'cart_item_recurring_only'              => $recurring && !$today,
+        'cart_item_donation'                    => $donation,
+        'cart_item_not_donation'                => !$donation,
+        'cart_item_added_by_offer'              => $offer,
+        'cart_item_quantity_editable'           => !$offer,
+        'cart_item_recurring_quantity_fixed'    => $offer || $today,
+        'cart_item_recurring_quantity_editable' => !$offer && !$today,
+        'cart_item_recurring_donation'          => $later_donation,
+        'cart_item_recurring_amount'            => !$later_donation,
+        'cart_item_has_image'                   => trim((string)($item['image'] ?? '')) !== '',
+        'cart_item_out_of_stock'                => (string)($values['__item_out_of_stock_message'] ?? '') !== '',
+        'cart_item_has_calendar_event'          => ((string)($values['__item_calendar_event_name'] ?? '') . (string)($values['__item_calendar_event_dates'] ?? '')) !== '',
+    );
+    return $_cart_row_flags;
+}
+
+/**
+ * The cart's flags around its rows that a classic layout's tables and
+ * totals are shown by. Pure.
+ *
+ * @param array  $items          the widget's items (pg_cart_row_flags())
+ * @param int    $discount_cents the order's discount
+ * @param bool   $offer_code     whether the offer code box is shown (a label,
+ *                               a message or a code given)
+ * @param string $currency_code  the visitor's currency code
+ * @return array flag => bool
+ */
+function pg_cart_layout_flags($items, $discount_cents, $offer_code, $currency_code)
+{
+    $today = $today_paid = $recurring = $recurring_paid = false;
+    foreach ((array)$items as $item) {
+        $rf = pg_cart_row_flags($item);
+        $paid = $rf['cart_item_not_donation'];
+        if ($rf['cart_item_today']) { $today = true; $today_paid = $today_paid || $paid; }
+        if ($rf['cart_item_recurring']) { $recurring = true; $recurring_paid = $recurring_paid || $paid; }
+    }
+    $_cart_layout_flags = array(
+        'has_today_items'             => $today,
+        'has_today_non_donations'     => $today_paid,
+        'has_recurring_products'      => $recurring,
+        'has_recurring_non_donations' => $recurring_paid,
+        'has_discount'                => (int)$discount_cents > 0,
+        'has_special_offer_code'      => (bool)$offer_code,
+        'has_currency_code'           => trim((string)$currency_code) !== '',
+    );
+    return $_cart_layout_flags;
+}
+
+/**
+ * The recurring products' amount per payment period, in the order the
+ * periods first come: the customer's period where they chose one, else
+ * the product's, Monthly when neither is set. Pure.
+ *
+ * @param array $items the widget's items: 'recurring', 'line_cents',
+ *                     'recurring_payment_period', 'payment_period'
+ * @return array period => cents
+ */
+function pg_cart_payment_periods($items)
+{
+    $out = array();
+    foreach ((array)$items as $item) {
+        if (empty($item['recurring'])) continue;
+        $period = trim((string)($item['recurring_payment_period'] ?? ''));
+        if ($period === '') $period = trim((string)($item['payment_period'] ?? ''));
+        if ($period === '') $period = 'Monthly';
+        $out[$period] = (int)($out[$period] ?? 0) + (int)($item['line_cents'] ?? 0);
+    }
+    return $out;
+}
+
+/**
+ * The recurring totals a classic cart lists per payment period, as a table
+ * (the payment_periods section). Pure.
+ *
+ * @param array $amounts period => the amount, already formatted (markup)
+ * @return string
+ */
+function pg_cart_payment_periods_html($amounts)
+{
+    if (!$amounts) return '';
+    $rows = '';
+    foreach ($amounts as $period => $amount) {
+        $rows .= '<tr><th scope="row" class="text-end w-100">' . h(lang(array('string' => '{var:1} Subtotal:', 'vars' => array(lang((string)$period))))) . '</th>'
+            . '<td class="text-end text-nowrap">' . $amount . '</td></tr>';
+    }
+    return '<table class="table pg-cart-payment-periods"><tbody>' . $rows . '</tbody></table>';
+}
+
+/**
+ * A row's marked spans (_pg_sw_mark_visibility()) resolved for the row's
+ * own flags only: a span under any other flag stays for the surround's
+ * pass. Pure.
+ *
+ * @param string $html  one drawn row
+ * @param array  $flags flag => bool (pg_cart_row_flags())
+ * @return string
+ */
+function pg_cart_row_visibility($html, $flags)
+{
+    if (!is_string($html) || strpos($html, '<!--pg-vis:') === false || !$flags) return $html;
+    $names = implode('|', array_map(function ($k) { return preg_quote((string)$k, '/'); }, array_keys($flags)));
+    return preg_replace_callback('/<!--pg-vis:(' . $names . '):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
+        return !empty($flags[$m[1]]) ? pg_cart_row_visibility($m[3], $flags) : '';
+    }, $html);
+}
+
+/**
+ * The cart's further places for its rows: every main loop area after the
+ * first (a classic layout lists today's charges and the recurring charges
+ * in two tables) is taken out of the tree and a marker
+ * (<!--pg-cart-loop-N-->) left in its place. Pure.
+ *
+ * @param array $node the tree, changed in place
+ * @return array the row templates (children) of the places taken out
+ */
+function pg_cart_extra_loops(&$node)
+{
+    $seen = 0;
+    $out = array();
+    _pg_cart_extra_loops_walk($node, $seen, $out);
+    return $out;
+}
+
+function _pg_cart_extra_loops_walk(&$node, &$seen, &$out)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
+    foreach ($node['children'] as $i => $child) {
+        if (!is_array($child)) continue;
+        if (($child['type'] ?? '') === 'loop_area' && !pg_sw_list_is_sourced($child)) {
+            if (++$seen > 1) {
+                $node['children'][$i] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--pg-cart-loop-' . count($out) . '-->'), 'children' => array());
+                $out[] = (array)($child['children'] ?? array());
+            }
+            continue;
+        }
+        _pg_cart_extra_loops_walk($node['children'][$i], $seen, $out);
+    }
+}
+
+/**
  * Walk the cart tree and apply per-node bindings the designer set on btn /
  * input nodes. Recognized bindings:
  *   • component btn _bindings.action='cart_checkout'
@@ -121,11 +284,26 @@ function _apply_shopping_cart_bindings(&$node, $context)
                     ? $node['props']['_bindings'] : array();
 
     // ── Component btn: cart_checkout / cart_update ───────────────────────
-    if (isset($node['type']) && $node['type'] === 'component'
-        && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn'
+    // A semantic <button> (a classic layout's own, converted) is wired the
+    // same way; its words stay its own.
+    $_semantic_btn = isset($node['type']) && $node['type'] === 'semantic'
+        && strtolower((string)($node['props']['tag'] ?? '')) === 'button';
+    if (isset($node['type']) && ($_semantic_btn || ($node['type'] === 'component'
+        && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn'))
         && isset($bindings['action'])) {
         $action = $bindings['action'];
-        if ($action === 'cart_checkout') {
+        if ($_semantic_btn && in_array($action, array('cart_checkout', 'cart_update'), true)) {
+            $kept = array();
+            foreach ((array)($node['props']['_attrs'] ?? array()) as $a) {
+                if (is_array($a) && isset($a['name']) && !in_array($a['name'], array('type', 'name', 'value', 'form', 'formnovalidate'), true)) $kept[] = $a;
+            }
+            $kept[] = array('name' => 'type',  'value' => 'submit');
+            $kept[] = array('name' => 'name',  'value' => ($action === 'cart_checkout') ? 'submit_checkout' : 'submit_update_cart');
+            $kept[] = array('name' => 'value', 'value' => '1');
+            $kept[] = array('name' => 'form',  'value' => isset($context['cart_form_id']) ? $context['cart_form_id'] : '');
+            $kept[] = array('name' => 'formnovalidate', 'value' => '');
+            $node['props']['_attrs'] = $kept;
+        } elseif ($action === 'cart_checkout') {
             // A submit button of the cart form, like Update: cart_action.php
             // saves what the visitor changed (quantities, donation amounts,
             // gift card and form fields, schedules) and then goes on to the
@@ -430,6 +608,15 @@ function _apply_shopping_cart_bindings(&$node, $context)
             'contentType' => 'custom_html',
             'html'        => '^^__quick_add_form^^',
         );
+        $node['children'] = array();
+    }
+
+    // ── Semantic div: payment_periods ────────────────────────────────────
+    // A classic layout's recurring totals, one line per payment period.
+    if (isset($node['type']) && $node['type'] === 'semantic'
+        && isset($bindings['section']) && $bindings['section'] === 'payment_periods') {
+        $node['type']     = 'content';
+        $node['props']    = array('contentType' => 'custom_html', 'html' => '^^__cart_payment_periods_html^^');
         $node['children'] = array();
     }
 
@@ -766,6 +953,15 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // marked here and resolved once the totals are known.
     _pg_sw_mark_visibility($tree_decoded);
 
+    // A classic layout lists the rows in two tables: the second place is
+    // drawn row by row with the first.
+    $_cart_extra_tpl = array();
+    foreach (pg_cart_extra_loops($tree_decoded) as $_k => $_kids) {
+        $_cart_extra_tpl[$_k] = '';
+        foreach ($_kids as $_kid) $_cart_extra_tpl[$_k] .= _render_tree_node($_kid, 0, 0);
+    }
+    $_cart_extra_rows = array_fill_keys(array_keys($_cart_extra_tpl), '');
+
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -796,6 +992,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     if (!empty($cfg['currency']) && is_string($cfg['currency'])) {
         $currency_symbol = $cfg['currency'];
     }
+    $_cart_currency_code = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string)VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
     $fmt_money = function ($cents) use ($currency_symbol) {
         // Pinegrap stores money as integer cents in the base currency; shown
         // in the visitor's currency, the site language decides the separators
@@ -1858,11 +2055,24 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                   . h(lang('Ship to')) . ' <span class="text-primary">' . h($_rcp_name) . '</span></div>'
                 : '';
 
+            // A row is swept before the static values are filled: the
+            // currency beside a donation's amount box is the row's too.
+            $row_values['__currency_symbol'] = $currency_symbol;
+            $row_values['__currency_code']   = h($_cart_currency_code);
+            $_cart_row_flags = pg_cart_row_flags($item, $row_values);
             $row_html = pg_sw_fill_longest($loop_template, $row_values);
-            $row_html = pg_sw_sweep_tokens($row_html);
+            $row_html = pg_cart_row_visibility(pg_sw_sweep_tokens($row_html), $_cart_row_flags);
             if ($_it_is_donation || $_it_by_offer) {
                 $row_html = _pg_cart_retarget_qty_box($row_html, 'quantities[' . (int)$item['item_id'] . ']',
                     (int)$item['item_id'], $_it_is_donation ? $_don_amount : null);
+            }
+            foreach ($_cart_extra_tpl as $_k => $_tpl) {
+                $_x = pg_cart_row_visibility(pg_sw_sweep_tokens(pg_sw_fill_longest($_tpl, $row_values)), $_cart_row_flags);
+                if ($_it_is_donation || $_it_by_offer) {
+                    $_x = _pg_cart_retarget_qty_box($_x, 'quantities[' . (int)$item['item_id'] . ']',
+                        (int)$item['item_id'], $_it_is_donation ? $_don_amount : null);
+                }
+                $_cart_extra_rows[$_k] .= pg_sw_uniquify_row_ids($_x, $widget_id, ($_k + 1) * 100000 + $idx);
             }
 
             // Auto-append form data when the row HAS form_data_html AND the
@@ -1911,6 +2121,13 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // ── Static tokens ──────────────────────────────────────────────────────
     // Currency-bearing tokens are NOT h()'d (entity preservation, see note
     // above). Plain text fields are h()'d as usual.
+    // What a classic layout's tables and totals are shown by.
+    $_cart_layout_flags = array('has_recurring_items' => $_recurring_cents > 0, 'has_items' => $cart_count > 0)
+        + pg_cart_layout_flags($items, $discount_cents,
+            $special_offer_lbl !== '' || $special_offer_msg !== '' || $special_offer_code_value !== '', $_cart_currency_code);
+    $_cart_periods = array();
+    foreach (pg_cart_payment_periods($items) as $_period => $_cents) $_cart_periods[$_period] = $fmt_money($_cents);
+
     $static_values = array(
         // The key the cart list reads: the whole cart.
         '__ship_to_key'                => '0',
@@ -2013,6 +2230,12 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // Designer drops `^^__saved_cart_link^^` wherever they want the
         // alert to appear (typically above the cart table).
         '__saved_cart_link'            => _eo_render_saved_cart_link($shopping_cart_label),
+        // A classic layout's own words around the saved cart's address.
+        '__retrieve_order_url'         => h(_eo_saved_cart_url()),
+        // Raw, like every amount here: the symbol may be an entity.
+        '__currency_symbol'            => $currency_symbol,
+        '__currency_code'              => h($_cart_currency_code),
+        '__cart_payment_periods_html'  => pg_cart_payment_periods_html($_cart_periods),
     );
 
     // Two-pass token replacement. First the static template, then we wrap the
@@ -2026,7 +2249,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         if (strpos($rendered, '<!--pg-applied-offers-placeholder-->') !== false) {
             $rendered = str_replace('<!--pg-applied-offers-placeholder-->', $applied_offers_html, $rendered);
         }
-        $rendered = _pg_sw_resolve_visibility($rendered, array('has_recurring_items' => $_recurring_cents > 0, 'has_items' => $cart_count > 0));
+        $rendered = _pg_sw_resolve_visibility($rendered, $_cart_layout_flags);
         return _pg_widget_layout_css_once() . $update_form_html . $rendered . _pg_qty_stepper_inline_js() . _pg_remove_from_cart_inline_js();
     }
 
@@ -2034,6 +2257,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     $static_html = pg_sw_sweep_tokens($static_html);
 
     $body = str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
+    foreach ($_cart_extra_rows as $_k => $_rows) $body = str_replace('<!--pg-cart-loop-' . $_k . '-->', $_rows, $body);
     // Replace the applied-offers content type marker with the live alert HTML.
     // Designer drops a `<content contentType="applied_offers">` node in the
     // tree → backend renders `<!--pg-applied-offers-placeholder-->` → we swap
@@ -2066,7 +2290,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
     }
 
-    $body = _pg_sw_resolve_visibility($body, array('has_recurring_items' => $_recurring_cents > 0, 'has_items' => $cart_count > 0));
+    $body = _pg_sw_resolve_visibility($body, $_cart_layout_flags);
     return _pg_widget_layout_css_once() . $update_form_html . $body . _pg_qty_stepper_inline_js() . _pg_remove_from_cart_inline_js();
 }
 
@@ -2286,6 +2510,16 @@ function pg_express_order_live_tax_answer($totals)
  * would otherwise have to clear tax_total. A line without the charged_rate
  * key (a schema before the column) is trusted as before.
  *
+ * A line the checkout charged at a rate of 0 with no tax (the order is
+ * tax-exempt, or the buyer's address is in no tax zone) is not untaxed: the
+ * checkout decided it, and previewing it on the default rate showed a tax
+ * that is never charged.
+ *
+ * A line not charged with the order (a recurring line that starts later,
+ * pg_order_line_charged_today()) is taxed alone, as the checkout takes it
+ * (pg_order_line_taxes()), both in the check of the stored taxes and in the
+ * preview.
+ *
  * Each line's rate is the one its tax was taken at, so the order discount
  * can take the tax again on what it leaves (pg_order_charged_tax()): the
  * charged rate of a stored tax, the preview rate of a previewed one, 0 for a
@@ -2294,48 +2528,58 @@ function pg_express_order_live_tax_answer($totals)
  *
  * @param array       $lines         per active line: price, quantity, tax_total,
  *                                   taxable, tax_rate (products.tax_rate, null for the zone's),
- *                                   charged_rate (order_items.tax_rate, when the column exists)
+ *                                   charged_rate (order_items.tax_rate, when the column exists),
+ *                                   recurring, recurring_start_date, start_days
  * @param float|false $default_rate  get_default_tax_rate(): false when the default country is in no zone
+ * @param string|null $today         Y-m-d; null for today
+ * @param bool        $clearcommerce the gateway charges recurring lines itself
  * @return array  key => ['tax' => int minor units, 'rate' => float|null], in the order given
  */
-function pg_cart_estimate_line_taxes($lines, $default_rate)
+function pg_cart_estimate_line_taxes($lines, $default_rate, $today = null, $clearcommerce = false)
 {
     $estimate = array();
     $preview = array();
     $untaxed = false;
     $charged = array();
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
 
     foreach ((array) $lines as $key => $line) {
         $tax_total = (int) ($line['tax_total'] ?? 0);
         // The whole line, as the checkout's tax pass takes it.
         $amount = (int) ($line['price'] ?? 0) * max(1, (int) ($line['quantity'] ?? 1));
+        $alone = !pg_order_line_charged_today(!empty($line['recurring']), (string) ($line['recurring_start_date'] ?? ''),
+            (int) ($line['start_days'] ?? 0), $today, $clearcommerce);
         $stored_rate = null;
+        $checkout_took_none = false;
         if (array_key_exists('charged_rate', (array) $line)) {
             $charged_rate = (float) ($line['charged_rate'] ?? 0);
             if ($charged_rate > 0) {
                 $group = sprintf('%.3F', $charged_rate);
-                $charged[$group]['lines'][$key] = array('amount' => $amount, 'rate' => $charged_rate);
+                $charged[$group]['lines'][$key] = array('amount' => $amount, 'rate' => $charged_rate, 'alone' => $alone);
                 $charged[$group]['stored'] = ($charged[$group]['stored'] ?? 0) + $tax_total;
                 $stored_rate = $charged_rate;
             } elseif ($tax_total !== 0) {
                 $untaxed = true;
+            } elseif (($line['charged_rate'] ?? null) !== null && (string) $line['charged_rate'] !== '') {
+                // The checkout charged it at 0: exempt, or in no tax zone.
+                $checkout_took_none = true;
             }
         }
         $estimate[$key] = array('tax' => $tax_total, 'rate' => ($stored_rate === null && $tax_total === 0) ? 0.0 : $stored_rate);
         if (empty($line['taxable']) || $default_rate === false) continue;
         $rate = (float) get_effective_tax_rate($line['tax_rate'] ?? null, $default_rate);
         if ($rate <= 0) continue;
-        $preview[$key] = array('amount' => $amount, 'rate' => $rate);
-        if ($tax_total === 0) $untaxed = true;
+        $preview[$key] = array('amount' => $amount, 'rate' => $rate, 'alone' => $alone);
+        if (($tax_total === 0) && !$checkout_took_none) $untaxed = true;
     }
 
     foreach ($charged as $group) {
-        if ((int) array_sum(pg_tax_by_rate($group['lines'])) !== $group['stored']) $untaxed = true;
+        if ((int) array_sum(pg_order_line_taxes($group['lines'])) !== $group['stored']) $untaxed = true;
     }
 
     if (!$untaxed) return $estimate;
 
-    $taxes = pg_tax_by_rate($preview);
+    $taxes = pg_order_line_taxes($preview);
     foreach (array_keys($estimate) as $key) {
         $estimate[$key] = isset($preview[$key])
             ? array('tax' => (int) $taxes[$key], 'rate' => $preview[$key]['rate'])
@@ -2366,7 +2610,8 @@ function pg_cart_estimate_line_taxes($lines, $default_rate)
  */
 function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today = null, $clearcommerce = false)
 {
-    $estimate = pg_cart_estimate_line_taxes($lines, $default_rate);
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
+    $estimate = pg_cart_estimate_line_taxes($lines, $default_rate, $today, $clearcommerce);
     $order_lines = array();
 
     foreach ((array) $lines as $key => $line) {
@@ -2381,7 +2626,7 @@ function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today
         );
     }
 
-    $charged = pg_order_charged_today_totals($order_lines, $order_discount, ($today === null) ? date('Y-m-d') : (string) $today, $clearcommerce);
+    $charged = pg_order_charged_today_totals($order_lines, $order_discount, $today, $clearcommerce);
 
     return $charged['tax'] + $charged['later_tax'];
 }

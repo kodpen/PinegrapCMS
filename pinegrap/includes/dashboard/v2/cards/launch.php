@@ -69,6 +69,12 @@ function pg_dashboard_v2_launch_labels()
         'add'          => lang('Add a line'),
         'add_hint'     => lang('For example: your logo as SVG or PNG'),
         'remove'       => lang('Remove'),
+        'answer_kind'  => lang('Answer'),
+        'kind_text'    => lang('Text'),
+        'kind_one'     => lang('One file'),
+        'kind_several' => lang('Several files'),
+        'kind_ask'     => lang('What the customer sent for this line is cleared from it. Files already sent stay in the From the customer folder.'),
+        'kind_change'  => lang('Change'),
         'link'         => lang('Link for the customer'),
         'copy'         => lang('Copy'),
         'withdraw'     => lang('Withdraw link'),
@@ -121,7 +127,7 @@ function pg_dashboard_v2_card_launch($user, $period, $compare)
         'purposes' => $purposes,
         'labels'   => pg_dashboard_v2_launch_labels(),
         // The foot: "Ready to go live?" and its check, or the go-live time.
-        'golive'   => pg_launch_journey_golive_view($purpose, $facts, $stored['hidden']),
+        'golive'   => pg_launch_journey_golive_view($purpose, $facts, $stored['hidden'], (string) ($_SESSION['software']['token'] ?? '')),
         'live_at'  => ($stored['live_at'] > 0) ? get_absolute_time(array('timestamp' => $stored['live_at'], 'format' => 'plain_text', 'size' => 'short')) : '',
     ));
 }

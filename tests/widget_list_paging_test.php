@@ -218,14 +218,15 @@ function test_catalog_listing_paging_wiring()
 	pg_assert_contains('$total_records = max(0, $total_records - $offset_records);', $body);
 	pg_assert_contains('LIMIT $page_limit OFFSET " . ($offset_records + $offset)', $body);
 	pg_assert_contains('$paging = pg_sw_list_paging($page_param, $current_page, $total_pages);', $body);
-	pg_assert_contains("_pg_sw_mark_visibility(\$split['static_tree'], array('has_prev_page', 'has_next_page', 'has_more_pages'));", $body);
-	pg_assert_contains("\$static_html = _pg_sw_resolve_visibility(\$static_html, \$paging['flags']);", $body);
+	pg_assert_contains("_pg_sw_mark_visibility(\$split['static_tree'], array_merge(array('has_prev_page', 'has_next_page', 'has_more_pages'), array_keys(pg_catalog_listing_flags(0, false, array()))));", $body);
+	pg_assert_contains("\$catalog_flags = \$paging['flags'] + \$_pg_listing_flags;", $body);
+	pg_assert_contains("\$static_html = _pg_sw_resolve_visibility(\$static_html, \$catalog_flags);", $body);
 	pg_assert_contains("\$page_tokens = pg_sw_escape_token_values(\$page_tokens) + \$paging['tokens'];", $body);
 	pg_assert_false(strpos($body, "= 'page_number';") !== false, 'the page parameter is not fixed');
 	// The offset is applied to the count before max_results caps it.
 	pg_assert_true(strpos($body, '$total_records - $offset_records') < strpos($body, 'Apply max_results cap'), 'offset before the cap');
 	// The flags are resolved before the tokens go in.
-	pg_assert_true(strpos($body, "_pg_sw_resolve_visibility(\$static_html, \$paging['flags'])") < strpos($body, '$static_html = _pg_catalog_fill_page_tokens('), 'flags before tokens');
+	pg_assert_true(strpos($body, "_pg_sw_resolve_visibility(\$static_html, \$catalog_flags)") < strpos($body, '$static_html = _pg_catalog_fill_page_tokens('), 'flags before tokens');
 }
 
 // The search results do the same; their flags are known before the render.
@@ -260,6 +261,6 @@ function test_catalog_and_search_paging_editor()
 		}
 	}
 	foreach (array('search_results', 'catalog_listing') as $kind) {
-		pg_assert_true((bool) preg_match('/\n        ' . $kind . ": \\[[^\\n]*\\n(?:[^\\n]*\\n){0,8}?\\s*\\['has_prev_page',[^\\]]*\\],\\s*\\['has_next_page',[^\\]]*\\],\\s*\\['has_more_pages',[^\\]]*\\]\\s*\\]/", $js), $kind . ' lists the paging flags');
+		pg_assert_true((bool) preg_match('/\n        ' . $kind . ": \\[[^\\n]*\\n(?:[^\\n]*\\n){0,24}?\\s*\\['has_prev_page',[^\\]]*\\],\\s*\\['has_next_page',[^\\]]*\\],\\s*\\['has_more_pages',[^\\]]*\\]\\s*\\]/", $js), $kind . ' lists the paging flags');
 	}
 }

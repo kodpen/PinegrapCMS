@@ -66,6 +66,13 @@ if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'expres
     output_error(lang('An express order page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// The payment service's own message may have completed the order before
+// the visitor came back: init.php has let go of it, and the return leads
+// to its receipt instead of checking out a new, empty order.
+if ($is_gateway_return) {
+    pg_payment_return_receipt('express_order', $_GET['mode'] ?? '');
+}
+
 initialize_order();
 
 $liveform = new liveform('express_order');
@@ -1956,8 +1963,18 @@ if (ECOMMERCE_SHIPPING) {
             update_shipping_cost_for_ship_to($recipient['id']);
         }
 
-        // If user is logged in and not ghosting, then update address book.
-        if (USER_LOGGED_IN and !$ghost) {
+        // If user is logged in and not ghosting, then update address book. Every
+        // update saves the recipient before any field is required, so only a
+        // whole address is copied: a half-typed one must not replace a saved one.
+        if (USER_LOGGED_IN and !$ghost and pg_address_book_writable(array(
+            'first_name' => $liveform->get($prefix . 'first_name'),
+            'last_name'  => $liveform->get($prefix . 'last_name'),
+            'address_1'  => $liveform->get($prefix . 'address_1'),
+            'city'       => $liveform->get($prefix . 'city'),
+            'state'      => $state,
+            'zip_code'   => $zip_code,
+            'country'    => $country,
+        ), $state_required, $zip_code_required)) {
 
             // Try to find an existing recipient in address book
             $address_book_id = db(

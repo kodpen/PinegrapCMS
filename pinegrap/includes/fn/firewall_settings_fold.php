@@ -25,7 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_firewall_fold_order()
 {
-    return array('headers', 'waf', 'limits', 'bots', 'iplists', 'countries', 'proxies', 'waf-logs');
+    return array('headers', 'waf', 'scan', 'limits', 'bots', 'iplists', 'countries', 'proxies', 'waf-logs');
 }
 
 /**
@@ -41,6 +41,8 @@ function pg_firewall_fold_face($key)
             return array('name' => lang('HTTPS'), 'icon' => 'bi-lock', 'tone' => 'pg-tone-violet');
         case 'waf':
             return array('name' => lang('Firewall'), 'icon' => 'bi-shield-check', 'tone' => 'pg-tone-system');
+        case 'scan':
+            return array('name' => lang('Security Scan'), 'icon' => 'bi-shield-exclamation', 'tone' => 'pg-tone-rose');
         case 'limits':
             return array('name' => lang('Limits'), 'icon' => 'bi-speedometer2', 'tone' => 'pg-tone-amber');
         case 'bots':
@@ -102,6 +104,51 @@ function pg_firewall_fold_https($secure, $ready, $headers, $hsts, $csp_mode)
     }
 
     return array('line' => $line, 'pill' => pg_firewall_fold_switch_pill($secure), 'attention' => false);
+}
+
+/**
+ * The Security Scan row's line: how many findings are open and when the last
+ * scan ended, the worst open severity as its pill. A high or critical open
+ * finding opens the row.
+ *
+ * @param bool   $ready         the findings table exists
+ * @param int    $last_finished when the last full scan ended, 0 for never
+ * @param bool   $running       a scan is under way
+ * @param array  $open          open findings by severity (pg_security_section_open_counts())
+ * @param string $when          the last scan's time in words
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_scan($ready, $last_finished, $running, array $open, $when)
+{
+    if (!$ready) {
+        return array('line' => lang('Ready once the upgrade has run'), 'pill' => null, 'attention' => false);
+    }
+
+    $total = (int) array_sum($open);
+    $worst = 0;
+
+    foreach ($open as $severity => $count) {
+        if (((int) $count > 0) && ((int) $severity > $worst)) {
+            $worst = (int) $severity;
+        }
+    }
+
+    if ($running) {
+        $line = lang('Scanning now');
+    } elseif ((int) $last_finished === 0) {
+        $line = lang('Not scanned yet');
+    } else {
+        $line = (($total === 0) ? lang('Nothing found') : lang(array('string' => '{var:1} open finding{suffix:1}', 'vars' => $total, 'suffix' => array(($total === 1) ? '' : 's'))))
+            . ' · ' . lang('last scan') . ' ' . $when;
+    }
+
+    if ($worst > 0) {
+        $pill = pg_security_severity_face($worst);
+    } else {
+        $pill = ((int) $last_finished > 0) ? array(lang('Nothing open'), 'pg-tone-teal') : null;
+    }
+
+    return array('line' => $line, 'pill' => $pill, 'attention' => $worst >= PG_SECURITY_SEVERITY_HIGH);
 }
 
 /**

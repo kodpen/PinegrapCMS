@@ -306,6 +306,7 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-headers' => lang('HTTPS'),
                 'pgset-waf'     => lang('Firewall'),
+                'pgset-scan'    => lang('Security Scan'),
                 'pgset-limits'  => lang('Limits'),
                 'pgset-bots'    => lang('Bots'),
                 'pgset-iplists' => lang('Addresses'),
@@ -316,6 +317,7 @@ function pg_settings_categories()
             'keywords' => array(
                 'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, nosniff, referrer')),
                 'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, monitor, block mode, sensitivity')),
+                'pgset-scan'    => pg_settings_keywords(lang('security scan, scan, malware, web shell, quarantine, finding, planted file, php2shell')),
                 'pgset-limits'  => pg_settings_keywords(lang('rate limit, requests per minute, ban, automatic ban, temporary ban, open at once, limit')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
                 'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned, ban, release')),

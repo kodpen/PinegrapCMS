@@ -27,4 +27,4 @@ description: Notes and frames on the Flows canvas (FE8): the graph's notes (by, 
 - `tests/workspace_flows_test.php`: `test_workspace_flows_note_writer_and_day`, `_frames_normalized`, `_frames_checked_for_count_only`, `_api_frames_part`.
 - Harness scenario "notes and frames" (`workspace-flows-canvas-harness.md`).
 
-Related: docs/memory/workspace/workspace-flows-several-boxes.md, docs/memory/workspace/workspace-flows-store.md, docs/memory/plans/flows-editor-next-screens-4.md
+Related: docs/memory/workspace/workspace-flows-several-boxes.md, docs/memory/workspace/workspace-flows-store.md, docs/memory/workspace/workspace-flows-overview.md

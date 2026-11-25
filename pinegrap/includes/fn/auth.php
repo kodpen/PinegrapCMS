@@ -684,20 +684,15 @@ function pg_member_register($form, $opts = array())
     if (REMEMBER_ME == TRUE) {
         $remember = ($form->get_field_value('register_remember_me') == 1)
                  || ($form->get_field_value('remember_me') == 1);
-        if ($remember) {
-            setcookie('software[auth]', pg_auth_token_create($new_user_id, pg_remember_me_lifetime()),
-                time() + pg_remember_me_lifetime(), '/', '', pg_request_is_https(), true);
-        }
         setcookie('software[remember_me]', $remember ? 'true' : 'false', time() + 315360000, '/');
     }
 
     pg_session_sign_in($new_user_id, $username);
 
-    // A sign-up that was not remembered still binds this session to a device
-    // token while the device limit is on. No-op when the limit is off.
-    if (!$remember) {
-        pg_login_set_device_cookie($new_user_id, false);
-    }
+    // The device token, remembered or a session one, is minted and bound to
+    // this session in one place: a token minted beside it left the session
+    // unbound, so revoking the device did not end it (session-token-binding).
+    pg_login_set_device_cookie($new_user_id, $remember);
 
     require_once(PG_FUNCTIONS_DIR . '/connect_user_to_order.php');
     connect_user_to_order();
@@ -976,18 +971,13 @@ function pg_member_activate($form, $opts = array())
     if (REMEMBER_ME == TRUE) {
         $remember = ($form->get_field_value('register_remember_me') == 1)
                  || ($form->get_field_value('remember_me') == 1);
-        if ($remember) {
-            setcookie('software[auth]', pg_auth_token_create($new_user_id, pg_remember_me_lifetime()),
-                time() + pg_remember_me_lifetime(), '/', '', pg_request_is_https(), true);
-        }
         setcookie('software[remember_me]', $remember ? 'true' : 'false', time() + 315360000, '/');
     }
 
     pg_session_sign_in($new_user_id, $username);
 
-    if (!$remember) {
-        pg_login_set_device_cookie($new_user_id, false);
-    }
+    // Minted and bound in one place, as in pg_member_register().
+    pg_login_set_device_cookie($new_user_id, $remember);
 
     require_once(PG_FUNCTIONS_DIR . '/connect_user_to_order.php');
     connect_user_to_order();
@@ -1812,15 +1802,64 @@ function pg_login_set_device_cookie($user_id, $remember)
 
 // Sign the browser in after it has just set the account's password through a
 // reset link. Returns true when the session was opened, false when the
-// account must go through the sign-in screen instead (an account that asks
-// for a second factor cannot be opened by a password alone).
+// account must go through the sign-in screen instead (see
+// pg_post_password_signin_refusal()).
 function pg_post_password_signin($user_id, $username)
 {
-    if (function_exists('pg_mfa_has_factor') && pg_mfa_has_factor($user_id)) {
+    $row = db_item("SELECT user_role, user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+    $refusal = pg_post_password_signin_refusal(
+        function_exists('pg_mfa_has_factor') && pg_mfa_has_factor($user_id),
+        is_array($row) ? $row['user_role'] : 3,
+        is_array($row) && pg_email_blocked((string) $row['user_email']));
+
+    if ($refusal === 'blocked') {
+        log_activity(pg_log_lang(array(
+            'string' => 'sign-in refused because the email address is blocked ({var:1})',
+            'vars'   => array((string) $row['user_email']))), '');
+    }
+
+    if ($refusal !== '') {
         return false;
     }
+
     pg_session_sign_in($user_id, $username);
     return true;
+}
+
+/**
+ * Why a password just set through a reset link opens no session, or '' when
+ * it may: an account that asks for a second factor cannot be opened by a
+ * password alone ('factor'), and a member whose address is on the block list
+ * is refused ('blocked'), as validate_login() refuses their password; the
+ * link only sets the password, so it is no way around the list. Pure.
+ *
+ * @param bool       $has_factor    pg_mfa_has_factor() of the account
+ * @param int|string $role          user_role of the account
+ * @param bool       $email_blocked pg_email_blocked() of its address
+ * @return string
+ */
+function pg_post_password_signin_refusal($has_factor, $role, $email_blocked)
+{
+    if ($has_factor) {
+        return 'factor';
+    }
+
+    return pg_login_email_block_refuses($role, $email_blocked) ? 'blocked' : '';
+}
+
+/**
+ * Whether the block list refuses this account a sign-in that checks no
+ * password (a remembered device): a member whose address is listed.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_user_id_login_blocked($user_id)
+{
+    $row = db_item("SELECT user_role, user_email FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+    return is_array($row) && pg_login_email_block_refuses($row['user_role'], pg_email_blocked((string) $row['user_email']));
 }
 
 // ── Upgrade bridge ──────────────────────────────────────────────────────────
@@ -1991,6 +2030,20 @@ function pg_password_changed_sql()
     return pg_user_has_password_changed_at()
         ? ", user_password_changed_at = UNIX_TIMESTAMP()"
         : '';
+}
+
+// The SET fragment that ends a pending reset or set password link when an
+// address change moves the account away from the mailbox the link went to,
+// ready to drop into an UPDATE before user_email is assigned (MySQL assigns
+// left to right, so user_email is still the stored one here). Compared
+// byte for byte: the column's collation folds case and accents, and an
+// address that differs only so is still a different string. An unchanged
+// address leaves a link the owner just asked for alone. Pure.
+function pg_user_reset_link_clear_sql($new_email)
+{
+    $same = "BINARY user_email = BINARY '" . escape((string) $new_email) . "'";
+
+    return "token = IF(" . $same . ", token, NULL), token_timestamp = IF(" . $same . ", token_timestamp, 0),";
 }
 
 // The columns the sign-in queries read, with or without the algo column, so
@@ -2256,18 +2309,8 @@ function pg_auth_token_sweep()
 }
 
 // The username property can either be a username or email address.
-/**
- * Case-folding for address comparison, multibyte-aware where the extension is
- * there. One function so the block list, its editor and any future caller fold
- * the same way - two different foldings would silently disagree about whether
- * an address is blocked.
- */
-function pg_email_fold($value)
-{
-    $value = (string) $value;
-
-    return function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
-}
+// pg_email_fold() lives in includes/authentication.php, beside the block list
+// match get_file.php shares.
 
 /**
  * Is this address on the block list?
@@ -2285,41 +2328,14 @@ function pg_email_fold($value)
  */
 function pg_email_blocked($email)
 {
-    // mb_strtolower, not strtolower: an address written with Turkish or any
-    // accented letters would otherwise only match if the operator typed it in
-    // exactly the same case, which is not what "blocked" is supposed to mean.
-    $email = pg_email_fold(trim((string) $email));
-
-    if (($email === '') || !defined('BANNED_EMAIL_ADDRESSES') || (BANNED_EMAIL_ADDRESSES === '')) {
+    // The match folds letter case multibyte-aware (pg_email_fold()): an
+    // address written with Turkish or accented letters matches however the
+    // operator typed it.
+    if (!defined('BANNED_EMAIL_ADDRESSES')) {
         return false;
     }
 
-    $at = strrpos($email, '@');
-    $domain = ($at === false) ? '' : substr($email, $at);   // keeps the "@"
-
-    foreach (preg_split('/[\r\n,;]+/', (string) BANNED_EMAIL_ADDRESSES) as $entry) {
-        $entry = pg_email_fold(trim($entry));
-        $entry = ltrim($entry, '*');
-
-        if ($entry === '') {
-            continue;
-        }
-
-        // A bare domain is written either way round; normalise to "@domain".
-        if (strpos($entry, '@') === false) {
-            $entry = '@' . $entry;
-        }
-
-        if (strpos($entry, '@') === 0) {
-            if (($domain !== '') && ($domain === $entry)) {
-                return true;
-            }
-        } elseif ($entry === $email) {
-            return true;
-        }
-    }
-
-    return false;
+    return pg_auth_email_on_list($email, (string) BANNED_EMAIL_ADDRESSES);
 }
 
 /**
@@ -4589,9 +4605,21 @@ function initialize_user()
 
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
-        // A disabled account's token signs nobody in; the cookie is cleared
-        // like an invalid one.
-        if ($token_user_id && pg_user_id_is_disabled($token_user_id)) {
+        // What refuses a remembered device, asked from the one function
+        // get_file.php asks too (includes/authentication.php), so a file
+        // request never opens a session this would refuse. A disabled
+        // account's token signs nobody in; the cookie is cleared like an
+        // invalid one. Nor does a member's whose address is on the block
+        // list: blocking stops every sign-in of the account
+        // (validate_login()), and a remembered device would otherwise keep it
+        // in for its whole life.
+        $remembered_refusal = $token_user_id ? pg_auth_remembered_signin_refusal($token_user_id) : '';
+
+        if ($remembered_refusal === 'blocked') {
+            log_activity(pg_log_lang(array('string' => 'remembered sign-in refused because the email address is blocked')), '');
+        }
+
+        if (($remembered_refusal === 'disabled') || ($remembered_refusal === 'blocked')) {
             $token_user_id = false;
         }
 
@@ -4605,10 +4633,7 @@ function initialize_user()
             // session on the password that was typed back then; the token is
             // retired and the visitor is sent to set the factor up, the way
             // the sign-in screens do.
-            if (is_array($user) && isset($user['id'])
-                && function_exists('pg_mfa_required_for_user')
-                && pg_mfa_required_for_user($user['id'])
-                && !pg_mfa_has_factor($user['id'])) {
+            if (is_array($user) && isset($user['id']) && ($remembered_refusal === 'factor')) {
 
                 pg_auth_token_revoke((string) strtok((string) $_COOKIE['software']['auth'], ':'));
                 setcookie('software[auth]', '', time() - 1000, '/');
@@ -5611,6 +5636,19 @@ function pg_password_reset_limits()
 function pg_password_reset_email($value)
 {
     return is_scalar($value) ? (string) $value : '';
+}
+
+/**
+ * The token the set password form posts back: one string, else '' (a posted
+ * k[] list, which hash() refused with a TypeError and an error page on
+ * PHP 8; '' answers as a missing token).
+ *
+ * @param  mixed  $value The form's k field
+ * @return string
+ */
+function pg_set_password_token($value)
+{
+    return (is_scalar($value) && !is_bool($value)) ? (string) $value : '';
 }
 
 /**

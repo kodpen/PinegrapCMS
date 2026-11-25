@@ -473,13 +473,15 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
     }
 
     // The only write to the user row in this save; the rest go to the
-    // access lists.
+    // access lists. A new address ends a pending reset link that went to the
+    // old one (pg_user_reset_link_clear_sql()).
     $audit_before = pg_audit_fetch('user', $user_id);
 
     $query =
         "UPDATE user
         SET
             user_username = '" . escape($fields['username'] ?? '') . "',
+            " . pg_user_reset_link_clear_sql($fields['email'] ?? '') . "
             user_email = '" . escape($fields['email'] ?? '') . "',
             $sql_role
             $sql_disabled

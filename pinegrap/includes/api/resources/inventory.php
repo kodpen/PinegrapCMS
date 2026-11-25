@@ -481,9 +481,9 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 	) + pg_stock_event_location_fields($stock_location);
 
-	// api_webhook_enqueue() keeps it for the Workspace too, so its flows may
+	// pg_announce() keeps it for the Workspace too, so its flows may
 	// start on it; a second pg_event_record() would start them twice.
-	api_webhook_enqueue('inventory.changed', $stock_event);
+	pg_announce('inventory.changed', $stock_event, array('listeners' => false));
 
 	// The announcement above skips pg_announce(), whose listeners hear the
 	// site's other stock writers; a product back in stock is told here.
@@ -498,14 +498,15 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 	// reorder notice that arrives four times a day stops being read. The store
 	// has to be running a threshold at all, and the product has to track stock -
 	// a gift card that was deliberately sold without a stock limit has no low
-	// to cross.
-	$threshold = (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int)ECOMMERCE_LOW_STOCK_THRESHOLD > 0))
-		? (int)ECOMMERCE_LOW_STOCK_THRESHOLD
-		: 0;
+	// to cross. A set that switches tracking on had no level before, so a
+	// count at or under the line is a crossing, as for every other writer
+	// (pg_product_stock_low_crossed()).
+	$threshold = pg_product_stock_threshold();
 
-	if (($threshold > 0) && ((int)$row['inventory'] === 1)
-		&& ((int)$row['inventory_quantity'] <= $threshold)
-		&& ((int)$product['inventory_quantity'] > $threshold)) {
+	$low_before = ((int)$product['inventory'] === 1) ? (int)$product['inventory_quantity'] : null;
+
+	if (((int)$row['inventory'] === 1)
+		&& pg_product_stock_low_crossed($threshold, $low_before, (int)$row['inventory_quantity'])) {
 
 		$low_event = array(
 			'product_id' => (int)$row['id'],
@@ -514,7 +515,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 			'threshold'  => $threshold
 		) + pg_stock_event_location_fields($stock_location);
 
-		api_webhook_enqueue('stock.low', $low_event);
+		pg_announce('stock.low', $low_event, array('listeners' => false));
 
 	}
 

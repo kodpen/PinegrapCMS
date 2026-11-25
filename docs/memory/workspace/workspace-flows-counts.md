@@ -4,7 +4,7 @@ description: The counts of a flow's boxes (ws_flow_counts(), FE11a): runs waitin
 ---
 
 ## What does ws_flow_counts() answer?
-- `ws_flow_counts($viewer, $flow, $days, $keep = null)` in `includes/workspace/flow_counts.php` answers `ok`, `error`, `days`, `since` (Unix time counted from), `boxes` and `partial`.
+- `ws_flow_counts($viewer, $flow, $days, $keep = null)` in `includes/workspace/flow_counts.php` answers `ok`, `error`, `days`, `since` (Unix time counted from), `boxes`, `left` (runs a leave rule ended since `since`, narrowed to the same runs; `workspace-flows-leave.md`) and `partial`.
 - `boxes` is one line per box id with a count: `node`, `waiting` (runs still going, running or waiting, whose step at the box is waiting now; a run counts once even when a loop passed the box twice), `passed` (steps of the box done since `since`), `failed` (steps failed since `since`). Boxes with nothing are left out; ids of every version the runs followed come back.
 - `days` (`ws_flow_counts_days()`): 7 when none is sent, whole days from 1 to the days ended runs are kept (`WS_FLOW_RUNS_KEEP`, 30).
 
@@ -24,7 +24,7 @@ description: The counts of a flow's boxes (ws_flow_counts(), FE11a): runs waitin
 ## Where is it reached?
 - Panel action `ws_flow_counts` (`flow_id`, `days`), in the panel's action list and `ws_flow_actions_without_workspace()`; it answers `counts`. Panel action `ws_flow_runs_list` passes `node`, `state` and `days`.
 - API: `GET /workspace/flows/{id}/counts` (`workspace.flow_runs.counts`, `workspace:read`, an MCP tool, `WorkspaceFlowCounts` / `WorkspaceFlowBoxCount`); `GET /workspace/flows/{id}/runs` takes `node`, `state`, `days`.
-- The canvas does not draw the counts yet: that is step FE11b (`plans/flows-editor-next-steps-3.md`).
+- The canvas draws them as pills over boxes: [[workspace-flows-counts-canvas]]; the panel's runs list of a count also carries `at` and `about` there.
 
 ## Where is it tested?
 - `tests/workspace_flow_counts_test.php`: days, the grouped read, the fold, the runs list narrowing, the rights from the source, the action and the route. `tests/automation_flows_api_test.php` counts 28 flow routes.

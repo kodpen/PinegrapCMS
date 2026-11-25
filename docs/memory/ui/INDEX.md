@@ -9,9 +9,9 @@
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper. [decision: decisions-made-product-12.md, decisions-made-product-14.md]
 - advanced-filters-panel.md: The Advanced Filters panel's parts (OL2b): 48 px head with the count pill and Close, a body that alone scrolls with a 6 px bar, a foot with Clear and Update, 300 px right column from 1280 px [decision: here]
-- ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows
+- ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows [decision: decisions-made-product-111.md]
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
-- ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model [decision: here]
+- ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model [decision: decisions-made-product-111.md]
 - ai-write-marks-designer.md: The AI mark on the visual designer's page settings (Page Title, Meta Description): page aiText/ai_fields in style_designer.js, pg_ai_fields_page_save() on the save
 - ai-write-marks.md: Mark on texts written with AI (products.ai_fields, page.ai_fields, 11.0.23): what is stored, the fingerprint, when a field gets or loses it (a hand edit removes it), the marker, pg:ai-write-used
 - ai-write-note.md: The site note ^^__ai_generated^^ (product detail widget): when it prints, which columns it speaks for, pg_ai_fields_note(), a page's own marks still open
@@ -232,6 +232,7 @@
 - explorer-details-rows.md: File Manager details panel rows for pages, files, archived pages, bin items and backups (folder link, address, exact time and editor, impact, bin rows, backup location) and the Pages view columns
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
 - explorer-file-window-encoding.md: File Manager Edit File window on a text file that is not UTF-8 (Windows-1254): opens with no text and a note, saves no text; panel answers never go out as an empty JSON body (pg_panel_answer_json())
+- explorer-folder-bin-rights.md: Who may send a folder to the File Manager's Recycle Bin: the subtree's pages need a basic user's Delete pages right, its design files a designer or administrator (pg_explorer_folder_bin_refusal())
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate (PR #2200), the SEO ring's top right corner
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
@@ -314,12 +315,14 @@
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
 - image-editor-crop.md: The Artifact Canvas's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
+- image-editor-data-column-gone.md: A data layer whose table lost a column, or every column (#11353): what the layer's panel and the Data picker show
 - image-editor-data-layer.md: The Artifact Canvas's data layer (DV1a, #10752): a Workspace table as a chart or a plain table, the description it holds, its check, grouping, the marks the browser draws, the shared fixture
 - image-editor-data-menu.md: The Artifact Canvas's Data menu (DV2 #10892, DV2b): the top bar's Data button, the two-step picker, the layer's panel groups, the actions data_tables and data_rows
 - image-editor-data-show.md: "Show on a canvas" on a Data table's head (DV3, DV2b): As a chart / As a table, a new canvas in the table's channel or one asked at the send, the table bound read-only, who may
 - image-editor-data-still.md: A canvas with data layers saved out of the Artifact Canvas (DV5): the Workspace's file drawn without rows, Files keeps the layers, an export is a still that says so
 - image-editor-detach-sound.md: Artifact Canvas Detach sound where the hand is: the bar over a clip, a clip row's menu on the tracks, Detach from a video under Add sound; the reasons it is refused [decision: here]
 - image-editor-draw.md: The Artifact Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
+- image-editor-edit-label.md: Every button that opens the Artifact Canvas on an existing picture reads "Edit in Artifact Canvas" (owner 2026-11-24): the places, the tooltip on icon buttons, what keeps its own words [decision: decisions-made-panel-18.md]
 - image-editor-encode.md: The Artifact Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
 - image-editor-export.md: The Artifact Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
@@ -328,7 +331,7 @@
 - image-editor-glyph.md: The Artifact Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw [decision: here]
 - image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw [decision: decisions-made-product-80.md]
-- image-editor-help.md: The Artifact Canvas's Help button in the top bar: its address from the server (config help, pg_help_url(), empty under private label) and the docs anchor the open tool picks (M.helpAnchor())
+- image-editor-help.md: The Artifact Canvas's Help button in the top bar: its address from the server (config help, pg_help_url(), empty under private label) and the docs anchor the open tool picks (M.helpAnchor()) [decision: decisions-made-panel-18.md]
 - image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The Artifact Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
@@ -381,10 +384,13 @@
 - invoice-order-shared-form.md: add_erp_invoice.php (Invoice an Order) draws its Order card, Summary and save bar through includes/forms/invoice_order_form.php (wide layout, step B11); what the screen keeps
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
 - launch-journey-catalogue.md: The launch journey's pure catalogue (SJ1a, PR #11160): purposes, steps per purpose, each step's rule over a facts array, blocker or warning, payment live per driver, the first week
+- launch-journey-first-week-path.md: After the set-up (SJ4): the First week card, a new team member's Start here card, the hint lines under catalogue screens and their hint:<screen> keys in user.tours_seen
 - launch-journey-go-live.md: The go-live check: "Ready to go live?", its dialog, "Go live" turning maintenance mode off and removing the robots catch-all, the confirmation, Site Log lines, the go-live time
 - launch-journey-setup-card.md: Dashboard card "Set up your site" (cards/launch.php): the launch_journey config_text row, the facts reader, "Do it", "Not for this site", "Hide set-up", the purpose dialog, General's purpose field
+- launch-journey.md: The site set-up journey as a whole: "Set up your site" card by purpose, go-live check, First week, Start here, hint lines, agency summary, GET /launch; its decisions and which file holds each part [decision: decisions-made-product-93.md, decisions-made-schema-46.md]
 - launch-summary-agency.md: The agency summary (SJ5): the set-up card's "Agency summary" drawer, the customer's signed page launch_summary.php, text answers, the launch_answer bell line, withdraw
-- launch-summary-lines.md: The agency summary's "What we need from you" lines table launch_summary_lines (SJ1b, 2026.11.0 step 11.0.274): its columns, why no person is held, what it does not store
+- launch-summary-file-lines.md: An agency summary line asking for files (LS2): the drawer's "Answer" select, the customer's file field, upload checks, the private "From the customer" folder, remove, the bell's count
+- launch-summary-lines.md: The agency summary's "What we need from you" lines table launch_summary_lines (SJ1b, 2026.11.0 steps 11.0.274 and 11.0.278 answer_kind): its columns, why no person is held, what it does not store
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
 - link-rights.md: Names, orders and products link to their edit screen only when it admits the viewer (pg_can_open_user(), pg_can_open_contact(), USER_MANAGE_ECOMMERCE); Sessions rows drop refused actions
 - list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs. [decision: here]
@@ -454,7 +460,7 @@
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie [decision: decisions-made-product-21.md]
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
-- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
+- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours, old btn btn- / nav-tabs panel markup and old Workspace fields may only fall against its baseline; what it skips, --update
 - look-commerce-settings-screens.md: Site Settings categories Commerce, Accounting and Bookings in look A (S5a, #10426): buttons by rank, group headings, the stock and staff hours tables, what stayed
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
 - look-design-examples-patterns.md: The Patterns group of the Design examples screen: settings pane, connect row, empty list, starting-point sheet, numbered steps drawer, form drawer, Workspace parts, e-mail parts; their order and frame
@@ -503,6 +509,10 @@
 - look-system-tools.md: The system tools in look A (S6a of panel-old-screens, #10533; Clean Up in the plan's close-out): section titles, card tables, field spans, measure, what stayed
 - look-translations-screen.md: The Translations screen (translations.php) in look A (S6c): card titles, row Save and review buttons, glossary icon buttons, dialog buttons, status pills, the style block's tokens; what stayed
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
+- look-workspace-fields-screens.md: WL9b: the Workspace PHP screens' fields and the command palette's search box on the look's field parts; what stayed as the Site Settings row grid needs it
+- look-workspace-fields-scripts.md: WL9: the small Workspace scripts' form-control and form-label lines on pg-input and pg-field-label, the CSS that followed, the 16px tip fields, what stayed
+- look-workspace-fields.md: WL8: formRow() is the form parts' field(), the form-control and form-label lines of assets/js/workspace.js on pg-input and pg-field-label, input groups, the CSS that followed, what is left
+- look-workspace-main-script.md: WL2: the buttons of assets/js/workspace.js (channel head, panes, drawers, dialogs, the writing box's Send and Send later, My Tasks, settings parts) on look A's ranks; the old buttons left and why
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, its icon and the live dot [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look [decision: decisions-made-files.md, decisions-made-panel.md, decisions-made-workspace-6.md]
@@ -511,7 +521,7 @@
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
 - main-menu-drawer-only.md: A drawer-only screen (output_header()'s menu_drawer, Page Design Studio): the main menu as the phone drawer at every width, opened by the screen's own button (#9712)
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
-- main-menu-icon-cite.md: Places outside the main menu that stand for a menu row (header quick note, Workspace tools dock, dashboard card heads, My Notes empty screen) draw the row's icon at rest with pg_menu_icon_cite()
+- main-menu-icon-cite.md: Places outside the main menu that stand for a menu row (header quick note, Workspace tools dock, dashboard card heads, My Notes empty screen) draw the row's icon at rest with pg_menu_icon_cite() [decision: decisions-made-panel-18.md]
 - main-menu-icon-motion.md: Main menu row icons in motion: one hover move per drawing (data-m, pg-mi-* keyframes), the live Automation flows dot and Calendars day, the Design examples pattern "Menu row icon" [decision: decisions-made-panel-17.md]
 - main-menu-icon-rows.md: Which drawing each main menu row takes (menu_icon name, the key in ui/main-menu-icons-drawing/icons.js), its idea and its hover move, by category [decision: decisions-made-panel-17.md]
 - main-menu-icons.md: Main menu icons: the rows' one-line drawings (pg_menu_icon()) on a tile in their category's colour (pg_menu_icon_tile(), pg_menu_category_tone()), the seven tones, the panel entries' tiles [decision: decisions-made-panel-17.md, decisions-made-panel-19.md, decisions-made-panel-2.md]
@@ -520,6 +530,7 @@
 - main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part [decision: decisions-made-panel-6.md, decisions-made-panel.md]
 - main-menu-panel-scripts.md: A main menu panel a script fills (the Workspace list, the explorer tree): panel flag, pg:menu-panel-open, opening by itself, window.pgMenu, layers that keep the widened rail open, labels, icon size
 - main-menu-panels.md: Main menu rows that open their entries in a panel inside the menu: which rows, where entries and permissions come from, the widened rail, the kept panel, the current entry [decision: decisions-made-files.md, decisions-made-workspace-6.md]
+- main-menu-rail-label.md: How the main menu's icon rail hides a row's label (opacity, never visibility or display) so a screen reader still reads the row's name, a row with a count included
 - main-menu-settings-row.md: The retired Site Settings row of the main menu (slot 20): what replaced it, where Translations went, which screens it marked, what is left of data-pg-settings-page [decision: decisions-made-panel-2.md]
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 - main-menu-system-tools-row.md: Main menu row 25, System tools: its slot and gate, its panel as one list of every tool under group headings (pg_menu_tools_markup()), the screens that light it [decision: decisions-made-panel-17.md]
@@ -544,12 +555,13 @@
 - messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive [decision: here]
 - messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d) [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
+- min-w-0-class.md: A flex column that must shrink takes Bootstrap 6's min-w-0; min-width-0 is defined nowhere and let long row titles widen a phone screen (PR #11382)
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - name-length-refusal.md: File and Catalog Manager and Pages Find & Replace refuse a name longer than its varchar column instead of letting the non-strict session cut it
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notification-links.md: Bell, banner and System Status link only to screens the reader may use: Repair Software for role 0 off hosting; form submissions for the folder's editors
-- notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise [decision: decisions-made-panel-4.md]
+- notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws when the count moves [decision: decisions-made-panel-4.md]
 - notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
@@ -779,6 +791,7 @@
 - submitted-form-import-export.md: How Import Submitted Forms reads an exported file (fixed record columns, status, one column per field), converts date cells and checks the chosen custom form
 - submitted-form-layout.md: The submitted form create and edit screens on the wide edit layout: Form Data, a sticky Summary/Form Editor/Details column, the offline payment button's own form
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
+- submitted-forms-export-columns.md: The Forms screen's CSV and Excel export prints each record's field values against one heading list, sort order then id (#11453)
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion
 - tax-zone-shared-form.md: The tax zone screens share includes/forms/tax_zone_form.php: wide layout with a Summary, options, links; a blank name is refused and redrawn; states under the country's shown name

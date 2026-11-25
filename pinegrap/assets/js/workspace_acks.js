@@ -23,6 +23,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     // Who has read the message and who has not, in a drawer.
     function people(messageId, h) {
         var t = h.t;
@@ -36,7 +48,7 @@
             [['read', t('ack_read')], ['unread', t('ack_unread')]].forEach(function (part) {
                 var list = data[part[0]] || [];
 
-                body.appendChild(el('div', 'form-label mt-3', part[1] + ' (' + list.length + ')'));
+                body.appendChild(el('div', 'pg-field-label mt-3', part[1] + ' (' + list.length + ')'));
 
                 if (!list.length && part[0] === 'unread') {
                     body.appendChild(el('div', 'small fg-secondary', t('ack_nobody_left')));
@@ -73,7 +85,7 @@
         var row = el('div', 'ws-ack' + (ack.done ? ' ws-ack-done' : ''));
 
         if (ack.can_ack) {
-            var read = h.button('btn btn-sm btn-outline theme-primary py-0', t('ack_button'), 'bi-eye');
+            var read = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('ack_button'), 'bi-eye');
 
             read.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -172,7 +184,7 @@
             return null;
         }
 
-        var ask = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-eye', h.t('ack_request'));
+        var ask = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-eye', h.t('ack_request'));
 
         ask.addEventListener('click', function () {
             request({ id: pin.id }, true, view, h, redraw);

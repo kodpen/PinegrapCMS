@@ -316,7 +316,7 @@ function update_order($request) {
 
         require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 
-        api_webhook_enqueue('order.shipped', array(
+        pg_announce('order.shipped', array(
             'id'               => (int) $order['id'],
             'order_number'     => $order['order_number'],
             'ship_to_id'       => (int) $shipped_recipient['id'],
@@ -328,7 +328,7 @@ function update_order($request) {
                 ? $shipped_recipient['ship_date']
                 : null,
             'parcels'          => pg_shipment_api_parcels((int) $shipped_recipient['id']),
-        ) + pg_shipment_event_values(pg_shipment_mail_fields(array((int) $shipped_recipient['id']))));
+        ) + pg_shipment_event_values(pg_shipment_mail_fields(array((int) $shipped_recipient['id']))), array('listeners' => false));
 
         // The customer's text and WhatsApp messages, held back like the
         // e-mail when the caller says the customer is not to be told.

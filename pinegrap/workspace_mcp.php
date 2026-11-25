@@ -206,9 +206,9 @@ foreach ($servers as $server) {
                 $line .= ' ' . lang(array('string' => 'Last used {var:1}.', 'vars' => ws_time_label($mine['mine']['last_used_timestamp'])));
             }
 
-            $button = '<button type="button" class="btn btn-sm btn-outline theme-danger ws-mcp-action" data-action="disconnect" data-id="' . $id . '"'
+            $button = '<button type="button" class="pg-button pg-button-danger pg-button-sm ws-mcp-action" data-action="disconnect" data-id="' . $id . '"'
                 . ' data-confirm="' . h(lang(array('string' => 'Disconnect your own account from @{var:1}? Calls that wait for your approval cannot run until you connect it again.', 'vars' => $server['alias']))) . '">'
-                . '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect my account')) . '</button>';
+                . '<i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Disconnect my account')) . '</button>';
         } else {
             $badge = $mine['mine']
                 ? '<span class="badge theme-danger fw-normal">' . h(lang('Connect again')) . '</span>'
@@ -218,8 +218,8 @@ foreach ($servers as $server) {
                 ? lang('Tools that read use the site\'s account until you connect yours.')
                 : lang('Nothing can be called for you until you connect it.'));
 
-            $button = '<button type="button" class="btn btn-sm btn-solid theme-primary ws-mcp-action" data-action="connect" data-id="' . $id . '">'
-                . '<i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>' . h($mine['mine'] ? lang('Connect my account again') : lang('Connect my account')) . '</button>';
+            $button = '<button type="button" class="pg-button pg-button-fill pg-button-sm ws-mcp-action" data-action="connect" data-id="' . $id . '">'
+                . '<i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>' . h($mine['mine'] ? lang('Connect my account again') : lang('Connect my account')) . '</button>';
         }
 
         $account = '
@@ -233,10 +233,10 @@ foreach ($servers as $server) {
     foreach ($tools as $name => $tool) {
         $active = $open_tool && ((int) $open_server['id'] === $id) && ($open_name === $name);
 
-        $links .= '<a class="btn btn-sm ' . ($active ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') . ' text-start" href="' . h($self_url . ws_mcp_form_query($id, $name, $channel_id)) . '"'
+        $links .= '<a class="pg-button pg-button-sm ' . ($active ? 'pg-button-quiet' : 'pg-button-ghost') . ' justify-content-start" href="' . h($self_url . ws_mcp_form_query($id, $name, $channel_id)) . '"'
             . (($tool['description'] !== '') ? ' title="' . h(mb_substr($tool['description'], 0, 200)) . '"' : '')
             . ($active ? ' aria-current="true"' : '') . '>'
-            . '<i class="bi bi-ui-checks me-1" aria-hidden="true"></i>' . h(($tool['title'] !== '') ? $tool['title'] : $name) . '</a>';
+            . '<i class="bi bi-ui-checks" aria-hidden="true"></i>' . h(($tool['title'] !== '') ? $tool['title'] : $name) . '</a>';
     }
 
     $details = array(ws_mcp_host($server['url']));
@@ -325,13 +325,13 @@ if ($open_tool) {
                     <input type="hidden" name="mcp_tool" value="' . h($open_name) . '">
                     ' . $output_fields . '
                     <div class="mb-5 mt-5">
-                        <label class="form-label small mb-1" for="ws_mcp_channel">' . h(lang('Post the answer in')) . '</label>
-                        <select class="form-control form-control-sm" name="mcp_channel" id="ws_mcp_channel">' . $options . '</select>
-                        <div class="form-text">' . h(lang('In a channel the answer is posted in your name and nobody can edit it.')) . '</div>
+                        <label class="pg-field-label" for="ws_mcp_channel">' . h(lang('Post the answer in')) . '</label>
+                        <select class="pg-input pg-input-sm" name="mcp_channel" id="ws_mcp_channel">' . $options . '</select>
+                        <div class="pg-field-help">' . h(lang('In a channel the answer is posted in your name and nobody can edit it.')) . '</div>
                     </div>
                     ' . (($runs_with !== '')
                         ? '<p class="small fg-secondary mb-3"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($runs_with) . '</p>
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-play-fill me-1" aria-hidden="true"></i>' . h(lang('Run')) . '</button>'
+                    <button type="submit" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-play-fill" aria-hidden="true"></i>' . h(lang('Run')) . '</button>'
                         : '<div class="alert theme-warning small py-3 mb-0">' . h(lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $open_server['alias']))) . '</div>') . '
                 </form>
                 ' . $result . '

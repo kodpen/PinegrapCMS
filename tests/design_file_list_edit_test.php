@@ -123,6 +123,20 @@ function test_design_file_form_refusal()
 	pg_assert_same('', pg_design_file_form_refusal('other.css', 'site.css', 21, $free), 'a free name');
 }
 
+// The key that signs the site's mail is a design file of the root folder;
+// under another name get_file.php would serve it, so it keeps its name here
+// as on every other file screen (pg_file_withheld()).
+function test_design_file_form_refusal_keeps_the_signing_key_name()
+{
+	$free = function ($name, $id) {
+		return true;
+	};
+
+	pg_assert_contains('Access denied', pg_design_file_form_refusal('dkim.txt', 'dkim.key', 21, $free), 'a new name for the key');
+	pg_assert_contains('Access denied', pg_design_file_form_refusal('notes.key', 'DKIM.KEY', 21, $free), 'whatever the stored case');
+	pg_assert_same('', pg_design_file_form_refusal('dkim.key', 'dkim.key', 21, $free), 'its own name, so the folder and description still save');
+}
+
 function test_design_file_quick_saved_answer()
 {
 	$built = pg_test_design_file_quick_cells();

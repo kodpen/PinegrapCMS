@@ -7548,6 +7548,20 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-th-status { margin-right: auto; font-size: 11.5px; color: #8b949e; }
 .sd-th-note { font-size: 11.5px; color: #8b949e; margin: 0; }
 
+/* The Variables tab (style_designer_variables.js): a fold per group, a row per variable. */
+.sd-vars-group { margin-bottom: 8px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; }
+.sd-vars-summary { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #e6edf3; cursor: pointer; }
+.sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
+.sd-vars-row .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
+.sd-vars-swatch { width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .15); }
+.sd-vars-sample { font-size: 13px; color: #8b949e; text-align: center; }
+.sd-vars-pair { display: flex; gap: 6px; }
+.sd-vars-color { width: 36px; height: 26px; padding: 2px; border: 1px solid #30363d; border-radius: 6px; background: #161b22; cursor: pointer; }
+.sd-vars-add { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-top: 1px solid #21262d; }
+.sd-vars-contrast { margin: 10px 0; font-size: 11.5px; color: #8b949e; }
+.sd-vars-contrast-row.is-low { color: #f0c674; }
+.sd-vars-foot { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
 /* ========================= ASSISTANT PANEL (designer_ai.js) =========================
    Claude or Pinegrap AI changes the selected element or the whole page. The
    panel floats over the canvas's lower right corner and leaves the editor
@@ -8072,6 +8086,81 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 }
 .sd-proto-menu-item:hover, .sd-proto-menu-item:focus-visible { background: rgba(255,255,255,.08); outline: none; }
 .sd-proto-menu-item[aria-checked="true"] { color: var(--sd-accent); font-weight: 600; }
+/* The Sketch tool (_sdSketchMount()): a sketch page's frame, its body
+   on a dotted grid, boxes drawn in dashes with a chip naming what each is,
+   the selected box's handles, the guides while a box moves. */
+.sd-proto .pgc-node.sd-sketch-frame { --pgc-node-accent: #3ccf91; }
+.sd-sketch-body {
+    position: relative; overflow: visible;
+    background-image: radial-gradient(circle, rgba(255,255,255,.08) 1px, transparent 1px);
+    background-size: 16px 16px;
+}
+.sd-sketch-mode .sd-sketch-body { cursor: crosshair; }
+.sd-sketch-hint {
+    position: absolute; left: 0; right: 0; top: 45%; margin: 0;
+    text-align: center; font-size: .8rem; color: var(--sd-text-muted); pointer-events: none;
+}
+.sd-sketch-hint[hidden] { display: none; }
+.sd-sketch-box {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1.5px dashed #6b7480; border-radius: 6px; background: rgba(255,255,255,.04);
+    color: var(--sd-text); outline: none;
+}
+.sd-sketch-mode .sd-sketch-box { cursor: move; }
+.sd-sketch-box.sd-sketch-on { border-style: solid; border-color: var(--sd-accent); background: color-mix(in srgb, var(--sd-accent) 10%, transparent); }
+.sd-sketch-box:focus-visible { box-shadow: 0 0 0 2px var(--sd-accent); }
+.sd-sketch-box.sd-sketch-ghost { border-color: var(--sd-accent); background: color-mix(in srgb, var(--sd-accent) 12%, transparent); pointer-events: none; }
+.sd-sketch-chip {
+    position: absolute; top: 4px; left: 4px; max-width: calc(100% - 8px);
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px; border: 0; border-radius: 10px;
+    background: #3a4049; color: var(--sd-text); font: inherit; font-size: .68rem; line-height: 1.5; cursor: pointer;
+}
+.sd-sketch-chip:hover { filter: brightness(1.15); }
+.sd-sketch-chip:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
+.sd-sketch-unread .sd-sketch-chip { background: rgba(255,193,7,.18); color: #ffc107; }
+.sd-sketch-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-sketch-caret { font-size: .55rem; }
+.sd-sketch-heading {
+    max-width: calc(100% - 16px); padding-top: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: .9rem; font-weight: 600; pointer-events: none;
+}
+.sd-sketch-heading[hidden] { display: none; }
+.sd-sketch-input {
+    width: calc(100% - 16px); margin-top: 14px; padding: 2px 6px;
+    border: 1px solid var(--sd-accent); border-radius: 4px; background: #1f2329; color: var(--sd-text);
+    font: inherit; font-size: .9rem; font-weight: 600; text-align: center;
+}
+.sd-sketch-handle {
+    position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px;
+    border: 1.5px solid var(--sd-accent); border-radius: 2px; background: #1f2329;
+}
+.sd-sketch-handle-n, .sd-sketch-handle-s { left: 50%; cursor: ns-resize; }
+.sd-sketch-handle-e, .sd-sketch-handle-w { top: 50%; cursor: ew-resize; }
+.sd-sketch-handle-n, .sd-sketch-handle-ne, .sd-sketch-handle-nw { top: 0; }
+.sd-sketch-handle-s, .sd-sketch-handle-se, .sd-sketch-handle-sw { top: 100%; }
+.sd-sketch-handle-w, .sd-sketch-handle-nw, .sd-sketch-handle-sw { left: 0; }
+.sd-sketch-handle-e, .sd-sketch-handle-ne, .sd-sketch-handle-se { left: 100%; }
+.sd-sketch-handle-ne, .sd-sketch-handle-sw { cursor: nesw-resize; }
+.sd-sketch-handle-nw, .sd-sketch-handle-se { cursor: nwse-resize; }
+.sd-sketch-guide { position: absolute; z-index: 3; background: #ff4fa3; pointer-events: none; }
+/* The reference picture under a sketch page: dimmed, from the top, full
+   width, taking no pointer. "More" shows in the selected page's head. */
+.sd-sketch-pic {
+    position: absolute; left: 0; top: 0; width: 100%; object-fit: fill;
+    opacity: .33; pointer-events: none; user-select: none;
+}
+.sd-sketch-more {
+    display: none; align-items: center; justify-content: center;
+    width: 26px; height: 24px; margin-left: auto; padding: 0;
+    border: 0; border-radius: 4px; background: transparent; color: var(--sd-text); cursor: pointer;
+}
+.sd-sketch-mode .pgc-selected .sd-sketch-more { display: inline-flex; }
+.sd-sketch-more:hover, .sd-sketch-more:focus-visible { background: rgba(255,255,255,.1); outline: none; }
+.sd-sketch-menu-sep { margin: 4px 0; border: 0; border-top: 1px solid rgba(255,255,255,.12); opacity: 1; }
+.sd-sketch-menu-key { margin-left: auto; padding: 0 4px; background: none; color: var(--sd-text-muted); font-size: .68rem; }
+.sd-sketch-guide-x { width: 1px; }
+.sd-sketch-guide-y { height: 1px; }
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
@@ -8140,6 +8229,20 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-pc-answers { margin-top: .45rem; padding-left: .6rem; border-left: 2px solid var(--sd-border-strong); }
 .sd-pc-answer + .sd-pc-answer { margin-top: .4rem; }
 .sd-pc-gone { margin-top: .25rem; font-size: .74rem; color: var(--sd-warning); }
+/* A link asking approval: its verdict in the page group's head, and a
+   Request changes note as a thread without a pin. */
+.sd-pc-verdicts { display: flex; flex-wrap: wrap; gap: .3rem; margin: -.15rem 0 .45rem; }
+.sd-pc-verdict {
+    display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; padding: .1rem .45rem; border-radius: 999px;
+    font-size: .7rem; border: 1px solid var(--sd-panel-border); background: var(--sd-raised-bg); color: var(--sd-text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-pc-verdict code { font-size: inherit; color: var(--sd-text-muted); }
+.sd-pc-verdict.is-approved .bi { color: var(--sd-success); }
+.sd-pc-verdict.is-changes .bi { color: var(--sd-warning); }
+.sd-pc-verdict.is-older { color: var(--sd-text-muted); }
+.sd-pc-request { cursor: default; }
+.sd-pc-request .sd-pc-num { cursor: default; display: inline-flex; align-items: center; justify-content: center; }
 .sd-pc-resolved { margin-top: .35rem; font-size: .74rem; color: var(--sd-success); }
 .sd-pc-actions, .sd-pc-confirm { display: flex; align-items: center; gap: .25rem; margin-top: .4rem; flex-wrap: wrap; }
 .sd-pc-confirm > span { flex: 1 1 100%; color: var(--sd-danger); }

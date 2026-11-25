@@ -14,6 +14,8 @@ module: connections_screen
 
 ## What does a save do?
 - `claude_save`: `ws_claude_routine_input()` (pure) takes the switch, the application and the summary as stored, so `ws_claude_settings_save()` writes only the address and token (into Claude's `ws_agents` row) and clears the last error and the wait. A wrong address is marked on `claude_routine_url`.
+- The stored application is passed on with `app_kept`, so `ws_claude_settings_app_checked()` skips its check: a linked application deleted in Application Access refused every Save with a field the page lacks (fixed in the connections-merges hunt).
+- `ws_claude_routine_decision()` writes only a changed address or token; an unchanged Save wrote anyway and cleared the last error and the wait. "Save and try" still tries.
 - "Save and try" then starts the routine once (`ws_claude_fire(true)`) when `ws_claude_missing()` is empty; else its first line is the error.
 
 ## What stays in Site Settings?

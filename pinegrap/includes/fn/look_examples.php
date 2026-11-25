@@ -202,7 +202,7 @@ function pg_look_examples($prefix = 'light')
         'title'   => lang('Drawer'),
         'classes' => array('drawer-header', 'drawer-title', 'btn-close', 'role="tablist"', 'role="tab"', 'aria-selected', 'drawer-body', 'drawer-footer', '.pg-seg', '.pg-seg-item', '.pg-pill', '.pg-button-danger', '.pg-button-quiet', '.pg-button-fill'),
         'html'    => '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:480px">'
-            . '<div class="drawer-header p-5"><div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
+            . '<div class="drawer-header p-5"><div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0">Ayşe Demir</h5>'
             . '<p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . h(lang('Erasure')) . ' <span class="pg-pill pg-tone-amber">' . h(lang(array('string' => '{var:1} days left', 'vars' => array(5)))) . '</span></p></div>'
             . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div>'
             . '<div class="px-5 pt-3 pb-3 border-bottom"><span class="pg-seg" role="tablist" aria-label="' . h(lang('Request')) . '">'
@@ -353,7 +353,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $sheet = function ($current, $tile, $title, $line, $body, $foot) use ($sheet_steps) {
         return '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px">'
             . '<div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">' . $tile
-            . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">' . h($title) . '</h5>' . $line . '</div>'
+            . '<div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0">' . h($title) . '</h5>' . $line . '</div>'
             . '<button type="button" class="btn-close ms-auto" aria-label="' . h(lang('Close')) . '"></button></div></div>'
             . '<div class="px-5 pt-3 pb-5 border-bottom">' . $sheet_steps($current) . '</div>'
             . '<div class="drawer-body p-5">' . $body . '</div>'
@@ -454,7 +454,7 @@ function pg_look_examples_patterns($prefix = 'light')
         'html'    => '<div class="pg-look-line"><button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Set up on claude.ai')) . '</button></div>'
             . '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:34rem">'
             . '<div class="drawer-header border-bottom gap-3 p-5"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-violet" aria-hidden="true"><i class="bi bi-stars"></i></span>'
-            . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><p class="small fg-2 mb-0 mt-1">' . h(lang('Five steps; every value has Copy beside it.')) . '</p></div>'
+            . '<div class="flex-grow-1 min-w-0"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><p class="small fg-2 mb-0 mt-1">' . h(lang('Five steps; every value has Copy beside it.')) . '</p></div>'
             . '<button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div>'
             . '<div class="drawer-body p-5"><ol class="stepper pg-stepper-cards ws-claude-setup-steps">' . $guide . '</ol></div>'
             . '<div class="drawer-footer border-top p-5 d-flex"><button type="button" class="pg-button pg-button-quiet ms-auto">' . h(lang('Close')) . '</button></div>'
@@ -474,6 +474,8 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
     $patterns[] = pg_look_examples_add_list_pattern();
+    $patterns[] = pg_look_examples_flow_trial_pattern();
+    $patterns[] = pg_look_examples_flow_counts_pattern();
     $patterns[] = pg_look_examples_menu_icon_pattern();
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
@@ -504,7 +506,7 @@ function pg_look_examples_form_drawer_pattern($p)
             . h($label) . (($count !== '') ? ' <span class="pg-seg-count">' . h($count) . '</span>' : '') . '</button>';
     };
 
-    $delete_text = '<div class="flex-grow-1 min-width-0"><div class="pg-list-row-title">' . h(lang('Delete the application')) . '</div>'
+    $delete_text = '<div class="flex-grow-1 min-w-0"><div class="pg-list-row-title">' . h(lang('Delete the application')) . '</div>'
         . '<div class="pg-text-meta">' . h(lang('Any integration using this key stops working immediately. This cannot be undone.')) . '</div></div>';
 
     $advanced = '<div class="form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_rate">' . h(lang('Requests per minute')) . '</label>'
@@ -514,7 +516,7 @@ function pg_look_examples_form_drawer_pattern($p)
     $drawer = '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px">'
         . '<div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">'
         . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-key"></i></span>'
-        . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Trendyol sync</h5>'
+        . '<div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0">Trendyol sync</h5>'
         . '<p class="small fg-2 mb-0 mt-1">' . h(lang('Integration')) . ' &middot; ' . h(lang('key and secret')) . ' &middot; ' . h(lang('Acts as:')) . ' <b>' . h(lang('the application itself')) . '</b></p></div>'
         . '<span class="pg-pill pg-tone-teal">' . h(lang('Active')) . '</span>'
         . '<button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div></div>'
@@ -529,14 +531,14 @@ function pg_look_examples_form_drawer_pattern($p)
         . '<div class="col-12 sm:col-6 form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_description">' . h(lang('Description')) . ' <span class="fg-2 fw-normal">' . h(lang('optional')) . '</span></label>'
         . '<input type="text" class="form-control form-control-sm" id="' . $p . '_look_form_description"></div>'
         . '</div>'
-        . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row"><div class="flex-grow-1 min-width-0">'
+        . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row"><div class="flex-grow-1 min-w-0">'
         . '<label class="pg-list-row-title d-block" for="' . $p . '_look_form_status">' . h(lang('Active')) . '</label>'
         . '<div class="pg-text-meta">' . h(lang('Turning it off refuses the key at once; the settings stay.')) . '</div></div>'
         . '<input type="checkbox" class="pg-switch" id="' . $p . '_look_form_status" checked></div></div>'
         . '<div class="pg-text-meta mb-2">' . h(lang('Summary')) . '</div>'
         . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row">'
         . '<span class="pg-icon-tile pg-tone-blue" aria-hidden="true"><i class="bi bi-shield-check"></i></span>'
-        . '<div class="flex-grow-1 min-width-0"><div class="pg-list-row-title">' . h(lang('Permissions')) . '</div>'
+        . '<div class="flex-grow-1 min-w-0"><div class="pg-list-row-title">' . h(lang('Permissions')) . '</div>'
         . '<div class="pg-text-meta">' . h(lang(array('string' => '{var:1} of {var:2} chosen', 'vars' => array(12, 31)))) . '</div></div>'
         . '<button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Go to permissions')) . '<i class="bi bi-chevron-right" aria-hidden="true"></i></button></div>'
         . pg_settings_fold_row(array(
@@ -744,7 +746,7 @@ function pg_look_examples_mail_patterns($p)
         'classes' => array('role="dialog"', '.pg-card-sheet', '.pg-icon-tile-lg', '.pg-tone-rose', '.pg-card-sub', '.pg-card-inner', '.pg-effects', '.pg-effect', '.pg-effect-keep', '.pg-effect-go', '.pg-effect-info', '.pg-effect-line', '.pg-button-quiet', '.pg-button-danger'),
         'html'    => '<div class="pg-card pg-card-sheet overflow-hidden" role="dialog" aria-labelledby="' . $p . '_look_confirm_title" style="max-width:470px">'
             . '<div class="d-flex align-items-start gap-3 p-5 pb-0"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-rose" aria-hidden="true"><i class="bi bi-trash3"></i></span>'
-            . '<div class="min-width-0"><div class="pg-title-section" id="' . $p . '_look_confirm_title">' . h(lang(array('string' => 'Remove the {var:1} mailbox?', 'vars' => array(lang('Support'))))) . '</div>'
+            . '<div class="min-w-0"><div class="pg-title-section" id="' . $p . '_look_confirm_title">' . h(lang(array('string' => 'Remove the {var:1} mailbox?', 'vars' => array(lang('Support'))))) . '</div>'
             . '<p class="pg-card-sub">info@example.com</p></div></div>'
             . '<div class="p-5"><ul class="pg-card-inner pg-effects">'
             . $effect('keep', 'bi-check-circle-fill', lang('The conversations stay'), lang(array('string' => 'The {var:1} conversations of the #{var:2} channel are not deleted.', 'vars' => array(214, 'support'))))
@@ -1238,7 +1240,7 @@ function pg_look_examples_canvas_tools_pattern()
     return array(
         'id'      => 'pattern-canvas-tools',
         'title'   => lang('Canvas tools'),
-        'classes' => array('.wsf-palette', '.wsf-palette-rail', '.wsf-palette-rail-open', '.wsf-palette-rail-group', '.wsf-palette-panel', '.wsf-palette-top', '.wsf-palette-search', '.wsf-palette-groups', '.wsf-palette-head', '.wsf-palette-item', '.wsf-palette-tip', '.wsf-strip', '.wsf-strip-divider', '.wsf-zoom-label', '.pg-button-fill', '.pg-icon-button'),
+        'classes' => array('.wsf-palette', '.wsf-palette-rail', '.wsf-palette-rail-open', '.wsf-palette-rail-group', '.wsf-palette-panel', '.wsf-palette-top', '.wsf-palette-search', '.wsf-palette-groups', '.wsf-palette-head', '.wsf-palette-item', '.wsf-palette-tip', '.wsf-strip', '.wsf-strip-divider', '.wsf-zoom-label', '.wsf-map', '.wsf-map-boxes', '.wsf-map-box', '.wsf-map-view', '.pg-button-fill', '.pg-icon-button'),
         'html'    => '<div class="pgc-stage pg-look-tools">'
             . '<div class="wsf-palette"><div class="wsf-palette-rail" role="group" aria-label="' . h(lang('Add a box')) . '">'
             . $icon('bi-plus-lg', lang('Add a box'), 'pg-button pg-button-fill wsf-palette-rail-open')
@@ -1263,9 +1265,22 @@ function pg_look_examples_canvas_tools_pattern()
             . '<div class="wsf-strip" role="group" aria-label="' . h(lang('Canvas tools')) . '">'
             . $icon('bi-arrow-counterclockwise', lang('Undo')) . $icon('bi-arrow-clockwise', lang('Redo change')) . $divider
             . $icon('bi-dash-lg', lang('Zoom out')) . '<span class="wsf-zoom-label">100%</span>' . $icon('bi-plus-lg', lang('Zoom in')) . $icon('bi-arrows-fullscreen', lang('Fit to the screen')) . $divider
+            . '<button type="button" class="pg-button pg-button-ghost pg-button-sm wsf-tidy" title="' . h(lang('Place the boxes in columns by the order of their steps; with several boxes chosen, only those')) . '"><i class="bi bi-magic" aria-hidden="true"></i>' . h(lang('Tidy')) . '</button>'
             . str_replace('<button type="button"', '<button type="button" aria-pressed="true"', $icon('bi-bezier2', lang('Data threads')))
-            . '</div></div>'
-            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: the add rail floats at the canvas\'s top left, a filled "+" and an icon for each group with its name as tooltip; "+" opens the list as a card beside the rail, a group\'s icon opens it at that group. Esc, a box added or a click on the canvas closes it. The bottom strip, centred over the canvas, holds Undo, Redo, the zoom, Fit and the data threads; a pressed tool shows the quiet fill.')) . '</p>',
+            . $icon('bi-sticky', lang('Note'))
+            . str_replace('<button type="button"', '<button type="button" aria-pressed="true"', $icon('bi-map', lang('Map of the flow')))
+            . '</div>'
+            . '<div class="wsf-map" role="img" aria-label="' . h(lang('Map of the flow')) . '"><div class="wsf-map-boxes">'
+            . '<span class="wsf-map-box" style="left: 10px; top: 40px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 40px; top: 40px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 70px; top: 30px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 70px; top: 52px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 100px; top: 30px; width: 18px; height: 7px"></span>'
+            . '<span class="wsf-map-box" style="left: 130px; top: 52px; width: 18px; height: 7px"></span>'
+            . '</div><div class="wsf-map-view" style="left: 6px; top: 20px; width: 90px; height: 54px"></div></div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: the add rail floats at the canvas\'s top left, a filled "+" and an icon for each group with its name as tooltip; "+" opens the list as a card beside the rail, a group\'s icon opens it at that group. Esc, a box added or a click on the canvas closes it. The bottom strip, centred over the canvas, holds Undo, Redo, the zoom, Fit and the data threads; a pressed tool shows the quiet fill.')) . '</p>'
+            . '<p class="pg-text-meta">' . h(lang('Tidy on the strip places the boxes again in columns by the order of their steps, frames round their boxes. The map at the bottom left shows the whole flow small with the part on screen framed; a drag on it moves the canvas. It shows by itself from 12 boxes, or when Map is pressed.')) . '</p>',
     );
 }
 
@@ -1309,6 +1324,73 @@ function pg_look_examples_add_list_pattern()
             . '<p class="wsf-palette-tip pg-text-meta">' . h(lang('Dropping an arrow\'s end on empty space opens this list too.')) . '</p>'
             . '</div></div>'
             . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: pointing at an arrow shows a "+" at its middle; a dashed "+" stands after a box with a free outcome. Either opens this list there: the search ("/" reaches it), "Often next" by the box before, then the groups as chips with their counts. The box chosen cuts the arrow in two; the boxes after it move one column right when there is no room. A on the canvas opens it at the arrow or box chosen.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's trial (board C1): the bar while the draft is tried,
+ * boxes marked as walked and in turn, the panel's steps with Next step and
+ * To the end.
+ *
+ * @return array the pattern's id, title, classes and markup
+ */
+function pg_look_examples_flow_trial_pattern()
+{
+    $badge = function ($state, $icon, $word) {
+        return '<span class="wsf-run-badge wsf-run-' . $state . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($word) . '</span>';
+    };
+    $button = function ($class, $icon, $label) {
+        return '<button type="button" class="pg-button pg-button-sm ' . $class . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>';
+    };
+
+    return array(
+        'id'      => 'pattern-flow-trial',
+        'title'   => lang('Try the flow'),
+        'classes' => array('.wsf-trial', '.wsf-run-badge', '.wsf-run-done', '.wsf-run-skipped', '.wsf-run-running', '.wsf-run-failed', '.pg-button-fill', '.pg-button-quiet', '.pg-button-ghost'),
+        'html'    => '<div class="d-flex flex-column gap-4 wsf-trial">'
+            . '<div class="d-flex flex-wrap align-items-center gap-3"><span class="small fw-semibold fg-primary"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang('Trial · nothing is sent')) . '</span>'
+            . $button('pg-button-fill', 'bi-x-lg', lang('End the trial')) . '</div>'
+            . '<div class="d-flex flex-wrap gap-2">' . $badge('done', 'bi-check-circle-fill', lang('Tried')) . $badge('skipped', 'bi-skip-forward', lang('Passed'))
+            . $badge('done', 'bi-check-circle-fill', lang('Yes')) . $badge('failed', 'bi-x-octagon-fill', lang('Would fail')) . $badge('running', 'bi-arrow-right-circle', lang('Next')) . '</div>'
+            . '<ol class="list-unstyled small mb-0">'
+            . '<li class="mb-3"><div class="d-flex align-items-center gap-2 mb-1">' . $badge('done', 'bi-check-circle-fill', lang('Tried')) . '<span class="fw-semibold">' . h(lang('Send an e-mail')) . '</span></div>'
+            . '<div>' . h(lang('To the record\'s contact')) . '</div>' . $button('pg-button-ghost mt-1', 'bi-envelope-open', lang('Preview')) . '</li>'
+            . '<li class="d-flex align-items-center gap-2 fg-secondary">' . $badge('running', 'bi-arrow-right-circle', lang('Next')) . '<span>' . h(lang('Task')) . '</span></li>'
+            . '</ol>'
+            . '<div class="d-flex flex-wrap gap-2">' . $button('pg-button-fill', 'bi-arrow-right', lang('Next step')) . $button('pg-button-quiet', 'bi-skip-end', lang('To the end')) . '</div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: Try in the bar walks the draft from its start with a record, read-only; the bar says nothing is sent and offers End the trial. The panel lists the steps walked in their Try words, the box in turn, Next step and To the end. On the canvas a walked box wears a tick (a Wait "Passed", a condition its outcome), the box in turn "Next"; the arrows taken are green, the others faint.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's counts: Counts and the days in the bar, the pills over
+ * a box (look A's .pg-pill as buttons), the list of a pill's runs.
+ *
+ * @return array id, title, classes, html
+ */
+function pg_look_examples_flow_counts_pattern()
+{
+    $pill = function ($tone, $label, $pressed) {
+        return '<button type="button" class="pg-pill pg-tone-' . $tone . ' wsf-count" aria-pressed="' . ($pressed ? 'true' : 'false') . '">' . h($label) . '</button>';
+    };
+    $days = function ($n, $pressed) {
+        return '<button type="button" class="pg-seg-item" aria-pressed="' . ($pressed ? 'true' : 'false') . '">' . h(lang(array('string' => 'Last {var:1} days', 'vars' => $n))) . '</button>';
+    };
+
+    return array(
+        'id'      => 'pattern-flow-counts',
+        'title'   => lang('Counts'),
+        'classes' => array('.wsf-counts', '.wsf-count', '.pg-pill', '.pg-tone-amber', '.pg-tone-gray', '.pg-tone-rose', '.pg-seg', '.wsf-run-item'),
+        'html'    => '<div class="d-flex flex-column gap-4">'
+            . '<div class="d-flex flex-wrap align-items-center gap-3"><button type="button" class="pg-button pg-button-quiet pg-button-sm fg-primary" aria-pressed="true"><i class="bi bi-bar-chart" aria-hidden="true"></i>' . h(lang('Counts')) . '</button>'
+            . '<div class="pg-seg" role="group">' . $days(7, false) . $days(30, true) . '</div></div>'
+            . '<div class="d-flex flex-wrap gap-2 wsf-counts-sample">' . $pill('amber', lang(array('string' => '{var:1} waiting', 'vars' => 12)), true)
+            . $pill('gray', lang(array('string' => '{var:1} passed', 'vars' => 116)), false) . $pill('rose', lang(array('string' => '{var:1} failed', 'vars' => 3)), false) . '</div>'
+            . '<ul class="list-unstyled mb-0 wsf-run-list"><li><button type="button" class="wsf-run-item"><span class="wsf-run-item-top"><span class="fw-semibold">Ayşe Demir</span><i class="bi bi-chevron-right ms-auto fg-secondary" aria-hidden="true"></i></span>'
+            . '<span class="wsf-run-item-line">' . h(lang(array('string' => 'Waits until {var:1}', 'vars' => '24.11.2026 15:40'))) . '</span></button></li></ul>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: Counts in the bar of a published flow, with the days beside it, puts pills over each box: runs waiting there now in amber, passes in the days plain, failures in rose; a start says how many started. A pill lists its runs in the panel, each opening the run, and Open all in Flow runs narrows the runs list to them.')) . '</p>',
     );
 }
 

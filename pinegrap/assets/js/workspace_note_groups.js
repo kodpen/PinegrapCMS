@@ -302,8 +302,8 @@
     function groupFields(ctx, group) {
         var kit = ctx.kit;
         var box = kit.el('div', 'ws-nb-group-form');
-        var label = kit.el('label', 'form-label small', kit.t('notes_group_name'));
-        var input = kit.el('input', 'form-control form-control-sm mb-4');
+        var label = kit.el('label', 'pg-field-label', kit.t('notes_group_name'));
+        var input = kit.el('input', 'pg-input pg-input-sm mb-4');
         var picker = ctx.colorPicker ? ctx.colorPicker(group ? group.color : 0) : null;
 
         input.type = 'text';
@@ -316,7 +316,7 @@
         box.appendChild(input);
 
         if (picker && (kit.cfg.palette || []).length) {
-            box.appendChild(kit.el('div', 'form-label small', kit.t('color')));
+            box.appendChild(kit.el('div', 'pg-field-label', kit.t('color')));
             box.appendChild(picker);
         }
 
@@ -531,7 +531,7 @@
             head.appendChild(kit.el('span', 'ws-nb-count', String(ctx.mine.length)));
         }
 
-        var add = kit.button('btn btn-sm btn-text theme-secondary ms-auto ws-nb-group-add', kit.t('notes_group_new'), 'bi-folder-plus');
+        var add = kit.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto ws-nb-group-add', kit.t('notes_group_new'), 'bi-folder-plus');
         add.addEventListener('click', function () { editGroup(ctx, null); });
         head.appendChild(add);
         section.appendChild(head);

@@ -34,7 +34,7 @@ validate_token_field();
 
 $form->add_fields_to_session();
 
-$token = $form->get('k');
+$token = pg_set_password_token($form->get('k'));
 
 // A designed page (the set_password widget) names itself in return_to, with
 // the token still in its address: errors and the confirmation go back there.
@@ -200,6 +200,7 @@ if ($send_to != '') {
     || !empty($user['manage_erp'])
     || !empty($user['manage_workspace'])
     || !empty($user['manage_packing'])
+    || pg_waiting_user_is_staff($user)
     || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)
 ) {
     $continue_url = PATH . SOFTWARE_DIRECTORY . '/welcome.php';

@@ -20,7 +20,7 @@ module: contact_list
 - Any open task tagged with the contact counts, not only the ones Remind me opened: a channel task on the contact also says somebody is on it.
 
 ## And the API?
-- LJ6's answer of a hot contact carries the same people as `followed_by` (user ids), null with the Workspace off.
+- `GET /customers/hot` (LJ6) carries the same people as `followed_by` (user ids), `[]` for nobody, null with the Workspace off (`api/api-lead-journey.md`).
 
 ## Tests?
 - `tests/contact_list_followed_by_test.php`: the map on none, one and four people, a done and a cancelled task left out, the Workspace off, the cell (You first, two chips, "+N", an account gone), the column's place.

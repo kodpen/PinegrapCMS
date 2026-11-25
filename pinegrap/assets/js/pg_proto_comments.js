@@ -17,9 +17,18 @@
  *   and an answer box while the thread is open.
  * - A pin whose node the frame does not find on the drawn page is listed
  *   under "Not on the page any more".
+ * - On a link asking approval, "Review this page" opens a box in the comment
+ *   box's place: Approve this page or Request changes, a note (needed to
+ *   request changes) and the name, sent to the same door with a verdict.
+ *   The bar then names the verdict that stands and its day.
+ * - Round two: when the draft moved since that verdict, "Show what changed"
+ *   has the frame outline the nodes changed or added since (their ids come
+ *   with the viewer) and lists in the bar, under "Not on the page any
+ *   more", the threads left on removed nodes; pins and their states stay.
  *
- * place(), pinId(), missing(), threads() and unsent() are pure (tests/
- * prototype_comment_mode_test.php); init() runs the mode in a browser.
+ * place(), pinId(), missing(), threads(), unsent(), reviewLine(), changes()
+ * and removedThreads() are pure (tests/prototype_comment_mode_test.php,
+ * prototype_approval_round_test.php); init() runs the mode in a browser.
  * Served minified as assets/js/pg_proto_comments.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
  *
@@ -98,6 +107,43 @@
         return typeof value === 'string' && value.trim() !== '';
     }
 
+    // The bar's line for the verdict that stands on the page drawn: '' for
+    // none, "Changed since your last review" when the draft moved since,
+    // else the verdict with its day ({date}).
+    function reviewLine(verdict, strings, day) {
+        if (!verdict || typeof verdict !== 'object' || !strings) return '';
+        if (verdict.older) return String(strings.changed || '');
+        if (verdict.verdict === 'approved') return String(strings.approved || '').replace('{date}', day);
+        if (verdict.verdict === 'changes_requested') return String(strings.requested || '').replace('{date}', day);
+        return '';
+    }
+
+    // Node ids of the node shape, once each, at most 500.
+    function nodeIds(value) {
+        var seen = {}, out = [];
+        (Array.isArray(value) ? value : []).forEach(function (id) {
+            if (typeof id === 'string' && NODE.test(id) && !seen[id] && out.length < 500) {
+                seen[id] = true;
+                out.push(id);
+            }
+        });
+        return out;
+    }
+
+    // What "Show what changed" draws, as the viewer takes it from the
+    // server: the nodes to outline and the nodes removed; null for none.
+    function changes(data) {
+        if (!data || typeof data !== 'object') return null;
+        return { marks: nodeIds(data.marks), removed: nodeIds(data.removed) };
+    }
+
+    // The threads left on nodes removed since the verdict, in their order.
+    function removedThreads(removed, list) {
+        var gone = {};
+        (Array.isArray(removed) ? removed : []).forEach(function (id) { gone[id] = true; });
+        return (Array.isArray(list) ? list : []).filter(function (t) { return t && Object.prototype.hasOwnProperty.call(gone, t.node); });
+    }
+
     /* ---------------------------------------------------------------------
        The mode in the viewer
        --------------------------------------------------------------------- */
@@ -121,6 +167,8 @@
         var comments = Array.isArray(cfg.comments) ? cfg.comments.slice() : [];
         var list = [], known = {}, gone = [];
         var on = false, box = null, open = null, sending = false;
+        // "Show what changed" while on: { marks, removed } (changes()).
+        var shown = null;
 
         try { on = window.sessionStorage.getItem(KEY) === '1'; } catch (e) {}
 
@@ -150,7 +198,7 @@
             if (!frame.contentWindow) return;
             var pins = list.map(function (t) { return { id: t.id, n: t.n, node: t.node, x: t.x, y: t.y, done: t.resolved }; });
             var draft = (open && open.place) ? { node: open.place.node, x: open.place.x, y: open.place.y } : null;
-            frame.contentWindow.postMessage({ pgPrototype: 'comment', on: on, pins: pins, draft: draft, active: (open && open.thread) ? open.thread : 0 }, '*');
+            frame.contentWindow.postMessage({ pgPrototype: 'comment', on: on, pins: pins, draft: draft, active: (open && open.thread) ? open.thread : 0, marks: shown ? shown.marks : [] }, '*');
         }
 
         function openCount() {
@@ -170,17 +218,27 @@
 
         function paintBar() {
             bar.textContent = '';
-            bar.classList.toggle('d-none', !on);
-            if (!on) return;
-            bar.appendChild(el('span', 'pg-proto-cbar-hint', S.hint));
-            if (!gone.length) return;
+            bar.classList.toggle('d-none', !on && !shown);
+            if (!on && !shown) return;
+            if (on) bar.appendChild(el('span', 'pg-proto-cbar-hint', S.hint));
+            if (shown) bar.appendChild(el('span', 'pg-proto-cbar-hint pg-proto-cbar-changes', S.changesHint));
+            // The lost threads; while "Show what changed" is on, also the
+            // threads on removed nodes, and the count is of removed nodes.
+            var lost = on ? gone.slice() : [];
+            if (shown) {
+                removedThreads(shown.removed, list).forEach(function (t) {
+                    if (lost.indexOf(t.id) === -1) lost.push(t.id);
+                });
+            }
+            var count = shown ? Math.max(shown.removed.length, lost.length) : lost.length;
+            if (!count) return;
             // The title, then one row of the lost threads that scrolls
             // sideways: never more than one row, however many there are.
             var wrap = el('div', 'pg-proto-gone');
-            wrap.appendChild(el('span', 'pg-proto-gone-title fw-semibold', S.gone + ' (' + gone.length + ')'));
+            wrap.appendChild(el('span', 'pg-proto-gone-title fw-semibold', S.gone + ' (' + count + ')'));
             var row = el('div', 'pg-proto-gone-row');
             wrap.appendChild(row);
-            gone.forEach(function (id) {
+            lost.forEach(function (id) {
                 var t = known[id];
                 var first = t.items[0];
                 var b = el('button', 'btn btn-sm btn-outline theme-secondary pg-proto-gone-item');
@@ -269,6 +327,16 @@
             return li;
         }
 
+        // A form's Send button.
+        function sendButton(label) {
+            var go = el('button', 'btn btn-sm btn-solid theme-primary');
+            go.type = 'submit';
+            go.appendChild(el('span', 'bi bi-send me-1'));
+            go.firstChild.setAttribute('aria-hidden', 'true');
+            go.appendChild(el('span', 'pg-btn-label', label));
+            return go;
+        }
+
         // The form: Name and Comment (or Answer), Send. `parent` is the
         // thread answered, 0 for a new comment at `spot`.
         function form(parent, spot) {
@@ -286,11 +354,7 @@
             text.required = true;
             var error = el('div', 'fg-danger small mb-2 d-none');
             error.setAttribute('role', 'alert');
-            var go = el('button', 'btn btn-sm btn-solid theme-primary');
-            go.type = 'submit';
-            go.appendChild(el('span', 'bi bi-send me-1'));
-            go.firstChild.setAttribute('aria-hidden', 'true');
-            go.appendChild(el('span', 'pg-btn-label', parent ? S.answerSend : S.send));
+            var go = sendButton(parent ? S.answerSend : S.send);
             var nameField = field('pg-pc-name', S.name, name);
             var textField = field('pg-pc-text', parent ? S.answer : S.comment, text);
             f.appendChild(nameField.wrap);
@@ -492,9 +556,198 @@
         frame.addEventListener('load', send);
         rebuild();
         paint();
+        if (cfg.review) review(cfg.review);
+
+        // "Review this page" on a link asking approval: a box in the comment
+        // box's place with the two choices, a note (needed to request
+        // changes), the name kept in this browser and Send.
+        function review(R) {
+            var opener = document.getElementById('pg-proto-review');
+            var state = document.getElementById('pg-proto-review-state');
+            var RS = R.strings || {};
+            if (!opener) return;
+            S.changesHint = RS.changesHint;
+            var changed = null;
+
+            // "Show what changed" beside the line, only while the verdict
+            // that stands was given to an older version of the draft.
+            function paintChanges() {
+                var marks = (R.verdict && R.verdict.older) ? changes(R.changes) : null;
+                if (!marks) {
+                    if (changed) changed.remove();
+                    changed = null;
+                    if (shown) { shown = null; paint(); }
+                    return;
+                }
+                if (!changed) {
+                    changed = el('button', opener.className);
+                    changed.type = 'button';
+                    changed.id = 'pg-proto-changes';
+                    changed.appendChild(el('span', 'bi bi-bounding-box-circles'));
+                    changed.firstChild.setAttribute('aria-hidden', 'true');
+                    changed.appendChild(document.createTextNode(' '));
+                    changed.appendChild(el('span', 'pg-proto-label'));
+                    opener.parentNode.insertBefore(changed, opener);
+                    changed.addEventListener('click', function () {
+                        shown = shown ? null : changes(R.changes);
+                        paintChanges();
+                        paint();
+                    });
+                }
+                var label = shown ? RS.hide : RS.show;
+                changed.setAttribute('aria-pressed', shown ? 'true' : 'false');
+                changed.classList.toggle('active', !!shown);
+                changed.title = label;
+                changed.querySelector('.pg-proto-label').textContent = label;
+            }
+
+            function day(unix) {
+                var d = new Date(unix * 1000);
+                try { return d.toLocaleDateString(cfg.lang || undefined, { dateStyle: 'medium' }); } catch (e) { return d.toLocaleDateString(); }
+            }
+
+            function paintState() {
+                var v = R.verdict;
+                var line = reviewLine(v, RS, (v && v.created_at > 0) ? day(v.created_at) : '');
+                if (state) {
+                    state.textContent = line;
+                    state.title = line;
+                }
+            }
+
+            function show() {
+                var r = opener.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+                open = { place: null, thread: 0, vx: Math.max(0, r.left - fr.left), vy: 0, review: true };
+                var body = frameBox(RS.review + (R.page ? ': ' + R.page : ''));
+                var f = el('form', 'pg-proto-form');
+                f.noValidate = true;
+                var group = el('div', 'pg-proto-choices');
+                group.setAttribute('role', 'radiogroup');
+                group.setAttribute('aria-label', RS.review);
+                var picked = '';
+                var choices = [['approved', RS.approve, 'bi-check-lg'], ['changes_requested', RS.changes, 'bi-pencil']];
+                var buttons = choices.map(function (c) {
+                    // A choice looks as the bar's button that opened the box.
+                    var b = el('button', opener.className);
+                    b.type = 'button';
+                    b.setAttribute('role', 'radio');
+                    b.setAttribute('aria-checked', 'false');
+                    b.setAttribute('data-verdict', c[0]);
+                    b.appendChild(el('span', 'bi ' + c[2] + ' me-1'));
+                    b.firstChild.setAttribute('aria-hidden', 'true');
+                    b.appendChild(document.createTextNode(c[1]));
+                    group.appendChild(b);
+                    return b;
+                });
+                var choiceNote = el('div', 'fg-danger small mb-2 d-none');
+                choiceNote.id = 'pg-pr-choice-note';
+                var note = el('textarea', 'form-control form-control-sm');
+                note.rows = 3;
+                note.maxLength = R.noteMax || 1000;
+                var name = el('input', 'form-control form-control-sm');
+                name.type = 'text';
+                name.maxLength = R.nameMax || 60;
+                name.autocomplete = 'name';
+                name.required = true;
+                name.value = rememberedName();
+                var noteField = field('pg-pr-note', RS.noteOptional, note);
+                var nameField = field('pg-pr-name', S.name, name);
+                var error = el('div', 'fg-danger small mb-2 d-none');
+                error.setAttribute('role', 'alert');
+                var go = sendButton(S.send);
+                f.appendChild(group);
+                f.appendChild(choiceNote);
+                f.appendChild(noteField.wrap);
+                f.appendChild(nameField.wrap);
+                f.appendChild(error);
+                var foot = el('div', 'd-flex justify-content-end');
+                foot.appendChild(go);
+                f.appendChild(foot);
+                body.appendChild(f);
+
+                function again() {
+                    if (box && open) position(open.vx, open.vy);
+                }
+
+                buttons.forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        picked = b.getAttribute('data-verdict');
+                        buttons.forEach(function (o) {
+                            var on = (o === b);
+                            o.setAttribute('aria-checked', on ? 'true' : 'false');
+                            o.classList.toggle('btn-solid', on);
+                            o.classList.toggle('btn-outline', !on);
+                        });
+                        choiceNote.classList.add('d-none');
+                        noteField.wrap.querySelector('label').textContent = (picked === 'changes_requested') ? RS.note : RS.noteOptional;
+                        note.required = (picked === 'changes_requested');
+                        again();
+                    });
+                });
+
+                f.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (sending) return;
+                    var n = name.value.trim(), t = note.value.trim();
+                    clear(name, nameField.note);
+                    clear(note, noteField.note);
+                    choiceNote.classList.add('d-none');
+                    error.classList.add('d-none');
+                    if (!picked) { choiceNote.textContent = RS.choose; choiceNote.classList.remove('d-none'); }
+                    if (picked === 'changes_requested' && !t) refuse(note, noteField.note, RS.noteNeeded);
+                    if (!n) refuse(name, nameField.note, S.nameNeeded);
+                    if (!picked || !n || (picked === 'changes_requested' && !t)) { again(); return; }
+                    var data = new FormData();
+                    data.append('l', String(cfg.link));
+                    data.append('page_id', String(cfg.page));
+                    data.append('token', String(cfg.token));
+                    data.append('verdict', picked);
+                    data.append('name', n);
+                    data.append('note', t);
+                    sending = true;
+                    go.disabled = true;
+                    fetch(cfg.door, { method: 'POST', body: data, credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                        .then(function (res) { return res.json().catch(function () { return {}; }); })
+                        .then(function (answer) {
+                            sending = false;
+                            go.disabled = false;
+                            if (!answer || !answer.verdict) {
+                                error.textContent = (answer && answer.message) || S.failed;
+                                error.classList.remove('d-none');
+                                again();
+                                return;
+                            }
+                            keepName(n);
+                            R.verdict = answer.verdict;
+                            R.changes = null;
+                            paintState();
+                            paintChanges();
+                            close();
+                        })
+                        .catch(function () {
+                            sending = false;
+                            go.disabled = false;
+                            error.textContent = S.network;
+                            error.classList.remove('d-none');
+                            again();
+                        });
+                });
+
+                position(open.vx, open.vy);
+                send();
+                buttons[0].focus();
+            }
+
+            opener.addEventListener('click', function () {
+                if (open && open.review) { close(); return; }
+                if (!holding()) show();
+            });
+            paintState();
+            paintChanges();
+        }
     }
 
-    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, init: init };
+    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, reviewLine: reviewLine, changes: changes, removedThreads: removedThreads, init: init };
 
     // The viewer prints its settings as JSON beside the script.
     if (typeof document !== 'undefined') {

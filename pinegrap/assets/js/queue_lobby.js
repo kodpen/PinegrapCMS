@@ -125,7 +125,7 @@
         board.past.forEach(function (call) {
             var row = element('div', 'pg-card-inner-row');
 
-            row.appendChild(element('strong', 'pg-tabular flex-grow-1', call.number, 'font-size:clamp(1.25rem,2.5vw,2.25rem)'));
+            row.appendChild(element('strong', 'pg-tabular flex-grow-1 text-nowrap', call.number, 'font-size:clamp(1.25rem,2.5vw,2.25rem)'));
             row.appendChild(element('span', 'pg-text-2', call.desk, 'font-size:clamp(1rem,2vw,1.75rem)'));
             pastList.appendChild(row);
         });

@@ -758,7 +758,7 @@ function api_products_create($params) {
 
 	$row = api_row(api_product_select() . " WHERE products.id = '" . $id . "' LIMIT 1");
 
-	api_webhook_enqueue('product.created', array('id' => $id, 'name' => $row['name']));
+	pg_announce('product.created', array('id' => $id, 'name' => $row['name']), array('listeners' => false));
 
 	api_ok(api_product_present($row, api_product_extras(array($id))), 201);
 
@@ -1534,7 +1534,7 @@ function api_products_update($params) {
 
 	$row = api_row(api_product_select() . " WHERE products.id = '" . $id . "' LIMIT 1");
 
-	api_webhook_enqueue('product.updated', array('id' => $id, 'name' => $row['name']));
+	pg_announce('product.updated', array('id' => $id, 'name' => $row['name']), array('listeners' => false));
 
 	if (function_exists('pg_marketplace_product_changed')) {
 
@@ -1600,7 +1600,7 @@ function api_products_set_enabled($id, $enabled, $by) {
 		? lang(array('string' => 'Product ({var:1}) was put on sale by {var:2}.', 'vars' => array($product['name'], $by)))
 		: lang(array('string' => 'Product ({var:1}) was taken off sale by {var:2}.', 'vars' => array($product['name'], $by))), 'SYSTEM');
 
-	api_webhook_enqueue('product.updated', array('id' => $id, 'name' => $product['name']));
+	pg_announce('product.updated', array('id' => $id, 'name' => $product['name']), array('listeners' => false));
 
 	if (function_exists('pg_marketplace_product_changed')) {
 
@@ -1659,7 +1659,7 @@ function api_products_set_price($id, $price, $source) {
 
 	pg_price_history_queue($id, $source);
 
-	api_webhook_enqueue('product.updated', array('id' => $id, 'name' => $product['name']));
+	pg_announce('product.updated', array('id' => $id, 'name' => $product['name']), array('listeners' => false));
 
 	if (function_exists('pg_marketplace_product_changed')) {
 
@@ -1974,7 +1974,7 @@ function api_products_delete($params) {
 			'vars'   => array($product['name'], $app['name'], $app['api_key'])
 		)), $app['owner']['username']);
 
-		api_webhook_enqueue('product.deleted', array('id' => $id, 'name' => $product['name'], 'recycled' => true));
+		pg_announce('product.deleted', array('id' => $id, 'name' => $product['name'], 'recycled' => true), array('listeners' => false));
 
 		if (function_exists('pg_marketplace_product_changed')) {
 
@@ -2171,7 +2171,7 @@ function api_products_prices($params) {
 
 			pg_price_history_queue((int)$product['id'], 'api');
 
-			api_webhook_enqueue('product.updated', array('id' => (int)$product['id'], 'name' => $product['name']));
+			pg_announce('product.updated', array('id' => (int)$product['id'], 'name' => $product['name']), array('listeners' => false));
 
 			// The same fact, going the other way: a shop whose prices are driven
 			// by one marketplace has to have the others told.

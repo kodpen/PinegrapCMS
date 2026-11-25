@@ -9,7 +9,7 @@ description: The bug hunt of volunteer shifts (VS1 to VS8, 2026-11-24): sign-up,
 - Decided, no fault: `core/volunteer-store.md` (erasure deletes the rows), the decisions-made lines of polls 202 and 208.
 
 ## What did it fix? (PR #11338)
-- Mark as left kept the volunteer's coming places: the waitlist never moved and their link no longer opened to cancel. `pg_volunteer_left_release()` frees them as cancels.
+- Mark as left kept the volunteer's coming places: the waitlist never moved and their link no longer opened to cancel. Mark as left now calls `pg_volunteer_give_up_coming()`, the helper the volunteer's own Pause or Leave uses, so both free them as cancels.
 - "Call volunteers" and the job called people for a role removed in Set-up, whose place nobody can take (`pg_volunteer_shift_call_ids()`).
 - Document notices went on for an old document after a newer one of its kind was uploaded (`pg_volunteer_document_notices_run()`).
 - The Report counted a place handed over by a swap, and a swap request refused or withdrawn, as a late cancel (`pg_volunteer_report_build()`).

@@ -19,6 +19,7 @@ description: Image config keys and defaults, product upload pipeline (image_prof
 
 ## What is the rule for files.image_width / image_height?
 - They are a cache, filled only when empty (`pg_file_image_dimensions()`).
+- They hold the size as shown, EXIF orientation applied (`pg_image_display_size()`; the stored size only when the orientation cannot be read): a phone portrait stored 4000 x 3000 on its side is 3000 x 4000. Until #11449 the lazy fill, the File Manager and API uploads and Optimize's no-gain answer stored the sideways size while a written file stored the upright one; rows filled before keep theirs until the pixels change.
 - Any code that changes a file's pixels MUST write both. The rotate branch did not, and a quarter turn swaps width/height, so the list showed the old size. The resize button now reads these columns, so a stale value becomes a visible bug.
 
 ## Why is the optimizable-percent badge expensive?

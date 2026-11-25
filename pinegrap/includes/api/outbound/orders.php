@@ -406,14 +406,14 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 	// listening for shipments has to hear about a parcel whichever side
 	// recorded it. The guard above means this runs once per number, not once
 	// per poll.
-	api_webhook_enqueue('order.shipped', array(
+	pg_announce('order.shipped', array(
 		'id'               => (int)$order_id,
 		'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "' LIMIT 1"),
 		'ship_to_id'       => (int)$ship_to_id,
 		'tracking_numbers' => array($recorded['number']),
 		'ship_date'        => null,
 		'parcels'          => pg_shipment_api_parcels((int)$ship_to_id, null, $recorded['number'])
-	) + pg_shipment_event_values(pg_shipment_mail_fields(array((int)$ship_to_id))));
+	) + pg_shipment_event_values(pg_shipment_mail_fields(array((int)$ship_to_id))), array('listeners' => false));
 
 	$ships_itself = false;
 
@@ -1238,7 +1238,10 @@ function mp_order_take_stock($matched, $order_ref = '') {
 			db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
 				WHERE (id = '" . e($product_id) . "') AND (out_of_stock != '1')");
 
-			if (function_exists('create_notification')) {
+			// The guard above makes the flag and the warning happen once per
+			// product, as a web order's (order_completion.php): a product
+			// already out of stock is not announced again by every order.
+			if ((mysqli_affected_rows(db::$con) > 0) && function_exists('create_notification')) {
 
 				create_notification(array(
 					'action'     => 'out_stock',

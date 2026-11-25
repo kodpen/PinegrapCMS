@@ -65,7 +65,7 @@ function pg_credit_refund_bonus()
 
 /**
  * What the credit card holds for a refund: the refund and the bonus on it,
- * rounded with round() at the smallest unit. A bonus of 0, empty or negative
+ * rounded half away from zero at the smallest unit (pg_percent_of()). A bonus of 0, empty or negative
  * adds nothing; it is capped like the setting.
  *
  * @param int   $amount  the refund in minor units
@@ -86,7 +86,8 @@ function pg_credit_refund_card_amount($amount, $percent)
         return $amount;
     }
 
-    return $amount + (int) round($amount * $percent / 100);
+    // The exact product, rounded half away from zero on every PHP version.
+    return $amount + (int) pg_percent_of($amount, $percent);
 }
 
 /**
@@ -233,7 +234,8 @@ function pg_credit_refund_cancel_mail_body($data)
  * written it goes back. The payment money given is added to the refunded
  * amount with an order_refunds row of type 'credit' (transaction_id the card
  * id), as a refund of the payment would be; the gift card part has no
- * refunded amount to add to.
+ * refunded amount to add to and gets a row of type 'return_gift_card'
+ * (pg_credit_refund_cancel_rows()).
  *
  * @param int $order_id
  * @param int $staff_id the staff member
@@ -300,9 +302,11 @@ function pg_credit_refund_cancelled_order($order_id, $staff_id)
 
     $has_notes = pg_schema_has('order_refunds', 'notes');
 
-    db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . ($has_notes ? ', notes' : '') . ", created_at)
-        VALUES ('" . (int) $order['id'] . "', '" . $amount . "', 'credit', '" . (int) $issued['card_id'] . "'"
-        . ($has_notes ? ", '" . e('Store credit #' . (int) $issued['card_id']) . "'" : '') . ", NOW())");
+    foreach (pg_credit_refund_cancel_rows($amount, $payment) as $refund_row) {
+        db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . ($has_notes ? ', notes' : '') . ", created_at)
+            VALUES ('" . (int) $order['id'] . "', '" . (int) $refund_row[0] . "', '" . e($refund_row[1]) . "', '" . (int) $issued['card_id'] . "'"
+            . ($has_notes ? ", '" . e('Store credit #' . (int) $issued['card_id']) . "'" : '') . ", NOW())");
+    }
 
     log_activity(lang(array(
         'string' => 'The refund of {var:1} for order #{var:2} was given as store credit of {var:3}.',
@@ -316,6 +320,35 @@ function pg_credit_refund_cancelled_order($order_id, $staff_id)
         'credit'  => $issued['credit'],
         'mailed'  => pg_credit_refund_cancel_mail($order, $amount, $issued['credit']),
     );
+}
+
+/**
+ * The order_refunds rows of a cancelled order's refund given as store
+ * credit: the payment money as a 'credit' row, the gift card part as a
+ * 'return_gift_card' row, which pg_order_gift_card_owed() subtracts, as a
+ * return's refund writes it. One row of the whole amount left the gift card
+ * part owed, so after a restore a return or a second cancellation gave it
+ * as credit again. A part of 0 has no row. Pure.
+ *
+ * @param int $amount  the refund in minor units
+ * @param int $payment the payment money in it, minor units
+ * @return array list of array(amount, refund_type)
+ */
+function pg_credit_refund_cancel_rows($amount, $payment)
+{
+    $amount = max(0, (int) $amount);
+    $payment = max(0, min($amount, (int) $payment));
+    $rows = array();
+
+    if ($payment > 0) {
+        $rows[] = array($payment, 'credit');
+    }
+
+    if ($amount - $payment > 0) {
+        $rows[] = array($amount - $payment, 'return_gift_card');
+    }
+
+    return $rows;
 }
 
 /**

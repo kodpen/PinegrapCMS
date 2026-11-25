@@ -169,9 +169,22 @@ function test_pick_pack_scan_verdicts()
 
 	pg_assert_same(array('verdict' => 'good', 'line' => 0), pg_pack_scan_verdict($lines, array('id' => 21, 'group_id' => 5)), 'good');
 	pg_assert_same('not_found', pg_pack_scan_verdict($lines, null)['verdict'], 'no product for the code');
-	pg_assert_same('binned', pg_pack_scan_verdict($lines, array('id' => 21, 'binned' => 1))['verdict'], 'binned is refused');
+	pg_assert_same('binned', pg_pack_scan_verdict($lines, array('id' => 99, 'binned' => 1))['verdict'], 'a binned product not on the address is refused');
 	pg_assert_same('wrong_product', pg_pack_scan_verdict($lines, array('id' => 99, 'group_id' => 8))['verdict'], 'not on the address');
 	pg_assert_same('wrong_product', pg_pack_scan_verdict($lines, array('id' => 99, 'group_id' => 0))['verdict'], 'no group is no variant');
+}
+
+// A product moved to the Recycle Bin after the order was paid is still
+// sent: its units count, and once they are in the box it is too many.
+function test_pick_pack_binned_product_on_the_order_counts()
+{
+	$lines = pick_pack_test_lines();
+
+	pg_assert_same(array('verdict' => 'good', 'line' => 1), pg_pack_scan_verdict($lines, array('id' => 30, 'binned' => 1)), 'a binned product the address wants counts');
+
+	$lines[1]['scanned'] = 1;
+	pg_assert_same('too_many', pg_pack_scan_verdict($lines, array('id' => 30, 'binned' => 1))['verdict'], 'a binned product already in the box is too many');
+	pg_assert_same('binned', pg_pack_scan_verdict($lines, array('id' => 22, 'group_id' => 5, 'binned' => 1))['verdict'], 'a binned variant of a wanted product reads binned');
 }
 
 function test_pick_pack_scan_names_the_variant()

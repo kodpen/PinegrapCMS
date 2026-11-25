@@ -13,7 +13,7 @@ description: When a bell row is read: not on opening the bell; its button, title
   - `mark_read`: the row `id` if `pg_notification_visible_to()` lets the caller see it, plus the ids in `runs` the caller sees (`pg_notification_run_ids()`: whole positive ids, once, not the head, at most 500);
   - `mark_all_read`: every notification the caller sees (`id` is ignored);
   - `mark_unread`, `remove`: one row, as before.
-- Both reading jobs go through `pg_notification_readable_ids($rows, $sees)` (pure, `includes/notifications.php`) and then `pg_notification_mark_read()`, so a Workspace row read here is read in the Workspace too. Read in the Workspace stays read in the bell (`ws_bell_sync_read()`), unchanged.
+- Both reading jobs go through `pg_notification_readable_ids($rows, $sees)` (pure, `includes/notifications.php`) and then `pg_notification_mark_read()`, so a Workspace row read here is read in the Workspace too. Read in the Workspace stays read in the bell (`ws_bell_sync_read()`), also when a person hides the message that mentions them, acknowledges a message (`ack_reminder`) or a line leaves their reach (`ws_inbox_visible_rows()`); before #11438 those three left the bell row unread.
 
 ## Who collects a fold's runs?
 - The script: a fold's head sends the ids of the rows drawn under it (`li[data-pg-bell-fold="<head>"]`) as `runs`; the server checks each one. Opening an older run reads only that run.

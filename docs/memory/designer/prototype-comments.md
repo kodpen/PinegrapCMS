@@ -15,6 +15,7 @@ module: prototype_comments
 - The editor's Comments button, pins on the canvas, the list (the Prototype view's Comments tab), the heartbeat's stamp, the bell line: `designer-prototype-comments-list.md`.
 - The viewer's keep-alive ping to the door: `prototype-comments-ping.md`.
 - "Make a task": `designer-prototype-comments-task.md`. What a later change must keep and the schema answer: `designer-prototype-comments-rules.md`. The share links: `designer-prototype-share-links.md`.
+- A link asking approval ("Approve this page", "Request changes"): `prototype-approval.md`.
 
 ## How are a link's comments deleted?
 - The Share prototype dialog's links list shows "Comments: n" (answers counted, `pg_proto_comments_link_counts()`) and **Delete comments** on a link that has any. It asks first; then every comment of that link goes, open and resolved, with their answers.
@@ -31,6 +32,6 @@ module: prototype_comments
 - Architect (2026-11-20, agent channel message 9873): inside the accepted look, no new look. The button is in the canvas bar's Prototype mode, the list the Comments tab beside Links in the Prototype view's side panel; the View menu's item **Prototype comments** reaches it from Design mode (#10602). Before, the button sat in the top bar beside the Assistant and the list floated over the right column.
 
 ## What was left out?
-- A picture attached to a comment, comments on a live page, an e-mail to the customer when the designer answers: each waits for a later yes of the owner.
+- A picture attached to a comment and comments on a live page: each waits for a later yes of the owner. The answer mail came with approval (`prototype-approval-mails.md`).
 
 Related: docs/memory/designer/designer-prototype-comments-door.md, docs/memory/designer/designer-prototype-comments-list.md, docs/memory/designer/designer-prototype-share-links.md

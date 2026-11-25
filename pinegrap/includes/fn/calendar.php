@@ -1351,9 +1351,12 @@ function pg_calendar_event_exception_number_ok($recurrence_number, $recurrence, 
  * @param string $host      PRODID's host
  * @param string $page_name PRODID's product name
  * @param string $rrule     RRULE value without the name, '' for none
+ * @param string[] $removed_dates YYYY-MM-DD of the occurrences removed from
+ *                          the calendar, written as EXDATE so a subscribed
+ *                          calendar leaves them out too
  * @return string CRLF line endings
  */
-function pg_calendar_event_ics($event, $host, $page_name, $rrule)
+function pg_calendar_event_ics($event, $host, $page_name, $rrule, $removed_dates = array())
 {
     $start = strtotime((string) $event['start_date_and_time']);
     $end = strtotime((string) $event['end_date_and_time']);
@@ -1392,6 +1395,25 @@ function pg_calendar_event_ics($event, $host, $page_name, $rrule)
 
     if ($rrule !== '') {
         $lines[] = 'RRULE:' . $rrule;
+
+        // An EXDATE takes the value type of DTSTART: a date for an all-day
+        // event, the floating start time on that date for a timed one.
+        $exdates = array();
+
+        foreach (array_unique((array) $removed_dates) as $removed) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $removed)) {
+                continue;
+            }
+
+            $exdates[] = ((string) $event['all_day'] === '1')
+                ? str_replace('-', '', $removed)
+                : str_replace('-', '', $removed) . 'T' . date('His', $start);
+        }
+
+        if ($exdates) {
+            sort($exdates);
+            $lines[] = (((string) $event['all_day'] === '1') ? 'EXDATE;VALUE=DATE:' : 'EXDATE:') . implode(',', $exdates);
+        }
     }
 
     $lines[] = 'END:VEVENT';
@@ -1402,9 +1424,13 @@ function pg_calendar_event_ics($event, $host, $page_name, $rrule)
 
 /**
  * The start and end of one occurrence of a recurring event. The occurrence
- * starts on its own date at the event's start time and lasts as long as the
- * event, so an overnight or multi-day event ends on a later day than the
- * one it starts on.
+ * starts on its own date at the event's start time and ends at the event's
+ * end time as many calendar days later as the event's own end is after its
+ * start, so an overnight or multi-day event ends on a later day than the
+ * one it starts on. The end is counted in days and clock time, not in
+ * seconds: an occurrence across a clock change (or an event stored across
+ * one) still ends at its clock time, and an all-day occurrence still ends at
+ * 23:59 of its last day instead of 00:59 of the day after.
  *
  * @param string $occurrence_date     the occurrence's date, YYYY-MM-DD
  * @param string $start_date_and_time the event's start, YYYY-MM-DD HH:MM:SS
@@ -1413,11 +1439,175 @@ function pg_calendar_event_ics($event, $host, $page_name, $rrule)
  */
 function pg_calendar_occurrence_window($occurrence_date, $start_date_and_time, $end_date_and_time)
 {
-    $start_parts = explode(' ', $start_date_and_time);
+    $start_parts = explode(' ', (string) $start_date_and_time);
+    $end_parts = explode(' ', (string) $end_date_and_time);
     $start = strtotime($occurrence_date . ' ' . ($start_parts[1] ?? '00:00:00'));
-    $length = strtotime($end_date_and_time) - strtotime($start_date_and_time);
+    // Noon to noon, rounded: a day across a clock change is 23 or 25 hours.
+    $days = (int) round((strtotime($end_parts[0] . ' 12:00:00') - strtotime($start_parts[0] . ' 12:00:00')) / 86400);
+    $end_day = date('Y-m-d', strtotime($occurrence_date . ' 12:00:00 ' . (($days < 0) ? '-' : '+') . abs($days) . ' days'));
+    $end = strtotime($end_day . ' ' . ($end_parts[1] ?? '00:00:00'));
 
-    return array($start, $start + $length);
+    if (($start === false) || ($end === false)) {
+        return array((int) $start, (int) $start);
+    }
+
+    return array($start, max($start, $end));
+}
+
+/**
+ * The date of one occurrence of a repeating event, as the calendar views and
+ * the event page count it: daily on the chosen days of the week, weekly,
+ * monthly on the same date (the month's last day when it has no such date)
+ * or on the same weekday of the same week ("the fifth" read as the last),
+ * yearly on the same date (28 February for a 29 February). Pure.
+ *
+ * @param string $start_date        the event's first date, YYYY-MM-DD
+ * @param string $type              day, week, month or year
+ * @param string $month_type        day_of_the_month or day_of_the_week
+ * @param array  $days              sun..sat => 1 for a day a daily repeat runs on
+ * @param int    $recurrence_number 0 for the first occurrence
+ * @return string YYYY-MM-DD; the first date for an unknown type, or a daily
+ *                repeat on no day of the week
+ */
+function pg_calendar_occurrence_date($start_date, $type, $month_type, $days, $recurrence_number)
+{
+    $start_date = (string) $start_date;
+    $number = max(0, (int) $recurrence_number);
+
+    if ($number === 0) {
+        return $start_date;
+    }
+
+    $parts = explode('-', $start_date);
+    $year = (int) $parts[0];
+    $month = (int) ($parts[1] ?? 1);
+    $day = (int) ($parts[2] ?? 1);
+
+    switch ((string) $type) {
+        case 'day':
+            $date = $start_date;
+
+            for ($i = 1; $i <= $number; $i++) {
+                $found = false;
+
+                for ($count = 0; $count < 7; $count++) {
+                    $time = strtotime('+1 day', strtotime($date));
+                    $date = date('Y-m-d', $time);
+
+                    if ((int) ($days[strtolower(date('D', $time))] ?? 0) === 1) {
+                        $found = true;
+                        break;
+                    }
+                }
+
+                if (!$found) {
+                    return $start_date;
+                }
+            }
+
+            return $date;
+
+        case 'week':
+            return date('Y-m-d', mktime(0, 0, 0, $month, $day + (7 * $number), $year));
+
+        case 'month':
+            $first_of_month = mktime(0, 0, 0, $month + $number, 1, $year);
+
+            if ((string) $month_type === 'day_of_the_week') {
+                $weekday = date('l', strtotime($start_date));
+                $week = (int) ceil($day / 7);
+
+                if ($week <= 4) {
+                    return date('Y-m-d', strtotime('+' . ($week - 1) . ' week ' . $weekday, $first_of_month));
+                }
+
+                $last_day = strtotime(date('Y-m-t', $first_of_month));
+
+                return date('Y-m-d', (date('l', $last_day) === $weekday) ? $last_day : strtotime('last ' . $weekday, $last_day));
+            }
+
+            if ((string) $month_type !== 'day_of_the_month') {
+                return $start_date;
+            }
+
+            return date('Y-m-', $first_of_month) . sprintf('%02d', min($day, (int) date('t', $first_of_month)));
+
+        case 'year':
+            $first_of_month = mktime(0, 0, 0, $month, 1, $year + $number);
+
+            return date('Y-m-', $first_of_month) . sprintf('%02d', min($day, (int) date('t', $first_of_month)));
+    }
+
+    return $start_date;
+}
+
+/**
+ * The RRULE value (without the name) of a repeating event's .ics file, or ''
+ * for an event that does not repeat. It gives the same dates as
+ * pg_calendar_occurrence_date(): a daily repeat names its days of the week,
+ * and a monthly or yearly repeat on a date some months lack (the 29th to the
+ * 31st, 29 February) falls back to the month's last day, where a bare
+ * FREQ=MONTHLY skips those months. Pure.
+ *
+ * @param array $event recurrence, recurrence_type, recurrence_month_type,
+ *                     start_date, total_recurrence_number, recurrence_days
+ * @return string
+ */
+function pg_calendar_event_rrule($event)
+{
+    if ((string) ($event['recurrence'] ?? '') !== '1') {
+        return '';
+    }
+
+    $start_date = (string) ($event['start_date'] ?? '');
+    $day = (int) substr($start_date, 8, 2);
+    $rule = '';
+
+    switch ((string) ($event['recurrence_type'] ?? '')) {
+        case 'day':
+            $rule = 'FREQ=DAILY';
+            $by_day = array();
+
+            foreach (array('sun' => 'SU', 'mon' => 'MO', 'tue' => 'TU', 'wed' => 'WE', 'thu' => 'TH', 'fri' => 'FR', 'sat' => 'SA') as $name => $code) {
+                if ((int) ($event['recurrence_days'][$name] ?? 0) === 1) {
+                    $by_day[] = $code;
+                }
+            }
+
+            if ((count($by_day) > 0) && (count($by_day) < 7)) {
+                $rule .= ';BYDAY=' . implode(',', $by_day);
+            }
+            break;
+
+        case 'week':
+            $rule = 'FREQ=WEEKLY';
+            break;
+
+        case 'month':
+            $rule = 'FREQ=MONTHLY';
+
+            if ((string) ($event['recurrence_month_type'] ?? '') === 'day_of_the_week') {
+                $week = (int) ceil($day / 7);
+                $rule .= ';BYDAY=' . (($week > 4) ? '-1' : (string) $week) . strtoupper(substr(date('D', strtotime($start_date)), 0, 2));
+            } elseif ($day >= 29) {
+                // The earlier of the date and the month's last day.
+                $rule .= ';BYMONTHDAY=' . $day . ',-1;BYSETPOS=1';
+            }
+            break;
+
+        case 'year':
+            $rule = 'FREQ=YEARLY';
+
+            if (substr($start_date, 5, 5) === '02-29') {
+                $rule .= ';BYMONTH=2;BYMONTHDAY=29,-1;BYSETPOS=1';
+            }
+            break;
+
+        default:
+            return '';
+    }
+
+    return $rule . ';COUNT=' . ((int) ($event['total_recurrence_number'] ?? 0) + 1);
 }
 
 /**
@@ -1815,6 +2005,15 @@ function get_calendar_event($event_id, $recurrence_number)
     $recurrence_day_fri = $row['recurrence_day_fri'];
     $recurrence_day_sat = $row['recurrence_day_sat'];
     $recurrence_month_type = $row['recurrence_month_type'];
+    $recurrence_days = array(
+        'sun' => $recurrence_day_sun,
+        'mon' => $recurrence_day_mon,
+        'tue' => $recurrence_day_tue,
+        'wed' => $recurrence_day_wed,
+        'thu' => $recurrence_day_thu,
+        'fri' => $recurrence_day_fri,
+        'sat' => $recurrence_day_sat,
+    );
     $location = $row['location'];
     $reservations = $row['reservations'];
     $separate_reservations = $row['separate_reservations'];
@@ -1911,123 +2110,11 @@ function get_calendar_event($event_id, $recurrence_number)
     // if this is a recurring event and this is a recurring instance,
     // then adjust start date & time and end date & time for this recurring instance
     if (($recurrence == 1) && ($recurrence_number)) {
-        // Split the date into more precise values
-        $event_start_date_parts = explode('-', $start_date);
-        $event_start_year = $event_start_date_parts[0];
-        $event_start_month = $event_start_date_parts[1];
-        $event_start_day = $event_start_date_parts[2];
-        // Find the difference between the original start date and end date (So we do not need to calculate the end dates new date too)
-        $event_start_end_difference = (strtotime($end_date_and_time) - strtotime($start_date_and_time));
-        // A recurrence type (or monthly kind) none of the cases below knows
-        // leaves the instance on the event's own date; unset, it was read as
-        // an empty date, which strtotime() took as today.
-        $event_start_date = $start_date;
-        switch ($recurrence_type) {
-            // Daily
-            case 'day':
-                $event_start_date = $start_date;
-                // Loop through all recurrence numbers in order to
-                // calculate the date for this recurrence number.
-                for ($i = 1; $i <= $recurrence_number; $i++) {
-                    $count = 0;
-                    // Loop through days in the future until we find a date that is valid
-                    // based on the valid days of the week that were selected.
-                    while (true) {
-                        $new_start_time = strtotime('+1 day', strtotime($event_start_date));
-                        $event_start_date = date('Y-m-d', $new_start_time);
-                        $day_of_the_week = strtolower(date('D', $new_start_time));
-                        // If this day of the week is valid for this calendar event,
-                        // then we have found a valid date, so break out of the loop.
-                        if (${'recurrence_day_' . $day_of_the_week} == 1) {
-                            break;
-                        }
-                        $count++;
-                        // If we have already looped 7 times, then something is wrong,
-                        // so break out of this loop and the recurrence loop above.
-                        // This should never happen but is added just in case in order to
-                        // prevent an endless loop.
-                        if ($count == 7) {
-                            break 2;
-                        }
-                    }
-                }
-                break;
-            // Weekly
-            case 'week':
-                $new_start_time = mktime(0, 0, 0, $event_start_month, $event_start_day + (7 * $recurrence_number), $event_start_year);
-                $event_start_date = date('Y', $new_start_time) . '-' . date('m', $new_start_time) . '-' . date('d', $new_start_time);
-                break;
-            // Monthly
-            case 'month':
-                switch ($recurrence_month_type) {
-                    case 'day_of_the_month':
-                        $new_start_time = mktime(0, 0, 0, $event_start_month + $recurrence_number, 1, $event_start_year);
-                        $new_event_start_year = date('Y', $new_start_time);
-                        $new_event_start_month = date('m', $new_start_time);
-                        $new_event_start_day = $event_start_day;
-                        // if date is not valid, then get last date for month
-                        if (checkdate($new_event_start_month, $new_event_start_day, $new_event_start_year) == false) {
-                            $new_event_start_day = date('t', mktime(0, 0, 0, $new_event_start_month, 1, $new_event_start_year));
-                        }
-                        $event_start_date = $new_event_start_year . '-' . $new_event_start_month . '-' . $new_event_start_day;
-                        break;
-                    case 'day_of_the_week':
-                        // Determine which week in the month the event is on.
-                        // If the week is 1-4 then we will use that, however if the week is 5,
-                        // then we interpret that as the last week.
-                        $day_of_the_week = date('l', strtotime($start_date));
-                        $first_day_of_the_month_timestamp = strtotime($event_start_year . '-' . $event_start_month . '-01');
-                        $week = '';
-                        // Create a loop in order to determine which week event falls on.
-                        // We only loop through 4 weeks, because we are going to set "last" below for 5th week.
-                        for ($week_index = 0; $week_index <= 3; $week_index++) {
-                            // If the event is in this week, then remember the week number and break out of this loop.
-                            if ($start_date == date('Y-m-d', strtotime('+' . $week_index . ' week ' . $day_of_the_week, $first_day_of_the_month_timestamp))) {
-                                $week = $week_index + 1;
-                                break;
-                            }
-                        }
-                        // If a week was not found, then that means it falls on the 5th week,
-                        // so set it to be the last week.
-                        if ($week == '') {
-                            $week = 'last';
-                        }
-                        $first_day_of_the_month_timestamp = mktime(0, 0, 0, $event_start_month + $recurrence_number, 1, $event_start_year);
-                        // If the week is 1-4 then find the date in a certain way.
-                        if ($week != 'last') {
-                            $week_index = $week - 1;
-                            $new_start_time = strtotime('+' . $week_index . ' week ' . $day_of_the_week, $first_day_of_the_month_timestamp);
-                            // Otherwise the week is last, so find the date in a different way.
-                        } else {
-                            $last_day_of_the_month_timestamp = strtotime(date('Y-m-t', $first_day_of_the_month_timestamp));
-                            // If the last day of the month happens to be the right day of the week,
-                            // then thats that day that we want.
-                            if (date('l', $last_day_of_the_month_timestamp) == $day_of_the_week) {
-                                $new_start_time = $last_day_of_the_month_timestamp;
-                                // Otherwise find the day of the week that we want in the last week of the month.
-                            } else {
-                                $new_start_time = strtotime('last ' . $day_of_the_week, $last_day_of_the_month_timestamp);
-                            }
-                        }
-                        $event_start_date = date('Y-m-d', $new_start_time);
-                        break;
-                }
-                break;
-            // Yearly
-            case 'year':
-                $new_event_start_year = $event_start_year + $recurrence_number;
-                $new_event_start_month = $event_start_month;
-                $new_event_start_day = $event_start_day;
-                // if date is not valid, then get last date for month
-                if (checkdate($new_event_start_month, $new_event_start_day, $new_event_start_year) == false) {
-                    $new_event_start_day = date('t', mktime(0, 0, 0, $new_event_start_month, 1, $new_event_start_year));
-                }
-                $event_start_date = $new_event_start_year . '-' . $new_event_start_month . '-' . $new_event_start_day;
-                break;
-        }
-        // Save the new start date and new end date to the variables we were using previously.
+        $event_start_date = pg_calendar_occurrence_date($start_date, $recurrence_type, $recurrence_month_type, $recurrence_days, (int) $recurrence_number);
+        // The end at its clock time, the event's number of days later.
+        list(, $occurrence_end) = pg_calendar_occurrence_window($event_start_date, $start_date_and_time, $end_date_and_time);
         $start_date_and_time = $event_start_date . ' ' . $start_time;
-        $end_date_and_time = date('Y-m-d H:i:s', (strtotime($start_date_and_time) + $event_start_end_difference));
+        $end_date_and_time = date('Y-m-d H:i:s', $occurrence_end);
     }
     // If the date format is month and then day, then use that format.
     if (DATE_FORMAT == 'month_day') {
@@ -2118,6 +2205,7 @@ function get_calendar_event($event_id, $recurrence_number)
         'total_recurrence_number' => $total_recurrence_number,
         'recurrence_type' => $recurrence_type,
         'recurrence_month_type' => $recurrence_month_type,
+        'recurrence_days' => $recurrence_days,
         'location' => $location,
         'reservations' => $reservations,
         'separate_reservations' => $separate_reservations,

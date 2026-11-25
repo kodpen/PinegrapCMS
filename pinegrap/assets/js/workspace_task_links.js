@@ -66,7 +66,7 @@
             }
 
             if (removable) {
-                var remove = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-x-lg', h.t('tl_remove'));
+                var remove = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', h.t('tl_remove'));
                 remove.addEventListener('click', function () {
                     remove.disabled = true;
                     h.api('ws_task_link_remove', { task_id: task.id, blocker_id: other.id }).then(function (data) {
@@ -86,7 +86,7 @@
         // ones the reader can see (the # picker's search).
         function finder() {
             var box = h.el('div', 'ws-task-links-find position-relative mt-1');
-            var input = h.el('input', 'form-control form-control-sm');
+            var input = h.el('input', 'pg-input pg-input-sm');
             var list = h.el('div', 'ws-task-links-results list-group d-none');
             var serial = 0;
 

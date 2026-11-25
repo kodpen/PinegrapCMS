@@ -19,7 +19,8 @@
  *    "nodes": [{"id", "kind", "label", "x", "y", "config"}],
  *    "edges": [{"from", "to", "on"}],
  *    "notes": [{"id", "text", "x", "y", "w", "h", "by", "day"}],
- *    "frames": [{"id", "name", "x", "y", "w", "h", "folded"}]}
+ *    "frames": [{"id", "name", "x", "y", "w", "h", "folded"}],
+ *    "leave": [{"event"}]}
  * ws_flow_graph_normalize() keeps it in that shape and ws_flow_graph_check()
  * lists what stops it from being published; both are pure. A draft may hold
  * problems, a published version never does.
@@ -122,6 +123,12 @@ function ws_flow_kinds()
     // One condition of a scheduled action (flow_conditions.php).
     if (function_exists('ws_flow_condition_outcomes')) {
         $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
+    }
+
+    // Runs split at random by shares, each arm an outcome (flow_split.php).
+    if (function_exists('ws_flow_split_outcomes')) {
+        $kinds['split'] = array('label' => lang('Split'), 'trigger' => false, 'outcomes' => ws_flow_split_outcomes(), 'step' => false,
+            'outputs' => array(array('key' => 'arm', 'type' => 'text', 'label' => lang('Arm taken'))));
     }
 
     // A wait before the boxes after it (flow_runs.php).
@@ -383,8 +390,9 @@ function ws_flow_workspace_problems($workspace_on, $graph)
 
 /**
  * The outcomes an arrow may leave this box on: its kind's
- * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
- * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
+ * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box and a Split box,
+ * whose settings say which (a classifying box's named outcomes,
+ * flow_ai_box.php; a split's arms, flow_split.php). Pure.
  *
  * @param array $kind ws_flow_kinds() entry
  * @param array $node the box (kind, config)
@@ -394,6 +402,11 @@ function ws_flow_node_arrow_outcomes($kind, $node)
 {
     if (((string) ($node['kind'] ?? '') === 'ai') && function_exists('ws_step_ai_arrow_outcomes')) {
         return ws_step_ai_arrow_outcomes(ws_step_ai_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
+    }
+
+    // A Split box leaves on each of its arms.
+    if (((string) ($node['kind'] ?? '') === 'split') && function_exists('ws_flow_split_arrow_outcomes')) {
+        return ws_flow_split_arrow_outcomes(ws_flow_split_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
     }
 
     return ws_flow_arrow_outcomes($kind);
@@ -432,7 +445,7 @@ function ws_flow_node_id_valid($id)
  */
 function ws_flow_graph_empty()
 {
-    return array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array(), 'frames' => array());
+    return array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array(), 'frames' => array(), 'leave' => array());
 }
 
 /**
@@ -637,6 +650,9 @@ function ws_flow_config_normalize($kind, $config)
         case 'condition':
             return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
 
+        case 'split':
+            return function_exists('ws_flow_split_normalize') ? ws_flow_split_normalize($config) : array();
+
         case 'delay':
             return function_exists('ws_flow_delay_normalize') ? ws_flow_delay_normalize($config) : array();
 
@@ -724,7 +740,7 @@ function ws_flow_tell_of($graph)
  * Nothing is refused here; ws_flow_graph_check() says what is wrong.
  *
  * @param array|string $graph
- * @return array v, nodes, edges, notes, frames
+ * @return array v, nodes, edges, notes, frames, leave (ws_flow_leave_normalize())
  */
 function ws_flow_graph_normalize($graph)
 {
@@ -824,6 +840,8 @@ function ws_flow_graph_normalize($graph)
             'folded' => ($folded === true) || ($folded === 1) || ($folded === '1') || ($folded === 'true'),
         );
     }
+
+    $out['leave'] = ws_flow_leave_normalize($graph['leave'] ?? array());
 
     return $out;
 }
@@ -1308,6 +1326,10 @@ function ws_flow_graph_check($graph)
         $problems[] = ws_flow_problem('too_many', null, null, lang(array('string' => 'A flow can hold at most {var:1} frames.', 'vars' => WS_FLOW_MAX_FRAMES)));
     }
 
+    if (count($graph['leave']) > WS_FLOW_MAX_LEAVE) {
+        $problems[] = ws_flow_problem('too_many', null, null, lang(array('string' => 'A flow can hold at most {var:1} rules for leaving it.', 'vars' => WS_FLOW_MAX_LEAVE)));
+    }
+
     // The boxes, by id; a second box with an id already taken is not one an
     // arrow can reach.
     $nodes = array();
@@ -1362,7 +1384,7 @@ function ws_flow_graph_check($graph)
         }
 
         if ($kinds[$node['kind']]['step']) {
-            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name)) as $text) {
+            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name), ws_flow_hours_problems($node['config'], $name)) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -1390,6 +1412,12 @@ function ws_flow_graph_check($graph)
 
         if ($node['kind'] === 'condition') {
             foreach (ws_flow_condition_problems($node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if ($node['kind'] === 'split') {
+            foreach (ws_flow_split_problems($node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -1755,6 +1783,7 @@ function ws_flow_problems($graph)
         return empty($problem['warning']);
     }));
     $types = function_exists('ws_scheduled_record_types') ? ws_scheduled_record_types() : array();
+    $problems = array_merge($problems, ws_flow_leave_problems($graph));
 
     foreach ($graph['nodes'] as $node) {
         if (($node['kind'] === 'manual') && ($node['config']['subject'] !== '') && !isset($types[$node['config']['subject']])) {
@@ -2992,6 +3021,7 @@ function ws_flow_graph_present($graph, $edit = false)
         'edges' => $graph['edges'],
         'notes' => $graph['notes'],
         'frames' => $graph['frames'] ?? array(),
+        'leave'  => $graph['leave'] ?? array(),
     );
 }
 
@@ -3286,6 +3316,9 @@ function ws_flow_detail($viewer, $flow)
         // The boxes a patch of Pinegrap AI opened here added or changed
         // (flow_draft.php), marked for whoever may change it.
         'ai_marks' => ($edit && ($draft !== null)) ? ws_flow_ai_marks($viewer, $flow, $version, $draft) : null,
+        // The runs that left the flow in the last 30 days, for whoever may
+        // change it (the name's window).
+        'left_30'  => $edit ? ws_flow_left_count($flow['id'], 30) : null,
     );
 }
 
@@ -3605,6 +3638,15 @@ function ws_flow_js_strings()
         'fl_lead_help'        => lang('Starts after a form is submitted. A channel the customer already has is used; otherwise one is opened with the New customer template, at most 20 an hour.'),
         'fl_lead_people'      => lang('People put in a channel it opens'),
         'fl_kind_condition'   => lang('Condition'),
+        'fl_kind_split'       => lang('Split'),
+        'fl_split_arms'       => lang('Arms'),
+        'fl_split_arm_add'    => lang('Add an arm'),
+        'fl_split_arm_n'      => ws_js_template('Arm {var:1}', 1),
+        'fl_split_arm_remove' => ws_js_template('Remove the arm {var:1}', 1),
+        'fl_split_share_n'    => ws_js_template('Share of {var:1} in percent', 1),
+        'fl_split_arm_share'  => ws_js_template('{var:1} {var:2}%', 2),
+        'fl_split_total'      => ws_js_template('Together {var:1}% of 100%', 1),
+        'fl_split_help'       => lang('Each run takes one arm at random by its share and keeps it. Each arm is an arrow of its own; its name is the value Arm taken.'),
         'fl_kind_schedule'    => lang('At a time'),
         'fl_kind_event'       => lang('When something happens'),
         'fl_kind_join'        => lang('When somebody joins a channel'),
@@ -3895,6 +3937,14 @@ function ws_flow_js_strings()
         'fl_email_body'       => lang('Text of the e-mail'),
         'fl_email_page'       => ws_js_template('Sends page #{var:1} as its body, filled as a campaign fills it; the text above is not sent.', 1),
         'fl_email_sender'     => lang('Sender'),
+        'fl_hours'            => lang('Sending hours'),
+        'fl_hours_off'        => lang('Off'),
+        'fl_hours_on'         => lang('Send only within these hours'),
+        'fl_hours_help'       => lang('In the site\'s time zone. Off, the box sends at once.'),
+        'fl_hours_days'       => lang('Which days'),
+        'fl_hours_outside'    => lang('Outside the hours'),
+        'fl_hours_wait'       => lang('Send at the next hour that fits'),
+        'fl_hours_skip'       => lang('Do not send'),
         'fl_email_from_name'  => lang('From name'),
         'fl_email_from_name_help' => lang('Empty: the organization\'s name.'),
         'fl_email_from_email' => lang('From address'),
@@ -3998,6 +4048,56 @@ function ws_flow_js_strings()
         'fl_try_fails'        => ws_js_template('It would fail: {var:1}', 1),
         'fl_try_empty'        => ws_js_template('Left empty: {var:1}', 1),
         'fl_try_next'         => ws_js_template('Next times: {var:1}', 1),
+        // The whole draft tried on the canvas (ws_flow_trial()).
+        'fl_trial'            => lang('Try'),
+        'fl_trial_help'       => lang('Walk the draft from its start with a record: nothing is sent, written or kept.'),
+        'fl_trial_on'         => lang('Trial · nothing is sent'),
+        'fl_trial_end'        => lang('End the trial'),
+        'fl_trial_ended_note' => lang('The trial has ended.'),
+        'fl_trial_title'      => lang('Try the flow'),
+        'fl_trial_lead'       => lang('Boxes that read do read; a box that sends, writes or calls does nothing. A Wait is passed. Nothing is kept.'),
+        'fl_trial_record'     => lang('Record'),
+        'fl_trial_record_none' => lang('No record: the start gives no values.'),
+        'fl_trial_record_clear' => lang('Remove the record'),
+        'fl_trial_recent'     => lang('Records of the last runs'),
+        'fl_trial_customer_help' => lang('Or a customer: the boxes read their record as a run about them would.'),
+        'fl_trial_steps'      => lang('Steps'),
+        'fl_trial_loading'    => lang('Walking the draft…'),
+        'fl_trial_walked'     => lang('Tried'),
+        'fl_trial_passed'     => lang('Passed'),
+        'fl_trial_failed'     => lang('Would fail'),
+        'fl_trial_next'       => lang('Next'),
+        'fl_trial_step'       => lang('Next step'),
+        'fl_trial_all'        => lang('To the end'),
+        'fl_trial_again'      => lang('Start over'),
+        'fl_trial_result'     => ws_js_template('The run would end: {var:1}.', 1),
+        'fl_trial_skipped'    => ws_js_template('Boxes not reached: {var:1}.', 1),
+        'fl_trial_outcome'    => lang('Outcome'),
+        'fl_trial_outcome_help' => lang('In a run a person or an answer decides it; choose another to walk that way.'),
+        'fl_trial_preview'    => lang('Preview'),
+        'fl_trial_preview_title' => ws_js_template('“{var:1}” as it would be sent', 1),
+        'fl_trial_preview_for' => ws_js_template('“{var:1}” as {var:2} would get it', 2),
+        'fl_trial_preview_close' => lang('Close'),
+        // A live flow's counts over its boxes (ws_flow_counts()).
+        'fl_counts'           => lang('Counts'),
+        'fl_counts_help'      => lang('Show over each box how many runs wait there now, and how many passed or failed in the days chosen.'),
+        'fl_counts_hidden'    => lang('Counts hidden.'),
+        'fl_counts_days'      => lang('Days counted'),
+        'fl_counts_days_n'    => ws_js_template('Last {var:1} days', 1),
+        'fl_counts_waiting'   => ws_js_template('{var:1} waiting', 1),
+        'fl_counts_started'   => ws_js_template('{var:1} started', 1),
+        'fl_counts_passed'    => ws_js_template('{var:1} passed', 1),
+        'fl_counts_failed'    => ws_js_template('{var:1} failed', 1),
+        'fl_counts_of'        => ws_js_template('{var:1} at “{var:2}”: list these runs', 2),
+        'fl_counts_close'     => lang('Close the list'),
+        'fl_counts_none'      => lang('No such run now.'),
+        'fl_counts_wakes'     => ws_js_template('Waits until {var:1}', 1),
+        'fl_counts_since'     => ws_js_template('Waiting since {var:1}', 1),
+        'fl_counts_passed_at' => ws_js_template('Passed {var:1}', 1),
+        'fl_counts_failed_at' => ws_js_template('Failed {var:1}', 1),
+        'fl_counts_all'       => lang('Open all in Flow runs'),
+        'fl_counts_only'      => ws_js_template('Only the runs of {var:1}', 1),
+        'fl_counts_every_run' => lang('Show every run'),
         'fl_try_outcome'      => ws_js_template('Leaves on: {var:1}', 1),
         'fl_remove_arrow'     => lang('Remove the arrow'),
         'fl_remove_arrow_to'  => ws_js_template('Remove the arrow to {var:1}', 1),
@@ -4075,6 +4175,14 @@ function ws_flow_js_strings()
         'fl_home'             => lang('Home channel'),
         'fl_home_none'        => lang('No channel (only you)'),
         'fl_home_help'        => lang('Once the flow is published, the people who read this channel may run it.'),
+        // Leaving the flow in the name's window (leaveField()).
+        'fl_exit'            => lang('Leaving the flow'),
+        'fl_exit_help'       => lang('If one of these happens, the run about that contact or record ends, whichever box it is at.'),
+        'fl_exit_pick'       => lang('Choose what happens'),
+        'fl_exit_add'        => lang('Add a rule'),
+        'fl_exit_added'      => ws_js_template('The run ends when: {var:1}', 1),
+        'fl_exit_remove'     => ws_js_template('Remove the rule: {var:1}', 1),
+        'fl_exit_count'      => ws_js_template('Runs that left this way in the last 30 days: {var:1}', 1),
         'fl_keys'             => lang('Keyboard'),
         'fl_side_tab_settings' => lang('Settings'),
         'fl_side_tab_links'   => lang('Connections'),
@@ -4107,6 +4215,11 @@ function ws_flow_js_strings()
         'fl_note_remove'      => lang('Remove the note'),
         'fl_note_size'        => lang('Resize the note'),
         'fl_too_many_notes'   => ws_js_template('A flow can hold at most {var:1} notes.', 1),
+        'fl_tidy'             => lang('Tidy'),
+        'fl_tidy_hint'        => lang('Place the boxes in columns by the order of their steps; with several boxes chosen, only those'),
+        'fl_tidied'           => lang('Boxes placed again'),
+        'fl_tidy_none'        => lang('The boxes are tidy already'),
+        'fl_map'              => lang('Map of the flow'),
         'fl_key_tab'          => lang('Tab: from box to box, in the order of the arrows'),
         'fl_key_areas'        => lang('F6, Shift+F6: the bar, the boxes to add, the canvas and the chosen box, in turn'),
         'fl_key_windows'      => lang('The chevron beside the flow\'s name: its facts, home channel and these keys; Problems: its list under it; Esc closes either'),
@@ -4180,6 +4293,7 @@ function ws_flow_js_strings()
         'fl_run_done'         => lang('Done'),
         'fl_run_failed'       => lang('Failed'),
         'fl_run_cancelled_state' => lang('Cancelled'),
+        'fl_run_left_state'   => lang('Left the flow'),
         // The run's flag (runFlag() in workspace_flow.js).
         'fl_flag_done'        => lang('Done'),
         'fl_flag_last'        => lang('Last flow run'),
@@ -4394,6 +4508,9 @@ function ws_flow_js_config($viewer, $mode)
     // many times at most (flow_runs.php).
     $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_RETRY_AFTER_MAX);
 
+    // The boxes that take sending hours (flow_send_hours.php).
+    $steps['hours_kinds'] = function_exists('ws_flow_hours_kinds') ? ws_flow_hours_kinds() : array();
+
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {
             if (($metric['right'] === '') || !empty($viewer[$metric['right']])) {
@@ -4537,7 +4654,9 @@ function ws_flow_js_config($viewer, $mode)
         // (ws_flow_run_contact_check() decides which).
         'run_customer' => !empty($viewer['contacts']),
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
-        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'frames' => WS_FLOW_MAX_FRAMES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
+        // The events a run may leave the flow on (flow_leave.php).
+        'leave'    => ws_flow_leave_js($viewer),
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'frames' => WS_FLOW_MAX_FRAMES, 'leave' => WS_FLOW_MAX_LEAVE, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
             'web_fields' => defined('WS_FLOW_WEB_FIELDS_MAX') ? WS_FLOW_WEB_FIELDS_MAX : 20),
     );
 }

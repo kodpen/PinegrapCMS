@@ -11,7 +11,8 @@
  * go-live check ("Must be fixed", "Worth a look", "Go live"). The data is what
  * includes/dashboard/v2/cards/launch.php returns; every text in it was
  * translated on the server. Choices are saved through the panel action
- * launch_journey_save, then the card is drawn anew from the server.
+ * launch_journey_save, then the card is drawn anew from the server. The
+ * "First week" and "Start here" cards are drawn here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -185,7 +186,7 @@
     }
 
     // One group of the go-live check: a heading and its gathered lines,
-    // each with "Fix", or "Nothing to fix".
+    // each with "Fix" or its own action, or "Nothing to fix".
     function golivegroup(title, rows, labels) {
         var el = pgDash.el;
         var group = el("section", "pg-dash-golive-group");
@@ -202,9 +203,11 @@
             line.appendChild(el("b", "", step.name));
             line.appendChild(el("span", "", step.line));
             var end = el("span", "pg-gather-line-end");
-            var fix = el("a", "pg-button pg-button-quiet pg-button-sm", labels.fix);
+            // A row may name its own action (run the SEO check) in place of "Fix".
+            var words = step.action || labels.fix;
+            var fix = el("a", "pg-button pg-button-quiet pg-button-sm", words);
             fix.href = step.url;
-            fix.setAttribute("aria-label", labels.fix + ": " + step.name);
+            fix.setAttribute("aria-label", words + ": " + step.name);
             end.appendChild(fix);
             line.appendChild(end);
             gather.appendChild(line);
@@ -314,7 +317,8 @@
     }
 
     // The agency summary: "What we need from you" lines with the customer's
-    // answers, "Add a line", each with its remove; the customer's link with
+    // answers or the files they sent, "Add a line", each with its remove and
+    // its "Answer" select (Text, One file, Several files); the customer's link with
     // Copy and "Withdraw link", or the expiry and "Make a new link". Every
     // answer of launch_summary is the drawer's data after the change.
     function summaryCall(request, done, failed) {
@@ -353,7 +357,7 @@
         root.setAttribute("aria-labelledby", "pg_dash_launch_summary_title");
 
         var header = el("div", "drawer-header");
-        var heading = el("div", "flex-grow-1 min-width-0");
+        var heading = el("div", "flex-grow-1 min-w-0");
         var title = el("h5", "drawer-title mb-0", labels.summary);
         title.id = "pg_dash_launch_summary_title";
         heading.appendChild(title);
@@ -403,7 +407,8 @@
             body.appendChild(el("h6", "pg-field-label mb-2", labels.need));
             var list = el("ul", "list-unstyled mb-3");
             summary.lines.forEach(function (line) {
-                var item = el("li", "pg-list-row" + (line.answer ? "" : " is-read"));
+                var files = line.files || [];
+                var item = el("li", "pg-list-row" + ((line.answer || files.length) ? "" : " is-read"));
                 var main = el("div", "pg-list-row-main");
                 var head = el("div", "pg-list-row-head");
                 head.appendChild(el("span", "pg-list-row-title", line.text));
@@ -416,6 +421,57 @@
                     answer.style.whiteSpace = "pre-wrap";
                     gather.appendChild(answer);
                     main.appendChild(gather);
+                }
+                if (files.length) {
+                    // The files the customer sent, each opened through
+                    // get_file.php, which serves the private folder only
+                    // to a signed-in panel user.
+                    var sent = el("div", "pg-gather");
+                    files.forEach(function (file) {
+                        var fileLine = el("div", "pg-gather-line");
+                        var link = el("a", "text-truncate min-w-0", file.name);
+                        link.href = file.url;
+                        link.target = "_blank";
+                        link.rel = "noopener";
+                        fileLine.appendChild(link);
+                        fileLine.appendChild(el("span", "pg-gather-line-end", file.size));
+                        sent.appendChild(fileLine);
+                    });
+                    main.appendChild(sent);
+                }
+                if (summary.kinds) {
+                    var kindField = el("div", "form-field mt-2 mb-0");
+                    var kindId = "pg_dash_launch_summary_kind_" + line.id;
+                    var kindLabel = el("label", "form-label pg-field-label", labels.answer_kind);
+                    kindLabel.setAttribute("for", kindId);
+                    kindField.appendChild(kindLabel);
+                    var kind = el("select", "pg-input");
+                    kind.id = kindId;
+                    [[0, labels.kind_text], [1, labels.kind_one], [2, labels.kind_several]].forEach(function (pair) {
+                        var option = el("option", "", pair[1]);
+                        option.value = pair[0];
+                        option.selected = (pair[0] === line.kind);
+                        kind.appendChild(option);
+                    });
+                    kind.addEventListener("change", function () {
+                        var chosen = parseInt(kind.value, 10);
+                        // A changed kind clears what was sent for the line.
+                        var ask = !(line.answer || files.length) ? Promise.resolve(true) : (window.pgConfirm ? window.pgConfirm({
+                            title: labels.answer_kind,
+                            message: labels.kind_ask,
+                            confirmText: labels.kind_change,
+                            cancelText: labels.cancel
+                        }) : Promise.resolve(window.confirm(labels.kind_ask)));
+                        ask.then(function (yes) {
+                            if (yes) {
+                                call({op: "kind", id: line.id, kind: chosen}, kind);
+                            } else {
+                                kind.value = line.kind;
+                            }
+                        });
+                    });
+                    kindField.appendChild(kind);
+                    main.appendChild(kindField);
                 }
                 item.appendChild(main);
 
@@ -548,14 +604,15 @@
         item.appendChild(tile);
 
         var main = el("div", "pg-list-row-main");
-        var head = el("div", "pg-list-row-head");
+        // The head wraps: a pill inside the one-line title was cut off by its
+        // ellipsis on a phone, and a long name now breaks instead.
+        var head = el("div", "pg-list-row-head pg-list-row-head-wrap");
         var title = el("span", "pg-list-row-title", step.name);
+        head.appendChild(title);
         // A blocker says so in words, never by its colour alone.
         if (step.level === "blocker") {
-            title.appendChild(document.createTextNode(" "));
-            title.appendChild(el("span", "pg-pill pg-tone-rose", labels.blocker));
+            head.appendChild(el("span", "pg-pill pg-tone-rose text-nowrap", labels.blocker));
         }
-        head.appendChild(title);
         main.appendChild(head);
         main.appendChild(el("div", "pg-list-row-text", step.line));
         item.appendChild(main);
@@ -643,6 +700,104 @@
             summaryOpened = true;
             summaryDrawer(data);
         }
+    };
+
+    // "First week": "Day 3 of 7" in the head, then four rows (the first
+    // order or form entry, visitors, the first e-mail delivered, alerts),
+    // each with its pill Waiting, Seen or Problem. Data from
+    // includes/dashboard/v2/cards/firstweek.php.
+    pgDash.renderers.firstweek = function (body, data) {
+        var el = pgDash.el;
+
+        var top = el("div", "pg-dash-launch-top");
+        top.appendChild(el("span", "pg-dash-launch-head", data.head));
+        body.appendChild(top);
+
+        var list = el("ul", "pg-dash-launch-rows");
+        (data.rows || []).forEach(function (step) {
+            var item = el("li", "pg-list-row pg-dash-launch-row");
+            var tile = el("span", "pg-icon-tile pg-tone-" + step.tone);
+            tile.setAttribute("aria-hidden", "true");
+            tile.appendChild(el("i", "bi " + step.icon));
+            item.appendChild(tile);
+
+            var main = el("div", "pg-list-row-main");
+            var head = el("div", "pg-list-row-head");
+            head.appendChild(el("span", "pg-list-row-title", step.name));
+            main.appendChild(head);
+            main.appendChild(el("div", "pg-list-row-text", step.line));
+            item.appendChild(main);
+
+            var side = el("div", "pg-list-row-side pg-dash-launch-side");
+            side.appendChild(el("span", "pg-pill pg-tone-" + step.pill_tone, step.pill));
+            item.appendChild(side);
+            list.appendChild(item);
+        });
+        body.appendChild(list);
+    };
+
+    // "Start here": a new team member's three to five screens, each a link
+    // with a line of what it is for; "Hide" on the card's menu marks the
+    // card's key through the panel action tour_seen. Data from
+    // includes/dashboard/v2/cards/starthere.php.
+    pgDash.renderers.starthere = function (body, data, entry) {
+        var el = pgDash.el;
+        var labels = data.labels || {};
+
+        var top = el("div", "pg-dash-launch-top");
+        top.appendChild(el("span", "flex-grow-1"));
+        var note = el("p", "pg-dash-launch-note fg-emphasis-danger mb-2");
+        note.setAttribute("role", "status");
+        note.hidden = true;
+        top.appendChild(menu(labels.menu, [{
+            text: labels.hide,
+            run: function () {
+                $.ajax({
+                    contentType: "application/json",
+                    url: "api.php",
+                    data: JSON.stringify({
+                        action: "tour_seen",
+                        key: data.key,
+                        token: (typeof software_token !== "undefined") ? software_token : ""
+                    }),
+                    type: "POST",
+                    dataType: "json"
+                }).done(function (answer) {
+                    if (answer && answer.status === "success") {
+                        // The gate is closed now: the card answers denied.
+                        if (pgDash.reload && pgDash.frame && pgDash.frame(entry.id)) {
+                            pgDash.reload(entry);
+                        }
+                    } else {
+                        failedNote(body, labels.failed);
+                    }
+                }).fail(function () {
+                    failedNote(body, labels.failed);
+                });
+            }
+        }]));
+        body.appendChild(top);
+        body.appendChild(note);
+
+        var list = el("ul", "pg-dash-launch-rows");
+        (data.rows || []).forEach(function (screen) {
+            var item = el("li", "pg-list-row pg-dash-launch-row");
+            var tile = el("span", "pg-icon-tile pg-tone-" + screen.tone);
+            tile.setAttribute("aria-hidden", "true");
+            tile.appendChild(el("i", "bi " + screen.icon));
+            item.appendChild(tile);
+
+            var main = el("div", "pg-list-row-main");
+            var head = el("div", "pg-list-row-head");
+            var link = el("a", "pg-list-row-title", screen.name);
+            link.href = screen.url;
+            head.appendChild(link);
+            main.appendChild(head);
+            main.appendChild(el("div", "pg-list-row-text", screen.line));
+            item.appendChild(main);
+            list.appendChild(item);
+        });
+        body.appendChild(list);
     };
 
     // The states are read again when the tab is shown again and when the

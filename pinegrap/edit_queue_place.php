@@ -356,9 +356,9 @@ foreach ($qp_desks as $desk) {
     $state = ($desk['state'] === 'open') ? lang(array('string' => 'Open · {var:1}', 'vars' => array($desk['person']))) : (($desk['state'] === 'paused') ? lang('Paused') : lang('Closed'));
     $qp_desk_rows .= '<div class="pg-card-inner-row flex-wrap">'
         . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi bi-person-workspace"></span></span>'
-        . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($desk['name']) . '</strong><div class="pg-text-meta">' . h(implode(', ', $names)) . '</div></div>'
+        . '<div class="flex-grow-1 min-w-0"><strong class="pg-list-row-title d-block">' . h($desk['name']) . '</strong><div class="pg-text-meta">' . h(implode(', ', $names)) . '</div></div>'
         . '<span class="pg-text-2 text-nowrap">' . h($state) . '</span>'
-        . '<button type="submit" form="qp_desks_form" name="submit_desk_remove" value="' . (int) $desk['id'] . '" class="pg-button pg-button-danger pg-button-sm"' . (($desk['state'] === 'open') ? ' disabled' : '') . ' data-confirm-content="' . h(lang(array('string' => 'The desk "{var:1}" is removed. Numbers it served stay in the figures.', 'vars' => array($desk['name'])))) . '">' . h(lang('Remove')) . '</button>'
+        . '<button type="submit" form="qp_desks_form" name="submit_desk_remove" value="' . (int) $desk['id'] . '" class="pg-button pg-button-danger pg-button-sm"' . (pg_waiting_desk_removable($desk['state']) ? '' : ' disabled') . ' data-confirm-content="' . h(lang(array('string' => 'The desk "{var:1}" is removed. Numbers it served stay in the figures.', 'vars' => array($desk['name'])))) . '">' . h(lang('Remove')) . '</button>'
         . '</div>';
 }
 
@@ -375,7 +375,7 @@ $qp_staff_rows = '';
 foreach (pg_waiting_place_staff($qp_place['settings']) as $staff_id) {
     $qp_staff_rows .= '<div class="pg-card-inner-row">'
         . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi bi-person"></span></span>'
-        . '<span class="pg-text-2 flex-grow-1 min-width-0">' . h(pg_user_picker_label($staff_id)) . '</span>'
+        . '<span class="pg-text-2 flex-grow-1 min-w-0">' . h(pg_user_picker_label($staff_id)) . '</span>'
         . '<button type="submit" form="qp_desks_form" name="submit_staff_remove" value="' . $staff_id . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Remove')) . '</button></div>';
 }
 
@@ -402,7 +402,7 @@ foreach (array(
 
     $qp_screen_rows .= '<div class="pg-card-inner-row flex-wrap">'
         . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi ' . $screen[0] . '"></span></span>'
-        . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($screen[1]) . '</strong><div class="pg-text-meta">' . h($screen[2]) . '</div>'
+        . '<div class="flex-grow-1 min-w-0"><strong class="pg-list-row-title d-block">' . h($screen[1]) . '</strong><div class="pg-text-meta">' . h($screen[2]) . '</div>'
         . '<div class="pg-text-meta text-break" id="qp_screen_' . $kind . '">' . h($url) . '</div></div>'
         . pg_copy_button($url, lang(array('string' => 'Copy the link of {var:1}', 'vars' => array($screen[1]))), 'qp_screen_' . $kind)
         . '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '" target="_blank" rel="noopener">' . h(lang('Open')) . '</a></div>';
@@ -422,7 +422,7 @@ $qp_desks_html = '<form id="qp_desks_form" action="edit_queue_place.php" method=
         <form method="post" action="edit_queue_place.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="desks">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="qp_desk_add_title">' . h(lang('Add desk')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('A counter, a room or a chair people are called to.')) . '</p>
                 </div>
@@ -459,7 +459,7 @@ $qp_number_html = '<dialog class="drawer drawer-end" id="qp_number_add" aria-lab
         <form method="post" action="edit_queue_place.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="' . $qp_view . '">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="qp_number_add_title">' . h(lang('Add a number')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('For a person at the counter. With a phone they get the messages.')) . '</p>
                 </div>

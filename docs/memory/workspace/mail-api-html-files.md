@@ -16,10 +16,11 @@ description: HTML and files in Workspace e-mail sent or drafted over the API and
 - `ws_mail_send_files_by_id()` adds the sizes up before any file is read: 422 `file_ids` for too many, over `WS_MAIL_SEND_FILES_BYTES`, or a file not reached (`ws_api_mail_send_refusal()`).
 
 ## Where does a draft keep them?
-- HTML in `body_html`, files in `ws_mail_items.draft_files` TEXT NULL, a comma list of `files.id` (`ws_mail_draft_keep_body()`, written only once each column is there). Owner's yes: `workflow/decisions-made-schema-18.md`.
-- Step `upgrade_2026_11_0_ws_mail_draft_files()` (11.0.205), `install_add_column()`; run twice in `tests/workspace_mail_draft_files_schema_test.php` (fake db; no dev database in the session).
+- HTML in `body_html`, files in `ws_mail_items.draft_files` TEXT NULL, a comma list of `files.id` (`ws_mail_draft_keep_body()`). Owner's yes: `workflow/decisions-made-schema-18.md`.
+- Step `upgrade_2026_11_0_ws_mail_draft_files()` (11.0.205), `install_add_column()`; run twice in `tests/workspace_mail_draft_files_schema_test.php` (fake db).
 - `ws_mail_items.draft_app_id` INT UNSIGNED NOT NULL DEFAULT 0, same step, no backfill: the `ws_api_writer_app_id()` of the caller that created the draft (0 for the panel, a person's device session or OAuth connection), written on create only (`ws_mail_draft_keep_app()`); a later change by anyone leaves it. Owner's yes: channel poll 3369, result 3372; shape by the architect (3377).
 - A draft's `file_ids` replaces its list (an empty list takes them off); the writer's right to each is checked when it is kept and again for the sender at Send (`ws_api_mail_drafts_send()`); the sent draft's row goes, its list with it.
+- A change with new words in `text` and no `html` drops the kept HTML (`ws_api_mail_draft_update_fields()`, #11367), as Save draft does.
 - `WorkspaceMailDraft` gains `html` (null for none) and `file_ids`. A file or HTML alone is a draft (`ws_mail_draft_has_words()`).
 
 ## What does the Drafts view do with them? (`mail_drafts_screen.php`)

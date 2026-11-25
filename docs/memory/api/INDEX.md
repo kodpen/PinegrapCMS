@@ -23,6 +23,7 @@
 - agent-guide-workspace-erp.md: The guide's workspace and erp topics for AI agents: what each says, when each is listed, the canvas guide pointed at and not copied, sizes and the tool list's bytes
 - ai-connections-feature-cards.md: The feature cards without a key (CX9b): the Provider select and the chosen provider's connection on the assistants' form and the Voice message transcripts card, own keys, the 11.0.241 voice data step
 - ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it [decision: here]
+- api-announce-door.md: The one door for announced moments: pg_announce() is the only caller of api_webhook_enqueue(); the listeners option keeps the quiet callers as they were; erp_event() goes through it
 - api-answer-check.md: tools/check_api_answers.php, the read-only check that calls every GET route of a running site and compares each answer with the site's OpenAPI document; how it is run, what it flags and skips
 - api-app-token.md: An application key and its secret as one token (Authorization: Bearer pgkt_<key>.<secret>, feature U10): format, where it is read, same path as HTTP Basic, never from the query string
 - api-batch-reads.md: POST /batch (M8b): up to 20 GETs of the API in one request, each checked as its own call; which routes are no entry, rate limit, 304, headers, page cache, no MCP tool
@@ -36,6 +37,7 @@
 - api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open [decision: decisions-made-product-92.md]
 - api-commission-writes.md: POST /commissions/{id} status (commissions:write) through the screen's write, GET /commissions/recurring-profiles, POST /affiliates/{id}/approve (customers:write), their events
 - api-connected-accounts-github.md: GitHub in connected accounts (model A, no OpenID): identity from /user, a token that does not end, comma scopes, revoke and Check, the channel_links purpose with admin:repo_hook only
+- api-connected-accounts-renewal.md: Connected accounts: renewal only under the connection's lock (a waiter that timed out gets busy), Google not revoked while another row holds the account
 - api-connected-accounts-usage.md: Connected accounts at work: mail through Gmail or Microsoft 365, cloud backups to Drive, OneDrive or Dropbox, a Connect button inside a settings form, response headers, what api_http_request() refuses
 - api-connected-accounts.md: The site as an OAuth client (connected accounts, includes/fn/connect.php, 2026.4.10, model A): provider and purpose files, the Connect button, tokens and provider calls, refresh, service tokens
 - api-content-review.md: GET /content-review and POST /content-review/{kind}/{id} (CH4): the screen's filters, the keyset over its branches, the fields, partial writes, the dry run, the scope and a user-role caller's rows [decision: here]
@@ -81,6 +83,8 @@
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
 - api-if-match.md: If-Match on an update of the external API: 412 precondition_failed when the record changed since, which updates honour it (GET twin), how the tag is read, no lock
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
+- api-launch-journey.md: GET /launch (launch.read, MCP launch_read): the launch journey's steps, blockers and warnings as data, scope system:read, the LaunchJourney object, the start topic's line
+- api-lead-journey.md: The visitor journey's API (LJ6): GET /customers/hot (the MCP read tool, followed_by), /customers/{id}/journey, /customers/{id}/score, /reports/lead-sources, interest_score and topics on Customer
 - api-list-newest-device-lists.md: Which cursor-paged lists a team device reads take sort=newest (M8a), which are newest first already, and which cannot take it
 - api-list-newest-first.md: sort=newest on cursor-paged lists (the automation samples, and the team device lists in api-list-newest-device-lists.md): the walk, the marked cursor, list_order.php
 - api-marketplace-repricing.md: GET /marketplaces/{account}/repricing and POST (PATCH) /marketplaces/{account}/repricing/{product}: each listing's price, floor, buybox rank and last change; setting its strategy and own price
@@ -136,7 +140,9 @@
 - api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals, page-clicks): what each reads, the window, linked false
 - api-volunteers.md: GET /volunteer/programmes, GET /volunteer/shifts and GET /volunteer/hours (VS8, customers:read, MCP tools): fields, filters, coordinator rule for the user role, what is never given
 - api-walk-in-queue-routes.md: Walk-in queue API routes (WQ8): places, a day's numbers, kiosk join, Call next at a desk, Finish; scope queue, role-3 rows, 409 codes, the link given once
+- api-webhook-dispatch-run.md: One run of the webhook dispatcher: a receiver that failed is left for the rest of the run, and a delivery's answer never switches a disabled subscription back on
 - api-webhook-event-payloads.md: Fields and samples of webhook events (api_webhook_event_payloads()), GET /webhooks/events, POST /webhooks/{id}/test with event, the test that reads the announcing code
+- api-webhook-event-scopes.md: Webhook events follow the read scope of their data: the event → scope map, the 403 on create/change/sample, the skip at enqueue, the Events tab line and the one bell row per subscription [decision: here]
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
@@ -153,6 +159,10 @@
 - application-access-overview.md: Application Access (api_settings.php) as a whole after its redraw (#10745 to #11203): who may reach the site, the decisions that bind it, its parts by label, which file holds what, how a part is added [decision: decisions-made-product-88.md]
 - application-access-permission-picker.md: Application Access permission picker: areas with icons, a row per scope group, None / Read / Write, search, counts, the four bulk buttons and their rule, the money pill
 - automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
+- canva-api-brand.md: Canva brand over the APIs (read 2026-11-24): no REST endpoint reads a Brand Kit's colours or fonts; brand templates exist; brand kit colours only in the Apps SDK
+- canva-api-designs-export.md: Canva Connect design reads and export (read 2026-11-24): list designs, Get design pages (preview), export job as png/jpg/pdf and more, its limits and 24-hour links; no layer or element read
+- canva-api-sign-in.md: Canva Connect sign-in (read 2026-11-24): public app with Canva review, private app on Enterprise only, service app; OAuth with PKCE, single-use refresh tokens, scopes
+- canva-api-terms.md: Canva restricted uses (read 2026-11-24): no bulk export or scraping, no exfiltration; export into a third-party design platform needs Canva's written consent
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
 - channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]
 - claude-connect-button.md: The "Connect to Claude" button on the panel's OAuth connection guide: Claude's install link with the site's name and MCP file address, who sees it, the https rule [decision: here]
@@ -164,6 +174,13 @@
 - connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (84 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
+- figma-api-file-reads.md: Figma REST file reads (read 2026-11-24): GET file and nodes, depth and ids, frame auto layout (with GRID), text style, component instances, the styles map
+- figma-api-image-export.md: Figma REST picture export (read 2026-11-24): GET images as png, jpg, svg or pdf, scale 0.01 to 4, 32 megapixels, 30-day links; image fills with 14-day links
+- figma-api-rate-limits.md: Figma REST rate limits since 2025-11-17 (read 2026-11-24): three tiers, per seat and plan; View and Collab seats get up to 20 file or image reads a month; 429 with Retry-After
+- figma-api-sign-in.md: Figma REST sign-in (read 2026-11-24): OAuth app (draft, private, public with review), personal and plan access tokens, scopes, PKCE, token lifetimes
+- figma-api-styles-variables.md: Figma styles and variables over REST (read 2026-11-24): style endpoints give published metadata only, values come from the node; Variables API (file_variables:read) is Enterprise only
+- figma-api-terms.md: Figma Developer Terms as far as readable (2026-11-24): licence to build an integration, no credential sharing, privacy policy, delete on termination
+- figma-canva-census.md: Figma and Canva API census for the designer's Figma and Canva starts (read 2026-11-24): what each gives, where it differs from plans/designer-start-import.md, and which file holds each topic [decision: decisions-made-product-107.md]
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
 - ga4-mp-facts.md: GA4 Measurement Protocol as Google's own documents say it (read 2026-11-20): addresses, secret, body, client id, consent, 72-hour limit, user data hashing, validation endpoint, answers
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]

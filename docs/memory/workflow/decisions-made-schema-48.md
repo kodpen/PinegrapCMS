@@ -27,4 +27,4 @@ description: Decisions list, schema part 48 (2026-11-22 on): erp_order_costs.sou
 - Yes, `ws_share_links`: `id`, `token_hash` CHAR(64) unique, `channel_id`, `message_id`, `kind`, `item_id`, `created_by_kind` / `created_by_id` (`user` or `app`), `created_at`, `expires_at`, `revoked_at`, `opened_at`, `opens`; keys on `channel_id` and on (`kind`, `item_id`).
 - The token is 43 random characters kept only as its SHA-256, as `ws_approval_guests.token_hash`: the address is shown once and a lost one is made again.
 - Not chosen: the token kept readable so "Copy link" works later; whoever reads the database would read every link.
-- Step SL1 of `plans/channel-share-links.md`.
+- Built by SL1 (#11201): `workspace/share-links-api.md`.

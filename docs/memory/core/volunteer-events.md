@@ -5,7 +5,7 @@ module: volunteer_events
 ---
 
 ## Where are they built?
-- `includes/fn/volunteer_events.php` (in `functions.php`): the pure `pg_volunteer_event_payload($event, $row)`, `pg_volunteer_event_time()` (unix or the site's wall-clock DATETIME as ISO 8601 UTC), `pg_volunteer_shift_needed()`; `pg_volunteer_announce()` reads the profile or sign-up back and announces; `pg_volunteer_announce_unfilled()`. Tests: `tests/volunteer_events_test.php`. Built in step VS8 of plan `volunteer-shifts`.
+- `includes/fn/volunteer_events.php` (in `functions.php`): the pure `pg_volunteer_event_payload($event, $row)`, `pg_volunteer_event_time()` (unix or the site's wall-clock DATETIME as ISO 8601 UTC), `pg_volunteer_shift_needed()`; `pg_volunteer_announce()` reads the profile or sign-up back and announces; `pg_volunteer_announce_unfilled()`. Tests: `tests/volunteer_events_test.php`. Built in step VS8 (`volunteer-shifts.md`).
 - Fields and samples: `api_webhook_event_payloads_site()` (`$volunteer`, `$place`); the builder fixture in `tests/webhook_event_payloads_test.php`. No event carries a document, link or message.
 
 ## When is each announced?

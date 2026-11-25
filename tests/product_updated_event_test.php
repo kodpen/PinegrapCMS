@@ -81,7 +81,7 @@ function test_product_updated_event_matches_the_api_and_the_catalogue()
 {
 	$api = product_updated_event_test_source('includes/api/resources/products.php');
 
-	pg_assert_contains("api_webhook_enqueue('product.updated', array('id' => ", $api, 'the API announces it');
+	pg_assert_contains("pg_announce('product.updated', array('id' => ", $api, 'the API announces it');
 	pg_assert_contains("'name' => ", $api);
 
 	pg_assert_contains("'product.updated'", product_updated_event_test_source('includes/api/outbound/webhooks.php'), 'in the catalogue');

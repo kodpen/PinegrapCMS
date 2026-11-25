@@ -8,7 +8,7 @@ description: The visual designer's Publish sheet: which pages it lists and check
 - `_pgPublishSheet()` falls back to a plain `saveAjax()` when there is no sheet: a shared component opened alone, a site without drafts, a user who cannot change states (the markup is printed only for full access with `pg_page_draft_ready()`), or `pg_designer_publish.js` missing.
 
 ## What does it list and check?
-- One row per tab, from `_pgPublishRows()`: state `live`, `draft`, `scheduled` (a draft whose publish time is ahead) or `held` (an experiment's variant or a release bundle's draft, `designer-publish-sheet-held-row.md`); `changed` = a new page or `!_pgPageUnchanged()` (the save's own rule, shared components included); `locked` = no content rights for the folder. Rows are read once when it opens.
+- One row per tab, from `_pgPublishRows()`: state `live`, `draft`, `scheduled` (a draft whose publish time is ahead) or `held` (an experiment's variant, a release bundle's draft or a draft waiting for approval, `designer-publish-sheet-held-row.md`); `changed` = a new page or `!_pgPageUnchanged()` (the save's own rule, shared components included); `locked` = no content rights for the folder. Rows are read once when it opens.
 - Checked at opening (`PgDesignerPublish.defaults()`): drafts and changed live pages. Not checked: scheduled pages (checking one publishes it now and drops its time), held and locked rows (their box is disabled).
 
 ## What does Publish selected do?

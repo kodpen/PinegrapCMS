@@ -1872,14 +1872,16 @@ function get_valid_zones_for_destination($country_code, $state_code)
     $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
     // if recipient's state was found in database and it belongs to recipient's country, find what zones contain recipient's state
     if (mysqli_num_rows($result) > 0) {
+        // The state found above, by its id: a state code is unique only within
+        // its country (WA is Washington and Western Australia), so a zone that
+        // lists another country's state with the same code does not match.
+        $state_row = mysqli_fetch_assoc($result);
         $query = "SELECT zone_id
 
                  FROM zones_states_xref
 
-                 LEFT JOIN states ON states.id = zones_states_xref.state_id
-
-                 WHERE states.code = ?";
-        $result = db_q($query, array((string) $state_code)) or output_error(lang('Query failed.'));
+                 WHERE state_id = ?";
+        $result = db_q($query, array((string) $state_row['id'])) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             $zones_for_state[] = $row['zone_id'];
         }
@@ -1946,13 +1948,13 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
             $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
             // if recipient's state was found in database and it belongs to recipient's country, check to see if this product can be shipped to recipient's state
             if (mysqli_num_rows($result) > 0) {
-                // determine if recipient's state is in this zone
+                // determine if recipient's state is in this zone, by the id of
+                // the state found above (a state code is unique only per country)
+                $state_row = mysqli_fetch_assoc($result);
                 $query = "SELECT zone_id FROM zones_states_xref
 
-                         LEFT JOIN states ON zones_states_xref.state_id = states.id
-
-                         WHERE (zone_id = ?) AND (states.code = ?)";
-                $result = db_q($query, array((string) $zone_id, (string) $state_code)) or output_error(lang('Query failed.'));
+                         WHERE (zone_id = ?) AND (state_id = ?)";
+                $result = db_q($query, array((string) $zone_id, (string) $state_row['id'])) or output_error(lang('Query failed.'));
                 // if result was found, then product can be shipped to recipient's state
                 if (mysqli_num_rows($result) > 0) {
                     $valid_product = true;
@@ -2262,6 +2264,29 @@ function pg_product_stock_threshold()
 
 
 /**
+ * Whether a stock write crossed the low-stock line: the stock left is at or
+ * under it and the stock before was above it, or there was no level before
+ * (tracking switched on by this write). One rule for every writer, so a
+ * product is announced low once, whichever writer moved it. Pure.
+ *
+ * @param int      $threshold the low-stock line, 0 for none
+ * @param int|null $before    stock before the write; null when it was not tracked
+ * @param int      $after     stock left after the write
+ * @return bool
+ */
+function pg_product_stock_low_crossed($threshold, $before, $after)
+{
+    $threshold = (int) $threshold;
+
+    if (($threshold <= 0) || ((int) $after > $threshold)) {
+        return false;
+    }
+
+    return ($before === null) || ((int) $before > $threshold);
+}
+
+
+/**
  * What one change of a product's stock announces: the events, in order, with
  * their payloads. Pure, so the writers and the tests read the same rule.
  *
@@ -2309,9 +2334,7 @@ function pg_product_stock_events($product_id, $name, $tracked, $before, $after, 
         ) + pg_stock_event_location_fields($location)),
     );
 
-    $was_above = ($before === null) || ((int) $before > $threshold);
-
-    if (($threshold > 0) && ($after <= $threshold) && $was_above) {
+    if (pg_product_stock_low_crossed($threshold, $before, $after)) {
         $events[] = array('stock.low', array(
             'product_id' => $product_id,
             'name'       => (string) $name,
@@ -5413,6 +5436,159 @@ function pg_offer_usage_counts($offer_id)
     return $counts;
 }
 
+/**
+ * The offers of an order that no longer hold when it is submitted: the cart
+ * worked their discount out earlier, and since then the offer may have
+ * ended, been disabled or deleted, reached its usage limit (another order
+ * was completed meanwhile) or lost the code it needs (a single-use key code
+ * another order used). Pure.
+ *
+ * @param array  $offers     rows of id, status, start_date, end_date,
+ *                           require_code, code and conditions_met (the
+ *                           customer conditions, pg_offer_customer_conditions_met());
+ *                           null offer columns for an offer that is gone
+ * @param string $today      Y-m-d
+ * @param string $offer_code the offer code the order's special offer code
+ *                           names now (get_offer_code_for_special_offer_code())
+ * @return array the ids that no longer hold, in the order given
+ */
+function pg_offer_use_refused(array $offers, $today, $offer_code)
+{
+    $refused = array();
+    foreach ($offers as $offer) {
+        $holds = pg_offer_is_running($offer, $today)
+            && !empty($offer['conditions_met'])
+            && (empty($offer['require_code'])
+                || (mb_strtolower((string) $offer['code']) === mb_strtolower((string) $offer_code)));
+        if (!$holds) {
+            $refused[] = (int) $offer['id'];
+        }
+    }
+    return $refused;
+}
+
+/**
+ * The named locks a submit holds while it checks an order's offers, takes
+ * the payment and completes the order: one per offer with a usage limit and
+ * one for a single-use key code, so of two checkouts using the last use only
+ * the first is completed and the second finds the limit reached. Sorted, so
+ * two submits take them in the same order. Pure.
+ *
+ * @param array      $offers   rows of id and usage_limit (bool)
+ * @param array|null $key_code pg_order_key_code()
+ * @return array
+ */
+function pg_offer_use_lock_names(array $offers, $key_code)
+{
+    $names = array();
+    foreach ($offers as $offer) {
+        if (!empty($offer['usage_limit'])) {
+            $names[] = 'pg_offer_use_' . (int) $offer['id'];
+        }
+    }
+    if ($key_code && !empty($key_code['single_use'])) {
+        $names[] = 'pg_key_code_use_' . (int) $key_code['id'];
+    }
+    $names = array_values(array_unique($names));
+    sort($names, SORT_STRING);
+    return $names;
+}
+
+/**
+ * The offers an order uses, as pg_offer_use_refused() and
+ * pg_offer_use_lock_names() read them: the same three marks
+ * pg_offer_usage_counts() counts (orders.discount_offer_id,
+ * order_items.offer_id, ship_tos.offer_id).
+ *
+ * @param int $order_id
+ * @return array
+ */
+function pg_order_used_offers($order_id)
+{
+    $order_id = (int) $order_id;
+    $ids = array();
+    $discount_offer_id = (int) db_value("SELECT discount_offer_id FROM orders WHERE id = '" . e($order_id) . "'");
+    if ($discount_offer_id > 0) {
+        $ids[$discount_offer_id] = true;
+    }
+    foreach (db_items("SELECT DISTINCT offer_id AS id FROM order_items WHERE (order_id = '" . e($order_id) . "') AND (offer_id != '0')" . pg_order_item_active_sql()) as $row) {
+        $ids[(int) $row['id']] = true;
+    }
+    if (ECOMMERCE_SHIPPING == true) {
+        foreach (db_items("SELECT DISTINCT offer_id AS id FROM ship_tos WHERE (order_id = '" . e($order_id) . "') AND (offer_id != '0')") as $row) {
+            $ids[(int) $row['id']] = true;
+        }
+    }
+    $offers = array();
+    foreach (array_keys($ids) as $offer_id) {
+        $row = db_item("SELECT status, start_date, end_date, require_code, code FROM offers WHERE id = '" . e($offer_id) . "'");
+        $usage_limit = false;
+        foreach (pg_offer_conditions($offer_id) as $condition) {
+            if (($condition['type'] == 'usage limit') && (((int) $condition['int_value'] > 0) || ((int) $condition['text_value'] > 0))) {
+                $usage_limit = true;
+            }
+        }
+        $offers[] = array(
+            'id' => $offer_id,
+            'status' => $row['status'] ?? null,
+            'start_date' => $row['start_date'] ?? null,
+            'end_date' => $row['end_date'] ?? null,
+            'require_code' => $row['require_code'] ?? 0,
+            'code' => $row['code'] ?? '',
+            'usage_limit' => $usage_limit,
+        );
+    }
+    return $offers;
+}
+
+/**
+ * The submit's check of the offers an order uses, made before the payment.
+ * Locks the limited offers and a single-use key code (pg_offer_use_lock_names())
+ * for the rest of the request, then asks whether each offer still holds.
+ * 'changed': an offer no longer holds; it has been taken off the cart
+ * (apply_offers_to_cart()), so the total the shopper saw is not the total
+ * now. 'busy': another checkout held a lock for longer than ten seconds.
+ *
+ * @param int $order_id
+ * @return string 'ok', 'changed' or 'busy'
+ */
+function pg_order_offer_use_check($order_id)
+{
+    $offers = pg_order_used_offers($order_id);
+    $special_offer_code = (string) db_value("SELECT special_offer_code FROM orders WHERE id = '" . e((int) $order_id) . "'");
+    $key_code = ($special_offer_code !== '') ? pg_order_key_code($special_offer_code) : null;
+    if (!$offers && !$key_code) {
+        return 'ok';
+    }
+    foreach (pg_offer_use_lock_names($offers, $key_code) as $lock) {
+        if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 10)") !== 1) {
+            return 'busy';
+        }
+    }
+    foreach ($offers as $key => $offer) {
+        $offers[$key]['conditions_met'] = pg_offer_customer_conditions_met($offer['id']);
+    }
+    $offer_code = ($special_offer_code !== '') ? get_offer_code_for_special_offer_code($special_offer_code) : '';
+    if (pg_offer_use_refused($offers, (string) db_value("SELECT CURRENT_DATE()"), $offer_code)) {
+        apply_offers_to_cart();
+        return 'changed';
+    }
+    return 'ok';
+}
+
+/**
+ * Whether an offer's gift line names a product that was deleted: the
+ * product row its LEFT JOIN reads is gone. Such a line is taken off the
+ * cart, as a line an offer discounted is when its product is gone. Pure.
+ *
+ * @param array $order_item a row with product_price from LEFT JOIN products
+ * @return bool
+ */
+function pg_offer_gift_line_product_gone($order_item)
+{
+    return !isset($order_item['product_price']);
+}
+
 // A tiered order discount: "spend 100 get 5%, spend 250 get 10%". The ladder
 // is one offer_conditions row, "<cents>:<percent>" pairs separated by commas,
 // read back sorted so the richest tier the cart reaches is found first.
@@ -6578,7 +6754,8 @@ function apply_offers_to_cart()
     $offers_and_offer_actions = array();
     // loop through the order items that were added by offers in order to determine if they are still valid
     foreach ($order_items as $order_item) {
-        // if this offer does not require a code or it has the same code that the customer entered,
+        // if the gift's product still exists (a deleted product's line goes),
+        // and this offer does not require a code or it has the same code that the customer entered,
         // and this offer is valid,
         // and not only the best offer should be applied for this code or it is the best offer for the code,
         // and the action is still set to add product,
@@ -6587,7 +6764,7 @@ function apply_offers_to_cart()
         // if this product has not already been added for this offer and action,
         // or the product is allowed to be added multiple times,
         // then the order item is valid, so update quantity and discount for product
-        if ((($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
+        if (!pg_offer_gift_line_product_gone($order_item) && (($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
             $discounted_price = pg_offer_gift_price($order_item['product_price'], $order_item['offer_action_add_product_discount_amount'], $order_item['offer_action_add_product_discount_percentage']);
             // A free gift left alone in its recipient (the last paid line
             // there was taken out) would stop the checkout, so it goes too;
@@ -9307,6 +9484,34 @@ function pg_cart_line_stock_allowance($wanted, $left, $starting, $minimum)
         'remove' => ($left === 0) || (($allowed === 0) && ($wanted > 0)),
         'unavailable' => ((int) $starting < max(1, min($wanted, $minimum))),
     );
+}
+
+/**
+ * Why a shopper's add of a product is refused for its stock: 'unavailable'
+ * when it tracks stock, has none left and takes no back orders; 'short' when
+ * the quantity asked is more than the stock; '' when the stock does not stop
+ * the add (not tracked, back orders on, a donation, or enough left). The
+ * rule of the catalogue's add (catalog_detail.php). Pure.
+ *
+ * @param array $product  inventory, inventory_quantity, backorder, selection_type
+ * @param int   $quantity units asked for
+ * @return string '', 'unavailable' or 'short'
+ */
+function pg_cart_add_stock_refusal($product, $quantity)
+{
+    if (((string) ($product['selection_type'] ?? '') === 'donation')
+        || ((int) ($product['inventory'] ?? 0) !== 1)
+        || ((int) ($product['backorder'] ?? 0) === 1)) {
+        return '';
+    }
+
+    $stock = (int) ($product['inventory_quantity'] ?? 0);
+
+    if ($stock <= 0) {
+        return 'unavailable';
+    }
+
+    return ((int) $quantity > $stock) ? 'short' : '';
 }
 
 // create function for checking if order items are still valid based on inventory levels
@@ -12052,7 +12257,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // and the restore keep the record of it); only an order the payment step
     // left without an outcome is flagged here.
     $gift_card_refund_line = pg_order_gift_card_refund_line($order_log_number, (array) db_items(
-        "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "'"));
+        "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "' ORDER BY id"),
+        pg_order_gift_card_owed($order_id));
     if ($gift_card_refund_line !== '') {
         log_activity($gift_card_refund_line);
         if ($refund_status_outcome === '') {
@@ -12090,12 +12296,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // own self-service, and the API all arrive here.
     require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('order.cancelled', array(
+    pg_announce('order.cancelled', array(
         'id'            => $order_id,
         'order_number'  => $order['order_number'],
         'reason'        => $reason_clean,
         'refund_status' => $refund_status_outcome
-    ));
+    ), array('listeners' => false));
 
     return array(
         'status'        => 'success',
@@ -12341,13 +12547,21 @@ function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_me
 // its id, a Givex card marked) and the amount as money text, '' when no card
 // paid anything. $order_number names the order (pg_order_log_number());
 // $applied_gift_cards are the order's applied_gift_cards rows. A customer's
-// own cancellation writes it, so it takes the software language.
-function pg_order_gift_card_refund_line($order_number, $applied_gift_cards)
+// own cancellation writes it, so it takes the software language. $owed
+// (minor units, pg_order_gift_card_owed()) is what the order still owes the
+// cards once a return gave part back: the cards are named for that much, the
+// last ones trimmed first; null names what each card paid.
+function pg_order_gift_card_refund_line($order_number, $applied_gift_cards, $owed = null)
 {
     $parts = array();
     $total = 0;
+    $left = ($owed === null) ? null : max(0, (int) $owed);
     foreach ($applied_gift_cards as $card) {
         $amount = (int) round((float) $card['amount']);
+        if ($left !== null) {
+            $amount = min($amount, $left);
+            $left -= max(0, $amount);
+        }
         if ($amount <= 0) {
             continue;
         }

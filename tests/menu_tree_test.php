@@ -169,3 +169,44 @@ function test_menu_items_screen_fits_a_phone()
 	pg_assert_same(4, substr_count($source, 'd-none md:d-table-cell'), 'both date headers and both date cells');
 	pg_assert_contains('<td class="align-middle text-break">\' . h($link_to_value) . \'</td>', $source, 'a long address breaks inside its cell');
 }
+
+// Which item a menu draws: one linked to a page that is gone never; one with
+// security on, or linked to an offline page (Recycle Bin, drafts), only for
+// a visitor who may view the page; one linked to no page always.
+function test_menu_item_shown()
+{
+	$item = function ($page_id, $page, $folder = 1, $security = 0) {
+		return array('link_page_id' => $page_id, 'link_page_name' => $page, 'link_page_folder_id' => $folder, 'security' => $security);
+	};
+	$may_view = function ($folder) { return (int) $folder !== 9; };
+	$offline = function ($folder) { return in_array((int) $folder, array(8, 9), true); };
+
+	pg_assert_true(pg_menu_item_shown($item(10, 'about'), $may_view, $offline), 'a public page');
+	pg_assert_true(pg_menu_item_shown($item(0, null), $may_view, $offline), 'a heading or a URL');
+	pg_assert_false(pg_menu_item_shown($item(10, null), $may_view, $offline), 'a deleted page is never a link');
+	pg_assert_false(pg_menu_item_shown($item(10, 'members', 9, 1), $may_view, $offline), 'security on, the visitor may not view it');
+	pg_assert_true(pg_menu_item_shown($item(10, 'members', 9, 1)), 'security on, no check given');
+	pg_assert_false(pg_menu_item_shown($item(10, 'old', 9), $may_view, $offline), 'an offline page, security off, the visitor may not view it');
+	pg_assert_true(pg_menu_item_shown($item(10, 'draft', 8), $may_view, $offline), 'an offline page a manager may view');
+	pg_assert_true(pg_menu_item_shown($item(10, 'members', 9, 0), $may_view), 'security off and no offline check: as before');
+	pg_assert_same('noopener', pg_menu_link_rel('_blank'), 'a new window gets noopener');
+	pg_assert_same('', pg_menu_link_rel(''), 'the same window gets none');
+}
+
+// The classic menu asks the same question and gives a new window noopener;
+// the current item is the first by id, as the Menu widget marks it.
+function test_menu_classic_uses_item_shown()
+{
+	$section = menu_tree_test_function_source('includes/fn/content.php', 'get_menu_content');
+
+	pg_assert_contains("pg_menu_item_shown(\$menu_item, function (\$folder_id) { return check_view_access(\$folder_id) == true; }, 'pg_menu_page_offline')", $section, 'the item check');
+	pg_assert_contains('target="_blank" rel="\' . pg_menu_link_rel(\'_blank\') . \'"', $section, 'a new window with noopener');
+
+	$sequence = menu_tree_test_function_source('includes/fn/designer.php', 'get_menu_sequence');
+
+	pg_assert_contains("!pg_menu_page_offline(\$menu_item['link_page_folder_id'])", $sequence, 'an offline page is no step of the sequence');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+	pg_assert_contains('WHERE (link_page_id = ?) AND (menu_id = ?) ORDER BY id LIMIT 1', $page, 'the current item is the first by id');
+}

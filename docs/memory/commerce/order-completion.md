@@ -14,7 +14,7 @@ module: order_completion
 
 ## What does it write, in order?
 - The UPDATE (columns from `pg_order_complete_columns()`, in the caller's order, every value quoted text; `ip_address` through `IFNULL(INET_ATON(?), 0)`; `checkout_page_id` (#2998) from `pg_order_checkout_page_id()` only while `pg_schema_has()` finds it); unknown column or non-scalar value → null and an `error_log` line.
-- `pg_order_drop_saved_lines()`, the order number (`LOCK TABLES next_order_number WRITE`, read, advance, unlock, `UPDATE orders SET order_number`), `pg_legal_documents_store()`, `api_webhook_enqueue('order.created')`, `pg_sms_order_received()`. Returns the order number.
+- `pg_order_drop_saved_lines()`, the order number (`LOCK TABLES next_order_number WRITE`, read, advance, unlock, `UPDATE orders SET order_number`), `pg_legal_documents_store()`, `pg_announce('order.created')` (no listeners), `pg_sms_order_received()`. Returns the order number.
 - A failed query ends the request (`output_error`).
 
 ## Which stage functions follow it?

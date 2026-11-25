@@ -828,9 +828,9 @@ function ws_personal_ical_card($user_id)
                     <div class="fw-semibold">' . h($feed['name']) . '</div>
                     <div class="small fg-secondary text-break">' . h($host) . ' · ' . $state . '</div>
                 </div>
-                ' . $form('own_switch', $feed['id'], '<input type="hidden" name="own_on" value="' . ($feed['on'] ? 0 : 1) . '"><button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi ' . ($feed['on'] ? 'bi-eye-slash' : 'bi-eye') . ' me-1" aria-hidden="true"></i>' . h($feed['on'] ? lang('Hide') : lang('Show')) . '</button>') . '
-                ' . ($feed['on'] ? $form('own_sync', $feed['id'], '<button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now')) . '</button>') : '') . '
-                ' . $form('own_remove', $feed['id'], '<button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '
+                ' . $form('own_switch', $feed['id'], '<input type="hidden" name="own_on" value="' . ($feed['on'] ? 0 : 1) . '"><button type="submit" class="pg-button pg-button-ghost pg-button-sm"><i class="bi ' . ($feed['on'] ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i>' . h($feed['on'] ? lang('Hide') : lang('Show')) . '</button>') . '
+                ' . ($feed['on'] ? $form('own_sync', $feed['id'], '<button type="submit" class="pg-button pg-button-ghost pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Read now')) . '</button>') : '') . '
+                ' . $form('own_remove', $feed['id'], '<button type="submit" class="pg-icon-button pg-icon-button-sm" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '
             </div>';
     }
 
@@ -840,15 +840,15 @@ function ws_personal_ical_card($user_id)
                     <input type="hidden" name="feed_action" value="own_add">
                     <div class="row g-3 align-items-end">
                         <div class="lg:col-7">
-                            <label class="form-label small" for="ws_own_url">' . h(lang('Secret address in iCal format')) . '</label>
-                            <input class="form-control form-control-sm" type="password" name="own_url" id="ws_own_url" required autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics">
+                            <label class="pg-field-label" for="ws_own_url">' . h(lang('Secret address in iCal format')) . '</label>
+                            <input class="pg-input pg-input-sm" type="password" name="own_url" id="ws_own_url" required autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics">
                         </div>
                         <div class="col-7 lg:col-3">
-                            <label class="form-label small" for="ws_own_name">' . h(lang('Name')) . '</label>
-                            <input class="form-control form-control-sm" type="text" name="own_name" id="ws_own_name" maxlength="120">
+                            <label class="pg-field-label" for="ws_own_name">' . h(lang('Name')) . '</label>
+                            <input class="pg-input pg-input-sm" type="text" name="own_name" id="ws_own_name" maxlength="120">
                         </div>
                         <div class="col-5 lg:col-2 text-end">
-                            <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Add')) . '</button>
+                            <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Add')) . '</button>
                         </div>
                     </div>
                 </form>' : '';

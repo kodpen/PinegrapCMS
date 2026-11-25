@@ -11,7 +11,7 @@ description: Working rule (2026-11-21): a part with no model on the Design examp
 - A part of its own kind (a strip, a ruler, a chart, a card with no model on `design_examples.php`) is drawn by the architect before the job goes out.
 - The drawing is an HTML sheet on the look's tokens (`ui/look-sheet/sheet.css`) in `<folder>/<topic>-drawing/` beside its memory, rendered dark and light as two pictures.
 - Its boards: today's state for the difference, each state of the part (as it opens, pointed at, at its two ends, narrow, on a phone), the sizes three times enlarged, the wheel and the keys.
-- The architect shows the pictures to the owner in its window while the plan is written, and looks at its own rendering before that: a sheet nobody looked at is not a drawing.
+- The architect looks at its own rendering before the job goes out: a sheet nobody looked at is not a drawing. A picture the owner asks to see is posted in the agent channel, not shown in the architect's window (`architect.md`).
 - The plan says the same in words (`<plan>-screens.md`); where the two differ the drawing wins, and what neither says the worker asks of the architect.
 
 ## What does it not bring back?

@@ -526,8 +526,8 @@ function ws_mail_block_item_html($item)
         $scopes['all'] = lang('Every mailbox');
     }
 
-    return '<button type="button" class="btn btn-sm btn-text theme-secondary px-0 ms-3" data-bs-toggle="collapse" data-bs-target="#ws-mail-block-' . $id . '"'
-        . ' aria-expanded="false" aria-controls="ws-mail-block-' . $id . '"><i class="bi bi-slash-circle me-1" aria-hidden="true"></i>' . h(lang('Block sender')) . '</button>'
+    return '<button type="button" class="pg-button pg-button-ghost pg-button-sm ms-3" data-bs-toggle="collapse" data-bs-target="#ws-mail-block-' . $id . '"'
+        . ' aria-expanded="false" aria-controls="ws-mail-block-' . $id . '"><i class="bi bi-slash-circle" aria-hidden="true"></i>' . h(lang('Block sender')) . '</button>'
         . '<div class="collapse" id="ws-mail-block-' . $id . '"><form class="ws-mail-block pg-card-inner mt-2 p-3" data-ws-mail-block="' . $id . '">'
         . '<div class="pg-field-label">' . h(lang('Block')) . '</div>'
         . $seg('kind', array('address' => $block['address'], 'domain' => lang(array('string' => 'Everyone at {var:1}', 'vars' => $block['domain']))), lang('Block'))

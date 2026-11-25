@@ -18,10 +18,10 @@ module: lead_journey_view
 
 ## What do erase, export and the inventory do?
 - Erase (`pg_privacy_erase_tables()`, after `course_progress`): `lead_visits`, `contact_journey`, `contact_scores`, `lead_browsers` deleted by `contact_ids`; `pg_contact_holders()` erase `find` for the four. A visit no contact holds stays until the keep period.
-- Export sections `journey_visits`, `journey`, `interest_score` (after `courses`).
+- Export sections `journey_visits`, `journey`, `interest_score`, `journey_browsers` (after `courses`); the browsers with consent, tie and last-seen times, never `key_hash` (#11381).
 - Inventory: the four tables, category `ip_cookie`, ground consent, retention `lead_journey` ("The journey's keep period (13 months)").
 
 ## How is the keep period kept?
-- `job.php` calls `pg_lead_trim_run(time())` every tick: deletes at most 2,000 rows a table of `lead_visits` (`started_at`), `contact_journey` (`at`) and `lead_browsers` (`last_seen_at`) before `pg_lead_keep_start()` with `pg_lead_keep_months()` (13 months unless set, `visitors/lead-score.md`). `contact_scores` is not trimmed.
+- `job.php` calls `pg_lead_trim_run(time())` every tick: deletes at most 2,000 rows a table of `lead_visits` (`started_at`), `contact_journey` (`at`) and `lead_browsers` (`last_seen_at`) before `pg_lead_keep_start()` with `pg_lead_keep_months()` (13 months unless set, `visitors/lead-score.md`). `contact_scores` is not trimmed here: the scoring pass works out a row whose `last_visit_at` is before the keep start, and deletes it once no visit is left (`visitors/lead-score.md`).
 
 Tests: `tests/lead_journey_view_test.php`.

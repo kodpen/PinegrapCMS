@@ -4,7 +4,8 @@
  *
  * Tests for the short pick and the Packing card's pure parts
  * (includes/fn/pick_pack.php): a pack closed short with its missing lines,
- * the stored missing units read back, the drawer's count fixes, the missing
+ * the stored missing units read back, the drawer's count fixes and the
+ * units held by orders waiting to be sent, the missing
  * lines as texts, the week's first day and the card's figures.
  *
  * @author      Erdal Güral (Kodpen)
@@ -111,4 +112,42 @@ function test_pack_card_figures()
 	$none = pg_pack_card_figures(array(), array(), $today);
 
 	pg_assert_same(array('waiting' => 0, 'oldest' => 0, 'due' => 0, 'packed_today' => 0, 'packers' => array()), $none, 'nothing to show');
+}
+
+function test_pack_held_units_sum_other_orders_at_the_location()
+{
+	// Shelf 3 at location 1; orders B (2) and C (1) are paid and not yet sent.
+	$rows = array(
+		array('ship_to_id' => 20, 'location_id' => 1, 'units' => 2),
+		array('ship_to_id' => 30, 'location_id' => 1, 'units' => 1),
+		array('ship_to_id' => 40, 'location_id' => 2, 'units' => 5),
+	);
+	$held = pg_pack_held_units($rows, 1, 10, 0);
+
+	pg_assert_same(3, $held, 'B and C hold 3; another location is not counted');
+	pg_assert_same(0, pg_pack_count_after(3, $held), 'shelf 3 less 3 held leaves 0 to sell');
+	pg_assert_same(4, pg_pack_count_after(7, $held), 'shelf 7 less 3 held leaves 4');
+}
+
+function test_pack_held_units_keep_own_unpacked_units_only()
+{
+	// The short pack's own address asked 4: 1 scanned into the box, 2 missing, 1 still to pack.
+	$rows = array(
+		array('ship_to_id' => 10, 'location_id' => 0, 'units' => 4),
+		array('ship_to_id' => 20, 'location_id' => 0, 'units' => 2),
+	);
+
+	pg_assert_same(3, pg_pack_held_units($rows, 0, 10, 3), 'own unit still to pack held, scanned and missing ones not');
+	pg_assert_same(2, pg_pack_held_units($rows, 0, 10, 9), 'own units never go below 0');
+}
+
+function test_pack_count_after_never_goes_below_zero()
+{
+	$rows = array(
+		array('ship_to_id' => 20, 'location_id' => 1, 'units' => 2),
+		array('ship_to_id' => 30, 'location_id' => 1, 'units' => 3),
+	);
+
+	pg_assert_same(0, pg_pack_count_after(1, pg_pack_held_units($rows, 1, 10, 0)), 'shelf 1 below 5 held writes 0');
+	pg_assert_same(0, pg_pack_count_after(0, 0), 'an empty shelf with nothing held');
 }

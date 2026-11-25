@@ -194,7 +194,7 @@ $kind_radio = function ($value, $label, $help) use ($template) {
         <div class="form-field">
             <input class="radio" type="radio" name="kind" id="ws_tpl_kind_' . h($value) . '" value="' . h($value) . '"' . (($template['kind'] === $value) ? ' checked' : '') . '>
             <label class="" for="ws_tpl_kind_' . h($value) . '">' . h($label) . '</label>
-            <div class="form-text mt-0">' . h($help) . '</div>
+            <div class="pg-field-help mt-0">' . h($help) . '</div>
         </div>';
 };
 
@@ -254,32 +254,32 @@ pg_page_shell([
                 <div class="card-body">
                     <div class="row g-5">
                         <div class="col-12 md:col-6">
-                            <label class="form-label" for="ws_tpl_name">' . h(lang('Name')) . '</label>
-                            <input class="form-control" type="text" name="name" id="ws_tpl_name" maxlength="100" required value="' . h($template['name']) . '">
+                            <label class="pg-field-label" for="ws_tpl_name">' . h(lang('Name')) . '</label>
+                            <input class="pg-input" type="text" name="name" id="ws_tpl_name" maxlength="100" required value="' . h($template['name']) . '">
                         </div>
                         <div class="col-12 md:col-6">
-                            <label class="form-label" for="ws_tpl_description">' . h(lang('Description')) . '</label>
-                            <input class="form-control" type="text" name="description" id="ws_tpl_description" maxlength="255" value="' . h($template['description']) . '">
+                            <label class="pg-field-label" for="ws_tpl_description">' . h(lang('Description')) . '</label>
+                            <input class="pg-input" type="text" name="description" id="ws_tpl_description" maxlength="255" value="' . h($template['description']) . '">
                         </div>
                         <div class="col-12 md:col-4">
-                            <label class="form-label" for="ws_tpl_icon">' . h(lang('Icon')) . '</label>
-                            <label class="form-control form-adorn">
-                                <span class="form-adorn-text" aria-hidden="true"><i class="bi ' . h($icon) . '" id="ws_tpl_icon_preview"></i></span>
-                                <input class="form-ghost" type="text" name="icon" id="ws_tpl_icon" maxlength="40" placeholder="bi-briefcase" value="' . h($template['icon']) . '">
+                            <label class="pg-field-label" for="ws_tpl_icon">' . h(lang('Icon')) . '</label>
+                            <label class="pg-input">
+                                <i class="bi ' . h($icon) . '" id="ws_tpl_icon_preview" aria-hidden="true"></i>
+                                <input type="text" name="icon" id="ws_tpl_icon" maxlength="40" placeholder="bi-briefcase" value="' . h($template['icon']) . '">
                             </label>
-                            <div class="form-text">' . h(lang('A Bootstrap Icons class, such as bi-briefcase.')) . ' ' . h(lang('A channel made from the template takes the icon only when it is one of the channel icons.')) . '</div>
+                            <div class="pg-field-help">' . h(lang('A Bootstrap Icons class, such as bi-briefcase.')) . ' ' . h(lang('A channel made from the template takes the icon only when it is one of the channel icons.')) . '</div>
                         </div>
                         <div class="col-12 md:col-4">
-                            <label class="form-label" for="ws_tpl_color">' . h(lang('Colour')) . '</label>
-                            <select class="form-control" name="color" id="ws_tpl_color">' . $color_options . '</select>
+                            <label class="pg-field-label" for="ws_tpl_color">' . h(lang('Colour')) . '</label>
+                            <select class="pg-input" name="color" id="ws_tpl_color">' . $color_options . '</select>
                         </div>
                         <div class="col-12 md:col-4">
-                            <label class="form-label" for="ws_tpl_department">' . h(lang('Department')) . '</label>
-                            <select class="form-control" name="department_id" id="ws_tpl_department">' . $department_options . '</select>
-                            <div class="form-text">' . h(lang('Suggested for the channel; a task given to the lead of the department goes to its lead.')) . '</div>
+                            <label class="pg-field-label" for="ws_tpl_department">' . h(lang('Department')) . '</label>
+                            <select class="pg-input" name="department_id" id="ws_tpl_department">' . $department_options . '</select>
+                            <div class="pg-field-help">' . h(lang('Suggested for the channel; a task given to the lead of the department goes to its lead.')) . '</div>
                         </div>
                         <div class="col-12">
-                            <div class="form-label">' . h(lang('Who can see it')) . '</div>
+                            <div class="pg-field-label">' . h(lang('Who can see it')) . '</div>
                             ' . $kind_radio('public', lang('Everyone in the team'), lang('Everyone in the team can find it, read it and join it.')) . '
                             ' . $kind_radio('private', lang('Private'), lang('Only the people invited see it. The owner can open it to everyone later.')) . '
                         </div>
@@ -291,19 +291,19 @@ pg_page_shell([
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>' . h(lang('Texts of the channel')) . '</h2></div>
                 <div class="card-body">
                     <div class="mb-5">
-                        <label class="form-label" for="ws_tpl_summary">' . h(lang('Summary')) . '</label>
-                        <textarea class="form-control" name="summary" id="ws_tpl_summary" rows="4" data-ws-rich>' . h($template['summary']) . '</textarea>
-                        <div class="form-text">' . h(lang('Written into the channel\'s summary when it has none yet.')) . '</div>
+                        <label class="pg-field-label" for="ws_tpl_summary">' . h(lang('Summary')) . '</label>
+                        <textarea class="pg-input" name="summary" id="ws_tpl_summary" rows="4" data-ws-rich>' . h($template['summary']) . '</textarea>
+                        <div class="pg-field-help">' . h(lang('Written into the channel\'s summary when it has none yet.')) . '</div>
                     </div>
                     <div class="mb-5">
-                        <label class="form-label" for="ws_tpl_pinned">' . h(lang('Pinned message')) . '</label>
-                        <textarea class="form-control" name="pinned" id="ws_tpl_pinned" rows="3" data-ws-rich>' . h($template['pinned']) . '</textarea>
-                        <div class="form-text">' . h(lang('Posted and pinned to the top of the channel when nothing is pinned there yet.')) . '</div>
+                        <label class="pg-field-label" for="ws_tpl_pinned">' . h(lang('Pinned message')) . '</label>
+                        <textarea class="pg-input" name="pinned" id="ws_tpl_pinned" rows="3" data-ws-rich>' . h($template['pinned']) . '</textarea>
+                        <div class="pg-field-help">' . h(lang('Posted and pinned to the top of the channel when nothing is pinned there yet.')) . '</div>
                     </div>
                     <div>
-                        <label class="form-label" for="ws_tpl_welcome">' . h(lang('Welcome message')) . '</label>
-                        <textarea class="form-control" name="welcome" id="ws_tpl_welcome" rows="3" data-ws-rich>' . h($template['welcome']) . '</textarea>
-                        <div class="form-text">' . h(lang('The first message of a channel made from the template; left empty, there is none.')) . '</div>
+                        <label class="pg-field-label" for="ws_tpl_welcome">' . h(lang('Welcome message')) . '</label>
+                        <textarea class="pg-input" name="welcome" id="ws_tpl_welcome" rows="3" data-ws-rich>' . h($template['welcome']) . '</textarea>
+                        <div class="pg-field-help">' . h(lang('The first message of a channel made from the template; left empty, there is none.')) . '</div>
                     </div>
                 </div>
             </div>
@@ -351,8 +351,8 @@ pg_page_shell([
              inside its parent, and the row (the form) is as tall as the page. -->
         <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                <a class="btn btn-sm btn-text theme-secondary" href="' . h($back_url) . '">' . h(lang('Cancel')) . '</a>
-                <button type="submit" name="submit_save" value="Save" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
+                <a class="pg-button pg-button-ghost pg-button-sm" href="' . h($back_url) . '">' . h(lang('Cancel')) . '</a>
+                <button type="submit" name="submit_save" value="Save" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
             </nav>
         </div>
     </form>

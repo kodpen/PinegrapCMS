@@ -27,6 +27,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     var STATES = {
         pending: ['bi-hourglass-split', 'apv_pending'],
         approved: ['bi-check-circle-fill', 'apv_has_approved'],
@@ -136,7 +148,7 @@
             row.appendChild(badge);
 
             if (person.can_resend) {
-                var again = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
+                var again = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-envelope', t('apv_guest_resend'));
 
                 again.addEventListener('click', function () {
                     again.disabled = true;
@@ -164,8 +176,8 @@
         foot.appendChild(el('span', 'ws-grow', t('apv_count', approval.counts.approved, (approval.people || []).length)));
 
         if (approval.can_decide) {
-            var approve = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_approve'), 'bi-check2');
-            var reject = h.button('btn btn-sm btn-outline theme-warning', t('apv_reject'), 'bi-x-lg');
+            var approve = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('apv_approve'), 'bi-check2');
+            var reject = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('apv_reject'), 'bi-x-lg');
 
             var decide = function (note) {
                 approve.disabled = true;
@@ -186,7 +198,7 @@
                     return;
                 }
 
-                var answer = el('input', 'form-control form-control-sm');
+                var answer = el('input', 'pg-input pg-input-sm');
 
                 answer.type = 'text';
                 answer.maxLength = 255;
@@ -206,7 +218,7 @@
             });
 
             reject.addEventListener('click', function () {
-                var note = el('input', 'form-control form-control-sm');
+                var note = el('input', 'pg-input pg-input-sm');
 
                 note.type = 'text';
                 note.maxLength = 255;
@@ -229,14 +241,14 @@
         }
 
         if (approval.result_id) {
-            var result = h.button('btn btn-sm btn-text theme-secondary', t('apv_result'), 'bi-patch-check');
+            var result = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', t('apv_result'), 'bi-patch-check');
             result.addEventListener('click', function () { view.jumpTo(approval.result_id, true); });
             foot.appendChild(result);
         }
 
         if (approval.can_withdraw || approval.can_close) {
             var label = approval.can_withdraw ? t('apv_withdraw') : t('apv_close');
-            var shut = h.button('btn btn-sm btn-text theme-secondary', label, 'bi-slash-circle');
+            var shut = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', label, 'bi-slash-circle');
 
             shut.addEventListener('click', function () {
                 h.ask(approval.can_withdraw ? t('apv_withdraw_confirm') : t('apv_close_confirm'), label, true).then(function (yes) {
@@ -271,7 +283,7 @@
 
         footer.classList.remove('d-none');
 
-        var title = el('input', 'form-control form-control-sm');
+        var title = el('input', 'pg-input pg-input-sm');
         title.type = 'text';
         title.maxLength = 255;
         title.id = h.nextId('ws-apv-title-');
@@ -288,14 +300,14 @@
             wrap.appendChild(rich.input);
             wrap.appendChild(rich.tools(false));
         } else {
-            area = el('textarea', 'form-control form-control-sm');
+            area = el('textarea', 'pg-input pg-input-sm');
             area.rows = 3;
             area.value = (fill && fill.text) || '';
             wrap.appendChild(area);
         }
 
         var textRow = el('div', 'mb-5');
-        textRow.appendChild(el('div', 'form-label', t('apv_text')));
+        textRow.appendChild(el('div', 'pg-field-label', t('apv_text')));
         textRow.appendChild(wrap);
         textRow.appendChild(el('div', 'form-text', t('apv_text_help')));
         body.appendChild(textRow);
@@ -304,7 +316,7 @@
         var people = h.peoplePicker((fill && fill.approvers) || [], members);
         var peopleRow = el('div', 'mb-5');
 
-        peopleRow.appendChild(el('div', 'form-label', t('apv_people')));
+        peopleRow.appendChild(el('div', 'pg-field-label', t('apv_people')));
         peopleRow.appendChild(people);
         peopleRow.appendChild(el('div', 'form-text', t('apv_people_help')));
         body.appendChild(peopleRow);
@@ -316,7 +328,7 @@
         if (agents) {
             var agentsRow = el('div', 'mb-5');
 
-            agentsRow.appendChild(el('div', 'form-label', t('apv_agents')));
+            agentsRow.appendChild(el('div', 'pg-field-label', t('apv_agents')));
             agentsRow.appendChild(agents);
             agentsRow.appendChild(el('div', 'form-text', t('apv_agents_help')));
             body.appendChild(agentsRow);
@@ -333,7 +345,7 @@
         var group = h.nextId('ws-apv-rule-');
         var rule = 'any';
 
-        ruleRow.appendChild(el('div', 'form-label', t('apv_rule')));
+        ruleRow.appendChild(el('div', 'pg-field-label', t('apv_rule')));
 
         [['any', t('apv_rule_any')], ['all', t('apv_rule_all')]].forEach(function (item) {
             var line = el('div', 'form-field');
@@ -356,8 +368,8 @@
         var grid = el('div', 'row g-3');
         var dateCell = el('div', 'col-7');
         var timeCell = el('div', 'col-5');
-        var date = el('input', 'form-control form-control-sm');
-        var time = el('input', 'form-control form-control-sm');
+        var date = el('input', 'pg-input pg-input-sm');
+        var time = el('input', 'pg-input pg-input-sm');
 
         h.dateField(date, 'date');
         date.id = h.nextId('ws-apv-date-');
@@ -376,11 +388,11 @@
         outcome.appendChild(document.createTextNode(t('apv_result_help')));
         body.appendChild(outcome);
 
-        var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        var cancel = h.button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
-        var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_send'), 'bi-send');
+        var send = lookButton(h, 'pg-button pg-button-fill pg-button-sm', t('apv_send'), 'bi-send');
         send.addEventListener('click', function () {
             send.disabled = true;
 
@@ -464,16 +476,16 @@
         var box = el('div', 'mb-5 ws-approval-guests');
         var list = el('div', 'ws-approval-guest-rows');
         var rows = [];
-        var add = h.button('btn btn-sm btn-text theme-secondary px-1', t('apv_guest_add'), 'bi-plus-lg');
+        var add = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('apv_guest_add'), 'bi-plus-lg');
 
         function row() {
             var line = el('div', 'row g-1 mb-1 align-items-center');
             var nameCell = el('div', 'col-5');
             var mailCell = el('div', 'col-6');
             var dropCell = el('div', 'col-1 text-end');
-            var name = el('input', 'form-control form-control-sm');
-            var mail = el('input', 'form-control form-control-sm');
-            var drop = h.button('btn btn-sm btn-text theme-secondary px-1', '', 'bi-x-lg', t('apv_guest_remove'));
+            var name = el('input', 'pg-input pg-input-sm');
+            var mail = el('input', 'pg-input pg-input-sm');
+            var drop = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('apv_guest_remove'));
             var item = { name: name, mail: mail };
 
             name.type = 'text';
@@ -513,7 +525,7 @@
             rows[rows.length - 1].name.focus();
         });
 
-        box.appendChild(el('div', 'form-label', t('apv_guests')));
+        box.appendChild(el('div', 'pg-field-label', t('apv_guests')));
         box.appendChild(list);
         box.appendChild(add);
         box.appendChild(el('div', 'form-text', t('apv_guests_help')));

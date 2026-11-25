@@ -82,6 +82,6 @@ function ws_agent_start_box($agent, $base = null)
         <div class="mb-5">
             <div class="small fw-semibold mb-1">' . h($label) . '</div>
             ' . ws_claude_copy_field($id, ws_agent_start_text($base), 8, $label) . '
-            <div class="form-text">' . h(lang('Paste it into the agent\'s setup. Give the agent the application\'s key and secret as PINEGRAP_KEY and PINEGRAP_SECRET in its environment; the text holds neither.')) . '</div>
+            <div class="pg-field-help">' . h(lang('Paste it into the agent\'s setup. Give the agent the application\'s key and secret as PINEGRAP_KEY and PINEGRAP_SECRET in its environment; the text holds neither.')) . '</div>
         </div>';
 }

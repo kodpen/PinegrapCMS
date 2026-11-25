@@ -952,10 +952,10 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // holds up the customer.
     require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('order.created', array(
+    pg_announce('order.created', array(
         'id'           => $order_id,
         'order_number' => $order_number
-    ));
+    ), array('listeners' => false));
 
     // The customer's text and WhatsApp messages, when the store sends them:
     // only queued, so neither provider is waited on here.
@@ -4326,35 +4326,59 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
             $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
 
             // Deleted, or its balance went down meanwhile (another order
-            // submitted at the same moment): the card is removed. The read
-            // alone cannot see an order completing between it and the
-            // decrement, so the decrement only runs while the balance still
-            // covers the amount and a refused one is the same failure.
+            // submitted at the same moment): the card gives what it still
+            // holds (pg_order_gift_card_redeem_take()) and the next cards
+            // the rest. The decrement is written only over the balance read,
+            // so an order completing between the read and the write makes it
+            // read again rather than take more than the card has. Refusing
+            // the whole card lost what it still held.
             $redeemed = false;
+            $wanted = $amount;
 
-            if (($gift_card['id'] != '') && ($gift_card['balance'] >= $amount)) {
+            for ($attempt = 0; ($gift_card['id'] != '') && ($attempt < 3); $attempt++) {
+                if ($attempt > 0) {
+                    $gift_card['balance'] = db_value("SELECT balance FROM gift_cards WHERE id = '" . (int) $gift_card['id'] . "'");
+
+                    if ($gift_card['balance'] === null) {
+                        break;
+                    }
+                }
+
+                $amount = pg_order_gift_card_redeem_take($wanted, $gift_card['balance']);
+
+                // A zero amount changes no row and is still redeemed.
+                if ($amount <= 0) {
+                    $redeemed = ($wanted <= 0);
+                    break;
+                }
+
                 db_q(
                     "UPDATE gift_cards
                     SET
                         balance = balance - ?,
                         last_modified_user_id = ?,
                         last_modified_timestamp = UNIX_TIMESTAMP()
-                    WHERE (id = ?) AND (balance >= ?)",
-                    array((int) round($amount), (string) $actor, (string) $gift_card['id'], (int) round($amount))) or output_error('Query failed.');
+                    WHERE (id = ?) AND (balance = ?)",
+                    array($amount, (string) $actor, (string) $gift_card['id'], (int) round((float) $gift_card['balance']))) or output_error('Query failed.');
 
-                // Affected rows count changed rows only: a zero amount may
-                // change none and is still redeemed.
-                $redeemed = ($amount <= 0) || !(mysqli_affected_rows(db::$con) < 1);
+                if (mysqli_affected_rows(db::$con) === 1) {
+                    $redeemed = true;
+                    break;
+                }
             }
 
-            if (!$redeemed) {
+            // A card that gave less than asked is named in the shortfall
+            // mail, should the next cards not cover the rest.
+            if (!$redeemed || ($amount < $wanted)) {
                 $gift_card_errors[] = array(
                     'gift_card_code' => $applied_gift_card['code'],
-                    'amount' => $amount,
+                    'amount' => $wanted,
                     'error_message' => pg_log_lang(array('string' => 'Gift card was deleted or balance of card changed right when order was submitted.')),
                     'givex' => false
                 );
+            }
 
+            if (!$redeemed) {
                 db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((string) $applied_gift_card['id'])) or output_error('Query failed.');
 
             } else {
@@ -4441,6 +4465,20 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
             pg_log_lang(array('string' => 'View the order: {var:1}', 'vars' => array(
                 URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order_id
             ))) . "\n"));
+}
+
+/**
+ * What a card of this system gives toward an order at redemption: the amount
+ * asked of it, or what it still holds when another order spent part of it
+ * meanwhile; whole minor units, never below 0. Pure.
+ *
+ * @param int|float|string $amount  minor units asked of the card
+ * @param int|float|string $balance the card's balance now, minor units
+ * @return int
+ */
+function pg_order_gift_card_redeem_take($amount, $balance)
+{
+    return max(0, min((int) round((float) $amount), (int) round((float) $balance)));
 }
 
 /**

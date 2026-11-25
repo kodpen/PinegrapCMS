@@ -641,6 +641,14 @@ function get_shipping_method($properties) {
                 $shipping_method_item_rate_first_item_excluded = $row['item_rate_first_item_excluded'];
                 $protected = $row['protected'];
 
+                // A method forced onto the destination without a matching zone has no zone
+                // rates; start from zero so the previous method's rates are not reused, as
+                // shipping_method.php charges it.
+                $zone_base_rate = 0;
+                $zone_primary_weight_rate = 0;
+                $zone_secondary_weight_rate = 0;
+                $zone_item_rate = 0;
+
                 // loop through all valid zones in order to find a zone that is allowed for this shipping method
                 foreach ($zones as $zone_id) {
                     $query = "SELECT shipping_method_id
@@ -1350,6 +1358,14 @@ function get_shipping_method($properties) {
                 $shipping_method_item_rate = $row['item_rate'];
                 $shipping_method_item_rate_first_item_excluded = $row['item_rate_first_item_excluded'];
                 $protected = $row['protected'];
+
+                // A method forced onto the destination without a matching zone has no zone
+                // rates; start from zero so the previous method's rates are not reused, as
+                // shipping_method.php charges it.
+                $zone_base_rate = 0;
+                $zone_primary_weight_rate = 0;
+                $zone_secondary_weight_rate = 0;
+                $zone_item_rate = 0;
 
                 // loop through all valid zones in order to find a zone that is allowed for this shipping method
                 foreach ($zones as $zone_id) {

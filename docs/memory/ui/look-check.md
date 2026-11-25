@@ -1,6 +1,6 @@
 ---
 name: look-check
-description: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
+description: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours, old btn btn- / nav-tabs panel markup and old Workspace fields may only fall against its baseline; what it skips, --update
 ---
 
 ## What does it count?
@@ -15,6 +15,12 @@ description: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colour
 - Skipped: comments, site output (`site` and `shared` files, `@pg-site-output` ranges; Bootstrap 5.3.8), the visual designer (`style_designer*` and the `editor` files), `.min.js` bundles, `assets/lib`.
 - Only files holding an old class are in the baseline; a file missing from it counts as 0, so a new file or a renamed one with a `btn btn-` fails. A rename moves its entry in `check_look_baseline.json` by hand.
 - First counts (2026-11-17, from `origin/development`): 1,865 buttons (`workspace.js` 259), 6 tab strips.
+
+## What does it count as an old field?
+- Only in Workspace files (a path holding `workspace`, PHP or script source): `field` = each `form-control`, `form-label` or `form-text` class; `form-control-sm` and `form-select` are not counted.
+- Why: the Workspace's old fields move to the kit's form parts (`formParts`, plan workspace-look-leftover); the count stops a new old field line.
+- Not `formRow(` since WL8 (#11391): it is `field()`.
+- First counts (2026-11-24): 525 in 45 files (`workspace.js` 128, `workspace_wtables.php` 81, `workspace_flow.js` 61, `workspace_mail.js` 35). A file with fields but no old button is in the baseline with `button` and `tabs` at 0.
 
 ## How does the baseline work?
 - `tools/check_look_baseline.json` holds the counts per stylesheet and kind. CI (`php-checks.yml`) and `tools/pre_push.sh` run `php tools/check_look.php`: a count above its baseline fails and names the file.

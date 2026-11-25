@@ -347,8 +347,10 @@ function pg_design_theme_files($kind = null)
 
 // The stylesheets of a look and a palette, in load order: array of
 // array(id, url). Empty for a design without a framework, and for a choice
-// whose file has gone.
-function pg_design_theme_assets($look, $palette, $framework = 'bootstrap5')
+// whose file has gone. $variables_url is the design's variables stylesheet
+// (pg_design_variables_url()), loaded last; it needs the bridge and the
+// look engine, whose defaults are plain Bootstrap.
+function pg_design_theme_assets($look, $palette, $framework = 'bootstrap5', $variables_url = '')
 {
     $out = array();
     if (function_exists('pg_design_framework')) {
@@ -379,23 +381,29 @@ function pg_design_theme_assets($look, $palette, $framework = 'bootstrap5')
         }
     }
 
-    if ($look_url === '' && $palette_url === '') return $out;
+    $variables_url = (string)$variables_url;
+    if ($look_url === '' && $palette_url === '' && $variables_url === '') return $out;
     $out[] = array('id' => 'pg-theme-bridge', 'url' => pg_design_theme_url('bridge.css'));
-    if ($look_url !== '') {
+    if ($look_url !== '' || $variables_url !== '') {
         $out[] = array('id' => 'pg-theme-base', 'url' => pg_design_theme_url('base.css'));
+    }
+    if ($look_url !== '') {
         $out[] = array('id' => 'pg-theme-look', 'url' => $look_url);
     }
     if ($palette_url !== '') {
         $out[] = array('id' => 'pg-theme-palette', 'url' => $palette_url);
     }
+    if ($variables_url !== '') {
+        $out[] = array('id' => 'pg-theme-variables', 'url' => $variables_url);
+    }
     return $out;
 }
 
 // The same, as <link> tags for the page head.
-function pg_design_theme_links($look, $palette, $framework = 'bootstrap5')
+function pg_design_theme_links($look, $palette, $framework = 'bootstrap5', $variables_url = '')
 {
     $html = '';
-    foreach (pg_design_theme_assets($look, $palette, $framework) as $a) {
+    foreach (pg_design_theme_assets($look, $palette, $framework, $variables_url) as $a) {
         $html .= '<link rel="stylesheet" id="' . h($a['id']) . '" href="' . h($a['url']) . '">';
     }
     return $html;
@@ -786,6 +794,21 @@ function pg_design_look_tokens($key)
     return $out;
 }
 
+// The shadow presets of the look builder: for each, the small, normal and
+// large shadow, the card's shadow at rest and under the pointer, the card's
+// lift, and the button's shadow at rest and under the pointer.
+function _pg_design_look_shadows()
+{
+    return array(
+        'none'  => array('none', '0 6px 18px rgba(0, 0, 0, 0.08)', '0 16px 40px rgba(0, 0, 0, 0.12)', 'none', 'none', 'none', 'none', 'none'),
+        'soft'  => array('0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07)', '0 4px 10px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05)', '0 20px 36px -10px rgba(16, 24, 40, 0.16), 0 8px 14px -6px rgba(16, 24, 40, 0.06)', 'var(--pg-shadow-sm)', 'var(--pg-shadow-lg)', 'translateY(-3px)', '0 1px 2px rgba(16, 24, 40, 0.08)', '0 6px 14px -4px rgba(16, 24, 40, 0.2)'),
+        'crisp' => array('0 1px 2px rgba(0, 0, 0, 0.06)', '0 3px 8px rgba(0, 0, 0, 0.1)', '0 10px 26px rgba(0, 0, 0, 0.14)', '0 1px 2px rgba(0, 0, 0, 0.05)', 'var(--pg-shadow)', 'none', 'none', 'none'),
+        'deep'  => array('0 2px 6px rgba(0, 0, 0, 0.1)', '0 12px 28px -8px rgba(0, 0, 0, 0.25)', '0 30px 60px -18px rgba(0, 0, 0, 0.35)', 'var(--pg-shadow)', 'var(--pg-shadow-lg)', 'translateY(-4px)', '0 4px 10px -4px rgba(0, 0, 0, 0.3)', '0 10px 20px -6px rgba(0, 0, 0, 0.35)'),
+        'glow'  => array('0 2px 8px -2px color-mix(in srgb, var(--pg-primary) 18%, transparent)', '0 10px 26px -10px color-mix(in srgb, var(--pg-primary) 30%, transparent)', '0 24px 48px -16px color-mix(in srgb, var(--pg-primary) 38%, transparent)', '0 8px 24px -10px color-mix(in srgb, var(--pg-primary) 28%, transparent)', '0 20px 40px -14px color-mix(in srgb, var(--pg-primary) 40%, transparent)', 'translateY(-5px)', '0 4px 12px -6px color-mix(in srgb, var(--pg-primary) 50%, transparent)', '0 10px 20px -8px color-mix(in srgb, var(--pg-primary) 55%, transparent)'),
+        'hard'  => array('3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', 'translate(-3px, -3px)', '3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)'),
+    );
+}
+
 // The stylesheet of a custom look: the base look's tokens with the builder's
 // choices laid over them. False when the base is not a built-in look.
 function pg_design_custom_look_css($base, $controls, $name)
@@ -841,14 +864,7 @@ function pg_design_custom_look_css($base, $controls, $name)
         $t['--pg-card-border-width'] = $b . 'px';
     }
     if (isset($pick['shadow'])) {
-        $shadows = array(
-            'none'  => array('none', '0 6px 18px rgba(0, 0, 0, 0.08)', '0 16px 40px rgba(0, 0, 0, 0.12)', 'none', 'none', 'none', 'none', 'none'),
-            'soft'  => array('0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07)', '0 4px 10px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.05)', '0 20px 36px -10px rgba(16, 24, 40, 0.16), 0 8px 14px -6px rgba(16, 24, 40, 0.06)', 'var(--pg-shadow-sm)', 'var(--pg-shadow-lg)', 'translateY(-3px)', '0 1px 2px rgba(16, 24, 40, 0.08)', '0 6px 14px -4px rgba(16, 24, 40, 0.2)'),
-            'crisp' => array('0 1px 2px rgba(0, 0, 0, 0.06)', '0 3px 8px rgba(0, 0, 0, 0.1)', '0 10px 26px rgba(0, 0, 0, 0.14)', '0 1px 2px rgba(0, 0, 0, 0.05)', 'var(--pg-shadow)', 'none', 'none', 'none'),
-            'deep'  => array('0 2px 6px rgba(0, 0, 0, 0.1)', '0 12px 28px -8px rgba(0, 0, 0, 0.25)', '0 30px 60px -18px rgba(0, 0, 0, 0.35)', 'var(--pg-shadow)', 'var(--pg-shadow-lg)', 'translateY(-4px)', '0 4px 10px -4px rgba(0, 0, 0, 0.3)', '0 10px 20px -6px rgba(0, 0, 0, 0.35)'),
-            'glow'  => array('0 2px 8px -2px color-mix(in srgb, var(--pg-primary) 18%, transparent)', '0 10px 26px -10px color-mix(in srgb, var(--pg-primary) 30%, transparent)', '0 24px 48px -16px color-mix(in srgb, var(--pg-primary) 38%, transparent)', '0 8px 24px -10px color-mix(in srgb, var(--pg-primary) 28%, transparent)', '0 20px 40px -14px color-mix(in srgb, var(--pg-primary) 40%, transparent)', 'translateY(-5px)', '0 4px 12px -6px color-mix(in srgb, var(--pg-primary) 50%, transparent)', '0 10px 20px -8px color-mix(in srgb, var(--pg-primary) 55%, transparent)'),
-            'hard'  => array('3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)', '8px 8px 0 0 var(--bs-emphasis-color)', 'translate(-3px, -3px)', '3px 3px 0 0 var(--bs-emphasis-color)', '5px 5px 0 0 var(--bs-emphasis-color)'),
-        );
+        $shadows = _pg_design_look_shadows();
         list($s_sm, $s_md, $s_lg, $card, $card_h, $card_t, $btn, $btn_h) = $shadows[$pick['shadow']];
         $t['--pg-shadow-sm']          = $s_sm;
         $t['--pg-shadow']             = $s_md;
@@ -912,6 +928,104 @@ function pg_design_theme_save_file($kind, $name, $css, $user_id)
     if ($id <= 0) return lang('The theme could not be saved.');
     return array('id' => $id, 'name' => $name, 'file' => $file_name,
                  'url' => (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $file_name . '?v=' . time());
+}
+
+// ── A design's variables file ──────────────────────────────────────────
+//
+// The variables of a design (includes/fn/design_variables.php) are one
+// design CSS file per design, found by its name, so no column points at it:
+// a design that never saved its variables has no file and loads nothing.
+
+// The file name of a design's variables, '' for no design.
+function pg_design_variables_file_name($style_id)
+{
+    $style_id = (int)$style_id;
+    return $style_id > 0 ? 'design-variables-' . $style_id . '.css' : '';
+}
+
+// Whether the start of a file is a variables head: another file uploaded
+// under the same name is never loaded as variables.
+function pg_design_variables_head_ok($head)
+{
+    return strncmp((string)$head, '/*! pg-theme {"kind":"variables"', 32) === 0;
+}
+
+// The site address of a design's variables stylesheet, '' when the design
+// has none. A stat and 32 bytes per request, kept for the request.
+function pg_design_variables_url($style_id)
+{
+    static $seen = array();
+    $name = pg_design_variables_file_name($style_id);
+    if ($name === '' || !defined('FILE_DIRECTORY_PATH')) return '';
+    if (isset($seen[$name])) return $seen[$name];
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $url = '';
+    if (is_file($path)) {
+        $fh = @fopen($path, 'rb');
+        $head = $fh ? (string)fread($fh, 32) : '';
+        if ($fh) fclose($fh);
+        if (pg_design_variables_head_ok($head)) {
+            $url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $name . '?v=' . (int)@filemtime($path);
+        }
+    }
+    return $seen[$name] = $url;
+}
+
+// The stored variables model of a design, as written (not yet normalized
+// to a look and palette), or null when it has none.
+function pg_design_variables_stored($style_id)
+{
+    $name = pg_design_variables_file_name($style_id);
+    if ($name === '' || !defined('FILE_DIRECTORY_PATH')) return null;
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    if (!is_file($path)) return null;
+    $fh = @fopen($path, 'rb');
+    if (!$fh) return null;
+    // The head is at most 8192 bytes (PG_DESIGN_VARIABLES_HEAD_MAX).
+    $head = (string)fread($fh, 8256);
+    fclose($fh);
+    if (!pg_design_variables_head_ok($head) || !preg_match('~^/\*! pg-theme (\{.*?\}) \*/~s', $head, $m)) return null;
+    $meta = json_decode($m[1], true);
+    return is_array($meta) ? $meta : null;
+}
+
+// Writes a design's variables file for its look and palette and keeps its
+// file manager row. $model null rewrites the stored model on the current
+// choice (a changed palette carries the untouched colours along) and
+// writes nothing when there is none. Returns true or an error message.
+function pg_design_variables_save($style_id, $model, $look, $palette, $user_id)
+{
+    $name = pg_design_variables_file_name($style_id);
+    if ($name === '') return lang('The design could not be saved. Please try again.');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+    if ($model === null) {
+        $model = pg_design_variables_stored($style_id);
+        if ($model === null) return true;
+    }
+    $state = pg_design_variables_state($model, $look, $palette);
+    $css = $state['css'];
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $row = db_item("SELECT id FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+    if (is_file($path)) {
+        $fh = @fopen($path, 'rb');
+        $head = $fh ? (string)fread($fh, 32) : '';
+        if ($fh) fclose($fh);
+        if (!pg_design_variables_head_ok($head)) {
+            return lang(array('string' => 'The variables were not saved: the file manager holds another file named {var:1}.', 'vars' => $name));
+        }
+        if ((string)file_get_contents($path) === $css && $row) return true;
+    }
+    if (!pg_file_write_whole($path, $css)) {
+        return lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $name));
+    }
+    if ($row) {
+        db("UPDATE files SET size = '" . (int)strlen($css) . "', user = '" . (int)$user_id . "', timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int)$row['id'] . "'");
+    } else {
+        $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+        db("INSERT INTO files (name, folder, description, type, size, user, design, theme, timestamp)
+            VALUES ('" . e($name) . "', '$folder_id', '', 'css', '" . (int)strlen($css) . "', '" . (int)$user_id . "', '1', '0', UNIX_TIMESTAMP())");
+    }
+    return true;
 }
 
 // ── Look drawings ──────────────────────────────────────────────────────────

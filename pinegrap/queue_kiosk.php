@@ -85,6 +85,12 @@ if ($qk_post && (($_POST['action'] ?? '') === 'take')) {
         $qk_values[$qk_key] = is_scalar($_POST[$qk_key] ?? null) ? (string) $_POST[$qk_key] : '';
     }
 
+    // A second tap before the number was shown gets the number just taken.
+    if (($qk_join['error'] === '') && is_array($qk_shown) && (count($qk_shown) === 2)
+        && pg_waiting_take_repeated(pg_waiting_ticket_find($qk_shown[0], $qk_shown[1]), $qk_join['values']['service'], time())) {
+        go($qk_self . '&done=1');
+    }
+
     if ($qk_join['error'] !== '') {
         $qk_error = $qk_join['error'];
     } else {

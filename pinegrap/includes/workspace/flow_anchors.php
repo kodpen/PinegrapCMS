@@ -307,6 +307,10 @@ function ws_flow_event_outputs()
     $feedback = array($value('survey_name', 'text', lang('Survey')), $value('kind', 'text', lang('Kind')), $value('touchpoint', 'text', lang('Touchpoint')),
         $value('record_type', 'text', lang('Record type')), $value('record_id', 'number', lang('Record')), $value('contact_id', 'number', lang('Contact')),
         $value('score', 'number', lang('Score')), $value('band', 'text', lang('Band')), $value('comment', 'text', lang('Comment')));
+    // A guest's answer on a prototype share link (pg_proto_verdict_event_payload(),
+    // pg_proto_comment_event_payload()): the guest's words are outside text.
+    $prototype = array($value('page_name', 'text', lang('Page')), $value('design_id', 'number', lang('Design')), $value('link_id', 'number', lang('Share link')),
+        $value('name', 'text', lang('Guest\'s name')));
     // Volunteer shifts (pg_volunteer_event_payload()).
     $volunteer = array($value('programme', 'text', lang('Programme')), $value('contact_id', 'number', lang('Contact')));
     $place = array_merge($volunteer, array($value('shift_id', 'number', lang('Shift')), $value('role_name', 'text', lang('Role')), $value('place', 'text', lang('Place')),
@@ -367,6 +371,9 @@ function ws_flow_event_outputs()
         'page.updated'           => array($value('name', 'text', lang('Page'))),
         'content.review_due'     => array($value('kind', 'text', lang('Kind')), $value('name', 'text', lang('Name')), $value('user_id', 'number', lang('Assigned person')),
             $value('person', 'text', lang('The name of the assigned person')), $value('review_on', 'text', lang('Review by'))),
+        'prototype.approved'     => $prototype,
+        'prototype.changes_requested' => array_merge($prototype, array($value('note', 'text', lang('Note')))),
+        'prototype.commented'    => array_merge($prototype, array($value('text', 'text', lang('Comment')), $value('parent_id', 'number', lang('Answers comment')))),
         'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact')),
             $value('start_at', 'text', lang('The reserved start'))),
         'booking.created'        => $booking,
@@ -1063,13 +1070,17 @@ function ws_flow_anchor_start($viewer, $row, $fill)
     $context = json_encode(ws_flow_anchor_context($flow, $trigger, $fill), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();
 
+    // A run an event started is about what the event names (its person's
+    // contact first), so a leave rule finds it (flow_leave.php).
+    list($subject_type, $subject_id) = ws_flow_leave_run_subject((string) ($fill['event'] ?? ''), (array) ($fill['event_payload'] ?? array()), 'ws_flow_leave_contact_of');
+
     // Not db(): the duplicate start key of a step carried out twice is an
     // answer here.
     $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, ?, 0, ?, ?, 0
+        SELECT ?, ?, 'running', ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0
         FROM ws_flows WHERE id = ? AND status = 'live'",
-        array($flow_id, (int) $version['id'], (int) $flow['owner_id'], (int) $flow['owner_id'], (string) $start_key, (string) $context,
+        array($flow_id, (int) $version['id'], (int) $flow['owner_id'], (int) $flow['owner_id'], (string) $start_key, (string) $subject_type, (int) $subject_id, (string) $context,
             (int) ($fill['depth'] ?? 0), $now, $now, $flow_id));
 
     if (!$written) {
@@ -1279,12 +1290,12 @@ function ws_flow_run_now($viewer, $flow, $data = array())
  * How a run's end is written back to the converted action that started it.
  * Pure.
  *
- * @param string $state done | failed | cancelled
+ * @param string $state done | failed | cancelled | left
  * @return string done | failed | skipped, '' for a run still open
  */
 function ws_flow_anchor_run_status($state)
 {
-    $map = array('done' => 'done', 'failed' => 'failed', 'cancelled' => 'skipped');
+    $map = array('done' => 'done', 'failed' => 'failed', 'cancelled' => 'skipped', 'left' => 'skipped');
 
     return $map[(string) $state] ?? '';
 }
@@ -1361,6 +1372,7 @@ function ws_flow_anchor_run_ended($run, $state)
         'done'      => 'flow run {var:1} finished',
         'failed'    => 'flow run {var:1} failed',
         'cancelled' => 'flow run {var:1} was cancelled',
+        'left'      => 'flow run {var:1} left the flow',
     );
     $steps = json_decode((string) $kept['detail'], true);
     $steps = is_array($steps) ? $steps : array();

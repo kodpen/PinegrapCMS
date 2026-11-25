@@ -85,3 +85,44 @@ function pg_style_usage($folders, $pages)
 
     return $usage;
 }
+
+/**
+ * The pages that keep a style from being deleted (delete_styles.php, Edit
+ * Page Style's Delete), as a WHERE condition on `page`. Pure.
+ *
+ * $bin_folder_ids are passed only once the Recycle Bin keeps styles
+ * (pg_recycle_style_ready()): a page in the bin that was built on the style
+ * is written in the style's restore record, and restoring the page brings
+ * the style back with it, as a design deleted with its pages does. Before
+ * that the style is deleted for good, so every page holds it. A page's
+ * mobile style always holds: nothing brings that back with the page.
+ *
+ * @param int   $style_id
+ * @param array $bin_folder_ids the bin folder and the folders under it
+ * @return string
+ */
+function pg_style_pages_holding_sql($style_id, $bin_folder_ids)
+{
+    $id = "'" . (int)$style_id . "'";
+    $bins = array_values(array_unique(array_filter(array_map('intval', (array)$bin_folder_ids))));
+
+    $built_on = $bins
+        ? "((page_style = $id) AND (page_folder NOT IN (" . implode(',', $bins) . ")))"
+        : "(page_style = $id)";
+
+    return $built_on . " OR (mobile_style_id = $id)";
+}
+
+/**
+ * pg_style_pages_holding_sql() for this site: the bin folders once the
+ * Recycle Bin keeps styles, none before.
+ *
+ * @param int $style_id
+ * @return string
+ */
+function pg_style_pages_holding_where($style_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+    return pg_style_pages_holding_sql($style_id, pg_recycle_style_ready() ? pg_recycle_bin_folder_ids() : array());
+}

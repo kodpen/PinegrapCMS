@@ -73,6 +73,10 @@ function ws_viewer($user)
     // E-mail and SMS campaigns (validate_email_access()).
     $viewer['emails'] = $staff || $yes($user['manage_emails'] ?? false);
 
+    // A design's prototype review: administrators and designers, as the
+    // Share prototype dialog and its API routes.
+    $viewer['designs'] = ($viewer['role'] <= 1);
+
     return $viewer;
 }
 
@@ -821,7 +825,9 @@ function ws_ref_notes_open($viewer, $ids, $before = 0)
     }
 
     $rows = (array) db_items("SELECT id, user_id, title, LEFT(body, " . (int) WS_NOTE_LIST_BODY . ") AS body, created_at, updated_at"
-            . ((function_exists('ws_note_lock_ready') && ws_note_lock_ready()) ? ', locked' : '') . "
+            . ((function_exists('ws_note_lock_ready') && ws_note_lock_ready()) ? ', locked' : '')
+            // A channel's note takes its access from its channel alone.
+            . ((function_exists('ws_note_channel_owner_ready') && ws_note_channel_owner_ready()) ? ', owner_channel_id' : '') . "
         FROM ws_notes
         WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
         ORDER BY updated_at DESC, id DESC");
@@ -1067,6 +1073,28 @@ function ws_erp_money_out($minor, $currency)
     $currency = trim((string) $currency);
 
     return erp_money_out_currency((int) $minor, ($currency !== '') ? $currency : (defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''));
+}
+
+/**
+ * Which files the file tag's search may offer: those in a folder, less
+ * every folder of the Workspace folder's branch, whose files are a
+ * channel's attachments and the notes' files (staff may edit every folder,
+ * so they were offered the files of private channels they are not in).
+ * Pure.
+ *
+ * @param array $parents   folder id => parent folder id (ws_library_parents())
+ * @param int   $workspace the Workspace folder, 0 when there is none
+ * @return string an SQL condition on files.folder
+ */
+function ws_ref_file_search_where($parents, $workspace)
+{
+    $closed = ((int) $workspace > 0) && function_exists('ws_library_branch')
+        ? array_keys(ws_library_branch((array) $parents, array((int) $workspace)))
+        : array();
+
+    sort($closed);
+
+    return empty($closed) ? 'folder > 0' : 'folder > 0 AND folder NOT IN (' . implode(',', array_map('intval', $closed)) . ')';
 }
 
 /**
@@ -1882,9 +1910,11 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
 
         case 'file':
             // Files with no folder are the ones other modules keep for
-            // themselves (ERP documents, private channel attachments).
+            // themselves (ERP documents, a channel's attachments before
+            // channels had folders); the Workspace folder's files belong to
+            // the conversation or note they were posted in.
             $found = db_values("SELECT id FROM files
-                WHERE folder > 0 AND name LIKE '%" . $like . "%'
+                WHERE " . ws_ref_file_search_where(ws_library_parents(), ws_library_workspace_folder()) . " AND name LIKE '%" . $like . "%'
                 ORDER BY timestamp DESC LIMIT " . ($limit * 3));
             break;
 

@@ -5,7 +5,7 @@ module: lead_journey
 ---
 
 ## What does the module hold?
-- Only pure verdicts: nothing reads the database, writes a cookie or prints text. Callers (LJ1b on) pass the facts in and act on the returned code. Plan: `plans/lead-journey.md`.
+- Only pure verdicts: nothing reads the database, writes a cookie or prints text. Callers (LJ1b on) pass the facts in and act on the returned code. Start file: `lead-journey.md`.
 
 ## When may the browser key exist?
 - `pg_lead_key_verdict($consent, $has_key)`: `write` or `keep` only with the marketing yes (`yes`); any other answer (`no`, `unanswered`, `off`) gives `delete` when a key is there, `none` when not. No key before the yes; a refusal after a yes deletes it.

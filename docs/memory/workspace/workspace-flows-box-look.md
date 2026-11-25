@@ -4,7 +4,7 @@ description: How a flow box looks: a 196 x 72 card, group colour on tile, kind a
 ---
 
 ## Which group is a box in?
-- `KINDS[kind].group` in workspace_flow.js: start (manual, schedule, event, join, row), values (constants, value), logic (condition, delay, for_each, for_each_end, end), people (task, task_open, checkin, approval, task_digest, lead), message (post, email, notify, report), system (web_check, webhook, change, start_flow, start_action, mcp, row_add, row_set, row_get).
+- `KINDS[kind].group` in workspace_flow.js: start (every start kind), values (constants, value), logic (condition, split, delay, for_each, for_each_end, end), people (task, task_open, checkin, approval, task_digest, lead), message (post, email, sms, whatsapp, notify, report), system (the rest: webhooks, records, tables, MCP, AI, agent). The add list's Records and tables is a list group only (`workspace-flows-palette.md`).
 - `kindClasses(kind)` gives a box and its List view entry `wsf-node-<kind> wsf-group-<group>`; an unknown kind `wsf-node-unknown`, no group (grey).
 - A new kind needs its group, or `test_workspace_flows_canvas_every_kind_has_one_group` fails.
 

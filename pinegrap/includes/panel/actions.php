@@ -86,6 +86,11 @@ function pg_panel_actions()
         // away anyone above role 1; the handlers check the session and the
         // token for themselves.
         'user_online_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_user_online_check', 'exempt' => true, 'token' => true, 'write' => true),
+        // The session's current form token, for a page whose own token went
+        // stale while the person stayed signed in (a remember-me sign-in
+        // renewed it after the server dropped the session). Every signed-in
+        // role; it reads, so it needs no token of its own.
+        'session_token' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_session_token', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'sitemap_check' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_sitemap_check', 'exempt' => true, 'token' => true, 'write' => true),
         'get_widget_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widget_data', 'exempt' => true, 'token' => false, 'write' => false),
         'get_widgets_data' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_get_widgets_data', 'exempt' => true, 'token' => false, 'write' => false),
@@ -241,6 +246,11 @@ function pg_panel_actions()
         // A page's custom layout from the visual designer's code tab; the
         // general gate (role 1 or better) is the classic layout editor's right.
         'layout_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_layout_code', 'exempt' => false, 'token' => true, 'write' => true),
+        // A collection item's fields corrected in place from the Preview
+        // (includes/fn/record_edit.php). Every role reaches the handler; it
+        // admits whoever the item's edit screen lets save it.
+        'record_edit_read' => array('file' => 'record_edit.php', 'handler' => 'pg_panel_record_edit_read', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'record_edit_save' => array('file' => 'record_edit.php', 'handler' => 'pg_panel_record_edit_save', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),
@@ -275,6 +285,10 @@ function pg_panel_actions()
         'write_permissions_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_write_permissions_repair', 'exempt' => true, 'token' => true, 'write' => true),
         'purge_cache' => array('file' => 'system.php', 'handler' => 'pg_panel_purge_cache', 'exempt' => true, 'token' => true, 'write' => true),
         'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),
+        // The Security Scan section of Site Settings > Firewall and HTTPS:
+        // Manager and above; the handlers check the role and the token.
+        'security_scan_step' => array('file' => 'security.php', 'handler' => 'pg_panel_security_scan_step', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
+        'security_scan_act' => array('file' => 'security.php', 'handler' => 'pg_panel_security_scan_act', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
     );
 
     // Live chat in the panel is open to every backend role, role 3 included;
@@ -370,7 +384,7 @@ function pg_panel_actions()
         'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
         'ws_flow_publish', 'ws_flow_pause', 'ws_flow_resume', 'ws_flow_bin',
         'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
-        'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_template_setup',
+        'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_tidy', 'ws_flow_template_setup',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_ai_sketch', 'ws_flow_quick_setup',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove', 'ws_flow_web_address',

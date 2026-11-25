@@ -6,10 +6,18 @@
  * that rings the other person of a conversation of two (Accept, Decline),
  * and the call window that stays at the bottom of the screen while the
  * person moves between channels: a grid of up to four, the one speaking
- * marked; mute, the camera, sharing one's screen (one member at a time),
- * the microphone and camera in use, hang up. Another member's shared
- * screen is shown large in the same window (the stage), the tiles beside
- * it, or under it on a narrow screen; it can be made smaller or full screen.
+ * marked; mute, the camera, sharing one's screen (several members at once,
+ * one share each), the microphone, camera and speaker in use (remembered
+ * in this browser for the next call, with whether the person was muted or
+ * had the camera off), blurring or removing one's own background
+ * (assets/js/workspace_call_background.js), raising a hand, hang up. A tile shows a raised hand
+ * and a weak connection; the person speaking while muted is told so.
+ * Another member's shared screen is shown large in the same window (the
+ * stage), the tiles beside it, or under it on a narrow screen, the other
+ * shares among them as tiles a click puts on the stage. A click on a tile
+ * pins it large the same way (one's own too). The window's head can make
+ * it larger or smaller at any time (remembered with the choices) or full
+ * screen; its menu hides one's own picture on this screen.
  *
  * Sound and picture go from browser to browser (WebRTC). The site carries
  * only who is in the call and the browsers' connection messages
@@ -19,7 +27,7 @@
  * higher member id) makes the offer, so both never offer at once. Every
  * connection carries a line for a shared screen from its first offer, so a
  * share only puts the screen's track on it and needs no new offer; the
- * server says who shares (the call part's sharer). assets/js/workspace.js
+ * server says who shares (the call part's sharers). assets/js/workspace.js
  * draws the head and hands the rings of its look (ws_sync's rings) in here
  * with its own helpers. The guest page (assets/js/workspace_guest.js) shows
  * its room's running call with a Join button only (joinButton()): a guest
@@ -70,6 +78,21 @@
     var LEVEL_EVERY = 150;
     var SPEAKING_LEVEL = 0.04;
     var SPEAKING_HOLD = 600;
+
+    // The browser's own key for the person's last choices: the microphone,
+    // camera and speaker, and whether they were muted or had the camera
+    // off. Device ids mean something only in this browser, so they are
+    // never sent to the site.
+    var CHOICES_KEY = 'pg_ws_call_choices';
+
+    // How often each connection's received packets are counted (getStats),
+    // and the share of them lost that marks its tile as weak (0-1).
+    var STATS_EVERY = 2000;
+    var WEAK_LOSS = 0.05;
+
+    // How long "You are muted" stays after the muted voice drops
+    // (milliseconds).
+    var MUTED_HINT_HOLD = 3000;
 
     // The one call of this screen, the rings shown and the ones answered.
     var call = null;
@@ -213,6 +236,68 @@
         return (loudness >= SPEAKING_LEVEL) || (!!loudAt && ((now - loudAt) < SPEAKING_HOLD));
     }
 
+    // The marks the keep-alive sends: a share and a raised hand are renewed
+    // with it (the server lets them lapse otherwise), a plain ping when
+    // neither is on.
+    function keepAlive(sharing, hand) {
+        var kinds = [];
+
+        if (sharing) {
+            kinds.push('share');
+        }
+
+        if (hand) {
+            kinds.push('hand');
+        }
+
+        return kinds.length ? kinds : ['ping'];
+    }
+
+    // The hand button's label and icon, raised or not.
+    function handState(on) {
+        return on ? { label: 'call_hand_lower', icon: 'bi-hand-index-fill', pressed: 'true' }
+            : { label: 'call_hand_raise', icon: 'bi-hand-index', pressed: 'false' };
+    }
+
+    // A connection's received and lost packets, summed over its incoming
+    // lines, from the entries of a getStats() report.
+    function inbound(entries) {
+        var counts = { received: 0, lost: 0 };
+
+        (entries || []).forEach(function (entry) {
+            if (entry && (entry.type === 'inbound-rtp')) {
+                counts.received += Number(entry.packetsReceived) || 0;
+                counts.lost += Number(entry.packetsLost) || 0;
+            }
+        });
+
+        return counts;
+    }
+
+    // The share of packets lost between two counts (0-1); 0 when there is
+    // no earlier count or nothing came.
+    function lossRatio(before, after) {
+        if (!before || !after) {
+            return 0;
+        }
+
+        var lost = Math.max(0, after.lost - before.lost);
+        var received = Math.max(0, after.received - before.received);
+
+        return (lost + received) ? lost / (lost + received) : 0;
+    }
+
+    // Is a connection weak: broken while its route is restarted, or losing
+    // WEAK_LOSS of its packets or more?
+    function weak(state, ratio) {
+        return (state === 'disconnected') || (state === 'failed') || (ratio >= WEAK_LOSS);
+    }
+
+    // Is "You are muted" shown: muted, and the voice heard a moment ago.
+    function mutedHint(muted, talkAt, now) {
+        return !!muted && !!talkAt && ((now - talkAt) < MUTED_HINT_HOLD);
+    }
+
     // Does this member make the offer to that one? The later joiner does.
     function offers(mine, theirs) {
         return mine > theirs;
@@ -264,11 +349,15 @@
     }
 
     // What is asked of the devices: the chosen ones where there is a choice.
-    function mediaAsk(kind, devices) {
+    // A remembered device (soft) is only preferred, so one no longer there
+    // gives way to the browser's default instead of failing the call; a
+    // device picked in the window is asked for exactly.
+    function mediaAsk(kind, devices, soft) {
         var audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+        var pick = function (id) { return soft ? { ideal: id } : { exact: id }; };
 
         if (devices && devices.audio) {
-            audio.deviceId = { exact: devices.audio };
+            audio.deviceId = pick(devices.audio);
         }
 
         var video = false;
@@ -277,11 +366,65 @@
             video = { width: { ideal: 1280 }, height: { ideal: 720 } };
 
             if (devices && devices.video) {
-                video.deviceId = { exact: devices.video };
+                video.deviceId = pick(devices.video);
             }
         }
 
         return { audio: audio, video: video };
+    }
+
+    // The remembered choices from their stored text: anything missing,
+    // broken or of the wrong type reads as no choice.
+    function choicesRead(text) {
+        var read = null;
+        var out = { audio: '', video: '', speaker: '', muted: false, cameraOff: false, size: '', background: '' };
+
+        try {
+            read = JSON.parse(text || 'null');
+        } catch (error) {
+            read = null;
+        }
+
+        if (!read || (typeof read !== 'object')) {
+            return out;
+        }
+
+        ['audio', 'video', 'speaker'].forEach(function (name) {
+            if ((typeof read[name] === 'string') && (read[name].length <= 512)) {
+                out[name] = read[name];
+            }
+        });
+        out.muted = read.muted === true;
+        out.cameraOff = read.cameraOff === true;
+        // The window's size: made larger or smaller, else '' (large only
+        // while something is on its stage).
+        out.size = ((read.size === 'large') || (read.size === 'small')) ? read.size : '';
+        out.background = ((read.background === 'blur') || (read.background === 'remove')) ? read.background : '';
+
+        return out;
+    }
+
+    // The choices with one change made (only the known names are taken).
+    function choicesWith(choices, change) {
+        var out = choicesRead(JSON.stringify(choices || {}));
+
+        Object.keys(change || {}).forEach(function (name) {
+            if (!Object.prototype.hasOwnProperty.call(out, name)) {
+                return;
+            }
+
+            out[name] = (typeof out[name] === 'boolean') ? (change[name] === true) : String(change[name] || '');
+        });
+
+        // Read again, so a changed value is checked as a stored one is (an
+        // unknown size or background reads as none).
+        return choicesRead(JSON.stringify(out));
+    }
+
+    // The speaker to show as chosen among the outputs: the remembered one
+    // while it is there, else the browser's default ('').
+    function speakerOf(outputs, chosen) {
+        return (chosen && (outputs || []).some(function (device) { return device.deviceId === chosen; })) ? chosen : '';
     }
 
     // The mid of a connection's screen line, among its video lines' mids:
@@ -294,30 +437,98 @@
         return (sorted.length > at) ? sorted[at] : -1;
     }
 
-    // The share button against the call's sharer: shown where the browser
-    // can share a screen, pressed while this member shares, held while
-    // another member does (one share at a time).
-    function shareState(sharer, me, can) {
+    // The share button against the call's sharers: shown where the browser
+    // can share a screen, pressed while this member shares; others' shares
+    // never hold it (several at once, one each).
+    function shareState(sharers, me, can) {
         if (!can) {
-            return { show: false, on: false, busy: false };
+            return { show: false, on: false };
         }
 
-        return { show: true, on: !!sharer && (sharer === me), busy: !!sharer && (sharer !== me) };
+        return { show: true, on: (sharers || []).indexOf(me) >= 0 };
     }
 
-    // What the window shows of a share: the stage while another member
-    // shares (large, or card-sized when made smaller), the notice while
-    // this member shares, and the labels of the share area's two buttons.
-    function stageState(sharer, me, small, can, full) {
-        var showing = !!sharer && (sharer !== me);
-        var share = shareState(sharer, me, can);
+    // What the window shows: on its stage the share the viewer chose
+    // (chosen), else the first other one, or a member's tile pinned large
+    // (view.pin: 0 one's own, a member id, -1 none; a pin of a member no
+    // longer there, or of one's own hidden picture, is none), which puts
+    // every share on the rail; the notice while this member shares; and
+    // the labels of the head's size and full screen buttons. size is the
+    // window's chosen size ('large', 'small', or '': large while something
+    // is on the stage); full screen is always large. One's own share is on
+    // neither stage nor rail. view: { pin, tiles (the other members' ids),
+    // selfHidden }.
+    function stageState(sharers, me, size, can, full, chosen, view) {
+        var see = view || {};
+        var tiles = (see.tiles || []).map(Number);
+        var pin = (typeof see.pin === 'number') ? see.pin : -1;
+
+        if (((pin === 0) && see.selfHidden) || ((pin > 0) && (tiles.indexOf(pin) < 0))) {
+            pin = -1;
+        }
+
+        var others = (sharers || []).filter(function (id) { return id !== me; });
+        var main = (pin >= 0) ? 0 : ((others.indexOf(chosen) >= 0) ? chosen : (others[0] || 0));
+        var showing = !!main || (pin >= 0);
+        var chosenLarge = (size === 'large') || ((size !== 'small') && showing);
+        var share = shareState(sharers, me, can);
 
         return {
-            classes: { 'is-showing': showing, 'is-stage': showing && !small, 'is-self-sharing': share.on },
+            classes: { 'is-showing': showing, 'is-stage': chosenLarge || !!full, 'is-pinned': pin >= 0, 'is-self-sharing': share.on },
             share: share,
-            size: small ? { label: 'call_larger', icon: 'bi-arrows-angle-expand' } : { label: 'call_smaller', icon: 'bi-arrows-angle-contract' },
+            main: main,
+            pin: pin,
+            rail: others.filter(function (id) { return id !== main; }),
+            size: chosenLarge ? { label: 'call_smaller', icon: 'bi-arrows-angle-contract', next: 'small' } : { label: 'call_larger', icon: 'bi-arrows-angle-expand', next: 'large' },
             full: full ? { label: 'call_full_exit', icon: 'bi-fullscreen-exit' } : { label: 'call_full_screen', icon: 'bi-fullscreen' }
         };
+    }
+
+    // Pop out: offered where the browser has Document Picture-in-Picture
+    // and the call is not already in its small window; the small window's
+    // size (CSS pixels) for the call's kind and its people, one's own tile
+    // counted: a voice call shows names and tools, a group's video a grid.
+    function popState(can, popped, kind, count) {
+        var video = kind === 'video';
+        var many = count > 2;
+
+        return {
+            show: !!can && !popped,
+            width: video ? (many ? 480 : 360) : 320,
+            height: video ? (many ? 420 : 320) : 180
+        };
+    }
+
+    // Whether a click on a link would take this page elsewhere and so end
+    // the call: a link to another address of the site or outside it, in
+    // this tab. A hash on the same address, a script or mail link, a
+    // download and a link already aimed at another tab or window stay.
+    // link: { raw (the attribute), href (resolved), target, download };
+    // here: { origin, pathname, search }.
+    function leavesPage(link, here) {
+        var raw = String((link && link.raw) || '').trim();
+        var target = String((link && link.target) || '').toLowerCase();
+        var url;
+
+        if (!raw || (raw.charAt(0) === '#') || /^(javascript|mailto|tel|sms|data|blob):/i.test(raw)) {
+            return false;
+        }
+
+        if (link.download || (target && (target !== '_self') && (target !== '_top') && (target !== '_parent'))) {
+            return false;
+        }
+
+        try {
+            url = new URL(String(link.href || ''));
+        } catch (error) {
+            return false;
+        }
+
+        if ((url.protocol !== 'http:') && (url.protocol !== 'https:')) {
+            return false;
+        }
+
+        return !((url.origin === here.origin) && (url.pathname === here.pathname) && (url.search === here.search));
     }
 
     // ── The ring ──
@@ -332,6 +543,37 @@
 
     function makeButton(className, label, iconName, title) {
         return hooks.helpers.button(className, label, iconName, title);
+    }
+
+    // The remembered choices; a browser that keeps nothing (a private
+    // window, site data blocked) remembers nothing and the call goes on.
+    function choicesLoad() {
+        try {
+            return choicesRead(window.localStorage.getItem(CHOICES_KEY));
+        } catch (error) {
+            return choicesRead('');
+        }
+    }
+
+    function choicesSave(change) {
+        try {
+            window.localStorage.setItem(CHOICES_KEY, JSON.stringify(choicesWith(choicesLoad(), change)));
+        } catch (error) {
+            // Nothing kept: the next call starts with the browser's defaults.
+        }
+    }
+
+    // Whether the browser can play a picture's sound on a chosen speaker.
+    function sinkSupported() {
+        return (typeof HTMLMediaElement !== 'undefined') && ('setSinkId' in HTMLMediaElement.prototype);
+    }
+
+    // Plays the element's sound on the speaker ('' the browser's default);
+    // a speaker no longer there leaves it on the one it had.
+    function sinkSet(video, speaker) {
+        if (video && video.setSinkId) {
+            video.setSinkId(speaker || '').catch(function () {});
+        }
     }
 
     // Two short tones every two seconds while a card rings, when the
@@ -598,13 +840,23 @@
             return;
         }
 
+        // The devices and the mute and camera of the person's last call in
+        // this browser.
+        var chosen = choicesLoad();
+
         // Held at once, so a second click does not start a second call.
-        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: {}, muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
+        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: { audio: chosen.audio, video: chosen.video }, speaker: chosen.speaker, background: '', muted: false, cameraOff: false, size: chosen.size, pin: -1, selfHidden: false, ever: false, sending: Promise.resolve() };
+        // Added only for the call's length: a beforeunload listener keeps
+        // some browsers from holding the page in their back-forward cache.
+        window.addEventListener('beforeunload', askBeforeLeaving);
 
         var mine = call;
 
-        navigator.mediaDevices.getUserMedia(mediaAsk(kind, null)).then(function (stream) {
+        navigator.mediaDevices.getUserMedia(mediaAsk(kind, mine.devices, true)).then(function (stream) {
             mine.stream = stream;
+            // Silent from the first moment when the last call ended muted.
+            stream.getAudioTracks().forEach(function (track) { track.enabled = !chosen.muted; });
+            stream.getVideoTracks().forEach(function (track) { track.enabled = !chosen.cameraOff; });
 
             var ask = { channel_id: channelId, call_id: callId };
 
@@ -625,9 +877,25 @@
             mine.ice = result.ice || null;
             mine.readAt = Date.now();
             draw();
+
+            if (chosen.muted) {
+                mute(true);
+            }
+
+            if (chosen.cameraOff && (mine.kind === 'video')) {
+                camera(true);
+            }
+
+            // The background effect of the last call, where it can run here.
+            if (chosen.background && (mine.kind === 'video')) {
+                backgroundSet(mine, chosen.background, true);
+            }
+
             look();
-            // A sharer's keep-alive renews its share too.
-            mine.pinger = setInterval(function () { send(0, mine.sharing ? 'share' : 'ping', ''); }, PING_EVERY);
+            // The keep-alive renews a share and a raised hand too.
+            mine.pinger = setInterval(function () {
+                keepAlive(mine.sharing, mine.hand).forEach(function (kind) { send(0, kind, ''); });
+            }, PING_EVERY);
         }).catch(function (error) {
             var denied = error && (error.name === 'NotAllowedError' || error.name === 'NotFoundError' || error.name === 'SecurityError');
 
@@ -687,16 +955,17 @@
             mine.names[member.member_id] = member.name || '';
         });
 
-        mine.sharer = part.call.sharer || 0;
+        mine.sharers = (part.call.sharers || []).map(Number);
+        mine.hands = part.call.hands || [];
 
         // The server no longer holds this member's share (it lapsed): the
         // screen stops. A read sent before the share was written is not
         // taken for that.
-        if (mine.sharing && (mine.sharer !== mine.memberId)) {
+        if (mine.sharing && (mine.sharers.indexOf(mine.memberId) < 0)) {
             if ((Date.now() - mine.sharedAt) > SHARE_SETTLE) {
                 shareStop(mine, false);
             } else {
-                mine.sharer = mine.memberId;
+                mine.sharers.push(mine.memberId);
             }
         }
 
@@ -731,6 +1000,7 @@
         }
 
         names();
+        marksDraw(mine);
         stageDraw(mine);
         status();
     }
@@ -909,7 +1179,7 @@
     }
 
     // Starts sharing: the browser lets the person choose a screen, a window
-    // or a tab; the server is asked first, as one member shares at a time.
+    // or a tab; the server is told before the screen goes out.
     function shareStart(mine) {
         if (mine.sharing || mine.shareAsking) {
             return;
@@ -941,7 +1211,7 @@
                 mine.sharing = true;
                 mine.sharedAt = Date.now();
                 mine.screenTrack = track;
-                mine.sharer = mine.memberId;
+                mine.sharers = (mine.sharers || []).filter(function (id) { return id !== mine.memberId; }).concat([mine.memberId]);
                 // The browser's own "Stop sharing" ends it as the button does.
                 track.onended = function () { shareStop(mine, true); };
                 Object.keys(mine.peers).forEach(function (id) { screenOn(mine.peers[id], track); });
@@ -949,9 +1219,9 @@
             }, function (error) {
                 mine.shareAsking = false;
                 track.stop();
-                var said = (error && error.message) || t('call_share_busy');
-
-                h().toast(said, 'warning');
+                if (error && error.message) {
+                    h().toast(error.message, 'warning');
+                }
             });
         }).catch(function () {
             // The person closed the browser's chooser: nothing is shared.
@@ -966,9 +1236,7 @@
         mine.sharing = false;
         mine.screenTrack = null;
 
-        if (mine.sharer === mine.memberId) {
-            mine.sharer = 0;
-        }
+        mine.sharers = (mine.sharers || []).filter(function (id) { return id !== mine.memberId; });
 
         Object.keys(mine.peers).forEach(function (id) { screenOn(mine.peers[id], null); });
 
@@ -988,22 +1256,25 @@
         stageDraw(mine);
     }
 
-    // The window against the share: the stage, the notice, the share
-    // button and the share area's two buttons.
+    // The window against its stage: the share or the pinned tile on it,
+    // the notice, the share button and the head's size and full screen.
     function stageDraw(mine) {
         if (!mine.node) {
             return;
         }
 
-        var full = !!document.fullscreenElement && (document.fullscreenElement === mine.shareArea);
-        var state = stageState(mine.sharer || 0, mine.memberId, !!mine.small, !!mine.shareButton, full);
-        var held = state.classes['is-showing'] ? mine.peers[mine.sharer] : null;
-        var screen = (held && held.screen) || null;
+        var full = !!document.fullscreenElement && (document.fullscreenElement === mine.node);
+        var state = stageState(mine.sharers || [], mine.memberId, mine.size || '', !!mine.shareButton, full, mine.watching || 0, {
+            pin: (typeof mine.pin === 'number') ? mine.pin : -1,
+            tiles: Object.keys(mine.peers).map(Number),
+            selfHidden: !!mine.selfHidden
+        });
+        var held = state.main ? mine.peers[state.main] : null;
+        var pinned = (state.pin > 0) ? (mine.peers[state.pin] && mine.peers[state.pin].tile) : ((state.pin === 0) ? mine.selfTile : null);
+        var picture = (held && held.screen) || (pinned && pinned.video.srcObject) || null;
 
-        // Leaving the stage leaves full screen too.
-        if (!state.classes['is-showing'] && full && document.exitFullscreen) {
-            document.exitFullscreen().catch(function () {});
-        }
+        // A pinned member gone, or one's own picture hidden: nothing pinned.
+        mine.pin = state.pin;
 
         Object.keys(state.classes).forEach(function (name) {
             mine.node.classList.toggle(name, state.classes[name]);
@@ -1011,34 +1282,110 @@
         mine.shareArea.hidden = !state.classes['is-showing'];
         mine.notice.hidden = !state.classes['is-self-sharing'];
 
-        if (mine.shareVideo.srcObject !== screen) {
-            mine.shareVideo.srcObject = screen;
+        if (mine.shareVideo.srcObject !== picture) {
+            mine.shareVideo.srcObject = picture;
         }
 
-        mine.shareName.textContent = held ? t('call_sharing', mine.names[mine.sharer] || '') : '';
+        // The pinned tile shows on the stage, so not in the rail; without a
+        // picture (a voice call, a camera off) its person icon.
+        [mine.selfTile].concat(Object.keys(mine.peers).map(function (id) { return mine.peers[id].tile; })).forEach(function (one) {
+            if (one) {
+                one.node.classList.toggle('is-pinned', one === pinned);
+                one.pin.setAttribute('aria-pressed', (one === pinned) ? 'true' : 'false');
+            }
+        });
+        mine.shareIcon.hidden = !pinned || ((mine.kind === 'video') && !pinned.node.classList.contains('is-camera-off'));
+        mine.unpinButton.hidden = !pinned;
 
         if (held) {
+            mine.shareName.textContent = t('call_sharing', mine.names[state.main] || '');
             mine.shareName.insertBefore(h().icon('bi-display'), mine.shareName.firstChild);
+        } else if (pinned) {
+            mine.shareName.textContent = (state.pin === 0) ? t('call_you') : (mine.names[state.pin] || '');
+            mine.shareName.insertBefore(h().icon('bi-pin-angle-fill'), mine.shareName.firstChild);
+        } else {
+            mine.shareName.textContent = '';
         }
         iconSwap(mine.sizeButton, state.size.icon, t(state.size.label));
+        mine.sizeButton.dataset.next = state.size.next;
 
         if (mine.fullButton) {
             iconSwap(mine.fullButton, state.full.icon, t(state.full.label));
+            mine.fullButton.setAttribute('aria-pressed', full ? 'true' : 'false');
+            mine.fullButton.classList.toggle('is-active', full);
         }
 
         if (mine.shareButton) {
             mine.shareButton.setAttribute('aria-pressed', state.share.on ? 'true' : 'false');
             mine.shareButton.classList.toggle('is-active', state.share.on);
-            mine.shareButton.disabled = state.share.busy;
-            iconSwap(mine.shareButton, state.share.on ? 'bi-display-fill' : 'bi-display',
-                state.share.busy ? t('call_sharing', mine.names[mine.sharer] || '') : t(state.share.on ? 'call_share_stop' : 'call_share'));
+            iconSwap(mine.shareButton, state.share.on ? 'bi-display-fill' : 'bi-display', t(state.share.on ? 'call_share_stop' : 'call_share'));
         }
 
+        railDraw(mine, state.rail);
         names();
     }
 
-    // The share area: the shared screen (never cut: contain), the sharer's
-    // name, and its two buttons, larger or smaller and full screen.
+    // The other shares as tiles at the rail's end, after the members'
+    // tiles: the screen (never cut) and its sharer's name by a screen icon;
+    // a click puts it on the stage, the one there taking its place here.
+    function railDraw(mine, rail) {
+        var el = h().el;
+
+        mine.screens = mine.screens || {};
+        Object.keys(mine.screens).forEach(function (id) {
+            if (rail.indexOf(Number(id)) < 0) {
+                mine.screens[id].node.remove();
+                delete mine.screens[id];
+            }
+        });
+
+        rail.forEach(function (id) {
+            var held = mine.screens[id];
+
+            if (!held) {
+                var node = el('button', 'ws-call-tile is-screen');
+                var video = el('video', 'ws-call-video');
+
+                node.type = 'button';
+                video.autoplay = true;
+                video.playsInline = true;
+                video.muted = true;
+                node.appendChild(video);
+                held = { node: node, video: video, name: el('div', 'ws-call-tile-name'), text: null };
+                node.appendChild(held.name);
+                node.addEventListener('click', function () {
+                    mine.watching = id;
+                    mine.pin = -1;
+                    stageDraw(mine);
+                });
+                mine.screens[id] = held;
+            }
+
+            // In the rail's order, after the members' tiles.
+            mine.grid.appendChild(held.node);
+
+            var screen = (mine.peers[id] && mine.peers[id].screen) || null;
+            var text = mine.names[id] || '';
+
+            if (held.video.srcObject !== screen) {
+                held.video.srcObject = screen;
+            }
+
+            if (held.text !== text) {
+                held.text = text;
+                held.name.textContent = text;
+                held.name.insertBefore(h().icon('bi-display'), held.name.firstChild);
+                held.node.setAttribute('aria-label', t('call_share_show', text));
+                held.node.title = t('call_share_show', text);
+            }
+        });
+
+        layout(mine);
+    }
+
+    // The share area: the shared screen or the pinned tile's picture
+    // (never cut: contain), the sharer's or the pinned member's name, and
+    // Unpin while a tile is pinned.
     function shareAreaDraw(mine) {
         var el = h().el;
         var area = el('div', 'ws-call-share');
@@ -1048,35 +1395,214 @@
         mine.shareVideo = el('video', 'ws-call-share-video');
         mine.shareVideo.autoplay = true;
         mine.shareVideo.playsInline = true;
-        // The sound comes from the sharer's tile.
+        // The sound comes from the member's tile.
         mine.shareVideo.muted = true;
         area.appendChild(mine.shareVideo);
+        mine.shareIcon = h().icon('bi-person-circle');
+        mine.shareIcon.hidden = true;
+        area.appendChild(mine.shareIcon);
         mine.shareName = el('div', 'ws-call-share-name');
         area.appendChild(mine.shareName);
 
-        mine.sizeButton = makeButton('pg-icon-button', '', 'bi-arrows-angle-contract', t('call_smaller'));
-        mine.sizeButton.addEventListener('click', function () {
-            mine.small = !mine.small;
+        mine.unpinButton = makeButton('pg-icon-button', '', 'bi-pin-angle-fill', t('call_unpin'));
+        mine.unpinButton.setAttribute('aria-label', t('call_unpin'));
+        mine.unpinButton.hidden = true;
+        mine.unpinButton.addEventListener('click', function () {
+            mine.pin = -1;
             stageDraw(mine);
         });
-        tools.appendChild(mine.sizeButton);
-
-        if (document.fullscreenEnabled && area.requestFullscreen) {
-            mine.fullButton = makeButton('pg-icon-button', '', 'bi-fullscreen', t('call_full_screen'));
-            mine.fullButton.addEventListener('click', function () {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(function () {});
-                } else {
-                    area.requestFullscreen().catch(function () {});
-                }
-            });
-            tools.appendChild(mine.fullButton);
-        }
+        tools.appendChild(mine.unpinButton);
 
         area.appendChild(tools);
         mine.shareArea = area;
 
         return area;
+    }
+
+    // The window's head: its name, the call's state, Make larger or
+    // smaller (remembered for the next call), Full screen where the page
+    // may, and the window's menu.
+    function headDraw(mine, win) {
+        var el = h().el;
+        var bar = el('div', 'ws-call-bar');
+
+        // The name opens the call's conversation; on a page that is that
+        // conversation (the guest page) it is the name only.
+        if (hooks.openChannel) {
+            var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
+
+            name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
+            bar.appendChild(name);
+        } else {
+            bar.appendChild(el('span', 'ws-call-name', mine.name));
+        }
+        mine.state = el('span', 'ws-call-state');
+        bar.appendChild(mine.state);
+
+        mine.sizeButton = makeButton('pg-icon-button ws-call-not-popped', '', 'bi-arrows-angle-expand', t('call_larger'));
+        mine.sizeButton.addEventListener('click', function () {
+            mine.size = mine.sizeButton.dataset.next || 'large';
+            choicesSave({ size: mine.size });
+            stageDraw(mine);
+        });
+        bar.appendChild(mine.sizeButton);
+
+        if (document.fullscreenEnabled && win.requestFullscreen) {
+            mine.fullButton = makeButton('pg-icon-button ws-call-not-popped', '', 'bi-fullscreen', t('call_full_screen'));
+            mine.fullButton.setAttribute('aria-pressed', 'false');
+            mine.fullButton.addEventListener('click', function () {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(function () {});
+                } else {
+                    win.requestFullscreen().catch(function () {});
+                }
+            });
+            bar.appendChild(mine.fullButton);
+        }
+
+        // Pop out, where the browser has Document Picture-in-Picture.
+        if (popState(!!window.documentPictureInPicture, false, mine.kind, 1).show) {
+            var pop = makeButton('pg-icon-button ws-call-not-popped', '', 'bi-pip', t('call_pop_out'));
+
+            pop.setAttribute('aria-label', t('call_pop_out'));
+            pop.addEventListener('click', function () { popOut(mine); });
+            bar.appendChild(pop);
+        }
+
+        var menu = menuDraw(mine);
+
+        menu.classList.add('ws-call-not-popped');
+        bar.appendChild(menu);
+
+        return bar;
+    }
+
+    // Pop out: the call window moves into a Document Picture-in-Picture
+    // window, which stays above other windows and tabs. The same nodes go
+    // there, so their handlers and connections stay; it shows the tiles,
+    // Mute, camera and Hang up (.is-popped hides the rest). Closing it
+    // brings the window back to the page.
+    function popOut(mine) {
+        var size = popState(true, !!mine.pip, mine.kind, 1 + Object.keys(mine.peers).length);
+
+        if (!size.show) {
+            return;
+        }
+
+        if (document.fullscreenElement && (document.fullscreenElement === mine.node)) {
+            document.exitFullscreen().catch(function () {});
+        }
+
+        window.documentPictureInPicture.requestWindow({ width: size.width, height: size.height }).then(function (pip) {
+            if ((call !== mine) || !mine.node) {
+                pip.close();
+                return;
+            }
+
+            popDocument(pip.document);
+            mine.pip = pip;
+            mine.node.classList.add('is-popped');
+            pip.document.body.appendChild(mine.node);
+            mediaReplay(mine);
+            pip.addEventListener('pagehide', function () { popBack(mine); });
+        }).catch(function () {});
+    }
+
+    // The small window closed (by the person or the browser): the call
+    // window returns to the page, unless the call ended with it.
+    function popBack(mine) {
+        if (!mine.pip) {
+            return;
+        }
+        mine.pip = null;
+
+        if ((call !== mine) || !mine.node) {
+            return;
+        }
+        mine.node.classList.remove('is-popped');
+        document.body.appendChild(mine.node);
+        mediaReplay(mine);
+        stageDraw(mine);
+    }
+
+    // The small window's page gets this page's theme and language (the
+    // root's attributes) and its stylesheets: a linked sheet by its
+    // address, an inline one by its rules.
+    function popDocument(doc) {
+        Array.prototype.forEach.call(document.documentElement.attributes, function (one) {
+            doc.documentElement.setAttribute(one.name, one.value);
+        });
+        Array.prototype.forEach.call(document.styleSheets, function (sheet) {
+            var node;
+
+            if (sheet.href) {
+                node = doc.createElement('link');
+                node.rel = 'stylesheet';
+                node.href = sheet.href;
+            } else {
+                node = doc.createElement('style');
+
+                try {
+                    node.textContent = Array.prototype.map.call(sheet.cssRules, function (rule) { return rule.cssText; }).join('\n');
+                } catch (error) {
+                    return;
+                }
+            }
+            doc.head.appendChild(node);
+        });
+        doc.body.className = 'ws-call-pip';
+    }
+
+    // A moved picture may stop; each plays on where it lands.
+    function mediaReplay(mine) {
+        Array.prototype.forEach.call(mine.node.querySelectorAll('video'), function (video) {
+            if (video.srcObject && video.paused) {
+                video.play().catch(function () {});
+            }
+        });
+    }
+
+    // The window's menu: Hide my picture / Show my picture, which hides
+    // one's own tile on this screen only (the others still see it).
+    function menuDraw(mine) {
+        var el = h().el;
+        var wrap = el('div', 'ws-call-menu-wrap');
+        var toggle = makeButton('pg-icon-button', '', 'bi-three-dots-vertical', t('call_more'));
+        var menu = el('ul', 'menu ws-call-menu');
+        var li = el('li');
+        var item = makeButton('menu-item', t('call_self_hide'), 'bi-person-slash');
+        var open = function (on) {
+            menu.classList.toggle('show', on);
+            toggle.setAttribute('aria-expanded', on ? 'true' : 'false');
+        };
+
+        toggle.setAttribute('aria-label', t('call_more'));
+        toggle.setAttribute('aria-haspopup', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.addEventListener('click', function () { open(!menu.classList.contains('show')); });
+        item.addEventListener('click', function () {
+            mine.selfHidden = !mine.selfHidden;
+            mine.selfTile.node.hidden = mine.selfHidden;
+            relabel(item, t(mine.selfHidden ? 'call_self_show' : 'call_self_hide'));
+            iconSwap(item, mine.selfHidden ? 'bi-person' : 'bi-person-slash', t(mine.selfHidden ? 'call_self_show' : 'call_self_hide'));
+            open(false);
+            stageDraw(mine);
+        });
+        li.appendChild(item);
+        menu.appendChild(li);
+        wrap.appendChild(toggle);
+        wrap.appendChild(menu);
+
+        // A click elsewhere or Esc closes it.
+        mine.onMenuAway = function (event) {
+            if ((event.type === 'keydown') ? (event.key === 'Escape') : !wrap.contains(event.target)) {
+                open(false);
+            }
+        };
+        document.addEventListener('click', mine.onMenuAway);
+        document.addEventListener('keydown', mine.onMenuAway);
+
+        return wrap;
     }
 
     // The notice while this member shares: its own screen is not shown.
@@ -1095,6 +1621,22 @@
         return notice;
     }
 
+    // "You are muted", with Unmute, while the muted person speaks.
+    function mutedDraw(mine) {
+        var el = h().el;
+        var notice = el('div', 'alert theme-info small ws-call-notice');
+        var unmute = makeButton('pg-button pg-button-sm', t('call_unmute'), '');
+
+        notice.hidden = true;
+        notice.setAttribute('role', 'status');
+        notice.appendChild(el('span', '', t('call_muted_talk')));
+        unmute.addEventListener('click', function () { mute(false); });
+        notice.appendChild(unmute);
+        mine.mutedNotice = notice;
+
+        return notice;
+    }
+
     // ── The window ──
 
     function draw() {
@@ -1105,6 +1647,8 @@
         win.setAttribute('role', 'region');
         win.setAttribute('aria-label', t(mine.kind === 'video' ? 'call_video' : 'call_voice'));
         win.setAttribute('data-kind', mine.kind);
+
+        win.appendChild(headDraw(mine, win));
 
         // The grid: one tile a member, one's own first (its picture never
         // plays its own sound back).
@@ -1118,37 +1662,29 @@
         mine.selfTile = tile(mine, 0);
         mine.selfTile.video.muted = true;
         mine.selfTile.video.srcObject = mine.stream;
-        listen(mine, mine.selfTile, mine.stream);
+        selfListen(mine);
         Object.keys(mine.peers).forEach(function (id) {
             mine.peers[id].tile = mine.peers[id].tile || tile(mine, Number(id));
         });
 
-        var bar = el('div', 'ws-call-bar');
-
-        // The name opens the call's conversation; on a page that is that
-        // conversation (the guest page) it is the name only.
-        if (hooks.openChannel) {
-            var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
-
-            name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
-            bar.appendChild(name);
-        } else {
-            bar.appendChild(el('span', 'ws-call-name', mine.name));
-        }
-        mine.state = el('span', 'ws-call-state');
-        bar.appendChild(mine.state);
-        win.appendChild(bar);
         win.appendChild(noticeDraw(mine));
+        win.appendChild(mutedDraw(mine));
 
         var tools = el('div', 'ws-call-tools');
 
         mine.muteButton = makeButton('pg-icon-button', '', 'bi-mic', t('call_mute'));
-        mine.muteButton.addEventListener('click', function () { mute(!mine.muted); });
+        mine.muteButton.addEventListener('click', function () {
+            mute(!mine.muted);
+            choicesSave({ muted: mine.muted });
+        });
         tools.appendChild(mine.muteButton);
 
         if (mine.kind === 'video') {
             mine.cameraButton = makeButton('pg-icon-button', '', 'bi-camera-video', t('call_camera_off'));
-            mine.cameraButton.addEventListener('click', function () { camera(!mine.cameraOff); });
+            mine.cameraButton.addEventListener('click', function () {
+                camera(!mine.cameraOff);
+                choicesSave({ cameraOff: mine.cameraOff });
+            });
             tools.appendChild(mine.cameraButton);
         }
 
@@ -1165,6 +1701,11 @@
             });
             tools.appendChild(mine.shareButton);
         }
+
+        mine.handButton = makeButton('pg-icon-button', '', 'bi-hand-index', t('call_hand_raise'));
+        mine.handButton.setAttribute('aria-pressed', 'false');
+        mine.handButton.addEventListener('click', function () { hand(!mine.hand); });
+        tools.appendChild(mine.handButton);
 
         var devices = makeButton('pg-icon-button', '', 'bi-gear', t('call_devices'));
         var panel = el('div', 'ws-call-devices');
@@ -1188,9 +1729,16 @@
         win.appendChild(tools);
         win.appendChild(panel);
 
-        [mine.muteButton, mine.cameraButton, mine.shareButton, devices, mine.sizeButton, mine.fullButton].forEach(function (node) {
+        [mine.muteButton, mine.cameraButton, mine.shareButton, mine.handButton, devices].forEach(function (node) {
             if (node) {
                 node.setAttribute('aria-label', node.title);
+            }
+        });
+
+        // Popped out, the small window keeps Mute, camera and Hang up.
+        [mine.shareButton, mine.handButton, devices, panel].forEach(function (node) {
+            if (node) {
+                node.classList.add('ws-call-not-popped');
             }
         });
 
@@ -1201,12 +1749,14 @@
         document.addEventListener('fullscreenchange', mine.onFull);
         mine.clock = setInterval(status, 1000);
         mine.meter = setInterval(function () { measure(mine); }, LEVEL_EVERY);
+        mine.stats = setInterval(function () { statsRead(mine); }, STATS_EVERY);
         stageDraw(mine);
         status();
     }
 
-    // A member's tile: the picture (with the sound), the name, and the mark
-    // of the one speaking. Member 0 is the viewer.
+    // A member's tile: the picture (with the sound), the name, the mark of
+    // the one speaking, and the marks of a raised hand and a weak
+    // connection. Member 0 is the viewer.
     function tile(mine, id) {
         if (!mine.grid) {
             return null;
@@ -1224,12 +1774,121 @@
         node.appendChild(h().icon('bi-person-circle'));
         node.appendChild(name);
 
-        var held = { id: id, node: node, video: video, name: name, loudAt: 0, speaking: false };
+        var marks = el('div', 'ws-call-tile-marks');
+        var handMark = mark('bi-hand-index-fill', t('call_hand_up'));
+        var weakMark = mark('bi-reception-1', t('call_weak'));
 
-        mine.grid.appendChild(node);
+        weakMark.classList.add('is-weak');
+
+        marks.appendChild(handMark);
+        marks.appendChild(weakMark);
+        node.appendChild(marks);
+
+        // The whole tile is a button that pins it large (one's own too); a
+        // second click, or Unpin on the stage, lets it go.
+        var pin = el('button', 'ws-call-tile-pin');
+
+        pin.type = 'button';
+        pin.title = t('call_pin');
+        pin.setAttribute('aria-label', t('call_pin'));
+        pin.setAttribute('aria-pressed', 'false');
+        pin.addEventListener('click', function () {
+            mine.pin = (mine.pin === id) ? -1 : id;
+            stageDraw(mine);
+        });
+        node.appendChild(pin);
+
+        var held = { id: id, node: node, video: video, name: name, pin: pin, loudAt: 0, speaking: false, handMark: handMark, weakMark: weakMark };
+
+        // Another member's sound plays on the chosen speaker.
+        if (id && mine.speaker && sinkSupported()) {
+            sinkSet(video, mine.speaker);
+        }
+
+        // Before the other shares' tiles, which close the rail.
+        mine.grid.insertBefore(node, mine.grid.querySelector('.is-screen'));
         layout(mine);
 
         return held;
+    }
+
+    // One mark of a tile: an icon named for the screen reader, hidden till on.
+    function mark(iconName, label) {
+        var node = h().el('span', 'ws-call-tile-mark');
+
+        node.hidden = true;
+        node.title = label;
+        node.setAttribute('role', 'img');
+        node.setAttribute('aria-label', label);
+        node.appendChild(h().icon(iconName));
+
+        return node;
+    }
+
+    // The tiles' raised hands (one's own as this window holds it, the
+    // others' as the call part says) and weak connections.
+    function marksDraw(mine) {
+        var show = function (node, on) {
+            if (node && (node.hidden === on)) {
+                node.hidden = !on;
+            }
+        };
+
+        if (mine.selfTile) {
+            show(mine.selfTile.handMark, !!mine.hand);
+        }
+
+        Object.keys(mine.peers).forEach(function (id) {
+            var held = mine.peers[id];
+
+            if (held.tile) {
+                show(held.tile.handMark, (mine.hands || []).indexOf(Number(id)) >= 0);
+                show(held.tile.weakMark, weak(held.pc.connectionState, held.loss || 0));
+            }
+        });
+    }
+
+    // Counts each connection's received and lost packets; the loss since
+    // the last count marks a weak connection.
+    function statsRead(mine) {
+        Object.keys(mine.peers).forEach(function (id) {
+            var held = mine.peers[id];
+
+            if (held.pc.connectionState !== 'connected') {
+                held.counts = null;
+                held.loss = 0;
+                return;
+            }
+
+            held.pc.getStats().then(function (report) {
+                var entries = [];
+
+                report.forEach(function (entry) { entries.push(entry); });
+
+                var counts = inbound(entries);
+
+                held.loss = lossRatio(held.counts, counts);
+                held.counts = counts;
+
+                if (call === mine) {
+                    marksDraw(mine);
+                }
+            }).catch(function () {});
+        });
+    }
+
+    // Raises or lowers this member's hand; the others read it from the
+    // call part, and the keep-alive renews it while it is up.
+    function hand(on) {
+        var mine = call;
+        var state = handState(on);
+
+        mine.hand = on;
+        send(0, on ? 'hand' : 'unhand', '');
+        mine.handButton.setAttribute('aria-pressed', state.pressed);
+        mine.handButton.classList.toggle('is-active', on);
+        iconSwap(mine.handButton, state.icon, t(state.label));
+        marksDraw(mine);
     }
 
     function tileDrop(mine, held) {
@@ -1246,7 +1905,8 @@
     }
 
     function layout(mine) {
-        var count = mine.grid ? mine.grid.children.length : 0;
+        // The members' tiles only: the other shares' tiles are not people.
+        var count = mine.grid ? mine.grid.querySelectorAll('.ws-call-tile:not(.is-screen)').length : 0;
 
         // The stylesheet lays the tiles out by their number.
         if (mine.grid) {
@@ -1281,7 +1941,7 @@
 
         label(mine.selfTile, t('call_you'), !!mine.sharing);
         Object.keys(mine.peers).forEach(function (id) {
-            label(mine.peers[id].tile, mine.names[id] || '', Number(id) === mine.sharer);
+            label(mine.peers[id].tile, mine.names[id] || '', (mine.sharers || []).indexOf(Number(id)) >= 0);
         });
     }
 
@@ -1311,6 +1971,32 @@
         }
     }
 
+    // The person's own voice is heard from a copy of the microphone's track
+    // that stays on while muted (a muted track gives silence), so "You are
+    // muted" can be shown; the copy goes to no connection.
+    function selfListen(mine) {
+        var track = mine.stream.getAudioTracks()[0];
+        var copy = null;
+
+        if (mine.hearCopy) {
+            mine.hearCopy.stop();
+            mine.hearCopy = null;
+        }
+
+        try {
+            copy = (track && window.MediaStream) ? track.clone() : null;
+        } catch (error) {
+            copy = null;
+        }
+
+        if (copy) {
+            copy.enabled = true;
+            mine.hearCopy = copy;
+        }
+
+        listen(mine, mine.selfTile, copy ? new window.MediaStream([copy]) : mine.stream);
+    }
+
     // Marks the tiles of the ones speaking now.
     function measure(mine) {
         var now = Date.now();
@@ -1327,7 +2013,12 @@
 
             held.analyser.getByteTimeDomainData(held.bytes);
 
-            var loudness = (held === mine.selfTile && mine.muted) ? 0 : level(held.bytes);
+            var heard = level(held.bytes);
+            var loudness = (held === mine.selfTile && mine.muted) ? 0 : heard;
+
+            if ((held === mine.selfTile) && mine.muted && (heard >= SPEAKING_LEVEL)) {
+                mine.talkAt = now;
+            }
 
             if (loudness >= SPEAKING_LEVEL) {
                 held.loudAt = now;
@@ -1340,6 +2031,12 @@
                 held.node.classList.toggle('is-speaking', on);
             }
         });
+
+        var hint = mutedHint(mine.muted, mine.talkAt, now);
+
+        if (mine.mutedNotice && (mine.mutedNotice.hidden === hint)) {
+            mine.mutedNotice.hidden = !hint;
+        }
     }
 
     function status() {
@@ -1374,6 +2071,8 @@
             }
         });
 
+        marksDraw(mine);
+
         var connected = Object.keys(mine.peers).some(function (id) {
             return mine.peers[id].pc.connectionState === 'connected';
         });
@@ -1398,6 +2097,12 @@
         var mine = call;
 
         mine.muted = on;
+        mine.talkAt = 0;
+
+        if (mine.mutedNotice) {
+            mine.mutedNotice.hidden = true;
+        }
+
         mine.stream.getAudioTracks().forEach(function (track) { track.enabled = !on; });
         mine.muteButton.setAttribute('aria-pressed', on ? 'true' : 'false');
         iconSwap(mine.muteButton, on ? 'bi-mic-mute' : 'bi-mic', t(on ? 'call_unmute' : 'call_mute'));
@@ -1408,14 +2113,21 @@
 
         mine.cameraOff = off;
         mine.stream.getVideoTracks().forEach(function (track) { track.enabled = !off; });
+
+        // The camera behind a background effect goes dark too.
+        if (mine.rawVideo) {
+            mine.rawVideo.enabled = !off;
+        }
         mine.cameraButton.setAttribute('aria-pressed', off ? 'true' : 'false');
         iconSwap(mine.cameraButton, off ? 'bi-camera-video-off' : 'bi-camera-video', t(off ? 'call_camera_on' : 'call_camera_off'));
         mine.node.classList.toggle('is-camera-off', off);
         mine.selfTile.node.classList.toggle('is-camera-off', off);
     }
 
-    // The microphones and cameras of the device, each a select; a choice
-    // takes the new device's track into every connection.
+    // The microphones, cameras and speakers of the device, each a select
+    // (speakers where the browser can choose one); a microphone or camera
+    // chosen takes its track into every connection, a speaker plays every
+    // member's sound. Each choice is remembered for the next call.
     function drawDevices(panel) {
         var mine = call;
 
@@ -1426,13 +2138,21 @@
 
             h().clear(panel);
 
-            [['audio', 'audioinput', 'call_microphone'], ['video', 'videoinput', 'call_camera']].forEach(function (one) {
+            [['audio', 'audioinput', 'call_microphone'], ['video', 'videoinput', 'call_camera'], ['speaker', 'audiooutput', 'call_speaker']].forEach(function (one) {
                 if ((one[0] === 'video') && (mine.kind !== 'video')) {
+                    return;
+                }
+
+                if ((one[0] === 'speaker') && !sinkSupported()) {
                     return;
                 }
 
                 var track = (one[0] === 'audio') ? mine.stream.getAudioTracks()[0] : mine.stream.getVideoTracks()[0];
                 var using = (track && track.getSettings) ? (track.getSettings().deviceId || '') : '';
+
+                if (one[0] === 'speaker') {
+                    using = speakerOf(list.filter(function (device) { return device.kind === 'audiooutput'; }), mine.speaker);
+                }
                 var id = 'ws-call-' + one[0];
                 var label = h().el('label', 'pg-field-label', t(one[2]));
                 var select = h().el('select', 'pg-input pg-input-sm');
@@ -1448,11 +2168,129 @@
                     select.appendChild(option);
                 });
 
-                select.addEventListener('change', function () { useDevice(one[0], select.value); });
+                select.addEventListener('change', function () {
+                    if (one[0] === 'speaker') {
+                        useSpeaker(select.value);
+                    } else {
+                        useDevice(one[0], select.value);
+                    }
+                });
                 panel.appendChild(label);
                 panel.appendChild(select);
             });
+            backgroundDraw(mine, panel);
         }).catch(function () {});
+    }
+
+    // "Blur background" and "Remove background" under the camera, each
+    // pressed while it is on; drawn only where it can run
+    // (workspace_call_background.js).
+    function backgroundDraw(mine, panel) {
+        var effects = window.PGWsCallBackground;
+        var raw = mine.rawVideo || mine.stream.getVideoTracks()[0];
+
+        if ((mine.kind !== 'video') || !effects || !raw) {
+            return;
+        }
+
+        var shown = effects.offer(effects.can(raw, hooks.background));
+        var row = h().el('div', 'ws-call-background d-flex flex-wrap gap-2');
+
+        [['blur', 'bi-person-bounding-box', 'call_background_blur'], ['remove', 'bi-person-square', 'call_background_remove']].forEach(function (one) {
+            if (!shown[one[0]]) {
+                return;
+            }
+
+            var on = mine.background === one[0];
+            var button = makeButton('pg-button pg-button-quiet pg-button-sm' + (on ? ' is-active' : ''), t(one[2]), one[1]);
+
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
+            button.addEventListener('click', function () {
+                var mode = (mine.background === one[0]) ? '' : one[0];
+
+                button.disabled = true;
+                backgroundSet(mine, mode, false).then(function () {
+                    if (call === mine) {
+                        h().clear(panel);
+                        drawDevices(panel);
+                    }
+                });
+            });
+            row.appendChild(button);
+        });
+
+        if (row.childNodes.length) {
+            panel.appendChild(h().el('span', 'pg-field-label', t('call_background')));
+            panel.appendChild(row);
+        }
+    }
+
+    // Puts a video track in place of the one the call sends: in the
+    // stream (one's own tile, connections made later) and on every
+    // connection but the screen's line. The track left is not stopped.
+    function videoSwap(mine, track) {
+        var current = mine.stream.getVideoTracks()[0];
+
+        if (!current || (current === track)) {
+            return;
+        }
+
+        track.enabled = !mine.cameraOff;
+        Object.keys(mine.peers).forEach(function (id) {
+            var slot = mine.peers[id].slot;
+
+            mine.peers[id].pc.getSenders().forEach(function (sender) {
+                if ((sender.track === current) && !(slot && (slot.sender === sender))) {
+                    sender.replaceTrack(track).catch(function () {});
+                }
+            });
+        });
+        mine.stream.removeTrack(current);
+        mine.stream.addTrack(track);
+
+        if (mine.selfTile) {
+            mine.selfTile.video.srcObject = mine.stream;
+        }
+    }
+
+    // Switches the background effect ('' for none) and remembers it. A
+    // remembered effect that cannot run here is left off without a word.
+    function backgroundSet(mine, mode, quiet) {
+        var effects = window.PGWsCallBackground;
+        var raw = mine.rawVideo || mine.stream.getVideoTracks()[0];
+        var before = mine.effect;
+
+        if (!effects || !raw) {
+            return Promise.resolve();
+        }
+
+        return (mode ? effects.apply(raw, mode, hooks.background) : Promise.resolve(null)).then(function (effect) {
+            if (call !== mine) {
+                if (effect && (effect.track !== raw)) {
+                    effect.stop();
+                }
+
+                return;
+            }
+
+            videoSwap(mine, effect ? effect.track : raw);
+
+            if (before) {
+                before.stop();
+            }
+
+            mine.effect = effect;
+            mine.rawVideo = effect ? raw : null;
+            mine.background = effect ? mode : '';
+
+            if (!quiet) {
+                choicesSave({ background: mine.background });
+            }
+        }, function () {
+            if (!quiet && (call === mine)) {
+                h().toast(t('call_background_failed'), 'warning');
+            }
+        });
     }
 
     function useDevice(kind, deviceId) {
@@ -1471,6 +2309,21 @@
             }
 
             var old = (kind === 'audio') ? mine.stream.getAudioTracks()[0] : mine.stream.getVideoTracks()[0];
+            var effectMode = '';
+
+            // A background effect is stopped with the old camera and
+            // started again on the new one.
+            if ((kind === 'video') && mine.effect) {
+                effectMode = mine.background;
+                mine.effect.stop();
+
+                if (mine.rawVideo && (mine.rawVideo !== old)) {
+                    mine.rawVideo.stop();
+                }
+
+                mine.effect = null;
+                mine.rawVideo = null;
+            }
 
             fresh.enabled = (kind === 'audio') ? !mine.muted : !mine.cameraOff;
 
@@ -1491,14 +2344,31 @@
             }
 
             mine.stream.addTrack(fresh);
+            choicesSave(kind === 'audio' ? { audio: deviceId } : { video: deviceId });
+
+            if (effectMode) {
+                backgroundSet(mine, effectMode, true);
+            }
 
             // The speaking mark hears the new microphone.
             if (kind === 'audio') {
-                listen(mine, mine.selfTile, mine.stream);
+                selfListen(mine);
             }
         }).catch(function () {
             h().toast(t('call_denied'), 'danger');
         });
+    }
+
+    function useSpeaker(deviceId) {
+        var mine = call;
+
+        mine.speaker = deviceId;
+        Object.keys(mine.peers).forEach(function (id) {
+            if (mine.peers[id].tile) {
+                sinkSet(mine.peers[id].tile.video, deviceId);
+            }
+        });
+        choicesSave({ speaker: deviceId });
     }
 
     // Leaves the call and closes the window; a reason is told in a toast.
@@ -1519,16 +2389,33 @@
     function finish(mine, reason) {
         if (call === mine) {
             call = null;
+            window.removeEventListener('beforeunload', askBeforeLeaving);
         }
 
         clearTimeout(mine.timer);
         clearInterval(mine.pinger);
         clearInterval(mine.clock);
         clearInterval(mine.meter);
+        clearInterval(mine.stats);
         Object.keys(mine.peers).forEach(function (id) { peerClose(mine, Number(id)); });
+
+        if (mine.effect) {
+            mine.effect.stop();
+            mine.effect = null;
+        }
+
+        if (mine.rawVideo) {
+            mine.rawVideo.stop();
+            mine.rawVideo = null;
+        }
 
         if (mine.stream) {
             mine.stream.getTracks().forEach(function (track) { track.stop(); });
+        }
+
+        if (mine.hearCopy) {
+            mine.hearCopy.stop();
+            mine.hearCopy = null;
         }
 
         if (mine.screenTrack) {
@@ -1541,12 +2428,23 @@
             mine.audio.close().catch(function () {});
         }
 
+        if (mine.onMenuAway) {
+            document.removeEventListener('click', mine.onMenuAway);
+            document.removeEventListener('keydown', mine.onMenuAway);
+        }
+
         if (mine.onFull) {
             document.removeEventListener('fullscreenchange', mine.onFull);
         }
 
-        if (document.fullscreenElement && mine.shareArea && (document.fullscreenElement === mine.shareArea)) {
+        if (document.fullscreenElement && mine.node && (document.fullscreenElement === mine.node)) {
             document.exitFullscreen().catch(function () {});
+        }
+
+        // Its small window goes with the call (popBack() finds it ended).
+        if (mine.pip) {
+            mine.pip.close();
+            mine.pip = null;
         }
 
         if (mine.node) {
@@ -1557,6 +2455,40 @@
             h().toast(t(reason));
         }
     }
+
+    // A reload or a close during a call asks first; the browser writes the
+    // question itself.
+    function askBeforeLeaving(event) {
+        if (call) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    }
+
+    // During a call a link that leaves the page (an order, a customer, a
+    // page, the panel's menu) opens in a new tab, so the call's page and
+    // its connections stay. Heard on the window, after the Workspace's own
+    // handlers: a link they handle in the page (defaultPrevented) is left
+    // alone, and a click with a modifier key keeps the browser's own way.
+    window.addEventListener('click', function (event) {
+        if (!call || event.defaultPrevented || (event.button !== 0) || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+            return;
+        }
+
+        var link = (event.target && event.target.closest) ? event.target.closest('a[href]') : null;
+
+        if (!link || !leavesPage({ raw: link.getAttribute('href'), href: link.href, target: link.getAttribute('target'), download: link.hasAttribute('download') }, window.location)) {
+            return;
+        }
+
+        event.preventDefault();
+        window.open(link.href, '_blank', 'noopener');
+
+        if (!call.toldNewTab) {
+            call.toldNewTab = true;
+            h().toast(t('call_new_tab'));
+        }
+    });
 
     // A tab closed or reloaded leaves its call: the leave is sent as the
     // page goes (keepalive). Where it never arrives (a phone that dropped
@@ -1608,8 +2540,19 @@
         ringsGone: ringsGone,
         clock: clock,
         mediaAsk: mediaAsk,
+        choicesRead: choicesRead,
+        choicesWith: choicesWith,
+        speakerOf: speakerOf,
         screenSlot: screenSlot,
         shareState: shareState,
-        stageState: stageState
+        stageState: stageState,
+        leavesPage: leavesPage,
+        popState: popState,
+        keepAlive: keepAlive,
+        handState: handState,
+        inbound: inbound,
+        lossRatio: lossRatio,
+        weak: weak,
+        mutedHint: mutedHint
     };
 })();

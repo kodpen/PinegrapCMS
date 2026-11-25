@@ -193,11 +193,12 @@ function pg_explorer_handle_upload($type, $request, $user)
             $sql_image_values = "'" . e((int) $image_report['width']) . "', '" . e((int) $image_report['height']) . "',";
         } else {
 
-            $image_size = @getimagesize($file_path);
+            // As shown, EXIF orientation applied (pg_image_display_size()).
+            list($image_width, $image_height) = pg_image_display_size($file_path);
 
-            if (is_array($image_size)) {
+            if ($image_width > 0) {
                 $sql_image_fields = 'image_width, image_height,';
-                $sql_image_values = "'" . e((int) $image_size[0]) . "', '" . e((int) $image_size[1]) . "',";
+                $sql_image_values = "'" . e((int) $image_width) . "', '" . e((int) $image_height) . "',";
             }
         }
     }

@@ -134,6 +134,42 @@ function pg_notification_off_line($user_id, $inbox_id)
 	return isset($lines[$user_id][$inbox_id]);
 }
 
+// Whether the Workspace inbox line a bell row points at is still its
+// person's to see (ws_inbox_row_visible(), as ws_bell_describe() asks it). A
+// line that is gone keeps the row: its title was written for that day. One
+// read per line and person per request; the badge asks it of unread rows only.
+function pg_notification_ws_line_open($user_id, $inbox_id)
+{
+	static $open = array();
+
+	$user_id = (int) $user_id;
+	$inbox_id = (int) $inbox_id;
+	$key = $user_id . ':' . $inbox_id;
+
+	if (($user_id <= 0) || ($inbox_id <= 0)) {
+		return true;
+	}
+
+	if (!isset($open[$key])) {
+		require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+		$row = ws_ready() ? db_item("SELECT * FROM ws_inbox WHERE id = '" . $inbox_id . "' AND user_id = '" . $user_id . "'") : null;
+
+		if (!is_array($row) || empty($row)) {
+			$open[$key] = true;
+		} else {
+			include_once(PG_FUNCTIONS_DIR . '/includes/authentication.php');
+
+			$user = pg_load_user_row($user_id);
+			$viewer = is_array($user) ? ws_viewer($user) : ws_rights_for_id($user_id) + array('ecommerce' => false, 'contacts' => false, 'erp' => false);
+
+			$open[$key] = (bool) ws_inbox_row_visible($viewer, $row);
+		}
+	}
+
+	return $open[$key];
+}
+
 // Can this person see this notification?
 //
 // The rights are passed in rather than read from the session, because the
@@ -168,11 +204,16 @@ function pg_notification_visible($notification, $rights)
 			return false;
 		}
 
+		// The inbox line itself must still be the person's to see: a mention
+		// in a private channel they were taken out of, a task no longer
+		// theirs, a mailbox taken from them. The row's kept title names the
+		// channel and what was said, so it is left out, not shown bare.
 		if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
-			return true;
+			return pg_notification_ws_line_open($target, (int) ($notification['reference_id'] ?? 0));
 		}
 
-		return pg_notification_off_line($target, (int) ($notification['reference_id'] ?? 0));
+		return pg_notification_off_line($target, (int) ($notification['reference_id'] ?? 0))
+			&& pg_notification_ws_line_open($target, (int) ($notification['reference_id'] ?? 0));
 	}
 
 	// A customer's return request, or their word that the goods are on their
@@ -218,9 +259,9 @@ function pg_notification_visible($notification, $rights)
 		return ($target > 0);
 	}
 
-	// A guest's comment on a prototype link: addressed to the link's maker
-	// (includes/fn/prototype_comments.php).
-	if ($action == 'prototype_comment') {
+	// A guest's comment or verdict on a prototype link: addressed to the
+	// link's maker (includes/fn/prototype_comments.php, prototype_verdicts.php).
+	if (($action == 'prototype_comment') || ($action == 'prototype_verdict')) {
 		return ($target > 0);
 	}
 
@@ -249,15 +290,31 @@ function pg_notification_visible($notification, $rights)
 
 	// An operations alert (includes/fn/ops_alerts.php) is for whoever sees
 	// System Status and may open the screens it points at: backups, the
-	// scheduled jobs, the software update - manager and above.
+	// scheduled jobs, the software update - manager and above; one about the
+	// shop only while commerce is on (pg_ops_alert_visible()). One about the
+	// shop names orders, so an API caller needs orders:read for it, as for
+	// the order lines.
 	if ($action == 'ops') {
-		return ($rights['role'] < 3);
+		$code = (string) ($notification['order_total'] ?? '');
+
+		if (isset($rights['orders_read']) && !$rights['orders_read'] && pg_ops_alert_about_shop($code)) {
+			return false;
+		}
+
+		return pg_ops_alert_visible($code, $rights['role'], (defined('ECOMMERCE') && (ECOMMERCE === true)));
 	}
 
 	// An e-mail the mail queue gave up on (includes/fn/mail_queue.php): for
 	// whoever may open the mail queue screen, manager and above.
 	if ($action == 'mail_failed') {
 		return ($rights['role'] < 3);
+	}
+
+	// An event subscription skipped for a scope its application lacks
+	// (api_webhook_scope_skip_note()): for the administrators, who give
+	// applications their permissions.
+	if ($action == 'webhook_scope') {
+		return ((int) $rights['role'] === 0);
 	}
 
 	if ($action == 'new_comment') {
@@ -473,7 +530,8 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 
 	// The badge only needs enough to run the visibility ladder. Anything that
 	// has to render the notification asks for the whole row instead.
-	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id, notifications.form_id';
+	// order_total is an operations alert's code (pg_ops_alert_visible()).
+	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id, notifications.form_id, notifications.order_total';
 
 	// Rows addressed to somebody else are not even read.
 	$target_filter = '';
@@ -484,7 +542,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 	}
 
 	if (!pg_notification_reads_available()) {
-		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, form_id, readed') . " FROM notifications
+		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, form_id, order_total, readed') . " FROM notifications
 			WHERE readed = 0
 			ORDER BY timestamp DESC");
 	}
@@ -506,7 +564,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 // row addressed to somebody else passes it.
 function pg_notification_ladder_columns()
 {
-	return 'id, action, comment_id, form_id' . (pg_notification_targets_available() ? ', target_user_id, reference_id' : '');
+	return 'id, action, comment_id, form_id, order_total' . (pg_notification_targets_available() ? ', target_user_id, reference_id' : '');
 }
 
 /**
@@ -786,6 +844,19 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['badge']  = 'assets/images/notification-general-badge.png';
 		$display['action'] = $action;
 
+	} elseif ($action == 'prototype_verdict') {
+
+		// The row keeps the page's name and the verdict's id
+		// (includes/fn/prototype_verdicts.php).
+		$proto_words = pg_proto_verdict_bell_display($notification);
+		$display['title']  = h($proto_words['title']);
+		$display['short']  = h($proto_words['short']);
+		$display['brief']  = h($proto_words['brief']);
+		$display['url']    = $proto_words['url'];
+		$display['icon']   = 'assets/images/notification-general.png';
+		$display['badge']  = 'assets/images/notification-general-badge.png';
+		$display['action'] = $action;
+
 	} elseif ($action == 'launch_answer') {
 
 		// title keeps the line's text; the words are the reader's language.
@@ -989,6 +1060,20 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
 
+	} elseif ($action == 'webhook_scope') {
+
+		// title is the scope, order_id the application, form_id the
+		// subscription (api_webhook_scope_skip_note()).
+		$app_name = (string) db_value("SELECT name FROM api_apps WHERE id = '" . (int) ($notification['order_id'] ?? 0) . "' LIMIT 1");
+
+		$display['title']       = lang('Events are not delivered to an application');
+		$display['short']       = lang('Events not delivered');
+		$display['description'] = h(lang(array('string' => '{var:1} lacks {var:2}, so its subscription is not sent the events that need it. Give it the permission on Application Access › Permissions.', 'vars' => array(($app_name !== '') ? $app_name : '#' . (int) ($notification['order_id'] ?? 0), (string) ($notification['title'] ?? '')))));
+		$display['url']         = 'api_settings.php';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
 	} elseif ($action == 'privacy_request') {
 
 		// title holds the request's id, order_total the days left (7 or 2).
@@ -1010,11 +1095,12 @@ function pg_notification_display($notification, $reader_role = null)
 
 		if (isset($codes[$code])) {
 			$display['title'] = h($codes[$code]['label']);
-			$display['url']   = pg_ops_alert_reader_url($code, $reader_role);
-			// A sales watch row about a product opens that product.
-			if (((int) ($notification['product_id'] ?? 0) > 0) && (($codes[$code]['group'] ?? '') === 'sales')) {
-				$display['url'] = 'edit_product.php?id=' . (int) $notification['product_id'];
-			}
+			// A sales watch row about a product opens that product while it
+			// is there.
+			$product_id = (int) ($notification['product_id'] ?? 0);
+			$product_exists = ($product_id > 0) && (($codes[$code]['group'] ?? '') === 'sales')
+				&& ((int) db_value("SELECT COUNT(*) FROM products WHERE id = '" . $product_id . "'") > 0);
+			$display['url']   = pg_ops_alert_bell_url($code, $reader_role, $product_id, $product_exists);
 		} else {
 			$display['title'] = h(lang('Operations alert'));
 			$display['url']   = 'welcome.php';
@@ -1290,7 +1376,7 @@ function pg_notification_module($action)
 		return 'erp';
 	}
 
-	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale', 'prototype_comment'), true)) {
+	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale', 'prototype_comment', 'prototype_verdict'), true)) {
 		return 'content';
 	}
 
@@ -1408,8 +1494,8 @@ function pg_bell_state_note($key, $tone, $icon, $title, $text, $button)
 // (whole minutes and hours, at least one minute, a time after now too),
 // "Yesterday", then the day and month ("9 Nov", "Nov 9" where the site writes
 // the month first), with the year only when it is not this year. Read in the
-// site's time zone like pg_notification_day(), so the time and the heading
-// above it never disagree. The full date and time stays in the title
+// zone given (the reader's, '' for the site's) like pg_notification_day(), so
+// the time and the heading above it never disagree. The full date and time stays in the title
 // attribute. Pure: now is passed in.
 function pg_notification_short_time($timestamp, $now, $timezone = '', $date_format = 'day_month')
 {

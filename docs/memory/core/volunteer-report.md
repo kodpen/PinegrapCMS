@@ -5,7 +5,7 @@ module: volunteer_report
 ---
 
 ## Where is it?
-- The "Report" tab of `edit_volunteer_programme.php` (`view=report`), after Hours, for everyone who sees the programme (roles 0-2, its coordinators). `&export=xlsx` downloads the workbook. Module `includes/fn/volunteer_report.php`, pure parts tested in `tests/volunteer_report_test.php`. Built in step VS7 of plan `volunteer-shifts`.
+- The "Report" tab of `edit_volunteer_programme.php` (`view=report`), after Hours, for everyone who sees the programme (roles 0-2, its coordinators). `&export=xlsx` downloads the workbook. Module `includes/fn/volunteer_report.php`, pure parts tested in `tests/volunteer_report_test.php`. Built in step VS7 (`volunteer-shifts.md`).
 
 ## Which period?
 - Segments "Last 4 / 12 / 52 weeks": whole weeks Monday to Sunday ending with this week (`pg_volunteer_report_period()`).
@@ -20,4 +20,4 @@ module: volunteer_report
 - Screen: figures (Places filled, Approved hours, Did not come with late cancels, Active volunteers with left), then report frames By week, Hours by role, By volunteer (`pg-report-*` classes, as `queue_report.php`).
 - Excel (`pg_xlsx_write_book()`): sheets Summary, Weeks, Roles, Volunteers; numbers as numbers, names always text. Never a document, its number or file.
 
-Related: docs/memory/core/volunteer-hours.md, docs/memory/core/volunteer-certificate.md, docs/memory/plans/volunteer-shifts-screens.md
+Related: docs/memory/core/volunteer-hours.md, docs/memory/core/volunteer-certificate.md, docs/memory/core/volunteer-shifts-decisions.md

@@ -61,6 +61,8 @@ function test_form_mails_option_admin_addresses()
 		pg_cf_option_admin_addresses(array('a@example.com, b@example.com', 'b@example.com', ' c@example.com ')),
 		'comma lists split and trimmed, each address once');
 	pg_assert_same(array(), pg_cf_option_admin_addresses(array()), 'no option chosen');
+	pg_assert_same(array('a@example.com', 'b@example.com'), pg_cf_option_admin_addresses(array('a@example.com,', ' , b@example.com')),
+		'a trailing or doubled comma adds no empty address');
 }
 
 function test_form_mails_record_submitter_address()

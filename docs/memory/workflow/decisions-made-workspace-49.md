@@ -20,7 +20,7 @@ description: Decisions made, workspace part 49 (2026-11-23 on): a note written i
 - The channel's head shows a share mark while the channel has an open link or a guest; its menu holds the channel's own sharing and the shared items together, the same list in Channel info (his answer "Başlıkta paylaşım işareti"; "o alan hem kanal hem de kanaldaki paylaşılan içerikler için ortak alan olur").
 - Why: a worker has no key of the channel, so a picture the owner posted there reached a worker only when the architect copied it into the repository.
 - The "No" to a secret-address feed of a person's notes stays (`decisions-made-product-13.md`, #3880): that was every note, for good, with nothing to cut it; this is one item with an end and a take-back.
-- Plan: `plans/channel-share-links.md`; the table: `decisions-made-schema-48.md`.
+- Built by the share links steps (SL1 to SL6): `workspace/share-links.md`; the table: `decisions-made-schema-48.md`.
 
 ## Do agents get an index of the memory and a search in it? (owner, 2026-11-23, in the architect's window)
 - Yes, for the later move of this project's work into the agent channel, not for today: "bellek kısmı bizim ileriki tam ajan kanalı geçişimiz için ayarlamalıyız, bugün için değil".

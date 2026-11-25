@@ -40,6 +40,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     var POLL_AI = 4000;
     var POLL_CLAUDE = 8000;
 
@@ -162,7 +174,7 @@
         }
 
         if (change.can_apply) {
-            var apply = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', h.t('change_apply'), 'bi-check2');
+            var apply = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('change_apply'), 'bi-check2');
 
             apply.addEventListener('click', function () {
                 var go = change.warning ? h.ask(change.warning, h.t('change_apply'), true) : Promise.resolve(true);
@@ -179,7 +191,7 @@
         }
 
         if (change.can_dismiss) {
-            var dismiss = h.button('btn btn-sm btn-text theme-secondary', h.t('change_dismiss'), 'bi-x-lg');
+            var dismiss = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('change_dismiss'), 'bi-x-lg');
 
             dismiss.addEventListener('click', function () {
                 decide('ws_ai_change_dismiss');
@@ -192,7 +204,7 @@
         // A call of an MCP server's tool runs with the asker's own account,
         // connected from here; the sign-in comes back to this task.
         if (change.connect) {
-            var connect = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5', h.t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
+            var connect = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
 
             connect.addEventListener('click', function () {
                 connect.disabled = true;
@@ -473,15 +485,15 @@
                 form.appendChild(picker);
             }
 
-            var text = h.el('textarea', 'form-control form-control-sm');
+            var text = h.el('textarea', 'pg-input pg-input-sm');
             text.rows = 2;
             text.maxLength = state.max;
             text.placeholder = (withKey === '') ? h.t('dg_instruction') : h.t('dg_follow_hint');
             text.setAttribute('aria-label', (withKey === '') ? h.t('dg_hand') : h.t('dg_follow'));
             form.appendChild(text);
 
-            var send = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5', (withKey === '') ? h.t('dg_hand') : h.t('dg_send'), (withKey === '') ? 'bi-stars' : 'bi-send');
-            var connect = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5 d-none', h.t('mcp_connect_me'), 'bi-box-arrow-in-right');
+            var send = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', (withKey === '') ? h.t('dg_hand') : h.t('dg_send'), (withKey === '') ? 'bi-stars' : 'bi-send');
+            var connect = lookButton(h, 'pg-button pg-button-quiet pg-button-sm d-none', h.t('mcp_connect_me'), 'bi-box-arrow-in-right');
             var hint = h.el('div', 'form-text mt-0 d-none');
 
             function chosen() {
@@ -555,7 +567,7 @@
             head.appendChild(h.el('span', 'fw-semibold ws-grow', h.t('dg_title')));
 
             if (state.can_stop) {
-                var stop = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('dg_stop'), 'bi-stop-circle');
+                var stop = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('dg_stop'), 'bi-stop-circle');
                 stop.addEventListener('click', function () {
                     h.ask(h.t('dg_stop_confirm'), h.t('dg_stop'), true).then(function (yes) {
                         if (yes) {
@@ -578,7 +590,7 @@
                 badge.appendChild(who);
 
                 if (state.can_take) {
-                    var back = h.button('btn btn-sm btn-text theme-secondary', h.t('dg_take_back'), 'bi-arrow-return-left');
+                    var back = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('dg_take_back'), 'bi-arrow-return-left');
                     back.addEventListener('click', function () {
                         h.ask(h.t('dg_take_confirm'), h.t('dg_take_back'), true).then(function (yes) {
                             if (yes) {

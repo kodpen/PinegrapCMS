@@ -55,6 +55,65 @@ function pg_theme_file_form_validate($liveform)
 }
 
 /**
+ * What a theme's save changes for each device type, from its activation
+ * flags before and after. Pure.
+ *
+ * 'keep': device types it was turned off for; the styles the pages wear
+ * there are written to its preview rows (pg_theme_keep_page_styles()).
+ * 'apply': device types it was turned on for; the pages move to the styles
+ * in its preview rows.
+ *
+ * @param array $before 'desktop', 'mobile' => 1 or 0
+ * @param array $after  'desktop', 'mobile' => 1 or 0
+ * @return array 'keep', 'apply' => list of 'desktop' / 'mobile'
+ */
+function pg_theme_activation_changes($before, $after)
+{
+    $changes = array('keep' => array(), 'apply' => array());
+
+    foreach (array('desktop', 'mobile') as $device_type) {
+        $was = ((int) ($before[$device_type] ?? 0) === 1);
+        $is = ((int) ($after[$device_type] ?? 0) === 1);
+
+        if ($was && !$is) {
+            $changes['keep'][] = $device_type;
+        } elseif (!$was && $is) {
+            $changes['apply'][] = $device_type;
+        }
+    }
+
+    return $changes;
+}
+
+/**
+ * Writes the styles the pages wear now for one device type into a theme's
+ * preview rows, in place of the ones it had, so turning the theme on again
+ * moves the pages back to them. A page with no style of its own for the
+ * device type gets no row and keeps what it wears then.
+ *
+ * @param int    $theme_id
+ * @param string $device_type 'desktop' or 'mobile'
+ */
+function pg_theme_keep_page_styles($theme_id, $device_type)
+{
+    $theme_id = (int) $theme_id;
+    $device_type = ($device_type === 'mobile') ? 'mobile' : 'desktop';
+    $column = ($device_type === 'mobile') ? 'mobile_style_id' : 'page_style';
+
+    if ($theme_id <= 0) {
+        return;
+    }
+
+    db("DELETE FROM preview_styles WHERE (theme_id = '" . $theme_id . "') AND (device_type = '" . $device_type . "')");
+
+    db(
+        "INSERT INTO preview_styles (page_id, theme_id, style_id, device_type)
+        SELECT page_id, '" . $theme_id . "', " . $column . ", '" . $device_type . "'
+        FROM page
+        WHERE (" . $column . " != '0') AND (" . $column . " IS NOT NULL)");
+}
+
+/**
  * Writes the form's values to the theme (fields 'id', 'name', 'folder',
  * 'description', 'activated_desktop_theme', 'activated_mobile_theme'),
  * after pg_theme_file_form_validate() found no error. The file is renamed
@@ -126,39 +185,9 @@ function pg_theme_file_form_save($liveform, $user_id)
 
         // If there is an old activated theme, then continue with deactivation process.
         if ($old_activated_theme_id) {
-            // Delete all existing preview styles for the old theme,
-            // because we are going to set new preview styles based on the activated styles,
-            // so if this old theme is re-activated in the future, the proper styles will be set.
-            db(
-                "DELETE FROM preview_styles
-                WHERE
-                    (theme_id = '" . $old_activated_theme_id . "')
-                    AND (device_type = 'desktop')");
-
-            // Get all activated styles for pages in order to create preview style records for them.
-            $styles = db_items(
-                "SELECT
-                    page_style AS id,
-                    page_id
-                FROM page
-                WHERE
-                    (page_style != '0')
-                    AND (page_style IS NOT NULL)");
-
-            // Loop through the activated styles in order to create preview style records.
-            foreach ($styles as $style) {
-                db(
-                    "INSERT INTO preview_styles (
-                        page_id,
-                        theme_id,
-                        style_id,
-                        device_type)
-                    VALUES (
-                        '" . $style['page_id'] . "',
-                        '" . $old_activated_theme_id . "',
-                        '" . $style['id'] . "',
-                        'desktop')");
-            }
+            // Its rows take the styles the pages wear now, so turning it on
+            // again later gives them back.
+            pg_theme_keep_page_styles($old_activated_theme_id, 'desktop');
 
             // Deactivate old theme.
             $old_theme_audit_before = pg_audit_fetch('files', (int) $old_activated_theme_id);
@@ -186,37 +215,7 @@ function pg_theme_file_form_save($liveform, $user_id)
 
         // If there is an old activated theme, then continue with deactivation process.
         if ($old_activated_theme_id) {
-            // Delete all existing preview styles for the old theme,
-            // because we are going to set new preview styles based on the activated styles,
-            // so if this old theme is re-activated in the future, the proper styles will be set.
-            db(
-                "DELETE FROM preview_styles
-                WHERE
-                    (theme_id = '" . $old_activated_theme_id . "')
-                    AND (device_type = 'mobile')");
-
-            // Get all activated styles for pages in order to create preview style records for them.
-            $styles = db_items(
-                "SELECT
-                    mobile_style_id AS id,
-                    page_id
-                FROM page
-                WHERE mobile_style_id != '0'");
-
-            // Loop through the activated styles in order to create preview style records.
-            foreach ($styles as $style) {
-                db(
-                    "INSERT INTO preview_styles (
-                        page_id,
-                        theme_id,
-                        style_id,
-                        device_type)
-                    VALUES (
-                        '" . $style['page_id'] . "',
-                        '" . $old_activated_theme_id . "',
-                        '" . $style['id'] . "',
-                        'mobile')");
-            }
+            pg_theme_keep_page_styles($old_activated_theme_id, 'mobile');
 
             // Deactivate old theme.
             $old_theme_audit_before = pg_audit_fetch('files', (int) $old_activated_theme_id);
@@ -252,49 +251,24 @@ function pg_theme_file_form_save($liveform, $user_id)
     
     log_activity(lang(array('string' => 'theme file ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
 
+    // What turning this theme on or off changes for each device type.
+    $changes = pg_theme_activation_changes(
+        array('desktop' => $original_activated_desktop_theme, 'mobile' => $original_activated_mobile_theme),
+        array('desktop' => $liveform->get_field_value('activated_desktop_theme'), 'mobile' => $liveform->get_field_value('activated_mobile_theme')));
+
+    // Turned off with no other theme taking its place: its rows take the
+    // styles the pages wear now, as they do when another theme replaces it.
+    // Left as they were, turning it on again would move the pages back to
+    // the styles they had when it was last replaced, undoing every style
+    // chosen while it was on.
+    foreach ($changes['keep'] as $device_type) {
+        pg_theme_keep_page_styles($liveform->get_field_value('id'), $device_type);
+    }
+
     // If this theme was activated as a desktop or mobile theme,
-    // then update styles for pages.
-    if (
-        (
-            ($original_activated_desktop_theme == 0)
-            && ($liveform->get_field_value('activated_desktop_theme') == 1)
-        )
-        ||
-        (
-            ($original_activated_mobile_theme == 0)
-            && ($liveform->get_field_value('activated_mobile_theme') == 1)
-        )
-    ) {
-        $sql_device_type_filter = "";
-
-        // If this theme was only activated as a desktop theme,
-        // then only get preview styles for that device type.
-        if (
-            ($original_activated_desktop_theme == 0)
-            && ($liveform->get_field_value('activated_desktop_theme') == 1)
-            &&
-            (
-                ($liveform->get_field_value('activated_mobile_theme') == 0)
-                || ($original_activated_mobile_theme == 1)
-            )
-        ) {
-            $sql_device_type_filter = "AND (device_type = 'desktop')";
-
-        // Otherwise, if this theme was only activated as a mobile theme,
-        // then only get preview styles for that device type.
-        } else if (
-            ($original_activated_mobile_theme == 0)
-            && ($liveform->get_field_value('activated_mobile_theme') == 1)
-            &&
-            (
-                ($liveform->get_field_value('activated_desktop_theme') == 0)
-                || ($original_activated_desktop_theme == 1)
-            )
-        ) {
-            $sql_device_type_filter = "AND (device_type = 'mobile')";
-        }
-
-        // Get all preview styles for this theme.
+    // then move the pages to its styles for those device types.
+    if ($changes['apply']) {
+        // Get the preview styles of this theme for the device types turned on.
         $preview_styles = db_items(
             "SELECT
                 page_id,
@@ -303,10 +277,10 @@ function pg_theme_file_form_save($liveform, $user_id)
             FROM preview_styles
             WHERE
                 (theme_id = '" . escape($liveform->get_field_value('id')) . "')
-                " . $sql_device_type_filter);
+                AND (device_type IN ('" . implode("', '", $changes['apply']) . "'))");
 
         // Loop through all preview styles in order to update styles for pages.
-        foreach ($preview_styles as $preview_style) {
+        foreach ((array) $preview_styles as $preview_style) {
             if ($preview_style['device_type'] == 'desktop') {
                 $sql_style_id_column = "page_style";
             } else {

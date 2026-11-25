@@ -173,6 +173,161 @@ function pg_auth_user_disabled($user_id)
 }
 
 /**
+ * Case-folding for address comparison, multibyte-aware where the extension is
+ * there. One function so the block list, its editor and any future caller fold
+ * the same way - two different foldings would silently disagree about whether
+ * an address is blocked.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_email_fold($value)
+{
+    $value = (string) $value;
+
+    return function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+}
+
+/**
+ * Whether an address is on a block list as the settings store it: entries
+ * split by new lines, commas or semicolons, each a whole address
+ * ("someone@example.com") or a domain ("example.com", "@example.com",
+ * "*@example.com"). pg_email_blocked() asks it with the site's list;
+ * get_file.php asks it through pg_auth_remembered_signin_refusal().
+ *
+ * @param string $email
+ * @param string $list
+ * @return bool
+ */
+function pg_auth_email_on_list($email, $list)
+{
+    $email = pg_email_fold(trim((string) $email));
+    $list = (string) $list;
+
+    if (($email === '') || (trim($list) === '')) {
+        return false;
+    }
+
+    $at = strrpos($email, '@');
+    $domain = ($at === false) ? '' : substr($email, $at);   // keeps the "@"
+
+    foreach (preg_split('/[\r\n,;]+/', $list) as $entry) {
+        $entry = pg_email_fold(trim($entry));
+        $entry = ltrim($entry, '*');
+
+        if ($entry === '') {
+            continue;
+        }
+
+        // A bare domain is written either way round; normalise to "@domain".
+        if (strpos($entry, '@') === false) {
+            $entry = '@' . $entry;
+        }
+
+        if (strpos($entry, '@') === 0) {
+            if (($domain !== '') && ($domain === $entry)) {
+                return true;
+            }
+        } elseif ($entry === $email) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Why a remembered device (the software[auth] token) of an account is not
+ * signed in: 'disabled' for a disabled account, 'blocked' for a member whose
+ * address is on the block list, 'factor' for an account whose role requires
+ * a second factor it does not have; '' when nothing refuses it. The first
+ * reason wins.
+ *
+ * @param bool $disabled
+ * @param bool $blocked
+ * @param bool $factor_owed
+ * @return string
+ */
+function pg_auth_remembered_refusal($disabled, $blocked, $factor_owed)
+{
+    if ($disabled) {
+        return 'disabled';
+    }
+
+    if ($blocked) {
+        return 'blocked';
+    }
+
+    return $factor_owed ? 'factor' : '';
+}
+
+/**
+ * pg_auth_remembered_refusal() for an account, asked by initialize_user()
+ * and by get_file.php before either adopts a remembered token. With
+ * functions.php loaded it asks the panel's own helpers. get_file.php has
+ * none of them, so it reads the same settings itself; for the second factor
+ * it answers 'factor' whenever the role requires one and the account has no
+ * authenticator key, a passkey aside (whether a passkey counts depends on
+ * the host the panel is opened at). get_file.php then only declines the
+ * token and leaves the cookie, so the panel's next request makes the real
+ * decision and sends the visitor to the sign-in or the setup.
+ *
+ * @param int $user_id
+ * @return string
+ */
+function pg_auth_remembered_signin_refusal($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (function_exists('pg_user_id_login_blocked')) {
+        return pg_auth_remembered_refusal(
+            pg_auth_user_disabled($user_id),
+            pg_user_id_login_blocked($user_id),
+            function_exists('pg_mfa_required_for_user')
+                && pg_mfa_required_for_user($user_id)
+                && !pg_mfa_has_factor($user_id));
+    }
+
+    if (pg_auth_user_disabled($user_id)) {
+        return 'disabled';
+    }
+
+    $row = db_item("SELECT user_role, user_email FROM user WHERE user_id = '" . $user_id . "'");
+
+    if (!is_array($row)) {
+        return '';
+    }
+
+    $role = (int) $row['user_role'];
+
+    $config = array();
+
+    foreach (array('banned_email_addresses', 'mfa_required_role') as $column) {
+        if (pg_auth_column_exists('config', $column)) {
+            $config[$column] = db_value("SELECT " . $column . " FROM config");
+        }
+    }
+
+    // Staff are never refused by the list (validate_login()).
+    $blocked = ($role === 3)
+        && pg_auth_email_on_list((string) $row['user_email'], (string) ($config['banned_email_addresses'] ?? ''));
+
+    // pg_mfa_required_for_user(): a role at or below the setting, on a site
+    // where a key can be set up (the table, ENCRYPTION_KEY and openssl).
+    $required_role = isset($config['mfa_required_role']) ? (int) $config['mfa_required_role'] : 99;
+    $factor_owed = ($required_role < 99)
+        && ($role <= $required_role)
+        && pg_auth_column_exists('user_mfa', 'totp_secret')
+        && defined('ENCRYPTION_KEY') && (ENCRYPTION_KEY !== '')
+        && extension_loaded('openssl')
+        && ((int) db_value(
+            "SELECT COUNT(*) FROM user_mfa
+            WHERE user_id = '" . $user_id . "' AND enabled_at > 0 AND totp_secret <> ''") === 0);
+
+    return pg_auth_remembered_refusal(false, $blocked, $factor_owed);
+}
+
+/**
  * The read-only right as a piece of the user screens' SQL, or '' before the
  * upgrade: 'columns' and 'values' for an INSERT, 'set' for an UPDATE. Each
  * piece ends in a comma, like the lines around it.

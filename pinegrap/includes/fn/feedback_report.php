@@ -656,11 +656,20 @@ function pg_feedback_contact_scores($contact_id, $email, $phone)
         $params = array_merge($params, $hashes);
     }
 
-    return (array) db_items(
+    // db_items() takes no values (its second argument is the key column),
+    // so the placeholders are bound by db_q().
+    $out = array();
+    $result = db_q(
         "SELECT r.answered_at, s.name AS survey, s.kind, r.score, r.band
         FROM feedback_responses r INNER JOIN feedback_surveys s ON s.id = r.survey_id
         WHERE " . $match . " AND r.status = " . PG_FEEDBACK_ANSWERED . "
         ORDER BY r.answered_at DESC LIMIT 50", $params);
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $out[] = $row;
+    }
+
+    return $out;
 }
 
 /**

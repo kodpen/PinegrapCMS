@@ -7,7 +7,7 @@ description: The Flows canvas look in numbers (owner, 2026-10-27): lines, type c
 - Control arrows: 1.75 px, `#7d8696`, from a box's right edge, filled head.
 - Data threads: 1 px, no head, from the output dot on the source box's bottom edge to the bottom of the field chip they fill. A quadratic curve whose control point sits below the chord's middle: sag = 10 px + 0.06 × horizontal distance (0.05 in a mini window), so a longer span hangs a little more.
 - Two threads never overlap; at least 3 px stays between them. Threads from one dot leave it a few px apart; the one going farther starts on the left and sags more, so they never cross near the dot.
-- The selected box's threads at full colour, the rest dimmed; a "Data threads" toggle hides them all.
+- Only the threads of the box in hand are drawn, nothing dimmed; the strip's "Data threads" pressed draws them all (FE4, `workspace-flows-thread-focus.md`).
 
 ## Which colours?
 - Types: number `#6ea8ff`, text `#e9b44c`, yes/no `#4cc38a`, person `#b49cff`, date `#c3c9d3`, address `#ff9aa0` (no thread may end in an address field; the one exception, #3410: a number thread into a webhook URL's path or query).
@@ -22,7 +22,7 @@ description: The Flows canvas look in numbers (owner, 2026-10-27): lines, type c
 
 ## How do run flags look?
 - Completed: green ground `#173a2a`, text `#6fdca6`, a flag icon, the state, the duration, one line of result; ▾ opens the whole result and a link to the run.
-- Waiting amber (`#2a2416`, `#f3dca0`); Running blue (`#1b2638`, `#b9d3ff`) with Stop; Failed red (`#2a1d21`, `#ffb3b8`).
+- Waiting amber (`#2a2416`, `#f3dca0`); Running blue (`#1b2638`, `#b9d3ff`) with Stop; Failed red (`#2a1d21`, `#ffb3b8`); Left the flow in the secondary tone (`workspace-flows-leave.md`).
 - Shown above the flow's last box on the canvas, in the list's last-run column and on the run's card in a channel.
 
 ## Mini window and templates?

@@ -108,6 +108,51 @@ function test_consent_page_services_skips_commented_out_scripts()
 	);
 }
 
+// A site tag marked for a category but written without type="text/plain"
+// ran at once, before any answer, while the notice listed it as a service
+// that "starts only if you allow it". The notice holds it the way the site
+// should have; a tag already held, a tag of no known category and a plain
+// script stay as they are.
+function test_consent_holds_marked_scripts_written_to_run()
+{
+	pg_assert_same(
+		'<script type="text/plain" data-pg-consent="marketing" data-pg-consent-name="Pixel" data-pg-src="https://px.example/p.js" async></script>',
+		pg_consent_hold_marked('<script data-pg-consent="marketing" data-pg-consent-name="Pixel" src="https://px.example/p.js" async></script>'),
+		'external, no type'
+	);
+
+	pg_assert_same(
+		'<script type="text/plain" data-pg-consent=Analytics>a()</script>',
+		pg_consent_hold_marked('<script type="text/javascript" data-pg-consent=Analytics>a()</script>'),
+		'inline, a script type, unquoted category'
+	);
+
+	foreach (array(
+		'<script type="text/plain" data-pg-consent="marketing" src="x.js"></script>',
+		"<script type='text/plain' data-pg-consent='analytics'>a()</script>",
+		'<script data-pg-consent="other">a()</script>',
+		'<script data-pg-consent-name="Pixel">a()</script>',
+		'<script src="x.js"></script>',
+	) as $tag) {
+		pg_assert_same($tag, pg_consent_hold_marked($tag), $tag);
+	}
+
+	$page = '<html><head></head><body><script data-pg-consent="marketing" src="https://px.example/p.js"></script></body></html>';
+
+	pg_assert_contains('<script type="text/plain" data-pg-consent="marketing" data-pg-src="https://px.example/p.js"></script>', pg_consent_insert($page, array()), 'held on the page');
+}
+
+// A held tag with its category or name unquoted (valid HTML) is listed:
+// before, the notice missed it, never asked about its category and the
+// script never started.
+function test_consent_page_services_reads_unquoted_attributes()
+{
+	pg_assert_same(
+		array('analytics' => array(), 'marketing' => array('Hotjar')),
+		pg_consent_page_services('<script type=text/plain data-pg-consent=marketing data-pg-consent-name=Hotjar>a()</script>')
+	);
+}
+
 // The list the Translations screen takes in is every lang() key the notice
 // prints: a key added to the notice and missing here would stay untranslated
 // until a visitor happened to see it.
@@ -532,4 +577,23 @@ function test_consent_lists_and_revokes_the_pop_up_cookies()
 	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
 
 	pg_assert_contains("if (defined('AUTO_DIALOGS') && AUTO_DIALOGS) {\n" . '        $catalogue[\'marketing\'][] = pg_consent_popup_row();', $section, 'a marketing row while Auto Dialogs are on');
+}
+
+// An answer over the address's log limit (many visitors behind one carrier
+// or office address) records no rows, but a refusal still takes effect:
+// before, the 429 skipped the hooks, and a just-completed order's ad rows
+// kept the buyer's ids and went out after marketing was refused.
+function test_consent_answer_acts_on_a_refusal_over_the_log_limit()
+{
+	$refusal = array(array('channel' => 'cookie', 'purpose' => 'marketing', 'status' => 'refused'));
+
+	pg_assert_same(true, pg_consent_answer_acts($refusal, 200), 'recorded');
+	pg_assert_same(true, pg_consent_answer_acts($refusal, 429), 'over the log limit');
+
+	foreach (array(400, 403, 405, 413) as $status) {
+		pg_assert_same(false, pg_consent_answer_acts($refusal, $status), (string) $status);
+	}
+
+	pg_assert_same(false, pg_consent_answer_acts(array(), 200), 'no change');
+	pg_assert_same(false, pg_consent_answer_acts(null, 200), 'malformed');
 }

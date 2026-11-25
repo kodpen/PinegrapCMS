@@ -89,6 +89,7 @@ function api_app_permission_area_keys() {
 		'webhooks'           => 'site',
 		'meta'               => 'site',
 		'system'             => 'site',
+		'launch'             => 'site',
 		'visitors'           => 'site',
 		'users'              => 'site',
 		'site_log'           => 'site',

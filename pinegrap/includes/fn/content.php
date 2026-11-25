@@ -200,6 +200,67 @@ function pg_menu_tree_flatten(array $rows)
 }
 
 /**
+ * Whether a menu item is drawn for the visitor, as pg_menu_tree() reads it.
+ *
+ * An item linked to a page that no longer exists is never drawn: its link
+ * would lead nowhere. An item with security on, or linked to a page that is
+ * offline (in the Recycle Bin or the drafts folder, $offline), is drawn only
+ * when the visitor may view the page's folder ($can_view). An item linked to
+ * no page (a URL, or a heading for its sub-items) is always drawn.
+ *
+ * @param array         $item      a menu row (link_page_id, link_page_name,
+ *                                 link_page_folder_id, security)
+ * @param callable|null $can_view  folder id => bool (null: every page may be viewed)
+ * @param callable|null $offline   folder id => bool (null: no page is offline)
+ * @return bool
+ */
+function pg_menu_item_shown(array $item, $can_view = null, $offline = null)
+{
+    $page_id = isset($item['link_page_id']) ? (int) $item['link_page_id'] : 0;
+    $page = isset($item['link_page_name']) ? (string) $item['link_page_name'] : '';
+
+    if ($page === '') {
+        return $page_id <= 0;
+    }
+
+    $folder = isset($item['link_page_folder_id']) ? $item['link_page_folder_id'] : 0;
+
+    if (empty($item['security']) && (($offline === null) || !call_user_func($offline, $folder))) {
+        return true;
+    }
+
+    return ($can_view === null) || (bool) call_user_func($can_view, $folder);
+}
+
+/**
+ * Whether the pages of a folder are offline: the Recycle Bin or below it,
+ * or the drafts folder.
+ *
+ * @param int $folder_id
+ * @return bool
+ */
+function pg_menu_page_offline($folder_id)
+{
+    if (function_exists('pg_folder_binned') && pg_folder_binned($folder_id)) {
+        return true;
+    }
+
+    return function_exists('pg_page_is_draft') && pg_page_is_draft($folder_id);
+}
+
+/**
+ * The rel a menu link takes: noopener for one opened in a new window, so the
+ * opened page gets no handle on the window of the site.
+ *
+ * @param string $target  the link's target ('_blank' or empty)
+ * @return string
+ */
+function pg_menu_link_rel($target)
+{
+    return ($target === '_blank') ? 'noopener' : '';
+}
+
+/**
  * The common and designer regions behind <cregion> tags, read once per
  * request: the names a call asks for that no earlier call has read are read
  * together in one query, and what was read (a region, or that there is none)
@@ -585,11 +646,9 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
         if (defined('FRONTEND_LANGUAGE')) {
             $menu_item['name'] = pg_tr_text($menu_item['name'], 'text');
         }
-        // If security is disabled,
-        // or if this menu item is not connected to a page
-        // or this visitor has access to view this menu item's page,
-        // then show the menu item and its child items, if any exist.
-        if (($menu_item['security'] == 0) || ($menu_item['link_page_name'] == '') || (check_view_access($menu_item['link_page_folder_id']) == true)) {
+        // An item and its child items are shown unless its page is gone, or
+        // has security on or is offline while the visitor may not view it.
+        if (pg_menu_item_shown($menu_item, function ($folder_id) { return check_view_access($folder_id) == true; }, 'pg_menu_page_offline')) {
             // A sub menu exists when any item sits under this one.
             $sub_menu_exists = !empty($menu_tree['counts'][(int) $menu_item['id']]);
             $output_link_href = '';
@@ -609,7 +668,7 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
                 }
                 // if link should open in a new window, then prepare target
                 if ($menu_item['link_target'] == 'New Window') {
-                    $output_link_target = ' target="_blank"';
+                    $output_link_target = ' target="_blank" rel="' . pg_menu_link_rel('_blank') . '"';
                 }
                 // else there should not be a link, so disable link
             } else {
@@ -2547,7 +2606,7 @@ function send_user_to_login_home()
         // or user has edit rights
         // or user has access to control panel
         // then forward user to control panel welcome screen
-    } elseif (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)) {
+    } elseif (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || pg_waiting_user_is_staff($user) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/welcome.php');
         exit();
         // else send user to my account page
@@ -3785,7 +3844,7 @@ function add_edit_button_for_images($object_type = '', $object_id = 0, $content 
             $image_content = str_replace('  ', ' ', $image_content);
             // The edit button opens the image editor on this page
             // (pg_image_editor_includes()); a copy is put in this content.
-            $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="#" data-pg-image-edit="' . h($image_name) . '" data-pg-image-object="' . h($object_type) . '" data-pg-image-object-id="' . h($object_id) . '" data-pg-image-column="' . h($column_to_update) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang(array('string' => 'Edit the image ({var:1}) in the Artifact Canvas', 'vars' => h($image_name))) . '" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/pinegrap-mascot.svg" width="32" height="32" alt="' . lang('Artifact Canvas') . '"></a>';
+            $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="#" data-pg-image-edit="' . h($image_name) . '" data-pg-image-object="' . h($object_type) . '" data-pg-image-object-id="' . h($object_id) . '" data-pg-image-column="' . h($column_to_update) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang('Edit in Artifact Canvas') . ' (' . h($image_name) . ')" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/pinegrap-mascot.svg" width="32" height="32" alt="' . lang('Edit in Artifact Canvas') . '"></a>';
             // output the image we created above with a link around it
             $content = preg_replace('/' . escape_regex($match[0]) . '/i', pg_regex_replacement($image_content), $content, 1);
         }

@@ -4,8 +4,9 @@
  *
  * Names screen readers get for the fields of the Workspace's drawers and
  * dialogs (assets/js/workspace.js). The shared helpers draw a caption for a
- * field: formRow() points it at the field (an id-less control gets one, a
- * wrapper's first unnamed field, a picker box is named as a group),
+ * field: formRow(), built on the form parts' field(), points it at the
+ * field (an id-less control gets one, a wrapper's first unnamed field, a
+ * picker box is named as a group),
  * saLabelled() ties its label to the field of quick edit and quick create,
  * and ask() names the question dialog and its first unnamed detail control
  * with the question. The pickers carry their own names and states.
@@ -68,9 +69,15 @@ function test_workspace_field_names_form_row_names_its_field()
 	$row = workspace_field_names_test_block('function formRow(');
 
 	pg_assert_true($row !== '', 'workspace.js has formRow()');
-	pg_assert_true(strpos($row, 'labelTarget(control)') !== false, 'formRow() finds the field its caption names (a wrapper\'s first field too)');
-	pg_assert_true(strpos($row, "nextId('ws-field-')") !== false, 'formRow() gives an id-less field an id for its caption');
-	pg_assert_true(strpos($row, "setAttribute('aria-labelledby', caption.id)") !== false, 'formRow() names a picker box with its caption');
+	pg_assert_true(strpos($row, 'formParts.field(label, control, help)') !== false, 'formRow() builds its row from the form parts\' field');
+
+	$field = workspace_field_names_test_block('        field: function (label, control, help) {');
+
+	pg_assert_true($field !== '', 'the form parts have field()');
+	pg_assert_true(strpos($field, 'labelTarget(control)') !== false, 'field() finds the field its caption names (a wrapper\'s first field too)');
+	pg_assert_true(strpos($field, "nextId('ws-plan-')") !== false, 'field() gives an id-less field an id for its caption');
+	pg_assert_true(strpos($field, "setAttribute('aria-labelledby', caption.id)") !== false, 'field() names a picker box with its caption');
+	pg_assert_true(strpos($field, "'pg-field-label'") !== false && strpos($field, "'ws-plan-field'") !== false, 'the row is look A\'s field');
 
 	$target = workspace_field_names_test_block('function labelTarget(');
 

@@ -446,7 +446,7 @@ function test_workspace_record_kinds_events_name_the_record_they_find()
 	// A review names its product by item_type and item_id; a subscription
 	// its renewal order, else the customer's contact; a bounce the contact
 	// of its address; a checked-in ticket its calendar event.
-	$payload = array('id' => 7, 'product_id' => 7, 'channel_id' => 7, 'item_type' => 'product', 'item_id' => 7, 'customer_id' => 7, 'contact_id' => 7, 'calendar_event_id' => 7);
+	$payload = array('id' => 7, 'product_id' => 7, 'channel_id' => 7, 'item_type' => 'product', 'item_id' => 7, 'customer_id' => 7, 'contact_id' => 7, 'calendar_event_id' => 7, 'page_id' => 7);
 
 	foreach ($events as $event => $record) {
 		$found = ws_events_record_of($event, $payload + (($record === 'order') ? array('order_id' => 7) : array()));

@@ -247,11 +247,12 @@ if (!isset($_POST['name'])) {
             $data_src = OUTPUT_PATH . $file_name . '?v=' . @filemtime(FILE_DIRECTORY_PATH . '/' . $file_name);
 
         } else {
-            // For raster formats, use getimagesize
-            $image_size = @getimagesize($file_path);
-            if ($image_size !== false) {
-                $image_width = $image_size[0];
-                $image_height = $image_size[1];
+            // For raster formats, the size as shown: a phone portrait stored
+            // on its side is taller than wide (pg_image_display_size()).
+            list($shown_width, $shown_height) = pg_image_display_size($file_path);
+            if ($shown_width > 0) {
+                $image_width = $shown_width;
+                $image_height = $shown_height;
             }
             
             
@@ -453,7 +454,7 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '">' . pg_design_canvas_icon_one_colour('me-2') . '' . lang('Edit this image in the Artifact Canvas') . '</button>' . pg_image_editor_includes();
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '">' . pg_design_canvas_icon_one_colour('me-2') . '' . lang('Edit in Artifact Canvas') . '</button>' . pg_image_editor_includes();
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                     <div class="card my-7">

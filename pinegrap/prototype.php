@@ -48,6 +48,10 @@
 
 $pg_proto_frame = isset($_GET['frame']) && is_string($_GET['frame']) && ($_GET['frame'] === '1');
 
+// "Preview on a phone" asks whether the draft was saved since the phone drew
+// it (includes/fn/prototype_phone.php): a signed address, no token.
+$pg_proto_watch = !$pg_proto_frame && isset($_GET['watch']) && is_string($_GET['watch']) && ($_GET['watch'] === '1');
+
 // A share link's token opens the prototype to whoever holds it, so no log
 // written on the way may keep it: the firewall (run by init.php) writes the
 // request's address to waf_log and firewall.log, the error log and the
@@ -64,7 +68,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 
-$pg_proto_link_mode = !$pg_proto_frame && (isset($_GET['link']) || isset($_GET['l']));
+$pg_proto_link_mode = !$pg_proto_frame && !$pg_proto_watch && (isset($_GET['link']) || isset($_GET['l']));
 
 if (isset($_GET['link'])) {
     // Secure Mode's redirect (init.php) needs the address as it came:
@@ -94,6 +98,17 @@ if ($pg_proto_frame) {
     $_SESSION = array('software' => array('device_type' => 'desktop'));
 }
 
+if ($pg_proto_watch) {
+    // Asked every few seconds: no session file is opened for it. The
+    // session cookie is kept only to compare with the address's binding.
+    define('PG_NO_SESSION', true);
+    $pg_proto_client = (isset($_COOKIE[session_name()]) && is_string($_COOKIE[session_name()])) ? $_COOKIE[session_name()] : '';
+    $_COOKIE = array();
+
+    // Fixed here so initialize_device_type() answers with no cookie.
+    $_SESSION = array('software' => array('device_type' => 'desktop'));
+}
+
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
 
@@ -115,6 +130,13 @@ header('Cache-Control: no-store, private');
 
 $pg_proto_viewer = PATH . SOFTWARE_DIRECTORY . '/prototype.php';
 $pg_proto_key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+
+if ($pg_proto_watch) {
+    // One read by the link's id; nothing written, no use counted.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+    pg_proto_phone_watch_run($_GET, $pg_proto_key, $pg_proto_client, time());
+    exit;
+}
 
 if ($pg_proto_frame) {
     // Drawn inside the viewer only.
@@ -780,6 +802,28 @@ if (($pg_proto_start['id'] > 0) && ($pg_proto_link_bundle <= 0)) {
     $pg_proto_start_shown = pg_proto_link_page_shown((string) $pg_proto_link['audience'], pg_proto_link_page_access($pg_proto_start['id']));
 }
 
+// A link asking approval: the review box of the page drawn, beside its
+// comments.
+$pg_proto_comment_view = !$pg_proto_start_shown ? null : pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
+    isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => '')));
+
+if ($pg_proto_comment_view !== null) {
+    $pg_proto_page_label = '';
+
+    foreach ($pg_proto_pages as $page) {
+        if ($page['id'] === $pg_proto_start['id']) {
+            $pg_proto_page_label = ($page['title'] !== '') ? $page['title'] : $page['name'];
+        }
+    }
+
+    $pg_proto_comment_view['review'] = pg_proto_viewer_review($pg_proto_link, $pg_proto_start['id'], $pg_proto_page_label);
+}
+
+// The page list marks each page with this link's review of it.
+$pg_proto_review_states = (($pg_proto_comment_view !== null) && !empty($pg_proto_comment_view['review']))
+    ? pg_proto_link_review_states($pg_proto_link, array_map(function ($page) { return (int) $page['id']; }, $pg_proto_pages))
+    : array();
+
 header('Content-Type: text/html; charset=utf-8');
 
 echo pg_proto_shell_html(array(
@@ -801,6 +845,6 @@ echo pg_proto_shell_html(array(
     'wide_pages' => ($pg_proto_link_bundle > 0),
     // A link with "Allow comments": the comment mode, with this page's
     // comments of this link.
-    'comments' => !$pg_proto_start_shown ? null : pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
-        isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => ''))),
+    'comments' => $pg_proto_comment_view,
+    'review_states' => $pg_proto_review_states,
 ));

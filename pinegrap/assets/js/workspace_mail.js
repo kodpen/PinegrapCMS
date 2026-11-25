@@ -27,6 +27,19 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button and its ranks): the
+    // button's own gap spaces its icon, so the icon carries no margin.
+    function lookButton(h, classes, label, iconName) {
+        var button = h.button(classes, label, iconName);
+        var mark = button.querySelector('.bi');
+
+        if (mark) {
+            mark.classList.remove('me-1');
+        }
+
+        return button;
+    }
+
     // The drawer: whom the answer goes to, Reply to all, Cc and Bcc, the
     // answer, its files, Send. The server says first whom it goes to and
     // whom Reply to all adds (ws_mail_reply_form); the answer then leaves
@@ -40,7 +53,7 @@
     // (ws_mail_reply_off()); the answer's own check stays on the server.
     // Returns what to insert: the button, or the button and its reason.
     function replyButton(h, classes, off, click) {
-        var button = h.button(classes, h.t('mail_reply'), 'bi-reply');
+        var button = lookButton(h, classes, h.t('mail_reply'), 'bi-reply');
 
         if (!off) {
             button.addEventListener('click', click);
@@ -95,7 +108,7 @@
         form.appendChild(el('div', 'small fg-secondary mb-3', t('mail_reply_to', data.name ? data.name + ' <' + data.to + '>' : data.to)));
 
         function addresses(name, label) {
-            var field = el('input', 'form-control form-control-sm');
+            var field = el('input', 'pg-input pg-input-sm');
 
             field.type = 'text';
             field.name = name;
@@ -113,7 +126,7 @@
         suggest(h, cc.field);
         suggest(h, bcc.field);
         var copies = el('div', 'ws-mail-new-copies');
-        var showCopies = h.button('btn btn-sm btn-text theme-secondary ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
+        var showCopies = lookButton(h, 'pg-button pg-button-ghost pg-button-sm ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
 
         function setCopies(open) {
             copies.hidden = !open;
@@ -200,7 +213,7 @@
             fileRows(h, list, [library, files]);
         });
 
-        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
+        var send = lookButton(h, 'pg-button pg-button-fill', t('mail_reply_send'), 'bi-send');
 
         function sendAnswer(anyway) {
             if (!body.value().trim()) {
@@ -459,7 +472,7 @@
         groups.forEach(function (group) {
             group.forEach(function (file, index) {
                 var row = h.el('li', 'd-flex align-items-center gap-2 small mt-2');
-                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', h.t('mail_new_remove') + ': ' + file.name);
+                var drop = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', h.t('mail_new_remove') + ': ' + file.name);
 
                 row.appendChild(h.icon('bi-paperclip'));
                 row.appendChild(h.el('span', 'text-truncate', file.name));
@@ -565,7 +578,7 @@
         var field = (!plain && h.richField && window.PGWsEditor) ? h.richField(wrap, {}) : null;
 
         if (!field) {
-            var area = h.el('textarea', 'form-control');
+            var area = h.el('textarea', 'pg-input');
 
             area.name = 'text';
             area.rows = 10;
@@ -811,7 +824,7 @@
         var form = el('form', 'ws-wa-answer');
         var open = data.seconds > 0;
         var templates = data.templates || [];
-        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t(sms ? 'sms_reply_send' : 'wa_reply_send'), sms ? 'bi-chat-dots' : 'bi-whatsapp');
+        var send = lookButton(h, 'pg-button pg-button-fill', t(sms ? 'sms_reply_send' : 'wa_reply_send'), sms ? 'bi-chat-dots' : 'bi-whatsapp');
         var post;
 
         node.querySelector('.drawer-title').textContent = title;
@@ -865,7 +878,7 @@
     function whatsappText(form, data, view, h, sms) {
         var t = h.t;
         var el = h.el;
-        var text = el('textarea', 'form-control');
+        var text = el('textarea', 'pg-input');
 
         text.id = h.nextId('ws-wa-reply-');
         text.name = 'text';
@@ -988,7 +1001,7 @@
         });
 
         chat.appendChild(message);
-        shell.appendChild(el('div', 'form-label', h.t('wa_reply_preview')));
+        shell.appendChild(el('div', 'pg-field-label', h.t('wa_reply_preview')));
         shell.appendChild(chat);
 
         return shell;
@@ -1050,7 +1063,7 @@
             }
 
             item.slots.forEach(function (slot) {
-                var input = el('input', 'form-control');
+                var input = el('input', 'pg-input');
 
                 input.type = 'text';
                 input.maxLength = 1000;
@@ -1094,7 +1107,7 @@
 
         // After the 24 hours the drawer offers the approved templates.
         if (message.whatsapp_reply) {
-            var answer = h.button('btn btn-sm btn-outline theme-success py-0', h.t('wa_reply'), 'bi-whatsapp');
+            var answer = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('wa_reply'), 'bi-whatsapp');
 
             answer.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -1110,7 +1123,7 @@
         // An SMS goes only within 7 days of the number's last SMS.
         if (message.sms_reply) {
             if (message.sms_window > 0) {
-                var sms = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('sms_reply'), 'bi-chat-dots');
+                var sms = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('sms_reply'), 'bi-chat-dots');
 
                 sms.addEventListener('click', function (event) {
                     event.stopPropagation();
@@ -1123,7 +1136,7 @@
         }
 
         if (message.mail_reply) {
-            row.appendChild(replyButton(h, 'btn btn-sm btn-outline theme-primary py-0', message.mail_reply_off, function (event) {
+            row.appendChild(replyButton(h, 'pg-button pg-button-quiet pg-button-sm', message.mail_reply_off, function (event) {
                 event.stopPropagation();
                 replyForm(message, view, h);
             }));
@@ -1131,7 +1144,7 @@
 
         // Forward as e-mail: the New e-mail form filled with this mail.
         if (message.mail_reply && message.mail_forward && h.cfg.mail_forward) {
-            var pass = h.button('btn btn-sm btn-outline theme-secondary py-0 ms-2', h.t('mail_fwd'), 'bi-envelope-arrow-up');
+            var pass = lookButton(h, 'pg-button pg-button-quiet pg-button-sm ms-2', h.t('mail_fwd'), 'bi-envelope-arrow-up');
 
             pass.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -1154,7 +1167,7 @@
     // Send again, under a mail that could not leave: pressed once, the
     // button stays off until the screen draws the card again.
     function resend(message, view, h) {
-        var again = h.button('btn btn-sm btn-outline theme-danger py-0 ms-2', h.t('mail_send_again'), 'bi-arrow-repeat');
+        var again = lookButton(h, 'pg-button pg-button-quiet pg-button-danger pg-button-sm ms-2', h.t('mail_send_again'), 'bi-arrow-repeat');
 
         again.addEventListener('click', function (event) {
             event.stopPropagation();
@@ -1241,7 +1254,7 @@
     // Under Pinegrap AI's suggestion: its reply draft, opened in the drawer.
     function draftNode(message, view, h) {
         var row = h.el('div', 'ws-mail-draft mt-1');
-        var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_draft_open'), 'bi-pencil-square');
+        var open = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('mail_draft_open'), 'bi-pencil-square');
         var offer = message.mail_draft;
 
         open.addEventListener('click', function (event) {
@@ -1602,7 +1615,7 @@
             var t = h.t;
             var id = current;
             var wrap = h.el('div', 'pg-menu-wrap d-inline-block');
-            var toggle = h.button('btn btn-sm btn-text theme-secondary', offer.on ? offer.short : t('mail_remind'), offer.on ? 'bi-alarm-fill' : 'bi-alarm');
+            var toggle = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', offer.on ? offer.short : t('mail_remind'), offer.on ? 'bi-alarm-fill' : 'bi-alarm');
             var menu = h.el('ul', 'menu pg-menu-end');
 
             // A set reminder shows only its short time; the whole sentence
@@ -1690,8 +1703,8 @@
             var body = h.clear(node.querySelector('.drawer-body'));
             var footer = h.clear(node.querySelector('.drawer-footer'));
             var form = h.el('form', 'ws-mail-remind-at');
-            var field = h.el('input', 'form-control');
-            var save = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_remind_save'), 'bi-alarm');
+            var field = h.el('input', 'pg-input');
+            var save = lookButton(h, 'pg-button pg-button-fill', t('mail_remind_save'), 'bi-alarm');
 
             node.querySelector('.drawer-title').textContent = t('mail_remind_at');
             footer.classList.remove('d-none');
@@ -1730,7 +1743,7 @@
         // conversation's channel; a change draws the pane again.
         function tools(data) {
             var place = pane.querySelector('.ws-mail-pane-tools');
-            var shut = h.button('btn btn-sm btn-text theme-secondary', w('close'), 'bi-x-lg');
+            var shut = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', w('close'), 'bi-x-lg');
 
             shut.addEventListener('click', close);
             place.appendChild(shut);
@@ -1754,7 +1767,7 @@
                     refresh();
                 }
             };
-            var answer = replyButton(h, 'btn btn-sm btn-outline theme-primary', data.reply_off, function () {
+            var answer = replyButton(h, 'pg-button pg-button-quiet pg-button-sm', data.reply_off, function () {
                 replyForm(message, view, h);
             });
             var after = place.firstChild;
@@ -1764,7 +1777,7 @@
             // Reply to all, when the last mail named anybody besides the
             // customer and the mailbox, and the box can send.
             if (data.others && !data.reply_off) {
-                var everyone = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply_all'), 'bi-reply-all');
+                var everyone = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('mail_reply_all'), 'bi-reply-all');
 
                 everyone.addEventListener('click', function () {
                     replyForm(message, view, h, '', true);
@@ -2111,7 +2124,7 @@
         });
 
         // On a phone the views scroll sideways: the chosen one is brought into sight.
-        var chosenView = root.querySelector('.pg-toolbar .btn-group [aria-current="page"]');
+        var chosenView = root.querySelector('.pg-toolbar .pg-seg [aria-current="page"]');
 
         if (chosenView && chosenView.parentNode.scrollWidth > chosenView.parentNode.clientWidth) {
             chosenView.parentNode.scrollLeft = chosenView.offsetLeft - chosenView.parentNode.offsetLeft;
@@ -2284,8 +2297,8 @@
 
         var box = h.el('div', 'ws-mail-domain-warning alert theme-warning small mx-4 mb-3', '');
         var actions = h.el('div', 'd-flex flex-wrap gap-2 mt-2', '');
-        var anyway = h.button('btn btn-sm btn-solid theme-warning rounded-pill', h.t('mail_send_anyway'), 'bi-send');
-        var change = h.button('btn btn-sm btn-outline theme-secondary rounded-pill', h.t('mail_change_address'), 'bi-pencil');
+        var anyway = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('mail_send_anyway'), 'bi-send');
+        var change = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('mail_change_address'), 'bi-pencil');
 
         box.setAttribute('role', 'alert');
         box.appendChild(h.el('div', '', message));
@@ -2364,14 +2377,14 @@
         var grid = el('div', 'row g-3');
         var startCell = el('div', 'col-6');
         var endCell = el('div', 'col-6');
-        var start = el('input', 'form-control form-control-sm');
-        var end = el('input', 'form-control form-control-sm');
-        var text = el('textarea', 'form-control');
+        var start = el('input', 'pg-input pg-input-sm');
+        var end = el('input', 'pg-input pg-input-sm');
+        var text = el('textarea', 'pg-input');
         var people = [['', t('mail_away_nobody')]].concat((data.people || []).map(function (person) {
             return [String(person.id), person.name];
         }));
         var standIn = h.select(people, away.stand_in ? String(away.stand_in) : '');
-        var clear = h.button('btn btn-sm btn-text theme-secondary', t('mail_away_clear'), 'bi-x-circle');
+        var clear = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('mail_away_clear'), 'bi-x-circle');
 
         h.dateField(start, 'date');
         h.dateField(end, 'date');
@@ -2431,13 +2444,13 @@
             var body = h.clear(node.querySelector('.drawer-body'));
             var footer = h.clear(node.querySelector('.drawer-footer'));
             var form = el('form', 'ws-mail-my-settings');
-            var field = el('textarea', 'form-control');
+            var field = el('textarea', 'pg-input');
             var preview = el('div', 'ws-mail-new-signature small fg-secondary');
             var lines = el('div', 'ws-mail-new-signature-text');
             // The box's Signature differs by mailbox: a stand-in under the
             // person's own lines, drawn apart so it never reads as their text.
             var standIn = el('span', 'fst-italic', '[' + t('mail_my_signature_box') + ']');
-            var save = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_my_settings_save'), 'bi-check2');
+            var save = lookButton(h, 'pg-button pg-button-fill', t('mail_my_settings_save'), 'bi-check2');
 
             node.querySelector('.drawer-title').textContent = t('mail_my_settings');
             footer.classList.remove('d-none');
@@ -2522,9 +2535,9 @@
         var t = h.t;
         var el = h.el;
         var wrap = el('div', 'ws-mail-later mb-3');
-        var open = h.button('btn btn-sm btn-text theme-secondary px-0', t('mail_later'), 'bi-clock');
-        var field = el('input', 'form-control form-control-sm');
-        var close = h.button('btn btn-sm btn-text theme-secondary px-0', t('mail_later_none'), 'bi-x-lg');
+        var open = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('mail_later'), 'bi-clock');
+        var field = el('input', 'pg-input pg-input-sm');
+        var close = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', t('mail_later_none'), 'bi-x-lg');
         var row;
         var heard = [];
 
@@ -2576,7 +2589,7 @@
 
     // A button's words and icon changed in place.
     function relabel(h, button, label, iconName) {
-        var fresh = h.button('', label, iconName);
+        var fresh = lookButton(h, '', label, iconName);
 
         while (button.firstChild) {
             button.removeChild(button.firstChild);
@@ -2676,7 +2689,7 @@
     // server: the form's fields written back to it, so a change is never
     // lost by closing the form (mail_drafts_screen.php).
     function draftSave(h, draft, fields) {
-        var save = h.button('btn btn-outline theme-secondary rounded-pill px-5 me-2', draft.labels.save, 'bi-floppy');
+        var save = lookButton(h, 'pg-button pg-button-quiet me-2', draft.labels.save, 'bi-floppy');
 
         save.addEventListener('click', function () {
             save.disabled = true;
@@ -2786,12 +2799,12 @@
         from.name = 'box_id';
         form.appendChild(h.formRow(t('mail_new_from'), from));
 
-        var where = el('select', 'form-control form-control-sm');
+        var where = el('select', 'pg-input pg-input-sm');
         where.name = 'channel_id';
         form.appendChild(h.formRow(t('mail_new_channel'), where, t('mail_new_channel_hint')));
 
         function input(name, label, type, hint) {
-            var field = el('input', 'form-control form-control-sm');
+            var field = el('input', 'pg-input pg-input-sm');
 
             field.type = type || 'text';
             field.name = name;
@@ -2815,7 +2828,7 @@
 
         var to = input('to', t('mail_new_to'), 'text', t('mail_new_addresses'));
         var copies = el('div', 'ws-mail-new-copies');
-        var showCopies = h.button('btn btn-sm btn-text theme-secondary ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
+        var showCopies = lookButton(h, 'pg-button pg-button-ghost pg-button-sm ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
 
         form.appendChild(showCopies);
         form.appendChild(copies);
@@ -2967,7 +2980,7 @@
 
         if (kept) {
             var note = el('div', 'alert theme-info small d-flex align-items-center gap-3 mb-5', '');
-            var discard = h.button('btn btn-sm btn-text theme-secondary ms-auto py-0', t('mail_new_discard'), 'bi-trash');
+            var discard = lookButton(h, 'pg-button pg-button-ghost pg-button-sm ms-auto', t('mail_new_discard'), 'bi-trash');
 
             note.appendChild(el('span', '', t('mail_new_draft')));
             discard.addEventListener('click', function () {
@@ -2993,7 +3006,7 @@
             form.insertBefore(note, form.firstChild);
         }
 
-        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
+        var send = lookButton(h, 'pg-button pg-button-fill', t('mail_new_send'), 'bi-send');
 
         // The field a refusal names (ws_mail_send_error_field()) is marked
         // beside the notice and focused, till it is changed.

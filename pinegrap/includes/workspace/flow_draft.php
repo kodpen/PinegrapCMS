@@ -1253,13 +1253,16 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
         'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b; replace finds b as written, cut keeps the first b characters, split splits at b (spaces when empty)'),
         'ai.mode' => array('hint' => 'write writes what prompt asks for; summarize sums up text; extract finds in text the value prompt names and gives answer, number and found (1 or 0); classify leaves on the outcome of classes text belongs to, else on other'),
+        'split.arms' => array('hint' => '2 to ' . WS_FLOW_SPLIT_ARMS_MAX . ' arms, each {"name":"A","share":50} with a whole share in percent; the shares add up to 100; an arrow leaves on arm_1 for the first arm, arm_2 for the second, and so on'),
         'ai.classes' => array('hint' => 'with mode classify, up to ' . WS_STEP_AI_CLASSES_MAX . ' outcome names; an arrow leaves on class_1 for the first, class_2 for the second, and on other when none fits'),
         'value.c' => array('hint' => 'the third value; with rule replace what goes in place of b (empty takes it out), with rule split the part to take: 1 the first (when empty), -1 the last'),
     );
-    // The same two settings on every step box.
+    // The same two settings on every step box; sending hours on the boxes
+    // that send (flow_send_hours.php).
     $any = array(
         'retry'       => array('hint' => 'how many times a failed box tries again; left out for none'),
         'retry_after' => array('hint' => 'the minutes it waits before it tries again; needed with retry'),
+        'hours'       => array('hint' => 'sending hours in the site\'s time zone, left out (off) unless asked: {"on":true,"days":[1,2,3,4,5],"from":"09:00","to":"20:00","outside":"wait"}; days 1 Monday to 7 Sunday; from before to on the same day; outside wait sends at the next hour that fits (the box waits), skip sends nothing then (sent 0)'),
     );
     $kinds = array(
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
@@ -1271,6 +1274,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'whatsapp' => 'queues an approved WhatsApp template (template) with its variables filled through the site\'s WhatsApp account; offered only where WhatsApp is set up; it gives sent (1, or 0) and emailed (the e-mails sent in its place)',
         'sms'      => 'queues a text message of text (up to ' . WS_STEP_SMS_TEXT_MAX . ' characters, values allowed) through the site\'s SMS settings; offered only where the site can send SMS; it gives sent (1, or 0 when the person has no mobile number or did not agree to marketing)',
         'ai'       => 'asks Pinegrap AI on the site\'s quota and waits for its answer (answer); only prompt and text, with their values, are sent; closes_in is the hours it waits before leaving on failed',
+        'split'    => 'sends each run down one of its arms, taken at random by the arms\' shares (an A/B test, a share of runs held back); the arm taken is kept for the run and given as arm, its name',
         'agent'    => 'asks an agent of the registry (agent_id) in the channel channel_id where it is allowed, writing @handle and the prompt there, and waits for its answer (answer, message_id); the agent acts within its own tier there; closes_in is the hours it waits before leaving on failed',
         'web'      => 'starts the flow when another system (a form service, a shop, an automation tool) posts to the flow\'s own web address; fields lists the body fields it reads, each {"key":"order_no","type":"text"} or type number, then read as {{trigger.KEY}}',
         'record_get' => 'reads one record (record: order, product, contact, booking, task or form, a submitted form) named by its id or one value such as {{trigger.record_id}}, with the owner\'s rights; it gives found (1, or 0 when the record is not there or out of reach) and the record\'s fields, such as email, status or total',
@@ -1935,13 +1939,16 @@ function ws_flow_patch_apply($graph, $ops, $keys)
  * Places on the canvas for the boxes not placed yet (pure): each one a
  * column after the box it follows, else after the boxes placed, one row
  * lower while that spot is taken. A graph with none placed is laid out in
- * columns from its start.
+ * columns from its start; with $columns each box stands in the column of
+ * its longest way in from a box with none (Tidy), else after the first box
+ * it follows.
  *
- * @param array    $graph  ws_flow_graph_normalize()
- * @param string[] $placed ids of the boxes that keep their places
+ * @param array    $graph   ws_flow_graph_normalize()
+ * @param string[] $placed  ids of the boxes that keep their places
+ * @param bool     $columns with none placed, a column per step of the longest way in
  * @return array the graph
  */
-function ws_flow_auto_layout($graph, $placed)
+function ws_flow_auto_layout($graph, $placed, $columns = false)
 {
     $placed = array_flip(array_map('strval', (array) $placed));
     $nodes = $graph['nodes'];
@@ -2025,7 +2032,7 @@ function ws_flow_auto_layout($graph, $placed)
             }
         }
 
-        if ($x === null) {
+        if (($x === null) || ($columns && ($right === null))) {
             $x = ($right === null) ? WS_FLOW_LAYOUT_ORIGIN + $layer[$id] * WS_FLOW_LAYOUT_STEP_X : $right + WS_FLOW_LAYOUT_STEP_X;
         }
 
@@ -2043,6 +2050,36 @@ function ws_flow_auto_layout($graph, $placed)
     $graph['nodes'] = $nodes;
 
     return $graph;
+}
+
+/**
+ * Tidy on the Flows canvas (pure): the boxes placed again by
+ * ws_flow_auto_layout(), every one in the column of its longest way in, or,
+ * with two boxes or more chosen, only those, the others kept. Notes and
+ * frames are the editor's: it draws the frames again round their boxes.
+ *
+ * @param mixed $graph  the draft as the editor holds it
+ * @param mixed $chosen ids of the boxes chosen
+ * @return array id => array(x, y) of every box whose place changed
+ */
+function ws_flow_tidy($graph, $chosen)
+{
+    $graph = ws_flow_graph_normalize($graph);
+    $ids = array_column($graph['nodes'], 'id');
+    $chosen = array_values(array_intersect($ids, array_map('strval', array_filter((array) $chosen, 'is_scalar'))));
+    $kept = (count($chosen) >= 2) ? array_values(array_diff($ids, $chosen)) : array();
+    $laid = ws_flow_auto_layout($graph, $kept, true);
+    $places = array();
+
+    foreach ($laid['nodes'] as $index => $node) {
+        $was = $graph['nodes'][$index];
+
+        if (($node['x'] !== $was['x']) || ($node['y'] !== $was['y'])) {
+            $places[$node['id']] = array($node['x'], $node['y']);
+        }
+    }
+
+    return $places;
 }
 
 /**

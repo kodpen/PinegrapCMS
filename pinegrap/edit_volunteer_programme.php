@@ -281,8 +281,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (pg_volunteer_move($vp, $vp_person, $vp_to, (int) $user['id'])) {
-                log_activity('volunteer "' . $vp_person['name'] . '" of programme "' . $vp['name'] . '" was moved to ' . $vp_to);
                 $vp_done++;
+
+                // Mark as left gives up their coming places as their own Leave does.
+                if ($vp_to === 'left') {
+                    pg_volunteer_give_up_coming($vp, (int) $vp_person['id']);
+                }
             }
         }
 
@@ -420,7 +424,7 @@ $vp_person = $vp_people[(int) ($_GET['volunteer'] ?? 0)] ?? null;
 
 if ($vp_person !== null) {
     $line = function ($label, $value) {
-        return '<div class="pg-card-inner-row"><span class="pg-text-meta flex-shrink-0" style="width:8rem">' . h($label) . '</span><span class="pg-text-2 min-width-0">' . $value . '</span></div>';
+        return '<div class="pg-card-inner-row"><span class="pg-text-meta flex-shrink-0" style="width:8rem">' . h($label) . '</span><span class="pg-text-2 min-w-0">' . $value . '</span></div>';
     };
     $days = array(1 => lang('Monday'), 2 => lang('Tuesday'), 3 => lang('Wednesday'), 4 => lang('Thursday'), 5 => lang('Friday'), 6 => lang('Saturday'), 7 => lang('Sunday'));
     // A document shows its kind, dates and its file, which get_file.php opens
@@ -459,7 +463,7 @@ if ($vp_person !== null) {
     <dialog class="drawer drawer-end" id="vp_profile" aria-labelledby="vp_profile_title" style="width:min(520px,100%);--pg-drawer-height:85vh" data-open="1">
         <div class="d-flex flex-column h-100">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="vp_profile_title">' . h($vp_person['name']) . ' ' . pg_volunteer_pill($vp_person['state']) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang(array('string' => 'Applied on {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $vp_person['applied_at'], 'type' => 'date', 'format' => 'plain_text')))))) . '</p>
                 </div>

@@ -27,7 +27,7 @@ description: Designer HTML import: three entry points, one converter, inline SVG
 ## What does `pg_designer_import_fragment()` do differently?
 - It runs with `$ctx->fragment = true`. A paste is not an import:
   - Does NOT write to disk: a Ctrl+V must not leave a file in File Manager.
-  - `<style>` / `<script>` are counted and discarded, NOT added to the design's shared assets: one paste would change every page of the design and the asset panel is not in the undo stack. The toast says how many blocks were skipped.
+  - `<style>` / `<script>` are counted and discarded, NOT added to the design's shared assets: one paste would change every page of the design and the asset panel is not in the undo stack. The toast says how many blocks were skipped; a script inside paragraph, heading or link text goes too (#11501).
   - An unresolvable address stays as is. The `about.html` -> `/about` rewrite is right only when the archive's page list exists; on paste a guess produces a broken link indistinguishable from a working one.
 
 Related: docs/memory/designer/designer-paste-clipboard.md

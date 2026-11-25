@@ -5,6 +5,7 @@ description: The device push queue drops a disabled or deleted account's queued 
 
 ## Who does the push queue wake?
 - Only an account that exists and is not disabled (`user.user_disabled_at = 0`). `pg_push_queue_run()` (`includes/push.php`) asks `pg_push_account_wakeable(pg_push_account($user_id))` for each person before reading their rows; for a disabled or deleted account it deletes their `push_queue` rows and every `push_subscriptions` row of the account, and wakes nothing. Every source (notification, chat, ws) passes there.
+- A queued `notification` row is also asked the bell's ladder again at send time (`pg_push_queue_still_relevant()`: `pg_notification_visible_to_user()` on the person's row now), since it may wait up to a day of retries; before #11438 only its read state was asked, so somebody whose order or form right was taken was still woken.
 - `pg_push_account_wakeable()` is pure: a row read before the column existed counts as enabled. `tests/push_disabled_account_test.php`.
 
 ## Why was it needed?

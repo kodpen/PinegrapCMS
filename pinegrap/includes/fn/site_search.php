@@ -200,10 +200,12 @@ function pg_search_score_terms($terms)
 /**
  * SQL conditions (each starting with " AND ") that keep a search_items row
  * only while what it points to can still be opened: its page exists, sits in
- * a folder that exists, is not archived and is not in the Recycle Bin; an
- * item without a page (a file) is not in a binned folder. The index is
- * rebuilt once a day, so a page binned or removed after a run was still
- * found, with a link that answered 404. Pure.
+ * a folder that exists, is not archived and is not in the Recycle Bin, and
+ * is still in the site search; an item without a page (a file) is not in a
+ * binned folder. The index is rebuilt once a day, so a page binned or
+ * removed after a run was still found, with a link that answered 404, and a
+ * page taken out of the site search was listed until then: the hourly delta
+ * pass reads only searchable pages. Pure.
  *
  * @param int[] $binned_folder_ids pg_recycle_bin_folder_ids()
  * @return string
@@ -217,11 +219,46 @@ function pg_search_items_live_sql(array $binned_folder_ids)
     $not_binned = $ids ? " AND page.page_folder NOT IN (" . implode(',', $ids) . ")" : '';
     $sql = " AND (search_items.page_id = 0 OR EXISTS (SELECT 1 FROM page"
          . " INNER JOIN folder ON folder.folder_id = page.page_folder"
-         . " WHERE page.page_id = search_items.page_id AND folder.folder_archived = '0'" . $not_binned . "))";
+         . " WHERE page.page_id = search_items.page_id AND page.page_search = '1'"
+         . " AND folder.folder_archived = '0'" . $not_binned . "))";
     if ($ids) {
         $sql .= " AND search_items.folder_id NOT IN (" . implode(',', $ids) . ")";
     }
     return $sql;
+}
+
+/**
+ * The search text a visitor sent: trimmed, '' for anything not a string (a
+ * list sent as ?query[]=), at most $max characters, as the highlight script
+ * and the search rollup read it. Pure.
+ *
+ * @param mixed $raw
+ * @param int   $max
+ * @return string
+ */
+function pg_search_query_text($raw, $max = 100)
+{
+    if (!is_string($raw)) return '';
+    $text = trim($raw);
+    if (mb_strlen($text, 'UTF-8') > $max) $text = rtrim(mb_substr($text, 0, $max, 'UTF-8'));
+    return $text;
+}
+
+/**
+ * How many results the legacy Search Results page found: featured and
+ * catalog items, then the pages of a simple search ($pages, page id =>
+ * matches) or the rows of an advanced one ($results). Pure.
+ *
+ * @param string $search_type SEARCH_TYPE
+ * @param array  $featured
+ * @param array  $catalog
+ * @param array  $pages
+ * @param array  $results
+ * @return int
+ */
+function pg_search_legacy_result_count($search_type, array $featured, array $catalog, array $pages, array $results)
+{
+    return count($featured) + count($catalog) + count(($search_type === 'simple') ? $pages : $results);
 }
 
 /**

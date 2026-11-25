@@ -21,7 +21,7 @@ description: Fields and samples of webhook events (api_webhook_event_payloads())
 - The router reads `{id}` of `/webhooks/{id}` as digits only, so the path never reaches `webhooks.get` (tested).
 
 ## How is a sample sent?
-- `POST /webhooks/{id}/test` with `event`: one of the subscription's own events with a sample, else 422 `validation_failed` on `event` (`api_webhook_sample_refusal()`). Queued for that subscription only under the event's name, never announced: no flow, channel or other subscriber hears it.
+- `POST /webhooks/{id}/test` with `event`: one of the subscription's own events with a sample, else 422 `validation_failed` on `event` (`api_webhook_sample_refusal()`); 403 `insufficient_scope` when the application may not read its data (`api-webhook-event-scopes.md`). Queued for that subscription only under the event's name, never announced: no flow, channel or other subscriber hears it.
 - The body is the real envelope plus `test: true` (`api_webhook_sample_body()`); `api_webhook_delivery_headers()` adds `X-Pinegrap-Test: 1` for such a body. No queue column marks it: the body does.
 - Without `event` it is `webhook.test` as before, with no test header.
 

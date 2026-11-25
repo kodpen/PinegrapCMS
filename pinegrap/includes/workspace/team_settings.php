@@ -168,8 +168,8 @@ function ws_settings_people_rows_html($candidates, $departments, $viewer, $name,
                         </div>
                     </div>
                 </td>
-                <td class="ws-people-cell-title" data-label="' . h(lang('Job title')) . '"><input class="form-control form-control-sm" type="text" name="' . h($name($person_id, 'title')) . '" maxlength="100" value="' . h($person['title']) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
-                <td class="ws-people-cell-hours" data-label="' . h(lang('Hours a day')) . '"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="' . h($name($person_id, 'day_hours')) . '" value="' . h(ws_settings_hours($day)) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
+                <td class="ws-people-cell-title" data-label="' . h(lang('Job title')) . '"><input class="pg-input pg-input-sm" type="text" name="' . h($name($person_id, 'title')) . '" maxlength="100" value="' . h($person['title']) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
+                <td class="ws-people-cell-hours" data-label="' . h(lang('Hours a day')) . '"><input class="pg-input pg-input-sm" type="text" inputmode="decimal" name="' . h($name($person_id, 'day_hours')) . '" value="' . h(ws_settings_hours($day)) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
                 <td class="ws-people-cell-days" data-label="' . h(lang('Working days')) . '">' . ws_settings_days_html($name($person_id, 'workdays'), $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name']))), $locked) . '</td>
                 <td class="ws-people-cell-out text-center" data-label="' . h(lang('Not in the team')) . '">
                     <div class="form-field d-inline-block mb-0">
@@ -374,11 +374,11 @@ function ws_settings_department_fields($department, $primary_ids, $channel, $nam
     return '
             <div class="row g-3 mb-5">
                 <div class="col">
-                    <label class="form-label" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="' . h($name('name')) . '" id="' . $prefix . '_name" maxlength="100"' . (($form === '') ? ' required' : '') . $form_attr . ' value="' . h($department ? $department['name'] : '') . '">
+                    <label class="pg-field-label" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
+                    <input class="pg-input pg-input-sm" type="text" name="' . h($name('name')) . '" id="' . $prefix . '_name" maxlength="100"' . (($form === '') ? ' required' : '') . $form_attr . ' value="' . h($department ? $department['name'] : '') . '">
                 </div>
                 <div class="col-auto">
-                    <label class="form-label" for="' . $prefix . '_color">' . h(lang('Colour')) . '</label>
+                    <label class="pg-field-label" for="' . $prefix . '_color">' . h(lang('Colour')) . '</label>
                     <input class="form-control form-control-sm form-control-color" type="color" name="' . h($name('color')) . '" id="' . $prefix . '_color"' . $form_attr . ' value="' . h($department ? $department['color'] : '#6c757d') . '">
                 </div>
             </div>
@@ -394,7 +394,7 @@ function ws_settings_department_fields($department, $primary_ids, $channel, $nam
                     <tbody>' . $rows . '</tbody>
                 </table>
             </div>
-            <div class="form-text mb-3">' . h(lang('A lead sees the department\'s board and may hand its work around and overrule a clash with leave. Somebody in several departments is counted in their own one first.')) . '</div>
+            <div class="pg-field-help mb-3">' . h(lang('A lead sees the department\'s board and may hand its work around and overrule a clash with leave. Somebody in several departments is counted in their own one first.')) . '</div>
             ' . ($channel ? '' : '
             <div class="form-field mb-5">
                 <div class="switch"><input class="" type="checkbox" name="' . h($name('create_channel')) . '" value="1" id="' . $prefix . '_channel"' . $form_attr . ($department ? '' : ' checked') . '></div>
@@ -468,7 +468,7 @@ function ws_settings_department_drawer($department, $primary_ids, $channel, $for
     $body = ws_settings_department_fields($department, $primary_ids, $channel, function ($field) use ($id) {
         return 'ws_dept[' . $id . '][' . $field . ']';
     }, $form) . '
-            <button type="submit" name="ws_department_save" value="' . $id . '" form="' . h($form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h($department ? lang('Save') : lang('Create the department')) . '</button>';
+            <button type="submit" name="ws_department_save" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-check2" aria-hidden="true"></i>' . h($department ? lang('Save') : lang('Create the department')) . '</button>';
 
     $title = $department ? h($department['name']) : h(lang('New department'));
 

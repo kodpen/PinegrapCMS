@@ -1292,9 +1292,10 @@ function pg_tr_offer_segments($row, $fields)
 }
 
 /**
- * The custom forms: the title, the confirmation message, and every field's
- * label, help text and options - the texts the validation messages and the
- * confirmation repeat. One owner per form page.
+ * The custom forms: the title, the confirmation message, the subject of the
+ * e-mail sent to the sender, and every field's label, help text and
+ * options - the texts the validation messages, the confirmation and the
+ * sender's e-mail repeat. One owner per form page.
  *
  * @return array('owners' => int, 'segments' => int)
  */
@@ -1303,12 +1304,15 @@ function pg_tr_extract_forms()
     $summary = array('owners' => 0, 'segments' => 0);
     $by_owner = array();
 
-    foreach ((array) db_items("SELECT page_id, form_name, confirmation_message FROM custom_form_pages ORDER BY page_id") as $row) {
+    foreach ((array) db_items("SELECT page_id, form_name, confirmation_message, submitter_email_subject FROM custom_form_pages ORDER BY page_id") as $row) {
         $position = 0;
         $pid = (int) $row['page_id'];
         $by_owner[$pid] = array_merge(
             pg_tr_field_segments('form_name', (string) $row['form_name'], $position),
-            pg_tr_field_segments('confirmation_message', (string) $row['confirmation_message'], $position)
+            pg_tr_field_segments('confirmation_message', (string) $row['confirmation_message'], $position),
+            // Read whole by pg_cf_submitter_subject() in the form's e-mails;
+            // its ^^field^^ tokens are kept by pg_tr_result_check().
+            pg_tr_field_segments('submitter_email_subject', (string) $row['submitter_email_subject'], $position)
         );
     }
 

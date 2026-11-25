@@ -86,7 +86,8 @@ function pg_cf_form_mails_plan(array $settings, array $mail)
 /**
  * The administrator addresses the chosen options of a pick list, radio
  * button or check box add, in the order found, each once. An option may
- * hold several, separated by commas. Pure.
+ * hold several, separated by commas; an empty one between commas is
+ * skipped. Pure.
  *
  * @param string[] $option_addresses form_field_options.email_address values
  * @return string[]
@@ -99,7 +100,7 @@ function pg_cf_option_admin_addresses(array $option_addresses)
         foreach (explode(',', (string) $value) as $address) {
             $address = trim($address);
 
-            if (!in_array($address, $addresses, true)) {
+            if (($address !== '') && !in_array($address, $addresses, true)) {
                 $addresses[] = $address;
             }
         }
@@ -251,6 +252,13 @@ function pg_cf_form_mails_send($page_id, $form_id, array $settings, array $mail)
 
     $submitter_email_from_email_address = (string) $settings['submitter_email_from_email_address'];
     $submitter_email_subject = (string) $settings['submitter_email_subject'];
+
+    // The sender's copy reads in the language the form was sent in, its
+    // subject too: pg_tr_extract_forms() offers the subject for translation
+    // as it is stored, before any field value is filled in.
+    if (function_exists('pg_tr_text')) {
+        $submitter_email_subject = (string) pg_tr_text($submitter_email_subject);
+    }
     $submitter_email_format = (string) $settings['submitter_email_format'];
     $submitter_email_body = (string) $settings['submitter_email_body'];
     $submitter_email_page_id = (int) $settings['submitter_email_page_id'];

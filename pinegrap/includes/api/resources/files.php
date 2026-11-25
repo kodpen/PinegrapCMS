@@ -120,9 +120,13 @@ function api_file_present($row) {
 // in the field's upload folder, which may be a public one, yet get_file.php
 // serves it only to people who may see its record; the editor's file and image
 // lists leave it out for the same reason, so the API does too.
+//
+// The folder's access is the resolved one (pg_files_public_sql()): a folder
+// that inherits public access counts, a public folder in the Recycle Bin does
+// not.
 function api_files_public_clause() {
 
-	return "(folder.folder_access_control_type = 'public') AND (files.attachment = '0')";
+	return pg_files_public_sql();
 
 }
 
@@ -656,16 +660,17 @@ function api_files_create($params) {
 
 	}
 
-	// A PDF has none, which is why this is allowed to find nothing.
+	// A PDF has none, which is why this is allowed to find nothing. As
+	// shown, EXIF orientation applied (pg_image_display_size()).
 	if ($width === null) {
 
-		$size = @getimagesize($destination);
+		list($shown_width, $shown_height) = pg_image_display_size($destination);
 
-		if (is_array($size) && !empty($size[0])) {
+		if ($shown_width > 0) {
 
-			$width  = (int)$size[0];
+			$width  = $shown_width;
 
-			$height = (int)$size[1];
+			$height = $shown_height;
 
 		}
 
@@ -710,7 +715,7 @@ function api_files_create($params) {
 		'vars'   => array($file_name, $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	api_webhook_enqueue('file.created', array('id' => $id, 'name' => $file_name));
+	pg_announce('file.created', array('id' => $id, 'name' => $file_name), array('listeners' => false));
 
 	$row = api_row(api_file_select() . " WHERE files.id = '" . $id . "' LIMIT 1");
 

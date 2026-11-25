@@ -210,10 +210,27 @@
             // Don't re-apply (the SSR already painted the right product).
             // Just enable Add to Cart and trigger a background stock check.
             addBtns.forEach(function (b) {
-                b.disabled = false;
                 b.classList.remove('pg-civ-awaiting-variant');
             });
+            var initialProduct = null;
+            (data.products || []).forEach(function (p) {
+                if (String(p.id) === String(data.default_product_id)) initialProduct = p;
+            });
+            setStockState(initialProduct);
             if (data.default_product_id) refreshFromApi(data.default_product_id);
+        }
+
+        // Add to Cart follows the stock of the variant on screen: a variant
+        // that cannot be bought for want of stock (out_of_stock '1' in the
+        // payload) keeps it disabled from the moment it is picked, not only
+        // once the background refresh answers - a refresh that fails left it
+        // enabled.
+        function setStockState(p) {
+            var soldOut = !!p && (String(p.out_of_stock) === '1');
+            addBtns.forEach(function (b) {
+                b.disabled = soldOut;
+                b.classList.toggle('pg-civ-out-of-stock', soldOut);
+            });
         }
 
         function onSelectionChanged() {
@@ -239,7 +256,8 @@
             }
             clearPickerNotice(anchor);
             applyVariant(match);
-            addBtns.forEach(function (b) { b.disabled = false; b.classList.remove('pg-civ-awaiting-variant'); });
+            addBtns.forEach(function (b) { b.classList.remove('pg-civ-awaiting-variant'); });
+            setStockState(match);
 
             // Background API refresh for stock accuracy + any field not
             // preloaded. Failure is tolerated — the preloaded data is
@@ -606,11 +624,9 @@
                     settleEmptyBoxes(scope);
                     // Stock-aware Add to Cart: disable when the API reports
                     // out_of_stock=1 (more authoritative than preloaded data).
-                    if (parseInt(p.out_of_stock, 10) === 1) {
-                        addBtns.forEach(function (b) { b.disabled = true; b.classList.add('pg-civ-out-of-stock'); });
-                    } else {
-                        addBtns.forEach(function (b) { b.classList.remove('pg-civ-out-of-stock'); });
-                    }
+                    // A variant back in stock since the page was drawn is
+                    // enabled again.
+                    setStockState(p);
                 })
                 .catch(function () { /* ignore — preloaded data is the floor */ });
         }

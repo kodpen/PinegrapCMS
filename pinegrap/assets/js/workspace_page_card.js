@@ -35,6 +35,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     // The frame's height in the card: what the page reports, within these.
     var MIN_HEIGHT = 120;
     var MAX_HEIGHT = 640;
@@ -175,8 +187,8 @@
         dialog.appendChild(h.el('p', 'small fg-secondary mb-4', h.t('page_consent_hint', name)));
 
         var buttons = h.el('div', 'd-flex gap-2 ' + (narrow ? '' : 'justify-content-end'));
-        var deny = h.button('btn btn-sm btn-text theme-secondary' + (narrow ? ' flex-fill' : ''), h.t('page_consent_deny'));
-        var allow = h.button('btn btn-sm btn-solid theme-primary' + (narrow ? ' flex-fill' : ''), h.t('page_consent_allow'));
+        var deny = h.button('pg-button pg-button-ghost pg-button-sm' + (narrow ? ' flex-fill' : ''), h.t('page_consent_deny'));
+        var allow = h.button('pg-button pg-button-fill pg-button-sm' + (narrow ? ' flex-fill' : ''), h.t('page_consent_allow'));
 
         buttons.appendChild(deny);
         buttons.appendChild(allow);
@@ -353,7 +365,7 @@
             h.clear(body);
 
             var bar = h.el('div', 'd-flex align-items-center gap-2 mb-3');
-            var pick = h.el('select', 'form-control form-control-sm w-auto');
+            var pick = h.el('select', 'pg-input pg-input-sm w-auto');
 
             pick.setAttribute('aria-label', h.t('page_versions'));
             (data.versions || []).slice().reverse().forEach(function (row) {
@@ -369,7 +381,7 @@
             });
             bar.appendChild(pick);
 
-            var copy = h.button('btn btn-sm btn-outline theme-secondary ms-auto', h.t('page_copy'), 'bi-clipboard');
+            var copy = lookButton(h, 'pg-button pg-button-quiet pg-button-sm ms-auto', h.t('page_copy'), 'bi-clipboard');
 
             copy.addEventListener('click', function () {
                 if (navigator.clipboard) {
@@ -453,7 +465,7 @@
                 row.appendChild(segment);
 
                 if (table.bound) {
-                    var remove = h.button('btn btn-sm btn-text theme-secondary', h.t('page_unbind'), 'bi-x-lg');
+                    var remove = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('page_unbind'), 'bi-x-lg');
 
                     remove.addEventListener('click', function () {
                         send('ws_page_unbind', { table_id: table.id });
@@ -495,7 +507,7 @@
         });
 
         if (page.can_bind) {
-            var bind = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('page_bind'), 'bi-plus-lg');
+            var bind = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('page_bind'), 'bi-plus-lg');
 
             bind.addEventListener('click', function () {
                 showBind(message, h, opts);
@@ -536,7 +548,7 @@
             mark.appendChild(h.el('span', '', h.t('page_edited_by', page.edited_by)));
 
             if (page.can_undo) {
-                var undo = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('page_undo'), 'bi-arrow-counterclockwise');
+                var undo = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('page_undo'), 'bi-arrow-counterclockwise');
 
                 undo.addEventListener('click', function () {
                     h.ask(h.t('page_undo_ask'), h.t('page_undo')).then(function (yes) {
@@ -567,14 +579,14 @@
         }
 
         var tools = h.el('div', 'd-flex flex-wrap gap-2 mt-2');
-        var openButton = h.button('btn btn-sm btn-solid theme-primary', h.t('page_open'), 'bi-play-fill');
-        var fullButton = h.button('btn btn-sm btn-outline theme-secondary', h.t('page_full_screen'), 'bi-arrows-fullscreen');
-        var sourceButton = h.button('btn btn-sm btn-outline theme-secondary', h.t('page_source'), 'bi-code-slash');
-        var download = h.el('a', 'btn btn-sm btn-outline theme-secondary');
+        var openButton = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('page_open'), 'bi-play-fill');
+        var fullButton = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('page_full_screen'), 'bi-arrows-fullscreen');
+        var sourceButton = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('page_source'), 'bi-code-slash');
+        var download = h.el('a', 'pg-button pg-button-quiet pg-button-sm');
 
         download.href = file.url;
         download.setAttribute('download', file.name);
-        download.appendChild(h.icon('bi-download', 'me-1'));
+        download.appendChild(h.icon('bi-download', ''));
         download.appendChild(document.createTextNode(h.t('page_download')));
 
         // The frame's box: the agent's line above the frame, so the page can
@@ -594,7 +606,7 @@
         stopped.appendChild(h.icon('bi-stop-circle'));
         stopped.appendChild(h.el('span', '', h.t('page_stopped')));
 
-        var again = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('page_open_again'), 'bi-arrow-repeat');
+        var again = lookButton(h, 'pg-button pg-button-ghost pg-button-sm', h.t('page_open_again'), 'bi-arrow-repeat');
 
         stopped.appendChild(again);
 
@@ -613,7 +625,7 @@
         refused.appendChild(h.icon('bi-shield-exclamation'));
         refused.appendChild(h.el('span', '', h.t('page_consent_refused')));
 
-        var change = h.button('btn btn-sm btn-text theme-secondary py-0 ms-auto', h.t('page_consent_change'));
+        var change = h.button('pg-button pg-button-ghost pg-button-sm ms-auto', h.t('page_consent_change'));
 
         refused.appendChild(change);
 
@@ -786,7 +798,7 @@
             }
 
             if (row.part === 'page') {
-                var show = h.button('btn btn-sm btn-outline theme-secondary py-0', h.t('canvas_show'));
+                var show = h.button('pg-button pg-button-quiet pg-button-sm', h.t('canvas_show'));
 
                 show.addEventListener('click', function () {
                     h.hideOffcanvas(drawer);
@@ -796,7 +808,7 @@
             }
 
             if (!row.current && joinedCard.can_restore) {
-                var restore = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('canvas_restore'), 'bi-arrow-counterclockwise');
+                var restore = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('canvas_restore'), 'bi-arrow-counterclockwise');
 
                 restore.addEventListener('click', function () {
                     h.ask(h.t('canvas_restore_ask'), h.t('canvas_restore')).then(function (yes) {
@@ -968,7 +980,7 @@
         root.appendChild(stage);
 
         var foot = h.el('div', 'd-flex flex-wrap gap-2 mt-2');
-        var versionsButton = h.button('btn btn-sm btn-text theme-secondary', h.t('page_versions'), 'bi-clock-history');
+        var versionsButton = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('page_versions'), 'bi-clock-history');
 
         versionsButton.addEventListener('click', function () {
             showVersions(message, pageMessage, h, opts, 'all');
@@ -978,7 +990,7 @@
         // (the page's own row keeps it from 576 px): it shows the page and
         // presses the page card's own button, so the frame is one.
         if (document.fullscreenEnabled) {
-            var fullFoot = h.button('btn btn-sm btn-outline theme-secondary sm:d-none', h.t('page_full_screen'), 'bi-arrows-fullscreen');
+            var fullFoot = lookButton(h, 'pg-button pg-button-quiet pg-button-sm sm:d-none', h.t('page_full_screen'), 'bi-arrows-fullscreen');
 
             fullFoot.addEventListener('click', function () {
                 if (tab !== 'page') {

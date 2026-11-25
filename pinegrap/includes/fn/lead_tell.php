@@ -149,20 +149,48 @@ function pg_lead_alert_detail($count, array $names)
 }
 
 /**
- * Tells the staff once a day of the contacts that became hot in the last
- * day (pg_ops_alert(), code contacts_hot); nothing when none did or the day's
- * alert is already out.
+ * Where the day's alert starts counting: the last alert, so a contact that
+ * turned hot after it but more than a day before the next pass that may send
+ * again is not left out, and one it counted is not counted again; the last
+ * day when none was sent, two days at most. Pure.
+ *
+ * @param int $last_sent unix time of the last contacts_hot alert, 0 for never
+ * @param int $now
+ * @return int contacts with hot_at after this are counted
+ */
+function pg_lead_alert_since($last_sent, $now)
+{
+    $last_sent = (int) $last_sent;
+    $now = (int) $now;
+
+    if (($last_sent <= 0) || ($last_sent > $now)) {
+        return $now - 86400;
+    }
+
+    return max($last_sent, $now - 172800);
+}
+
+/**
+ * Tells the staff once a day of the contacts that became hot since the last
+ * alert (pg_ops_alert(), code contacts_hot; pg_lead_alert_since()); nothing
+ * when none did or the day's alert is already out.
  *
  * @param int $now
  */
 function pg_lead_alert_send($now)
 {
-    if (!function_exists('pg_ops_alert') || !pg_ops_alerts_enabled() || !pg_ops_alert_due(pg_ops_alert_last_sent('contacts_hot'), (int) $now)) {
+    if (!function_exists('pg_ops_alert') || !pg_ops_alerts_enabled()) {
         return;
     }
 
-    $since = (int) $now - 86400;
-    $count = (int) db_value("SELECT COUNT(*) FROM contact_scores WHERE hot = 1 AND hot_at >= '" . $since . "'");
+    $last_sent = pg_ops_alert_last_sent('contacts_hot');
+
+    if (!pg_ops_alert_due($last_sent, (int) $now)) {
+        return;
+    }
+
+    $since = pg_lead_alert_since($last_sent, (int) $now);
+    $count = (int) db_value("SELECT COUNT(*) FROM contact_scores WHERE hot = 1 AND hot_at > '" . $since . "'");
 
     if ($count === 0) {
         return;
@@ -172,7 +200,7 @@ function pg_lead_alert_send($now)
 
     foreach ((array) db_items("SELECT c.first_name, c.last_name, c.email_address FROM contact_scores s
         INNER JOIN contacts c ON c.id = s.contact_id
-        WHERE s.hot = 1 AND s.hot_at >= '" . $since . "'
+        WHERE s.hot = 1 AND s.hot_at > '" . $since . "'
         ORDER BY s.interest DESC, s.contact_id LIMIT " . PG_LEAD_ALERT_NAMED) as $contact) {
         $name = trim($contact['first_name'] . ' ' . $contact['last_name']);
         $names[] = ($name !== '') ? $name : (string) $contact['email_address'];

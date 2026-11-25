@@ -280,3 +280,784 @@ function pg_proto_verdicts_delete_design($style_ids)
 
     return max(0, (int) mysqli_affected_rows(db::$con));
 }
+
+/* ---------------------------------------------------------------------------
+   The viewer's "Review this page" and its door
+   --------------------------------------------------------------------------- */
+
+/**
+ * One verdict as the viewer and the designer get it: the verdict, whether it
+ * was given to an older version of the draft, when, and the name typed.
+ * Pure.
+ *
+ * @param array  $row         prototype_verdicts row
+ * @param string $fingerprint the draft's fingerprint now
+ * @return array
+ */
+function pg_proto_verdict_public($row, $fingerprint)
+{
+    $state = pg_proto_verdict_state($row, $fingerprint);
+
+    return array(
+        'id' => (int) $row['id'],
+        'verdict' => $state['state'],
+        'older' => $state['older'],
+        'name' => (string) $row['author_name'],
+        'note' => (string) $row['note'],
+        'created_at' => (int) $row['created_at'],
+    );
+}
+
+/**
+ * Whether a post to the comment door is a verdict rather than a comment.
+ * Pure.
+ *
+ * @param array $post
+ * @return bool
+ */
+function pg_proto_verdict_is_post($post)
+{
+    return is_array($post) && isset($post['verdict']);
+}
+
+/**
+ * A draft page's row, for its fingerprints; null when it is gone.
+ *
+ * @param int $page_id
+ * @return array|null
+ */
+function pg_proto_verdict_draft_row($page_id)
+{
+    if ((int) $page_id <= 0) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM page WHERE page_id = '" . (int) $page_id . "' LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * The verdict that stands on one page for one link; null for none.
+ *
+ * @param int $link_id
+ * @param int $page_id
+ * @return array|null
+ */
+function pg_proto_verdict_standing($link_id, $page_id)
+{
+    if (((int) $link_id <= 0) || ((int) $page_id <= 0) || !pg_proto_approval_ready()) {
+        return null;
+    }
+
+    $rows = db_items("SELECT * FROM prototype_verdicts WHERE link_id = '" . (int) $link_id . "' AND page_id = '" . (int) $page_id . "' ORDER BY id DESC LIMIT 20");
+    $newest = pg_proto_verdicts_newest(is_array($rows) ? $rows : array());
+
+    return isset($newest[(int) $page_id]) ? $newest[(int) $page_id] : null;
+}
+
+/**
+ * The review box's settings for the viewer of a link asking approval: the
+ * page's name, the verdict that stands (pg_proto_verdict_public()) or null,
+ * the limits and the words. Null for a link asking nothing. Pure but for
+ * lang(). `changes` is what "Show what changed" draws for a verdict given to
+ * an older version (pg_proto_viewer_changes()), null otherwise.
+ *
+ * @param array      $link        prototype_links row
+ * @param string     $page_name
+ * @param array|null $standing    the standing verdict row
+ * @param string     $fingerprint the draft's fingerprint now
+ * @param array|null $changes     marks, removed
+ * @return array|null
+ */
+function pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint, $changes = null)
+{
+    $approval = pg_proto_link_approval($link);
+
+    if (!$approval['approval']) {
+        return null;
+    }
+
+    $limits = pg_proto_comment_limits();
+
+    return array(
+        'page' => (string) $page_name,
+        'verdict' => is_array($standing) ? pg_proto_verdict_public($standing, $fingerprint) : null,
+        'changes' => is_array($changes) ? $changes : null,
+        'nameMax' => (int) $limits['name'],
+        'noteMax' => (int) $limits['text'],
+        'strings' => array(
+            'review' => lang('Review this page'),
+            'approve' => lang('Approve this page'),
+            'changes' => lang('Request changes'),
+            'note' => lang('Note'),
+            'noteOptional' => lang('Note (optional)'),
+            'noteNeeded' => lang('Write what should change.'),
+            'choose' => lang('Choose Approve this page or Request changes.'),
+            'approved' => lang('You approved this page on {date}'),
+            'requested' => lang('You asked for changes on {date}'),
+            'changed' => lang('Changed since your last review'),
+            'show' => lang('Show what changed'),
+            'hide' => lang('Hide what changed'),
+            'removed' => lang('Not on the page any more'),
+            'changesHint' => lang('Outlined: changed since your last review.'),
+        ),
+    );
+}
+
+/**
+ * The review box's settings for the page a link's viewer draws
+ * (pg_proto_viewer_review_data()); null for a link asking nothing.
+ *
+ * @param array  $link
+ * @param int    $page_id
+ * @param string $page_name
+ * @return array|null
+ */
+function pg_proto_viewer_review($link, $page_id, $page_name)
+{
+    if (!pg_proto_link_asks_approval($link) || ((int) $page_id <= 0)) {
+        return null;
+    }
+
+    $standing = pg_proto_verdict_standing((int) $link['id'], (int) $page_id);
+    $draft = pg_proto_verdict_draft_row($page_id);
+    $fingerprint = pg_proto_draft_fingerprint_of_row($draft);
+    $changes = null;
+
+    // Round two: the nodes changed since the verdict, from the node marks
+    // kept with it and the draft's tree now.
+    if (is_array($standing) && is_array($draft)) {
+        $state = pg_proto_verdict_state($standing, $fingerprint);
+        $changes = pg_proto_viewer_changes(pg_proto_verdict_nodes($standing),
+            pg_proto_node_fingerprints(isset($draft['page_tree_json']) ? (string) $draft['page_tree_json'] : ''), $state['older']);
+    }
+
+    return pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint, $changes);
+}
+
+/**
+ * The draft fingerprints of the given pages, read from their rows: page id
+ * => fingerprint. A page with no row is left out.
+ *
+ * @param int[] $page_ids
+ * @return array
+ */
+function pg_proto_draft_fingerprints($page_ids)
+{
+    $ids = array();
+
+    foreach ((array) $page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM page WHERE page_id IN (" . implode(',', $ids) . ")");
+    $out = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $out[(int) $row['page_id']] = pg_proto_draft_fingerprint_of_row($row);
+    }
+
+    return $out;
+}
+
+/**
+ * Each draft page's mark for one link asking approval
+ * (pg_proto_review_page_states()), for the given draft pages; empty for a
+ * link asking nothing.
+ *
+ * @param array $link     prototype_links row
+ * @param int[] $page_ids the design's draft pages
+ * @return array page id => state
+ */
+function pg_proto_link_review_states($link, $page_ids)
+{
+    if (!is_array($link) || !pg_proto_link_asks_approval($link) || !$page_ids) {
+        return array();
+    }
+
+    $fingerprints = array();
+    $found = pg_proto_draft_fingerprints($page_ids);
+
+    // Pages keep the order given; one whose row is gone has no fingerprint.
+    foreach ((array) $page_ids as $id) {
+        $fingerprints[(int) $id] = isset($found[(int) $id]) ? $found[(int) $id] : '';
+    }
+
+    return pg_proto_review_page_states(pg_proto_verdicts_of_link((int) $link['id']), $fingerprints);
+}
+
+/**
+ * Every verdict of a design (idx_style), oldest first.
+ *
+ * @param int $style_id
+ * @return array[]
+ */
+function pg_proto_verdicts_of_style($style_id)
+{
+    if (((int) $style_id <= 0) || !pg_proto_approval_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_verdicts WHERE style_id = '" . (int) $style_id . "' ORDER BY id LIMIT 5000");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * The newest verdict id of a design, 0 for none: added to the comments'
+ * stamp, so the designer's list is fetched again when a verdict comes.
+ *
+ * @param int $style_id
+ * @return int
+ */
+function pg_proto_verdicts_style_stamp($style_id)
+{
+    if (((int) $style_id <= 0) || !pg_proto_approval_ready()) {
+        return 0;
+    }
+
+    return (int) db_value('SELECT MAX(id) FROM prototype_verdicts WHERE style_id = ' . (int) $style_id);
+}
+
+/**
+ * The designer's Comments list with the verdicts: each page group gets
+ * `verdicts`, the standing one of each link (pg_proto_verdict_public() with
+ * link_id and link_hint), in link order. A page with verdicts and no
+ * comment gets a group of its own. Groups are ordered as $names (the page
+ * names in their order); a page without a name (deleted) comes last. Pure.
+ *
+ * @param array[] $groups       pg_proto_comment_list_pages()
+ * @param array[] $rows         prototype_verdicts rows of the design
+ * @param array   $names        page id => name, in the list's order
+ * @param array   $hints        link id => token hint
+ * @param array   $fingerprints page id => the draft's fingerprint now
+ * @return array[]
+ */
+function pg_proto_comment_list_verdicts($groups, $rows, $names, $hints, $fingerprints)
+{
+    $by_link = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && isset($row['link_id'])) {
+            $by_link[(int) $row['link_id']][] = $row;
+        }
+    }
+
+    ksort($by_link);
+    $verdicts = array();
+
+    foreach ($by_link as $link_id => $link_rows) {
+        foreach (pg_proto_verdicts_newest($link_rows) as $page_id => $row) {
+            $item = pg_proto_verdict_public($row, isset($fingerprints[$page_id]) ? (string) $fingerprints[$page_id] : '');
+            $item['link_id'] = (int) $link_id;
+            $item['link_hint'] = isset($hints[$link_id]) ? (string) $hints[$link_id] : '';
+            $verdicts[(int) $page_id][] = $item;
+        }
+    }
+
+    $by_page = array();
+
+    foreach ((array) $groups as $group) {
+        $group['verdicts'] = array();
+        $by_page[(int) $group['page_id']] = $group;
+    }
+
+    foreach ($verdicts as $page_id => $list) {
+        if (!isset($by_page[$page_id])) {
+            $by_page[$page_id] = array(
+                'page_id' => $page_id,
+                'name' => isset($names[$page_id]) ? (string) $names[$page_id] : '',
+                'open' => 0,
+                'resolved' => 0,
+                'links' => 0,
+                'threads' => array(),
+            );
+        }
+
+        $by_page[$page_id]['verdicts'] = $list;
+    }
+
+    $out = array();
+
+    foreach ((array) $names as $page_id => $name) {
+        if (isset($by_page[(int) $page_id])) {
+            $out[] = $by_page[(int) $page_id];
+            unset($by_page[(int) $page_id]);
+        }
+    }
+
+    ksort($by_page);
+
+    foreach ($by_page as $group) {
+        $out[] = $group;
+    }
+
+    return $out;
+}
+
+/**
+ * Takes a verdict that passed the comment door's gates
+ * (pg_proto_comment_door()): the link must ask approval, the fields are
+ * checked (pg_proto_verdict_check()), the address counted in the comments'
+ * burst, and the verdict sealed with the draft's fingerprints as it is now.
+ * Then the link's maker hears of it in the bell, the approver gets a
+ * receipt and the verdict is announced (pg_proto_verdict_announce()).
+ *
+ * @param array $link    prototype_links row
+ * @param int   $page_id a draft page of the link's design it shows
+ * @param array $post
+ * @param int   $now
+ * @return array status, error ('' when written), verdict (public shape)
+ */
+function pg_proto_verdict_take($link, $page_id, $post, $now)
+{
+    $refuse = function ($code) {
+        return array('status' => pg_proto_comment_error_status($code), 'error' => $code, 'verdict' => null);
+    };
+
+    if (!pg_proto_link_asks_approval($link)) {
+        return $refuse('approval_off');
+    }
+
+    $checked = pg_proto_verdict_check(array(
+        'verdict' => isset($post['verdict']) ? $post['verdict'] : null,
+        'name' => isset($post['name']) ? $post['name'] : null,
+        'note' => isset($post['note']) ? $post['note'] : '',
+    ));
+
+    if ($checked['error'] !== '') {
+        return $refuse($checked['error']);
+    }
+
+    if (pg_proto_comment_limit_refusal(pg_proto_comment_burst(), 0) !== '') {
+        return $refuse('rate');
+    }
+
+    $draft = pg_proto_verdict_draft_row($page_id);
+    $fingerprint = pg_proto_draft_fingerprint_of_row($draft);
+    $row = $draft ? pg_proto_verdict_row($checked, $link, $page_id, $fingerprint, pg_proto_node_fingerprints((string) $draft['page_tree_json'])) : null;
+    $id = $row ? pg_proto_verdict_save($row, $now) : 0;
+    $saved = ($id > 0) ? db_item("SELECT * FROM prototype_verdicts WHERE id = '" . (int) $id . "'") : null;
+
+    if (!is_array($saved)) {
+        return array('status' => 500, 'error' => 'save', 'verdict' => null);
+    }
+
+    $page_name = (string) $draft['page_name'];
+    pg_proto_verdict_bell($link, $saved, $page_name);
+    pg_proto_verdict_receipt($link, $saved, $page_name);
+    pg_proto_verdict_announce($saved, $page_name);
+
+    return array('status' => 201, 'error' => '', 'verdict' => pg_proto_verdict_public($saved, $fingerprint));
+}
+
+/* ---------------------------------------------------------------------------
+   The bell line to the link's maker and the approver's receipt
+   --------------------------------------------------------------------------- */
+
+/**
+ * The bell line's words for a verdict, in the reader's language. An empty
+ * name or page (a deleted verdict or page) gives a text without them. Pure
+ * but for lang().
+ *
+ * @param string $verdict    approved or changes_requested
+ * @param string $page_name
+ * @param string $guest_name
+ * @return array short, brief, title
+ */
+function pg_proto_verdict_bell_words($verdict, $page_name, $guest_name)
+{
+    $approved = ((string) $verdict === 'approved');
+    $page_name = (string) $page_name;
+    $guest_name = (string) $guest_name;
+    $short = $approved ? lang('Prototype page approved') : lang('Changes requested on a prototype');
+
+    if (($page_name !== '') && ($guest_name !== '')) {
+        $brief = lang(array('string' => '{var:1} on {var:2}', 'vars' => array($guest_name, $page_name)));
+        $title = $approved
+            ? lang(array('string' => '{var:1} approved the prototype of {var:2}.', 'vars' => array($guest_name, $page_name)))
+            : lang(array('string' => '{var:1} asked for changes on the prototype of {var:2}.', 'vars' => array($guest_name, $page_name)));
+    } else {
+        $brief = ($page_name !== '') ? $page_name : $short;
+        $title = $short;
+    }
+
+    return array('short' => $short, 'brief' => $brief, 'title' => $title);
+}
+
+/**
+ * Tells the link's maker of a verdict: one bell line for each, addressed to
+ * them, referring to the verdict. The comments' burst bounds how many a guest
+ * can send.
+ *
+ * @param array  $link
+ * @param array  $row       the saved prototype_verdicts row
+ * @param string $page_name
+ * @return bool whether a line was written
+ */
+function pg_proto_verdict_bell($link, $row, $page_name)
+{
+    $maker = (is_array($link) && isset($link['created_by'])) ? (int) $link['created_by'] : 0;
+
+    if (($maker <= 0) || !is_array($row)) {
+        return false;
+    }
+
+    include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+
+    if (!pg_notification_targets_available()) {
+        return false;
+    }
+
+    return (bool) db_q("INSERT INTO notifications (action, type, title, target_user_id, reference_id, user, readed, timestamp)
+        VALUES ('prototype_verdict', 'info', ?, ?, ?, '', '0', UNIX_TIMESTAMP())",
+        array(mb_substr((string) $page_name, 0, 250, 'UTF-8'), $maker, (int) $row['id']));
+}
+
+/**
+ * A verdict bell line's words and address as the bell draws them: the
+ * verdict, the guest's name and the design read through reference_id, the
+ * page's name from the title.
+ *
+ * @param array $notification
+ * @return array short, brief, title, url
+ */
+function pg_proto_verdict_bell_display($notification)
+{
+    $id = isset($notification['reference_id']) ? (int) $notification['reference_id'] : 0;
+    $row = (($id > 0) && pg_proto_approval_ready()) ? db_item("SELECT * FROM prototype_verdicts WHERE id = '" . $id . "'") : null;
+    $row = is_array($row) ? $row : null;
+    $words = pg_proto_verdict_bell_words($row ? (string) $row['verdict'] : '', isset($notification['title']) ? (string) $notification['title'] : '', $row ? (string) $row['author_name'] : '');
+
+    return $words + array('url' => $row ? pg_proto_comment_bell_url($row['style_id'], $row['page_id']) : 'view_pages.php');
+}
+
+/**
+ * The receipt mailed to the approver for a verdict: its subject and plain
+ * text, with the link's address to look again ('' when it cannot be read
+ * back) and never its password. Pure but for lang().
+ *
+ * @param array  $row       prototype_verdicts row
+ * @param string $page_name
+ * @param string $design    the design's name
+ * @param string $date      the verdict's day as the site writes it
+ * @param string $url       the link's address, or ''
+ * @return array subject, body
+ */
+function pg_proto_verdict_receipt_words($row, $page_name, $design, $date, $url)
+{
+    $approved = ((string) $row['verdict'] === 'approved');
+    $vars = array((string) $page_name, (string) $design, (string) $date);
+    $subject = $approved
+        ? lang(array('string' => 'You approved {var:1}', 'vars' => $vars))
+        : lang(array('string' => 'You asked for changes on {var:1}', 'vars' => $vars));
+    $lines = array(
+        lang(array('string' => 'Hello {var:1},', 'vars' => array((string) $row['author_name']))),
+        '',
+        $approved
+            ? lang(array('string' => 'You approved the page {var:1} of {var:2} on {var:3}.', 'vars' => $vars))
+            : lang(array('string' => 'You asked for changes on the page {var:1} of {var:2} on {var:3}.', 'vars' => $vars)),
+    );
+
+    if ((string) $row['note'] !== '') {
+        $lines[] = '';
+        $lines[] = lang('Your note:');
+        $lines[] = (string) $row['note'];
+    }
+
+    if ((string) $url !== '') {
+        $lines[] = '';
+        $lines[] = lang('To look at the prototype again:');
+        $lines[] = (string) $url;
+    }
+
+    $lines[] = '';
+    $lines[] = lang('This e-mail answers your review only.');
+
+    return array('subject' => $subject, 'body' => implode("\n", $lines));
+}
+
+/**
+ * Mails the receipt of a verdict to the approver's address the designer
+ * typed on the link; nothing when there is none.
+ *
+ * @param array  $link
+ * @param array  $row       the saved prototype_verdicts row
+ * @param string $page_name
+ * @return bool whether a mail was handed on
+ */
+function pg_proto_verdict_receipt($link, $row, $page_name)
+{
+    $approval = pg_proto_link_approval($link);
+    $to = $approval['approver_email'];
+
+    if (($to === '') || (filter_var($to, FILTER_VALIDATE_EMAIL) === false) || !function_exists('email')) {
+        return false;
+    }
+
+    $token = pg_proto_link_token($link);
+    $design = pg_proto_link_design_name((int) $link['style_id']);
+    $words = pg_proto_verdict_receipt_words($row, $page_name, ($design !== null) ? $design : '',
+        date('Y-m-d', (int) $row['created_at']), ($token !== '') ? pg_proto_link_url($token) : '');
+
+    return (bool) email(array(
+        'to' => $to,
+        'to_name' => $approval['approver_name'],
+        'from_name' => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject' => $words['subject'],
+        'format' => 'plain_text',
+        'body' => $words['body'],
+        'queue' => true,
+    ));
+}
+
+/* ---------------------------------------------------------------------------
+   The approval hold: "Publish only after approval"
+   --------------------------------------------------------------------------- */
+
+/**
+ * The link that holds a draft back from the site, or null: a link of the
+ * draft's design (no bundle link) asking approval with "Publish only after
+ * approval", neither revoked nor expired, that shows the page, and whose
+ * standing verdict on it does not approve the draft as it is now. Every such
+ * link must approve; the first one still waiting is named. Pure.
+ *
+ * A third hold beside an open experiment's variant and a release bundle's
+ * draft (pg_experiment_variant_hold_message()), read only where a draft goes
+ * live: it never stops a draft being binned or deleted.
+ *
+ * @param array  $links       prototype_links rows of the page's design, by id
+ * @param array  $verdicts    prototype_verdicts rows of the page
+ * @param string $fingerprint the draft's fingerprint now
+ * @param string $access      the access control of the folder the draft goes live in
+ * @param int    $now
+ * @return array|null link_id, hint, approver_name
+ */
+function pg_proto_approval_hold_pick($links, $verdicts, $fingerprint, $access, $now)
+{
+    foreach ((array) $links as $link) {
+        if (!is_array($link) || !empty($link['bundle_id']) || !empty($link['revoked_at'])) {
+            continue;
+        }
+
+        $expires = isset($link['expires_at']) ? (int) $link['expires_at'] : 0;
+        $approval = pg_proto_link_approval($link);
+
+        if (!$approval['publish_rule'] || (($expires > 0) && ($expires <= (int) $now))
+            || !pg_proto_link_page_shown(isset($link['audience']) ? $link['audience'] : '', $access)) {
+            continue;
+        }
+
+        $id = (int) $link['id'];
+        $own = array();
+
+        foreach ((array) $verdicts as $verdict) {
+            if (is_array($verdict) && isset($verdict['link_id']) && ((int) $verdict['link_id'] === $id)) {
+                $own[] = $verdict;
+            }
+        }
+
+        $standing = null;
+
+        foreach (pg_proto_verdicts_newest($own) as $row) {
+            $standing = $row;
+        }
+
+        if (!pg_proto_verdict_approves($standing, (string) $fingerprint)) {
+            return array(
+                'link_id' => $id,
+                'hint' => isset($link['token_hint']) ? (string) $link['token_hint'] : '',
+                'approver_name' => $approval['approver_name'],
+            );
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The approval holds of a list of pages: page id => pg_proto_approval_hold_pick()
+ * with the page's name, for the drafts a link holds; the others are left out.
+ *
+ * @param array    $page_ids
+ * @param int|null $now
+ * @return array
+ */
+function pg_proto_approval_holds($page_ids, $now = null)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $page_ids))));
+    $out = array();
+
+    if (!$ids || !pg_proto_approval_ready() || !pg_page_draft_ready()) {
+        return $out;
+    }
+
+    $now = ($now === null) ? time() : (int) $now;
+    $pages = array();
+
+    foreach ((array) db_items("SELECT * FROM page WHERE page_id IN (" . implode(',', $ids) . ")") as $row) {
+        if (pg_page_is_draft($row['page_folder'])) {
+            $pages[(int) $row['page_id']] = $row;
+        }
+    }
+
+    $styles = array();
+
+    foreach ($pages as $row) {
+        $styles[(int) $row['page_style']] = true;
+    }
+
+    if (!$styles) {
+        return $out;
+    }
+
+    $links = array();
+
+    foreach ((array) db_items("SELECT * FROM prototype_links
+        WHERE style_id IN (" . implode(',', array_keys($styles)) . ") AND approval = 1 AND publish_rule = 1 AND revoked_at = 0
+        ORDER BY id") as $link) {
+        $links[(int) $link['style_id']][] = $link;
+    }
+
+    foreach ($pages as $id => $row) {
+        $own = isset($links[(int) $row['page_style']]) ? $links[(int) $row['page_style']] : array();
+
+        if (!$own) {
+            continue;
+        }
+
+        $hold = pg_proto_approval_hold_pick($own, pg_proto_verdicts_of_page($id), pg_proto_draft_fingerprint_of_row($row),
+            pg_proto_link_page_access($id), $now);
+
+        if ($hold) {
+            $hold['page_name'] = (string) $row['page_name'];
+            $out[$id] = $hold;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The link that holds one draft back from the site, or null.
+ *
+ * @param int $page_id
+ * @return array|null link_id, hint, approver_name, page_name
+ */
+function pg_proto_approval_hold($page_id)
+{
+    $holds = pg_proto_approval_holds(array((int) $page_id));
+
+    return isset($holds[(int) $page_id]) ? $holds[(int) $page_id] : null;
+}
+
+/**
+ * Why a held draft stays off the site, naming the approver and the link by
+ * its hint. Pure but for lang().
+ *
+ * @param string $page_name
+ * @param array  $hold pg_proto_approval_hold_pick()
+ * @return string
+ */
+function pg_proto_approval_hold_text($page_name, $hold)
+{
+    $hint = isset($hold['hint']) ? (string) $hold['hint'] : '';
+    $name = isset($hold['approver_name']) ? (string) $hold['approver_name'] : '';
+
+    if ($name === '') {
+        return lang(array(
+            'string' => 'The page "{var:1}" waits for approval on the prototype link {var:2}…, so it stays a draft until it is approved.',
+            'vars' => array((string) $page_name, $hint)));
+    }
+
+    return lang(array(
+        'string' => 'The page "{var:1}" waits for {var:2} to approve it on the prototype link {var:3}…, so it stays a draft until then.',
+        'vars' => array((string) $page_name, $name, $hint)));
+}
+
+/**
+ * The refusal of a held draft going live; '' when no link holds it.
+ *
+ * @param int    $page_id
+ * @param string $page_name
+ * @return string
+ */
+function pg_proto_approval_hold_message($page_id, $page_name)
+{
+    $hold = pg_proto_approval_hold($page_id);
+
+    return $hold ? pg_proto_approval_hold_text($page_name, $hold) : '';
+}
+
+/**
+ * The reason an administrator (role 0) gave for publishing a held draft
+ * anyway (the save's approval_override), on one line and at most 500
+ * characters; '' for anybody else or without a reason. Pure.
+ *
+ * @param array $page the save's page fields
+ * @param array $user
+ * @return string
+ */
+function pg_proto_approval_override_reason($page, $user)
+{
+    if (!is_array($user) || !isset($user['role']) || ((string) $user['role'] !== '0')) {
+        return '';
+    }
+
+    $reason = (is_array($page) && isset($page['approval_override'])) ? pg_proto_comment_plain($page['approval_override'], false) : null;
+
+    if (!is_string($reason)) {
+        return '';
+    }
+
+    $reason = trim((string) preg_replace('/\s+/u', ' ', $reason));
+
+    return mb_substr($reason, 0, 500, 'UTF-8');
+}
+
+/**
+ * Writes the Site Log line of a held draft published anyway: the page, the
+ * link by its id and hint, the reason.
+ *
+ * @param string $page_name
+ * @param array  $hold
+ * @param string $reason
+ */
+function pg_proto_approval_override_log($page_name, $hold, $reason)
+{
+    log_activity(lang(array(
+        'string' => 'page ({var:1}) was published without the approval prototype link #{var:2} ({var:3}…) asks for: {var:4}',
+        'vars' => array((string) $page_name, (int) $hold['link_id'], (string) $hold['hint'], (string) $reason))),
+        isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+}
+
+/**
+ * A tab page's held state in the visual editor for a draft a link holds:
+ * the Publish sheet's row "Waiting for approval", its tooltip naming the
+ * approver and the link, and whether this person may publish it anyway
+ * (role 0). Shaped as pg_experiment_editor_page_state()'s entries, without
+ * a status, so the top bar shows no experiment chip. Pure but for lang().
+ *
+ * @param array  $hold         pg_proto_approval_hold_pick()
+ * @param string $page_name
+ * @param bool   $may_override
+ * @return array
+ */
+function pg_proto_approval_editor_state($hold, $page_name, $may_override)
+{
+    return array(
+        'role' => 'approval',
+        'held' => true,
+        'label' => lang('Waiting for approval'),
+        'hold_text' => pg_proto_approval_hold_text($page_name, $hold),
+        'override' => (bool) $may_override,
+    );
+}

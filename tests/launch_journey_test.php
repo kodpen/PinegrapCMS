@@ -45,6 +45,7 @@ function launch_journey_test_facts($changes = array())
 		'cron'             => 'ok',
 		'team_signed_in'   => true,
 		'maintenance'      => false,
+		'broken_links'     => 0,
 	);
 
 	return array_merge($facts, $changes);
@@ -351,6 +352,44 @@ function test_launch_journey_golive_view()
 	pg_assert_same(array(), $noindex['changes']);
 }
 
+// Broken internal links: none is done, some is a warning naming the count,
+// the SEO check never run is a warning offering to run it; never a blocker.
+function test_launch_journey_broken_links()
+{
+	pg_assert_false(in_array('broken_links', pg_launch_journey_steps('shop'), true), 'a go-live check, not a card step');
+
+	$none = pg_launch_journey_rule('broken_links', launch_journey_test_facts(), 'company');
+	pg_assert_same('done', $none['state'], 'no broken link');
+	$clean = pg_launch_journey_golive_view('company', launch_journey_test_facts(), array());
+	pg_assert_same(array(), $clean['worth'], 'nothing to look at');
+
+	$some = pg_launch_journey_rule('broken_links', launch_journey_test_facts(array('broken_links' => 3)), 'company');
+	pg_assert_same(array('state' => 'todo', 'level' => 'warning', 'reason' => 'broken'), $some);
+
+	$view = pg_launch_journey_golive_view('company', launch_journey_test_facts(array('broken_links' => 3, 'backup' => 'fail', 'search_console' => 'none')), array(), 'abc');
+	pg_assert_same(array(), $view['must'], 'a warning, never a blocker');
+	pg_assert_same(array('search_tools', 'backups', 'broken_links'), launch_journey_test_keys($view['worth']), 'beside the backup and Search Console warnings');
+	$row = $view['worth'][2];
+	pg_assert_true(strpos($row['line'], '3') !== false, 'the count is named: ' . $row['line']);
+	pg_assert_same('view_pages.php?filter=seo_broken_links', $row['url'], 'Fix opens the findings filtered to broken links');
+	pg_assert_same('', $row['action'], 'the plain Fix');
+
+	$never_facts = launch_journey_test_facts(array('broken_links' => 'never'));
+	$never = pg_launch_journey_rule('broken_links', $never_facts, 'company');
+	pg_assert_same(array('state' => 'todo', 'level' => 'warning', 'reason' => 'never_checked'), $never);
+	$view = pg_launch_journey_golive_view('company', $never_facts, array(), 'abc');
+	$row = $view['worth'][0];
+	pg_assert_false(strpos($row['line'], '0') !== false, 'not "0 broken links": ' . $row['line']);
+	pg_assert_same('audit_run.php?pass=structure&filter=seo_broken_links&token=abc', $row['url'], 'offers to run the check');
+	pg_assert_true($row['action'] !== '', 'a run button in place of Fix');
+	pg_assert_same(array(), pg_launch_journey_golive_left(pg_launch_journey_golive_check('company', $never_facts, array())), 'Go live stays possible');
+
+	$unread = launch_journey_test_facts();
+	unset($unread['broken_links']);
+	pg_assert_same('unknown', pg_launch_journey_rule('broken_links', $unread, 'company')['state'], 'not read is unknown');
+	pg_assert_same(array(), pg_launch_journey_golive_check('company', $unread, array())['warnings']);
+}
+
 // With a blocker left "Go live" needs "I know, go live anyway".
 function test_launch_journey_golive_allowed()
 {
@@ -360,4 +399,39 @@ function test_launch_journey_golive_allowed()
 	pg_assert_false(pg_launch_journey_golive_allowed($left, array()));
 	pg_assert_false(pg_launch_journey_golive_allowed($left, array('anyway' => 0)));
 	pg_assert_true(pg_launch_journey_golive_allowed($left, array('anyway' => 1)));
+}
+
+// GET /launch: every step of the purpose with its line, hidden marked, the
+// go-live check beside it and what "Go live" would change itself.
+function test_launch_journey_report()
+{
+	$stored = pg_launch_journey_stored_read(json_encode(array('purpose' => 'shop', 'hidden' => array('backups', 'payment_live'), 'live_at' => 1700000000)));
+	$facts = launch_journey_test_facts(array(
+		'maintenance' => true,
+		'payments'    => array(array('driver' => 'paytr', 'settings' => array('mode' => 'test'))),
+		'backup'      => 'fail',
+	));
+	$report = pg_launch_journey_report($stored, $facts);
+
+	pg_assert_same('shop', $report['purpose']);
+	pg_assert_true($report['purpose_chosen']);
+	pg_assert_same('blocked', $report['status']);
+	pg_assert_same(1700000000, $report['live_at']);
+	pg_assert_same(pg_launch_journey_steps('shop'), launch_journey_test_keys($report['steps']), 'every step, in the purpose\'s order');
+	pg_assert_same(array('maintenance', 'payment_live'), launch_journey_test_keys($report['blockers']), 'a hidden blocker still blocks');
+	pg_assert_same(array(), $report['warnings'], 'a hidden warning is left out');
+	pg_assert_same(array('maintenance'), $report['go_live_changes']);
+
+	foreach ($report['steps'] as $row) {
+		pg_assert_true(($row['name'] !== '') && ($row['line'] !== ''), $row['key'] . ' named');
+		pg_assert_same(in_array($row['key'], array('backups', 'payment_live'), true), $row['hidden'], $row['key'] . ' hidden');
+	}
+
+	// No purpose chosen: the steps follow Other, as on the card.
+	$none = pg_launch_journey_report(pg_launch_journey_stored_read(''), launch_journey_test_facts());
+	pg_assert_same('other', $none['purpose']);
+	pg_assert_false($none['purpose_chosen']);
+	pg_assert_same('ready', $none['status']);
+	pg_assert_same(0, $none['live_at']);
+	pg_assert_same(array(), $none['blockers']);
 }

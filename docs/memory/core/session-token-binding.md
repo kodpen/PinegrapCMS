@@ -17,6 +17,7 @@ description: How a signed-in session is bound to its auth_tokens row (selector k
 ## What must a new sign-in path do?
 - `pg_session_sign_in()` drops a binding made for another account (so `login_as_user.php` does not inherit the administrator's row) and keeps one made for the same account; mint with `pg_login_set_device_cookie()` before or after it, both orders work.
 - Never write `sessionuserid` without going through `pg_session_sign_in()`, and never mint a token outside `pg_login_set_device_cookie()`: a session with a user but no binding is accepted, but then a revoke cannot end it.
+- Sign-up too (`pg_member_register()`, `pg_member_activate()`): a ticked "Remember me" used to mint beside it, unbound.
 
 ## What does sign-out revoke after "log in as"?
 - Nothing: `logout()` (`includes/fn/forms.php`) revokes the `software[auth]` token and clears the cookie only when `logged_in_as_different_user` is not set. That cookie is the operator's own token, kept so the operator is signed back in as themselves (as `login_as_user.php` and the disabled-account branch of `initialize_user()` keep it); revoking it first had signed the operator out too. Where the operator lands then: `login-as-sign-out.md`.

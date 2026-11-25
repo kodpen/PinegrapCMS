@@ -19,7 +19,7 @@ description: The site as an OAuth client (connected accounts, includes/fn/connec
 ## How does code use an account?
 - Find it with `pg_connect_accounts(array('purpose' => ...))`, then call `pg_connect_api($id, 'POST', $url, $options, $scopes)` (a 401 renews once and repeats), or take only the token with `pg_connect_access_token($id, $scopes)`.
 - Microsoft tokens are per resource: pass the call's scopes (e.g. `https://outlook.office.com/SMTP.Send`).
-- Never read a refresh token. Renewal is locked per connection (`GET_LOCK`), and `invalid_grant` marks the account `reauth`.
+- Never read a refresh token. Renewal and revocation: `api-connected-accounts-renewal.md`.
 - Tokens a server fetches for itself (Paraşüt, carriers' `client_credentials`): `pg_connect_service_get/put/delete($key)`, sealed in `connect_accounts` as provider `service`, never a file or `config` column.
 - `pg_user_delete()` ends the person's rows via `pg_connect_forget_user()` (revoke, delete): a reused user id must not inherit them.
 - Worked examples: `api-connected-accounts-usage.md`.

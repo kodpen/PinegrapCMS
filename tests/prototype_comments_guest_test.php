@@ -144,6 +144,7 @@ function test_prototype_comments_guest_no_comment_mode_on_a_page_the_link_does_n
 	$at = strpos($viewer, 'pg_proto_viewer_comments($pg_proto_link');
 
 	pg_assert_true($at !== false, 'the viewer passes its comments');
-	pg_assert_contains("'comments' => !\$pg_proto_start_shown ? null : pg_proto_viewer_comments(", substr($viewer, max(0, $at - 60), 200));
+	pg_assert_contains("\$pg_proto_comment_view = !\$pg_proto_start_shown ? null : pg_proto_viewer_comments(", substr($viewer, max(0, $at - 60), 200));
+	pg_assert_contains("'comments' => \$pg_proto_comment_view,", $viewer);
 	pg_assert_contains('$pg_proto_start_shown = pg_proto_link_page_shown((string) $pg_proto_link[\'audience\'], pg_proto_link_page_access($pg_proto_start[\'id\']));', $viewer);
 }

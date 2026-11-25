@@ -70,7 +70,7 @@ $config = array(
     // The room's running call, joined from the bar under the head: the
     // public route the browser asks for (the relay's credentials come only
     // with a granted join), null while calls are off.
-    'calls'    => $calls ? array('ice' => ws_call_ice_servers(), 'max' => WS_CALL_MAX_MEMBERS) : null,
+    'calls'    => $calls ? array('ice' => ws_call_ice_servers(), 'max' => WS_CALL_MAX_MEMBERS, 'background' => ws_call_background_config(ws_calls_settings())) : null,
 );
 
 $title = h(lang('Conversation') . (((string) ORGANIZATION_NAME !== '') ? ' · ' . ORGANIZATION_NAME : ''));

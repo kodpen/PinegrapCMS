@@ -15,7 +15,8 @@
  * kept file or the service's copy; an SVG on a print page that holds it as
  * an image, or with download the SVG file itself, sandboxed. The documents
  * live under data/, which is closed to the web: this is their only door,
- * behind the order screen's own gate.
+ * behind the order screen's own gate; a "Packing only" user GETs only the
+ * label of a pack they checked (pg_pack_label_user_can()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -30,7 +31,18 @@ if (pg_post_body_discarded()) {
 }
 
 $user = validate_user();
-validate_ecommerce_access($user);
+
+// A user with the "Packing only" right alone may only GET the label of a
+// pack they checked (the Pack screen opens it); checked below once the
+// label is read. Everyone else passes the order screen's gate.
+$packer_only = (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST')
+    && ((int) $user['role'] === 3)
+    && empty($user['manage_ecommerce'])
+    && !empty($user['manage_packing']);
+
+if (!$packer_only) {
+    validate_ecommerce_access($user);
+}
 
 if (!pg_shipment_labels_ready()) {
     output_error(lang('Run the software update first: the table for shipping labels is missing.'), 503);
@@ -191,6 +203,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 $id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 $row = ($id > 0) ? db_item("SELECT * FROM shipment_labels WHERE id = '" . $id . "'") : null;
+
+if ($packer_only) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/pick_waves.php');
+
+    $pack = ($row && pg_pick_user_can($user) && pg_pick_waves_ready())
+        ? db_item("SELECT ship_to_id, status, packer_id FROM order_packs WHERE ship_to_id = '" . (int) $row['ship_to_id'] . "'")
+        : null;
+
+    // A missing label answers as a refused one, so ids cannot be probed.
+    if (!$row || !pg_pack_label_user_can($user, $row, $pack ?: null)) {
+        log_activity(lang('access denied to commerce'));
+        output_error(lang('Access denied') . '.');
+    }
+}
 
 if (!$row) {
     output_error(lang('Record not found.'), 404);

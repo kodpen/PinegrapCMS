@@ -65,6 +65,8 @@ function test_menu_widget_rows()
 	pg_assert_same('https://example.com/help?a=1&b=2', $help['__menu_item_url'], 'a URL, raw: the pass escapes it');
 	pg_assert_same('_blank', $help['__menu_item_target'], 'a new window');
 	pg_assert_same('', $shop['__menu_item_target'], 'never for an item that links nowhere');
+	pg_assert_same('noopener', $help['__menu_item_rel'], 'a new window gets noopener');
+	pg_assert_same('', $shop['__menu_item_rel'], 'no rel without a new window');
 
 	// A page name may hold ?, # or %: it is encoded as a path, as the
 	// classic menu links it.
@@ -90,6 +92,24 @@ function test_menu_widget_rows_access_and_names()
 	pg_assert_same(array(), pg_sw_list_menu_rows(null, 1), 'no menu');
 }
 
+// A deleted page is never a link; an offline page (Recycle Bin, drafts) is
+// left out, security on or off, for a visitor who may not view it.
+function test_menu_widget_rows_offline_and_deleted()
+{
+	$items = _mw_items();
+	$items[0]['link_page_name'] = null;
+	$items[2]['link_page_folder_id'] = 9;
+	$rows = pg_sw_list_menu_rows($items, 0, function ($folder) { return (int)$folder !== 9; }, null,
+		function ($folder) { return (int)$folder === 9; });
+	pg_assert_same(array('Shop', 'Help'), array_column($rows[0], '__menu_item_name'), 'the deleted page and the protected one are left out');
+	pg_assert_same(array('Bags'), array_column($rows[2], '__menu_item_name'), 'the offline page is left out with its sub-items');
+	pg_assert_false(isset($rows[3]), 'nothing under the offline page');
+
+	$rows = pg_sw_list_menu_rows($items, 0, function ($folder) { return true; }, null, function ($folder) { return (int)$folder === 9; });
+	pg_assert_same(array('Shoes', 'Bags'), array_column($rows[2], '__menu_item_name'), 'a manager still sees the offline page');
+	pg_assert_same(array('Shop', 'Members', 'Help'), array_column($rows[0], '__menu_item_name'), 'not the deleted one');
+}
+
 function test_menu_widget_target_stamp()
 {
 	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
@@ -101,6 +121,8 @@ function test_menu_widget_target_stamp()
 	pg_assert_same('^^__menu_item_target^^', $tree['children'][0]['props']['target'], 'an item\'s link takes its window');
 	pg_assert_same('_self', $tree['children'][1]['props']['target'], 'a window the designer set stays');
 	pg_assert_false(isset($tree['children'][2]['props']['target']), 'other links are left');
+	pg_assert_same('^^__menu_item_rel^^', $tree['children'][0]['props']['rel'], 'an item\'s link takes its rel');
+	pg_assert_false(isset($tree['children'][2]['props']['rel']), 'other links keep theirs');
 }
 
 // What the renderer does: the main loop over the top level, a list of the
@@ -147,7 +169,7 @@ function test_menu_widget_lists_drawn()
 	preg_match_all('#class="(l[123])"[^>]*>([^<]*)<#', $html, $m);
 	pg_assert_same(array('l1', 'l1', 'l2', 'l3', 'l2', 'l1', 'l2', 'l1'), $m[1], 'the levels nest');
 	pg_assert_same(array('Home', 'Shop', 'Shoes', 'Boots', 'Bags', 'Members', 'Directory', 'Help'), $m[2], 'each row lists its own sub-items');
-	pg_assert_contains('href="https://example.com/help?a=1&amp;b=2" target="_blank"', $html, 'escaped once, with its window');
+	pg_assert_contains('href="https://example.com/help?a=1&amp;b=2" target="_blank" rel="noopener"', $html, 'escaped once, with its window and noopener');
 	pg_assert_false(strpos($html, '<!--pg-') !== false, 'no marker left');
 	pg_assert_false(strpos($html, '^^') !== false, 'no token left');
 }
@@ -165,4 +187,27 @@ function test_menu_widget_registered()
 	pg_assert_contains("case 'menu_region': {", $js, 'has a starter tree');
 	pg_assert_contains("menu_region:       SW_MENU_REGION_TOKEN_GROUPS", $js, 'has a token palette');
 	pg_assert_contains("comments_recent: 1, menu_region: 1,", $js, 'draws no Messages block');
+}
+
+// A menu item's page that is a draft or in the recycle bin (folder 5 here) is
+// shown only to who may view it, even with the item's access switch off.
+function test_menu_item_to_a_page_off_the_site()
+{
+	$visitor = function ($folder) { return (int)$folder === 1; };
+	$staff   = function ($folder) { return true; };
+	$item = array('link_page_name' => 'launch', 'link_page_folder_id' => 5, 'security' => 0);
+	$off = function ($ids) { return function ($folder) use ($ids) { return in_array((int)$folder, $ids, true); }; };
+
+	pg_assert_false(pg_menu_item_shown($item, $visitor, $off(array(5, 7))), 'a draft is not linked for a visitor');
+	pg_assert_true(pg_menu_item_shown($item, $staff, $off(array(5, 7))), 'staff who may view the draft see it');
+	pg_assert_true(pg_menu_item_shown($item, $visitor, $off(array())), 'not off the site, switch off: shown');
+	pg_assert_true(pg_menu_item_shown(array('link_page_name' => 'about', 'link_page_folder_id' => 3, 'security' => 0), $visitor, $off(array(5))), 'switch off: shown');
+	pg_assert_false(pg_menu_item_shown(array('link_page_name' => 'about', 'link_page_folder_id' => 3, 'security' => 1), $visitor, $off(array(5))), 'switch on: the folder decides');
+	pg_assert_true(pg_menu_item_shown(array('link_page_name' => '', 'link_page_folder_id' => 0, 'security' => 1), $visitor, $off(array(5))), 'no page: shown');
+
+	$items = _mw_items();
+	$items[2]['link_page_folder_id'] = 5;
+	$rows = pg_sw_list_menu_rows($items, 0, $visitor, null, $off(array(5)));
+	pg_assert_same(array('Bags'), array_column($rows[2], '__menu_item_name'), 'the draft and what is under it are left out');
+	pg_assert_false(isset($rows[3]));
 }

@@ -26,4 +26,7 @@ description: Contacts, Users, Products, Submitted Forms and Campaign Profiles CS
 
 ## How is the list capped?
 - `pg_csv_problem_list($problems)` turns `array(line, reason)` pairs into texts: the first 20, then 'and n more line(s) that could not be used.'. Not escaped: callers `h()` each line. Also `pg_csv_row_lines()`, `pg_csv_row_blank()`, `pg_csv_headings_text()`.
-- Tests: `tests/csv_import_feedback_test.php`. Encoding (Windows-1254 files) is not handled.
+- Tests: `tests/csv_import_feedback_test.php`.
+
+## Which encoding is a file read in?
+- `pg_csv_open()` hands every importer UTF-8 lines: a line that is not UTF-8 is converted from Windows-1254 (ISO-8859-9 where mbstring lacks it) by `pg_csv_utf8_handle()`; UTF-8 lines stay as they are. Before, Excel's Turkish "CSV (Comma delimited)" stored `Güral` as `G`. Tests: `tests/csv_import_export_hunt_test.php`.

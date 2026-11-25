@@ -48,6 +48,13 @@ if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'order 
     output_error(lang('An order preview page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// The payment service's own message may have completed the order before
+// the visitor came back: init.php has let go of it, and the return leads
+// to its receipt instead of checking out a new, empty order.
+if ($is_gateway_return) {
+    pg_payment_return_receipt('order_preview', $_GET['mode'] ?? '');
+}
+
 initialize_order();
 
 // A changed "Use my store credit" choice (or its Update button) shows the
@@ -81,7 +88,7 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                 FROM order_items
                 LEFT JOIN products ON order_items.product_id = products.id
                 WHERE
-                    (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                    (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                     AND products.gift_card = '0'") == 0
         ) {
             $liveform->assign_field_value('gift_card_code', '');

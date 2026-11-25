@@ -336,10 +336,10 @@ function ws_wtable_home_card($viewer, $table, $self_url)
                         ' . get_token_field() . '
                         <input type="hidden" name="wt_action" value="table_home">
                         <input type="hidden" name="wt_table" value="' . (int) $table['id'] . '">
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_home_channel">' . h(lang('Move to')) . '</label>
-                            <select class="form-control form-control-sm" name="channel" id="ws_wt_home_channel" data-pg-combobox>' . $options . '</select>
-                            <div class="form-text">' . h(lang('In a channel the table is nobody\'s alone: the channel\'s managers decide about it from then on. Its columns, rows and shares stay.')) . '</div></div>
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Move')) . '</button>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_home_channel">' . h(lang('Move to')) . '</label>
+                            <select class="pg-input pg-input-sm" name="channel" id="ws_wt_home_channel" data-pg-combobox>' . $options . '</select>
+                            <div class="pg-field-help">' . h(lang('In a channel the table is nobody\'s alone: the channel\'s managers decide about it from then on. Its columns, rows and shares stay.')) . '</div></div>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Move')) . '</button>
                     </form>';
     }
 

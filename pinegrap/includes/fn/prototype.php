@@ -1291,7 +1291,8 @@ function pg_proto_frame_comment_css()
         . '.pg-proto-pin:focus-visible{outline:3px solid rgba(13,110,253,.5);outline-offset:2px}'
         . '.pg-proto-pin-done{background:#6c757d}'
         . '.pg-proto-pin-on{box-shadow:0 0 0 3px rgba(13,110,253,.45),0 2px 6px rgba(0,0,0,.35)}'
-        . '.pg-proto-pin-draft{background:#fff;color:#0d6efd;border:2px dashed #0d6efd}';
+        . '.pg-proto-pin-draft{background:#fff;color:#0d6efd;border:2px dashed #0d6efd}'
+        . '.pg-proto-mark{position:absolute;box-sizing:border-box;border:2px solid #fd7e14;background:rgba(253,126,20,.08);border-radius:2px;pointer-events:none}';
 }
 
 /**
@@ -1299,15 +1300,16 @@ function pg_proto_frame_comment_css()
  * inside its closure: `cfg.pin`, `root` and `pgComment` (the click hook
  * registered before the link handler, so a click in the mode follows no
  * link) are there. Messages from the viewer: `comment` with on, pins
- * [{id, n, node, x, y, done}], draft {node, x, y} or null, and active (a pin
- * id). To the viewer: `place` {node, x, y, vx, vy}, `pin` {id, vx, vy} and
+ * [{id, n, node, x, y, done}], draft {node, x, y} or null, active (a pin
+ * id) and marks (node ids "Show what changed" outlines, drawn under the
+ * pins whatever the mode). To the viewer: `place` {node, x, y, vx, vy}, `pin` {id, vx, vy} and
  * `missing` {ids}: the pins whose node is not drawn on the page.
  *
  * @return string
  */
 function pg_proto_frame_comment_script()
 {
-    return 'var pins = [], draft = null, active = 0, layer = null, lastMissing = "", tick = 0, timer = 0;'
+    return 'var pins = [], marks = [], draft = null, active = 0, layer = null, lastMissing = "", tick = 0, timer = 0;'
         . 'var NODE = /^[A-Za-z0-9_-]{1,64}$/;'
         . 'function num(v) { return typeof v === "number" && isFinite(v) && v >= 0 && v <= 100; }'
         . 'function pinOk(p) { return p && NODE.test(String(p.node)) && num(p.x) && num(p.y); }'
@@ -1318,6 +1320,15 @@ function pg_proto_frame_comment_script()
         . 'if (!document.body) return;'
         . 'if (!layer) { layer = document.createElement("div"); layer.className = "pg-proto-pins"; document.body.appendChild(layer); }'
         . 'layer.textContent = "";'
+        . 'marks.forEach(function (id) {'
+        . 'var r = drawn(nodeEl(id));'
+        . 'if (!r) return;'
+        . 'var m = document.createElement("div");'
+        . 'm.className = "pg-proto-mark";'
+        . 'm.style.left = Math.round(r.left) + "px"; m.style.top = Math.round(r.top) + "px";'
+        . 'm.style.width = Math.round(r.width) + "px"; m.style.height = Math.round(r.height) + "px";'
+        . 'layer.appendChild(m);'
+        . '});'
         . 'var missing = [], list = pins.slice();'
         . 'if (draft) list.push({ id: 0, n: "+", node: draft.node, x: draft.x, y: draft.y });'
         . 'list.forEach(function (p) {'
@@ -1342,7 +1353,7 @@ function pg_proto_frame_comment_script()
         . 'window.addEventListener("load", soon);'
         // A page that moves on its own (a slider, an image loading late)
         // moves the nodes under the pins.
-        . 'function watch() { clearInterval(timer); timer = (pgComment.on && pins.length + (draft ? 1 : 0)) ? setInterval(soon, 700) : 0; }'
+        . 'function watch() { clearInterval(timer); timer = ((pgComment.on && pins.length + (draft ? 1 : 0)) || marks.length) ? setInterval(soon, 700) : 0; }'
         . 'window.addEventListener("message", function (e) {'
         . 'if (e.source !== window.parent || !e.data || e.data.pgPrototype !== "comment") return;'
         . 'pgComment.on = !!e.data.on;'
@@ -1350,6 +1361,7 @@ function pg_proto_frame_comment_script()
         . 'pins = Array.isArray(e.data.pins) ? e.data.pins.filter(function (p) { return pinOk(p) && typeof p.id === "number" && p.id > 0; }).slice(0, 500) : [];'
         . 'draft = pinOk(e.data.draft) ? e.data.draft : null;'
         . 'active = (typeof e.data.active === "number") ? e.data.active : 0;'
+        . 'marks = Array.isArray(e.data.marks) ? e.data.marks.filter(function (id) { return typeof id === "string" && NODE.test(id); }).slice(0, 500) : [];'
         . 'lastMissing = null;'
         . 'draw(); watch();'
         . '});'
@@ -1383,7 +1395,9 @@ function pg_proto_frame_comment_script()
  *                    empty_text (optional: what an empty set says),
  *                    wide_pages (optional: the page chooser is not held
  *                    to 16rem, for a release bundle's longer names),
- *                    comments (optional)
+ *                    comments (optional), review_states (optional: page
+ *                    id => pg_proto_review_page_states() state, marked in
+ *                    the page list)
  * @return string
  */
 function pg_proto_shell_html($view)
@@ -1400,11 +1414,20 @@ function pg_proto_shell_html($view)
     $version = function ($path) {
         return (string) @filemtime(PG_FUNCTIONS_DIR . $path);
     };
+    // The bar's tool buttons share one look.
+    $tool = 'btn btn-sm btn-outline theme-primary';
     // The comment mode only with a frame to comment on.
     $comments = (isset($view['comments']) && is_array($view['comments']) && ($frame_url !== '') && ($error === '') && $pages) ? $view['comments'] : null;
 
     $index = -1;
     $options = '';
+    $review_states = (isset($view['review_states']) && is_array($view['review_states'])) ? $view['review_states'] : array();
+    $review_words = array(
+        'approved' => lang('Approved'),
+        'changes_requested' => lang('Changes requested'),
+        'not_reviewed' => lang('Not reviewed'),
+        'changed' => lang('Changed since'),
+    );
 
     foreach ($pages as $position => $page) {
         if ($page['id'] === $current) {
@@ -1421,6 +1444,13 @@ function pg_proto_shell_html($view)
         // page it stands for.
         if (!empty($page['replaces'])) {
             $label .= ' (' . lang(array('string' => 'replaces {var:1}', 'vars' => array(((string) $page['replaces_name'] !== '') ? (string) $page['replaces_name'] : '#' . (int) $page['replaces']))) . ')';
+        }
+
+        // A link asking approval marks each page with its review state.
+        $review = isset($review_states[$page['id']]) ? (string) $review_states[$page['id']] : '';
+
+        if (isset($review_words[$review])) {
+            $label .= ' · ' . $review_words[$review];
         }
 
         $options .= '<option value="' . h(pg_proto_viewer_url($viewer, $page['id'])) . '"' . (($page['id'] === $current) ? ' selected' : '') . '>' . h($label) . '</option>';
@@ -1518,8 +1548,9 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 <div class="pg-proto-title"><span class="badge theme-primary">' . h(lang('Prototype')) . '</span><span class="pg-proto-name" title="' . h($design) . '">' . h($design) . '</span></div>
 ' . $nav . '
 <div class="pg-proto-tools">
-' . (($comments !== null) ? '<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-comment" aria-pressed="false" title="' . h(lang('Click a spot on the page to leave a comment')) . '"><span class="bi bi-chat-left-text" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Comment')) . '</span> <span class="badge theme-primary d-none" data-pc-count></span></button>' : '') . '
-<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
+' . (($comments !== null) && !empty($comments['review']) ? '<span class="pg-proto-review-state small" id="pg-proto-review-state" role="status"></span><button type="button" class="' . $tool . '" id="pg-proto-review" title="' . h(lang('Review this page')) . '"><span class="bi bi-patch-check" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Review this page')) . '</span></button>' : '') . '
+' . (($comments !== null) ? '<button type="button" class="' . $tool . '" id="pg-proto-comment" aria-pressed="false" title="' . h(lang('Click a spot on the page to leave a comment')) . '"><span class="bi bi-chat-left-text" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Comment')) . '</span> <span class="badge theme-primary d-none" data-pc-count></span></button>' : '') . '
+<button type="button" class="' . $tool . '" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
 ' . (($close_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary" id="pg-proto-close" href="' . h($close_url) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>' : '') . '
 </div>
 </nav>
@@ -1618,9 +1649,14 @@ function pg_proto_shell_comment_css()
 .pg-proto-item-head .badge, .pg-proto-item-time { flex: 0 0 auto; }
 .pg-proto-item-time { font-size: .75rem; white-space: nowrap; }
 .pg-proto-item-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pg-proto-review-state { min-width: 0; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pg-fg-2); }
+.pg-proto-review-state:empty { display: none; }
+.pg-proto-cbar-changes::before { content: ""; display: inline-block; width: .75rem; height: .75rem; margin-right: .375rem; vertical-align: -.1em; border: 2px solid #fd7e14; border-radius: 2px; }
+.pg-proto-choices { display: flex; flex-wrap: wrap; gap: .375rem; margin-bottom: .5rem; }
 @media (max-width: 575.98px) {
   .pg-proto-cbar { padding: .375rem .75rem; }
   .pg-proto-gone { flex-basis: 100%; }
+  .pg-proto-review-state { max-width: 9rem; }
   .pg-proto-box { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; max-width: none; max-height: 70vh; border-radius: .75rem .75rem 0 0; }
   /* Under 16px iOS zooms the page in when a field is tapped. */
   .pg-proto-box .form-control { font-size: 16px; }

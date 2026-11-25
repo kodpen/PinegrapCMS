@@ -397,3 +397,31 @@ function test_submitted_form_list_total_and_gone_pick()
 	pg_submitted_form_list_defaults($forms);
 	pg_assert_same('40', $_SESSION['software']['forms']['view_submitted_forms']['custom_form']);
 }
+
+// Every record's field cells follow the heading list: a value is never
+// printed under another field's heading, a field without a value is an
+// empty cell, a check box group's rows are joined, and a value of a field
+// that is no column is left out.
+function test_submitted_form_export_row_follows_headings()
+{
+	$fields = array(
+		array('id' => '30', 'name' => 'email'),
+		array('id' => '7', 'name' => 'colours'),
+		array('id' => '12', 'name' => 'note'),
+	);
+	$values = array(
+		'12' => array('Hello'),
+		'7' => array('red', 'blue'),
+		'99' => array('dropped'),
+	);
+
+	pg_assert_same(array('', 'red, blue', 'Hello'), pg_submitted_form_export_row($fields, $values));
+	pg_assert_same(array(), pg_submitted_form_export_row(array(), $values), 'no field columns');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_submitted_forms.php');
+	pg_assert_true(strpos($source, 'pg_submitted_form_export_row($export_fields') !== false, 'the export prints rows against the heading list');
+	pg_assert_true(strpos($source, 'LEFT JOIN form_data') === false, 'no second field query whose order could differ from the headings');
+
+	$list = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+	pg_assert_true(strpos($list, 'ORDER BY sort_order, id') !== false, 'equal sort orders settled by id');
+}

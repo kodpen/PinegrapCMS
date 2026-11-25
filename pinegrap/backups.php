@@ -75,10 +75,10 @@ $list_state = pg_list_state('backups', $sort_columns, array('sort' => 'last_modi
 
 foreach ($directory as $backup_number => $backup_folder) {
 	$backup_is_archive = is_file('data/backups/'.$backup_folder);
-	// A folder without its dump (a delete that stopped half-way, a copy
-	// that never finished) cannot be restored, so it is not offered for
-	// download as if it were a backup.
-	$backup_incomplete = !$backup_is_archive && !is_file('data/backups/'.$backup_folder.'/sql.sql');
+	// A folder without its dump (a delete that stopped half-way), or one
+	// whose writer has not finished (pg_backup_folder_complete()), is not
+	// offered for download as if it were a backup.
+	$backup_incomplete = !$backup_is_archive && !pg_backup_folder_complete('data/backups/'.$backup_folder);
 	$backup_time = (int) $backup_times[$backup_folder];
 	$backup_size = (int) ($backup_is_archive ? filesize('data/backups/'.$backup_folder) : folderSize('data/backups/'.$backup_folder));
 	// A starter-site dump stays deletable, but its confirmation names
@@ -92,7 +92,7 @@ foreach ($directory as $backup_number => $backup_folder) {
 		'cells' => array(
 			'name' => pg_list_cell(h($backup_folder) . '
 				<span class="badge rounded-pill ' . ($backup_is_archive ? 'theme-primary' : 'theme-secondary') . ' ms-1">' . ($backup_is_archive ? lang('Archive') : lang('Folder')) . '</span>' . ($backup_incomplete ? '
-				<span class="badge rounded-pill theme-warning ms-1" title="' . h(lang('This folder holds no database dump and cannot be restored.')) . '">' . lang('Incomplete') . '</span>' : ''),
+				<span class="badge rounded-pill theme-warning ms-1" title="' . h(lang('This folder holds no complete backup and cannot be restored.')) . '">' . lang('Incomplete') . '</span>' : ''),
 				'align-middle', array('data-pg-sort-value' => $backup_folder)),
 			'last_modified' => pg_list_cell('<time datetime="' . date('c', $backup_time) . '">' . h(get_absolute_time(array('timestamp' => $backup_time, 'format' => 'plain_text'))) . '</time>',
 				'align-middle', array('data-pg-sort-value' => $backup_time)),

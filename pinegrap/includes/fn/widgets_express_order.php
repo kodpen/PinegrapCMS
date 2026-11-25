@@ -195,21 +195,16 @@ function _eo_restore_cart_from_reference_code()
     $new_oid  = (int)$row['id'];
     $_SESSION['ecommerce']['order_id'] = $new_oid;
 
-    // The link of a message sent to the left cart was followed.
     if ($prev_oid !== $new_oid) {
+        // The link of a message sent to the left cart was followed.
         pg_cart_recovery_restored($new_oid);
-    }
 
-    // Ownership transfer: initialize_order() ALREADY updates orders.user_id
-    // and contact_id to the current visitor when they\'re logged in (see
-    // functions.php:6335-6351). So once we swap order_id here, the next
-    // initialize_order() call rebinds the cart to the link clicker — the
-    // cart is assigned to whoever uses the link, which is the intended
-    // behavior.
-    //
-    // For GUEST visitors we leave user_id as-is (the original owner). A
-    // guest can\'t take ownership because they don\'t have an account; if
-    // they later log in, initialize_order() picks up the transfer.
+        // The order belongs to whoever completes it: the signed-in opener, or
+        // no account for a guest. Opening the link again in the same session
+        // writes nothing, and a builder who completes the cart in their own
+        // session gets it back through initialize_order()'s rebinding.
+        pg_cart_link_take_over($new_oid);
+    }
 
     // Surface a one-shot notice so the visitor knows the cart was restored.
     // liveform notice is the channel cart/express-order widgets render via
@@ -2700,7 +2695,9 @@ function _eo_render_applied_offers()
 // lines 1732-1737 ("Bu Sepet Kaydedildi ..."). reference_code lives on
 // the orders row; we wrap it in the current page's URL with `?r=CODE`.
 // Returns empty string when no order exists yet (initial visit / no items).
-function _eo_render_saved_cart_link($cart_label)
+// The address that restores the visitor's cart (the current page with
+// `?r=<reference code>`), '' when there is no order or no code yet.
+function _eo_saved_cart_url()
 {
     $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     if ($order_id <= 0) return '';
@@ -2717,7 +2714,13 @@ function _eo_render_saved_cart_link($cart_label)
         $ru = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
         $page_name = ltrim(preg_replace('/\?.*$/', '', $ru), '/');
     }
-    $retrieve_url = $base_path . $page_name . '?r=' . rawurlencode($ref);
+    return $base_path . $page_name . '?r=' . rawurlencode($ref);
+}
+
+function _eo_render_saved_cart_link($cart_label)
+{
+    $retrieve_url = _eo_saved_cart_url();
+    if ($retrieve_url === '') return '';
     $lbl = $cart_label !== '' ? $cart_label : (string)lang('cart');
     // alert-secondary auto-adapts to data-bs-theme="dark|light" via Bootstrap
     // 5.3 dark-mode CSS variables. alert-light has FIXED light bg and would

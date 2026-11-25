@@ -21,9 +21,7 @@ module: lead_score
 - On a catalogue page the product's groups replace the folder (a product in several groups shares its seconds evenly); a product group page counts that group. Never the catalogue's top group (`parent_id` 0). An item gone from the catalogue falls back to the folder (`pg_lead_interest_categories()`). The item comes from the visit's page row (`visitors/lead-journey-store.md`).
 
 ## How does the pass run?
-- `job.php` calls `pg_lead_score_run()` every tick; it works only every 600 s (`PG_LEAD_SCORE_EVERY`) unless a pass is unfinished, within 10 s of the tick (`pg_cron_time_left()`), 200 contacts a run.
-- Pass record config_text `lead_score_pass` `{since, started}`, claimed with `pg_config_text_claim()` so overlapping runs do not both go. Candidates: a visit started since `since` − 1 day (a visit still going), a journey row since `since`, a score with interest over 0 not worked out for a day (fading); minus those already scored in this pass (`scored_at` ≥ `started`).
-- `pg_lead_score_contact()`: a contact with panel work, no visit any more or no contacts row loses its row. Writes `interest`, `fit`, `reasons` `{interest, fit}`, `topics`, `points` `{at, kinds}`, `hot` (interest ≥ threshold), `hot_at` set when it turns hot, `last_visit_at`, `touched_at` (newest journey row), `scored_at`. `returned_at` and the events: `visitors/lead-tell.md`.
+- `job.php` calls `pg_lead_score_run()`; which contacts it works out, what it writes and what marks a row for work: `visitors/lead-score-pass.md`.
 
 ## Where is it shown?
 - Contact screen, second column under the picture: card "Interest" (`pg_lead_score_contact_card()`), only once scored: Interest and Fit figures of 100, a "Hot" pill, "Why" (top three of both reasons), "Interested in" pills.
@@ -31,4 +29,4 @@ module: lead_score
 - Contacts list: the "Score" column (`visitors/lead-score-settings.md`).
 
 Tests: `tests/lead_score_test.php`.
-Related: docs/memory/visitors/lead-score-settings.md, docs/memory/visitors/lead-journey-rules.md, docs/memory/visitors/lead-journey-view.md
+Related: docs/memory/visitors/lead-score-pass.md, docs/memory/visitors/lead-score-settings.md, docs/memory/visitors/lead-journey-rules.md, docs/memory/visitors/lead-journey-view.md

@@ -10,7 +10,7 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 - Amount: `pg_return_amount_cents()` (dot or comma, two decimals), more than 0 for a driver; its cap by method: `gift-card-part-owed.md`.
 
 ## What does the card suggest?
-- ERP off: `pg_return_refund_estimate()` from order_items (unit price, the line tax's share, the order discount spread by line value with the tax taken on what is left). ERP on: `erp_order_refund_amount()` on `erp_order_refund_lines()`, the return invoice's own figure. Shipping is never included; staff add it for a whole return.
+- ERP off: `pg_return_refund_estimate()` from order_items (unit price, the line tax's share, the order discount spread by line value with the tax taken on what is left), never below 0. ERP on: `erp_order_refund_amount()` on `erp_order_refund_lines()`, the return invoice's own figure. Shipping is never included; staff add it for a whole return.
 - Invoice lines are matched to order lines by position and product (`pg_return_erp_line_map()`; `erp_order_lines()` writes goods first, in order line order). No match → ERP amount and hand-off skipped, estimate kept.
 - Lines the order did not charge (a subscription starting later, `erp_order_charged_items()`) come in the source's `left_out` and get no map entry: always skipped on the order's lines, on an invoice only when the line at that position is not their product (older invoices still carry them). Before (#1156) such an order had no map: the estimate spread the discount onto the unpaid line (11200 instead of 10800) and no hand-off was offered.
 

@@ -141,7 +141,7 @@ function test_user_picker_local_lists()
 		'includes/settings/bookings.php' => '<select name="booking_staff_add"\' . $booking_joins . \' id="booking_staff_add" class="form-control" data-pg-combobox data-pg-booking-pick>',
 		'edit_booking.php' => '<select class="form-control" id="choice_staff" name="staff_id" data-pg-combobox',
 		'view_bookings.php' => '<select class="form-control form-control-sm" id="bookings_staff" name="staff" data-pg-combobox>',
-		'workspace_wtables.php' => '<select class="form-control form-control-sm" name="target" id="ws_wt_share_target" required data-pg-combobox>',
+		'workspace_wtables.php' => '<select class="pg-input pg-input-sm" name="target" id="ws_wt_share_target" required data-pg-combobox>',
 	);
 
 	foreach ($pins as $file => $pin) {

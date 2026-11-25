@@ -24,7 +24,7 @@
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents [decision: decisions-made-product-39.md]
 - backup-folder-download-zip.md: Backup Manager Download and File Manager Zip of a folder backup: one writer with "/" names; the archive inside the folder is rebuilt when the backup was updated after it.
-- backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders [decision: decisions-made-product-26.md]
+- backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, overwrite question, step errors, list order, incomplete folders (no dump or writer marker) [decision: decisions-made-product-26.md]
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-remote-stored-secret.md: Settings › Backups: an empty FTP password box keeps the stored password only for the same host, port and TLS; the S3 secret key is kept as is, since SigV4 never sends it
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
@@ -48,6 +48,7 @@
 - content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out [decision: decisions-made-product-10.md, decisions-made-product-65.md]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
+- cookie-consent-new-question.md: A page that asks about a category the visitor has not answered yet: allowed scripts start while it waits, closing refuses only the new category (PR #11461)
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product-87.md, decisions-made-product.md]
 - curl-run-callers.md: Which outgoing calls use pg_curl_run(), what moving each changed (VERIFYHOST, proxy, http refused, TLS settings), which stay raw and why.
 - curl-run-wrapper.md: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule and allow_http, where its callers are listed.
@@ -117,7 +118,7 @@
 - import-media.md: Content import pages and media (2026.11.0): page items as draft designer pages, attachments and body pictures fetched into Files, body addresses rewritten, notes in the report
 - import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long names cut before the uniqueness check; missing URL parts read as empty; the backup of an existing file
 - import-records.md: Content import record and comment writers (2026.11.0): a post as a record of the mapped form, field kinds, categories and tags, author account, late featured image, comment threads, undo paths
-- import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo
+- import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo [decision: decisions-made-schema-52.md]
 - import-screen.md: import.php screen rules: menu entry, picker choices (no Recycle Bin or Workspace, path labels), field rows by type, dry run refusals, discard and 7-day sweep, undo answers
 - import-shopify.md: Shopify products and customers CSV import (2026.11.0, #6236): rows grouped by handle, product items as WooCommerce, the contact writer, consent line, tag groups, undo
 - import-woocommerce.md: WooCommerce products CSV import (2026.11.0, #6206): reader, item shape, variable products as variant sets, categories as groups, the product writer and its undo
@@ -128,6 +129,7 @@
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter [decision: decisions-made-data.md]
 - iys-settings-card.md: The İYS account's fields (on İYS's page of Connections since CX11d, includes/iys/settings.php): save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers [decision: decisions-made-customers.md, decisions-made-product-8.md]
+- job-abandoned-orders-lock.md: The general job's abandoned-order pass runs one at a time under its own cron_runs lock (job_order_abandoned), so two ticks never make two order_abandoned campaigns for one order
 - job-pass-time-claim.md: Window passes of the general job (booking reminders, store credit expiring notices) claim their config_text pass time with pg_config_text_claim(), so overlapping runs never both send
 - job-script-claims.md: Mailing job scripts (membership, ERP overdue, ERP accountant) take the cron_runs lock when started by crontab or by hand; which job scripts were left without one [decision: decisions-made-schema-24.md]
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required, visitor cookies cleared), and why the text parameters must be strings
@@ -165,6 +167,7 @@
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
+- office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells, rows, columns and paragraphs, .pptx and .xls only shown, no .doc/.ppt, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: decisions-made-workspace-45.md]
@@ -182,6 +185,7 @@
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, cells without r, times and durations (#1118), the styles part the relationships name (#10765)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
+- ops-alerts-bell.md: Who sees an operations alert on the bell, the device banner and the API, where its bell row opens, how it names a webhook (pg_ops_alert_visible(), pg_ops_alert_bell_url(), pg_ops_alert_mask_url())
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits [decision: decisions-made-product-84.md]
 - page-cache-background-writers.md: How the content import, the translation job and the bulk move to the visual designer mark the page cache dirty outside a signed-in request
 - page-cache-decisions.md: Why Pinegrap has its own anonymous page cache and the lasting decisions behind it (PRs #1382, #1402): no CDN dependence, off by default, what is never cached, how to measure
@@ -205,8 +209,10 @@
 - redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere, why it checks only the first two characters, and why it percent-encodes non-ASCII bytes.
 - redirect-validator-context.md: Redirect validation corner rules: leave escape_url() alone, validators are context-bound (pg_safe_back_url vs go()), go() hardening, no hand-written checks. [decision: decisions-made-access.md]
 - restore-files-placement.md: The install-screen restore replaces data/files and data/layouts only when the disk holds the backup's files, and names files it could not write (pg_restore_place_folder())
+- restore-newer-version-refused.md: The install-screen restore refuses a backup taken with a newer software version, after loading and before the swap, so the site is never changed (pg_restore_version_newer())
 - router-no-functions-php.md: What runs before functions.php is loaded (router.php, the firewall's router phase, get_file.php), why lang() is unavailable there, and the waf_text() / get_file_text() wrappers.
 - scheduled-comment-claim.md: How job.php publishes scheduled comments: a conditional claim (pg_comment_schedule_claim_sql) so overlapping job runs never send the comment e-mails twice
+- scheduled-job-light-budgets.md: Which dispatched jobs cap their own time budget by pg_cron_time_left(), and why a light job that does not can shut the whole light lane for an hour
 - scheduled-job-resume.md: Resumable dispatched passes (#4744): tick budget inside job.php's time limit, pg_cron_due_again(), the _done completion markers the health screens read, minute locks
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
 - search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked [decision: decisions-made-product-18.md]
@@ -252,6 +258,7 @@
 - system-status-ca-bundle.md: The "CA Store" and "CA Certificate Bundle" system status checks - which store outbound TLS verifies against and why, the probe from System Status, the bundle age, thresholds, weights and cache.
 - system-status-check-rules.md: System Status rules - a check row and its button share one read, the cache dropped by pg_system_status_forget() after a save, per-check detail boxes, confirm tiles on buttons.
 - system-status-php-security-fixes.md: The "PHP Security Fixes" System Status check (PHP2Shell, CVE-2026-109618/109619): fixed releases, build date, four states, and the Docker image's upload progress setting
+- theme-activation-page-styles.md: What turning a theme file on or off does to the pages' styles: preview_styles rows per theme and device type, written when it goes off (replaced or turned off alone), applied when it comes on
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref [decision: decisions-made-product-5.md]
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller and how the Kodpen API path sends it, the api2-only helpers, download_assistant stays stable, switching, version format.

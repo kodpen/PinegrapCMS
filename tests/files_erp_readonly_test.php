@@ -54,3 +54,26 @@ function test_files_erp_readonly_image_editor_refuses_before_any_write()
 	pg_assert_true($guard < strpos($body, 'check_edit_access('), 'before the folder right is asked');
 	pg_assert_contains("pg_image_editor_refusal(lang('ERP documents are read-only in the file manager.'), 403)", $body, 'the same sentence as the other doors');
 }
+
+// The visual designer's file actions name a file by its stored name, and an
+// ERP document is a `files` row like any other: none of them reads,
+// overwrites or deletes one (an issued invoice is served only with the ERP
+// right, and keeps its PDF).
+function test_files_erp_readonly_designer_file_actions_refuse()
+{
+	$source = files_erp_readonly_test_source('includes/panel/designer.php');
+	$start = strpos($source, 'function pg_panel_designer_file(');
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 10) - $start);
+
+	foreach (array('read', 'delete', 'save') as $action) {
+		$from = strpos($body, "case '" . $action . "':");
+		$to = strpos($body, 'break;', $from);
+		$branch = substr($body, $from, $to - $from);
+		$guard = strpos($branch, 'pg_panel_designer_file_erp_refused($df_name_safe)');
+
+		pg_assert_true($guard !== false, $action . ' asks');
+		pg_assert_true($guard < strpos($branch, 'FILE_DIRECTORY_PATH'), $action . ' asks before the file is touched');
+	}
+
+	pg_assert_contains('pg_files_include_erp_document(', $source, 'the shared check');
+}

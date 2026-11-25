@@ -284,14 +284,15 @@ function ws_settings_mask($days)
  */
 function ws_settings_days_html($name, $mask, $id_prefix, $label = '', $disabled = false)
 {
-    $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
+    $output = '<div class="pg-seg ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
 
     foreach (ws_weekday_short_names() as $day => $label) {
         $id = $id_prefix . '_' . $day;
 
-        $output .= '<input type="checkbox" class="btn-check" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
+        $output .= '<label class="pg-seg-item" for="' . h($id) . '">'
+            . '<input type="checkbox" class="visually-hidden" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
             . (($mask & (1 << ($day - 1))) ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>'
-            . '<label class="btn btn-outline theme-secondary" for="' . h($id) . '">' . h($label) . '</label>';
+            . h($label) . '</label>';
     }
 
     return $output . '</div>';
@@ -1312,7 +1313,7 @@ function ws_holidays_rows_html($departments, $button)
                 <td>' . h($event['title']) . '</td>
                 <td class="text-nowrap">' . h($when) . ((int) $event['yearly'] === 1 ? ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>' : '') . '</td>
                 <td>' . ws_holidays_whom($departments, ((string) $event['scope'] === 'department') ? $event['department_id'] : 0) . '</td>
-                <td class="text-end">' . ws_holidays_button($button, 'holiday_remove', array('event_id' => (int) $event['id']), 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-trash" aria-hidden="true"></i>', lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Remove'), $event['title'])))) . '</td>
+                <td class="text-end">' . ws_holidays_button($button, 'holiday_remove', array('event_id' => (int) $event['id']), 'pg-icon-button pg-icon-button-sm', '<i class="bi bi-trash" aria-hidden="true"></i>', lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Remove'), $event['title'])))) . '</td>
             </tr>';
     }
 
@@ -1377,7 +1378,7 @@ function ws_holiday_feed_days_html($feed, $button)
                 <li class="ws-feed-day' . ($off ? ' ws-feed-day-off' : '') . '">
                     <span class="fg-secondary text-nowrap">' . $when . '</span>
                     <span class="ws-grow">' . h($day['title']) . ($off ? ' <span class="badge theme-secondary">' . h(lang('Not counted')) . '</span>' : '') . '</span>
-                    ' . (ws_holiday_skip_ready() ? ws_holidays_button($button, 'feed_day', array('feed_id' => (int) $feed['id'], 'event_id' => (int) $day['id'], 'skip' => $off ? 0 : 1), 'btn btn-sm btn-link p-0', h($off ? lang('Count again') : lang('Do not count'))) : '') . '
+                    ' . (ws_holiday_skip_ready() ? ws_holidays_button($button, 'feed_day', array('feed_id' => (int) $feed['id'], 'event_id' => (int) $day['id'], 'skip' => $off ? 0 : 1), 'pg-button pg-button-ghost pg-button-sm', h($off ? lang('Count again') : lang('Do not count'))) : '') . '
                 </li>';
     }
 
@@ -1412,8 +1413,8 @@ function ws_holiday_feed_row_html($feed, $departments, $left_out, $button, $extr
                     <div class="small fg-secondary text-break">' . h(parse_url((string) $feed['url'], PHP_URL_HOST)) . ' · ' . $state . '</div>
                 </div>
                 ' . $extra . '
-                ' . ws_holidays_button($button, 'feed_sync', array('feed_id' => (int) $feed['id']), 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now'))) . '
-                ' . ws_holidays_button($button, 'feed_remove', array('feed_id' => (int) $feed['id']), 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-trash" aria-hidden="true"></i>', lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Remove'), $feed['name'])))) . '
+                ' . ws_holidays_button($button, 'feed_sync', array('feed_id' => (int) $feed['id']), 'pg-button pg-button-ghost pg-button-sm', '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Read now'))) . '
+                ' . ws_holidays_button($button, 'feed_remove', array('feed_id' => (int) $feed['id']), 'pg-icon-button pg-icon-button-sm', '<i class="bi bi-trash" aria-hidden="true"></i>', lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Remove'), $feed['name'])))) . '
             </div>';
 }
 
@@ -1476,16 +1477,16 @@ function ws_holidays_add_fields_html($action, $departments, $name, $prefix, $for
         return '
                     <div class="row g-3' . (($form === null) ? ' align-items-end mt-1' : '') . '">
                         <div class="' . (($form === null) ? 'lg:col-6' : 'col-12') . '">
-                            <label class="form-label small" for="' . $prefix . 'url">' . h(lang('Calendar address (iCal)')) . '</label>
-                            <input class="form-control form-control-sm" type="url" name="' . $field('url') . '" id="' . $prefix . 'url"' . $join . $required . ' placeholder="https://…/basic.ics">
+                            <label class="pg-field-label" for="' . $prefix . 'url">' . h(lang('Calendar address (iCal)')) . '</label>
+                            <input class="pg-input pg-input-sm" type="url" name="' . $field('url') . '" id="' . $prefix . 'url"' . $join . $required . ' placeholder="https://…/basic.ics">
                         </div>
                         <div class="col-6' . (($form === null) ? ' lg:col-3' : '') . '">
-                            <label class="form-label small" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
-                            <input class="form-control form-control-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="120">
+                            <label class="pg-field-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
+                            <input class="pg-input pg-input-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="120">
                         </div>
                         <div class="col-6' . (($form === null) ? ' lg:col-3' : '') . '">
-                            <label class="form-label small" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
-                            <select class="form-control form-control-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
+                            <label class="pg-field-label" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
+                            <select class="pg-input pg-input-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
                         </div>
                         <div class="' . (($form === null) ? 'sm:col-8' : 'col-12') . '">
                             <div class="form-field mb-0">
@@ -1498,21 +1499,21 @@ function ws_holidays_add_fields_html($action, $departments, $name, $prefix, $for
     return '
                             <div class="row g-3' . (($form === null) ? ' align-items-end' : '') . '">
                                 <div class="sm:col-12">
-                                    <label class="form-label small" for="' . $prefix . 'name">' . h(($form === null) ? lang('Add a holiday') : lang('Name')) . '</label>
-                                    <input class="form-control form-control-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="255"' . $required . (($form === null) ? ' placeholder="' . h(lang('Name')) . '"' : '') . '>
+                                    <label class="pg-field-label" for="' . $prefix . 'name">' . h(($form === null) ? lang('Add a holiday') : lang('Name')) . '</label>
+                                    <input class="pg-input pg-input-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="255"' . $required . (($form === null) ? ' placeholder="' . h(lang('Name')) . '"' : '') . '>
                                 </div>
                                 <div class="col-6' . (($form === null) ? ' sm:col-4' : '') . '">
-                                    <label class="form-label small" for="' . $prefix . 'from">' . h(lang('First day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" data-pg-date name="' . $field('from') . '" id="' . $prefix . 'from"' . $join . $required . '>
+                                    <label class="pg-field-label" for="' . $prefix . 'from">' . h(lang('First day')) . '</label>
+                                    <input class="pg-input pg-input-sm" type="date" data-pg-date name="' . $field('from') . '" id="' . $prefix . 'from"' . $join . $required . '>
                                 </div>
                                 <div class="col-6' . (($form === null) ? ' sm:col-4' : '') . '">
-                                    <label class="form-label small" for="' . $prefix . 'to">' . h(lang('Last day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" data-pg-date name="' . $field('to') . '" id="' . $prefix . 'to"' . $join . ' aria-describedby="' . $prefix . 'to_hint">
-                                    <div class="form-text" id="' . $prefix . 'to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
+                                    <label class="pg-field-label" for="' . $prefix . 'to">' . h(lang('Last day')) . '</label>
+                                    <input class="pg-input pg-input-sm" type="date" data-pg-date name="' . $field('to') . '" id="' . $prefix . 'to"' . $join . ' aria-describedby="' . $prefix . 'to_hint">
+                                    <div class="pg-field-help" id="' . $prefix . 'to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
                                 </div>
                                 <div class="' . (($form === null) ? 'sm:col-4' : 'col-12') . '">
-                                    <label class="form-label small" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
-                                    <select class="form-control form-control-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
+                                    <label class="pg-field-label" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
+                                    <select class="pg-input pg-input-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
                                 </div>
                                 <div class="' . (($form === null) ? 'sm:col-8' : 'col-12') . '">
                                     <div class="form-field mb-0">
@@ -1585,7 +1586,7 @@ function ws_holidays_settings_card($self_url)
                         ' . ws_holidays_rows_html($departments, $button) . '
                         ' . $form('holiday_add', ws_holidays_add_fields_html('holiday_add', $departments, $named, 'ws_hol_') . '
                                 <div class="sm:col-4 sm:text-end">
-                                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
+                                    <button type="submit" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
                                 </div>
                             </div>', 'ws-holiday-form') . '
                     </div>
@@ -1601,7 +1602,7 @@ function ws_holidays_settings_card($self_url)
                 ' . $feeds . '
                 ' . $form('feed_add', ws_holidays_add_fields_html('feed_add', $departments, $named, 'ws_feed_') . '
                         <div class="sm:col-4 sm:text-end">
-                            <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>
+                            <button type="submit" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-cloud-download" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>
                         </div>
                     </div>', '') . '
             </div>

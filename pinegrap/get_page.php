@@ -857,6 +857,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					$form_item_view_page_id = $row['page_id'];
 					$form_item_view_page_comments = $row['comments'];
 				}
+				// Items that open a detail page a signed-out visitor may not read are
+				// teasers, whoever asks: no description and no media.
+				$rss_teaser = ($form_item_view_page_id != '') && pg_sw_feed_teaser_access(pg_sw_feed_page_access($form_item_view_page_id));
 				// prepare form item view page id that will be used for joining tables for comments later
 				$form_item_view_page_id_for_comments = 0;
 				// if comments are enabled for form item view page, then store id
@@ -1284,6 +1287,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             $sql_join
                             WHERE
                                 (forms.page_id = '" . escape($custom_form_page_id) . "')
+                                " . pg_form_list_view_complete_sql(false) . "
                                 $sql_where
                                 $sql_viewer_filter
                             ORDER BY forms.submitted_timestamp DESC
@@ -1360,7 +1364,10 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             // An address typed into the field: size unknown, type from its extension.
                             $output_rss_media = pg_sw_feed_url_enclosure_xml($submitted_form['media_text'], URL_SCHEME . HOSTNAME_SETTING);
                         }
-						
+						if ($rss_teaser)
+						{
+							$output_rss_media = '';
+						}
 						$output_form_item_view_page_link = '';
 						$output_rss_guid = '';
 						// if there is a form item view page, then add link to it
@@ -1370,13 +1377,13 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							// an address name, then prepare pretty URL.
 							if (($pretty_urls == true) && ($submitted_form['address_name'] != ''))
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
 								// Otherwise, prepare ugly URL.
 								
 							}
 							else
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
 							}
 							$output_rss_guid = '<guid>' . $output_form_item_view_page_link . '</guid>';
 						}
@@ -1384,14 +1391,14 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						{
 							// No form item view page: the item links to the list page,
 							// and its guid is that page with the record's code.
-							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name));
-							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
+							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name));
+							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
 						}
 						// build RSS item
 						$output_rss_items .= '<item>
             ' . $output_rss_categories . '
             <title>' . $output_rss_title . '</title>
-            <description>' . $output_rss_description . '</description>
+            ' . ($rss_teaser ? '' : '<description>' . $output_rss_description . '</description>') . '
             <link>' . $output_form_item_view_page_link . '</link>
             ' . $output_rss_guid . '
             ' . $output_rss_media . '
@@ -1518,6 +1525,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             WHERE
 
                                 forms.page_id = '" . escape($custom_form_page_id) . "'
+                                " . pg_form_list_view_complete_sql(false) . "
 
                                 $sql_filters
 
@@ -1611,13 +1619,13 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							// an address name, then prepare pretty URL.
 							if (($pretty_urls == true) && ($submitted_form['address_name'] != ''))
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
 								// Otherwise, prepare ugly URL.
 								
 							}
 							else
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
 							}
 							$output_rss_guid = '<guid>' . $output_form_item_view_page_link . '</guid>';
 						}
@@ -1625,14 +1633,14 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						{
 							// No form item view page: the item links to the list page,
 							// and its guid is that page with the record's code.
-							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name));
-							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
+							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name));
+							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
 						}
 						// build RSS item
 						$output_rss_items .= '<item>
             ' . $output_rss_categories . '
             <title>' . $output_rss_title . '</title>
-            <description>' . $output_rss_description . '</description>
+            ' . ($rss_teaser ? '' : '<description>' . $output_rss_description . '</description>') . '
             <link>' . $output_form_item_view_page_link . '</link>
             <pubDate>' . date('D, d M Y H:i:s O', $submitted_form['submitted_timestamp']) . '</pubDate>
         </item>';
@@ -2048,7 +2056,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					{
 						$output_recurring_query_string = '&amp;recurrence_number=' . $event['recurrence_number'];
 					}
-					$output_calendar_event_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($calendar_event_view_page_name)) . '?id=' . $event['id'] . $output_recurring_query_string;
+					$output_calendar_event_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($calendar_event_view_page_name)) . '?id=' . $event['id'] . $output_recurring_query_string;
 					// else output a error
 					
 				}
@@ -2644,77 +2652,26 @@ elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 	{
 		output_error(lang('The requested calendar event is not allowed in this calendar event view.'), 403);
 	}
-	$output_recurrence_rule = '';
-	// if this event has recurrence enabled then output the recurrence rule
-	if ($calendar_event['recurrence'] == 1)
+	// The repeat rule, and the dates removed from the calendar as EXDATE so a
+	// subscribed calendar does not keep showing a cancelled occurrence.
+	$output_recurrence_rule = pg_calendar_event_rrule($calendar_event);
+	$removed_dates = array();
+	if ($output_recurrence_rule !== '')
 	{
-		$frequency = '';
-		$by_day = '';
-		// switch between the recurrence types and output the correct frequency
-		switch ($calendar_event['recurrence_type'])
+		$exception_result = db_q("SELECT DISTINCT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = ?", array((string) $calendar_event['id'])) or output_error(lang('Query failed.'));
+		while ($exception_row = mysqli_fetch_assoc($exception_result))
 		{
-			// Daily
-			// There is currently a bug in this code where the ical event will be marked
-			// as daily for every week day, even though some week days might be disabled.
-			// Did not have time to deal with this when adding day of the week feature for daily repeat.
-			
-		case 'day':
-			$frequency = 'DAILY';
-		break;
-			// Weekly
-			
-		case 'week':
-			$frequency = 'WEEKLY';
-		break;
-			// Monthly
-			
-		case 'month':
-			$frequency = 'MONTHLY';
-			// If this event recurs by the day of the week (e.g. second Sunday), then prepare by day value.
-			if ($calendar_event['recurrence_month_type'] == 'day_of_the_week')
+			if (pg_calendar_event_exception_number_ok((string) $exception_row['recurrence_number'], $calendar_event['recurrence'], $calendar_event['total_recurrence_number']))
 			{
-				$event_start_date = $calendar_event['start_date'];
-				$event_start_date_parts = explode('-', $event_start_date);
-				$event_start_year = $event_start_date_parts[0];
-				$event_start_month = $event_start_date_parts[1];
-				$day_of_the_week = date('l', strtotime($event_start_date));
-				$first_day_of_the_month_timestamp = strtotime($event_start_year . '-' . $event_start_month . '-01');
-				$week = '';
-				// Create a loop in order to determine which week event falls on.
-				// We only loop through 4 weeks, because we are going to set "last" below for 5th week.
-				for ($week_index = 0;$week_index <= 3;$week_index++)
-				{
-					// If the event is in this week, then remember the week number and break out of this loop.
-					if ($event_start_date == date('Y-m-d', strtotime('+' . $week_index . ' week ' . $day_of_the_week, $first_day_of_the_month_timestamp)))
-					{
-						$week = $week_index + 1;
-						break;
-					}
-				}
-				// If a week was not found, then that means it falls on the 5th week,
-				// so set it to be the last week.
-				if ($week == '')
-				{
-					$week = '-1';
-				}
-				$uppercase_two_character_day_of_the_week = mb_strtoupper(mb_substr($day_of_the_week, 0, 2));
-				$by_day = ';BYDAY=' . $week . $uppercase_two_character_day_of_the_week;
+				$removed_dates[] = pg_calendar_occurrence_date($calendar_event['start_date'], $calendar_event['recurrence_type'], $calendar_event['recurrence_month_type'], $calendar_event['recurrence_days'], (int) $exception_row['recurrence_number']);
 			}
-		break;
-			// Yearly
-			
-		case 'year':
-			$frequency = 'YEARLY';
-		break;
 		}
-		$count = $calendar_event['total_recurrence_number'] + 1;
-		$output_recurrence_rule = 'FREQ=' . $frequency . ';COUNT=' . $count . $by_day;
 	}
 	// set content type and disposition headers for ICS
 	header('Content-type: text/calendar; charset=UTF-8');
 	header('Content-Disposition: attachment; filename="' . $calendar_event['id'] . $calendar_event['created_timestamp'] . '.ics"');
 	// output calendar event data in ICS format
-	$content = pg_calendar_event_ics($calendar_event, HOSTNAME, $page_name, $output_recurrence_rule);
+	$content = pg_calendar_event_ics($calendar_event, HOSTNAME, $page_name, $output_recurrence_rule, $removed_dates);
 	// else output the page normally
 	
 }
@@ -2743,7 +2700,7 @@ else
 		$get_access_cp = $_GET['edit'];
 	}
 	// if the user is logged in and $get_access_cp is not set to 'no' and the user has control panel access, then remember that the toolbar should be outputted
-	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
+	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || pg_waiting_user_is_staff($user) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
 	{
 		$toolbar = true;
 	}

@@ -1495,6 +1495,10 @@ function api_design_prototype_link_present($row, $now) {
 		'password'        => $link['password'],
 		'password_locked' => $link['locked'],
 		'allow_comments'  => $link['comments'],
+		'approval'        => $link['approval'],
+		'publish_rule'    => $link['publish_rule'],
+		'approver_name'   => ($link['approver_name'] !== '') ? $link['approver_name'] : null,
+		'answer_by'       => ($link['answer_by'] !== '') ? $link['answer_by'] : null,
 		'state'           => $link['state'],
 		'expires_at'      => api_time($link['expires_at']),
 		'uses'            => $link['uses'],
@@ -1518,6 +1522,10 @@ function api_design_prototype_link_schema() {
 		'password'        => 'boolean',
 		'password_locked' => 'boolean',
 		'allow_comments'  => 'boolean',
+		'approval'        => 'boolean',
+		'publish_rule'    => 'boolean',
+		'approver_name'   => 'string?',
+		'answer_by'       => 'date?',
 		'state'           => 'string',
 		'expires_at'      => 'datetime?',
 		'uses'            => 'integer',
@@ -1721,6 +1729,24 @@ function api_design_prototype_links_create($params) {
 		'allow_comments' => !empty($params['allow_comments'])
 	), $draft_ids, array_keys(pg_proto_link_durations()), $now);
 
+	$asks = !empty($params['approval']);
+
+	// A site whose schema keeps no verdicts refuses the switch rather than
+	// making a link that asks nothing.
+	if ($plan['ok'] && $asks && !(pg_proto_comments_ready() && pg_proto_approval_ready())) {
+
+		api_fail_validation(pg_proto_link_error_message('approval_ready'), 'approval');
+
+	}
+
+	$plan = pg_proto_link_plan_approval($plan, array(
+		'approval'       => $asks,
+		'approver_name'  => isset($params['approver_name']) ? $params['approver_name'] : '',
+		'approver_email' => isset($params['approver_email']) ? $params['approver_email'] : '',
+		'answer_by'      => isset($params['answer_by']) ? $params['answer_by'] : '',
+		'publish_rule'   => !empty($params['publish_rule'])
+	), $now);
+
 	if (!$plan['ok']) {
 
 		api_fail_validation(pg_proto_link_error_message($plan['error']), ($plan['error'] === 'no_drafts') ? 'id' : $plan['field']);
@@ -1741,7 +1767,11 @@ function api_design_prototype_links_create($params) {
 		'start_page_id' => ($plan['link']['start_page_id'] > 0) ? $plan['link']['start_page_id'] : null,
 		'expires_at'    => api_time($plan['link']['expires_at']),
 		'password'      => ($plan['link']['password'] !== ''),
-		'allow_comments' => ($plan['link']['allow_comments'] === 1)
+		'allow_comments' => ($plan['link']['allow_comments'] === 1),
+		'approval'       => ($plan['link']['approval'] === 1),
+		'publish_rule'   => ($plan['link']['publish_rule'] === 1),
+		'approver_name'  => $plan['link']['approver_name'],
+		'answer_by'      => ($plan['link']['answer_by'] !== '') ? $plan['link']['answer_by'] : null
 	));
 
 	$owner = $app['owner'];
@@ -1788,5 +1818,219 @@ function api_design_prototype_links_revoke($params) {
 	pg_proto_link_revoke($row, (int)$owner['id'], (string)$owner['username'], api_design_prototype_via($app));
 
 	api_ok(api_design_prototype_link_present(pg_proto_link_get($row['id']), $now));
+
+}
+
+// A design's prototype review, read only (includes/fn/prototype_verdicts.php,
+// prototype_comments.php): what guests answered and commented on its share
+// links, for an application whose owner is an administrator or a designer.
+// Both routes are MCP tools; a guest's words come with no tag or markup
+// (pg_proto_event_words()), as the events carry them. A site not upgraded to
+// keep them answers an empty list.
+
+// One verdict: $fingerprints holds the drafts' fingerprints now (page id =>
+// sha1), $current the ids of the verdicts that stand (id => true).
+function api_design_prototype_verdict_present($row, $fingerprints, $current) {
+
+	$page_id = (int)$row['page_id'];
+
+	$state = pg_proto_verdict_state($row, isset($fingerprints[$page_id]) ? (string)$fingerprints[$page_id] : '');
+
+	return array(
+		'id'         => (int)$row['id'],
+		'design_id'  => (int)$row['style_id'],
+		'page_id'    => $page_id,
+		'link_id'    => (int)$row['link_id'],
+		'verdict'    => $state['state'],
+		'current'    => !empty($current[(int)$row['id']]),
+		'older'      => $state['older'],
+		'name'       => pg_proto_event_words($row['author_name'], false),
+		'note'       => pg_proto_event_words($row['note'], true),
+		'created_at' => api_time($row['created_at'])
+	);
+
+}
+
+// What api_design_prototype_verdict_present() returns.
+function api_design_prototype_verdict_schema() {
+
+	return array(
+		'id'         => 'integer',
+		'design_id'  => 'integer',
+		'page_id'    => 'integer',
+		'link_id'    => 'integer',
+		'verdict'    => 'string',
+		'current'    => 'boolean',
+		'older'      => 'boolean',
+		'name'       => 'string',
+		'note'       => 'string',
+		'created_at' => 'datetime?'
+	);
+
+}
+
+// One comment: a guest's name and words as data, the team's as written.
+function api_design_prototype_comment_present($row) {
+
+	$outside = ((int)$row['user_id'] === 0);
+
+	return array(
+		'id'          => (int)$row['id'],
+		'design_id'   => (int)$row['style_id'],
+		'page_id'     => (int)$row['page_id'],
+		'link_id'     => (int)$row['link_id'],
+		'parent_id'   => ((int)$row['parent_id'] > 0) ? (int)$row['parent_id'] : null,
+		'node'        => (string)$row['node_id'],
+		'x'           => ((int)$row['pos_x']) / 100,
+		'y'           => ((int)$row['pos_y']) / 100,
+		'outside'     => $outside,
+		'name'        => $outside ? pg_proto_event_words($row['author_name'], false) : (string)$row['author_name'],
+		'text'        => $outside ? pg_proto_event_words($row['body'], true) : (string)$row['body'],
+		'created_at'  => api_time($row['created_at']),
+		'resolved_at' => api_time($row['resolved_at'])
+	);
+
+}
+
+// What api_design_prototype_comment_present() returns.
+function api_design_prototype_comment_schema() {
+
+	return array(
+		'id'          => 'integer',
+		'design_id'   => 'integer',
+		'page_id'     => 'integer',
+		'link_id'     => 'integer',
+		'parent_id'   => 'integer?',
+		'node'        => 'string',
+		'x'           => 'number',
+		'y'           => 'number',
+		'outside'     => 'boolean',
+		'name'        => 'string',
+		'text'        => 'string',
+		'created_at'  => 'datetime?',
+		'resolved_at' => 'datetime?'
+	);
+
+}
+
+// The checks both reads share: the owner, the design; then the rows of
+// $table for it, filtered and cursor paged by id, newest first ($ready false
+// gives none).
+function api_design_prototype_review_rows($params, $table, $ready, $where = array()) {
+
+	api_design_prototype_links_ready();
+
+	api_design_designer_or_fail(lang('Only administrators and designers can share a prototype.'));
+
+	$design_id = (int)$params['id'];
+
+	api_design_prototype_design_or_fail($design_id);
+
+	$limit = (int)$params['limit'];
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$where[] = "id < '" . (int)$cursor['i'] . "'";
+
+	}
+
+	if (!$ready) {
+
+		return array('rows' => array(), 'limit' => $limit, 'next' => null);
+
+	}
+
+	$where[] = "style_id = '" . $design_id . "'";
+
+	foreach (array('page_id', 'link_id') as $key) {
+
+		if (!empty($params[$key])) {
+
+			$where[] = $key . " = '" . (int)$params[$key] . "'";
+
+		}
+
+	}
+
+	$rows = api_rows("SELECT * FROM " . $table . " WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT " . ($limit + 1));
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	return array('rows' => $rows, 'limit' => $limit, 'next' => $next);
+
+}
+
+function api_design_prototype_verdicts_list($params) {
+
+	$read = api_design_prototype_review_rows($params, 'prototype_verdicts', pg_proto_approval_ready());
+
+	$page_ids = array();
+	$pairs = array();
+
+	foreach ($read['rows'] as $row) {
+
+		$page_ids[(int)$row['page_id']] = (int)$row['page_id'];
+		$pairs[] = "(link_id = '" . (int)$row['link_id'] . "' AND page_id = '" . (int)$row['page_id'] . "')";
+
+	}
+
+	// The verdict that stands on each link and page is its newest.
+	$current = array();
+
+	if ($pairs) {
+
+		foreach (api_rows("SELECT MAX(id) AS id FROM prototype_verdicts WHERE " . implode(' OR ', array_unique($pairs)) . " GROUP BY link_id, page_id") as $newest) {
+
+			$current[(int)$newest['id']] = true;
+
+		}
+
+	}
+
+	$fingerprints = pg_proto_draft_fingerprints($page_ids);
+
+	$out = array();
+
+	foreach ($read['rows'] as $row) {
+
+		$out[] = api_design_prototype_verdict_present($row, $fingerprints, $current);
+
+	}
+
+	api_ok_list($out, $read['limit'], $read['next']);
+
+}
+
+function api_design_prototype_comments_list($params) {
+
+	$read = api_design_prototype_review_rows($params, 'prototype_comments', pg_proto_comments_ready(), empty($params['resolved']) ? array("resolved_at = 0") : array());
+
+	$out = array();
+
+	foreach ($read['rows'] as $row) {
+
+		$out[] = api_design_prototype_comment_present($row);
+
+	}
+
+	api_ok_list($out, $read['limit'], $read['next']);
 
 }

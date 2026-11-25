@@ -266,6 +266,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_launch_summary_lines();    // 11.0.274
 	upgrade_2026_11_0_ws_share_links();          // 11.0.275
 	upgrade_2026_11_0_prototype_approval();      // 11.0.276
+	upgrade_2026_11_0_security_finding();        // 11.0.277
+	upgrade_2026_11_0_launch_summary_answer_kind(); // 11.0.278
 
 }
 
@@ -9419,5 +9421,52 @@ function upgrade_2026_11_0_prototype_approval() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: a prototype share link can ask its customer to approve each page or request changes; no link asks it until the designer turns it on.');
+
+}
+
+// 11.0.277 - The Security Scan's findings (includes/fn/security_scan.php):
+// one row per finding. kind names the rule, place the path or the record
+// ("page:12") it was found at, fingerprint the sha1 of both, unique, so a
+// later scan updates the row instead of adding one. severity 1 low to
+// 4 critical; state 0 open, 1 quarantined, 2 ignored, 3 gone. detail is the
+// reason in words, note the note given with Ignore, acted_by the user id of
+// the last Quarantine, Restore or Ignore. Times are Unix seconds. A finding
+// about an account keeps its user id only, no person's data. idx_state
+// lists the open findings by severity. Rows gone for 90 days are removed.
+function upgrade_2026_11_0_security_finding() {
+
+	install_create_table('security_finding', "CREATE TABLE security_finding (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind         VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		place        VARCHAR(500) NOT NULL DEFAULT '',
+		fingerprint  CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		severity     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		state        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		detail       TEXT NULL,
+		note         VARCHAR(255) NOT NULL DEFAULT '',
+		acted_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		first_seen   INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen    INT UNSIGNED NOT NULL DEFAULT 0,
+		acted_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY fingerprint (fingerprint),
+		KEY idx_state (state, severity)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Security: a table for the findings of the Security Scan.');
+
+}
+
+// 11.0.278 - What a line of the agency summary asks for (owner, 2026-11-24:
+// a line can ask the customer for files instead of text). answer_kind is 0
+// for a text answer, 1 for one file, 2 for several files; every existing line
+// stays a text line. A file line keeps the ids of the files the customer sent
+// as a JSON list in answer, so no second table is made: the files are rows of
+// the files table in the private "From the customer" folder.
+function upgrade_2026_11_0_launch_summary_answer_kind() {
+
+	install_add_column('launch_summary_lines', 'answer_kind', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER line_text");
+
+	install_note('Set-up journey: a line of the agency summary can ask the customer for one file or several files instead of a text answer.');
 
 }

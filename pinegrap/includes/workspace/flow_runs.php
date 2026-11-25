@@ -132,6 +132,8 @@ function ws_flow_run_statuses()
         'done'      => lang('Done'),
         'failed'    => lang('Failed'),
         'cancelled' => lang('Cancelled'),
+        // Ended by a leave rule of its flow (flow_leave.php).
+        'left'      => lang('Left the flow'),
     );
 }
 
@@ -2141,13 +2143,7 @@ function ws_flow_run_contact_check($viewer, $contact_id)
         return ws_flow_refusal(lang('That customer could not be found.'), 422, 'contact_id');
     }
 
-    $name = pg_contact_display_name($row['first_name'], $row['last_name']);
-
-    foreach (array('company', 'email_address') as $column) {
-        $name = ($name !== '') ? $name : trim((string) $row[$column]);
-    }
-
-    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'subject' => array('type' => 'contact', 'id' => $contact_id, 'name' => $name));
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'subject' => array('type' => 'contact', 'id' => $contact_id, 'name' => ws_flow_contact_name($row)));
 }
 
 /**
@@ -2976,6 +2972,11 @@ function ws_flow_step_run($step)
             ws_flow_chain_start($run, $step, $node, $owner);
             return;
 
+        // A split reads nothing: it takes one arm by the shares.
+        case 'split':
+            ws_flow_split_run($step, $node);
+            return;
+
         // A condition, looked at with the owner's rights now.
         case 'condition':
             $owner = ws_change_viewer_for_id($run['actor_id']);
@@ -3228,6 +3229,11 @@ function ws_flow_step_recheck($step)
 {
     if (ws_flow_retry_key_until($step['wait_key']) > 0) {
         return ws_flow_retry_recheck($step);
+    }
+
+    // A sending box waiting for its sending hours is ready when they open.
+    if (ws_flow_hours_key_until($step['wait_key']) > 0) {
+        return ws_flow_retry_recheck($step, ws_flow_hours_key_until($step['wait_key']));
     }
 
     if (ws_flow_delay_key_until($step['wait_key']) > 0) {
@@ -3492,12 +3498,14 @@ function ws_flow_retry_wait($step, $node, $text, $data = array())
  * A step box waiting to try again looks at its moment: come, it is ready
  * again (its next claim counts the next attempt), from waiting only, so two
  * looks do not both make it ready; not yet, its next look goes back to the
- * moment. A run that ended meanwhile lets it go.
+ * moment. A run that ended meanwhile lets it go. A sending box waiting for
+ * its sending hours is made ready the same way, at the moment it names.
  *
- * @param array $step ws_flow_run_steps row, waiting
+ * @param array $step  ws_flow_run_steps row, waiting
+ * @param int   $until the moment, 0 to read it from a retry key
  * @return bool whether the box changed
  */
-function ws_flow_retry_recheck($step)
+function ws_flow_retry_recheck($step, $until = 0)
 {
     $run = ws_flow_run($step['run_id']);
 
@@ -3510,7 +3518,7 @@ function ws_flow_retry_recheck($step)
     }
 
     $now = time();
-    $until = ws_flow_retry_key_until($step['wait_key']);
+    $until = ((int) $until > 0) ? (int) $until : ws_flow_retry_key_until($step['wait_key']);
 
     if ($now < $until) {
         db("UPDATE ws_flow_run_steps SET wake_at = '" . $until . "'
@@ -4150,7 +4158,7 @@ function ws_flow_runs_sweep($limit = 200)
     }
 
     $ids = array_map('intval', (array) db_values("SELECT id FROM ws_flow_runs
-        WHERE status IN ('done', 'failed', 'cancelled') AND updated_at < '" . (time() - WS_FLOW_RUNS_KEEP) . "'
+        WHERE status IN ('done', 'failed', 'cancelled', 'left') AND updated_at < '" . (time() - WS_FLOW_RUNS_KEEP) . "'
         ORDER BY updated_at LIMIT " . max(1, (int) $limit)));
 
     if (empty($ids)) {

@@ -946,7 +946,7 @@ function _pg_catalog_html_shows($html)
 function _pg_catalog_card_templates($nodes)
 {
     $card = array('type' => 'root', 'props' => array(), 'children' => $nodes);
-    _pg_sw_mark_visibility($card, array('has_rating', 'no_rating', 'is_bundle', 'has_bundle_saving'));
+    _pg_sw_mark_visibility($card, array_merge(array('has_rating', 'no_rating', 'is_bundle', 'has_bundle_saving'), array_keys(pg_catalog_row_flags(array()))));
 
     $html = '';
     foreach ($card['children'] as $child) {
@@ -971,7 +971,52 @@ function _pg_catalog_card_templates($nodes)
         'unrated' => $unrated,
         'group'   => $group_shows ? $group : $unrated,
         'marked'  => $html,
+        // A card with an element under a row flag (pg_catalog_row_flags())
+        // is resolved for each row's own flags (_pg_catalog_card_for()).
+        'row_flagged' => strpos($html, '<!--pg-vis:catalog_item_') !== false,
     );
+}
+
+/**
+ * A listing row's own flags, read from its values: a picture, a short
+ * description, a price (a classic catalog layout's conditions on the item).
+ *
+ * @param array $values the row's token values (before escaping)
+ * @return array
+ */
+function pg_catalog_row_flags($values)
+{
+    $catalog_row_flags = array(
+        'catalog_item_has_image'             => (string)($values['__image_url'] ?? '') !== '',
+        'catalog_item_has_short_description' => (string)($values['__short_description'] ?? '') !== '',
+        'catalog_item_has_price'             => (string)($values['__price_formatted'] ?? '') !== '',
+    );
+    return $catalog_row_flags;
+}
+
+/**
+ * The listing's flags outside the card: whether anything is listed, a
+ * search is in force, one or more than one result was found, the visitor
+ * can choose a currency.
+ *
+ * @param int   $count         the groups and products listed over all pages
+ * @param bool  $search_active
+ * @param array $currencies    pg_sw_currency_rows()
+ * @return array
+ */
+function pg_catalog_listing_flags($count, $search_active, $currencies)
+{
+    $catalog_flags = array(
+        'has_items'           => $count > 0,
+        'no_items'            => $count <= 0,
+        'has_query'           => (bool)$search_active,
+        'no_query'            => !$search_active,
+        'many_results'        => $count > 1,
+        'one_result'          => $count === 1,
+        'has_currency_choice' => count((array)$currencies) > 1,
+        'no_currency_choice'  => count((array)$currencies) <= 1,
+    );
+    return $catalog_flags;
 }
 
 /**
@@ -982,10 +1027,19 @@ function _pg_catalog_card_templates($nodes)
  * @param array $cards        _pg_catalog_card_templates(), extended in place
  * @param bool  $rated        the product has a rating
  * @param array $bundle_flags _pg_catalog_bundle_flags()
+ * @param array $row_flags    pg_catalog_row_flags(), read when the card has
+ *                            an element under one
  * @return string
  */
-function _pg_catalog_card_for(&$cards, $rated, $bundle_flags)
+function _pg_catalog_card_for(&$cards, $rated, $bundle_flags, $row_flags = array())
 {
+    if (!empty($cards['row_flagged'])) {
+        // Resolved for this row's state, kept by its flags.
+        $catalog_row_flags = (array)$bundle_flags + (array)$row_flags + array('has_rating' => $rated, 'no_rating' => !$rated);
+        $key = 'row:' . implode(',', array_keys(array_filter($catalog_row_flags)));
+        if (!isset($cards[$key])) $cards[$key] = trim(_pg_sw_resolve_visibility($cards['marked'], $catalog_row_flags));
+        return $cards[$key];
+    }
     if (empty($bundle_flags['is_bundle'])) {
         return $rated ? $cards['rated'] : $cards['unrated'];
     }
@@ -1639,6 +1693,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         'wishlist_preview'     => (bool)pg_sw_preview_overrides(),
     ), $_pg_bindings_used);
 
+    // A layout's currency choice (a currency_id control): the visitor's
+    // currencies, shown by has_currency_choice.
+    $_pg_currencies = array();
+    if (strpos((string)$tree_json, 'currency_id') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
+        $_pg_currencies = pg_sw_currency_rows();
+        pg_sw_currency_picker($tree_decoded, $widget_id, $_pg_currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
+    }
+
     $split = _split_widget_tree($tree_decoded);
 
     // The card comes in two states, with and without a rating (has_rating /
@@ -1653,7 +1716,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $_pg_cards     = _pg_catalog_card_templates($split['loop_children']);
         // The paging flags are known after the count: their parts of the
         // surround are marked here and kept or cut at the end.
-        _pg_sw_mark_visibility($split['static_tree'], array('has_prev_page', 'has_next_page', 'has_more_pages'));
+        _pg_sw_mark_visibility($split['static_tree'], array_merge(array('has_prev_page', 'has_next_page', 'has_more_pages'), array_keys(pg_catalog_listing_flags(0, false, array()))));
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
     $loop_template       = $_pg_cards['unrated'];
@@ -1858,10 +1921,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // a group filter is in effect — including drill-down's URL-driven group).
     // When no group context, we look it up per-product in the batch step below.
     $active_group_name = '';
+    $active_group_more = array();
     if ($active_group_id > 0) {
-        $active_group_name = (string)db_value(
-            "SELECT name FROM product_groups WHERE id = '" . (int)$active_group_id . "' LIMIT 1"
+        $active_group_more = db_item(
+            "SELECT name, full_description, code FROM product_groups WHERE id = '" . (int)$active_group_id . "' LIMIT 1"
         );
+        $active_group_more = is_array($active_group_more) ? $active_group_more : array();
+        $active_group_name = (string)($active_group_more['name'] ?? '');
     }
 
     // ── No-products fall-through flag ────────────────────────────────────
@@ -2307,12 +2373,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             }
         }
 
+        $_pg_row_flags = pg_catalog_row_flags($values);
         // Plain text is escaped once, here; the HTML-by-design keys are named
         // in pg_sw_raw_token_keys() and pass through untouched.
         $values = pg_sw_escape_token_values($values);
 
-        // The card of this product's rating and bundle state.
-        $rendered = _pg_catalog_card_for($_pg_cards, $rating['__rating_count'] !== '', _pg_catalog_bundle_flags($bundle));
+        // The card of this product's rating, bundle and row state.
+        $rendered = _pg_catalog_card_for($_pg_cards, $rating['__rating_count'] !== '', _pg_catalog_bundle_flags($bundle), $_pg_row_flags);
         // Longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^';
         // a format after a token is read (pg_sw_fill_longest()).
         $rendered = pg_sw_fill_longest($rendered, $values);
@@ -2677,6 +2744,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // sorted by their own sort_order — matches a folder-listing UX (folders
     // first, then files). True interleaved sort across both is a future step.
     $child_groups_html = '';
+    $_pg_group_count = 0;
     $has_children = 0;
     if ($group_navigation !== 'none' && $loop_template_group !== '') {
         // At ROOT (no active group) → show TOP-LEVEL groups (parent_id = 0).
@@ -2885,9 +2953,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     }
                 }
 
+                $_pg_g_flags = pg_catalog_row_flags($g_values);
                 $g_values = pg_sw_escape_token_values($g_values);
 
-                $g_rendered = $loop_template_group;
+                // A card under row flags takes the group's own; a group has
+                // no rating or bundle state.
+                $g_rendered = empty($_pg_cards['row_flagged']) ? $loop_template_group
+                    : _pg_catalog_card_for($_pg_cards, false, array('no_rating' => false, 'is_bundle' => false, 'has_bundle_saving' => false), $_pg_g_flags);
                 // Longest keys first so '__short_description' is replaced before '__description'.
                 $g_rendered = pg_sw_fill_longest($g_rendered, $g_values);
                 // Product-only tokens (inventory, mpn, gallery, …) have no answer
@@ -2924,6 +2996,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 }
 
                 $g_rows .= $g_rendered;
+                $_pg_group_count++;
             }
             $child_groups_html = $g_rows;
         }
@@ -3164,6 +3237,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // a parent that holds only sub-groups) — those groups already fill the
     // grid and an "empty" message would be misleading.
     $_loop_block = $loop_output;
+    $_pg_result_count = ($no_products ? 0 : $total_records) + $_pg_group_count;
+    $_pg_listing_flags = pg_catalog_listing_flags($_pg_result_count, $search_active, $_pg_currencies);
     if ($no_products && $_loop_block === '' && $child_groups_html === '') {
         $_loop_block = $empty_html;
     }
@@ -3180,9 +3255,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // available during per-record token replacement because they're widget-
     // wide and may sit in the static_html OR in the loop_template (designer
     // could use them anywhere).
+    // The group's full description and code, as the classic catalog page
+    // prints them while browsing (not in search results).
     $page_tokens = array(
         '__active_cat_id'           => (string)$active_group_id,
         '__active_cat_name'         => $active_group_name,
+        '__active_cat_description'  => $search_active ? '' : (string)($active_group_more['full_description'] ?? ''),
+        '__active_cat_code'         => $search_active ? '' : (string)($active_group_more['code'] ?? ''),
+        '__search_query'            => $search_active ? $search_query : '',
+        '__result_count'            => (string)$_pg_result_count,
         '__has_breadcrumb'          => $has_breadcrumb,
         '__group_tree_html'         => $group_tree_html,
         '__has_children'            => (string)$has_children,
@@ -3220,7 +3301,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // is left is unanswered. This is the loop halves' only sweep.
     $body = pg_sw_sweep_tokens($body);
     if ($static_html !== '') {
-        $static_html = _pg_sw_resolve_visibility($static_html, $paging['flags']);
+        // With nothing listed, a layout may cut the list's place with
+        // has_items: the empty message is its own then.
+        $catalog_flags = $paging['flags'] + $_pg_listing_flags;
+        $static_html = _pg_sw_resolve_visibility($static_html, $catalog_flags);
         $static_html = _pg_catalog_fill_page_tokens($static_html, $page_tokens);
         // The loop halves are swept where they are built; the static surround
         // was not, so an identifier misspelled in a header printed itself.
@@ -3230,8 +3314,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // No auto-prepended messages placeholder — designer drops a Messages
     // content node inside the widget tree to control where alerts render.
     $_pg_assets = _pg_widget_layout_css_once();  // price-block + discount-hide + variant-states CSS
-    if ($static_html === '') return $_pg_assets . $body;
-    return $_pg_assets . str_replace('<!--pg-loop-slot-->', $body, $static_html);
+    // A currency picker's form, after the widget (pg_sw_currency_picker()).
+    $_pg_currency_form = $_pg_currencies ? pg_sw_currency_form_html($widget_id, $_pg_currencies, get_request_uri()) : '';
+    if ($static_html === '') return $_pg_assets . $body . $_pg_currency_form;
+    return $_pg_assets . str_replace('<!--pg-loop-slot-->', $body, $static_html) . $_pg_currency_form;
 }
 
 // Fill the listing's page-level tokens (breadcrumb, group tree, filters) in
@@ -3365,6 +3451,13 @@ function _pg_inject_messages_node(&$tree, $liveform_name = '')
 function _civ_should_skip_node($node, $context)
 {
     if (!is_array($node)) return false;
+
+    // A search form with no catalog page to search (a classic layout's
+    // sidebar on a page no catalog links to).
+    if (isset($node['props']['_bindings']['action']) && $node['props']['_bindings']['action'] === 'search_form'
+        && empty($context['search_form_id'])) {
+        return true;
+    }
 
     // Single-recipient mode? Recipient picker UI is irrelevant. Skip every
     // node carrying recipient-related bindings (the inputs themselves), the
@@ -4433,6 +4526,194 @@ function _civ_normalize_xsell_item($it, $url_prefix, $disc_prices)
     );
 }
 
+/**
+ * The product page's flags a classic catalog detail layout's conditions
+ * become (pg_layout_convert('catalog detail', …)): a product shown can be
+ * ordered, the variant picker is drawn or not, a group's products are
+ * picked from a list, one product is shown, the visitor picks a recipient,
+ * a back link is drawn.
+ *
+ * @param bool   $orderable       a product shown can be added to the cart
+ * @param int    $attr_count      the attributes of the variant picker
+ * @param int    $product_count   the products shown: a group's, else 1
+ * @param bool   $multi_recipient the site ships to several recipients and
+ *                                the product is shipped
+ * @param string $back_url        the page the visitor came from, '' for none
+ * @return array
+ */
+function pg_civ_layout_flags($orderable, $attr_count, $product_count, $multi_recipient, $back_url)
+{
+    $orderable = (bool)$orderable;
+    $choice = $orderable && (int)$attr_count === 0 && (int)$product_count > 1;
+    // Named as the render's flags, which it joins.
+    $_civ_flags = array(
+        'has_products'         => $orderable,
+        'no_products'          => !$orderable,
+        'no_variant_choice'    => (int)$attr_count === 0,
+        'has_product_choice'   => $choice,
+        'no_product_choice'    => !$choice,
+        'one_product'          => (int)$product_count <= 1,
+        'many_products'        => (int)$product_count > 1,
+        'has_recipient_choice' => $orderable && (bool)$multi_recipient,
+        'has_back_button'      => (string)$back_url !== '',
+    );
+    return $_civ_flags;
+}
+
+/**
+ * A product's line as the classic product page lists it: its short
+ * description, its price in brackets and, when it is out of stock, its
+ * message's first 50 characters. Markup (the price may be the
+ * strike-through block).
+ *
+ * @param string $short_description
+ * @param string $price_html            the price as shown (markup)
+ * @param string $out_of_stock_message  rich text, '' while in stock
+ * @return string
+ */
+function pg_civ_product_line($short_description, $price_html, $out_of_stock_message = '')
+{
+    $line = h((string)$short_description) . ' (' . (string)$price_html . ')';
+    $words = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string)$out_of_stock_message), ENT_QUOTES, 'UTF-8')));
+    if ($words !== '') {
+        if (mb_strlen($words, 'UTF-8') > 50) $words = mb_substr($words, 0, 50, 'UTF-8') . '...';
+        $line .= ' - ' . h($words);
+    }
+    return $line;
+}
+
+// The products of a group shown without a choice (none can be ordered),
+// one item a line; '' with none.
+function pg_civ_product_lines_html(array $lines)
+{
+    if (!$lines) return '';
+    $html = '';
+    foreach ($lines as $line) $html .= '<li>' . $line . '</li>';
+    return '<ul>' . $html . '</ul>';
+}
+
+// The options of a group's product pick list: product id => its line as
+// plain text, $selected the product shown.
+function pg_civ_product_choice_options(array $choices, $selected)
+{
+    $html = '';
+    foreach ($choices as $id => $label) {
+        $html .= '<option value="' . (int)$id . '"' . (((int)$id === (int)$selected) ? ' selected' : '') . '>' . h((string)$label) . '</option>';
+    }
+    return $html;
+}
+
+// A product's keywords (comma separated) as the classic product page links
+// them: each a search for it on the catalog page ($search_url ends in the
+// query's "="), the words alone without a catalog page; '' with none.
+function pg_civ_keywords_html($keywords, $search_url)
+{
+    $out = array();
+    foreach (explode(',', (string)$keywords) as $word) {
+        $word = trim($word);
+        if ($word === '') continue;
+        $out[] = ((string)$search_url !== '')
+            ? '<a href="' . h($search_url . rawurlencode($word)) . '">' . h($word) . '</a>'
+            : h($word);
+    }
+    return implode("\n", $out);
+}
+
+// The catalog page a product page searches and browses (a classic layout's
+// sidebar): the widget's catalog_listing_page_id or _name, else the classic
+// catalog page whose detail page $page_id is. Its address, the search's
+// parameter (a designed listing reads `query`, a classic page
+// `<id>_query`) and the group its tree starts from; null for none.
+function _civ_catalog_page($cfg, $page_id)
+{
+    $id = !empty($cfg['catalog_listing_page_id']) ? (int)$cfg['catalog_listing_page_id'] : 0;
+    if ($id <= 0 && !empty($cfg['catalog_listing_page_name'])) {
+        $id = (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$cfg['catalog_listing_page_name']) . "' LIMIT 1");
+    }
+    if ($id <= 0 && (int)$page_id > 0) {
+        $id = (int)db_value("SELECT page_id FROM catalog_pages WHERE catalog_detail_page_id = '" . (int)$page_id . "' LIMIT 1");
+    }
+    $name = ($id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $id . "' LIMIT 1") : '';
+    if ($name === '') return null;
+    $param = $id . '_query';
+    $root = null;
+    foreach (pg_sw_page_widgets($id) as $w) {
+        if (isset($w['cfg']['regionType']) && $w['cfg']['regionType'] === 'catalog_listing') {
+            $param = 'query';
+            $root = (int)($w['cfg']['product_group_id'] ?? 0);
+            break;
+        }
+    }
+    if ($root === null) $root = (int)db_value("SELECT product_group_id FROM catalog_pages WHERE page_id = '" . $id . "' LIMIT 1");
+    return array('url' => (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($name), 'param' => $param, 'root' => $root);
+}
+
+// A search form bound inside the product page: a form cannot hold another,
+// so it becomes a <div role="search"> whose controls belong by their form
+// attribute to form $form_id, printed after the widget's own.
+function _civ_search_form_node(&$node, $form_id)
+{
+    $node['props']['tag'] = 'div';
+    $node['props']['_attrs'] = array_values(array_filter(isset($node['props']['_attrs']) ? (array)$node['props']['_attrs'] : array(), function ($a) {
+        return !(is_array($a) && isset($a['name']) && in_array($a['name'], array('action', 'method', 'role'), true));
+    }));
+    $node['props']['_attrs'][] = array('name' => 'role', 'value' => 'search');
+    $walk = function (&$n) use (&$walk, $form_id) {
+        $tag = isset($n['props']['tag']) ? (string)$n['props']['tag'] : '';
+        $btn = isset($n['props']['componentType']) && $n['props']['componentType'] === 'btn';
+        if (in_array($tag, array('input', 'button', 'select'), true) || $btn) {
+            $attrs = array();
+            foreach (isset($n['props']['_attrs']) ? (array)$n['props']['_attrs'] : array() as $a) {
+                if (!(is_array($a) && isset($a['name']) && $a['name'] === 'form')) $attrs[] = $a;
+            }
+            $attrs[] = array('name' => 'form', 'value' => $form_id);
+            $n['props']['_attrs'] = $attrs;
+        }
+        if (!empty($n['children']) && is_array($n['children'])) {
+            foreach ($n['children'] as &$c) if (is_array($c)) $walk($c);
+            unset($c);
+        }
+    };
+    $walk($node);
+}
+
+// The values of a classic layout's product row and buttons for product
+// $p (raw markup where pg_sw_raw_token_keys() says so): the product's code
+// field, its line, a group's lines or pick list ($products: the variant
+// rows of a select group, else none), the add and back buttons' words (the
+// page's settings) and the page the visitor came from.
+function _civ_layout_values($p, array $products, array $cfg, $back_url, $currency_symbol)
+{
+    $lines = array();
+    $choices = array();
+    foreach ($products as $vp) {
+        $out = ($vp['out_of_stock'] === '1') ? (string)$vp['out_of_stock_message'] : '';
+        $lines[] = pg_civ_product_line($vp['short_description'], $vp['price_formatted'], $out);
+        $text = pg_civ_product_line($vp['short_description'], pg_visitor_money_text((int)$vp['price_cents'] / 100, $currency_symbol), $out);
+        $choices[(int)$vp['id']] = html_entity_decode(strip_tags($text), ENT_QUOTES, 'UTF-8');
+    }
+    $own = $lines ? $lines[0] : '';
+    if (!$products) {
+        $disc = function_exists('get_discounted_product_prices') ? (array)get_discounted_product_prices() : array();
+        $cents = isset($disc[(int)$p['id']]) ? (int)$disc[(int)$p['id']] : (int)$p['price'];
+        $out = (!empty($p['inventory']) && (int)$p['inventory_quantity'] <= 0 && empty($p['backorder'])) ? (string)$p['out_of_stock_message'] : '';
+        $own = pg_civ_product_line((string)$p['short_description'], _civ_price_shown((int)$p['price'], $cents, $currency_symbol), $out);
+        $lines = array($own);
+    }
+    $label = function ($key, $default) use ($cfg) {
+        return (isset($cfg[$key]) && is_string($cfg[$key]) && $cfg[$key] !== '') ? $cfg[$key] : $default;
+    };
+    return array(
+        '__code'                   => isset($p['code']) ? (string)$p['code'] : '',
+        '__product_line'           => $own,
+        '__product_lines_html'     => pg_civ_product_lines_html($lines),
+        '__product_choice_options' => pg_civ_product_choice_options($choices, (int)$p['id']),
+        '__add_button_label'       => $label('add_button_label', lang('Continue')),
+        '__back_url'               => (string)$back_url,
+        '__back_label'             => $label('back_button_label', lang('Back')),
+    );
+}
+
 function _apply_catalog_item_view_bindings(&$node, $context)
 {
     if (!is_array($node)) return;
@@ -4461,6 +4742,54 @@ function _apply_catalog_item_view_bindings(&$node, $context)
             return !(is_array($a) && isset($a['name']) && $a['name'] === 'data-pg-civ-section');
         }));
         $node['props']['_attrs'][] = array('name' => 'data-pg-civ-section', 'value' => 'recipient_picker');
+    }
+
+    // ── Section: product_lines / value: product_choice ───────────────────
+    // A group's products, listed or picked from (a classic layout's product
+    // row): the node takes the markup the token map fills in, and keeps its
+    // "Show only when".
+    $shown_if = isset($bindings['eo_visible_if']) ? array('_bindings' => array('eo_visible_if' => $bindings['eo_visible_if'])) : array();
+    // A classic layout's sidebar: the catalog's group tree, the product's
+    // keywords, the search form and its box (_civ_search_form_node()).
+    $sidebar = array('group_tree' => '^^__group_tree_inner_html^^', 'keywords' => '^^__keywords_html^^');
+    if (isset($bindings['section']) && isset($sidebar[$bindings['section']])) {
+        $node['type']     = 'content';
+        $node['props']    = array('contentType' => 'custom_html', 'html' => $sidebar[$bindings['section']]) + $shown_if;
+        $node['children'] = array();
+        return;
+    }
+    if (isset($node['props']['tag']) && $node['props']['tag'] === 'form'
+        && isset($bindings['action']) && $bindings['action'] === 'search_form' && !empty($context['search_form_id'])) {
+        _civ_search_form_node($node, (string)$context['search_form_id']);
+    }
+    if (isset($node['props']['tag']) && $node['props']['tag'] === 'input'
+        && isset($bindings['value']) && $bindings['value'] === 'search_query' && !empty($context['search_form_id'])) {
+        $attrs = array();
+        foreach (isset($node['props']['_attrs']) ? (array)$node['props']['_attrs'] : array() as $a) {
+            if (!(is_array($a) && isset($a['name']) && in_array($a['name'], array('type', 'name', 'value', 'form'), true))) $attrs[] = $a;
+        }
+        $attrs[] = array('name' => 'type', 'value' => 'search');
+        $attrs[] = array('name' => 'name', 'value' => (string)$context['search_param']);
+        $attrs[] = array('name' => 'form', 'value' => (string)$context['search_form_id']);
+        $node['props']['_attrs'] = $attrs;
+    }
+    if (isset($bindings['section']) && $bindings['section'] === 'product_lines') {
+        $node['type']     = 'content';
+        $node['props']    = array('contentType' => 'custom_html', 'html' => '^^__product_lines_html^^') + $shown_if;
+        $node['children'] = array();
+        return;
+    }
+    if (isset($node['type']) && $node['type'] === 'semantic'
+        && isset($node['props']['tag']) && $node['props']['tag'] === 'select'
+        && isset($bindings['value']) && $bindings['value'] === 'product_choice') {
+        $cls = isset($node['props']['cssClass']) ? (string)$node['props']['cssClass'] : '';
+        $id  = isset($node['props']['id']) ? (string)$node['props']['id'] : '';
+        $node['type']     = 'content';
+        $node['props']    = array('contentType' => 'custom_html', 'html' => '<select name="product_id" required'
+            . ($id !== '' ? ' id="' . h($id) . '"' : '') . ($cls !== '' ? ' class="' . h($cls) . '"' : '')
+            . '>^^__product_choice_options^^</select>') + $shown_if;
+        $node['children'] = array();
+        return;
     }
 
     // ── Button: Add-to-Cart action ───────────────────────────────────────────
@@ -5189,6 +5518,11 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         );
     }
     $_civ_pre_tree = json_decode($tree_json, true);
+    // The catalog page a classic layout's sidebar searches and browses.
+    $_civ_catalog = (strpos((string)$tree_json, 'search_form') !== false || strpos((string)$tree_json, '"group_tree"') !== false
+                     || strpos((string)$tree_json, '"keywords"') !== false)
+        ? _civ_catalog_page($cfg, _pg_sw_current_page_id()) : null;
+    $_civ_search_form = $_civ_catalog ? 'pg-civ-search-' . $widget_id : '';
     // The id of the back-in-stock form, '' while the requests have no table.
     static $_civ_notify_seq = 0;
     $_civ_notify_form = pg_stock_notify_ready() ? 'pg-stock-notify-' . (++$_civ_notify_seq) : '';
@@ -5271,6 +5605,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'stock_notify_form'      => $_civ_notify_form,
             'stock_notify_sms'       => ($_civ_notify_form !== '') && pg_stock_notify_phone_asked(),
             'stock_notify_email'     => (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_EMAIL_ADDRESS')) ? (string)USER_EMAIL_ADDRESS : '',
+            // A classic layout's search form (_civ_search_form_node()).
+            'search_form_id'         => $_civ_search_form,
+            'search_param'           => $_civ_catalog ? $_civ_catalog['param'] : '',
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($_civ_remuxed !== false) $tree_json = $_civ_remuxed;
@@ -5286,6 +5623,14 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // run, and the detail page then showed every message the session carried
     // rather than its own.
     _pg_inject_messages_node($tree_decoded, 'catalog_detail');
+    // A layout's currency choice (a currency_id control): the visitor's
+    // currencies, by their own form after the widget's.
+    $_civ_currencies = array();
+    if (strpos((string)$tree_json, 'currency_id') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
+        $_civ_currencies = pg_sw_currency_rows();
+        pg_sw_currency_picker($tree_decoded, $widget_id, $_civ_currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
+    }
     // The comments block draws nothing while the page's comments are off or
     // a comments widget on the page shows the reviews: its tab or section
     // is left out with it. No page (an e-mail, an unsaved Preview): as it is.
@@ -5301,6 +5646,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // or cut once the product is known (below). Another widget's flag stays
     // drawn.
     _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating', 'can_notify', 'is_bundle', 'has_bundle_saving'));
+    // A classic layout's conditions (pg_civ_layout_flags()) likewise.
+    _pg_sw_mark_visibility($tree_decoded, array_merge(array_keys(pg_civ_layout_flags(false, 0, 1, false, '')), array('has_keywords', 'has_currency_choice', 'no_currency_choice')));
     // The "Quantity prices" box the variant script redraws for the variant
     // picked (_civ_qty_prices_part_html()).
     _civ_qty_prices_part_mark($tree_decoded);
@@ -5384,7 +5731,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             "SELECT
                  products.id, products.name, products.address_name,
                  products.short_description, products.full_description,
-                 products.details,
+                 products.details, products.code,
                  products.price, products.image_name, products.timestamp,
                  products.inventory, products.inventory_quantity, products.backorder,
                  products.out_of_stock_message,
@@ -5453,7 +5800,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                     "SELECT
                          products.id, products.name, products.address_name,
                          products.short_description, products.full_description,
-                         products.details,
+                         products.details, products.code,
                          products.price, products.image_name, products.timestamp,
                          products.inventory, products.inventory_quantity, products.backorder,
                          products.out_of_stock_message,
@@ -5477,7 +5824,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             "SELECT
                  products.id, products.name, products.address_name,
                  products.short_description, products.full_description,
-                 products.details,
+                 products.details, products.code,
                  products.price, products.image_name, products.timestamp,
                  products.inventory, products.inventory_quantity, products.backorder,
                  products.out_of_stock_message,
@@ -5857,6 +6204,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         'has_bundle_saving' => $_civ_bundle['__bundle_saving_formatted'] !== '',
         'has_rating' => $_civ_rating['__rating_count'] !== '',
         'no_rating'  => $_civ_rating['__rating_count'] === '',
+        // A classic layout's sidebar.
+        'has_keywords'        => $p && trim(str_replace(',', '', isset($p['keywords']) ? (string)$p['keywords'] : '')) !== '',
+        'has_currency_choice' => count($_civ_currencies) > 1,
+        'no_currency_choice'  => count($_civ_currencies) <= 1,
         'can_notify' => ($_civ_notify_form !== '') && $p && pg_stock_notify_product_out(array(
             'enabled'            => '1',
             'inventory'          => isset($p['inventory']) ? $p['inventory'] : '0',
@@ -5869,6 +6220,24 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // each element marked with its flag and the one that does not fit $p
     // hidden, and the script shows the state of the variant picked.
     // Otherwise the state that does not fit is cut here.
+    // A classic layout's product row: the group's products (or the product
+    // alone), whether one can be ordered, the page the visitor came from.
+    $_civ_products = ($is_select_group && !empty($vproducts)) ? array_values($vproducts) : array();
+    $_civ_orderable = false;
+    foreach ($_civ_products as $_civ_vp) {
+        if ($_civ_vp['out_of_stock'] === '0') $_civ_orderable = true;
+    }
+    if (!$_civ_products && $p) {
+        $_civ_orderable = !(!empty($p['inventory']) && (int)$p['inventory_quantity'] <= 0 && empty($p['backorder']));
+    }
+    $_civ_back_url = '';
+    if (isset($_GET['previous_url_id']) && is_string($_GET['previous_url_id'])
+        && isset($_SESSION['software']['urls'][$_GET['previous_url_id']])) {
+        $_civ_back_url = (string)$_SESSION['software']['urls'][$_GET['previous_url_id']];
+    }
+    $_civ_flags += pg_civ_layout_flags($_civ_orderable, $variant_attr_count, $_civ_products ? count($_civ_products) : 1,
+        !empty($_civ_multi_recip), $_civ_back_url);
+
     $_civ_variants_scripted = $is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs']);
     $_civ_switched = array();
     if ($_civ_variants_scripted && _pg_catalog_rating_states_differ($variant_data['products'])) {
@@ -5953,6 +6322,16 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__bundle_saving_formatted' => $_civ_bundle['__bundle_saving_formatted'],
             '__ai_generated'         => '',
             '__not_found_message'            => $not_found_message,
+            // A classic layout's product row and buttons.
+            '__code'                   => '',
+            '__product_line'           => '',
+            '__product_lines_html'     => '',
+            '__product_choice_options' => '',
+            '__add_button_label'       => '',
+            '__back_url'               => '',
+            '__back_label'             => '',
+            '__keywords_html'          => '',
+            '__group_tree_inner_html'  => '',
             // Select-group tokens — empty/zero in not-found state.
             '__is_select_group'      => '0',
             '__select_group_id'      => '0',
@@ -6301,6 +6680,15 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // Products bought together (the cross-sell part, a
             // product.related list): set below from the rows read.
             '__has_related'          => '',
+        ) + _civ_layout_values($p, $_civ_products, $cfg, $_civ_back_url, $currency_symbol) + array(
+            // A classic layout's sidebar: the keywords as searches, the
+            // catalog's group tree with the product's group marked.
+            '__keywords_html'         => pg_civ_keywords_html(isset($p['keywords']) ? $p['keywords'] : '',
+                $_civ_catalog ? $_civ_catalog['url'] . '?' . $_civ_catalog['param'] . '=' : ''),
+            '__group_tree_inner_html' => ($_civ_catalog && strpos((string)$tree_json, '"group_tree"') !== false)
+                ? _pg_render_catalog_group_tree((int)$_civ_catalog['root'], $_civ_catalog['url'] . '/', $_civ_catalog['url'], (int)$category_id,
+                    (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path(explode('/', $_civ_page_full)[0]) . '/')
+                : '',
         );
 
         // The rows of the product lists the tree draws, read for this
@@ -6600,6 +6988,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
          . $_civ_variant_script
          . '</form>'
          . $_civ_notify_html
+         // A classic layout's search and currency forms, which its
+         // controls name (form="").
+         . ($_civ_search_form !== '' ? '<form id="' . h($_civ_search_form) . '" action="' . h($_civ_catalog['url']) . '" method="get" class="d-none"></form>' : '')
+         . (count($_civ_currencies) > 1 ? pg_sw_currency_form_html($widget_id, $_civ_currencies, $_civ_current_url) : '')
          . $_civ_toast;
 }
 
@@ -7279,14 +7671,27 @@ function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = fals
     if (!empty($product['mpn']))    $data['mpn']  = $product['mpn'];
     if (!empty($product['gtin']))   $data['gtin'] = $product['gtin'];
 
+    // The offer price everybody gets is the price the page shows a visitor
+    // who is not signed in (get_discounted_product_prices(false)).
+    $offer_prices = function_exists('get_discounted_product_prices') ? get_discounted_product_prices(false) : array();
+    $product_id = isset($product['id']) ? (int)$product['id'] : 0;
+    $price_cents = pg_product_jsonld_price_cents(
+        isset($product['price']) ? $product['price'] : 0,
+        (is_array($offer_prices) && isset($offer_prices[$product_id])) ? $offer_prices[$product_id] : null
+    );
+
     $data['offers'] = array(
         '@type'           => 'Offer',
         'url'             => $canonical_url,
         'priceCurrency'   => $currency_code,
-        'price'           => sprintf('%01.2f', ((int)$product['price']) / 100),
+        'price'           => sprintf('%01.2f', $price_cents / 100),
         'priceValidUntil' => date('Y-m-d', strtotime('+1 year')),
         'itemCondition'   => 'https://schema.org/NewCondition',
-        'availability'    => _pg_product_is_out_of_stock($product) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        'availability'    => pg_product_jsonld_availability(
+            isset($product['inventory']) ? $product['inventory'] : 0,
+            isset($product['inventory_quantity']) ? $product['inventory_quantity'] : 0,
+            isset($product['backorder']) ? $product['backorder'] : 0
+        ),
     );
 
     // Google's merchant listing facts ride on the offer (shipping cost and

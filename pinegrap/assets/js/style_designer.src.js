@@ -1056,7 +1056,9 @@ const StyleDesigner = (function () {
         var page = u.page_name || u.style_name || ('#' + (u.page_id || u.style_id));
         if (u.binned) page += ' — ' + _sdT('Recycle Bin');
         var mine = _design && parseInt(_design.styleId, 10) === parseInt(u.style_id, 10);
-        return (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
+        var text = (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
+        // Drawn by a converted common region's tag, not placed.
+        return u.common_region ? (text + ' — ' + _sdT('common region tag "{var:1}"', [u.common_region])) : text;
     }
     function _sharedUsageTip(usage) {
         return usage.length
@@ -1727,6 +1729,14 @@ const StyleDesigner = (function () {
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 100);
+    }
+
+    // A field name as utf8mb4_unicode_ci compares it: lower case, marks
+    // dropped ('ş' = 's', 'İ' = 'i'), a dotless 'ı' kept apart.
+    function _cfNameFold(name) {
+        var s = String(name == null ? '' : name);
+        if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s.toLowerCase();
     }
 
     function _cfNodeAttr(node, name) {
@@ -2844,7 +2854,20 @@ const StyleDesigner = (function () {
         var group = _cfGroupOf(node, root);
         var lead  = _cfLeadOf(node, root);
         if (group.indexOf(lead) === -1) group.push(lead);
+        var was = String(_cfControlName(lead) || '').toLowerCase();
         group.forEach(function (n) { _cfSetAttr(n, 'name', name); });
+        // Another field's "Required when" or "Shown when" names this field
+        // (the server finds it by name, pg_cf_rule_other_field()): it moves
+        // to the new name, else the rule would quietly stop holding.
+        if (was && was !== name.toLowerCase()) {
+            _cfControls(root).forEach(function (c) {
+                var rules = _cfRulesOf(c.node);
+                ['required_when', 'shown_when'].forEach(function (kind) {
+                    var rule = rules[kind];
+                    if (rule && typeof rule === 'object' && String(rule.field || '').toLowerCase() === was) rule.field = name;
+                });
+            });
+        }
         return true;
     }
 
@@ -2960,8 +2983,11 @@ const StyleDesigner = (function () {
             if (!v) { el.value = _cfControlName(lead); return; }
             // Two fields with one name would be one field. Say so instead
             // of silently merging them.
+            // Compared as the database compares form_fields.name (no case,
+            // no diacritics: 'sehir' = 'şehir'), where the export, the
+            // import and the API find a field by its name.
             var clash = _cfFieldsOf(w.tree).some(function (f) {
-                return f.key === v.toLowerCase() && f.lead !== lead && f.members.indexOf(node) === -1;
+                return _cfNameFold(f.key) === _cfNameFold(v) && f.lead !== lead && f.members.indexOf(node) === -1;
             });
             if (clash) {
                 sdToast(_sdT('Another field already has this name: <code>{var}</code>. Give it a different one.', esc(v)), 'warning', 5000);
@@ -5715,7 +5741,10 @@ const StyleDesigner = (function () {
                     if (p.fluid) inner.classList.add('img-fluid');
                     if (p.rounded) inner.classList.add('rounded');
                     if (p.cssClass) inner.className += ' ' + p.cssClass;
-                    if (p.objectPosition) inner.style.objectPosition = p.objectPosition;
+                    // The focus point (_sdFocusImageStyle()): one value, or the
+                    // values per screen size and the pg-focus class.
+                    if (_sdFocusImageClass(p)) inner.classList.add(_sdFocusImageClass(p));
+                    _sdFocusStyleSplit(_sdFocusImageStyle(p)).forEach(function (d) { inner.style.setProperty(d[0], d[1]); });
                 } else {
                     // Empty placeholder — takes full column width, min-height keeps it
                     // clickable/double-clickable for image selection even before a src is set.
@@ -5748,14 +5777,14 @@ const StyleDesigner = (function () {
                 return inner;
             },
             toHTML: function (p, pad) {
-                var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '');
+                var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '') + (_sdFocusImageClass(p) ? ' ' + _sdFocusImageClass(p) : '');
                 // A whole number is the width / height attribute (_sdImgDim());
                 // a value with a unit comes with the node's sizing style
                 // (getNodeExtraStyle()), which addGlobalAttrs() writes.
                 var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
                 var w = _dw.attr ? ' width="' + esc(_dw.attr) + '"' : '';
                 var h = _dh.attr ? ' height="' + esc(_dh.attr) + '"' : '';
-                var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
+                var style = _sdFocusImageStyle(p) ? ' style="' + esc(_sdFocusImageStyle(p)) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
                 if (_sdImgInRatio(p)) {
                     // The box as _render_content_html() writes it: the
@@ -7991,6 +8020,7 @@ const StyleDesigner = (function () {
             (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') + '></body></html>');
         doc.close();
         canvasDoc = doc;
+        _sdMirrorRebind();
         if (canvasZoom !== 1.0 && doc.documentElement) doc.documentElement.style.zoom = canvasZoom;
 
         // Inject Bootstrap JS bundle so data-bs-toggle/data-bs-dismiss/data-bs-target all work natively.
@@ -14419,9 +14449,9 @@ const StyleDesigner = (function () {
                 _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
             }
         }
-        if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
+        if (node.type === 'content' && node.props.contentType === 'image' && _sdFocusImageStyle(node.props)) {
             if (!getAttrStyleProp(node, 'object-position')) {
-                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _sdFocusImageStyle(node.props);
             }
         }
         // Custom _attrs: data-*, aria-*, etc.
@@ -15240,6 +15270,12 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_listing') {
                     var _catSample = _sdCatalogSectionSample(_sec, doc, _sysWidgetRenderCfg);
                     if (_catSample) _hint = _catSample;
+                }
+                // A catalog detail view's sections of a classic layout,
+                // likewise (_sdCatalogDetailSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_item_view') {
+                    var _cdSample = _sdCatalogDetailSectionSample(_sec, doc);
+                    if (_cdSample) _hint = _cdSample;
                 }
                 // A booking widget's part its script fills, drawn as a
                 // visitor sees it (_sdBookingSectionSample()).
@@ -16084,10 +16120,17 @@ const StyleDesigner = (function () {
         '__item_summary': _sdT('A sample product description — short and clear.'),
         '__cart_section_label': _sdT('Cart'),
         '__currency_symbol': _sdCurrencySymbol(),
+        '__currency_code': 'USD',
         '__order_number': 'PG-12345',
         '__order_status': _sdT('Completed'),
         '__shipping_method_name': _sdT('Standard Shipping'),
         '__add_button_label': _sdT('Continue'),
+        '__back_label': _sdT('Back'),
+        '__code': '',
+        '__product_line': _sdT('Sample Product Name') + ' ($45.00)',
+        '__product_lines_html': '<ul><li>' + _sdT('Sample Product Name') + ' ($45.00)</li></ul>',
+        '__product_choice_options': '<option selected>' + _sdT('Sample Product Name') + ' ($45.00)</option>',
+        '__keywords_html': '<a href="#">' + _sdT('Linen') + '</a>\n<a href="#">' + _sdT('Relaxed fit') + '</a>',
         '__folder_name': _sdT('Documents'),
         '__album_name': _sdT('Photo Gallery'),
         '__submit_button_label': _sdT('Sign Up'),
@@ -16300,6 +16343,9 @@ const StyleDesigner = (function () {
             return '<div class="pg-cart-calendar-event small text-muted mt-1">' +
                    '<span class="fw-semibold">' + esc(_sdT('Yoga Workshop')) + '</span><br>' +
                    esc(_sdT('12 May 2026, 10:00 – 12:00')) + '</div>';
+        },
+        '__cart_payment_periods_html': function () {
+            return _sdCartSectionHtml('payment_periods', {});
         },
         // Mirrors _pg_cart_offline_payment_checkbox(). Canvas always previews
         // it so the designer can style/place the block; at runtime it is empty
@@ -17108,6 +17154,7 @@ const StyleDesigner = (function () {
             __mpn: 'LS-2026-M', __gtin: '8690000010019', __brand: _sdT('Cooper Studio'), __manufacturer: _sdT('Cooper Studio'),
             __weight: '0.35', __shippable: '1', __taxable: '1',
             __category_id: '12', __category_name: _sdT('Shirts'), __active_cat_id: '12', __active_cat_name: _sdT('Shirts'),
+            __active_cat_description: _sdT('Shirts in linen and cotton for every season.'), __active_cat_code: '',
             __featured: '1', __is_new: '1', __has_variants: '1', __variant_count: '3', __has_children: '0', __has_breadcrumb: '1',
             __custom_field_1: _sdT('Linen'), __custom_field_2: _sdT('Relaxed fit'), __custom_field_3: 'M', __custom_field_4: _sdT('Natural'),
             __reward_points: '45', __seo_score: '82', __is_bundle: '0', __ai_generated: '',
@@ -24902,6 +24949,32 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
+                // Back to top and Scroll progress: fixed to the window, no
+                // script in the markup. The data-pg-to-top and
+                // data-pg-scroll-progress markers bring assets/js/pg_page_scroll.js
+                // to the page and the Preview (pg_page_scroll_inject()); the
+                // canvas does not load it, so both stay in view to be selected.
+                // Without the script the button still leads to the top (#top)
+                // and is always shown.
+                if (ctype === 'back-to-top') {
+                    return createNode('semantic', { tag: 'a', cssClass: 'btn btn-primary rounded-circle shadow position-fixed bottom-0 end-0 m-4 p-0 d-inline-flex align-items-center justify-content-center pg-to-top',
+                        href: '#top', target: '', customName: _sdT('Back to top'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Back to top') }, { name: 'data-pg-to-top', value: '' }] }, [
+                        createNode('content', { contentType: 'icon', iconName: 'bi-arrow-up', cssClass: '', fontSize: '' })
+                    ]);
+                }
+
+                // The bar is decoration: a reader knows where it is on the
+                // page, so the bar is hidden from it. Its width is the one
+                // inline value, written by the script as Bootstrap's own data.
+                if (ctype === 'scroll-progress') {
+                    return createNode('semantic', { tag: 'div', cssClass: 'progress position-fixed top-0 start-0 w-100 rounded-0 bg-transparent pg-scroll-progress', customName: _sdT('Scroll progress'),
+                        _attrs: [{ name: 'aria-hidden', value: 'true' }, { name: 'data-pg-scroll-progress', value: '' }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar', customName: _sdT('Progress Bar'),
+                            _attrs: [{ name: 'style', value: 'width:0%' }] })
+                    ]);
+                }
+
                 if (ctype === 'carousel') {
                     var crId = 'cr_' + Math.random().toString(36).substr(2, 6);
                     // 3 slides with distinct gradient hero backgrounds + title/desc/button — _crId lets
@@ -26502,7 +26575,9 @@ const StyleDesigner = (function () {
                 { label: _sdT('Figure'),          type: 'component', icon: 'bi-image',                extra: { componentType: 'figure' } },
                 { label: _sdT('Vertical Rule'),   type: 'component', icon: 'bi-vr',                   extra: { componentType: 'vr' } },
                 { label: _sdT('Horizontal Stack'), type: 'component', icon: 'bi-layout-three-columns', extra: { componentType: 'hstack' } },
-                { label: _sdT('Vertical Stack'),  type: 'component', icon: 'bi-layout-sidebar-reverse', extra: { componentType: 'vstack' } }
+                { label: _sdT('Vertical Stack'),  type: 'component', icon: 'bi-layout-sidebar-reverse', extra: { componentType: 'vstack' } },
+                { label: _sdT('Back to top'),     type: 'component', icon: 'bi-arrow-up-circle',      extra: { componentType: 'back-to-top' } },
+                { label: _sdT('Scroll progress'), type: 'component', icon: 'bi-hr',                   extra: { componentType: 'scroll-progress' } }
             ])},
             { title: _sdT('Content'), icon: 'bi-fonts', items: Object.keys(CONTENT).filter(function (k) {
                 // 'text' is a legacy/safety-net contentType used by older add-row/add-col
@@ -27147,9 +27222,13 @@ const StyleDesigner = (function () {
                                     var _u = _sharedUsage[sid] || [];
                                     var _msg;
                                     if (_u.length) {
+                                        // A converted common region comes back on the pages
+                                        // printing its tag: nothing breaks there.
+                                        var _region = _u.filter(function (x) { return !!x.common_region; }).length;
                                         _msg = _sdT('"{var:1}" is used on {var:2} pages:', [sname, _u.length]) + '\n\n' +
                                                _u.map(function(x){ return '• ' + _sharedUsageText(x); }).join('\n') +
-                                               '\n\n' + _sdT('Deleting it breaks the references on those pages. Are you sure?');
+                                               '\n\n' + (_region ? _sdT('It draws the common region wherever its tag stands; deleting it brings back the region\'s earlier content on those pages.') + '\n' : '') +
+                                               (_region === _u.length ? _sdT('Delete it?') : _sdT('Deleting it breaks the references on those pages. Are you sure?'));
                                     } else {
                                         _msg = _sdT('Delete "{var}"?', sname) + '\n' + _sdT('(It is not used on any page.)');
                                     }
@@ -30714,6 +30793,151 @@ const StyleDesigner = (function () {
         if (/^\d+$/.test(s)) return { attr: s, css: '' };
         return { attr: '', css: _sdCssLen(s) };
     }
+    // A picture's focus point: the part that stays in view when its frame
+    // cuts it, kept as the object position (Image) or the background
+    // position. Twins of includes/fn/image_focus.php (pg_focus_*()); both
+    // write the same text. A pair of words typed before is read, and kept
+    // as typed until it is moved.
+    // _sdFocusParse('center top') -> [50, 0]; null for a length or junk.
+    function _sdFocusParse(value) {
+        var parts = String(value === undefined || value === null ? '' : value).trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (parts.length < 1 || parts.length > 2) return null;
+        var words = { left: ['x', 0], right: ['x', 100], top: ['y', 0], bottom: ['y', 100], center: ['', 50] };
+        var read = [];
+        for (var i = 0; i < parts.length; i++) {
+            var p = parts[i], m;
+            if (Object.prototype.hasOwnProperty.call(words, p)) read.push(words[p]);
+            else if ((m = /^(-?(?:\d+\.?\d*|\.\d+))%$/.exec(p)) || (m = /^(0)$/.exec(p))) read.push(['n', Math.max(0, Math.min(100, parseFloat(m[1])))]);
+            else return null;
+        }
+        if (read.length === 1) return read[0][0] === 'y' ? [50, read[0][1]] : [read[0][1], 50];
+        var a = read[0], b = read[1];
+        // Words may come in either order; a number keeps its place (x first).
+        if (a[0] === 'y' || b[0] === 'x') {
+            if (a[0] === 'n' || b[0] === 'n') return null;
+            var t = a; a = b; b = t;
+        }
+        if (a[0] === 'y' || b[0] === 'x') return null;
+        return [a[1], b[1]];
+    }
+    // The pair as the designer writes it: whole percentages, 0..100.
+    function _sdFocusFormat(x, y) {
+        var c = function (v) { return Math.round(Math.max(0, Math.min(100, parseFloat(v) || 0))); };
+        return c(x) + '% ' + c(y) + '%';
+    }
+    // The screen a canvas width belongs to: a phone below 768, a tablet
+    // below 992, a desktop from there and for the full width (0).
+    function _sdFocusScreen(width) {
+        var w = parseInt(width, 10) || 0;
+        if (w <= 0 || w >= 992) return 'desktop';
+        return w < 768 ? 'phone' : 'tablet';
+    }
+    var _SD_FOCUS_IMAGE_KEYS = { desktop: 'objectPosition', tablet: 'objectPositionTablet', phone: 'objectPositionPhone' };
+    // An Image element's values per screen from its props.
+    function _sdFocusValues(p) {
+        var out = {};
+        ['desktop', 'tablet', 'phone'].forEach(function (s) {
+            var v = p ? p[_SD_FOCUS_IMAGE_KEYS[s]] : '';
+            out[s] = (typeof v === 'string' || typeof v === 'number') ? String(v).trim() : '';
+        });
+        return out;
+    }
+    // A copy of the props with the values written; an empty one removes its
+    // prop. Removed first, so the three props always come in this order.
+    function _sdFocusImageProps(p, values) {
+        var out = Object.assign({}, p || {});
+        ['desktop', 'tablet', 'phone'].forEach(function (s) {
+            var v = values && values[s] ? String(values[s]) : '';
+            delete out[_SD_FOCUS_IMAGE_KEYS[s]];
+            if (v !== '') out[_SD_FOCUS_IMAGE_KEYS[s]] = v;
+        });
+        return out;
+    }
+    // The value a screen shows: its own, else the next larger screen's.
+    function _sdFocusForScreen(values, screen) {
+        var order = ['phone', 'tablet', 'desktop'], from = order.indexOf(screen);
+        if (from < 0) from = 2;
+        for (var i = from; i < 3; i++) {
+            if (values && values[order[i]]) return String(values[order[i]]);
+        }
+        return '';
+    }
+    function _sdFocusSet(values, screen, value) {
+        var out = Object.assign({}, values);
+        if (['desktop', 'tablet', 'phone'].indexOf(screen) < 0) screen = 'desktop';
+        out[screen] = String(value === undefined || value === null ? '' : value).trim();
+        return out;
+    }
+    // "Same on every screen": the desktop's value, the others removed.
+    function _sdFocusSameEverywhere(values) {
+        return { desktop: values && values.desktop ? String(values.desktop) : '', tablet: '', phone: '' };
+    }
+    function _sdFocusHasScreens(values) {
+        return !!values && (_sdFocusParse(values.tablet) !== null || _sdFocusParse(values.phone) !== null);
+    }
+    // The declarations for the values (pg_focus_decls()): one value as it
+    // was always written; with a smaller screen's own value the three custom
+    // properties, read through --pg-focus, which the pg-focus rule
+    // (_SD_BLOCK_CSS) sets per media query.
+    function _sdFocusDecls(values, cssProp) {
+        var d = values && values.desktop ? String(values.desktop).trim() : '';
+        if (!_sdFocusHasScreens(values)) return d !== '' ? cssProp + ':' + d : '';
+        var t = _sdFocusParse(values.tablet) !== null ? String(values.tablet).trim() : '';
+        var p = _sdFocusParse(values.phone) !== null ? String(values.phone).trim() : '';
+        d = d || '50% 50%'; t = t || d; p = p || t;
+        return cssProp + ':var(--pg-focus,' + d + ');--pg-focus-d:' + d + ';--pg-focus-t:' + t + ';--pg-focus-p:' + p;
+    }
+    function _sdFocusImageStyle(p) { return _sdFocusDecls(_sdFocusValues(p), 'object-position'); }
+    function _sdFocusImageClass(p) { return _sdFocusHasScreens(_sdFocusValues(p)) ? 'pg-focus' : ''; }
+    // A style attribute's declarations as [name, value] pairs; a ';' inside
+    // parentheses or quotes (a data: address) stays in its value.
+    function _sdFocusStyleSplit(style) {
+        var s = String(style || ''), out = [], cur = '', depth = 0, quote = '';
+        for (var i = 0; i <= s.length; i++) {
+            var c = i < s.length ? s.charAt(i) : ';';
+            if (quote) { if (c === quote) quote = ''; }
+            else if (c === '"' || c === "'") quote = c;
+            else if (c === '(') depth++;
+            else if (c === ')') depth = Math.max(0, depth - 1);
+            else if (c === ';' && depth === 0) {
+                var colon = cur.indexOf(':');
+                if (colon > -1 && cur.slice(0, colon).trim() !== '') out.push([cur.slice(0, colon).trim().toLowerCase(), cur.slice(colon + 1).trim()]);
+                cur = '';
+                continue;
+            }
+            cur += c;
+        }
+        return out;
+    }
+    // A background picture's values from its node's style attribute.
+    function _sdFocusStyleRead(style) {
+        var decl = {};
+        _sdFocusStyleSplit(style).forEach(function (pair) { decl[pair[0]] = pair[1]; });
+        if (Object.prototype.hasOwnProperty.call(decl, '--pg-focus-d')) {
+            var d = decl['--pg-focus-d'];
+            var t = Object.prototype.hasOwnProperty.call(decl, '--pg-focus-t') ? decl['--pg-focus-t'] : d;
+            var p = Object.prototype.hasOwnProperty.call(decl, '--pg-focus-p') ? decl['--pg-focus-p'] : t;
+            return { desktop: d, tablet: t !== d ? t : '', phone: p !== t ? p : '' };
+        }
+        return { desktop: Object.prototype.hasOwnProperty.call(decl, 'background-position') ? decl['background-position'] : '', tablet: '', phone: '' };
+    }
+    // The style attribute with the values written as the background's focus,
+    // where its background-position stood. The node takes the pg-focus class
+    // while _sdFocusHasScreens(values).
+    function _sdFocusStyleWrite(style, values) {
+        var mine = ['background-position', '--pg-focus-d', '--pg-focus-t', '--pg-focus-p'];
+        var decls = _sdFocusDecls(values, 'background-position'), parts = [], placed = false;
+        _sdFocusStyleSplit(style).forEach(function (pair) {
+            if (mine.indexOf(pair[0]) > -1) {
+                if (!placed && decls) parts.push(decls);
+                placed = true;
+                return;
+            }
+            parts.push(pair[0] + ':' + pair[1]);
+        });
+        if (!placed && decls) parts.push(decls);
+        return parts.join(';');
+    }
     // The page's "no image" picture (assets/images/no-image.svg), the one
     // _render_content_html() swaps in when a picture fails to load.
     function _sdNoImageUrl() {
@@ -32312,7 +32536,7 @@ const StyleDesigner = (function () {
         // where the node's other actions are — not only in a panel row the
         // operator has to go and find.
         if (!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image')) {
-            items.push({ iconHtml: _sdCanvasIcon(), label: _sdT('Edit Image'), title: _sdT('Edit the image in the Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } });
+            items.push({ iconHtml: _sdCanvasIcon(), label: _sdT('Edit in Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } });
             items.push({ sep: true });
         }
 
@@ -33723,7 +33947,7 @@ const StyleDesigner = (function () {
                 ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { _sdAiRun(function (ai) { ai.open(node._id); }); } }
                 : null),
             ((!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image'))
-                ? { iconHtml: _sdCanvasIcon(), label: _sdT('Edit Image'), title: _sdT('Edit the image in the Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } }
+                ? { iconHtml: _sdCanvasIcon(), label: _sdT('Edit in Artifact Canvas'), handler: function () { _sdOpenImageEditorForNode(node); } }
                 : null),
             ((!multi && node.type !== 'root' && _sdAccess() === 'full') ? _sdGuardItem(_sdEditableAreaMenuItem(node), [node]) : null),
             ((!multi && ((typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image')) || (node.type !== 'root' && _sdAccess() === 'full')))
@@ -35019,7 +35243,7 @@ const StyleDesigner = (function () {
             if (!s) return;
             el.addEventListener('change', function () {
                 if (el.getAttribute('data-sd-len')) {
-                    var why = _sdLenCheck('len', el.value);
+                    var why = _sdLenCheck(el.getAttribute('data-sd-len'), el.value);
                     _sdFieldInvalid(el, why);
                     if (why) return;
                 }
@@ -36527,7 +36751,7 @@ const StyleDesigner = (function () {
                           '<div class="sd-prop-control"><div class="input-group input-group-sm">' +
                             '<input type="text" class="form-control form-control-sm" id="sd-ro-img-src" value="' + esc(_roImage.url) + '" readonly>' +
                             '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-pick">' + esc(_sdT('Choose')) + '</button>' +
-                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit the image in the Artifact Canvas')) + '">' + _sdCanvasIcon() + '</button>' +
+                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '">' + _sdCanvasIcon() + '</button>' +
                           '</div></div></div>'
                         : '') +
                 '</div>';
@@ -43327,7 +43551,8 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__variant_picker',
+        '__price_range', '__active_cat_description', '__active_cat_code',
+        '__code', '__product_line', '__product_lines_html', '__product_choice_options', '__keywords_html', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
@@ -44179,6 +44404,10 @@ const StyleDesigner = (function () {
         { label: _sdT('Drill-down / Page'), tokens: [
             ['__active_cat_id',   _sdT('Active category ID')],
             ['__active_cat_name', _sdT('Active category name')],
+            ['__active_cat_description', _sdT('Active category\'s full description (while browsing)')],
+            ['__active_cat_code', _sdT('Active category\'s code field (while browsing)')],
+            ['__search_query',    _sdT('The words searched')],
+            ['__result_count',    _sdT('Number of groups and products listed')],
             ['__has_children',    _sdT('Whether there is a subgroup (0/1)')],
             ['__has_breadcrumb',  _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]},
@@ -44407,6 +44636,18 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Breadcrumb / Page Path'), tokens: [
             ['__has_breadcrumb', _sdT('Whether a breadcrumb is drawn (1 or empty)')]
+        ]},
+        // A classic catalog detail layout's values, as the classic page
+        // printed them.
+        { label: _sdT('Classic product page'), tokens: [
+            ['__code',                   _sdT('The product\'s code field (HTML)')],
+            ['__product_line',           _sdT('Product line: its name and price in brackets (HTML)')],
+            ['__product_lines_html',     _sdT('The group\'s product lines (HTML list)')],
+            ['__product_choice_options', _sdT('The group\'s products to pick from (options of a select)')],
+            ['__add_button_label',       _sdT('Add button label (the page\'s setting)')],
+            ['__back_url',               _sdT('The page the visitor came from (the link drops when there is none)')],
+            ['__back_label',             _sdT('Back button label (the page\'s setting)')],
+            ['__keywords_html',          _sdT('The product\'s keywords as searches (HTML)')]
         ]}
     ];
 
@@ -44902,7 +45143,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Labels'), tokens: [
             ['__add_button_label',  _sdT('Add button label (the page\'s setting)')],
             ['__skip_button_label', _sdT('Skip button label (the page\'s setting)')],
-            ['__currency_symbol',   _sdT('Currency symbol')]
+            ['__currency_symbol',   _sdT('Currency symbol')],
+            ['__currency_code',     _sdT('Currency code shown beside amounts (empty when the site shows none)')]
         ]},
         { label: _sdT('Product (loop_area)'), tokens: [
             ['__id',                    _sdT('Product ID')],
@@ -45050,6 +45292,7 @@ const StyleDesigner = (function () {
             ['__menu_item_name',          _sdT('Menu item name')],
             ['__menu_item_id',            _sdT('Menu item ID')],
             ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+            ['__menu_item_rel',           _sdT('Menu item link relation (noopener or empty)')],
             ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
             ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
             ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
@@ -45364,6 +45607,12 @@ const StyleDesigner = (function () {
             ['__cart_today_total',         _sdT('Amount charged today (empty without a recurring row)')],
             ['__cart_recurring_total',     _sdT('Amount charged each period (empty without a recurring row)')],
             ['__has_recurring_items',      _sdT('Whether the cart has a recurring product (1 / empty)')]
+        ]},
+        { label: _sdT('Classic cart page'), tokens: [
+            ['__cart_payment_periods_html', _sdT('Recurring totals, one line per payment period (HTML)')],
+            ['__retrieve_order_url',        _sdT('Address that restores this cart later')],
+            ['__currency_symbol',           _sdT('Currency symbol')],
+            ['__currency_code',             _sdT('Currency code shown beside amounts (empty when the site shows none)')]
         ]}
     ];
 
@@ -45809,8 +46058,12 @@ const StyleDesigner = (function () {
             // item list are the safe spots.
             out.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
             out.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
+            out.push(['payment_periods',   _sdT('Recurring Totals (one line per payment period)')]);
         } else if (type === 'catalog_item_view') {
             out.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
+            out.push(['product_lines',     _sdT('The group\'s products as lines (a list)')]);
+            out.push(['group_tree',        _sdT('Category Tree (nested list)')]);
+            out.push(['keywords',          _sdT('The product\'s keywords (searches on the catalog page)')]);
             out.push(['payment_methods',   _sdT('Payment methods (a table body: one row per method switched on in the store settings)')]);
         } else if (type === 'custom_form') {
             // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
@@ -46663,6 +46916,32 @@ const StyleDesigner = (function () {
         return box;
     }
 
+    // What a catalog detail view prints in a section of a classic layout's
+    // product row and sidebar: the catalog's group tree, the product's
+    // keywords, a group's product lines (twins of the server's
+    // _apply_catalog_item_view_bindings()); '' for another section.
+    /* @pg-site-output */
+    function _sdCatalogDetailSectionHtml(section) {
+        var line = esc(_sdT('Sample Product Name')) + ' ($45.00)';
+        if (section === 'group_tree') return _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0);
+        if (section === 'keywords') return '<a href="#">' + esc(_sdT('Linen')) + '</a>\n<a href="#">' + esc(_sdT('Relaxed fit')) + '</a>';
+        if (section === 'product_lines') return '<ul><li>' + line + '</li><li>' + line + '</li></ul>';
+        return '';
+    }
+
+    // The sample of such a section as a canvas box: inert, never saved.
+    function _sdCatalogDetailSectionSample(section, doc) {
+        var html = _sdCatalogDetailSectionHtml(section);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(_sdT('The site fills this in for the product shown.')) + '</div>';
+        return box;
+    }
+
     // ── Booking widget parts ───────────────────────────────────────────────
     // The widget's server keeps every part's children and only marks the
     // parts (pg_booking_widget_mark()), so a step and the details form are
@@ -47024,6 +47303,12 @@ const StyleDesigner = (function () {
                 + _sdCartQuickAddOptionHtml(32, _sdT('Greeting card') + ' - ' + _sdT('Written by hand') + ' (' + _sdMoney(2.5) + ')', 'quantity', 0, 1, true);
             return _sdCartQuickAddHtml(label, options, true, false, null, '', '#', '', '');
         }
+        if (section === 'payment_periods') {
+            // Mirrors pg_cart_payment_periods_html().
+            return '<table class="table pg-cart-payment-periods"><tbody><tr><th scope="row" class="text-end w-100">'
+                + esc(_sdT('{var:1} Subtotal:').replace('{var:1}', _sdT('Monthly'))) + '</th>'
+                + '<td class="text-end text-nowrap">' + _sdMoney(19.9) + '</td></tr></tbody></table>';
+        }
         return '';
     }
 
@@ -47035,6 +47320,7 @@ const StyleDesigner = (function () {
         if (!html) return null;
         var note = section === 'applied_offers' ? _sdT('The site lists the offers applied to the visitor\'s cart; nothing when none applies.')
             : section === 'pending_offers' ? _sdT('The site lists the gifts the visitor\'s cart has earned, each with its Add button; nothing when none.')
+            : section === 'payment_periods' ? _sdT('The site lists the cart\'s recurring amount for each payment period; nothing without a recurring product.')
             : _sdT('The site lists the products of the chosen group the visitor can buy now.');
         var box = doc.createElement('div');
         box.className = 'sd-section-binding-hint sd-section-sample';
@@ -49236,7 +49522,29 @@ const StyleDesigner = (function () {
         ],
         shopping_cart: [
             ['has_items',            _sdT('The cart has items')],
-            ['has_recurring_items',  _sdT('The cart has a recurring product')]
+            ['has_recurring_items',  _sdT('The cart has a recurring product')],
+            // A classic cart layout's two tables and its totals.
+            ['has_today_items',             _sdT('Something is charged today')],
+            ['has_today_non_donations',     _sdT('Something other than a donation is charged today')],
+            ['has_recurring_products',      _sdT('The cart has a recurring product, charged today or later')],
+            ['has_recurring_non_donations', _sdT('A recurring product is not a donation')],
+            ['has_discount',                _sdT('There is a discount')],
+            ['has_special_offer_code',      _sdT('The offer code box is shown')],
+            ['has_currency_code',           _sdT('A currency code is shown beside amounts')],
+            ['cart_item_today',                       _sdT('Row: charged today')],
+            ['cart_item_recurring',                   _sdT('Row: a recurring product')],
+            ['cart_item_recurring_only',              _sdT('Row: a recurring product first charged later')],
+            ['cart_item_donation',                    _sdT('Row: a donation')],
+            ['cart_item_not_donation',                _sdT('Row: not a donation')],
+            ['cart_item_added_by_offer',              _sdT('Row: added by an offer (quantity fixed)')],
+            ['cart_item_quantity_editable',           _sdT('Row: the visitor may change the quantity')],
+            ['cart_item_recurring_quantity_fixed',    _sdT('Row: among recurring charges, the quantity is not changed here')],
+            ['cart_item_recurring_quantity_editable', _sdT('Row: among recurring charges, the quantity is changed here')],
+            ['cart_item_recurring_donation',          _sdT('Row: among recurring charges, a donation whose amount is changed here')],
+            ['cart_item_recurring_amount',            _sdT('Row: among recurring charges, the amount is shown as text')],
+            ['cart_item_has_image',                   _sdT('Row: the product has an image')],
+            ['cart_item_out_of_stock',                _sdT('Row: the product is out of stock')],
+            ['cart_item_has_calendar_event',          _sdT('Row: a reservation for a calendar event')]
         ],
         search_results: [
             ['has_query',   _sdT('Something was searched')],
@@ -49253,7 +49561,18 @@ const StyleDesigner = (function () {
             ['no_rating',  _sdT('Row: the product has no rating yet')],
             ['is_bundle',         _sdT('Row: the product is a bundle')],
             ['has_bundle_saving', _sdT('Row: the bundle costs less than its products bought one by one')],
+            ['catalog_item_has_image',             _sdT('Row: the product or group has a picture')],
+            ['catalog_item_has_short_description', _sdT('Row: the product or group has a short description')],
+            ['catalog_item_has_price',             _sdT('Row: the product or group has a price')],
             // Outside the card only (the listing's surround).
+            ['has_items',      _sdT('A group or product is listed')],
+            ['no_items',       _sdT('No group or product is listed')],
+            ['has_query',      _sdT('Something was searched')],
+            ['no_query',       _sdT('Nothing was searched (a group is browsed)')],
+            ['many_results',   _sdT('More than one group or product is listed')],
+            ['one_result',     _sdT('One group or product is listed')],
+            ['has_currency_choice', _sdT('The visitor can choose a currency')],
+            ['no_currency_choice',  _sdT('The visitor cannot choose a currency')],
             ['has_prev_page',  _sdT('A previous page exists')],
             ['has_next_page',  _sdT('A next page exists')],
             ['has_more_pages', _sdT('The list runs over more than one page')]
@@ -49264,7 +49583,20 @@ const StyleDesigner = (function () {
             ['is_bundle',         _sdT('The product is a bundle')],
             ['has_bundle_saving', _sdT('The bundle costs less than its products bought one by one')],
             // Out of stock with no back order: the back-in-stock form shows.
-            ['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')]
+            ['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')],
+            // A classic layout's conditions.
+            ['has_products',         _sdT('The product, or one of its group\'s, can be ordered')],
+            ['no_products',          _sdT('No product shown can be ordered')],
+            ['no_variant_choice',    _sdT('No variant picker is drawn (no attributes)')],
+            ['has_product_choice',   _sdT('The group\'s products are picked from a list')],
+            ['no_product_choice',    _sdT('No list to pick the group\'s products from')],
+            ['one_product',          _sdT('One product is shown')],
+            ['many_products',        _sdT('A group of several products is shown')],
+            ['has_recipient_choice', _sdT('The visitor picks a recipient')],
+            ['has_back_button',      _sdT('The visitor came from a page with a back link')],
+            ['has_keywords',         _sdT('The product has keywords')],
+            ['has_currency_choice',  _sdT('The visitor can choose a currency')],
+            ['no_currency_choice',   _sdT('The visitor cannot choose a currency')]
         ],
         calendar_view: [
             ['has_navigation', _sdT('The view can be stepped through (monthly or weekly)')],
@@ -49456,7 +49788,13 @@ const StyleDesigner = (function () {
             ['no_gallery_items',           _sdT('The album shown has no album and no photo')],
             ['has_albums',                 _sdT('The album shown has albums')],
             ['has_photos',                 _sdT('The album shown has photos')],
-            ['in_album',                   _sdT('An album below the gallery\'s own is open')]
+            ['in_album',                   _sdT('An album below the gallery\'s own is open')],
+            ['not_in_album',               _sdT('The gallery\'s own folder is shown')],
+            ['only_photos',                _sdT('The album shown has photos and no album')],
+            ['no_photos',                  _sdT('The album shown has no photo')],
+            ['gallery_item_is_album',      _sdT('Row: an album')],
+            ['gallery_item_is_photo',      _sdT('Row: a photo')],
+            ['gallery_item_many_photos',   _sdT('Row: an album of more than one photo')]
         ],
         folder_view: [
             ['has_folder_items',           _sdT('The folder has an entry the visitor may see')],
@@ -49520,10 +49858,17 @@ const StyleDesigner = (function () {
             ['has_quantity',           _sdT('The pick list asks for a quantity (not only donations)')],
             ['has_recipient_choice',   _sdT('The visitor picks who the products are shipped to')],
             ['has_skip_button',        _sdT('The page has a skip button')],
+            ['only_donations',         _sdT('Every product that can be ordered is a donation')],
+            ['not_only_donations',     _sdT('A product that can be ordered is not a donation')],
+            ['selects_by_checkbox_and_quantity', _sdT('The list has both check boxes and quantity boxes')],
+            ['selects_by_checkbox_only', _sdT('The list has check boxes and no quantity box')],
+            ['selects_by_quantity_only', _sdT('The list has quantity boxes and no check box')],
+            ['has_currency_code',      _sdT('The site shows a currency code beside amounts')],
             ['order_form_checkbox',    _sdT('Row: the product is chosen with a check box')],
             ['order_form_quantity',    _sdT('Row: the product is ordered by quantity')],
             ['order_form_donation',    _sdT('Row: the product is a donation of the visitor\'s amount')],
             ['order_form_unavailable', _sdT('Row: the product is out of stock')],
+            ['order_form_has_image',   _sdT('Row: the product has an image')],
             ['has_recurring_schedule', _sdT('Row: the visitor sets the payment schedule')],
             ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
@@ -49785,6 +50130,8 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart')        fOpts.push(['coupon_form', _sdT('Offer Code Form (shopping_cart)')]);
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
+            // A classic layout's sidebar search: posts to the catalog page.
+            else if (region === 'catalog_item_view') fOpts.push(['search_form', _sdT('Search Form (the catalog page)')]);
             else if (region === 'account_security') {
                 fOpts.push(['account_security_form', _sdT('Account security form')]);
                 fOpts.push(['passkey_add_form',      _sdT('Add a passkey form')]);
@@ -49810,6 +50157,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['quantity',         _sdT('Quantity (quantity) — catalog_item_view')]);
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
+                vOpts.push(['product_choice',   _sdT('The group\'s products to pick from (product_id) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
                 vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
             }
@@ -49835,7 +50183,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['form_field_file_remove',  _sdT('Product form: the Remove check of the field\'s kept file (cart.item_form_fields)')]);
                 vOpts.push(['form_field_option',       _sdT('Product form: one choice of the field (cart.item_form_field_options)')]);
             }
-            if (region === 'catalog_listing' || region === 'search_results') {
+            if (region === 'catalog_listing' || region === 'search_results' || region === 'catalog_item_view') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
             }
             if (region === 'comments') {
@@ -55074,7 +55422,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-img-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
-                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image in the Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')">' + _sdCanvasIcon() + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')">' + _sdCanvasIcon() + '</button>' +
                     '</div>');
             } else if (ct === 'image' && key === 'alt') {
                 // The alt text, with "Write with AI" under it where the
@@ -55585,6 +55933,7 @@ const StyleDesigner = (function () {
                         : _sdT('This page type has no design widget; the region keeps drawing it from the page type\'s settings.')) +
                 '</div></div>';
         }
+        if (o.file) return _sdClassicFilePropsHtml(o);
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-classic-convert">' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
@@ -55595,12 +55944,45 @@ const StyleDesigner = (function () {
             '</div></div>';
     }
 
+    // A page with its own layout file the converter maps (o.file,
+    // pg_classic_widget_offers()): the pieces it would lose as list rows,
+    // five then "Show all N", and the converter, which keeps the file's
+    // markup.
+    function _sdClassicFilePropsHtml(o) {
+        var rows = Array.isArray(o.dropped) ? o.dropped : [];
+        var h = '';
+        if (rows.length) {
+            h += _sdRegionWhyHtml(_sdT('Its layout has pieces that have no design element')) +
+                '<div class="sd-prop-row"><div class="w-100"><ul class="list-unstyled mb-0" id="sd-classic-dropped" style="font-size:.66rem;line-height:1.3">';
+            rows.forEach(function (r, i) {
+                h += '<li class="py-1 border-bottom text-break' + (i >= SD_CLASSIC_DROPPED_SHOWN ? ' d-none' : '') + '">' + esc(r && r.text ? r.text : '') + '</li>';
+            });
+            h += '</ul>';
+            if (rows.length > SD_CLASSIC_DROPPED_SHOWN) {
+                h += '<button type="button" class="btn btn-link btn-sm p-0 mt-1" id="sd-classic-dropped-all" style="font-size:.7rem">' + esc(_sdT('Show all {var}', rows.length)) + '</button>';
+            }
+            h += '</div></div>';
+        }
+        return h + '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-solid theme-primary w-100" id="sd-classic-convert">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Builds a "{var}" widget from this page\'s layout, its markup kept, in the region\'s place. The layout file and the page type stay; undo brings the region back.', _swTypeInfo(o.kind).label)) +
+            '</div></div>';
+    }
+
+    // Dropped pieces listed before "Show all N".
+    var SD_CLASSIC_DROPPED_SHOWN = 5;
+
     // The page's own system region becomes the widget of its page type, in
     // its place; one undo step, after asking.
     function _sdClassicConvert(regionNode) {
         var o = _sdClassicWidgetOffer(regionNode);
         if (!o) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (o.file) { _sdClassicFileConvert(regionNode, o); return; }
         var label = _swTypeInfo(o.kind).label;
         var ask = _sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label);
         var held = Array.isArray(o.held) ? o.held : [];
@@ -55609,6 +55991,45 @@ const StyleDesigner = (function () {
         _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
             sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
         }, _sdClassicTreeSeed(_buildStarterTree(o.kind), o.tree));
+    }
+
+    // A page's own layout file as its widget's design elements, in the
+    // region's place (layout_code convert_type, pg_layout_type_file_convert());
+    // the confirm names how many pieces go, the toasts the widget and the
+    // pieces the layout lost.
+    function _sdClassicFileConvert(regionNode, o) {
+        var p = _pgActivePage();
+        if (!p || !(p.page_id > 0)) return;
+        var label = _swTypeInfo(o.kind).label;
+        var n = Array.isArray(o.dropped) ? o.dropped.length : 0;
+        var ask = n
+            ? _sdT('Build a "{var:1}" widget from this layout in the place of the classic region? {var:2} pieces with no design element are left out. Undo brings the region back.', [label, n])
+            : _sdT('Build a "{var}" widget from this layout in the place of the classic region? Undo brings the region back.', label);
+        var held = Array.isArray(o.held) ? o.held : [];
+        if (held.length) ask += '\n\n' + _sdT('The widget has no setting for: {var}. The page loses it.', held.join(', '));
+        if (!window.confirm(ask)) return;
+        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+        fetch(url, { method: 'POST', credentials: 'same-origin',
+                     body: JSON.stringify({ action: 'layout_code', sub_action: 'convert_type', page_id: p.page_id, starter: _buildStarterTree(o.kind), token: _pgToken() }),
+                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || data.status !== 'success' || !data.tree || data.kind !== o.kind) {
+                    sdToast(esc((data && data.message) || _sdT('The operation failed.')), 'error');
+                    return;
+                }
+                var tree = data.tree;
+                _backfillIds(tree);
+                var cfg = _sdLayoutWidgetCfg(o);
+                var own = (data.cfg && typeof data.cfg === 'object') ? data.cfg : {};
+                Object.keys(own).forEach(function (k) { cfg[k] = own[k]; });
+                _sdRegionToWidget(regionNode, o.kind, cfg, function () {
+                    sdToast(esc(_sdT('The page is now drawn by a "{var}" widget built from its layout; save the page to keep it.', label)), 'success', 7000);
+                    var left = (Array.isArray(data.dropped) ? data.dropped : []).map(function (r) { return r && r.text ? r.text : ''; }).filter(Boolean);
+                    if (left.length) sdToast(esc(_sdT('Left out of the widget: {var}', left.join('; '))), 'warning', 12000);
+                }, tree);
+            })
+            .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
     // A widget's starter layout with the page type's layout settings put in
@@ -56710,6 +57131,13 @@ const StyleDesigner = (function () {
             { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, _sdT('e.g. 0')), val: p.bottom },
             { label: _sdT('Left'),   ctrl: lenInp('left', p.left, _sdT('e.g. 0')), val: p.left   }
         ];
+        // Presets of the four offsets (_sdPosPreset()), applied by
+        // _sdPosPresetApply(); the one the element matches stands on.
+        var _posOn = _sdPosPresetOf(p, cls);
+        _posSubRows.unshift({ label: _sdT('Preset'), val: '', ctrl: '<div class="sd-seg-grp" role="group">' +
+            [['fill', _sdT('Fill the parent')], ['centre', _sdT('Centre')]].map(function (o) {
+                return '<button type="button" class="sd-seg' + (_posOn === o[0] ? ' sd-seg-on' : '') + '" data-sd-pos-preset="' + o[0] + '" aria-pressed="' + (_posOn === o[0] ? 'true' : 'false') + '">' + esc(o[1]) + '</button>';
+            }).join('') + '</div>' });
         var _posHasSub = _posSubRows.some(function(sr) { return !!sr.val; });
         var _posRow = '<div class="sd-sp-row">' +
             '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel +
@@ -56756,34 +57184,23 @@ const StyleDesigner = (function () {
             }
         }
 
-        // Z-Index dropdown: common stacking values + auto. Custom values can still be
-        // typed manually via the Attrs panel's style attribute if needed.
-        var _zIndexOpts = [
-            ['',     _sdT('Default')],
-            ['auto', 'auto'],
-            ['0',    '0'],
-            ['1',    '1'],
-            ['2',    '2'],
-            ['3',    '3'],
-            ['10',   '10'],
-            ['20',   '20'],
-            ['50',   '50'],
-            ['100',  '100'],
-            ['1000', '1000'],
-            ['1050', '1050 (modal-backdrop)'],
-            ['1055', '1055 (modal)'],
-            ['1080', '1080 (toast)']
-        ];
-        var _zCur = (p.zIndex == null) ? '' : String(p.zIndex);
-        var _zIdxSel = '<select class="form-control form-control-sm" data-prop="zIndex">' +
-            _zIndexOpts.map(function(o) {
-                return '<option value="' + o[0] + '"' + (o[0] === _zCur ? ' selected' : '') + '>' + o[1] + '</option>';
-            }).join('') +
-            '</select>';
+        // Z Index: a typed whole number or auto (checked as kind 'z'), and
+        // Bootstrap's layers by name beside it (_SD_Z_LAYERS); a layer picked
+        // fills the field, which writes (_sdControlsInit()).
+        var _zCur = (p.zIndex == null || p.zIndex === 0) ? '' : String(p.zIndex);
+        var _zOn = _sdZLayerOf(_zCur);
         var _zIdxRow = '<div class="sd-sp-row">' +
             '<span class="sd-sp-toggle-spacer"></span>' +
             '<span class="sd-sp-label">' + esc(_sdT('Z Index')) + '</span>' +
-            _zIdxSel +
+            '<div class="input-group input-group-sm">' +
+            '<input type="text" inputmode="numeric" class="form-control form-control-sm" data-prop="zIndex" data-sd-len="z" value="' + esc(_zCur) + '" placeholder="' + esc(_sdT('auto')) + '">' +
+            '<select class="form-control form-control-sm" data-sd-zlayer aria-label="' + esc(_sdT('Layer')) + '">' +
+            '<option value="">' + esc(_sdT('Layer')) + '</option>' +
+            _SD_Z_LAYERS.map(function (l) {
+                var name = { Dropdown: _sdT('Dropdown'), Sticky: _sdT('Sticky'), Fixed: _sdT('Fixed'), Modal: _sdT('Modal') }[l[1]] || l[1];
+                return '<option value="' + l[0] + '"' + (l[0] === _zOn ? ' selected' : '') + '>' + esc(name) + ' (' + l[0] + ')</option>';
+            }).join('') +
+            '</select></div>' +
         '</div>';
 
         var _dsBody = '<div class="sd-sp-section">' +
@@ -57124,7 +57541,7 @@ const StyleDesigner = (function () {
                 '<div class="sd-pick-group">' +
                     '<input type="text" class="form-control form-control-sm" id="sd-bg-img-inp" data-bg-prop="background-image" value="' + esc(_bgImgUrl) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
                     '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
-                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image in the Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')">' + _sdCanvasIcon() + '</button>' +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')">' + _sdCanvasIcon() + '</button>' +
                     (_bgImgUrl ? '<button class="btn btn-sm btn-outline theme-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
                 '</div>') +
             row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
@@ -58905,6 +59322,11 @@ const StyleDesigner = (function () {
         if (layoutWidgetBtn) layoutWidgetBtn.addEventListener('click', function () { _sdLayoutWidgetPlace(selectedNode); });
         var classicConvertBtn = document.getElementById('sd-classic-convert');
         if (classicConvertBtn) classicConvertBtn.addEventListener('click', function () { _sdClassicConvert(selectedNode); });
+        var classicDroppedAll = document.getElementById('sd-classic-dropped-all');
+        if (classicDroppedAll) classicDroppedAll.addEventListener('click', function () {
+            document.querySelectorAll('#sd-classic-dropped li.d-none').forEach(function (li) { li.classList.remove('d-none'); });
+            classicDroppedAll.remove();
+        });
         var layoutRemoveBtn = document.getElementById('sd-layout-remove-region');
         if (layoutRemoveBtn) layoutRemoveBtn.addEventListener('click', function () { _sdLayoutRegionRemove(selectedNode); });
 
@@ -63879,11 +64301,67 @@ const StyleDesigner = (function () {
         return opts.length ? { attrs: ' ' + head.replace(/\s*\bclass="[^"]*"/, '').trim(), opts: opts } : null;
     }
 
+    // ── Position presets and layers: pure helpers ──
+    // Bootstrap 5.3's layers by name: its $zindex-* numbers live in its Sass
+    // only (no --bs-* variable holds them), so the list carries them.
+    var _SD_Z_LAYERS = [['1000', 'Dropdown'], ['1020', 'Sticky'], ['1030', 'Fixed'], ['1055', 'Modal']];
+
+    // Whether a typed z-index is written: a whole number or auto, as
+    // getNodeExtraStyle() and _pg_node_sizing_decls() write it. Empty is valid.
+    function _sdZValid(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        return s === '' || /^(?:-?\d+|auto)$/i.test(s);
+    }
+
+    // The layer of _SD_Z_LAYERS a z-index value names, '' for any other.
+    function _sdZLayerOf(v) {
+        var s = String(v == null ? '' : v).trim();
+        for (var i = 0; i < _SD_Z_LAYERS.length; i++) if (_SD_Z_LAYERS[i][0] === s) return s;
+        return '';
+    }
+
+    // A Position preset ('fill' or 'centre') as the four offsets and the
+    // class list `cls` it leaves: Fill sets every offset to 0; Centre puts
+    // the top left corner at 50% / 50% and Bootstrap's translate-middle
+    // pulls the element back by half its size, Bootstrap's own way to
+    // centre a positioned element. Offsets act on a positioned element only,
+    // so one without a Position (or Static) becomes Absolute. Null for an
+    // unknown name.
+    function _sdPosPreset(name, cls) {
+        var off;
+        if (name === 'fill') off = { top: '0', right: '0', bottom: '0', left: '0' };
+        else if (name === 'centre') off = { top: '50%', right: '', bottom: '', left: '50%' };
+        else return null;
+        var list = String(cls || '').split(/\s+/).filter(function (c) { return c && c !== 'translate-middle'; });
+        if (name === 'centre') list.push('translate-middle');
+        var placed = list.some(function (c) { return /^position-(?:(?:sm|md|lg|xl|xxl)-)?(?:relative|absolute|fixed|sticky)$/.test(c); });
+        if (!placed) {
+            list = list.filter(function (c) { return c !== 'position-static'; });
+            list.push('position-absolute');
+        }
+        off.cls = list.join(' ');
+        return off;
+    }
+
+    // The preset an element's offsets and classes match, '' for none.
+    function _sdPosPresetOf(props, cls) {
+        var p = props || {};
+        var v = function (k) { var x = p[k]; return (x === undefined || x === null) ? '' : String(x).trim(); };
+        var zero = function (k) { return /^0(?:px)?$/.test(v(k)); };
+        var mid = (' ' + String(cls || '') + ' ').indexOf(' translate-middle ') !== -1;
+        if (zero('top') && zero('right') && zero('bottom') && zero('left') && !mid) return 'fill';
+        if (v('top') === '50%' && v('left') === '50%' && v('right') === '' && v('bottom') === '' && mid) return 'centre';
+        return '';
+    }
+    // ── end of position presets and layers ──
+
     // Why a length typed into the Sizing rows is not written, '' when it is
     // valid (kind 'len'): a CSS length, a bare number (pixels, _sdCssLen()),
     // a keyword or a CSS function with its brackets closed. Empty is valid.
+    // Kind 'z' is a z-index: a whole number or auto (_sdZValid()).
     function _sdLenCheck(kind, raw) {
         var s = String(raw == null ? '' : raw).trim();
+        if (kind === 'z') return _sdZValid(s) ? '' : _sdT('Use a whole number or auto.');
         if (s === '') return '';
         var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
         var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
@@ -64700,6 +65178,26 @@ const StyleDesigner = (function () {
         _sdRenderNode(nodes[0], render);
     }
 
+    // A Position preset clicked ('fill' or 'centre'): the selected element,
+    // or every selected one, takes its offsets and classes (_sdPosPreset())
+    // as one undo step.
+    function _sdPosPresetApply(name) {
+        if (!_sdPosPreset(name, '')) return;
+        var several = selectedNodes.length > 1;
+        var nodes = (several ? selectedNodes.slice() : [selectedNode]).filter(function (n) { return n && n.props; });
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!nodes.length || _sdPanelLockReason(nodes)) return;
+        var write = function (n) {
+            var r = _sdPosPreset(name, n.props.cssClass);
+            ['top', 'right', 'bottom', 'left'].forEach(function (k) { n.props[k] = r[k]; });
+            n.props.cssClass = r.cls;
+        };
+        if (several) { _sdMcCommit(nodes, write); return; }
+        saveState();
+        write(nodes[0]);
+        _sdRenderNode(nodes[0], render);
+    }
+
     // Installed once on #sd-properties: the segments' clicks, the reset
     // button's and "Make it a container", whatever part of the panel was
     // drawn later.
@@ -64709,6 +65207,8 @@ const StyleDesigner = (function () {
         panel.addEventListener('click', function (e) {
             var t = e.target;
             if (!t || !t.closest) return;
+            var pre = t.closest('[data-sd-pos-preset]');
+            if (pre && panel.contains(pre)) { _sdPosPresetApply(pre.getAttribute('data-sd-pos-preset')); return; }
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
@@ -64720,6 +65220,17 @@ const StyleDesigner = (function () {
             // Several elements: the row back to its default in all of them.
             if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
+        });
+        // A layer picked beside Z Index fills the field, whose own listener
+        // writes: 'input' for one element, 'change' for several.
+        panel.addEventListener('change', function (e) {
+            var sel = e.target;
+            if (!sel || !sel.hasAttribute || !sel.hasAttribute('data-sd-zlayer') || sel.value === '') return;
+            var inp = sel.parentNode ? sel.parentNode.querySelector('input[data-prop="zIndex"]') : null;
+            if (!inp || inp.disabled) return;
+            inp.value = sel.value;
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
         });
     }
 
@@ -66874,6 +67385,7 @@ const StyleDesigner = (function () {
                 ['__menu_item_id',            _sdT('Menu item ID')],
                 ['__menu_item_url',           _sdT('Menu item address')],
                 ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+                ['__menu_item_rel',           _sdT('Menu item link relation (noopener or empty)')],
                 ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
                 ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
                 ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
@@ -67071,6 +67583,7 @@ const StyleDesigner = (function () {
         __menu_item_id: '2',
         __menu_item_url: '#',
         __menu_item_target: '',
+        __menu_item_rel: '',
         __menu_item_has_children: '',
         __menu_item_is_current: '',
         __menu_item_holds_current: '',
@@ -75211,7 +75724,8 @@ const StyleDesigner = (function () {
     // The look builder and the palette builder send choices to the server
     // and try the stylesheet it answers with on the canvas; saving writes it
     // to the file manager, where every design can pick it.
-    var _sdThemeTry = { look: '', palette: '' };   // builder output being tried on the canvas
+    var _sdThemeTry = { look: '', palette: '', variables: '' };   // builder output being tried on the canvas
+    var _sdThemePaneTab = 'look';                  // the Theme pane's tab: look or variables
     var _sdColorModeOpened = false;                // the canvas took the design's mode once
     var _sdThemeTryTimer = { look: 0, palette: 0 };
     var _sdThemeTrySeq = { look: 0, palette: 0 };
@@ -75270,14 +75784,20 @@ const StyleDesigner = (function () {
         var look = _sdThemeFind('look', _sdThemeValue('look'));
         var pal  = _sdThemeFind('palette', _sdThemeValue('palette'));
         var lookCss = _sdThemeTry.look, palCss = _sdThemeTry.palette;
-        if (!look && !pal && !lookCss && !palCss) return out;
+        // The design's variables: the tab's model being tried, else the
+        // saved file (sdDesign.themes.variables, '' for none).
+        var varCss = _sdThemeTry.variables, varUrl = varCss ? '' : (th.variables || '');
+        if (!look && !pal && !lookCss && !palCss && !varCss && !varUrl) return out;
         out.push({ id: 'pg-theme-bridge', url: th.bridge });
+        if (lookCss || look || varCss || varUrl) out.push({ id: 'pg-theme-base', url: th.base });
         if (lookCss || look) {
-            out.push({ id: 'pg-theme-base', url: th.base });
             out.push(lookCss ? { id: 'pg-theme-look', css: lookCss } : { id: 'pg-theme-look', url: look.url });
         }
         if (palCss || pal) {
             out.push(palCss ? { id: 'pg-theme-palette', css: palCss } : { id: 'pg-theme-palette', url: pal.url });
+        }
+        if (varCss || varUrl) {
+            out.push(varCss ? { id: 'pg-theme-variables', css: varCss } : { id: 'pg-theme-variables', url: varUrl });
         }
         return out;
     }
@@ -75478,9 +75998,23 @@ const StyleDesigner = (function () {
             host.innerHTML = '<p class="form-text small mb-0">' + esc(_sdT('This design is built without a framework. Looks and colour palettes dress the Bootstrap components, so they are not offered here.')) + '</p>';
             return;
         }
+        // Two tabs: the look and palette cards, and the design's variables
+        // (the part 'variables', loaded the first time its tab is shown).
+        var tabs = '<div class="btn-group btn-group-sm mb-3" role="tablist" aria-label="' + _thAttr(_sdT('Theme')) + '">';
+        [['look', _sdT('Look and colours')], ['variables', _sdT('Variables')]].forEach(function (t) {
+            var on = _sdThemePaneTab === t[0];
+            tabs += '<button type="button" class="btn ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') + '" role="tab" aria-selected="' + on + '" data-th-tab="' + t[0] + '">' + esc(t[1]) + '</button>';
+        });
+        tabs += '</div>';
+        if (_sdThemePaneTab === 'variables') {
+            host.innerHTML = tabs + '<div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
+            _sdThemeBindTabs(host);
+            _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
+            return;
+        }
         var look = _sdThemeValue('look'), pal = _sdThemeValue('palette');
         var colors = _sdThemeColors();
-        var h = '';
+        var h = tabs;
         if (!th.ready) {
             h += '<div class="sd-th-warn"><span class="bi bi-exclamation-triangle me-1"></span>' +
                  esc(_sdT('The database has not been updated yet: you can try a look and a palette on the canvas, but the choice is saved once the 2026.4.5 update has run.')) + '</div>';
@@ -75663,7 +76197,47 @@ const StyleDesigner = (function () {
         });
     }
 
+    function _sdThemeBindTabs(host) {
+        host.querySelectorAll('[data-th-tab]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (_sdThemePaneTab === b.getAttribute('data-th-tab')) return;
+                _sdThemePaneTab = b.getAttribute('data-th-tab');
+                _sdThemeRender();
+            });
+        });
+    }
+
+    // What the part 'variables' reaches of the editor: the pane it draws in,
+    // the look and palette of the moment, the stored file, the hidden input
+    // the save posts and the try-on of its stylesheet on the canvas.
+    function _sdVarsHost(el) {
+        var th = _sdThemes() || {};
+        var input = document.getElementById('sd-style-variables');
+        return {
+            el: el,
+            styleId: (_design && _design.styleId) ? _design.styleId : 0,
+            stored: !!th.variables,
+            look: function () { return _sdThemeValue('look'); },
+            palette: function () { return _sdThemeValue('palette'); },
+            model: function () {
+                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+            },
+            setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
+            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
+        };
+    }
+
+    // A changed look or palette carries the variables along (the untouched
+    // colours follow the new palette): the part works the stylesheet out
+    // again, once it has run or when the design has a saved file.
+    function _sdVarsFollowTheme() {
+        var th = _sdThemes();
+        if (!th || (!th.variables && !_sdPartLoaded('variables'))) return;
+        _sdPartCall('variables', 'refresh', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(function () {});
+    }
+
     function _sdThemeBind(host) {
+        _sdThemeBindTabs(host);
         host.querySelectorAll('[data-th-mode]').forEach(function (b) {
             b.addEventListener('click', function () { _sdColorModeChoose(b.getAttribute('data-th-mode')); });
         });
@@ -76033,13 +76607,15 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
-    // and pg_fx_inject() (pg_fx_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern()),
+    // pg_page_scroll_inject() (pg_page_scroll_pattern()) and pg_fx_inject()
+    // (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
@@ -76304,6 +76880,9 @@ const StyleDesigner = (function () {
         // Zoomed to a frame (_sdProtoZoomTo()): its id and the view to go
         // back to, null when not; the last tap (_sdProtoTap()).
         zoom: null, tap: null,
+        // The Sketch tool: its switch, the stored sketch with its undo
+        // history and the box selected (_sdSketchData()).
+        sketchOn: false, sk: { key: null, data: null, hist: null, sel: null },
         // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
         // null when none.
         rowDrag: null,
@@ -76551,7 +77130,25 @@ const StyleDesigner = (function () {
             _sdProtoPathPick(!_sdProto.pathPick);
         });
         ui.pathBtn.setAttribute('aria-pressed', 'false');
-        [ui.searchBtn, ui.pathBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        // Sketch, a switch: boxes drawn in the sketch pages; "New page"
+        // puts an empty one on the map (_sdSketchNewPage()).
+        ui.sketchBtn = _sdProtoButton('bi-pencil-square', _sdT('Sketch'), function () { _sdSketchSwitch(!_sdProto.sketchOn); });
+        ui.sketchBtn.title = _sdT('Sketch: draw a page as boxes');
+        ui.sketchBtn.classList.add('sd-bp-switch');
+        ui.sketchBtn.setAttribute('role', 'switch');
+        ui.sketchBtn.setAttribute('aria-checked', 'false');
+        ui.sketchBtn.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('Sketch')));
+        var sketchKnob = _sdProtoEl('span', 'sd-vb-switch');
+        sketchKnob.setAttribute('aria-hidden', 'true');
+        ui.sketchBtn.appendChild(sketchKnob);
+        ui.sketchNew = _sdProtoButton('bi-file-earmark-plus', _sdT('New sketch page'), function () { _sdSketchNewPage(); });
+        ui.sketchNew.appendChild(_sdProtoEl('span', 'sd-vb-txt', _sdT('New page')));
+        [ui.searchBtn, ui.pathBtn, tidy, ui.suggest, ui.listToggle, ui.pcBtn, ui.play, reload, ui.sketchNew].forEach(function (b) { b.classList.add('sd-vb-tool'); });
+        tools.appendChild(ui.sketchBtn);
+        tools.appendChild(ui.sketchNew);
+        var sketchLine = _sdProtoEl('span', 'sd-vb-sep');
+        sketchLine.setAttribute('aria-hidden', 'true');
+        tools.appendChild(sketchLine);
         tools.appendChild(ui.searchBtn);
         tools.appendChild(ui.allEdges);
         tools.appendChild(tidy);
@@ -76719,8 +77316,12 @@ const StyleDesigner = (function () {
             routeMargin: 40,
             portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },
             select: function (selected) { _sdProtoSelect(selected); },
-            moved: function (item) { _sdProtoKeep(item); },
-            canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; },
+            moved: function (item) {
+                if (item.kind === 'sketch') _sdSketchPlaced(item);
+                else _sdProtoKeep(item);
+            },
+            // A sketch page is no page yet: no arrow leads to it.
+            canConnect: function (from, to, port) { return !!to && to.kind !== 'sketch' && _sdProtoArrowHref(from, to, port) !== null; },
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
             // The core reads the view on every pan and zoom (and changes it
             // in place): the pictures near the view are made again soon
@@ -76736,13 +77337,15 @@ const StyleDesigner = (function () {
             // The selected page's foot button ("Show the whole page",
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty',
+            // A sketch box's chip opens its menu, its heading input types.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
             // 'connect' once it moves, so what may take the arrow lights up.
             // The "+" handle beside a mark is that mark (_sdProtoGrip()).
             press: function (event, next) {
+                if (_sdSketchPress(event, next)) return;
                 var grip = event.target.closest ? event.target.closest('.sd-proto-grip') : null;
                 var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);
                 if (row) {
@@ -76767,7 +77370,8 @@ const StyleDesigner = (function () {
                     next.to = frame.getAttribute('data-node');
                 }
             },
-            move: function (event, drag) {
+            move: function (event, drag, dx, dy) {
+                if (/^sk/.test(drag.kind || '')) { _sdSketchMove(event, drag, dx, dy); return; }
                 if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;
                 var item = _sdProto.byId[drag.link.frame];
                 var row = _sdProtoRow(item, drag.link.port);
@@ -76780,6 +77384,7 @@ const StyleDesigner = (function () {
                 _sdProtoDrawing(true);
             },
             release: function (event, done) {
+                if (/^sk/.test(done.kind || '')) { _sdSketchRelease(event, done); return; }
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
                 if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
                 if (done.kind === 'path' && !done.moved && event.type === 'pointerup') _sdProtoPathTo(done.to);
@@ -76788,8 +77393,12 @@ const StyleDesigner = (function () {
                 // tap; anything else breaks a pair of taps.
                 _sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);
             },
-            cancel: function () { _sdProtoDrawing(false); },
+            cancel: function (done) {
+                _sdProtoDrawing(false);
+                if (done && /^sk/.test(done.kind || '')) _sdSketchMount(false);
+            },
             key: function (event) {
+                if (_sdSketchKey(event)) return true;
                 // Esc clears the path (or the wait for its page), else goes
                 // back from a frame zoomed to, else closes the view.
                 if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }
@@ -76842,6 +77451,21 @@ const StyleDesigner = (function () {
             if (!event.buttons) _sdProtoGripHover(mark);
         });
         ui.root.addEventListener('pointerleave', function () { if (!_sdProto.drawing) _sdProtoGripHover(null); });
+        // A sketch box's chip opens its menu; a double-click on a box edits
+        // its heading.
+        ui.boxes.addEventListener('click', function (event) {
+            var chip = event.target.closest ? event.target.closest('.sd-sketch-chip') : null;
+            if (chip) _sdSketchChipMenu(chip);
+            var more = event.target.closest ? event.target.closest('.sd-sketch-more') : null;
+            if (more) _sdSketchMoreMenu(more);
+        });
+        ui.boxes.addEventListener('dblclick', function (event) {
+            var boxEl = (_sdProto.sketchOn && event.target.closest) ? event.target.closest('.sd-sketch-box') : null;
+            if (!boxEl || event.target.closest('.sd-sketch-chip, .sd-sketch-input')) return;
+            var frameId = boxEl.closest('[data-node]').getAttribute('data-node');
+            var b = _sdSketchBox(frameId, boxEl.getAttribute('data-box'));
+            if (b) _sdSketchEdit(frameId, b, null);
+        });
         // Tab onto a drawable mark shows its handle too.
         ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });
         ui.boxes.addEventListener('focusout', function (event) { _sdProtoGripFor(event.relatedTarget); });
@@ -76853,7 +77477,8 @@ const StyleDesigner = (function () {
         // on the map or on the canvas bar, where the view's controls are.
         document.addEventListener('pointerdown', function (event) {
             if (!_sdProto.open) return;
-            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+            // A sketch chip's own press toggles its menu (_sdSketchChipMenu()).
+            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target) && !(_sdProto.menu.chip && _sdProto.menu.rowEl.contains(event.target))) _sdProtoMenuClose(false);
             if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target) && !(_sdProto.problemsAnchor && _sdProto.problemsAnchor.contains(event.target))) _sdProtoProblemsClose(false);
         }, true);
         // A frame's list stands by its badge: a zoom of the canvas closes it.
@@ -76992,6 +77617,7 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoFrameName(item) {
+        if (item.kind === 'sketch') return item.name;
         if (item.kind === 'shared') return item.name || _sdT('Shared component {var:1}', item.sharedId);
         return item.name || _sdT('Untitled page');
     }
@@ -77339,6 +77965,803 @@ const StyleDesigner = (function () {
         }
         if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
         _sdProtoLegsSoon();
+    }
+
+    // ── Sketch ──
+    // "Sketch" in the canvas bar's Prototype mode: "New page" puts an empty
+    // sketch frame (id k:<n>) on the map beside the design's pages. While
+    // the switch is on, a drag inside a sketch frame draws a box, a box is
+    // moved by its body and resized by its handles, lined up with the frame
+    // and its other boxes (PGGraphCanvas.snapRect(); Alt held: free) with
+    // the guides shown while it moves. Each box carries a chip naming what
+    // it is, whose menu changes it; a word typed on a selected box is its
+    // heading. Ctrl+Z and Ctrl+Y undo the sketch while the switch is on.
+    // Kept in this browser (pg_proto_sketch_<style id>) until the sketch is
+    // kept with the page's draft.
+
+    // Frame width and head, the body's least height and the room kept
+    // under its lowest box, the grid, the snapping reach (screen pixels),
+    // the smallest box, the first box's size; how many pages, boxes and
+    // heading characters are kept.
+    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000 };
+
+    // What a box can be. A box without a kind chosen is read from the
+    // sketch; until the reader runs its chip says so.
+    var SD_SKETCH_KINDS = [
+        { key: 'header', icon: 'bi-window-desktop', text: function () { return _sdT('Header'); } },
+        { key: 'intro', icon: 'bi-easel', text: function () { return _sdT('Intro'); } },
+        { key: 'features', icon: 'bi-grid-3x2-gap', text: function () { return _sdT('Features'); } },
+        { key: 'cards', icon: 'bi-postcard', text: function () { return _sdT('Cards'); } },
+        { key: 'text', icon: 'bi-text-paragraph', text: function () { return _sdT('Text'); } },
+        { key: 'picture', icon: 'bi-image', text: function () { return _sdT('Picture'); } },
+        { key: 'gallery', icon: 'bi-images', text: function () { return _sdT('Gallery'); } },
+        { key: 'form', icon: 'bi-ui-checks', text: function () { return _sdT('Form'); } },
+        { key: 'cta', icon: 'bi-hand-index', text: function () { return _sdT('Call to action'); } },
+        { key: 'footer', icon: 'bi-layout-text-window-reverse', text: function () { return _sdT('Footer'); } },
+        { key: 'catalog', icon: 'bi-shop', text: function () { return _sdT('Catalog'); } },
+        { key: 'blog', icon: 'bi-journal-text', text: function () { return _sdT('Blog list'); } },
+        { key: 'booking', icon: 'bi-calendar-check', text: function () { return _sdT('Booking'); } }
+    ];
+
+    function _sdSketchKind(key) {
+        return SD_SKETCH_KINDS.filter(function (k) { return k.key === key; })[0] || null;
+    }
+
+    function _sdSketchStoreKey() {
+        return 'pg_proto_sketch_' + ((_design && _design.styleId) ? _design.styleId : 'new');
+    }
+
+    // A stored sketch made safe to draw: numbers whole and finite, boxes
+    // inside their frame's width, a known kind or none, a short heading.
+    function _sdSketchClean(raw) {
+        var num = function (v, lo, hi, d) { v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d; };
+        var out = { n: 1, pages: [] };
+        var used = {};
+        var pages = (raw && Array.isArray(raw.pages)) ? raw.pages.slice(0, SD_SKETCH.pages) : [];
+        pages.forEach(function (p) {
+            var id = num(p && p.id, 0, 1e9, 0);
+            if (!id || used['p' + id]) return;
+            used['p' + id] = true;
+            var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            var src = _sdSketchPicSrc(p.pic && p.pic.src);
+            if (src) page.pic = { src: src, h: num(p.pic.h, SD_SKETCH.min, SD_SKETCH.picH, SD_SKETCH.minH), off: !!p.pic.off };
+            (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
+                var bid = num(b && b.id, 0, 1e9, 0);
+                if (!bid || used['b' + bid]) return;
+                used['b' + bid] = true;
+                var w = num(b.w, SD_SKETCH.min, SD_SKETCH.w, SD_SKETCH.min);
+                page.boxes.push({
+                    id: bid,
+                    x: num(b.x, 0, SD_SKETCH.w - w, 0), y: num(b.y, 0, 1e5, 0), w: w, h: num(b.h, SD_SKETCH.min, 1e5, SD_SKETCH.min),
+                    kind: _sdSketchKind(b.kind) ? b.kind : '',
+                    text: String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, SD_SKETCH.text)
+                });
+                out.n = Math.max(out.n, bid + 1);
+            });
+            out.n = Math.max(out.n, id + 1);
+            out.pages.push(page);
+        });
+        return out;
+    }
+
+    // The sketch of the open design, read once per design; its undo
+    // history starts there.
+    function _sdSketchData() {
+        var sk = _sdProto.sk;
+        var key = _sdSketchStoreKey();
+        if (sk.key !== key) {
+            var raw = null;
+            try { raw = JSON.parse(window.localStorage.getItem(key) || 'null'); } catch (e) { raw = null; }
+            sk.key = key;
+            sk.data = _sdSketchClean(raw);
+            sk.hist = window.PGGraphCanvas.historyOf('sketch', JSON.stringify(sk.data));
+            sk.sel = null;
+        }
+        return sk.data;
+    }
+
+    function _sdSketchWrite() {
+        var sk = _sdProto.sk;
+        try {
+            if (sk.data.pages.length) window.localStorage.setItem(sk.key, JSON.stringify(sk.data));
+            else window.localStorage.removeItem(sk.key);
+        } catch (e) {}
+    }
+
+    // A change made: kept, a step of the undo history (fold: an arrow-key
+    // nudge joins the one before it), the frames drawn again.
+    function _sdSketchChanged(fold, say) {
+        var sk = _sdProto.sk;
+        _sdSketchWrite();
+        window.PGGraphCanvas.historyRecord(sk.hist, JSON.stringify(sk.data), !!fold, Date.now());
+        _sdSketchMount(true);
+        if (say && _sdProto.canvas) _sdProto.canvas.announce(say);
+    }
+
+    function _sdSketchUndo(back) {
+        var sk = _sdProto.sk;
+        _sdSketchData();
+        var was = window.PGGraphCanvas.historyStep(sk.hist, back);
+        if (was === null) {
+            if (_sdProto.canvas) _sdProto.canvas.announce(back ? _sdT('Nothing to undo') : _sdT('Nothing to redo'));
+            return true;
+        }
+        sk.data = _sdSketchClean(JSON.parse(was));
+        _sdSketchWrite();
+        if (sk.sel && !_sdSketchBox(sk.sel.frame, sk.sel.box)) sk.sel = null;
+        _sdSketchMount(true);
+        return true;
+    }
+
+    function _sdSketchPage(frameId) {
+        var m = /^k:(\d+)$/.exec(String(frameId || ''));
+        var id = m ? Number(m[1]) : 0;
+        return id ? (_sdSketchData().pages.filter(function (p) { return p.id === id; })[0] || null) : null;
+    }
+
+    function _sdSketchBox(frameId, boxId) {
+        var page = _sdSketchPage(frameId);
+        return page ? (page.boxes.filter(function (b) { return b.id === Number(boxId); })[0] || null) : null;
+    }
+
+    // The body's height: its least, or room under the lowest box.
+    function _sdSketchBodyH(page) {
+        var low = 0;
+        page.boxes.forEach(function (b) { low = Math.max(low, b.y + b.h); });
+        return Math.max(SD_SKETCH.minH, low + SD_SKETCH.pad, (page.pic && !page.pic.off) ? page.pic.h : 0);
+    }
+
+    function _sdSketchItem(page) {
+        return { id: 'k:' + page.id, kind: 'sketch', name: page.name || _sdT('Page {var:1}', page.id), x: page.x, y: page.y, w: SD_SKETCH.w, h: SD_SKETCH.head + _sdSketchBodyH(page) };
+    }
+
+    // The sketch frames (again) on the map, after the pages and chips; the
+    // selected frame and box stay selected, the box keeps the focus when
+    // `refocus`.
+    function _sdSketchMount(refocus) {
+        var canvas = _sdProto.canvas;
+        var ui = _sdProto.ui;
+        if (!canvas || !ui) return;
+        var data = _sdSketchData();
+        var had = ui.boxes.contains(document.activeElement) && document.activeElement.closest('.sd-sketch-frame');
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-sketch-frame')).forEach(function (n) { n.parentNode.removeChild(n); });
+        _sdProto.items = _sdProto.items.filter(function (item) {
+            if (item.kind !== 'sketch') return true;
+            delete _sdProto.byId[item.id];
+            return false;
+        });
+        data.pages.forEach(function (page) {
+            var item = _sdSketchItem(page);
+            _sdProto.items.push(item);
+            _sdProto.byId[item.id] = item;
+            ui.boxes.appendChild(canvas.box(item, {
+                className: 'sd-proto-frame sd-sketch-frame',
+                fill: function (node) { _sdSketchFill(item, page, node); }
+            }));
+        });
+        var focused = canvas.focused();
+        if (focused !== null && /^k:/.test(String(focused)) && !_sdProto.byId[focused]) {
+            _sdProto.selected = null;
+            canvas.focus(null);
+        }
+        _sdProtoSelect(_sdProto.selected);
+        var sel = _sdSketchSelEl();
+        if (sel && (refocus || had)) sel.focus({ preventScroll: true });
+        else if (had && focused !== null && _sdProto.byId[focused]) {
+            var node = ui.boxes.querySelector('[data-node="' + String(focused) + '"]');
+            if (node) node.focus({ preventScroll: true });
+        }
+    }
+
+    function _sdSketchFill(item, page, node) {
+        var on = _sdProto.sketchOn;
+        var head = _sdProtoEl('div', 'sd-proto-head');
+        head.appendChild(_sdProtoEl('span', 'bi bi-pencil-square sd-proto-kind'));
+        head.lastChild.setAttribute('aria-hidden', 'true');
+        head.appendChild(_sdProtoEl('span', 'sd-proto-name', item.name));
+        head.appendChild(_sdProtoEl('span', 'sd-proto-meta', page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length)));
+        if (on) head.appendChild(_sdSketchMoreBtn());
+        node.appendChild(head);
+        node.setAttribute('aria-label', _sdT('Sketch') + ': ' + item.name);
+        var body = _sdProtoEl('div', 'sd-sketch-body');
+        body.style.height = (item.h - SD_SKETCH.head) + 'px';
+        if (page.pic && !page.pic.off) body.appendChild(_sdSketchPicEl(page.pic));
+        if (!page.boxes.length) body.appendChild(_sdProtoEl('p', 'sd-sketch-hint', on ? _sdT('Drag here to draw a box') : _sdT('Turn on Sketch to draw boxes')));
+        var sel = _sdProto.sk.sel;
+        page.boxes.forEach(function (b) {
+            var picked = !!(sel && sel.frame === item.id && sel.box === b.id);
+            body.appendChild(_sdSketchBoxEl(b, picked, on));
+        });
+        node.appendChild(body);
+    }
+
+    function _sdSketchBoxName(b) {
+        var kind = _sdSketchKind(b.kind);
+        var name = kind ? kind.text() : _sdT('Not read yet');
+        return b.text ? name + ': ' + b.text : name;
+    }
+
+    function _sdSketchBoxEl(b, picked, on) {
+        var kind = _sdSketchKind(b.kind);
+        var el = _sdProtoEl('div', 'sd-sketch-box' + (picked ? ' sd-sketch-on' : '') + (kind ? ' sd-sketch-kind-' + kind.key : ' sd-sketch-unread'));
+        el.setAttribute('data-box', String(b.id));
+        el.setAttribute('role', 'group');
+        el.setAttribute('aria-roledescription', _sdT('Box'));
+        el.setAttribute('aria-label', _sdSketchBoxName(b));
+        el.tabIndex = on ? 0 : -1;
+        el.style.left = b.x + 'px';
+        el.style.top = b.y + 'px';
+        el.style.width = b.w + 'px';
+        el.style.height = b.h + 'px';
+        var chip = _sdProtoEl('button', 'sd-sketch-chip');
+        chip.type = 'button';
+        chip.tabIndex = on ? 0 : -1;
+        chip.title = _sdT('Change what this box is');
+        chip.setAttribute('aria-haspopup', 'menu');
+        chip.innerHTML = '<span class="bi ' + (kind ? kind.icon : 'bi-question-circle') + '" aria-hidden="true"></span>';
+        chip.appendChild(_sdProtoEl('span', 'sd-sketch-chip-text', kind ? kind.text() : _sdT('Not read yet')));
+        chip.appendChild(_sdProtoEl('span', 'bi bi-chevron-down sd-sketch-caret'));
+        chip.lastChild.setAttribute('aria-hidden', 'true');
+        el.appendChild(chip);
+        if (b.text) el.appendChild(_sdProtoEl('span', 'sd-sketch-heading', b.text));
+        if (picked && on) {
+            ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].forEach(function (side) {
+                var h = _sdProtoEl('span', 'sd-sketch-handle sd-sketch-handle-' + side);
+                h.setAttribute('data-side', side);
+                h.setAttribute('aria-hidden', 'true');
+                el.appendChild(h);
+            });
+        }
+        return el;
+    }
+
+    function _sdSketchSelEl() {
+        var sel = _sdProto.sk.sel;
+        var ui = _sdProto.ui;
+        if (!sel || !ui) return null;
+        var frame = ui.boxes.querySelector('.sd-sketch-frame[data-node="' + sel.frame + '"]');
+        return frame ? frame.querySelector('.sd-sketch-box[data-box="' + sel.box + '"]') : null;
+    }
+
+    // One box selected (null: none), its frame selected on the map.
+    function _sdSketchPick(frameId, boxId, refocus) {
+        var sk = _sdProto.sk;
+        var was = sk.sel;
+        sk.sel = (frameId && boxId) ? { frame: String(frameId), box: Number(boxId) } : null;
+        if (sk.sel && _sdProto.canvas && _sdProto.canvas.focused() !== sk.sel.frame) {
+            _sdProto.canvas.focus(sk.sel.frame);
+            _sdProtoSelect({ type: 'node', id: sk.sel.frame });
+        }
+        if (JSON.stringify(was) !== JSON.stringify(sk.sel)) _sdSketchMount(refocus);
+        else if (refocus) { var el = _sdSketchSelEl(); if (el) el.focus({ preventScroll: true }); }
+    }
+
+    // The Sketch switch: on, boxes are drawn, moved and typed in; off, a
+    // sketch frame moves as a whole like the others.
+    function _sdSketchSwitch(on) {
+        var ui = _sdProto.ui;
+        _sdProto.sketchOn = !!on;
+        if (!on) _sdProto.sk.sel = null;
+        if (ui) {
+            ui.sketchBtn.classList.toggle('active', !!on);
+            ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
+            ui.root.classList.toggle('sd-sketch-mode', !!on);
+        }
+        _sdSketchMount(false);
+        if (_sdProto.canvas) _sdProto.canvas.announce(on ? _sdT('Sketch on: drag inside a sketch page to draw a box.') : _sdT('Sketch off'));
+    }
+
+    // "New page": an empty sketch frame right of everything on the map,
+    // selected and brought into view; the switch goes on.
+    function _sdSketchNewPage() {
+        var data = _sdSketchData();
+        if (data.pages.length >= SD_SKETCH.pages) {
+            sdToast(esc(_sdT('A sketch can have at most {var:1} pages.', SD_SKETCH.pages)), 'warning', 4000);
+            return;
+        }
+        var right = null;
+        var top = null;
+        _sdProto.items.forEach(function (item) {
+            right = Math.max(right === null ? -Infinity : right, item.x + item.w);
+            top = Math.min(top === null ? Infinity : top, item.y);
+        });
+        var id = data.n++;
+        var page = { id: id, name: '', x: window.PGGraphCanvas.snap(right === null ? 0 : right + 96), y: window.PGGraphCanvas.snap(top === null ? 0 : top), boxes: [] };
+        data.pages.push(page);
+        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
+        _sdProto.sk.sel = null;
+        _sdSketchChanged(false, _sdT('New sketch page: drag inside it to draw a box.'));
+        var item = _sdProto.byId['k:' + id];
+        if (!item || !_sdProto.canvas) return;
+        _sdProto.canvas.focus(item.id);
+        _sdProtoSelect({ type: 'node', id: item.id });
+        _sdProto.canvas.view.reveal(item);
+        var node = _sdProto.ui.boxes.querySelector('[data-node="k:' + id + '"]');
+        if (node) node.focus({ preventScroll: true });
+    }
+
+    // A sketch frame moved on the map.
+    function _sdSketchPlaced(item) {
+        var page = _sdSketchPage(item.id);
+        if (!page) return;
+        page.x = Math.round(item.x);
+        page.y = Math.round(item.y);
+        // The core has placed the frame: kept and a step of the history,
+        // nothing drawn again.
+        _sdSketchWrite();
+        window.PGGraphCanvas.historyRecord(_sdProto.sk.hist, JSON.stringify(_sdProto.sk.data), false, Date.now());
+    }
+
+    // A press inside a sketch frame's body while the switch is on: on a
+    // handle a resize, on a box a move, on the empty body a box drawn.
+    // False when the press is not the sketch's (the frame's head moves the
+    // frame as the core does).
+    function _sdSketchPress(event, next) {
+        if (!_sdProto.sketchOn || !event.target.closest || event.shiftKey) return false;
+        var body = event.target.closest('.sd-sketch-body');
+        var frame = body ? body.closest('.sd-sketch-frame[data-node]') : null;
+        var item = frame ? _sdProto.byId[frame.getAttribute('data-node')] : null;
+        var page = item ? _sdSketchPage(item.id) : null;
+        if (!page) return false;
+        var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
+        var boxEl = event.target.closest('.sd-sketch-box');
+        var b = boxEl ? _sdSketchBox(item.id, boxEl.getAttribute('data-box')) : null;
+        var handle = event.target.closest('.sd-sketch-handle');
+        next.frame = item;
+        next.page = page;
+        next.body = body;
+        next.local = { x: at.x - item.x, y: at.y - item.y - SD_SKETCH.head };
+        event.preventDefault();
+        if (b) {
+            next.kind = handle ? 'skresize' : 'skmove';
+            next.side = handle ? handle.getAttribute('data-side') : '';
+            next.box = b;
+            next.start = { x: b.x, y: b.y, w: b.w, h: b.h };
+            _sdSketchPick(item.id, b.id, true);
+            // The box drawn again: the element dragged is the new one.
+            next.el = _sdSketchSelEl();
+            next.body = next.el ? next.el.parentNode : body;
+        } else {
+            next.kind = 'skdraw';
+            _sdSketchPick(null, null, false);
+            if (_sdProto.canvas.focused() !== item.id) {
+                _sdProto.canvas.focus(item.id);
+                _sdProtoSelect({ type: 'node', id: item.id });
+            }
+            // Drawn again by the pick: the body drawn into is the new one.
+            var node = _sdProto.ui.boxes.querySelector('.sd-sketch-frame[data-node="' + item.id + '"]');
+            next.body = node ? node.querySelector('.sd-sketch-body') : body;
+            if (node) node.focus({ preventScroll: true });
+        }
+        return true;
+    }
+
+    // The rectangle of a sketch drag, lined up and kept inside the frame's
+    // width (and below its top).
+    function _sdSketchRect(event, drag, dx, dy) {
+        var k = _sdProto.view.k || 1;
+        var ddx = dx / k;
+        var ddy = dy / k;
+        var r;
+        var sides = '';
+        if (drag.kind === 'skmove') {
+            r = { x: drag.start.x + ddx, y: drag.start.y + ddy, w: drag.start.w, h: drag.start.h };
+        } else if (drag.kind === 'skresize') {
+            var s = drag.start;
+            sides = drag.side;
+            r = { x: s.x, y: s.y, w: s.w, h: s.h };
+            if (sides.indexOf('w') !== -1) { r.x = s.x + ddx; r.w = s.w - ddx; }
+            if (sides.indexOf('e') !== -1) r.w = s.w + ddx;
+            if (sides.indexOf('n') !== -1) { r.y = s.y + ddy; r.h = s.h - ddy; }
+            if (sides.indexOf('s') !== -1) r.h = s.h + ddy;
+        } else {
+            var a = drag.local;
+            var bx = a.x + ddx;
+            var by = a.y + ddy;
+            sides = (bx < a.x ? 'w' : 'e') + (by < a.y ? 'n' : 's');
+            r = { x: Math.min(a.x, bx), y: Math.min(a.y, by), w: Math.abs(bx - a.x), h: Math.abs(by - a.y) };
+        }
+        var others = [{ x: 0, y: 0, w: SD_SKETCH.w, h: _sdSketchBodyH(drag.page) }];
+        drag.page.boxes.forEach(function (b) { if (b !== drag.box) others.push(b); });
+        var out = window.PGGraphCanvas.snapRect(r, others, { sides: sides, reach: SD_SKETCH.reach / k, grid: SD_SKETCH.grid, min: drag.kind === 'skdraw' ? 1 : SD_SKETCH.min, free: !!event.altKey });
+        if (drag.kind === 'skmove') {
+            out.x = Math.max(0, Math.min(SD_SKETCH.w - out.w, out.x));
+            out.y = Math.max(0, out.y);
+        } else {
+            var right = Math.min(SD_SKETCH.w, out.x + out.w);
+            var bottom = out.y + out.h;
+            out.x = Math.max(0, out.x);
+            out.y = Math.max(0, out.y);
+            out.w = Math.max(1, right - out.x);
+            out.h = Math.max(1, bottom - out.y);
+        }
+        return out;
+    }
+
+    function _sdSketchGuides(body, guides) {
+        Array.prototype.slice.call(body.querySelectorAll('.sd-sketch-guide')).forEach(function (g) { g.parentNode.removeChild(g); });
+        (guides || []).forEach(function (g) {
+            var line = _sdProtoEl('span', 'sd-sketch-guide sd-sketch-guide-' + g.axis);
+            line.setAttribute('aria-hidden', 'true');
+            if (g.axis === 'x') {
+                line.style.left = g.at + 'px';
+                line.style.top = g.from + 'px';
+                line.style.height = (g.to - g.from) + 'px';
+            } else {
+                line.style.top = g.at + 'px';
+                line.style.left = g.from + 'px';
+                line.style.width = (g.to - g.from) + 'px';
+            }
+            body.appendChild(line);
+        });
+    }
+
+    function _sdSketchMove(event, drag, dx, dy) {
+        var r = _sdSketchRect(event, drag, dx, dy);
+        if (drag.kind === 'skdraw' && !drag.el) {
+            drag.el = _sdProtoEl('div', 'sd-sketch-box sd-sketch-ghost');
+            drag.el.setAttribute('aria-hidden', 'true');
+            drag.body.appendChild(drag.el);
+            var hint = drag.body.querySelector('.sd-sketch-hint');
+            if (hint) hint.hidden = true;
+        }
+        if (!drag.el) return;
+        drag.rect = r;
+        drag.el.style.left = r.x + 'px';
+        drag.el.style.top = r.y + 'px';
+        drag.el.style.width = r.w + 'px';
+        drag.el.style.height = r.h + 'px';
+        // The body grows under a box taken lower down.
+        drag.body.style.height = Math.max(parseFloat(drag.body.style.height) || 0, r.y + r.h + SD_SKETCH.pad) + 'px';
+        _sdSketchGuides(drag.body, r.guides);
+    }
+
+    function _sdSketchRelease(event, done) {
+        if (!done.moved || !done.rect || event.type !== 'pointerup') {
+            _sdSketchMount(true);
+            return;
+        }
+        var r = done.rect;
+        if (done.kind === 'skdraw') {
+            if (r.w < SD_SKETCH.min || r.h < SD_SKETCH.min) {
+                _sdSketchMount(false);
+                return;
+            }
+            if (done.page.boxes.length >= SD_SKETCH.boxes) {
+                _sdSketchMount(false);
+                sdToast(esc(_sdT('A sketch page can have at most {var:1} boxes.', SD_SKETCH.boxes)), 'warning', 4000);
+                return;
+            }
+            var data = _sdSketchData();
+            var b = { id: data.n++, x: r.x, y: r.y, w: r.w, h: r.h, kind: '', text: '' };
+            done.page.boxes.push(b);
+            _sdProto.sk.sel = { frame: done.frame.id, box: b.id };
+            _sdSketchChanged(false, _sdT('Box drawn. Type its heading; the chip says what it is.'));
+            return;
+        }
+        done.box.x = r.x;
+        done.box.y = r.y;
+        done.box.w = r.w;
+        done.box.h = r.h;
+        _sdSketchChanged(false);
+    }
+
+    // Keys on a selected box: Delete takes it out, the arrows move it
+    // (Shift: farther), Enter or F2 edits its heading and a letter starts
+    // it, Esc lets it go. Ctrl+Z and Ctrl+Y undo the sketch while the
+    // switch is on; Delete on a sketch frame takes the page out.
+    function _sdSketchKey(event) {
+        if (!_sdProto.sketchOn) return false;
+        var name = String(event.key || '');
+        var ctrl = event.ctrlKey || event.metaKey;
+        if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
+            return _sdSketchUndo(!(name.toLowerCase() === 'y' || event.shiftKey));
+        }
+        var t = event.target;
+        var boxEl = t && t.closest ? t.closest('.sd-sketch-box') : null;
+        var frameEl = t && t.classList && t.classList.contains('sd-sketch-frame') ? t : null;
+        if (frameEl && (name === 'Delete' || name === 'Backspace')) {
+            var gone = _sdSketchPage(frameEl.getAttribute('data-node'));
+            if (!gone) return false;
+            var data = _sdSketchData();
+            data.pages = data.pages.filter(function (p) { return p !== gone; });
+            _sdProto.sk.sel = null;
+            _sdSketchChanged(false, _sdT('Sketch page deleted. Ctrl+Z brings it back.'));
+            if (_sdProto.ui) _sdProto.ui.viewport.focus({ preventScroll: true });
+            return true;
+        }
+        if (!boxEl || (t.closest && t.closest('.sd-sketch-chip') && name !== 'Delete')) return false;
+        var frameId = boxEl.closest('[data-node]').getAttribute('data-node');
+        var page = _sdSketchPage(frameId);
+        var b = _sdSketchBox(frameId, boxEl.getAttribute('data-box'));
+        if (!page || !b) return false;
+        if (name === 'Delete' || name === 'Backspace') {
+            page.boxes = page.boxes.filter(function (one) { return one !== b; });
+            _sdProto.sk.sel = null;
+            _sdSketchChanged(false, _sdT('Box deleted'));
+            var node = _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]');
+            if (node) node.focus({ preventScroll: true });
+            return true;
+        }
+        if (name === 'Escape') {
+            _sdSketchPick(null, null, false);
+            var fr = _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]');
+            if (fr) fr.focus({ preventScroll: true });
+            return true;
+        }
+        var step = event.shiftKey ? SD_SKETCH.grid * 4 : SD_SKETCH.grid;
+        var mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[name];
+        if (mv && !ctrl) {
+            b.x = Math.max(0, Math.min(SD_SKETCH.w - b.w, b.x + mv[0]));
+            b.y = Math.max(0, b.y + mv[1]);
+            _sdProto.sk.sel = { frame: frameId, box: b.id };
+            _sdSketchChanged(true);
+            return true;
+        }
+        if (name === 'Enter' || name === 'F2') return _sdSketchEdit(frameId, b, null);
+        // A letter starts the heading; the map's zoom keys stay its own.
+        if (name.length === 1 && ' +=-_0'.indexOf(name) === -1 && !ctrl && !event.altKey) return _sdSketchEdit(frameId, b, name);
+        return false;
+    }
+
+    // The heading typed into a box: an input over it, `seed` its first
+    // letter (null: the heading as it is). Enter or leaving it keeps it,
+    // Esc leaves it as it was.
+    function _sdSketchEdit(frameId, b, seed) {
+        _sdSketchPick(frameId, b.id, false);
+        var el = _sdSketchSelEl();
+        if (!el) return false;
+        var old = el.querySelector('.sd-sketch-heading');
+        if (old) old.hidden = true;
+        var input = _sdProtoEl('input', 'sd-sketch-input');
+        input.type = 'text';
+        input.maxLength = SD_SKETCH.text;
+        input.value = seed === null ? b.text : seed;
+        input.setAttribute('aria-label', _sdT('Heading of this box'));
+        input.placeholder = _sdT('Heading');
+        var done = false;
+        var finish = function (keep) {
+            if (done) return;
+            done = true;
+            var text = String(input.value || '').replace(/\s+/g, ' ').trim().slice(0, SD_SKETCH.text);
+            if (keep && text !== b.text) {
+                b.text = text;
+                _sdSketchChanged(false);
+            } else {
+                _sdSketchMount(true);
+            }
+        };
+        input.addEventListener('keydown', function (event) {
+            event.stopPropagation();
+            if (event.key === 'Enter') { event.preventDefault(); finish(true); }
+            else if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+        });
+        input.addEventListener('blur', function () { finish(true); });
+        el.appendChild(input);
+        input.focus({ preventScroll: true });
+        if (seed === null) input.select();
+        else input.setSelectionRange(input.value.length, input.value.length);
+        return true;
+    }
+
+    // The chip's menu: what the box is, the chosen one checked; "Read
+    // from the sketch" leaves it to the reader.
+    function _sdSketchChipMenu(chip) {
+        var boxEl = chip.closest('.sd-sketch-box');
+        var frameId = boxEl ? boxEl.closest('[data-node]').getAttribute('data-node') : '';
+        var b = boxEl ? _sdSketchBox(frameId, boxEl.getAttribute('data-box')) : null;
+        if (!b) return;
+        var reopen = _sdProto.menu && _sdProto.menu.chip === b.id;
+        _sdProtoMenuClose(false);
+        if (reopen) return;
+        _sdSketchPick(frameId, b.id, false);
+        chip = _sdSketchSelEl() ? _sdSketchSelEl().querySelector('.sd-sketch-chip') : chip;
+        var ui = _sdProto.ui;
+        var el = _sdProtoEl('div', 'sd-proto-menu sd-sketch-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('What this box is'));
+        var head = _sdProtoEl('div', 'sd-proto-menu-head', _sdT('What this box is'));
+        head.setAttribute('role', 'presentation');
+        el.appendChild(head);
+        var choices = [{ key: '', icon: 'bi-magic', text: function () { return _sdT('Read from the sketch'); } }].concat(SD_SKETCH_KINDS);
+        choices.forEach(function (k) {
+            var item = _sdProtoEl('button', 'sd-proto-menu-item');
+            item.type = 'button';
+            item.tabIndex = -1;
+            item.setAttribute('role', 'menuitemradio');
+            item.setAttribute('aria-checked', k.key === b.kind ? 'true' : 'false');
+            item.innerHTML = '<span class="bi ' + k.icon + ' sd-proto-icon" aria-hidden="true"></span>';
+            item.appendChild(_sdProtoEl('span', 'sd-proto-label', k.text()));
+            item.addEventListener('click', function () {
+                _sdProtoMenuClose(false);
+                if (b.kind !== k.key) {
+                    b.kind = k.key;
+                    _sdSketchChanged(false, _sdSketchBoxName(b));
+                } else {
+                    _sdSketchMount(true);
+                }
+            });
+            el.appendChild(item);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); _sdProtoMenuClose(true); return; }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) { event.preventDefault(); items[go].focus(); }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: chip, chip: b.id };
+        var r = chip.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var c = ui.stage.getBoundingClientRect();
+        var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var place = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = place.left + 'px';
+        el.style.top = place.top + 'px';
+        var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    // ── The reference picture ──
+    // A picture of the site can lie under a sketch page, dimmed, to draw
+    // over: it fills the frame's width from the top and the frame grows as
+    // tall as it. It takes no pointer, is kept with the sketch and is never
+    // built into the page. "More" in the selected sketch page's head holds
+    // its rows; Ctrl+Z takes a change back.
+
+    // A picture's address kept with a sketch: one of this site ("/…") or
+    // of the web (http, https), else ''.
+    function _sdSketchPicSrc(raw) {
+        var src = String(raw || '').trim();
+        if (!src || src.length > 2000 || /[\s"'<>\\]/.test(src)) return '';
+        return (/^\/(?!\/)/.test(src) || /^https?:\/\/[^\/]/i.test(src)) ? src : '';
+    }
+
+    function _sdSketchPicEl(pic) {
+        var img = _sdProtoEl('img', 'sd-sketch-pic');
+        img.alt = '';
+        img.draggable = false;
+        img.decoding = 'async';
+        img.src = pic.src;
+        img.style.height = pic.h + 'px';
+        return img;
+    }
+
+    // "More" in a sketch page's head: shown on the selected page while the
+    // switch is on.
+    function _sdSketchMoreBtn() {
+        var btn = _sdProtoEl('button', 'sd-sketch-more');
+        btn.type = 'button';
+        btn.title = _sdT('More');
+        btn.setAttribute('aria-label', _sdT('More'));
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.innerHTML = '<span class="bi bi-three-dots" aria-hidden="true"></span>';
+        return btn;
+    }
+
+    // The rows of "More" for a sketch page: [{ caption } | { icon, text, key, run }].
+    function _sdSketchMoreRows(page) {
+        var frameId = 'k:' + page.id;
+        var rows = [];
+        if (!page.pic) {
+            rows.push({ icon: 'bi-image', text: _sdT('Reference picture'), run: function () { _sdSketchPicChoose(frameId); } });
+        } else {
+            rows.push({ caption: _sdT('Reference picture') });
+            rows.push({ icon: page.pic.off ? 'bi-eye' : 'bi-eye-slash', text: page.pic.off ? _sdT('Show the picture') : _sdT('Hide the picture'), run: function () {
+                page.pic.off = !page.pic.off;
+                _sdSketchChanged(false, page.pic.off ? _sdT('Picture hidden') : _sdT('Picture shown'));
+            } });
+            rows.push({ icon: 'bi-arrow-repeat', text: _sdT('Change the picture'), run: function () { _sdSketchPicChoose(frameId); } });
+            rows.push({ icon: 'bi-x-lg', text: _sdT('Remove the picture'), run: function () {
+                delete page.pic;
+                _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
+            } });
+        }
+        rows.push({ sep: true });
+        rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
+        return rows;
+    }
+
+    // A sketch page taken out, as Delete on a selected frame does.
+    function _sdSketchDropPage(page) {
+        var data = _sdSketchData();
+        data.pages = data.pages.filter(function (p) { return p !== page; });
+        _sdProto.sk.sel = null;
+        _sdSketchChanged(false, _sdT('Sketch page deleted. Ctrl+Z brings it back.'));
+        if (_sdProto.ui) _sdProto.ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The picture chooser of the designer; the picture's height is read
+    // before it is kept, so the frame grows to it at once.
+    function _sdSketchPicChoose(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page || !_sdPickerReady()) return;
+        window.pgEditorPicker.image(page.pic ? page.pic.src : '').then(function (url) {
+            var src = _sdSketchPicSrc(url);
+            if (!url) return;
+            if (!src) { sdToast(esc(_sdT('This picture cannot be used under a sketch.')), 'warning', 4000); return; }
+            var img = new Image();
+            img.onload = function () {
+                var now = _sdSketchPage(frameId);
+                if (!now || !img.naturalWidth) return;
+                now.pic = { src: src, h: Math.max(SD_SKETCH.min, Math.min(SD_SKETCH.picH, Math.round(SD_SKETCH.w * img.naturalHeight / img.naturalWidth))), off: false };
+                _sdSketchChanged(false, _sdT('Reference picture placed under the sketch'));
+            };
+            img.onerror = function () { sdToast(esc(_sdT('The picture could not be loaded.')), 'warning', 4000); };
+            img.src = src;
+        });
+    }
+
+    // The menu of "More", by its button; a second press closes it.
+    function _sdSketchMoreMenu(btn) {
+        var frame = btn.closest('.sd-sketch-frame[data-node]');
+        var frameId = frame ? frame.getAttribute('data-node') : '';
+        var page = _sdSketchPage(frameId);
+        if (!page) return;
+        var reopen = _sdProto.menu && _sdProto.menu.chip === 'more:' + frameId;
+        _sdProtoMenuClose(false);
+        if (reopen) return;
+        var ui = _sdProto.ui;
+        var el = _sdProtoEl('div', 'sd-proto-menu sd-sketch-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('More'));
+        _sdSketchMoreRows(page).forEach(function (row) {
+            if (row.sep) { el.appendChild(_sdProtoEl('hr', 'sd-sketch-menu-sep')); return; }
+            if (row.caption) {
+                var head = _sdProtoEl('div', 'sd-proto-menu-head', row.caption);
+                head.setAttribute('role', 'presentation');
+                el.appendChild(head);
+                return;
+            }
+            var item = _sdProtoEl('button', 'sd-proto-menu-item');
+            item.type = 'button';
+            item.tabIndex = -1;
+            item.setAttribute('role', 'menuitem');
+            item.innerHTML = '<span class="bi ' + row.icon + ' sd-proto-icon" aria-hidden="true"></span>';
+            item.appendChild(_sdProtoEl('span', 'sd-proto-label', row.text));
+            if (row.key) {
+                item.appendChild(_sdProtoEl('kbd', 'sd-sketch-menu-key', row.key));
+                item.setAttribute('aria-keyshortcuts', 'Delete');
+            }
+            item.addEventListener('click', function () {
+                _sdProtoMenuClose(true);
+                row.run();
+            });
+            el.appendChild(item);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); _sdProtoMenuClose(true); return; }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) { event.preventDefault(); items[go].focus(); }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: btn, chip: 'more:' + frameId };
+        var r = btn.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var c = ui.stage.getBoundingClientRect();
+        var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var place = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = place.left + 'px';
+        el.style.top = place.top + 'px';
+        var first = el.querySelector('.sd-proto-menu-item');
+        if (first) first.focus({ preventScroll: true });
     }
 
     // ── The shortest click path ──
@@ -77833,6 +79256,11 @@ const StyleDesigner = (function () {
     // picked link that is not the frame's own nor one into it is let go.
     function _sdProtoFocused(id) {
         var l = _sdProto.link;
+        // A sketch box stays selected only while its frame is.
+        if (_sdProto.sk.sel && _sdProto.sk.sel.frame !== String(id)) {
+            _sdProto.sk.sel = null;
+            _sdSketchMount(false);
+        }
         // The page opened whole closes when another frame, or none, is selected.
         if (_sdProto.pics.full && _sdProto.pics.full !== id) _sdProtoPicFull(null);
         // Another start, or none, ends the path and the wait for its page.
@@ -78428,6 +79856,9 @@ const StyleDesigner = (function () {
                 }
             }));
         });
+
+        // The sketch pages after the design's own.
+        _sdSketchMount(false);
 
         var slots = G.spread(l.edges.map(function (e) {
             var from = _sdProto.byId[e.from];
@@ -79807,6 +81238,7 @@ const StyleDesigner = (function () {
     }
 
     document.addEventListener('pg-design-theme-change', function () { _sdLivePreviewSchedule(); });
+    document.addEventListener('pg-design-theme-change', function () { _sdVarsFollowTheme(); });
 
     // ========================= AUTOSAVE =========================
     // One entry per design and page in the browser's storage (_autosaveKey()),
@@ -81378,7 +82810,7 @@ const StyleDesigner = (function () {
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
                      'style_custom_css', 'style_custom_js', 'style_custom_fonts',
-                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags'];
+                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags', 'style_variables'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');
@@ -85100,9 +86532,15 @@ const StyleDesigner = (function () {
             // keeps its stored version, the editor keeps the changes.
             if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
+            // The stored tree this tab started from: the server refuses a
+            // page somebody else wrote since (pg_page_base_is_stale()).
+            if (!rec.unchanged && p.page_id > 0 && p.baseHash) rec.base_hash = p.baseHash;
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
+            // An administrator's reason for publishing a draft that waits
+            // for a prototype link's approval (pg_proto_approval_override_reason()).
+            if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -85169,6 +86607,9 @@ const StyleDesigner = (function () {
                 // A page that joined the design with this save has its place
                 // in the tab layout stored below.
                 if (p && m.page_id > 0 && (!(p.page_id > 0) || p.pickedPending)) layoutFresh = true;
+                // The stored tree the next save of this page starts from; a
+                // page left out of the write keeps the base it had.
+                if (p && m.base_hash) p.baseHash = m.base_hash;
                 if (p && m.page_id > 0) {
                     p.page_id = m.page_id;
                     var newKey = 'p' + m.page_id;
@@ -85269,7 +86710,7 @@ const StyleDesigner = (function () {
     function _pgPrototypeShareDialog(startPageId) {
         if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
-        var state = { pages: [], durations: [], canShow: true, comments: false };
+        var state = { pages: [], durations: [], canShow: true, comments: false, approval: false };
         var when = function (unix) {
             if (!(unix > 0)) return '';
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
@@ -85310,6 +86751,23 @@ const StyleDesigner = (function () {
                             '<label class="form-field"><input class="check" type="checkbox" data-ps-comments>' +
                                 '<span>' + esc(_sdT('Allow comments')) + '</span></label>' +
                             '<div class="form-text">' + esc(_sdT('Whoever opens the link can pin comments with their name on the pages and answer them.')) + '</div></div>' +
+                        // Offered once the site keeps approvals; checked, it
+                        // turns "Allow comments" on and shows its fields.
+                        '<div class="mb-3 d-none" data-ps-approval-field>' +
+                            '<label class="form-field"><input class="check" type="checkbox" data-ps-approval>' +
+                                '<span>' + esc(_sdT('Ask for approval')) + '</span></label>' +
+                            '<div class="form-text">' + esc(_sdT('Whoever opens the link can approve each page or request changes with a note.')) + '</div>' +
+                            '<div class="row g-3 mt-0 d-none" data-ps-approval-more>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-approver">' + esc(_sdT('Approver\'s name')) + '</label>' +
+                                    '<input type="text" class="form-control form-control-sm" id="ps-approver" data-ps-approver maxlength="60" autocomplete="off"></div>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-approver-email">' + esc(_sdT('Approver\'s e-mail (optional)')) + '</label>' +
+                                    '<input type="email" class="form-control form-control-sm" id="ps-approver-email" data-ps-approver-email maxlength="255" autocomplete="off">' +
+                                    '<div class="form-text">' + esc(_sdT('Sent the answers and a reminder')) + '</div></div>' +
+                                '<div class="sm:col-6"><label class="form-label mb-1" for="ps-answer-by">' + esc(_sdT('Answer by')) + '</label>' +
+                                    '<input type="date" class="form-control form-control-sm" id="ps-answer-by" data-ps-answer-by></div>' +
+                                '<div class="sm:col-6 d-flex align-items-end"><label class="form-field"><input class="check" type="checkbox" data-ps-publish-rule>' +
+                                    '<span>' + esc(_sdT('Publish only after approval')) + '</span></label></div>' +
+                            '</div></div>' +
                         '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
                         '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
@@ -85380,6 +86838,8 @@ const StyleDesigner = (function () {
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
+                         (l.approval ? '<span class="badge theme-primary me-1"><span class="bi bi-patch-check me-1" aria-hidden="true"></span>' + esc(_sdT('Asks for approval')) + '</span>' : '') +
+                         ((l.approval && l.review && l.review.changes > 0) ? '<span class="badge theme-warning me-1"><span class="bi bi-pencil me-1" aria-hidden="true"></span>' + esc(_sdT('Changes requested')) + '</span>' : '') +
                          (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
                          (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
             // A revoked link is listed only while its comments are kept:
@@ -85394,6 +86854,11 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            // A link asking approval: its pages approved as they are now.
+            var review = (l.approval && l.review) ? l.review : null;
+            if (review) facts.push(_sdT('Approved {var:1} of {var:2} pages', [String(review.approved), String(review.pages)]));
+            if (l.approval && l.approver_name) facts.push(_sdT('Approver: {var}', l.approver_name));
+            if (l.approval && l.answer_by) facts.push(_sdT('Answer by: {var}', l.answer_by));
             var showable = state.canShow && l.can_show && !revoked;
             return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '" data-ps-count="' + esc(String(count)) + '">' +
                        '<div class="d-flex flex-wrap align-items-center gap-3">' +
@@ -85428,8 +86893,11 @@ const StyleDesigner = (function () {
                 state.canShow = res.can_show !== false;
                 state.comments = res.comments_ready === true;
                 el.querySelector('[data-ps-comments-field]').classList.toggle('d-none', !state.comments);
+                state.approval = res.approval_ready === true;
+                el.querySelector('[data-ps-approval-field]').classList.toggle('d-none', !state.approval);
                 if (!startEl.options.length) fillPages();
                 fillDurations();
+                fillAnswerBy();
                 render(res.links || []);
             }).catch(function () { listEl.innerHTML = '<div class="fg-danger py-3">' + esc(_sdT('Network error.')) + '</div>'; });
         };
@@ -85444,8 +86912,29 @@ const StyleDesigner = (function () {
             });
         };
 
+        var approvalEl = el.querySelector('[data-ps-approval]');
+        var answerByEl = el.querySelector('[data-ps-answer-by]');
+        // "Answer by" runs from today to the day the link runs out.
+        var day = function (d) {
+            return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+        };
+        var fillAnswerBy = function () {
+            var now = new Date();
+            var seconds = parseInt(durationEl.value, 10) || 0;
+            answerByEl.min = day(now);
+            if (seconds > 0) answerByEl.max = day(new Date(now.getTime() + seconds * 1000));
+            else answerByEl.removeAttribute('max');
+        };
         el.addEventListener('change', function (e) {
             if (e.target && e.target.name === 'ps-audience') fillDurations();
+            if (e.target === approvalEl) {
+                el.querySelector('[data-ps-approval-more]').classList.toggle('d-none', !approvalEl.checked);
+                if (approvalEl.checked) {
+                    el.querySelector('[data-ps-comments]').checked = true;
+                    el.querySelector('[data-ps-approver]').focus();
+                }
+            }
+            if (e.target && e.target.name === 'ps-audience' || e.target === durationEl) fillAnswerBy();
         });
         el.addEventListener('click', function (e) {
             var urlBtn = e.target.closest('[data-ps-copy-url]');
@@ -85553,6 +87042,7 @@ const StyleDesigner = (function () {
             if (createBtn.disabled) return;
             errorEl.classList.add('d-none');
             var passwordEl = el.querySelector('[data-ps-password]');
+            var asks = state.approval && approvalEl.checked;
             createBtn.disabled = true;
             _pgApiPost('prototype_link_create', {
                 style_id: styleId,
@@ -85560,7 +87050,12 @@ const StyleDesigner = (function () {
                 start_page_id: parseInt(startEl.value, 10) || 0,
                 duration: parseInt(durationEl.value, 10) || 0,
                 password: passwordEl.value,
-                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0
+                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0,
+                approval: asks ? 1 : 0,
+                approver_name: asks ? el.querySelector('[data-ps-approver]').value : '',
+                approver_email: asks ? el.querySelector('[data-ps-approver-email]').value : '',
+                answer_by: asks ? answerByEl.value : '',
+                publish_rule: (asks && el.querySelector('[data-ps-publish-rule]').checked) ? 1 : 0
             }).then(function (res) {
                 createBtn.disabled = false;
                 if (!res || res.status !== 'success') {
@@ -85569,6 +87064,12 @@ const StyleDesigner = (function () {
                     return;
                 }
                 passwordEl.value = '';
+                if (asks) {
+                    approvalEl.checked = false;
+                    el.querySelector('[data-ps-approval-more]').classList.add('d-none');
+                    ['[data-ps-approver]', '[data-ps-approver-email]', '[data-ps-answer-by]'].forEach(function (q) { el.querySelector(q).value = ''; });
+                    el.querySelector('[data-ps-publish-rule]').checked = false;
+                }
                 madeEl.innerHTML = '<div class="fw-semibold">' + esc(_sdT('The link is ready. Copy it now and send it on.')) + '</div>' + addressBox(res.url);
                 madeEl.setAttribute('data-ps-made-id', String(res.link && res.link.id ? res.link.id : ''));
                 madeEl.classList.remove('d-none');
@@ -85758,9 +87259,12 @@ const StyleDesigner = (function () {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
         });
         // An open experiment's variant stays a draft; the server refuses it too.
-        var held = on ? [] : list.filter(_pgExperimentHeld);
+        // A draft waiting for approval goes only with an administrator's
+        // reason (the Publish sheet's "Publish anyway"), which the server checks.
+        var _stays = function (p) { return _pgExperimentHeld(p) && !p._approvalOverride; };
+        var held = on ? [] : list.filter(_stays);
         if (held.length) {
-            list = list.filter(function (p) { return !_pgExperimentHeld(p); });
+            list = list.filter(function (p) { return !_stays(p); });
             if (!list.length) { sdToast(esc(_pgHeldText(held[0])), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
@@ -86121,7 +87625,17 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         window.PgDesignerPublish.open({
             rows: _pgPublishRows,
-            publish: function (keys, hold, report) {
+            publish: function (keys, hold, report, reasons) {
+                // The reasons ride on the pages for this one save only.
+                var over = [];
+                Object.keys(reasons || {}).forEach(function (k) {
+                    var p = _pgPageByKey(k);
+                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                });
+                if (over.length) {
+                    var _report = report;
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
@@ -86249,6 +87763,8 @@ const StyleDesigner = (function () {
                 converted: sp.converted ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
+                // Hash of the stored tree loaded (pg_page_base_hash()).
+                baseHash: sp.baseHash || '',
                 // The page's form-level settings, as stored; written back
                 // with the page. The fields are the widget's controls.
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
@@ -87786,6 +89302,11 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_MARK = '/* Pinegrap block styles */';
     var _SD_BLOCK_CSS = {
         'pg-hero-tall':    '.pg-hero-tall { min-height: 60vh; }',
+        // A picture's focus point per screen size (_sdFocusDecls()): the
+        // element holds the three values, this rule picks the screen's.
+        'pg-focus':        '.pg-focus { --pg-focus: var(--pg-focus-d); }\n' +
+                           '@media (max-width: 991.98px) { .pg-focus { --pg-focus: var(--pg-focus-t); } }\n' +
+                           '@media (max-width: 767.98px) { .pg-focus { --pg-focus: var(--pg-focus-p); } }',
         // One screen tall: svh leaves room for a phone's address bar, and
         // 100vh stays for a browser that does not know svh.
         'pg-screen':       '.pg-screen { min-height: 100vh; min-height: 100svh; }',
@@ -87926,7 +89447,14 @@ const StyleDesigner = (function () {
                            '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-label { outline: 2px dashed var(--bs-emphasis-color); outline-offset: 3px; }\n' +
                            '@media (prefers-reduced-motion: reduce) { .pg-variant.pg-variant .pg-variant-shot { animation: none; } }',
 
-        'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
+        'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }',
+
+        // Back to top and Scroll progress sit above a fixed navbar (1030)
+        // and below an offcanvas or a dialog (1045, 1055).
+        'pg-to-top':          '.pg-to-top { width: 3rem; height: 3rem; z-index: 1035; transition: opacity .2s ease, visibility .2s ease; }\n' +
+                              '@media (prefers-reduced-motion: reduce) { .pg-to-top { transition: none; } }',
+        'pg-scroll-progress': '.pg-scroll-progress { --bs-progress-height: .25rem; z-index: 1035; }\n' +
+                              '.pg-scroll-progress .progress-bar { transition: none; }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
     // block is one line in each, and a block that needs nothing says nothing.
@@ -87943,6 +89471,8 @@ const StyleDesigner = (function () {
         'blog-list':            ['pg-thumb-200'],
         'stats-progress':       ['pg-progress-8'],
         'progress':             ['pg-progress-18'],
+        'back-to-top':          ['pg-to-top'],
+        'scroll-progress':      ['pg-scroll-progress'],
         'faq-categorized':      ['pg-sticky-1'],
         'timeline-horizontal':  ['pg-circle-60'],
         'alert-success-toast':  ['pg-circle-40'],
@@ -88094,6 +89624,10 @@ const StyleDesigner = (function () {
                                     d: _sdT('One feature: an icon with a title and a short explanation.') },
             'c:progress':         { v: 'progress', h: '<div class="progress">', k: 'progress bar percent',
                                     d: _sdT('A bar that shows how far something has got.') },
+            'c:back-to-top':      { v: 'to-top', h: '<a href="#top" data-pg-to-top>', k: 'back to top scroll top up arrow button go up',
+                                    d: _sdT('A round button in the corner that appears once the page is scrolled and takes the visitor back to the top.') },
+            'c:scroll-progress':  { v: 'scroll-progress', h: '<div class="progress" data-pg-scroll-progress>', k: 'scroll progress reading bar indicator top',
+                                    d: _sdT('A thin bar along the top of the window that fills as the visitor scrolls down the page.') },
             'c:modal':            { v: 'modal', h: '<div class="modal">', k: 'modal dialog popup window lightbox',
                                     d: _sdT('A dialog window that opens over the page, for example when a button is clicked.') },
             'c:dropdown':         { v: 'dropdown', h: '<div class="dropdown">', k: 'dropdown menu toggle button',
@@ -88691,6 +90225,14 @@ const StyleDesigner = (function () {
             },
             'progress': function () {
                 return R(0, 0, 200, 110, W) + L(20, 36, 54, S) + R(20, 50, 160, 14, G, 7) + R(20, 50, 104, 14, P, 7) + Tx(72, 60, '65%', 9, W, 'middle');
+            },
+            'to-top': function () {
+                return R(0, 0, 200, 110, W) + Hd(14, 12, 70) + L(14, 26, 150) + L(14, 34, 160) + L(14, 42, 130) + L(14, 56, 150) + L(14, 64, 110) +
+                    C(176, 88, 12, P) + Pa('M176 94v-12M171 87l5 -5 5 5', W, 1.6);
+            },
+            'scroll-progress': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 4, G) + R(0, 0, 120, 4, P) + Hd(14, 16, 70) + L(14, 30, 150) + L(14, 38, 160) +
+                    L(14, 46, 130) + L(14, 60, 150) + L(14, 68, 110) + L(14, 82, 140) + R(192, 14, 3, 90, G, 1.5) + R(192, 50, 3, 24, S, 1.5);
             },
             'modal': function () {
                 return R(0, 0, 200, 110, W) + L(10, 10, 120) + L(10, 20, 150) + L(10, 30, 100) + R(0, 0, 200, 110, '#000', 0, '', DIM) +
@@ -92843,6 +94385,14 @@ const StyleDesigner = (function () {
         return kit;
     }
     // ── end of parts on demand ────────────────────────────────────────────
+
+    // The canvas mirrors (the part 'mirror') follow the canvas document when
+    // it is written anew. Nothing runs while the part has not been loaded.
+    function _sdMirrorRebind() {
+        if (!_sdPartLoaded('mirror')) return;
+        var api = _sdPartApis.mirror;
+        if (api && typeof api.rebind === 'function') api.rebind();
+    }
 
     // The assistant panel is the part 'ai', handed over only to the designers
     // it serves. Its toolbar button and the canvas menu's "Ask the assistant

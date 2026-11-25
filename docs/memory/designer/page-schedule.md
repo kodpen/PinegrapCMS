@@ -14,6 +14,7 @@ description: Scheduled publishing of visual-designer pages (page.publish_at/unpu
 
 ## What does the general job do?
 - `pg_page_schedule_run()` on every tick of `job.php` (interval 60 s): due `publish_at` rows first, then due `unpublish_at`, 100 each, binned pages skipped. The column is cleared with `WHERE … AND col = <time read>` and the move happens only when that UPDATE touched one row, so overlapping runs move a page once. A page already in place only loses the time; the home page stays on the site (own log line). Activity lines say "at its scheduled time" (user `UNKNOWN`).
+- A draft a prototype link holds until approved (`prototype-approval-hold.md`) stays a draft, loses its time and gets its own log line.
 
 ## How do manual moves interact?
 - One move for everyone: `pg_page_draft_move()` (includes/fn/designer.php), used by the designs list (`pg_designer_design_set_draft()`) and the job. Put on the site clears `publish_at`; taken off clears `unpublish_at`. The editor's Publish / take-off menu does the same on the tab before saving.

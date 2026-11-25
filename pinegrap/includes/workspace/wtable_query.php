@@ -450,14 +450,14 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
                 $field .= '<option value="' . h($key) . '"' . (((string) $key === $value) ? ' selected' : '') . '>' . h($label) . '</option>';
             }
 
-            $field = '<select class="form-control form-control-sm" name="' . $name . '[v]"' . $value_label . '>' . $field . '</select>';
+            $field = '<select class="pg-input pg-input-sm" name="' . $name . '[v]"' . $value_label . '>' . $field . '</select>';
         } elseif ($type === 'date') {
             $timed = !empty($column['options']['time']);
             $iso = ws_wtable_query_screen_value($column, $value, array(), defined('DATE_FORMAT') ? (string) DATE_FORMAT : '');
             $shown = preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/', $iso) ? ($timed ? str_replace(' ', 'T', (strlen($iso) === 10) ? $iso . ' 00:00' : $iso) : substr($iso, 0, 10)) : '';
-            $field = '<input type="' . ($timed ? 'datetime-local' : 'date') . '" class="form-control form-control-sm" name="' . $name . '[v]" value="' . h($shown) . '"' . $value_label . ' ' . ($timed ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
+            $field = '<input type="' . ($timed ? 'datetime-local' : 'date') . '" class="pg-input pg-input-sm" name="' . $name . '[v]" value="' . h($shown) . '"' . $value_label . ' ' . ($timed ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
         } else {
-            $field = '<input type="text" class="form-control form-control-sm" name="' . $name . '[v]" value="' . h($value) . '"' . $value_label
+            $field = '<input type="text" class="pg-input pg-input-sm" name="' . $name . '[v]" value="' . h($value) . '"' . $value_label
                 . (in_array($type, array('number', 'money', 'formula'), true) ? ' inputmode="decimal"' : '') . ' placeholder="' . h(lang('Value')) . '">';
         }
 
@@ -467,12 +467,12 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
             $kept = $screen;
             unset($kept['typed'][$place]);
             $params = ws_wtable_query_params($kept) + ($totals_all ? array('totals' => 'all') : array());
-            $remove = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . (empty($params) ? '' : '&' . http_build_query($params))) . '#ws-wt-rows" title="' . h(lang('Remove condition')) . '" aria-label="' . h(lang('Remove condition')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>';
+            $remove = '<a class="pg-icon-button pg-icon-button-sm" href="' . h($table_url . (empty($params) ? '' : '&' . http_build_query($params))) . '#ws-wt-rows" title="' . h(lang('Remove condition')) . '" aria-label="' . h(lang('Remove condition')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>';
         }
 
         $out .= '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">'
-            . '<select class="form-control form-control-sm w-auto" name="' . $name . '[c]" aria-label="' . h(lang('Column')) . '">' . $choices . '</select>'
-            . '<select class="form-control form-control-sm w-auto" name="' . $name . '[o]" aria-label="' . h(lang('Comparison')) . '">' . $ops . '</select>'
+            . '<select class="pg-input pg-input-sm w-auto" name="' . $name . '[c]" aria-label="' . h(lang('Column')) . '">' . $choices . '</select>'
+            . '<select class="pg-input pg-input-sm w-auto" name="' . $name . '[o]" aria-label="' . h(lang('Comparison')) . '">' . $ops . '</select>'
             . '<div class="flex-grow-1" style="min-width: 10rem;">' . $field . '</div>' . $remove . '</div>';
     }
 
@@ -504,12 +504,12 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
         <input type="hidden" name="id" value="' . (int) $table_id . '">' . ($totals_all ? '<input type="hidden" name="totals" value="all">' : '') . '
         ' . $out . '
         <div class="d-flex flex-wrap align-items-center gap-2">
-            ' . ((count($typed) > 0) ? '<select class="form-control form-control-sm w-auto" name="join" aria-label="' . h(lang('How the conditions join')) . '">' . $joins . '</select>' : '') . '
+            ' . ((count($typed) > 0) ? '<select class="pg-input pg-input-sm w-auto" name="join" aria-label="' . h(lang('How the conditions join')) . '">' . $joins . '</select>' : '') . '
             <label class="small fg-secondary sm:ms-auto" for="ws-wt-query-sort">' . h(lang('Sort by')) . '</label>
-            <select class="form-control form-control-sm w-auto" name="sort" id="ws-wt-query-sort">' . $sorts . '</select>
-            <select class="form-control form-control-sm w-auto" name="dir" aria-label="' . h(lang('Direction')) . '">' . $dirs . '</select>
-            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-4"><i class="bi bi-funnel me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Apply')) . '</span></button>
-            ' . ($active ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . ($totals_all ? '&totals=all' : '')) . '#ws-wt-rows">' . h(lang('Clear')) . '</a>' : '') . '
+            <select class="pg-input pg-input-sm w-auto" name="sort" id="ws-wt-query-sort">' . $sorts . '</select>
+            <select class="pg-input pg-input-sm w-auto" name="dir" aria-label="' . h(lang('Direction')) . '">' . $dirs . '</select>
+            <button type="submit" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-funnel" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Apply')) . '</span></button>
+            ' . ($active ? '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . ($totals_all ? '&totals=all' : '')) . '#ws-wt-rows">' . h(lang('Clear')) . '</a>' : '') . '
         </div>'
         . (($refusal !== '') ? '<div class="alert theme-warning small py-3 mt-3 mb-0" role="alert">' . h($refusal) . ' ' . h(lang('The rows show unfiltered.')) . '</div>' : '') . '
     </form>';

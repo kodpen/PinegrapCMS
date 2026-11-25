@@ -750,7 +750,7 @@ function pg_delivery_problem_drawer_frame($id, $title, $head, $body, $foot, arra
 {
     $own = empty($opts['form']);
     $inner = '<div class="drawer-header">'
-            . '<div class="flex-grow-1 min-width-0">'
+            . '<div class="flex-grow-1 min-w-0">'
             . '<h5 class="drawer-title mb-0" id="' . h($id) . '_title">' . h($title) . '</h5>'
             . (($head !== '') ? '<p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . $head . '</p>' : '')
             . '</div>'
@@ -1006,7 +1006,7 @@ function pg_delivery_problem_settings_drawer(array $settings, array $filters)
     foreach (pg_delivery_problem_setting_rows() as $kind => $row) {
         $id = 'delivery_settings_' . $kind;
         $rows .= '<div class="pg-card-inner-row">'
-            . '<label class="flex-grow-1 min-width-0" for="' . h($id) . '"><strong class="pg-list-row-title d-block">' . h($row[0]) . '</strong>'
+            . '<label class="flex-grow-1 min-w-0" for="' . h($id) . '"><strong class="pg-list-row-title d-block">' . h($row[0]) . '</strong>'
             . '<span class="pg-text-meta d-block" id="' . h($id) . '_help">' . h($row[1]) . '</span></label>'
             . '<input type="checkbox" class="pg-switch" id="' . h($id) . '" name="kinds[' . h($kind) . ']" value="1"' . (!empty($settings[$kind]) ? ' checked' : '') . ' aria-describedby="' . h($id) . '_help">'
             . '</div>';

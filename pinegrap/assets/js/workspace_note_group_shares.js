@@ -80,7 +80,7 @@
         var kit = ctx.kit;
         var box = kit.el('div', 'ws-nb-shares');
 
-        box.appendChild(kit.el('div', 'form-label mb-1', kit.t('notes_shares')));
+        box.appendChild(kit.el('div', 'pg-field-label', kit.t('notes_shares')));
 
         if (!shares.length) {
             box.appendChild(kit.el('div', 'small fg-secondary', kit.t('notes_group_only_you')));
@@ -93,7 +93,7 @@
             row.appendChild(kit.el('span', 'ws-grow text-truncate', share.name || '?'));
             row.appendChild(kit.el('span', 'small fg-secondary', share.channel_id ? kit.t('notes_can_view') : kit.t(share.can_edit ? 'notes_group_can_add' : 'notes_can_view')));
 
-            var remove = kit.button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-x-lg', kit.t('notes_unshare'));
+            var remove = kit.button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-x-lg', kit.t('notes_unshare'));
             remove.addEventListener('click', function () {
                 remove.disabled = true;
                 kit.api('ws_note_group_unshare', { group_id: group.id, share_id: share.id }).then(function () {
@@ -140,7 +140,7 @@
             details.appendChild(picker);
             details.appendChild(right);
             details.appendChild(kit.el('div', 'form-text', kit.t('notes_group_share_help')));
-            details.appendChild(kit.el('div', 'form-label small mt-4 mb-0', kit.t('notes_group_channel')));
+            details.appendChild(kit.el('div', 'pg-field-label mt-4 mb-0', kit.t('notes_group_channel')));
             details.appendChild(channel);
             details.appendChild(sharesList(ctx, group, data.shares || [], function () { ctx.reload(); }));
 
@@ -377,7 +377,7 @@
         }
 
         if (data.url) {
-            var open = kit.el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill py-0 px-3 ms-auto', kit.t('notes_group_open'));
+            var open = kit.el('a', 'pg-button pg-button-quiet pg-button-sm ms-auto', kit.t('notes_group_open'));
             open.href = data.url;
             open.addEventListener('click', function (event) { event.stopPropagation(); });
             foot.appendChild(open);

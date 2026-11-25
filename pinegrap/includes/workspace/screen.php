@@ -168,6 +168,7 @@ function ws_js_strings()
         'end_date'               => lang('Last day'),
         'end_time'               => lang('End time'),
         'error_generic'          => lang('Something went wrong. Please try again.'),
+        'send_signed_out'        => lang('You are signed out, so the message was not sent. What you wrote stays in the box: sign in again, then send it.'),
         'estimate'               => lang('Estimate'),
         'estimate_help'          => ws_js_template('Left empty, {var:1} is counted.', 1),
         'estimate_hours'         => lang('Estimate (hours)'),
@@ -1044,7 +1045,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'poll'         => array('active' => 4),
         // Calls from the channel's head (workspace_calls.js): the public
         // route the browsers ask for, null while the database has no calls.
-        'calls'        => ws_calls_on() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING, 'max' => WS_CALL_MAX_MEMBERS) : null,
+        'calls'        => ws_calls_on() ? array('ice' => ws_call_ice_servers(), 'ring' => WS_CALL_RING, 'max' => WS_CALL_MAX_MEMBERS, 'background' => ws_call_background_config(ws_calls_settings())) : null,
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,
@@ -1392,7 +1393,7 @@ function ws_screen_gate($user, $flows = false, $mail = false)
  * @param string $class the button's classes
  * @return string
  */
-function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm btn-outline theme-secondary')
+function ws_record_button($user, $type, $id, $label = '', $class = 'pg-button pg-button-quiet pg-button-sm')
 {
     if (((int) $id <= 0) || !ws_ready() || !ws_enabled()) {
         return '';

@@ -34,20 +34,27 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `collection-rows-*`: 7 files; start at `collection-rows.md`.
 - `comments-widget-*`: 25 files; start at `comments-widget.md`.
 - `content-proposals-*`: 9 files; start at `content-proposals.md`.
-- `custom-form-*`: 19 files; start at `custom-form-overview.md`.
+- `custom-form-*`: 22 files; start at `custom-form-overview.md`.
 - `design-template-*`: 119 files; start at `design-template-overview.md`.
 - `designer-blocks-*`: 58 files; start at `designer-blocks-overview.md`.
-- `designer-canvas-*`: 15 files; start at `designer-canvas-overview.md`.
+- `designer-canvas-*`: 18 files; start at `designer-canvas-overview.md`.
 - `designer-code-*`: 6 files.
 - `designer-content-*`: 6 files.
 - `designer-interactions-*`: 6 files; start at `designer-interactions.md`.
-- `designer-options-*`: 14 files; start at `designer-options-overview.md`.
+- `designer-options-*`: 17 files; start at `designer-options-overview.md`.
 - `designer-panels-*`: 7 files; start at `designer-panels-overview.md`.
+- `designer-preview-*`: 9 files.
 - `designer-prototype-*`: 9 files.
+- `designer-publish-*`: 8 files.
+- `designer-sketch-*`: 7 files.
+- `designer-start-*`: 6 files.
 - `email-designs-*`: 6 files; start at `email-designs.md`.
 - `form-list-*`: 8 files.
+- `layout-type-*`: 7 files.
 - `legacy-bootstrap-*`: 11 files; start at `legacy-bootstrap-overview.md`.
 - `legacy-layouts-*`: 8 files.
+- `options-panel-*`: 6 files.
+- `prototype-approval-*`: 8 files; start at `prototype-approval.md`.
 - `release-bundle-*`: 9 files; start at `release-bundle.md`.
 - `system-widget-*`: 9 files.
 - `widget-default-*`: 13 files; start at `widget-default-overview.md`.

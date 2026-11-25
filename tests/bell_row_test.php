@@ -72,6 +72,7 @@ function test_bell_row_module_of_every_known_action()
 		'content_dismissed' => 'content',
 		'content_stale'     => 'content',
 		'prototype_comment' => 'content',
+		'prototype_verdict' => 'content',
 		'workspace'        => 'team',
 		'software_update'  => 'system',
 		'mail_failed'      => 'system',
@@ -79,6 +80,7 @@ function test_bell_row_module_of_every_known_action()
 		'profile_flows'    => 'system',
 		'privacy_request'  => 'system',
 		'launch_answer'    => 'system',
+		'webhook_scope'    => 'system',
 		'bundle_held'      => 'content',
 	);
 	$known = bell_row_known_actions();
@@ -186,7 +188,9 @@ function test_bell_row_endpoint_gives_module_day_and_button()
 	$list = bell_row_function('includes/panel/notifications.php', 'pg_panel_get_notifications');
 
 	pg_assert_contains("'module' => pg_notification_module(", $list, 'module');
-	pg_assert_contains("'day' => pg_notification_day((int) \$notification['timestamp'], \$now)", $list, 'day, in the site zone the panel set');
+	pg_assert_contains("'day' => pg_notification_day((int) \$notification['timestamp'], \$now, \$zone)", $list, 'day, in the reader\'s zone');
+	pg_assert_contains("'time' => pg_notification_short_time((int) \$notification['timestamp'], \$now, \$zone, \$date_format)", $list, 'the short time in the same zone');
+	pg_assert_contains("\$zone = pg_time_uses_user_zone(array()) ? pg_timezone_canonical(USER_TIMEZONE) : '';", $list, 'the zone the full time in the title is written in');
 	pg_assert_contains(": pg_notification_button(\$display['action'], \$display['kind'], \$display['join']))", $list, 'button');
 }
 

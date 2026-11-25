@@ -120,6 +120,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             break;
 
+        case 'table_bulk_delete':
+            // The selection bar's Delete: the single delete for each chosen
+            // table, under the person's right on that table.
+            $bulk = ws_wtable_list_bulk_delete($viewer, ws_wtable_list_bulk_ids($_POST['wt_tables'] ?? null));
+
+            foreach ($bulk['deleted'] as $deleted_table) {
+                log_activity(lang(array('string' => 'workspace table ({var:1}) was deleted', 'vars' => $deleted_table['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
+            }
+
+            $texts = ws_wtable_list_bulk_delete_texts(count($bulk['deleted']), $bulk['left'], $bulk['unreached'], ws_wtable_bin_ready() ? ws_wtable_bin_days() : 0);
+
+            if ($texts['notice'] !== '') {
+                $liveform->add_notice(h($texts['notice']));
+            } else {
+                $liveform->add_error(h($texts['error']));
+            }
+
+            // Back to the list, in the scope it was sent from (target).
+            $back_scope = ws_wtable_list_scope($field('target'), true);
+            $back = $self_url . (($back_scope === 'all') ? '' : '?scope=' . rawurlencode($back_scope));
+            break;
+
         case 'table_restore':
             // A table of the person's own back from the bin, whole.
             $binned = ws_wtable_binned((int) ($_POST['wt_table'] ?? 0));
@@ -622,11 +644,11 @@ $import_upload = function ($table_id, $intro) use ($self_url) {
                         <input type="hidden" name="wt_table" value="' . (int) $table_id . '">
                         <p class="small fg-secondary">' . h($intro) . '</p>
                         <div class="mb-3">
-                            <label class="form-label small mb-1" for="ws_wt_import_file">' . h(lang('File')) . '</label>
-                            <input type="file" class="form-control form-control-sm" name="file" id="ws_wt_import_file" accept=".csv,.xlsx,.xlsm,.xls,.ods" required>
+                            <label class="pg-field-label" for="ws_wt_import_file">' . h(lang('File')) . '</label>
+                            <input type="file" class="pg-input pg-input-sm" name="file" id="ws_wt_import_file" accept=".csv,.xlsx,.xlsm,.xls,.ods" required>
                             ' . pg_upload_limit_hint() . '
                         </div>
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Read the file')) . '</button>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Read the file')) . '</button>
                     </form>';
 };
 
@@ -654,10 +676,10 @@ $import_note = function ($table_id, $intro) use ($self_url, $viewer, &$note_choi
                         <input type="hidden" name="wt_table" value="' . (int) $table_id . '">
                         <p class="small fg-secondary">' . h($intro) . '</p>
                         <div class="mb-3">
-                            <label class="form-label small mb-1" for="ws_wt_import_note">' . h(lang('Note table')) . '</label>
-                            <select class="form-control form-control-sm" name="note" id="ws_wt_import_note" required>' . $options . '</select>
+                            <label class="pg-field-label" for="ws_wt_import_note">' . h(lang('Note table')) . '</label>
+                            <select class="pg-input pg-input-sm" name="note" id="ws_wt_import_note" required>' . $options . '</select>
                         </div>
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Read the table')) . '</button>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Read the table')) . '</button>
                     </form>';
 };
 
@@ -691,7 +713,7 @@ if ($kept) {
             }
 
             $lines .= '<tr><td class="fw-semibold">' . h($name) . '</td>'
-                . '<td><select class="form-control form-control-sm" name="col_map[' . (int) $index . ']" aria-label="' . h(lang(array('string' => 'Column for {var:1}', 'vars' => $name))) . '">' . $choices . '</select></td>'
+                . '<td><select class="pg-input pg-input-sm" name="col_map[' . (int) $index . ']" aria-label="' . h(lang(array('string' => 'Column for {var:1}', 'vars' => $name))) . '">' . $choices . '</select></td>'
                 . '<td class="small fg-secondary">' . h($sample_text) . '</td></tr>';
         } else {
             $guess = ws_wtable_import_guess($values);
@@ -702,8 +724,8 @@ if ($kept) {
             }
 
             $lines .= '<tr><td><input class="check" type="checkbox" name="col_keep[' . (int) $index . ']" value="1" checked aria-label="' . h(lang(array('string' => 'Import {var:1}', 'vars' => $name))) . '"></td>'
-                . '<td><input type="text" class="form-control form-control-sm" name="col_name[' . (int) $index . ']" value="' . h($name) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" aria-label="' . h(lang('Name')) . '"></td>'
-                . '<td><select class="form-control form-control-sm" name="col_type[' . (int) $index . ']" aria-label="' . h(lang('Type')) . '">' . $types_list . '</select></td>'
+                . '<td><input type="text" class="pg-input pg-input-sm" name="col_name[' . (int) $index . ']" value="' . h($name) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" aria-label="' . h(lang('Name')) . '"></td>'
+                . '<td><select class="pg-input pg-input-sm" name="col_type[' . (int) $index . ']" aria-label="' . h(lang('Type')) . '">' . $types_list . '</select></td>'
                 . '<td class="small fg-secondary">' . h($sample_text) . '</td></tr>';
         }
     }
@@ -730,12 +752,12 @@ if ($kept) {
                 ' . get_token_field() . '
                 <input type="hidden" name="wt_action" value="import_write">
                 <input type="hidden" name="wt_table" value="' . ($table ? (int) $table['id'] : 0) . '">
-                ' . ($table ? '' : '<div class="mb-3" style="max-width: 32rem;"><label class="form-label small mb-1" for="ws_wt_import_name">' . h(lang('Table name')) . '</label>
-                    <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_import_name" value="' . h(mb_substr($kept['note'] ? $kept['file'] : pg_file_name_stem($kept['file']), 0, ws_wtable_limits()['name'])) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>') . '
+                ' . ($table ? '' : '<div class="mb-3" style="max-width: 32rem;"><label class="pg-field-label" for="ws_wt_import_name">' . h(lang('Table name')) . '</label>
+                    <input type="text" class="pg-input pg-input-sm" name="name" id="ws_wt_import_name" value="' . h(mb_substr($kept['note'] ? $kept['file'] : pg_file_name_stem($kept['file']), 0, ws_wtable_limits()['name'])) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>') . '
                 <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr>' . $head . '</tr></thead><tbody>' . $lines . '</tbody></table></div>
                 <div class="d-flex gap-3 mt-5">
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Import')) . '</button>
-                    <button type="button" class="btn btn-sm btn-text theme-secondary ws-wt-action" data-action="import_cancel">' . h(lang('Cancel')) . '</button>
+                    <button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Import')) . '</button>
+                    <button type="button" class="pg-button pg-button-ghost pg-button-sm ws-wt-action" data-action="import_cancel">' . h(lang('Cancel')) . '</button>
                 </div>
             </form>
         </div>
@@ -799,6 +821,8 @@ if (!$table) {
     $binned = ws_wtables_binned($viewer);
     $deleted_view = ws_wtable_bin_ready() && (($_GET['view'] ?? '') === 'deleted');
 
+    $bulk_delete = '';
+
     if ($deleted_view) {
         $list_name = WS_WTABLE_LIST_DELETED;
         $list_rows = array();
@@ -837,6 +861,12 @@ if (!$table) {
             }
         }
 
+        // The selection bar's Delete, when the person owns a table here;
+        // each chosen table is checked again on its own when it is sent.
+        $bulk_delete = $confirms
+            ? '<button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-bulk-delete" disabled><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button>'
+            : '';
+
         $list = pg_list_table_printed(array(
             'list'    => $list_name,
             'columns' => $list_columns,
@@ -857,7 +887,7 @@ if (!$table) {
             ? ws_empty_screen_html('amber', 'bi-table', ($scope === 'shared') ? lang('Nothing is shared with you yet') : lang('No table yet'),
                 lang('A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.'),
                 '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>')
-            : pg_list_table_html($list['source'], $list['page'], lang('Data'));
+            : pg_list_table_html($list['source'], $list['page'], lang('Data'), $bulk_delete);
     }
 
     // The scopes with their counts, each an address; in the deleted view
@@ -893,17 +923,17 @@ if (!$table) {
             </div>
             <div class="dialog-body">
                 <div class="mb-3">
-                    <label class="form-label small mb-1" for="ws_wt_new_name">' . h(lang('Name')) . '</label>
-                    <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" autofocus>
+                    <label class="pg-field-label" for="ws_wt_new_name">' . h(lang('Name')) . '</label>
+                    <input type="text" class="pg-input pg-input-sm" name="name" id="ws_wt_new_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" autofocus>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small mb-1" for="ws_wt_new_description">' . h(lang('Description')) . '</label>
-                    <textarea class="form-control form-control-sm" name="description" id="ws_wt_new_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '"></textarea>
+                    <label class="pg-field-label" for="ws_wt_new_description">' . h(lang('Description')) . '</label>
+                    <textarea class="pg-input pg-input-sm" name="description" id="ws_wt_new_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '"></textarea>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small mb-1" for="ws_wt_new_starter">' . h(lang('Start from')) . '</label>
-                    <select class="form-control form-control-sm" name="starter" id="ws_wt_new_starter">' . $starter_options . '</select>
-                    <div class="form-text">' . h(lang('A starter makes its columns; the name and description are its own when left empty.')) . '</div>
+                    <label class="pg-field-label" for="ws_wt_new_starter">' . h(lang('Start from')) . '</label>
+                    <select class="pg-input pg-input-sm" name="starter" id="ws_wt_new_starter">' . $starter_options . '</select>
+                    <div class="pg-field-help">' . h(lang('A starter makes its columns; the name and description are its own when left empty.')) . '</div>
                 </div>
                 <div class="form-field">
                     <input class="check" type="checkbox" name="samples" value="1" id="ws_wt_new_samples" checked>
@@ -911,8 +941,8 @@ if (!$table) {
                 </div>
             </div>
             <div class="dialog-footer">
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
-                <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Create')) . '</button>
+                <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                <button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Create')) . '</button>
             </div>
         </form>
     </dialog>
@@ -928,6 +958,28 @@ if (!$table) {
             ' . $import_note(0, lang('A table in one of your notes: its first row names the columns. The note stays as it is.')) . '
         </div>
     </dialog>';
+
+    // The bulk Delete's question; the count is put in when it opens.
+    if ($bulk_delete !== '') {
+        $windows .= '
+    <dialog class="dialog pg-dialog-centered" id="ws_wt_bulk_delete" aria-labelledby="ws_wt_bulk_delete_title"'
+            . ' data-one="' . h(($bin_days > 0)
+                ? lang(array('string' => 'Delete the chosen table? It stays in Deleted tables for {var:1} days, where you can restore it. A table you do not own is left as it is.', 'vars' => $bin_days))
+                : lang('Delete the chosen table with its rows and shares? It cannot be brought back. A table you do not own is left as it is.')) . '"'
+            . ' data-many="' . h(($bin_days > 0)
+                ? lang(array('string' => 'Delete the {var:1} chosen tables? They stay in Deleted tables for {var:2} days, where you can restore them. A table you do not own is left as it is.', 'vars' => array('__COUNT__', $bin_days)))
+                : lang(array('string' => 'Delete the {var:1} chosen tables with their rows and shares? They cannot be brought back. A table you do not own is left as it is.', 'vars' => '__COUNT__'))) . '">
+        <div class="dialog-header">
+            <h5 class="dialog-title" id="ws_wt_bulk_delete_title">' . h(lang('Delete tables')) . '</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+        </div>
+        <div class="dialog-body"><p class="mb-0 ws-wt-bulk-delete-text"></p></div>
+        <div class="dialog-footer">
+            <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+            <button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-bulk-delete-go">' . h(lang('Delete')) . '</button>
+        </div>
+    </dialog>';
+    }
 
     // On a phone New table floats at the bottom right of the screen, in
     // place of the toolbar's button.
@@ -1087,12 +1139,12 @@ if (!$table) {
         }
 
         $totals_foot = '<tfoot class="ws-wt-totals">' . $totals_foot . '</tfoot>';
-        $totals_switch = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Totals over')) . '">';
+        $totals_switch = '<div class="pg-seg" role="group" aria-label="' . h(lang('Totals over')) . '">';
 
         foreach (array('page' => lang('Rows shown'), 'all' => $query_on ? lang('All matching rows') : lang('All rows')) as $key => $label) {
             $here = (($key === 'all') === $totals_all);
             $switch_params = array_diff_key($query_params, array('totals' => 1)) + (($key === 'all') ? array('totals' => 'all') : array());
-            $totals_switch .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (empty($switch_params) ? '' : '&' . http_build_query($switch_params)) . ($query_on ? ($from ? '&from=' . $from : '') : ws_wtable_screen_after_qs($after, $after_id))) . '#ws-wt-rows"'
+            $totals_switch .= '<a class="pg-seg-item' . ($here ? ' is-active' : '') . '" href="' . h($table_url . (empty($switch_params) ? '' : '&' . http_build_query($switch_params)) . ($query_on ? ($from ? '&from=' . $from : '') : ws_wtable_screen_after_qs($after, $after_id))) . '#ws-wt-rows"'
                 . ($here ? ' aria-current="true"' : '') . '>' . h($label) . '</a>';
         }
 
@@ -1132,7 +1184,7 @@ if (!$table) {
         $tools = '';
 
         if ($can_write) {
-            $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . $page_qs) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
+            $tools = '<a class="pg-icon-button pg-icon-button-sm" href="' . h($table_url . '&row=' . (int) $row['id'] . $page_qs) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
                 . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash',
                     ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0)));
         }
@@ -1143,11 +1195,11 @@ if (!$table) {
     $pager = '';
 
     if (($after > 0) || ($from > 0)) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . $query_qs) . '#ws-wt-rows"><i class="bi bi-chevron-double-left me-1" aria-hidden="true"></i>' . h(lang('First page')) . '</a>';
+        $pager .= '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . $query_qs) . '#ws-wt-rows"><i class="bi bi-chevron-double-left" aria-hidden="true"></i>' . h(lang('First page')) . '</a>';
     }
 
     if ($page['next'] !== null) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . $query_qs . ($query_on ? '&from=' . (int) $page['next'] : ws_wtable_screen_after_qs((int) $page['next'], (int) ($page['next_id'] ?? 0)))) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
+        $pager .= '<a class="pg-button pg-button-ghost pg-button-sm ms-auto" href="' . h($table_url . $query_qs . ($query_on ? '&from=' . (int) $page['next'] : ws_wtable_screen_after_qs((int) $page['next'], (int) ($page['next_id'] ?? 0)))) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>';
     }
 
     if (empty($columns)) {
@@ -1193,9 +1245,9 @@ if (!$table) {
         foreach ($columns as $column_id => $column) {
             // A lookup or rollup is read from other rows: shown, never written here.
             if (ws_wtable_joined_type($column['type']) && $edit) {
-                $fields .= '<div class="mb-3"><label class="form-label small mb-1" for="ws_wt_cell_' . (int) $column_id . '">' . h($column['name']) . '</label>'
-                    . '<input type="text" class="form-control form-control-sm" id="ws_wt_cell_' . (int) $column_id . '" value="' . h(ws_wtable_screen_cell_text($column, $edit['cells'][$column_id] ?? null, $people)) . '" readonly>'
-                    . '<div class="form-text">' . h(($column['type'] === 'rollup') ? lang('Worked out from the rows that link to this row.') : lang('Shown from the linked row; change it there.')) . '</div></div>';
+                $fields .= '<div class="mb-3"><label class="pg-field-label" for="ws_wt_cell_' . (int) $column_id . '">' . h($column['name']) . '</label>'
+                    . '<input type="text" class="pg-input pg-input-sm" id="ws_wt_cell_' . (int) $column_id . '" value="' . h(ws_wtable_screen_cell_text($column, $edit['cells'][$column_id] ?? null, $people)) . '" readonly>'
+                    . '<div class="pg-field-help">' . h(($column['type'] === 'rollup') ? lang('Worked out from the rows that link to this row.') : lang('Shown from the linked row; change it there.')) . '</div></div>';
             }
 
             if (!ws_wtable_type_stores($column['type'])) {
@@ -1245,7 +1297,7 @@ if (!$table) {
 
                     // A person column lists the whole team: searched in the
                     // browser once it is long (data-pg-combobox).
-                    $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '"' . (($column['type'] === 'person') ? ' data-pg-combobox' : '') . '>' . $choices . '</select>';
+                    $input = '<select class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '"' . (($column['type'] === 'person') ? ' data-pg-combobox' : '') . '>' . $choices . '</select>';
                     break;
 
                 case 'row':
@@ -1255,7 +1307,7 @@ if (!$table) {
                     $linked = ws_wtable_link_choices($viewer, $column);
 
                     if ($linked === null) {
-                        $input = '<input type="text" class="form-control form-control-sm" id="' . $field_id . '" value="' . h(($value !== '') ? ws_wtable_link_unread_text() : '') . '" disabled>';
+                        $input = '<input type="text" class="pg-input pg-input-sm" id="' . $field_id . '" value="' . h(($value !== '') ? ws_wtable_link_unread_text() : '') . '" disabled>';
                         break;
                     }
 
@@ -1265,12 +1317,12 @@ if (!$table) {
                         $choices .= '<option value="' . (int) $key . '"' . (((string) $key === $value) ? ' selected' : '') . '>' . h($label) . '</option>';
                     }
 
-                    $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" data-pg-combobox>' . $choices . '</select>';
+                    $input = '<select class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" data-pg-combobox>' . $choices . '</select>';
                     break;
 
                 case 'date':
                     // A native input keeps the ISO store the cell is saved in.
-                    $input = '<input type="' . (!empty($options['time']) ? 'datetime-local' : 'date') . '" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
+                    $input = '<input type="' . (!empty($options['time']) ? 'datetime-local' : 'date') . '" class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
                     break;
 
                 case 'text':
@@ -1278,7 +1330,7 @@ if (!$table) {
                     // Tall enough for the lines the value has, two at least;
                     // a list takes one item a line.
                     $lines = min(8, max(2, count(preg_split('/\r\n|\r|\n/', $value))));
-                    $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
+                    $input = '<textarea class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
 
                     if ($column['type'] === 'list') {
                         $hint = lang('One item a line.');
@@ -1287,7 +1339,7 @@ if (!$table) {
                     break;
 
                 default:
-                    $input = '<input type="text" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '"'
+                    $input = '<input type="text" class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '"'
                         . (in_array($column['type'], array('number', 'money'), true) ? ' inputmode="decimal"' : '') . '>';
 
                     // Money: its currency beside the amount, as a suffix.
@@ -1299,10 +1351,10 @@ if (!$table) {
             }
 
             $fields .= '<div class="mb-3">'
-                . (($column['type'] !== 'checkbox') ? '<label class="form-label small mb-1" for="' . $field_id . '">' . h($column['name']) . '</label>' : '')
+                . (($column['type'] !== 'checkbox') ? '<label class="pg-field-label" for="' . $field_id . '">' . h($column['name']) . '</label>' : '')
                 . $input
                 . (($error !== '') ? '<div class="invalid-feedback d-block">' . h(ws_wtable_screen_error_text($error)) . '</div>' : '')
-                . (($hint !== '') ? '<div class="form-text">' . h($hint) . '</div>' : '')
+                . (($hint !== '') ? '<div class="pg-field-help">' . h($hint) . '</div>' : '')
                 . '</div>';
         }
 
@@ -1324,8 +1376,8 @@ if (!$table) {
                         <input type="hidden" name="revision" value="' . ($edit ? (int) $edit['revision'] : 0) . '">
                         ' . (($fields !== '') ? $fields : '<p class="small fg-secondary">' . h(lang('Every column of this table is worked out by a formula.')) . '</p>') . '
                         <div class="d-flex gap-3 mt-5">
-                            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h($edit ? lang('Save') : lang('Add')) . '</button>
-                            ' . ($edit || ($edit_id > 0) ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . $page_qs) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
+                            <button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h($edit ? lang('Save') : lang('Add')) . '</button>
+                            ' . ($edit || ($edit_id > 0) ? '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . $page_qs) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
                         </div>
                     </form>
                 </div>
@@ -1340,12 +1392,12 @@ if (!$table) {
         switch ($type) {
             case 'number':
             case 'money':
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_decimals">' . h(lang('Decimals')) . '</label>'
-                    . '<input type="number" class="form-control form-control-sm" name="options[decimals]" id="' . $prefix . '_decimals" min="0" max="' . (($type === 'money') ? 3 : 6) . '" value="' . h((string) ($options['decimals'] ?? (($type === 'money') ? 2 : 0))) . '"></div>';
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_decimals">' . h(lang('Decimals')) . '</label>'
+                    . '<input type="number" class="pg-input pg-input-sm" name="options[decimals]" id="' . $prefix . '_decimals" min="0" max="' . (($type === 'money') ? 3 : 6) . '" value="' . h((string) ($options['decimals'] ?? (($type === 'money') ? 2 : 0))) . '"></div>';
 
                 if ($type === 'money') {
-                    $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_currency">' . h(lang('Currency')) . '</label>'
-                        . '<input type="text" class="form-control form-control-sm" name="options[currency]" id="' . $prefix . '_currency" maxlength="3" placeholder="EUR" value="' . h((string) ($options['currency'] ?? '')) . '"></div>';
+                    $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_currency">' . h(lang('Currency')) . '</label>'
+                        . '<input type="text" class="pg-input pg-input-sm" name="options[currency]" id="' . $prefix . '_currency" maxlength="3" placeholder="EUR" value="' . h((string) ($options['currency'] ?? '')) . '"></div>';
                 }
 
                 break;
@@ -1362,14 +1414,14 @@ if (!$table) {
                     $labels[] = (string) $choice['label'];
                 }
 
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_choices">' . h(lang('Choices, one a line')) . '</label>'
-                    . '<textarea class="form-control form-control-sm" name="options[choices]" id="' . $prefix . '_choices" rows="3">' . h(implode("\n", $labels)) . '</textarea></div>';
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_choices">' . h(lang('Choices, one a line')) . '</label>'
+                    . '<textarea class="pg-input pg-input-sm" name="options[choices]" id="' . $prefix . '_choices" rows="3">' . h(implode("\n", $labels)) . '</textarea></div>';
                 break;
 
             case 'link':
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_kinds">' . h(lang('Record kinds')) . '</label>'
-                    . '<input type="text" class="form-control form-control-sm" name="options[kinds]" id="' . $prefix . '_kinds" placeholder="contact, product" value="' . h(implode(', ', (array) ($options['kinds'] ?? array()))) . '">'
-                    . '<div class="form-text">' . h(lang('Empty for any kind.')) . '</div></div>';
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_kinds">' . h(lang('Record kinds')) . '</label>'
+                    . '<input type="text" class="pg-input pg-input-sm" name="options[kinds]" id="' . $prefix . '_kinds" placeholder="contact, product" value="' . h(implode(', ', (array) ($options['kinds'] ?? array()))) . '">'
+                    . '<div class="pg-field-help">' . h(lang('Empty for any kind.')) . '</div></div>';
                 break;
 
             case 'list':
@@ -1381,8 +1433,8 @@ if (!$table) {
                     $kinds .= '<option value="' . h($kind) . '"' . (($kind === $of) ? ' selected' : '') . '>' . h($label) . '</option>';
                 }
 
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_of">' . h(lang('Items')) . '</label>'
-                    . '<select class="form-control form-control-sm" name="options[of]" id="' . $prefix . '_of"' . ($column ? ' disabled' : '') . '>' . $kinds . '</select></div>';
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_of">' . h(lang('Items')) . '</label>'
+                    . '<select class="pg-input pg-input-sm" name="options[of]" id="' . $prefix . '_of"' . ($column ? ' disabled' : '') . '>' . $kinds . '</select></div>';
                 break;
 
             case 'row':
@@ -1400,9 +1452,9 @@ if (!$table) {
                     $tables = '<option value="' . $linked . '" selected>' . h(lang('A table you do not read')) . '</option>' . $tables;
                 }
 
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_table">' . h(lang('Linked table')) . '</label>'
-                    . '<select class="form-control form-control-sm" name="options[table]" id="' . $prefix . '_table"' . ($column ? ' disabled' : ' required') . '>' . $tables . '</select>'
-                    . '<div class="form-text">' . h(lang('A cell picks one of its rows, shown by its key or first text.')) . '</div></div>';
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_table">' . h(lang('Linked table')) . '</label>'
+                    . '<select class="pg-input pg-input-sm" name="options[table]" id="' . $prefix . '_table"' . ($column ? ' disabled' : ' required') . '>' . $tables . '</select>'
+                    . '<div class="pg-field-help">' . h(lang('A cell picks one of its rows, shown by its key or first text.')) . '</div></div>';
                 break;
 
             case 'lookup':
@@ -1418,10 +1470,10 @@ if (!$table) {
                     $picks = '<option value="' . h($picked) . '" selected>' . h(ws_wtable_lookup_label($column, $columns, null)) . '</option>' . $picks;
                 }
 
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_pick">' . h(lang('Column of the linked row')) . '</label>'
-                    . '<select class="form-control form-control-sm" name="options[pick]" id="' . $prefix . '_pick" required>'
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_pick">' . h(lang('Column of the linked row')) . '</label>'
+                    . '<select class="pg-input pg-input-sm" name="options[pick]" id="' . $prefix . '_pick" required>'
                     . (($picks === '') ? '<option value="">' . h(lang('Add a row link column first.')) . '</option>' : $picks) . '</select>'
-                    . '<div class="form-text">' . h(lang('Shows that column of the row each cell links to; it is read, never written.')) . '</div></div>';
+                    . '<div class="pg-field-help">' . h(lang('Shows that column of the row each cell links to; it is read, never written.')) . '</div></div>';
                 break;
 
             case 'rollup':
@@ -1453,23 +1505,23 @@ if (!$table) {
                     $matches .= '<option value="' . h($match) . '"' . (($match === ($rolled['match'] ?? 'all')) ? ' selected' : '') . '>' . h($label) . '</option>';
                 }
 
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_pick">' . h(lang('Rows that link here')) . '</label>'
-                    . '<select class="form-control form-control-sm" name="options[pick]" id="' . $prefix . '_pick" required>'
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_pick">' . h(lang('Rows that link here')) . '</label>'
+                    . '<select class="pg-input pg-input-sm" name="options[pick]" id="' . $prefix . '_pick" required>'
                     . (($picks === '') ? '<option value="">' . h(lang('No table you read links to this table yet.')) . '</option>' : $picks) . '</select>'
-                    . '<div class="form-text">' . h(lang('The rows of another table whose row link points at this row, and the column to total.')) . '</div></div>'
-                    . '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_op">' . h(lang('Work out')) . '</label>'
-                    . '<select class="form-control form-control-sm" name="options[op]" id="' . $prefix . '_op">' . $ops . '</select></div>'
-                    . '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_where">' . h(lang('Only the rows that meet')) . '</label>'
-                    . '<input type="text" class="form-control form-control-sm font-monospace" name="options[where]" id="' . $prefix . '_where" placeholder="' . h('[{"column":12,"op":"eq","value":"paid"}]') . '" value="' . h($where) . '">'
-                    . '<div class="form-text">' . h(lang('Empty for every linked row; else a JSON list of conditions on the other table\'s columns, as the tables API takes them.')) . '</div></div>'
-                    . '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_match">' . h(lang('Conditions join')) . '</label>'
-                    . '<select class="form-control form-control-sm" name="options[match]" id="' . $prefix . '_match">' . $matches . '</select></div>';
+                    . '<div class="pg-field-help">' . h(lang('The rows of another table whose row link points at this row, and the column to total.')) . '</div></div>'
+                    . '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_op">' . h(lang('Work out')) . '</label>'
+                    . '<select class="pg-input pg-input-sm" name="options[op]" id="' . $prefix . '_op">' . $ops . '</select></div>'
+                    . '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_where">' . h(lang('Only the rows that meet')) . '</label>'
+                    . '<input type="text" class="pg-input pg-input-sm font-monospace" name="options[where]" id="' . $prefix . '_where" placeholder="' . h('[{"column":12,"op":"eq","value":"paid"}]') . '" value="' . h($where) . '">'
+                    . '<div class="pg-field-help">' . h(lang('Empty for every linked row; else a JSON list of conditions on the other table\'s columns, as the tables API takes them.')) . '</div></div>'
+                    . '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_match">' . h(lang('Conditions join')) . '</label>'
+                    . '<select class="pg-input pg-input-sm" name="options[match]" id="' . $prefix . '_match">' . $matches . '</select></div>';
                 break;
 
             case 'formula':
-                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_expression">' . h(lang('Formula')) . '</label>'
-                    . '<input type="text" class="form-control form-control-sm font-monospace" name="options[expression]" id="' . $prefix . '_expression" placeholder="Price * Quantity" value="' . h((string) ($options['expression'] ?? '')) . '">'
-                    . '<div class="form-text">' . h(lang('Name other columns by their names.')) . '</div></div>';
+                $out .= '<div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_expression">' . h(lang('Formula')) . '</label>'
+                    . '<input type="text" class="pg-input pg-input-sm font-monospace" name="options[expression]" id="' . $prefix . '_expression" placeholder="Price * Quantity" value="' . h((string) ($options['expression'] ?? '')) . '">'
+                    . '<div class="pg-field-help">' . h(lang('Name other columns by their names.')) . '</div></div>';
                 break;
         }
 
@@ -1521,13 +1573,13 @@ if (!$table) {
                 <input type="hidden" name="wt_column" value="' . (int) $column_id . '">
                 <p class="small fw-semibold mb-2">' . h(lang('Change type')) . '</p>
                 <div class="d-flex flex-wrap gap-3 align-items-end">
-                    <div><label class="form-label small mb-1" for="' . $prefix . '_to">' . h(lang('New type')) . '</label>
-                        <select class="form-control form-control-sm" name="to" id="' . $prefix . '_to">' . $options . '</select></div>
-                    <div><label class="form-label small mb-1" for="' . $prefix . '_retype_decimals">' . h(lang('Decimals')) . '</label>
-                        <input type="number" class="form-control form-control-sm" name="decimals" id="' . $prefix . '_retype_decimals" min="0" max="6" placeholder="' . h(lang('Default')) . '"></div>
-                    <button type="submit" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5">' . h(lang('Change type')) . '</button>
+                    <div><label class="pg-field-label" for="' . $prefix . '_to">' . h(lang('New type')) . '</label>
+                        <select class="pg-input pg-input-sm" name="to" id="' . $prefix . '_to">' . $options . '</select></div>
+                    <div><label class="pg-field-label" for="' . $prefix . '_retype_decimals">' . h(lang('Decimals')) . '</label>
+                        <input type="number" class="pg-input pg-input-sm" name="decimals" id="' . $prefix . '_retype_decimals" min="0" max="6" placeholder="' . h(lang('Default')) . '"></div>
+                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Change type')) . '</button>
                 </div>
-                <div class="form-text">' . h(lang('Decimals count for a number or money only.')) . '</div>
+                <div class="pg-field-help">' . h(lang('Decimals count for a number or money only.')) . '</div>
             </form>' . $faults;
     };
 
@@ -1558,10 +1610,10 @@ if (!$table) {
                     <input type="hidden" name="wt_action" value="column_update">
                     <input type="hidden" name="wt_table" value="' . $id . '">
                     <input type="hidden" name="wt_column" value="' . (int) $column_id . '">
-                    <div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
-                        <input type="text" class="form-control form-control-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
+                    <div class="mb-3"><label class="pg-field-label" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
+                        <input type="text" class="pg-input pg-input-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
                     ' . $option_fields($column['type'], $column, $prefix) . '
-                    <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
+                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Save')) . '</button>
                 </form>' . $retype_form($column_id, $column, $prefix) . '
             </details>';
         } else {
@@ -1592,13 +1644,13 @@ if (!$table) {
                         <input type="hidden" name="wt_action" value="column_create">
                         <input type="hidden" name="wt_table" value="' . $id . '">
                         <h3 class="h6">' . h(lang('New column')) . '</h3>
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_new_column_name">' . h(lang('Name')) . '</label>
-                            <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_column_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_new_column_type">' . h(lang('Type')) . '</label>
-                            <select class="form-control form-control-sm" name="type" id="ws_wt_new_column_type">' . $type_options . '</select>
-                            <div class="form-text">' . h(lang('Text, number, money, date, list and checkbox columns can change type later; the other types cannot.')) . '</div></div>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_new_column_name">' . h(lang('Name')) . '</label>
+                            <input type="text" class="pg-input pg-input-sm" name="name" id="ws_wt_new_column_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_new_column_type">' . h(lang('Type')) . '</label>
+                            <select class="pg-input pg-input-sm" name="type" id="ws_wt_new_column_type">' . $type_options . '</select>
+                            <div class="pg-field-help">' . h(lang('Text, number, money, date, list and checkbox columns can change type later; the other types cannot.')) . '</div></div>
                         ' . $type_fields . '
-                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Add column')) . '</button>
+                        <button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Add column')) . '</button>
                     </form>';
     }
 
@@ -1631,11 +1683,11 @@ if (!$table) {
                         ' . get_token_field() . '
                         <input type="hidden" name="wt_action" value="table_update">
                         <input type="hidden" name="wt_table" value="' . $id . '">
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_name">' . h(lang('Name')) . '</label>
-                            <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_name" value="' . h($table['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_description">' . h(lang('Description')) . '</label>
-                            <textarea class="form-control form-control-sm" name="description" id="ws_wt_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '">' . h($table['description']) . '</textarea></div>
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_name">' . h(lang('Name')) . '</label>
+                            <input type="text" class="pg-input pg-input-sm" name="name" id="ws_wt_name" value="' . h($table['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_description">' . h(lang('Description')) . '</label>
+                            <textarea class="pg-input pg-input-sm" name="description" id="ws_wt_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '">' . h($table['description']) . '</textarea></div>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Save')) . '</button>
                     </form>
                 </div>
             </div>' : '';
@@ -1688,12 +1740,12 @@ if (!$table) {
                         ' . get_token_field() . '
                         <input type="hidden" name="wt_action" value="share_set">
                         <input type="hidden" name="wt_table" value="' . $id . '">
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_share_target">' . h(lang('Share with')) . '</label>
-                            <select class="form-control form-control-sm" name="target" id="ws_wt_share_target" required data-pg-combobox>' . $targets . '</select></div>
-                        <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_share_level">' . h(lang('They may')) . '</label>
-                            <select class="form-control form-control-sm" name="level" id="ws_wt_share_level">' . $level_options . '</select>
-                            <div class="form-text">' . h(lang('A channel\'s readers can only view the table. Sharing again with the same one changes what they may do.')) . '</div></div>
-                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Share')) . '</button>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_share_target">' . h(lang('Share with')) . '</label>
+                            <select class="pg-input pg-input-sm" name="target" id="ws_wt_share_target" required data-pg-combobox>' . $targets . '</select></div>
+                        <div class="mb-3"><label class="pg-field-label" for="ws_wt_share_level">' . h(lang('They may')) . '</label>
+                            <select class="pg-input pg-input-sm" name="level" id="ws_wt_share_level">' . $level_options . '</select>
+                            <div class="pg-field-help">' . h(lang('A channel\'s readers can only view the table. Sharing again with the same one changes what they may do.')) . '</div></div>
+                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Share')) . '</button>
                     </form>';
     }
 
@@ -1722,7 +1774,7 @@ if (!$table) {
                             <div class="small fg-secondary">' . h(lang(array('string' => 'Deleted by {var:1}, {var:2} · deleted for good on {var:3}', 'vars' => array(
                                 $people[(int) $row['deleted_by']]['name'] ?? lang('somebody'), ws_time_label((int) $row['deleted_at']), date('d.m.Y', (int) $row['expires_at']))))) . '</div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-text theme-primary ws-wt-action" data-action="row_restore" data-bin="' . (int) $row['bin_id'] . '" title="' . h(lang('Restore')) . '" aria-label="' . h(lang('Restore')) . '"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+                        <button type="button" class="pg-icon-button pg-icon-button-sm ws-wt-action" data-action="row_restore" data-bin="' . (int) $row['bin_id'] . '" title="' . h(lang('Restore')) . '" aria-label="' . h(lang('Restore')) . '"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
                         ' . ws_wtable_screen_action_button(array('action' => 'bin_row_delete', 'bin' => (int) $row['bin_id']), lang('Delete for good'), 'bi-x-lg', lang('Delete this row for good? It cannot be brought back.')) . '
                     </li>';
         }
@@ -1761,12 +1813,12 @@ if (!$table) {
     $views = '';
 
     if ($board_id > 0) {
-        $views = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">';
+        $views = '<div class="pg-seg" role="group" aria-label="' . h(lang('View')) . '">';
 
         foreach (array('table' => array(lang('Table'), 'bi-table'), 'board' => array(lang('Board'), 'bi-kanban')) as $key => $view) {
             $here = (($key === 'board') === $on_board);
-            $views .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (($key === 'board') ? '&view=board&by=' . $board_id : '')) . '"'
-                . ($here ? ' aria-current="page"' : '') . '><i class="bi ' . $view[1] . ' me-1" aria-hidden="true"></i>' . h($view[0]) . '</a>';
+            $views .= '<a class="pg-seg-item' . ($here ? ' is-active' : '') . '" href="' . h($table_url . (($key === 'board') ? '&view=board&by=' . $board_id : '')) . '"'
+                . ($here ? ' aria-current="page"' : '') . '><i class="bi ' . $view[1] . '" aria-hidden="true"></i>' . h($view[0]) . '</a>';
         }
 
         $views .= '</div>';
@@ -1777,10 +1829,10 @@ if (!$table) {
 
         // More than one status column: which one the board groups by.
         if (count($status_columns) > 1) {
-            $by = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Group by')) . '">';
+            $by = '<div class="pg-seg pg-seg-wrap" role="group" aria-label="' . h(lang('Group by')) . '">';
 
             foreach ($status_columns as $column_id => $name) {
-                $by .= '<a class="btn btn-text theme-secondary' . (($column_id === $board_id) ? ' active" aria-current="page' : '') . '" href="' . h($table_url . '&view=board&by=' . $column_id) . '">' . h($name) . '</a>';
+                $by .= '<a class="pg-seg-item' . (($column_id === $board_id) ? ' is-active" aria-current="page' : '') . '" href="' . h($table_url . '&view=board&by=' . $column_id) . '">' . h($name) . '</a>';
             }
 
             $by .= '</div>';
@@ -1903,13 +1955,13 @@ if (!$table) {
 
             $flow_fields .= '
                         <div class="mb-3">
-                            <label class="form-label small mb-1" for="ws_wt_flow_' . $role . '">' . h($part['label']) . '</label>
-                            <select class="form-control form-control-sm" name="flow_map[' . $role . ']" id="ws_wt_flow_' . $role . '" aria-describedby="ws_wt_flow_' . $role . '_hint"' . ($part['required'] ? ' required' : '') . '>' . $options . '</select>
-                            <div class="form-text" id="ws_wt_flow_' . $role . '_hint">' . h($hint[$role]) . '</div>
+                            <label class="pg-field-label" for="ws_wt_flow_' . $role . '">' . h($part['label']) . '</label>
+                            <select class="pg-input pg-input-sm" name="flow_map[' . $role . ']" id="ws_wt_flow_' . $role . '" aria-describedby="ws_wt_flow_' . $role . '_hint"' . ($part['required'] ? ' required' : '') . '>' . $options . '</select>
+                            <div class="pg-field-help" id="ws_wt_flow_' . $role . '_hint">' . h($hint[$role]) . '</div>
                         </div>';
         }
 
-        $flow_button = '<button type="button" class="btn btn-sm btn-text theme-primary" data-bs-toggle="dialog" data-bs-target="#ws_wt_flow"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . h(lang('Run from table')) . '</button>';
+        $flow_button = '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="dialog" data-bs-target="#ws_wt_flow"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('Run from table')) . '</button>';
         $flow_window = '
     <dialog class="dialog pg-dialog-centered" id="ws_wt_flow" aria-labelledby="ws_wt_flow_title">
         <form method="post" action="' . h($self_url) . '" class="d-contents disable_shortcut">
@@ -1925,8 +1977,8 @@ if (!$table) {
                 ' . ($has_text ? $flow_fields : '<p class="small mb-0">' . h(lang('Add a text column that names each step first.')) . '</p>') . '
             </div>
             <div class="dialog-footer">
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
-                ' . ($has_text ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Make the draft flow')) . '</button>' : '') . '
+                <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                ' . ($has_text ? '<button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Make the draft flow')) . '</button>' : '') . '
             </div>
         </form>
     </dialog>';
@@ -1949,10 +2001,10 @@ if (!$table) {
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
         ' . $show_menu . '
         ' . $flow_button . '
-        ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
-        <a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
-        ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
-            . h(ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days)) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
+        ' . (($row_form !== '') ? '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
+        <a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
+        ' . ($can_manage ? '<button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
+            . h(ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days)) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
     </nav>' . $flow_window . $show_assets;
 
     $title = (string) $table['name'];
@@ -2003,6 +2055,8 @@ $shell . '
         <input type="hidden" name="wt_share" value="">
         <input type="hidden" name="wt_bin" value="">
         <input type="hidden" name="revision" value="">
+        <input type="hidden" name="target" value="' . h($table ? '' : (string) ($scope ?? '')) . '">
+        <span class="ws-wt-bulk-ids"></span>
     </form>
 </div>
 </div>
@@ -2068,6 +2122,41 @@ $shell . '
         form.elements.revision.value = button.dataset.revision || "";
         form.submit();
     });
+
+    // The Delete of the selection bar follows the selection of the list; its dialog
+    // names the count, and Delete posts the chosen ids as wt_tables[].
+    var bulkList = document.querySelector(".pg-list-table[data-pg-list-table]");
+    var bulkButton = document.querySelector(".ws-wt-bulk-delete");
+    var bulkDialog = document.getElementById("ws_wt_bulk_delete");
+    var bulkIds = [];
+    if (bulkList && bulkButton && bulkDialog) {
+        bulkList.addEventListener("pg-list-table:selection", function (e) {
+            var payload = (e.detail && e.detail.payload) || {};
+            bulkIds = Array.isArray(payload.ids) ? payload.ids : [];
+            bulkButton.disabled = (bulkIds.length === 0);
+        });
+        bulkButton.addEventListener("click", function () {
+            if (!bulkIds.length) { return; }
+            var text = (bulkIds.length === 1) ? bulkDialog.dataset.one : bulkDialog.dataset.many.split("__COUNT__").join(String(bulkIds.length));
+            bulkDialog.querySelector(".ws-wt-bulk-delete-text").textContent = text;
+            window.pgUI.dialog.show(bulkDialog);
+        });
+        bulkDialog.querySelector(".ws-wt-bulk-delete-go").addEventListener("click", function () {
+            var form = document.getElementById("ws_wt_action_form");
+            var box = form.querySelector(".ws-wt-bulk-ids");
+            box.textContent = "";
+            bulkIds.forEach(function (id) {
+                var input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "wt_tables[]";
+                input.value = id;
+                box.appendChild(input);
+            });
+            form.elements.wt_action.value = "table_bulk_delete";
+            this.disabled = true;
+            form.submit();
+        });
+    }
 
     // The new column form shows the options of the chosen type only; the
     // others stay disabled, so they are not posted.

@@ -814,13 +814,20 @@ function pg_push_queue_still_relevant($row)
 
 		include_once(dirname(__FILE__) . '/notifications.php');
 
-		$notification = db_item("SELECT id, readed FROM notifications WHERE id = '" . $reference_id . "'");
+		$notification = db_item("SELECT " . pg_notification_ladder_columns() . ", readed FROM notifications WHERE id = '" . $reference_id . "'");
 
-		if (!$notification) {
+		if (!$notification || pg_notification_is_read($notification, $user_id)) {
 			return false;
 		}
 
-		return (!pg_notification_is_read($notification, $user_id));
+		// Asked again at send time: a row waits here up to a day of retries,
+		// and somebody whose rights were taken in the meantime (an order
+		// right, a form folder, a channel left) is not woken about it.
+		include_once(dirname(__FILE__) . '/authentication.php');
+
+		$user_row = pg_load_user_row($user_id);
+
+		return (is_array($user_row) && !empty($user_row) && pg_notification_visible_to_user($notification, $user_row));
 	}
 
 	if ($row['source'] == 'chat') {

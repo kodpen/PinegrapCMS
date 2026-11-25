@@ -7,7 +7,9 @@
  * dispatcher does for a dispatched run. Each marks its work as done only
  * after the mail, so two runs side by side mailed the same people twice:
  * membership expiry warnings, overdue invoice reminders to customers and the
- * accountant's monthly pack.
+ * accountant's monthly pack. The low stock and quote notices read the rows
+ * not announced yet and stamp them after the bell row is written, so two runs
+ * rang the bell twice for the same products.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -27,6 +29,7 @@ function _job_script_claim_jobs()
 		'membership_job'     => '$current_date = date(',
 		'erp_overdue_job'    => 'erp_overdue_check(',
 		'erp_accountant_job' => 'erp_accountant_monthly_run(',
+		'erp_stock_alert_job' => 'erp_alert_low_stock(',
 	);
 }
 

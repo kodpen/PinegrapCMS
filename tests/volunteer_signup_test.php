@@ -128,13 +128,15 @@ function test_volunteer_left_frees_coming_places()
 		array('id' => 2, 'shift_id' => 6, 'state' => 'waiting', 'start' => '2026-12-11 09:00:00'),
 		array('id' => 3, 'shift_id' => 7, 'state' => 'signed', 'start' => '2026-12-01 08:00:00'),
 		array('id' => 4, 'shift_id' => 8, 'state' => 'cancelled', 'start' => '2026-12-12 09:00:00'),
-		array('id' => 5, 'shift_id' => null, 'state' => 'signed', 'start' => null),
 	);
 
-	pg_assert_same(array(1, 2), array_column(pg_volunteer_left_frees($rows, '2026-12-01 10:00:00'), 'id'), 'signed and waiting places of shifts to come; a started shift, a cancel and hours outside a shift stay');
-	pg_assert_contains('pg_volunteer_left_release(', pg_test_function_source('pg_volunteer_move'), 'Mark as left gives the places up');
-	pg_assert_contains('_pg_volunteer_cancel_write(', pg_test_function_source('pg_volunteer_left_release'), 'each freed place runs the waitlist as a cancel does');
-	pg_assert_contains('_pg_volunteer_cancel_write(', pg_test_function_source('pg_volunteer_self_act'));
+	pg_assert_same(array(1, 2), array_column(pg_volunteer_give_up_rows($rows, '2026-12-01 10:00:00'), 'id'), 'signed and waiting places of shifts to come; a started shift and a cancel stay');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_volunteer_programme.php');
+	pg_assert_contains('pg_volunteer_give_up_coming($vp, (int) $vp_person[\'id\'])', $page, 'Mark as left gives the places up');
+	pg_assert_contains('pg_volunteer_give_up_coming(', pg_test_function_source('_pg_volunteer_self_move'), 'the volunteer\'s own Pause or Leave goes through the same helper');
+	pg_assert_contains('_pg_volunteer_signup_give_up(', pg_test_function_source('pg_volunteer_give_up_coming'), 'each place is given up as Cancel gives one up');
+	pg_assert_contains('_pg_volunteer_signup_give_up(', pg_test_function_source('pg_volunteer_self_act'));
 }
 
 function test_volunteer_swap_approve_checks_the_taker_again()

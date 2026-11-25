@@ -532,7 +532,7 @@ function ws_flow_box_tiers()
 {
     $tiers = array();
 
-    foreach (array('manual', 'end', 'condition', 'delay', 'for_each', 'for_each_end', 'constants', 'value',
+    foreach (array('manual', 'end', 'condition', 'split', 'delay', 'for_each', 'for_each_end', 'constants', 'value',
         'post', 'notify', 'report', 'checkin', 'web_check', 'row_get', 'rows_get', 'record_get', 'list_records', 'ai', 'agent') as $kind) {
         $tiers[$kind] = WS_TIER_READ;
     }
