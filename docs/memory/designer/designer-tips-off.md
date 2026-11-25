@@ -1,6 +1,6 @@
 ---
 name: designer-tips-off
-description: The Help window's "Tips" switch off hides every first-use line in the designer, the older lines with their own browser keys included (#11711)
+description: The Help window's "Tips" switch off hides every first-use line in the designer, the older lines with their own browser keys included (#11711, #11723)
 ---
 
 ## What does "Tips" off hide?
