@@ -802,6 +802,56 @@ if (($pg_proto_start['id'] > 0) && ($pg_proto_link_bundle <= 0)) {
     $pg_proto_start_shown = pg_proto_link_page_shown((string) $pg_proto_link['audience'], pg_proto_link_page_access($pg_proto_start['id']));
 }
 
+// A phone link ("Preview on a phone"): the page at the phone's own width
+// under one thin line, which asks the changed-since address and draws the
+// page again after a save (includes/fn/prototype_phone_view.php).
+if (pg_proto_link_is_phone($pg_proto_link)) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone_view.php');
+
+    // A link for anyone lists a page for signed-in visitors greyed, locked.
+    $pg_proto_locked = array();
+
+    if ((string) $pg_proto_link['audience'] !== 'team') {
+        foreach ($pg_proto_pages as $page) {
+            if (!pg_proto_link_page_shown('anyone', pg_proto_link_page_access($page['id']))) {
+                $pg_proto_locked[] = (int) $page['id'];
+            }
+        }
+    }
+
+    $pg_proto_body = pg_proto_phone_view_body($pg_proto_error, $pg_proto_frame_url, $pg_proto_start['fallback'], $pg_proto_start_shown);
+    $pg_proto_watch_url = '';
+    $pg_proto_since = 0;
+
+    if ($pg_proto_body === 'frame') {
+        $pg_proto_watch_query = pg_proto_phone_watch_query($pg_proto_link['id'], $pg_proto_start['id'], $pg_proto_now, $pg_proto_key, session_id());
+
+        if ($pg_proto_watch_query !== '') {
+            $pg_proto_watch_url = $pg_proto_viewer . '?' . $pg_proto_watch_query;
+            $pg_proto_since = (int) db_value("SELECT page_timestamp FROM page WHERE page_id = '" . (int) $pg_proto_start['id'] . "'");
+        }
+    }
+
+    header('Content-Type: text/html; charset=utf-8');
+
+    echo pg_proto_phone_shell_html(array(
+        'lang' => lang(array('info' => '')),
+        'software' => PATH . SOFTWARE_DIRECTORY,
+        'design' => $pg_proto_design,
+        'rows' => pg_proto_phone_view_rows($pg_proto_pages, $pg_proto_start['id'], $pg_proto_base, $pg_proto_locked),
+        'body' => $pg_proto_body,
+        'frame_url' => $pg_proto_frame_url,
+        'error' => $pg_proto_error,
+        'watch_url' => $pg_proto_watch_url,
+        'since' => $pg_proto_since,
+        'base' => $pg_proto_base,
+        'here' => pg_proto_viewer_url($pg_proto_base, $pg_proto_start['fallback'] ? $pg_proto_page_id : $pg_proto_start['id'], $pg_proto_sub, $pg_proto_record),
+        'link_id' => (int) $pg_proto_link['id'],
+    ));
+    exit;
+}
+
 // A link asking approval: the review box of the page drawn, beside its
 // comments.
 $pg_proto_comment_view = !$pg_proto_start_shown ? null : pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
