@@ -22,7 +22,7 @@ priority: 7
 - By the architect, who is the designer too since 2026-11-25 (`workflow/design-work-session.md`), by the rules of `designer-drawings.md`: a sheet with a light and a dark picture in a folder under `docs/memory/designer/`.
 - DD22, folder `designer-options-states-drawing`: the State row, a section's dot, "Reset this state", the dimmed sections, Transition, Transform. Holds DO10. Drawn (#11573).
 - DD23, `designer-options-grid-drawing`: Columns and Rows, a child's rows, the areas grid. Holds DO6. Drawn (#11726).
-- DD24, `designer-options-layers-drawing`: the layer list with a gradient's stops, Clip shape and Mask. Holds DO13.
-- DD25, `designer-options-curve-drawing`: the curve editor, "Page transition". Holds DO19.
-- DD26, `designer-options-collection-drawing`: "New collection with pages" and its closing line. Holds DO23.
+- DD24, `designer-options-layers-drawing`: the layer list with a gradient's stops, Clip shape and Mask. Holds DO13. Drawn (#11729).
+- DD25, `designer-options-curve-drawing`: the curve editor, "Page transition". Holds DO19. Drawn (#11729).
+- DD26, `designer-options-collection-drawing`: "New collection with pages" and its closing line. Holds DO23. Drawn (#11729).
 - DD22 comes with the first sheets of the other plans, since the longest line waits on it; the others after the sheets of `designer-drawings.md`.
