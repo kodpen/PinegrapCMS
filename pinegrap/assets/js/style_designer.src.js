@@ -7687,7 +7687,7 @@ const StyleDesigner = (function () {
         // The mode switch's Prototype side opens the view; its Design side
         // closes it.
         if (_protoBtn) _protoBtn.addEventListener('click', function () { if (!_sdProto.open) _sdProtoOpen(); });
-        if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
+        if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', function () { openShortcutsModal('how'); });
 
         // The tab strip was rendered before this menu existed, so its first
         // pass could not fill in "Open on the site" — do it now that the row
@@ -10433,6 +10433,7 @@ const StyleDesigner = (function () {
         }
         renderStylesPanel();
         updateCtxBar();
+        _sdEmptySync();
         // Badges from the LAST pass go on right away (the canvas was just
         // rebuilt without them; after an in-place redraw only the new
         // element lacks them); the debounced pass below refreshes them.
@@ -27301,6 +27302,7 @@ const StyleDesigner = (function () {
                     if (_compSec) { _compSec.style.flex = '1'; _compSec.style.height = ''; }
                     if (_ovSec)   { _ovSec.style.flex = '1 1 0'; _ovSec.style.height = ''; _ovSec.style.minHeight = ''; }
                     if (typeof renderTree === 'function') renderTree();
+                    _sdTipAsk('overview', _sdT('The page as a tree. Drag a row to move it.'), _ovHdr, _ovSec);
                 }
                 saveLayout();
             });
@@ -62305,7 +62307,7 @@ const StyleDesigner = (function () {
             actions.id = 'sd-status-actions';
             actions.className = 'sd-status-actions';
             actions.innerHTML =
-                '<button type="button" class="sd-status-btn" id="sd-status-shortcuts" title="' + esc(_sdT('Keyboard shortcuts (?)')) + '">' +
+                '<button type="button" class="sd-status-btn" id="sd-status-shortcuts" title="' + esc(_sdT('Help (?)')) + '" aria-label="' + esc(_sdT('Help')) + '" aria-haspopup="dialog">' +
                     '<span class="bi bi-question-circle"></span>' +
                 '</button>' +
                 '<button type="button" class="sd-status-btn sd-status-validate" id="sd-status-validate" title="' + esc(_sdT('Validate the HTML')) + '">' +
@@ -62314,7 +62316,7 @@ const StyleDesigner = (function () {
             bar.appendChild(actions);
             // Wire shortcuts button to modal opener
             document.getElementById('sd-status-shortcuts').addEventListener('click', function() {
-                openShortcutsModal();
+                openShortcutsModal('how');
             });
             // Wire validate button to validation panel opener
             document.getElementById('sd-status-validate').addEventListener('click', function() {
@@ -84674,6 +84676,7 @@ const StyleDesigner = (function () {
 
             var closeBtn = panel.querySelector('#sd-snap-close-btn');
             if (closeBtn) closeBtn.addEventListener('click', function() { panel.remove(); });
+            _sdTipAsk('history', _sdT('Every save is kept here. Open one to look at it, or bring it back.'), panel.querySelector('.sd-snap-hdr'), panel);
 
             var moreBtn = panel.querySelector('#sd-rev-more');
             if (moreBtn) moreBtn.addEventListener('click', function () {
@@ -91306,7 +91309,13 @@ const StyleDesigner = (function () {
     // ========================= SHORTCUTS MODAL =========================
     var _sdShortcutsModalEl = null;
 
-    function openShortcutsModal() {
+    // The Help window (the "?" button, the ? key, F1): one window with two
+    // parts as a switch under its head, "How do I…" and "Keyboard
+    // shortcuts". `part` 'how' opens it on the first (the button), anything
+    // else on the shortcuts (the keys). The "How do I…" rows and the "Tips"
+    // switch at its foot are the part 'tour''s (help()); without that part
+    // the window is the shortcuts alone.
+    function openShortcutsModal(part) {
         if (!_sdShortcutsModalEl) {
             var _cats = [
                 { title: _sdT('Editing'), rows: [
@@ -91362,24 +91371,84 @@ const StyleDesigner = (function () {
             }).join('');
 
             _sdShortcutsModalEl = document.createElement('dialog');
-            _sdShortcutsModalEl.className = 'dialog sd-settings-modal-dark dialog-sm sd-modal-content';
+            _sdShortcutsModalEl.className = 'dialog sd-settings-modal-dark sd-modal-content sd-help-dialog';
             _sdShortcutsModalEl.tabIndex = -1;
             _sdShortcutsModalEl.setAttribute('aria-hidden', 'true');
+            _sdShortcutsModalEl.setAttribute('aria-labelledby', 'sd-help-title');
             _sdShortcutsModalEl.innerHTML =
                 '<div class="dialog-header sd-modal-header">' +
-                      '<span class="bi bi-keyboard me-3"></span>' +
-                      '<h5 class="dialog-title" style="font-size:.8rem">' + esc(_sdT('Keyboard Shortcuts')) + '</h5>' +
+                      '<span class="bi bi-question-circle me-3" aria-hidden="true"></span>' +
+                      '<h5 class="dialog-title" id="sd-help-title" style="font-size:.8rem">' + esc(_sdT('Help')) + '</h5>' +
                       '<button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button>' +
                     '</div>' +
-                    '<div class="dialog-body sd-modal-body">' + _bodyHtml + '</div>' +
-                    '<div class="dialog-footer sd-modal-footer">' +
-                      '<button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Close')) + '</button>' +
-                    '</div>';
+                    '<div class="sd-help-switch" role="tablist" aria-label="' + esc(_sdT('Help')) + '">' +
+                      '<button type="button" class="sd-help-sw" role="tab" id="sd-help-sw-how" data-help-part="how" aria-controls="sd-help-how">' + esc(_sdT('How do I…')) + '</button>' +
+                      '<button type="button" class="sd-help-sw" role="tab" id="sd-help-sw-keys" data-help-part="keys" aria-controls="sd-help-keys">' + esc(_sdT('Keyboard shortcuts')) + '</button>' +
+                    '</div>' +
+                    '<div class="dialog-body sd-modal-body sd-help-body">' +
+                      '<div id="sd-help-how" class="sd-help-pane" role="tabpanel" aria-labelledby="sd-help-sw-how"></div>' +
+                      '<div id="sd-help-keys" class="sd-help-pane" role="tabpanel" aria-labelledby="sd-help-sw-keys">' + _bodyHtml + '</div>' +
+                    '</div>' +
+                    '<div class="sd-help-foot" id="sd-help-foot"></div>';
             document.body.appendChild(_sdShortcutsModalEl);
+            var sw = _sdShortcutsModalEl.querySelector('.sd-help-switch');
+            sw.addEventListener('click', function (e) {
+                var b = e.target.closest('.sd-help-sw');
+                if (b) _sdHelpShow(b.getAttribute('data-help-part'), true);
+            });
+            // The left and right arrows change the part, outside a text box.
+            _sdShortcutsModalEl.addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                if (e.target && /^(input|textarea|select)$/i.test(e.target.tagName || '')) return;
+                if (!_sdHelpHasHow()) return;
+                e.preventDefault();
+                _sdHelpShow(_sdHelpPart === 'how' ? 'keys' : 'how', true);
+            });
         }
+        var how = part === 'how' && _sdHelpHasHow();
+        _sdHelpShow(how ? 'how' : 'keys', false);
         if (window.pgUI) {
             pgUI.dialog.show(_sdShortcutsModalEl);
         }
+        if (_sdHelpHasHow()) {
+            _sdPartCall('tour', 'help', [{
+                how: document.getElementById('sd-help-how'),
+                foot: document.getElementById('sd-help-foot'),
+                close: function () { if (window.pgUI) pgUI.dialog.hide(_sdShortcutsModalEl); }
+            }]).then(function () {
+                if (_sdHelpPart !== 'how') return;
+                var first = _sdShortcutsModalEl.querySelector('#sd-help-how .sd-help-row');
+                if (first) first.focus();
+            }, _sdPartFailed);
+        }
+    }
+
+    var _sdHelpPart = 'keys';
+
+    // "How do I…" is there when the part 'tour' is handed to this editor.
+    function _sdHelpHasHow() {
+        return !!_sdPartUrls('tour');
+    }
+
+    // Shows one part of the Help window; `focus` moves the focus to its tab.
+    function _sdHelpShow(part, focus) {
+        var el = _sdShortcutsModalEl;
+        if (!el) return;
+        var has = _sdHelpHasHow();
+        _sdHelpPart = (part === 'how' && has) ? 'how' : 'keys';
+        var sw = el.querySelector('.sd-help-switch');
+        if (sw) sw.hidden = !has;
+        el.querySelectorAll('.sd-help-sw').forEach(function (b) {
+            var on = b.getAttribute('data-help-part') === _sdHelpPart;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+            if (on && focus) b.focus();
+        });
+        var howPane = el.querySelector('#sd-help-how');
+        var keysPane = el.querySelector('#sd-help-keys');
+        if (howPane) howPane.hidden = _sdHelpPart !== 'how';
+        if (keysPane) keysPane.hidden = _sdHelpPart !== 'keys';
     }
 
     // ========================= COMMAND PALETTE =========================
@@ -91479,7 +91548,7 @@ const StyleDesigner = (function () {
             { id: 'act_layout_lines', label: _sdT('Toggle Layout lines'), icon: 'bi-layout-three-columns', hint: 'Shift+G', action: function() { if (!_sdGuidesOff() && canvasDoc) _sdLinesShow(!_sdLines.on); } },
             { id: 'act_side', label: _sdT('Side by side'), icon: 'bi-layout-three-columns', action: function() { var b = document.getElementById('sd-vb-side'); if (b) b.click(); } },
             (_sdProto.open ? null : { id: 'act_a11y_view', label: _sdA11yState().on ? _sdT('Hide accessibility view') : _sdT('Show accessibility view'), icon: 'bi-universal-access', action: function () { _sdA11ySet(!_sdA11yState().on); } }),
-            { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
+            { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal('keys'); } }
         ]).filter(Boolean);
 
         // The first tour, from its first stop (the part 'tour').
@@ -97565,6 +97634,74 @@ const StyleDesigner = (function () {
 
     function _sdTourStart() {
         _sdPartCall('tour', 'start', []).catch(_sdPartFailed);
+    }
+
+    // ── First-use tips ────────────────────────────────────────────────────
+    // A feature asks for its one line the first time it opens; the part
+    // 'tour' draws it under the feature's head. The core reads the browser
+    // key itself, so a tip seen (or "Tips" off) loads nothing.
+    function _sdTipDue(name) {
+        var uid = parseInt(_design && _design.userId, 10);
+        if (!(uid > 0) || !_sdPartUrls('tour')) return false;
+        var o = null;
+        try { o = JSON.parse(window.localStorage.getItem('pg.designer.' + uid + '.tour') || 'null'); } catch (e) { return false; }
+        if (!o || typeof o !== 'object') return true;
+        return o.tipsOff !== true && !(o.tips && o.tips[name] === true);
+    }
+
+    // `head`: the element the line goes under; `box`: the feature, where a
+    // press counts as its first use (the head's parent when not given).
+    function _sdTipAsk(name, text, head, box) {
+        if (!head || !_sdTipDue(name)) return;
+        _sdPartCall('tour', 'tip', [{ name: name, text: text, head: head, box: box || null }]).catch(function () { /* shown on the next opening */ });
+    }
+
+    // ── An empty page's starts ────────────────────────────────────────────
+    // An empty page of a designer offers its starts in the canvas's middle:
+    // "Add a section", "Sketch it", "From a document", each when its feature
+    // is there. The part 'tour' draws them over the canvas, never in the
+    // page; they go with the first element and come back when it is emptied.
+    var _sdEmptyShown = false;
+
+    function _sdEmptySync() {
+        var area = document.querySelector('#sd-canvas .sd-iframe-area');
+        var empty = !!(area && tree && tree.type === 'root' && !(tree.children || []).length) &&
+            _sdAccess() === 'full' && !_sdComponentOnly() && !(_sdProto && _sdProto.open) && !!_sdPartUrls('tour');
+        if (!empty) {
+            if (_sdEmptyShown) {
+                _sdEmptyShown = false;
+                _sdPartCall('tour', 'empty', [null]).catch(function () { /* nothing was drawn */ });
+            }
+            return;
+        }
+        _sdEmptyShown = true;
+        _sdPartCall('tour', 'empty', [{
+            area: area,
+            starts: {
+                section: !!document.getElementById('sd-pal-sw-blocks'),
+                sketch: _sdProtoReady(),
+                // "From a document" is the part 'document''s, where it is handed.
+                document: typeof _sdDocumentReady === 'function' && _sdDocumentReady()
+            },
+            run: _sdEmptyRun
+        }]).catch(function () { _sdEmptyShown = false; });
+    }
+
+    function _sdEmptyRun(id) {
+        if (id === 'sketch') { _sdSketchStart(); return; }
+        if (id === 'document') {
+            if (typeof _sdDocumentOpen === 'function') _sdDocumentOpen();
+            return;
+        }
+        // "Add a section": the palette, on its "Blocks" list.
+        var tab = document.querySelector('#sd-panel-tabs .sd-panel-tab[data-tab="components"]');
+        if (tab && !tab.classList.contains('active')) tab.click();
+        _sdPalSwitchShow(document.getElementById('sd-comp-outer'), 'blocks', true);
+        _sdDockSetOpen('left', true);
+        var sw = document.getElementById('sd-pal-sw-blocks');
+        if (sw) {
+            try { sw.focus({ preventScroll: true }); } catch (e) { sw.focus(); }
+        }
     }
 
     // ── Canvas guides: Measure ────────────────────────────────────────────

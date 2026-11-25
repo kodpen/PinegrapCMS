@@ -9421,3 +9421,102 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 @media (prefers-reduced-motion: reduce) {
     .sd-tour-card.is-fading, .sd-tour-ring.is-gliding { transition: none; }
 }
+
+/* The Help window (the "?" button): "How do I…" and the keyboard
+   shortcuts as a switch under its head, "Tips" at its foot. */
+.sd-help-dialog { width: 436px; max-width: calc(100vw - 24px); }
+.sd-help-switch {
+    display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px;
+    border-radius: 8px; background: var(--sd-raised-bg-2);
+}
+.sd-help-switch[hidden] { display: none; }
+.sd-help-sw {
+    flex: 1; height: 28px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--sd-text-muted); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.sd-help-sw.active { background: var(--sd-raised-bg); color: var(--sd-text); box-shadow: inset 0 0 0 1px var(--sd-border-strong); }
+.sd-help-sw:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-help-body { max-height: min(62vh, 560px); overflow: auto; }
+.sd-help-pane[hidden] { display: none; }
+.sd-help-rows { display: flex; flex-direction: column; }
+.sd-help-row {
+    display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px;
+    border: 0; border-radius: 7px; background: transparent; color: var(--sd-text);
+    font-size: 13px; text-align: left; cursor: pointer;
+}
+.sd-help-row > .bi:first-child { width: 18px; color: var(--sd-text-muted); font-size: 15px; }
+.sd-help-row-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-help-row-go { color: var(--sd-icon-quiet); font-size: 12px; }
+.sd-help-row:hover, .sd-help-row:focus-visible { background: rgba(var(--sd-accent-rgb), .12); outline: 0; }
+.sd-help-row.is-tour, .sd-help-row.is-tour > .bi { color: var(--sd-accent); font-weight: 600; }
+.sd-help-sep { height: 1px; margin: 4px 0; background: var(--sd-panel-border); }
+.sd-help-foot { padding: 4px 16px 10px; border-top: 1px solid var(--sd-panel-border); }
+.sd-help-foot:empty { display: none; }
+.sd-help-tips {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0;
+    border: 0; background: transparent; color: var(--sd-text-muted); text-align: left; cursor: pointer;
+}
+.sd-help-tips:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); border-radius: 6px; }
+.sd-help-tips-txt { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 12px; }
+.sd-help-tips-txt b { color: var(--sd-text); font-size: 13px; font-weight: 600; }
+.sd-help-tips-knob {
+    position: relative; flex-shrink: 0; width: 32px; height: 18px;
+    border-radius: 9px; background: var(--sd-raised-bg-2); transition: background-color 120ms;
+}
+.sd-help-tips-knob::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--sd-text-muted); transition: transform 120ms, background-color 120ms;
+}
+.sd-help-tips.is-on .sd-help-tips-knob { background: var(--sd-accent); }
+.sd-help-tips.is-on .sd-help-tips-knob::after { transform: translateX(14px); background: var(--sd-panel-bg); }
+@media (max-width: 575.98px) {
+    .sd-help-dialog { width: calc(100vw - 24px); }
+}
+
+/* A first-use tip: one line under a window's or a panel's head. */
+.sd-tip-line {
+    display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px 7px 12px;
+    background: var(--sd-accent-soft); border-bottom: 1px solid var(--sd-accent-line);
+    color: var(--sd-text); font-size: 12.5px; line-height: 1.4;
+}
+.sd-tip-text { flex: 1; min-width: 0; }
+.sd-tip-got {
+    flex-shrink: 0; padding: 0 2px; border: 0; background: transparent;
+    color: var(--sd-accent); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.sd-tip-got:focus-visible { outline: 0; box-shadow: 0 0 0 2px var(--sd-accent); border-radius: 4px; }
+.sd-ov-collapsed > .sd-tip-line { display: none; }
+
+/* An empty page's starts, over the canvas and never in the page: only the
+   cards take the pointer, so a drop reaches the canvas as before. */
+.sd-empty-starts {
+    position: absolute; inset: 0; z-index: 5; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    padding: 24px 16px; transition: opacity .15s ease;
+}
+.sd-empty-starts.is-faded { opacity: .15; }
+.sd-empty-starts.is-faded .sd-empty-card { pointer-events: none; }
+.sd-empty-ask { margin: 0; color: var(--sd-text); font-size: 15px; font-weight: 600; text-align: center; }
+.sd-empty-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.sd-empty-card {
+    pointer-events: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+    width: 184px; padding: 14px; border: 0; border-radius: 12px; text-align: left; cursor: pointer;
+    background: var(--sd-raised-bg); color: var(--sd-label);
+    box-shadow: inset 0 0 0 1px var(--sd-border-strong), 0 10px 26px rgba(0, 0, 0, .4);
+}
+.sd-empty-card:hover, .sd-empty-card:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent), 0 10px 26px rgba(0, 0, 0, .4); }
+.sd-empty-card-ic {
+    width: 32px; height: 32px; margin-bottom: 4px; border-radius: 9px; display: grid; place-items: center;
+    font-size: 16px; color: var(--sd-accent); background: var(--sd-accent-soft);
+}
+.sd-empty-card-name { color: var(--sd-text); font-size: 13px; font-weight: 650; }
+.sd-empty-card-line { font-size: 12px; line-height: 1.4; }
+/* Under 620 px of canvas: one under the other, the icon at the left. */
+.sd-empty-starts.is-narrow .sd-empty-cards { flex-direction: column; align-items: center; }
+.sd-empty-starts.is-narrow .sd-empty-card {
+    width: 250px; display: grid; grid-template-columns: 32px 1fr; column-gap: 12px; row-gap: 0; align-items: center;
+}
+.sd-empty-starts.is-narrow .sd-empty-card-ic { grid-row: span 2; margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .sd-empty-starts, .sd-help-tips-knob, .sd-help-tips-knob::after { transition: none; }
+}
