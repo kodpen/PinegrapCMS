@@ -4487,6 +4487,29 @@ function pg_designer_css_length($value)
 }
 
 /**
+ * The Aspect Ratio prop as CSS aspect-ratio, as the editor writes it
+ * (_sdRatioCss()): '16:9', '16x9' and '16/9' give '16 / 9', one number and
+ * auto stay; anything else (a zero side, a unit, a second value) is ''.
+ */
+function pg_designer_css_ratio($value)
+{
+    $value = trim((string) $value);
+    if ($value === '' || $value === 'auto') {
+        return $value;
+    }
+
+    $num = '([0-9]+(?:\.[0-9]+)?|\.[0-9]+)';
+    if (!preg_match('~^' . $num . '(?:\s*[:x/]\s*' . $num . ')?$~i', $value, $m)) {
+        return '';
+    }
+    if (!((float) $m[1] > 0) || (isset($m[2]) && !((float) $m[2] > 0))) {
+        return '';
+    }
+
+    return isset($m[2]) ? $m[1] . ' / ' . $m[2] : $m[1];
+}
+
+/**
  * A designer prop as the editor reads it, trimmed: '' for what JavaScript
  * takes as false (no value, false, the number 0, '') and for a list. The
  * string '0' is a value, as in the editor's `if (p.width)`, so the page and
@@ -4548,6 +4571,8 @@ function _pg_node_sizing_decls($props, $size = null)
     if (!empty($props['aspectRatioEnabled']) && $val('aspectRatio') === 'custom' && $val('aspectRatioCustom') !== '') {
         $out[] = '--bs-aspect-ratio:' . $val('aspectRatioCustom');
     }
+    $ratio = pg_designer_css_ratio($val('aspect'));
+    if ($ratio !== '') $out[] = 'aspect-ratio:' . $ratio;
 
     return $out;
 }

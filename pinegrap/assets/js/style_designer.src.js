@@ -31773,7 +31773,8 @@ const StyleDesigner = (function () {
         return out;
     }
     // A background picture's values from its node's style attribute.
-    function _sdFocusStyleRead(style) {
+    function _sdFocusStyleRead(style, prop) {
+        prop = prop || 'background-position';
         var decl = {};
         _sdFocusStyleSplit(style).forEach(function (pair) { decl[pair[0]] = pair[1]; });
         if (Object.prototype.hasOwnProperty.call(decl, '--pg-focus-d')) {
@@ -31782,14 +31783,16 @@ const StyleDesigner = (function () {
             var p = Object.prototype.hasOwnProperty.call(decl, '--pg-focus-p') ? decl['--pg-focus-p'] : t;
             return { desktop: d, tablet: t !== d ? t : '', phone: p !== t ? p : '' };
         }
-        return { desktop: Object.prototype.hasOwnProperty.call(decl, 'background-position') ? decl['background-position'] : '', tablet: '', phone: '' };
+        return { desktop: Object.prototype.hasOwnProperty.call(decl, prop) ? decl[prop] : '', tablet: '', phone: '' };
     }
     // The style attribute with the values written as the background's focus,
-    // where its background-position stood. The node takes the pg-focus class
-    // while _sdFocusHasScreens(values).
-    function _sdFocusStyleWrite(style, values) {
-        var mine = ['background-position', '--pg-focus-d', '--pg-focus-t', '--pg-focus-p'];
-        var decls = _sdFocusDecls(values, 'background-position'), parts = [], placed = false;
+    // where its background-position stood (`prop` object-position: a
+    // video's). The node takes the pg-focus class while
+    // _sdFocusHasScreens(values).
+    function _sdFocusStyleWrite(style, values, prop) {
+        prop = prop || 'background-position';
+        var mine = [prop, '--pg-focus-d', '--pg-focus-t', '--pg-focus-p'];
+        var decls = _sdFocusDecls(values, prop), parts = [], placed = false;
         _sdFocusStyleSplit(style).forEach(function (pair) {
             if (mine.indexOf(pair[0]) > -1) {
                 if (!placed && decls) parts.push(decls);
@@ -31848,6 +31851,19 @@ const StyleDesigner = (function () {
         var ar = String(p.aspectRatio || '');
         return /^\d+x\d+$/.test(ar) ? 'ratio ratio-' + ar : 'ratio';
     }
+    // A ratio typed into an Aspect Ratio row as CSS aspect-ratio: '16:9',
+    // '16x9' and '16/9' give '16 / 9', one number stays, auto stays, empty
+    // is ''; anything else (a zero side, a unit, a second value) is null.
+    // The page reads the prop the same way (pg_designer_css_ratio()).
+    function _sdRatioCss(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (s === '' || s === 'auto') return s;
+        var num = '(\\d+(?:\\.\\d+)?|\\.\\d+)';
+        var m = new RegExp('^' + num + '(?:\\s*[:x/]\\s*' + num + ')?$', 'i').exec(s);
+        if (!m || !(parseFloat(m[1]) > 0) || (m[2] !== undefined && !(parseFloat(m[2]) > 0))) return null;
+        return m[2] === undefined ? m[1] : m[1] + ' / ' + m[2];
+    }
+
     // Returns extra inline style string from prop-based sizing inputs.
     // The page writes the same declarations in the same order
     // (_pg_node_sizing_decls(), includes/fn/designer.php): z-index first
@@ -31883,6 +31899,8 @@ const StyleDesigner = (function () {
         if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && _arc) {
             parts.push('--bs-aspect-ratio:' + _arc);
         }
+        var _asp = _sdRatioCss(_sdSizingValue(p.aspect));
+        if (_asp) parts.push('aspect-ratio:' + _asp);
         return parts.join(';');
     }
     // Set of all sizing-managed CSS class names that this module owns. When a
@@ -31917,6 +31935,20 @@ const StyleDesigner = (function () {
             else if (p.placeholderAnim === 'wave') cls.push('placeholder-wave');
         }
         p.cssClass = cls.join(' ').trim();
+    }
+
+    // An Aspect Ratio written as CSS aspect-ratio: the value goes into the
+    // prop `aspect` and today's ratio box (the Sizing switch and its
+    // classes, an Image's own wrapper) gives way.
+    function _sdRatioFree(node, value) {
+        if (!node || !node.props) return;
+        node.props.aspect = _sdRatioCss(value) || '';
+        if (node.props.aspectRatioEnabled || node.props.aspectRatio || node.props.aspectRatioCustom) {
+            node.props.aspectRatioEnabled = false;
+            node.props.aspectRatio = '';
+            node.props.aspectRatioCustom = '';
+            _syncSizingClassesToCssClass(node);
+        }
     }
 
     // The Display & Sizing classes in the order of
@@ -36080,6 +36112,7 @@ const StyleDesigner = (function () {
         if (s.group || s.prefix || s.toggle) { n.props.cssClass = _sdMcClassWrite(n.props.cssClass, s, val); return; }
         if (s.attr) { setNodeAttr(n, s.attr, val); return; }
         if (s.mc && s.prop === 'loading') { _sdSetImgLoading(n, val); return; }
+        if (s.prop === 'aspect') { _sdRatioFree(n, val); return; }
         n.props[s.prop] = s.bool ? (val === true || val === '1' || val === 'true') : val;
         // A style-backed prop lives in its prop alone (_sdInlineStyleProps()).
         _sdInlineStyleProps(n).forEach(function (m) { if (m.prop === s.prop) setAttrStyleProp(n, m.css, ''); });
@@ -54280,11 +54313,16 @@ const StyleDesigner = (function () {
     // the box's own and the video paints above the box's background.
     /* @pg-site-output */
     var _SD_VIDEO_FILL = ['position-absolute', 'top-0', 'start-0', 'w-100', 'h-100', 'object-fit-cover', 'z-n1'];
+    // Object Fit's classes, of a picture and a video.
+    var _SD_OBJECT_FITS = ['object-fit-contain', 'object-fit-cover', 'object-fit-fill', 'object-fit-scale-down', 'object-fit-none'];
 
-    // Whether a video's class list `cls` lays it over its box.
+    // Whether a video's class list `cls` lays it over its box. Its Object
+    // Fit may be any: a background video picked to Contain still fills.
     function _sdVideoFills(cls) {
         var have = String(cls || '').split(/\s+/);
-        return _SD_VIDEO_FILL.every(function (c) { return have.indexOf(c) !== -1; });
+        return _SD_VIDEO_FILL.every(function (c) {
+            return have.indexOf(c) !== -1 || (c === 'object-fit-cover' && _SD_OBJECT_FITS.some(function (f) { return have.indexOf(f) !== -1; }));
+        });
     }
 
     // A video's class list `cls` with the fill turned on or off. On, a class
@@ -54438,6 +54476,8 @@ const StyleDesigner = (function () {
             row(_sdT('Loop'), swAttr('data-form-bool-attr="loop"', hasNodeBoolAttr(n, 'loop'))) +
             row(_sdT('Muted'), swAttr('data-form-bool-attr="muted"', hasNodeBoolAttr(n, 'muted'))) +
             row(_sdT('Preload'), preSel) +
+            row(_sdT('Object Fit'), selStyleGroup(n.props, _SD_OBJECT_FITS, 'Default')) +
+            (_sdFocusTakes(n, 'video') ? _sdFocusPlace('video') : '') +
             row(_sdT('Fill its box'), swAttr('data-video-fill', fills) +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
                 esc(_sdT('Covers the box it sits in, behind the content of the box, like a background picture. Its controls go off, as the content would cover them.')) +
@@ -56724,7 +56764,7 @@ const StyleDesigner = (function () {
                 ['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],
                 ['bottom left',_sdT('Bottom Left')],['bottom right',_sdT('Bottom Right')]
             ];
-            h += row(_sdT('Object Fit'), selStyleGroup(n.props, ['object-fit-contain','object-fit-cover','object-fit-fill','object-fit-scale-down','object-fit-none'], 'Default'));
+            h += row(_sdT('Object Fit'), selStyleGroup(n.props, _SD_OBJECT_FITS, 'Default'));
             // With a picture the position is the Focus control (part
             // 'focus', _sdFocusBind()); without one, the list as before.
             if (_sdFocusTakes(n, 'image')) h += _sdFocusPlace('image');
@@ -56733,13 +56773,16 @@ const StyleDesigner = (function () {
                     return '<option value="' + o[0] + '"' + ((n.props.objectPosition || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
                 '</select>');
-            // Aspect Ratio — when non-empty, <img> is wrapped in a Bootstrap .ratio div.
-            // Bootstrap's .ratio class needs a wrapper div + direct-child absolute positioning;
-            // applying .ratio directly to an <img> does nothing.
-            var arOpts = [['',_sdT('None')],['1x1',_sdT('1:1 (Square)')],['4x3','4:3'],['16x9','16:9'],['21x9','21:9']];
-            h += row(_sdT('Aspect Ratio'), '<select class="form-control form-control-sm" data-prop="aspectRatio">' +
+            // Aspect Ratio: the same prop as Size and display's row, as CSS
+            // aspect-ratio on the <img> (_sdRatioFree()); an image on
+            // today's ratio box shows its ratio and keeps the box until the
+            // ratio is changed. A typed ratio is listed as it is.
+            var _imgAr = _sdAspectOf(n.props, true);
+            var arOpts = [['', _sdT('None')]].concat(_SD_RATIOS.map(function (r) { return [r, r.replace(' / ', ':')]; }));
+            if (_imgAr && _SD_RATIOS.indexOf(_imgAr) === -1) arOpts.push([_imgAr, _imgAr]);
+            h += row(_sdT('Aspect Ratio'), '<select class="form-control form-control-sm" data-prop="aspect">' +
                 arOpts.map(function(o) {
-                    return '<option value="' + o[0] + '"' + ((n.props.aspectRatio || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+                    return '<option value="' + esc(o[0]) + '"' + (_imgAr === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 }).join('') +
                 '</select>');
             // Loading: the image's loading attribute (_sdImgLoading()). A
@@ -58525,6 +58568,8 @@ const StyleDesigner = (function () {
             var img = _sdNodeImage(n);
             return n.type === 'content' && n.props.contentType === 'image' && !!(img && img.url);
         }
+        // A video shows its poster in the control: without one, no Focus.
+        if (kind === 'video') return String(n.props.tag || '').toLowerCase() === 'video' && !!getNodeAttr(n, 'poster');
         var raw = getAttrStyleProp(n, 'background-image');
         if (!raw || !/^url\(/i.test(raw)) return false;
         var size = getAttrStyleProp(n, 'background-size').toLowerCase();
@@ -58574,7 +58619,7 @@ const StyleDesigner = (function () {
     function _sdFocusValuesOf(node, kind) {
         if (kind === 'image') return _sdFocusValues(node.props);
         var st = _sdFocusStyleAttr(node);
-        return _sdFocusStyleRead(st ? st.value : '');
+        return _sdFocusStyleRead(st ? st.value : '', kind === 'video' ? 'object-position' : '');
     }
 
     // What the part reads and writes: the picture as the canvas draws it
@@ -58587,6 +58632,9 @@ const StyleDesigner = (function () {
         if (kind === 'image') {
             pic = inner && inner.tagName === 'IMG' ? inner : (inner ? inner.querySelector('img') : null);
             src = (pic && (pic.currentSrc || pic.src)) || (_sdNodeImage(node) || {}).url || '';
+        } else if (kind === 'video') {
+            pic = inner && inner.tagName === 'VIDEO' ? inner : (inner ? inner.querySelector('video') : null);
+            src = (pic && pic.poster) || getNodeAttr(node, 'poster');
         } else {
             pic = inner;
             var bg = '';
@@ -58596,14 +58644,14 @@ const StyleDesigner = (function () {
         }
         var box = pic ? pic.getBoundingClientRect() : null;
         var screen = _sdFocusCanvasScreen();
-        var cssProp = kind === 'image' ? 'objectPosition' : 'backgroundPosition';
+        var cssProp = kind === 'background' ? 'backgroundPosition' : 'objectPosition';
         return {
             el: el,
             kind: kind,
             src: src,
             values: _sdFocusValuesOf(node, kind),
             screen: screen,
-            ratio: kind === 'image' ? String(node.props.aspectRatio || '') : '',
+            ratio: kind === 'background' ? '' : _sdAspectOf(node.props, kind === 'image'),
             measured: box && box.height > 0 ? box.width / box.height : 0,
             id: node._id,
             pic: pic,
@@ -58613,7 +58661,7 @@ const StyleDesigner = (function () {
                 var cs = null;
                 try { cs = pic ? pic.ownerDocument.defaultView.getComputedStyle(pic) : null; } catch (e) {}
                 if (!cs) return { fit: '', position: '' };
-                return kind === 'image'
+                return kind !== 'background'
                     ? { fit: cs.objectFit, position: cs.objectPosition }
                     : { fit: cs.backgroundSize, position: cs.backgroundPosition };
             },
@@ -58636,7 +58684,7 @@ const StyleDesigner = (function () {
                     });
                 } else {
                     var st = _sdFocusStyleAttr(node);
-                    var text = _sdFocusStyleWrite(st ? st.value : '', values);
+                    var text = _sdFocusStyleWrite(st ? st.value : '', values, kind === 'video' ? 'object-position' : '');
                     if (st && text) st.value = text;
                     else if (st) node.props._attrs.splice(node.props._attrs.indexOf(st), 1);
                     else if (text) (node.props._attrs = node.props._attrs || []).push({ name: 'style', value: text });
@@ -58810,7 +58858,10 @@ const StyleDesigner = (function () {
             locked: !!_sdPanelLockReason(nodes) || !!_sdPanelLockReason(null, 'design'),
             text: _userStylesGet,
             newClass: _sdNewCustomStyleClass,
-            lenCheck: function (v) { return _sdLenCheck('len', v); },
+            // `kind` 'ratio' for Aspect Ratio (the field's data-sd-len).
+            lenCheck: function (v, kind) { return _sdLenCheck(kind || 'len', v); },
+            ratio: function (v) { return _sdRatioCss(v) || ''; },
+            ratioOf: function (n) { return _sdAspectOf(n.props, n.type === 'content' && n.props.contentType === 'image'); },
             setSize: _sdSpSizeSet,
             commit: function (next, changes) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
@@ -58824,6 +58875,8 @@ const StyleDesigner = (function () {
                     if (!c || !n.props) return;
                     if (c.cssClass != null) n.props.cssClass = c.cssClass;
                     Object.keys(c.props || {}).forEach(function (k) { n.props[k] = c.props[k]; });
+                    // A ratio by size: today's ratio box gives way.
+                    if (c.ratioFree) _sdRatioFree(n, n.props.aspect);
                 });
                 if (next !== text) _userStylesSet(next);
                 render();
@@ -59094,20 +59147,21 @@ const StyleDesigner = (function () {
             ]
         );
 
-        // Aspect Ratio: toggle → preset select → optional custom input (progressive disclosure)
-        var _arEnabled = !!p.aspectRatioEnabled;
-        var _arValue   = p.aspectRatio || '16x9';
-        var _arHtml = '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Aspect Ratio')) + '</span>' + sw('aspectRatioEnabled', _arEnabled) + '</div>';
-        if (_arEnabled) {
-            var _arPresetSel = '<select class="form-control form-control-sm" data-prop="aspectRatio">';
-            [['1x1','1:1'],['4x3','4:3'],['16x9','16:9'],['21x9','21:9'],['custom',_sdT('Custom')]].forEach(function(pair) {
-                _arPresetSel += '<option value="' + pair[0] + '"' + (pair[0] === _arValue ? ' selected' : '') + '>' + pair[1] + '</option>';
-            });
-            _arPresetSel += '</select>';
-            _arHtml += '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Preset')) + '</span>' + _arPresetSel + '</div>';
-            if (_arValue === 'custom') {
-                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, _sdT('e.g. 56.25%'));
-            }
+        // Aspect Ratio: CSS aspect-ratio on the element itself (prop
+        // `aspect`), typed or picked from the presets; per size through the
+        // size chooser (part 'spacing'). An element on today's ratio box
+        // shows its ratio and keeps the box until the ratio is changed
+        // (_sdRatioFree()).
+        var _arIsImg = n.type === 'content' && p.contentType === 'image';
+        var _arHtml = '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span>' +
+            '<span class="sd-sp-label">' + esc(_sdT('Aspect Ratio')) + '</span>' +
+            '<input type="text" class="form-control form-control-sm" data-prop="aspect" data-sd-len="ratio" list="sd-ratio-list"' +
+            ' value="' + esc(_sdAspectOf(p, _arIsImg)) + '" placeholder="' + esc(_sdT('Auto')) + '">' +
+            '<datalist id="sd-ratio-list">' + _SD_RATIOS.map(function (r) {
+                return '<option value="' + r + '" label="' + r.replace(' / ', ':') + '"></option>';
+            }).join('') + '</datalist></div>';
+        if (_sdRatioBoxed(p, _arIsImg) && !_sdRatioCss(p.aspect)) {
+            _arHtml += '<div class="form-text small mt-0 mb-1">' + esc(_sdT('Its content fills a box of this ratio until the ratio is changed.')) + '</div>';
         }
 
         // Z Index: a typed whole number or auto (checked as kind 'z'), and
@@ -60993,6 +61047,8 @@ const StyleDesigner = (function () {
                     selectedNode.props[prop] = parseInt(this.value, 10) || 0;
                 } else if (prop === 'fluid') {
                     selectedNode.props[prop] = this.value === 'true';
+                } else if (prop === 'aspect') {
+                    _sdRatioFree(selectedNode, this.value);
                 } else if (prop === 'fontFamily') {
                     // 'Default' → clear the prop so no font-family is applied
                     selectedNode.props[prop] = (this.value === 'Default') ? '' : this.value;
@@ -66507,6 +66563,7 @@ const StyleDesigner = (function () {
     function _sdLenCheck(kind, raw) {
         var s = String(raw == null ? '' : raw).trim();
         if (kind === 'z') return _sdZValid(s) ? '' : _sdT('Use a whole number or auto.');
+        if (kind === 'ratio') return _sdRatioCss(s) !== null ? '' : _sdT('Use a ratio such as 16:9, 4/5 or 1.5.');
         if (s === '') return '';
         var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
         var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
@@ -66522,6 +66579,30 @@ const StyleDesigner = (function () {
             if (depth === 0 && f[2].trim() !== '') return '';
         }
         return _sdT('Use a number with a unit (px, %, rem, vh), auto or calc().');
+    }
+
+    // The Aspect Ratio presets, wide to tall.
+    var _SD_RATIOS = ['1 / 1', '4 / 3', '3 / 2', '16 / 9', '21 / 9', '2 / 3', '4 / 5', '9 / 16'];
+
+    // Whether an element stands on today's ratio box (Bootstrap's .ratio):
+    // the Sizing switch, or an Image's own ratio preset (its wrapper).
+    function _sdRatioBoxed(p, isImg) {
+        if (!p) return false;
+        return !!p.aspectRatioEnabled || (!!isImg && /^\d+x\d+$/.test(String(p.aspectRatio || '')));
+    }
+
+    // The ratio an element shows in its Aspect Ratio rows: its own
+    // aspect-ratio, else the ratio box it keeps until the ratio is changed
+    // ('16x9' as '16 / 9', a custom percentage as '100 / 56.25'); '' for none.
+    function _sdAspectOf(p, isImg) {
+        var own = _sdRatioCss(p && p.aspect);
+        if (own) return own;
+        if (!_sdRatioBoxed(p, isImg)) return '';
+        var ar = String(p.aspectRatio || '') || (p.aspectRatioEnabled ? '16x9' : '');
+        var m = /^(\d+)x(\d+)$/.exec(ar);
+        if (m) return m[1] + ' / ' + m[2];
+        var pc = /^(\d+(?:\.\d+)?)%$/.exec(String(p.aspectRatioCustom || '').trim());
+        return ar === 'custom' && pc && parseFloat(pc[1]) > 0 ? '100 / ' + pc[1] : '';
     }
 
     // The screen-size badge of a row whose classes are `prefix` + value at

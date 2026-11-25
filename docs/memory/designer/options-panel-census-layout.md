@@ -12,7 +12,7 @@ description: Options panel census, part 2: gaps to place and size an element (gr
 - Z Index is a fixed list up to 1080; a typed value needs code. Missing: a typed value beside the list and the Bootstrap layer names (dropdown, sticky, fixed, modal) as choices. S. Reads none: Bootstrap 5.3 keeps its layer numbers in Sass, not in CSS variables, so the list names them.
 
 ## Per screen size values?
-- Width, Height and their Min and Max, Overflow, Aspect Ratio, Z Index, Position, text Font Size, colours, border, corner, shadow, opacity and Object Fit hold one value for every size. Only the rows in `options-panel-census-today.md` change per size.
+- Width, Height and their Min and Max, Overflow, Z Index, Position, text Font Size, colours, border, corner, shadow, opacity and Object Fit hold one value for every size. Only the rows in `options-panel-census-today.md` change per size.
 - Missing: the size chooser of the Spacing box on those rows, writing `@media (min-width: …)` rules on the element's class in User Styles like the custom style does. M for lengths (one writer serves Width, Height, Position offsets, Font size); S for a row that has a Bootstrap per size class (`w-md-*` does not exist in Bootstrap 5, so Width is M; `overflow-*` has none either). Reads `--bs-breakpoint-*`.
 - Hide or show by size: the "Hide on" row (Phone, Tablet, Desktop) since DO3, beside Display None per size (`designer-hide-on-sticky-from.md`).
 
@@ -21,7 +21,7 @@ description: Options panel census, part 2: gaps to place and size an element (gr
 - Scroll snapping exists only inside the scroller component (`pg-snap-*`, `designer-scroller-wide-slides.md`). A designer cannot make any row of cards snap. Missing: Scroll snap on a flex or grid container (none, mandatory, proximity) and Snap align on its children. S. Reads none.
 
 ## Aspect ratio?
-- Today a switch with 1:1, 4:3, 16:9, 21:9 or a custom percentage, writing Bootstrap's `ratio` wrapper, which forces its child to fill it. Missing: CSS `aspect-ratio` on any element (a picture, a card) without the wrapper, more presets (3:2, 2:3, 9:16, 4:5) and per size. S (value), M (per size, through the per size writer). Reads none.
+- Built (DO9): CSS `aspect-ratio` on any element with no wrapper, presets 1:1, 4:3, 3:2, 16:9, 21:9, 2:3, 4:5, 9:16 or typed, per size; today's `ratio` box kept until the ratio is changed (`designer-aspect-ratio-object-fit.md`).
 
 ## Object fit?
-- Today only on a picture: Object Fit (five values) and Object Position as typed text. Missing: the same on video and on a background video. S. Reads none. Object Position is the Focus control, per size, since #11576 (`image-focus-control.md`).
+- A picture and a video (also a background video) have Object Fit (five values); their position is the Focus control, per size (`image-focus-control.md`; a video's needs a poster, `designer-aspect-ratio-object-fit.md`).

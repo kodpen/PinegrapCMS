@@ -48,7 +48,7 @@
         width: 'width', minWidth: 'min-width', maxWidth: 'max-width',
         height: 'height', minHeight: 'min-height', maxHeight: 'max-height',
         top: 'top', right: 'right', bottom: 'bottom', left: 'left',
-        fontSize: 'font-size'
+        fontSize: 'font-size', aspect: 'aspect-ratio'
     };
     // Bootstrap 5.3.8's font size classes as one value: the responsive
     // size below 1200 px and the fixed one from there, as the class draws.
