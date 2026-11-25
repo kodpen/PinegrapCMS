@@ -12,7 +12,7 @@ description: Start file for a page type's layout file turned into its widget's d
 
 ## Which file holds what?
 - The converter, the piece map's keys and the run: [[layout-type-converter]]. The Region panel's dropped list and its Convert: [[layout-type-converter-editor]].
-- One file a type family: [[layout-type-converter-order-form]] (LE7), [[layout-type-converter-photo-gallery]] (LE8a), [[layout-type-converter-catalog]] (LE8b), [[layout-type-converter-catalog-detail]] (LE8c), [[layout-type-converter-cart]] (LE9a), [[layout-type-converter-express-order]] and its render (LE9b), [[layout-type-converter-checkout-steps]] (LE9c), [[layout-type-converter-order-preview]] (LE9d).
+- One file a type family: [[layout-type-converter-order-form]] (LE7), [[layout-type-converter-photo-gallery]] (LE8a), [[layout-type-converter-catalog]] (LE8b), [[layout-type-converter-catalog-detail]] (LE8c), [[layout-type-converter-cart]] (LE9a), [[layout-type-converter-express-order]] and its render (LE9b), [[layout-type-converter-checkout-steps]] (LE9c), [[layout-type-converter-order-preview]] (LE9d), [[layout-type-converter-view-order]] (LE9e).
 - A family file also holds the converter rules its step added: LE9b `section:`/`state:` echo, loop `source:`, `replace`; LE9c a lone branch that only opens or closes wrappers, a table's heading rows beside the list, the section option `inner`; LE9d a section loop drawn once, a flag `in_tag => keep`, loop `widget`, a `<dl>` holding the list.
 
 ## How is a type added?
