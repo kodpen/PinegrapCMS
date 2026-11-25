@@ -2566,6 +2566,7 @@
     "{var} in all": "toplam {var}",
     "{var} is locked": "{var} kilitli",
     "{var} is outside the areas you may edit": "{var} düzenleyebileceğiniz alanların dışında",
+    "{var} items": "{var} öğe",
     "{var} kept: a saved page uses them.": "{var} tane silinmedi: kayıtlı bir sayfa kullanıyor.",
     "{var} km": "{var} km",
     "{var} km/h": "{var} km/sa",

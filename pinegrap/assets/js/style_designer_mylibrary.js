@@ -9,7 +9,9 @@
  * double-click as a copy the page owns. A copy is made ready for this
  * design on the server (designer/library_prepare): a class rule that
  * differs gets a new name, a missing rule or variable is added to the User
- * Styles, a binding the site lacks is cleared and marked.
+ * Styles, a binding the site lacks is cleared and marked. "Manage
+ * library" (the group's last row, the command palette) renames, regroups,
+ * orders and deletes items in the part 'librarymanage'.
  * Not needed to open a page: the core runs this file when the Blocks list
  * is first shown or a save is asked for (_sdPartLoad(), pg_designer_parts()).
  *
@@ -339,6 +341,11 @@ StyleDesigner.definePart('mylibrary', function (K) {
                 items.filter(function (it) { return it.group === g; }).forEach(function (it) { body += _rowHTML(it); });
             });
         }
+        // "Manage library" is the group's last row, for the roles that
+        // may manage.
+        if (items.length && maySave) {
+            body += '<button type="button" class="sd-lib-manage-row" data-lib-manage><span class="bi bi-collection me-2" aria-hidden="true"></span>' + esc(_sdT('Manage library')) + '</button>';
+        }
         var sec = document.createElement('div');
         sec.className = 'sd-category sd-lib-cat' + (_folded() ? ' collapsed' : '');
         sec.innerHTML = '<div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="' + (_folded() ? 'false' : 'true') + '">' +
@@ -350,6 +357,8 @@ StyleDesigner.definePart('mylibrary', function (K) {
         sec.querySelector('.sd-category-header').addEventListener('click', function () {
             try { localStorage.setItem(FOLD_KEY, sec.classList.contains('collapsed') ? '1' : '0'); } catch (e) {}
         });
+        var manageRow = sec.querySelector('[data-lib-manage]');
+        if (manageRow) manageRow.addEventListener('click', manage);
         _wireSearch(host);
         _searchHeads(host);
     }
@@ -365,6 +374,11 @@ StyleDesigner.definePart('mylibrary', function (K) {
             }
             head.hidden = !on;
         });
+        // While a search is typed the row "Manage library" is not drawn.
+        var manageRow = sec.querySelector('[data-lib-manage]');
+        var pane = host.closest('.sd-pal-list');
+        var input = pane && pane.querySelector('input[type="text"]');
+        if (manageRow) manageRow.hidden = !!(input && input.value.trim());
     }
 
     function _wireSearch(host) {
@@ -511,5 +525,36 @@ StyleDesigner.definePart('mylibrary', function (K) {
         K.render();
     }
 
-    return { offered: offered, save: save, mount: mount, show: show, tip: tip, node: node };
+    // ── Manage library ─────────────────────────────────────────────────
+    // The window is the part 'librarymanage', run the first time it is
+    // asked for; it reads and changes the library through this handle.
+    var lib = {
+        NAME_MAX: NAME_MAX,
+        items: function () { return state.items || []; },
+        setItems: function (list) {
+            state.items = list;
+            Object.keys(state.ready).forEach(function (id) { if (!_find(id)) delete state.ready[id]; });
+        },
+        find: _find,
+        fold: _fold,
+        countLine: _countLine,
+        post: _post,
+        redraw: function () { _redraw(); },
+        // Set by the window while it is open: drawn again after a reload.
+        changed: null
+    };
+
+    function manage() {
+        if (K._sdAccess() !== 'full') return;
+        _load().then(function () {
+            return K._sdPartCall('librarymanage', 'open', [lib]);
+        }, function (err) { K.sdToast(esc(err.message), 'error'); }).catch(K._sdPartFailed);
+    }
+
+    // Another part changed the library (an import): read it again.
+    document.addEventListener('sd-library-changed', function () {
+        _load(true).then(function () { _redraw(); if (lib.changed) lib.changed(); }, function () { /* the next showing asks again */ });
+    });
+
+    return { offered: offered, save: save, mount: mount, show: show, tip: tip, node: node, manage: manage };
 });

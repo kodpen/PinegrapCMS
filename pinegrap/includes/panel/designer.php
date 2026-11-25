@@ -259,8 +259,10 @@ function pg_panel_designer($request, $action)
     }
 
     // My library (includes/fn/designer_library.php): the Blocks list's
-    // group, "Save to my library" and a copy added to a page.
-    if (in_array($sub, array('library_list', 'library_save', 'library_prepare'), true)) {
+    // group, "Save to my library", a copy added to a page and "Manage
+    // library" (rename, move to a group, order, delete).
+    if (in_array($sub, array('library_list', 'library_save', 'library_prepare',
+                             'library_rename', 'library_move', 'library_order', 'library_delete'), true)) {
         respond(pg_library_editor($sub, $request, $user));
     }
 
