@@ -23,7 +23,7 @@ priority: 5
 - Read only when the tab is opened.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- AC1 (S) Census, no product code, written to `designer/`: every writer that changes a design and the row it leaves or does not; the question for the architect.
+- AC1 (S) Census, no product code, written to `designer/`: every writer that changes a design and the row it leaves or does not; the question for the architect. Done (#PRNUM): `designer/designer-activity-writers.md`.
 - AC2 (M) after AC1: the reader: events from the rows that exist, their sentences, pages of fifty, rights; tests.
 - AC3 (M) after AC2, CL1 of the compare plan and DD21: the Activity tab, its choosers, the row that opens Compare.
 - AC4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
