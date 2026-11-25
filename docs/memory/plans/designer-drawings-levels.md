@@ -18,9 +18,9 @@ priority: 8
 
 ## Which steps, level by level?
 - DD12 (S) Done (#11619, `designer/designer-screens-side-by-side-drawing.md`). `designer-screens-side-by-side.md`: the canvas with its two mirrors, a mirror's head and size list, the narrow window. Holds SS2, SS3.
-- DD13 (S) `designer-select-similar.md`: the menu rows, the line above the panel with its two lists, nothing found. Holds SE2.
-- DD14 (M) `designer-first-tour.md`: the first card, the five stops, "How do I…", a first-use tip, the empty canvas's starts, a content editor's stops. Holds FT2, FT3.
-- DD15 (M) `designer-style-guide.md`: the sheet's six blocks, light and dark, the print sheet, a design with no variables. Holds SG2, SG3.
+- DD13 (S) Done (#11626, `designer/designer-select-similar-drawing.md`). `designer-select-similar.md`: the menu rows, the line above the panel with its two lists, nothing found. Holds SE2.
+- DD14 (M) Done (#11629, `designer/designer-first-tour-drawing.md`). `designer-first-tour.md`: the first card, the five stops, "How do I…", a first-use tip, the empty canvas's starts, a content editor's stops. Holds FT2, FT3.
+- DD15 (M) Done (`designer/designer-style-guide-drawing.md`). `designer-style-guide.md`: the sheet's six blocks, light and dark, the print sheet, a design with no variables. Holds SG2, SG3.
 - DD16 (M) `designer-accessibility-view.md`: the card, tab order, headings, names, the sight filters. Holds AV2, AV3.
 - DD17 (M) `designer-compare-live.md`: the Look tab with its slider, side by side, "What changed", a page never on the site. Holds CL2, CL3.
 - DD18 (S) `designer-cleanup.md`: the window with its four lists, a row with its reason, the closing line. Holds CU2, CU3.
