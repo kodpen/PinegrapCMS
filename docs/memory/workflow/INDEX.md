@@ -97,6 +97,7 @@
 - bug-hunt-areas-subscriptions-recurring.md: The bug hunt of subscriptions and recurring orders (area 33, 2026-11-24): renewals, retries, pause and cancel dates, price changes, card tokens, mails; what it fixed, what was read clean
 - bug-hunt-areas-tax-rates-calculation.md: Bug hunt of tax rates calculation (area 50, 2026-11-24): zone and product rates, tax-inclusive prices, per-rate rounding; two cart widget faults fixed, what read clean
 - bug-hunt-areas-two-step-sign-in.md: Bug hunt area 45, two-step sign-in (2026-11-24, PR #11452): the two faults fixed, what read clean, issue #11454, two questions for the architect
+- bug-hunt-areas-volunteer-shifts.md: The bug hunt of volunteer shifts (VS1 to VS8, 2026-11-24): sign-up, waitlist, swaps, calls and reminders, organiser screens, erasure and export, the signed page; what it fixed and what read clean
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
 - bug-hunt-areas-webhooks-out.md: The bug hunt in outgoing webhooks and announcements (area 41, PR #11441): what was fixed, what was read clean, what is left
 - bug-hunt-areas-workspace-files-sharing.md: Bug hunt 48, Workspace files sharing (2026-11-24, PR #11476): file addresses after leaving, shares, deletes, replaces, guests, limits, previews; four faults fixed
