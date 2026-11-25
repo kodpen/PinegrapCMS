@@ -8187,6 +8187,9 @@ function pg_js_bundles()
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
+        // then the part that fills their frames from the canvas.
+        'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
@@ -8286,6 +8289,9 @@ function pg_designer_parts()
         // The "Clicks" layer: badges and tenth lines over the canvas and
         // its panel, handed only with sdDesign.clicks (who may open Visitors).
         'clicks' => 'assets/js/style_designer_clicks.min.js',
+        // The canvas mirrors: the draft at another width beside the canvas,
+        // drawn again when the hand rests.
+        'mirror' => 'assets/js/style_designer_mirror.min.js',
     );
 }
 

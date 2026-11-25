@@ -24,8 +24,8 @@ priority: 7
 - A mirror draws what the canvas draws for its width: the same samples, the same colour mode, no visitor script, no call to the site.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- SS1 (M) The mirror as a part: a frame filled from the canvas's output, the redraw when the hand rests, its scheduling pure and tested.
-- SS2 (M) after SS1 and DD12: the layout of three, the heads with their size lists, Fit, the narrow window.
+- SS1 (M) done (#11535) The mirror as a part: a frame filled from the canvas's output, the redraw when the hand rests, its scheduling pure and tested.
+- SS2 (M) after SS1 and DD12: `'mirror'` added to the parts list of `includes/designer_screen.php`; the layout of three, the heads with their size lists, Fit, the narrow window.
 - SS3 (S) after SS2: the chosen element followed, a click choosing, "Edit at this size".
 - SS4 (S) Close-out: memory in `designer/` with the numbers measured, this file deleted, the `[NEW]` line named.
 
