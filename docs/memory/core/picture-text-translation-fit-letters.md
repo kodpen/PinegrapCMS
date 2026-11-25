@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-fit-letters
-description: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17 and 2026-11-25, the floor by a text's size, what the draw does in a browser and on the server, what is open
+description: Picture text translation, a translated text's fit and its letters: the owner's words (2026-11-17, 2026-11-25), the floor by a text's size, what the draw does, what is open
 module: picture_translation
 ---
 
