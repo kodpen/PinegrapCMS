@@ -89603,6 +89603,9 @@ const StyleDesigner = (function () {
                 // One item is one element with what is inside it.
                 _sdLibSave(selectedNodes.length > 1 ? null : selectedNode);
             }} : null),
+            (_sdLibMaySave() ? { id: 'act_library_manage', label: _sdT('Manage library'), icon: 'bi-collection', action: function() {
+                _sdPartCall('mylibrary', 'manage', []).catch(_sdPartFailed);
+            }} : null),
             // ── Settings / Modals ───────────────────────────────────
             { id: 'act_settings', label: _sdT('Open Settings'), icon: 'bi-gear', hint: 'Ctrl+,', action: function() {
                 var b = document.querySelector('[data-bs-target="#styleSettingsModal"]');
@@ -95497,7 +95500,10 @@ const StyleDesigner = (function () {
             _sdBlockFamilies: _sdBlockFamilies,
             _sdProtoTabs: _sdProtoTabs,
             _sdSelectFound: _sdSelectFound,
-            _sdSeoCheckBody: _sdSeoCheckBody
+            _sdSeoCheckBody: _sdSeoCheckBody,
+            _sdPartUrls: _sdPartUrls,
+            _sdPartCall: _sdPartCall,
+            _sdPartFailed: _sdPartFailed
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
