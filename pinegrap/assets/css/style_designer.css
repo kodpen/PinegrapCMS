@@ -1797,6 +1797,50 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-lm:hover { filter: brightness(1.12); }
 .sd-lm:focus-visible { outline: none; border-color: var(--sd-accent); box-shadow: 0 0 0 3px var(--sd-accent-soft); }
 
+/* The spacing bands over the canvas (style_designer_bands.js): the
+   selection's outer spacing as a hatched amber band outside its frame, its
+   inner spacing as a plain teal band inside, each band's edge a white pill
+   handle with an accent ring, the same size at every zoom. Like the link
+   marks' layer it covers the canvas in view and lets every other click
+   through. */
+.sd-cgb-layer { position: absolute; z-index: 21; overflow: hidden; pointer-events: none; }
+.sd-cgb-band { position: absolute; box-sizing: border-box; }
+.sd-cgb-m {
+    background: repeating-linear-gradient(135deg, rgba(245,181,74,.34) 0 2px, rgba(245,181,74,.12) 2px 6px);
+    border: 1px dashed rgba(245,181,74,.7);
+}
+.sd-cgb-p { background: rgba(45,212,191,.2); }
+.sd-cgb-h {
+    position: absolute; width: 22px; height: 6px; padding: 0; margin: 0;
+    transform: translate(-50%, -50%);
+    border: 0; border-radius: 3px; background: #fff;
+    box-shadow: 0 0 0 1.5px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35);
+    cursor: ns-resize; pointer-events: auto; touch-action: none;
+}
+.sd-cgb-h::before { content: ''; position: absolute; inset: -6px; }
+.sd-cgb-h.is-v { width: 6px; height: 22px; cursor: ew-resize; }
+.sd-cgb-h.is-faint { opacity: .45; }
+.sd-cgb-h:hover, .sd-cgb-h.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35); }
+.sd-cgb-h:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 0 0 5px var(--sd-accent-soft); }
+.sd-cgb-layer.is-live .sd-cgb-h:not(.is-on) { opacity: .25; }
+.sd-cgb-val {
+    position: absolute; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    background: var(--sd-panel-bg); color: #fff; font-size: 11px; line-height: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.sd-cgb-val b { margin-right: 2px; color: var(--sd-warning); }
+.sd-cgb-first {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    background: var(--sd-accent-soft); border-bottom: 1px solid var(--sd-panel-border);
+    color: var(--sd-text); font-size: 12px;
+}
+.sd-cgb-first > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.sd-cgb-got {
+    flex: 0 0 auto; padding: 2px 10px; border: 1px solid var(--sd-accent-line); border-radius: 4px;
+    background: transparent; color: var(--sd-accent); font-size: 12px;
+}
+.sd-cgb-got:hover { background: var(--sd-accent-soft); }
+
 /* ── Color pickers (Text Col / Bg Col / Border Color) ──
    Custom dropdown widget so each option can render a colored dot to the LEFT of the name —
    native <select><option> on Windows Chrome ignores background-image and most CSS.
