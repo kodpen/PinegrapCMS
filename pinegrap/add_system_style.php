@@ -79,6 +79,17 @@ if (!$template && isset($_GET['answers']) && is_string($_GET['answers'])) {
     $sd_start_vars = pg_design_variables_start($_GET['answers'], $look, $palette);
     $look = $sd_start_vars['look'];
 }
+// ?start=figma&import=<id>: the pages a Figma import made in the New design
+// window open as unsaved tabs, with its shared components and variables.
+$sd_figma = null;
+if ($start === 'figma' && isset($_GET['import']) && is_string($_GET['import'])) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+    $sd_figma = pg_figma_import_ready($_GET['import']);
+    if ($sd_figma && $sd_figma['variables']['model']) {
+        $sd_start_vars = array('look' => $look, 'model' => $sd_figma['variables']['model'], 'css' => $sd_figma['variables']['css']);
+    }
+    if ($sd_figma) unset($sd_figma['variables']);
+}
 // A new e-mail design wears the site's palette, so its canvas and the mail
 // it sends are in the site's colours.
 if ($start === 'email' && !isset($_GET['palette'])) $palette = pg_email_site_palette();
@@ -141,6 +152,7 @@ if (!$_POST) {
         // ?start=canva: the Canva start's pages wait in this browser as
         // sketch pages; the Prototype view opens with the Sketch switch on.
         'auto_sketch'    => ($start === 'canva'),
+        'figma'          => $sd_figma,
         'template'       => $template ? pg_design_template_summary($template) : null,
         // ?folder= from the design chooser: the first page's folder.
         'start_action'   => pg_designer_start_action($user, 0),

@@ -1160,6 +1160,40 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // The Figma start's import, in steps the window drives so it can
+        // show progress: start (the ticked frames read and converted, the
+        // variables found), frame (one frame's pictures fetched into the
+        // file manager), finish (shared components, pages, the report),
+        // stop (what was fetched removed). The token stays on the server.
+        case 'figma_import':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+            $fg_step = isset($request['step']) && is_string($request['step']) ? $request['step'] : '';
+            $fg_id = isset($request['id']) && is_string($request['id']) ? $request['id'] : '';
+            if ($fg_step === 'start') {
+                $fg_link = pg_figma_file_link(isset($request['link']) ? $request['link'] : null);
+                $fg_run = $fg_link ? pg_figma_import_start($fg_link['key'], isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array())
+                                   : array('ok' => false, 'error' => array('kind' => 'other', 'retry' => 0));
+                if (!$fg_run['ok']) {
+                    respond(pg_figma_refusal($fg_run['error']));
+                }
+                respond(array('status' => 'success', 'id' => $fg_run['id'], 'frames' => $fg_run['frames'], 'found' => $fg_run['found']));
+            }
+            if ($fg_step === 'frame') {
+                $fg_run = pg_figma_import_frame($fg_id, isset($request['index']) ? (int)$request['index'] : -1, $user);
+            } elseif ($fg_step === 'finish') {
+                $fg_run = pg_figma_import_finish($fg_id, $user, !empty($request['variables']));
+            } elseif ($fg_step === 'stop') {
+                $fg_run = array('ok' => pg_figma_import_stop($fg_id));
+            } else {
+                $fg_run = array('ok' => false);
+            }
+            if (!$fg_run['ok']) {
+                respond(array('status' => 'error', 'code' => 'gone', 'message' => lang('The import was not found. Start it again.')));
+            }
+            unset($fg_run['ok']);
+            respond(array('status' => 'success') + $fg_run);
+            break;
+
         // A design renamed from the designs list (pg_designer_rename_design()).
         case 'design_rename':
             $dr = pg_designer_rename_design(

@@ -1394,6 +1394,7 @@
     "Only the template's maker can delete it.": "Şablonu yalnızca onu yapan kişi silebilir.",
     "Only the templates made from a design can be deleted.": "Yalnız bir tasarımdan oluşturulan şablonlar silinebilir.",
     "Only the tools that read and run without an approval.": "Yalnızca okuyan ve onay beklemeden çalışan araçlar.",
+    "Only the top fill was kept; a radial or angular gradient, a video or a fill under it was left out.": "Yalnızca en üstteki dolgu tutuldu; dairesel veya açısal geçiş, video ya da altındaki dolgu dışarıda bırakıldı.",
     "Only the translations of the texts on the page you are editing can be changed here.": "Burada yalnız düzenlediğiniz sayfadaki metinlerin çevirisi değiştirilebilir.",
     "Only the words of a text file (Markdown, plain text, CSV and the like) are changed from here.": "Buradan yalnız metin dosyalarının (Markdown, düz metin, CSV vb.) içeriği değiştirilir.",
     "Only the writer of the message, or staff, can ask for read receipts.": "Okundu onayını yalnız mesajı yazan ya da yöneticiler isteyebilir.",

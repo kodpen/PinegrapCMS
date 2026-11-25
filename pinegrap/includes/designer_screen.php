@@ -462,6 +462,9 @@ function pg_designer_screen_render($ctx)
         // Add mode from a template: the editor asks for its pages
         // (designer/template_prepare) behind the "preparing" curtain.
         'template'      => !empty($ctx['template']) ? $ctx['template'] : null,
+        // Add mode from the Figma start: the pages, shared components and
+        // name its import made (pg_figma_import_ready()), opened as tabs.
+        'figma'         => !empty($ctx['figma']) ? $ctx['figma'] : null,
         // What to do once open, from the design chooser's link: a new page,
         // a page from another design or a copy of one (pg_designer_start_action()).
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
@@ -2043,6 +2046,42 @@ function pg_designer_figma_pane($connection, $manager)
         'noLink'    => lang('This is not a Figma file link. Copy it in Figma with Share, then “Copy link”.'),
         'network'   => lang('Network error.'),
         'max'       => pg_figma_max_frames(),
+        // The import (ST5): the variables card, the running import, the report.
+        'preparing'   => lang('Reading the frames…'),
+        'varsTitle'   => lang('Your design\'s variables'),
+        'varsLead'    => lang('Found in the file. The design starts with them; change them later on the Variables tab.'),
+        'brand'       => lang('Brand colour'),
+        'second'      => lang('Second colour'),
+        'more'        => lang('More colours'),
+        'fonts'       => lang('Fonts'),
+        'feel'        => lang('Feel and room'),
+        'siteDefault' => lang('The site\'s default'),
+        'fromStyle'   => lang('Style “{var:1}”'),
+        'fromFrames'  => lang('The frames\' values'),
+        'create'      => lang('Create design'),
+        'making'      => lang('Making {var:1} pages'),
+        'waiting'     => lang('Waiting'),
+        'working'     => lang('Working…'),
+        'got'         => lang('{var:1} pictures, {var:2} vectors'),
+        'notMade'     => lang('Not made'),
+        'stop'        => lang('Stop'),
+        'stopTitle'   => lang('Stop the import?'),
+        'stopText'    => lang('No design is made, and the pictures fetched so far are removed from the file manager.'),
+        'made'        => lang('{var:1} pages made from “{var:2}”'),
+        'madeOf'      => lang('{var:1} of {var:2} pages made'),
+        'nPictures'   => lang('{var:1} pictures'),
+        'nVectors'    => lang('{var:1} vectors'),
+        'nShared'     => lang('{var:1} shared components'),
+        'nVariables'  => lang('{var:1} variables'),
+        'nNotes'      => lang('{var:1} notes'),
+        'nNotMade'    => lang('{var:1} not made'),
+        'whole'       => lang('Carried whole'),
+        'notes'       => lang('{var:1} notes'),
+        'folder'      => lang('The pictures are in the file manager, folder {var:1}.'),
+        'copy'        => lang('Copy the report'),
+        'copied'      => lang('Copied'),
+        'open'        => lang('Open the design'),
+        'openHref'    => 'add_system_style.php?framework=bootstrap5&start=figma&import=',
     );
 
     return '<div class="sd-fg" data-texts="' . h(json_encode($texts, JSON_UNESCAPED_UNICODE)) . '">'
