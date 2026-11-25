@@ -25,9 +25,11 @@ priority: 7
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - SS1 (M) done (#11535) The mirror as a part: a frame filled from the canvas's output, the redraw when the hand rests, its scheduling pure and tested.
-- SS2 (M) after SS1 and DD12: `'mirror'` added to the parts list of `includes/designer_screen.php`; the layout of three, the heads with their size lists, Fit, the narrow window.
-- SS3 (S) after SS2: the chosen element followed, a click choosing, "Edit at this size".
+- SS2 (M) after SS1 and DD12: the part `mirror` handed to the editor (its `when` in `includes/designer_parts/mirror.php` once the parts registry has landed, else `'mirror'` in the parts list of `includes/designer_screen.php`); the layout of three, the heads with their size lists, Fit, the narrow window. Boards Y1, Y2, Y3 (head and list), Y5, Y6.
+- SS3 (S) after SS2: the chosen element followed, a click choosing, "Edit at this size". Boards Y3 (the swap) and Y4.
 - SS4 (S) Close-out: memory in `designer/` with the numbers measured, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
-- No table or column. The drawing: `designer-drawings-levels.md`. Claim as `[plan:designer-screens-side-by-side] <step> — <topic>`.
+- No table or column.
+- The drawing: `designer/designer-screens-side-by-side-drawing.md` with its sheet; open the sheet in a browser. It fixes the measures, the texts and what these words leave open; where a line here differs, the drawing wins (`workflow/screen-follows-drawing.md`). A step's PR body carries a table of its boards: what was built for each, what differs and why.
+- Claim as `[plan:designer-screens-side-by-side] <step> — <topic>`.

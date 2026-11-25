@@ -17,7 +17,7 @@ priority: 8
 - The designer's frame around the new part as it is today, and the narrow width.
 
 ## Which steps, level by level?
-- DD12 (S) `designer-screens-side-by-side.md`: the canvas with its two mirrors, a mirror's head and size list, the narrow window. Holds SS2, SS3.
+- DD12 (S) Done (#PRNUM, `designer/designer-screens-side-by-side-drawing.md`). `designer-screens-side-by-side.md`: the canvas with its two mirrors, a mirror's head and size list, the narrow window. Holds SS2, SS3.
 - DD13 (S) `designer-select-similar.md`: the menu rows, the line above the panel with its two lists, nothing found. Holds SE2.
 - DD14 (M) `designer-first-tour.md`: the first card, the five stops, "How do I…", a first-use tip, the empty canvas's starts, a content editor's stops. Holds FT2, FT3.
 - DD15 (M) `designer-style-guide.md`: the sheet's six blocks, light and dark, the print sheet, a design with no variables. Holds SG2, SG3.
