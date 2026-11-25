@@ -91482,6 +91482,9 @@ const StyleDesigner = (function () {
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ]).filter(Boolean);
 
+        // The first tour, from its first stop (the part 'tour').
+        if (_sdPartUrls('tour')) items.push({ id: 'act_tour', label: _sdT('Take the tour'), icon: 'bi-signpost-2', action: function () { _sdTourStart(); } });
+
         // A sketch page selected in the Prototype view: its "Page details".
         var sketchId = _sdSketchSelected();
         if (sketchId) items.unshift({ id: 'act_sketch_details', label: _sdT('Page details'), icon: 'bi-card-list', action: function () { _sdSketchDetails(sketchId); } });
@@ -97535,6 +97538,35 @@ const StyleDesigner = (function () {
         }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
     }
 
+    // ── The first tour ────────────────────────────────────────────────────
+    // The card "New here? A one-minute tour" and the tour it starts are the
+    // part 'tour' (assets/js/style_designer_tour.js). The core reads only
+    // whether the card was offered or this access's tour seen, from the
+    // browser key the model keeps (PGDesignerTour.key()), and loads the part
+    // when the card is due: a person who has seen it pays nothing.
+    function _sdTourDue() {
+        var uid = parseInt(_design && _design.userId, 10);
+        if (!(uid > 0) || !_sdPartUrls('tour')) return false;
+        var raw;
+        try { raw = window.localStorage.getItem('pg.designer.' + uid + '.tour'); } catch (e) { return false; }
+        var o = null;
+        try { o = raw ? JSON.parse(raw) : null; } catch (e) { o = null; }
+        if (!o || typeof o !== 'object') return true;
+        return !(o.offered === true || (o.seen && o.seen[_sdAccess()] === true));
+    }
+
+    function _sdTourInit() {
+        if (!_sdTourDue()) return;
+        // Once the page is drawn; the part waits for a quiet moment itself.
+        setTimeout(function () {
+            _sdPartCall('tour', 'offer', []).catch(function () { /* offered on the next visit */ });
+        }, 1200);
+    }
+
+    function _sdTourStart() {
+        _sdPartCall('tour', 'start', []).catch(_sdPartFailed);
+    }
+
     // ── Canvas guides: Measure ────────────────────────────────────────────
     // With one element selected, holding Alt and pointing at another element
     // shows the distances between them (the part 'guides',
@@ -97936,6 +97968,7 @@ const StyleDesigner = (function () {
             }
             _sdAiPartInit();
             _sdClicksPartInit();
+            _sdTourInit();
         },
         getTree: function () { return tree; },
         getTreeJSON: function () { return JSON.stringify(tree); },

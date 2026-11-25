@@ -5,7 +5,7 @@ description: The first tour's pure model (window.PGDesignerTour, FT1): stops and
 
 ## Where is the model?
 - `assets/js/pg_designer_tour.js`, `window.PGDesignerTour`: pure, no element, no storage. Tested in Node by `tests/designer_tour_model_test.php`.
-- It is in no bundle yet: the part that draws the card and the tour (FT2 of `plans/designer-first-tour.md`) puts it first in its part's sources, as `pg_options_review.js` is first in the `review` part.
+- It is the first source of the part `tour` (`includes/designer_parts/tour.php`), which draws the card and the tour (`designer-first-tour-card.md`).
 
 ## Which stops, on which controls?
 - `stops(access)`: `full` (any access but `content`): add `#sd-components` (the palette), shape `#sd-properties` else `#sd-canvas`, see `#sd-preview-menu-btn`, publish `#sd-ajax-save` else `#sd-publish-page`, find `#sd-status-shortcuts` (the "?" button; the command palette is Ctrl+Shift+P and has no button of its own).
