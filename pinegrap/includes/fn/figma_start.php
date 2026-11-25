@@ -630,6 +630,13 @@ function pg_figma_import_start($key, $ids)
     $read = pg_figma_get('/v1/files/' . rawurlencode($key) . '/nodes?ids=' . rawurlencode(implode(',', $ids)), $connection['token'], 90);
 
     if (!$read['ok']) {
+        // The frame list was read from the session, so this is the first
+        // call with the token since: a refusal is marked as the file read
+        // marks it, for Connections to say so.
+        if ($read['error']['kind'] === 'token') {
+            pg_figma_connection_refused();
+        }
+
         return array('ok' => false, 'error' => $read['error']);
     }
 
