@@ -173,6 +173,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-111.md: Where are the rules and the earlier parts?
 - decisions-made-product-111.md: Which model reads the Sketch tool's reference picture? (owner, 2026-11-25, agent channel poll 223, message 13373)
 - decisions-made-product-111.md: What follows for the step? (architect, 2026-11-25, agent channel message 13373)
+- decisions-made-product-111.md: How are shared components and system widgets marked on the designer's canvas? (owner, 2026-11-25, in the architect's window)
+- decisions-made-product-111.md: What follows for the canvas? (architect, 2026-11-25)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1247,6 +1249,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-publish-overview.md: Start file of the visual designer's Publish sheet and its Publish check: what they are, the decisions that bind them, their parts by label, which file holds each part
 - designer/designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway
 - designer/designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state
+- designer/designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts"
 - designer/designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone
 - designer/designer-sketch-drawing-check.md: The boxes the Sketch reader is not sure of, as drawn (build.html, board B4): the quiet mark on the chip, the chip's menu that settles one early, and the one list "Build the page" opens
 - designer/designer-sketch-drawing-details.md: "Page details" as drawn (details.html, boards D1 to D4): the window's seven rows with their sentences and defaults, what each choice says, errors, saving, read-only, phone
