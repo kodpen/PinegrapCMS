@@ -89,6 +89,64 @@ function pg_figma_shared_plan($frames)
 }
 
 /**
+ * The import's pictures held to its budget: each file fetched spends one
+ * place, and an image fill used on several layers is fetched once, so it
+ * spends one place however many layers show it. A picture over the budget
+ * is taken off its frame and noted in the frame's report. Pure.
+ *
+ * @param array $frames converted frames, each with 'pictures' and 'report'
+ *                      (a failed frame has no pictures)
+ * @param int   $max    pg_figma_max_pictures()
+ * @return array frames, vectors (Figma ids to ask for as SVG), fills
+ *               (whether image fills are to be asked for)
+ */
+function pg_figma_picture_budget($frames, $max)
+{
+    $left = (int) $max;
+    $refs = array();
+    $vectors = array();
+    $fills = false;
+
+    foreach ((array) $frames as $f => $frame) {
+        $kept = array();
+
+        foreach (isset($frame['pictures']) ? (array) $frame['pictures'] : array() as $p) {
+            $vector = ($p['kind'] === 'vector');
+            $ref = $vector ? '' : (string) $p['image_ref'];
+
+            if (($ref !== '') && isset($refs[$ref])) {
+                $kept[] = $p;
+                continue;
+            }
+
+            if ($left <= 0) {
+                $frames[$f]['report'][] = array('figma' => $p['figma'], 'name' => '', 'code' => 'pictures');
+                continue;
+            }
+
+            $left--;
+            $kept[] = $p;
+
+            if ($vector) {
+                $vectors[] = $p['figma'];
+            } else {
+                $fills = true;
+
+                if ($ref !== '') {
+                    $refs[$ref] = true;
+                }
+            }
+        }
+
+        if (isset($frame['pictures'])) {
+            $frames[$f]['pictures'] = $kept;
+        }
+    }
+
+    return array('frames' => $frames, 'vectors' => $vectors, 'fills' => $fills);
+}
+
+/**
  * The node of $tree with $id, depth first; null when none. Pure.
  */
 function pg_figma_tree_node($tree, $id)
@@ -389,6 +447,30 @@ function pg_figma_report_frame($frame)
 }
 
 /**
+ * A frame as finish takes it: the pictures still listed were never fetched
+ * (its frame step failed or did not end), so each becomes a "picture" note
+ * naming its layer and the frame keeps no picture to fetch. Pure.
+ *
+ * @param array $frame the import's frame
+ * @return array
+ */
+function pg_figma_frame_unfetched($frame)
+{
+    if (empty($frame['pictures']) || !is_array($frame['tree'])) {
+        return $frame;
+    }
+
+    foreach ((array) $frame['pictures'] as $p) {
+        $layer = pg_figma_tree_node($frame['tree'], $p['node']);
+        $frame['report'][] = array('figma' => $p['figma'], 'name' => isset($layer['props']['customName']) ? (string) $layer['props']['customName'] : '', 'code' => 'picture');
+    }
+
+    $frame['pictures'] = array();
+
+    return $frame;
+}
+
+/**
  * The file name a fetched picture is stored under: the frame's and the
  * layer's names as a slug, and the type's extension. Pure.
  */
@@ -489,6 +571,33 @@ function pg_figma_import_keep($id, $data)
 }
 
 /**
+ * Keeps a frame step's work, unless "Stop" removed the import while the
+ * step was fetching: Stop deleted the files the work file listed then, so
+ * the files this step fetched are deleted here and nothing is written back.
+ *
+ * @param string $id
+ * @param array  $data    the import with this step's work
+ * @param array  $fetched the files this step stored, each array('id', 'name')
+ * @return bool false when the import was stopped
+ */
+function pg_figma_import_keep_step($id, $data, $fetched)
+{
+    if (pg_figma_import_load($id) === null) {
+        if ($fetched) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+
+            foreach ($fetched as $file) {
+                pg_delete_file_record(array('id' => (int) $file['id'], 'name' => (string) $file['name']));
+            }
+        }
+
+        return false;
+    }
+
+    return pg_figma_import_keep($id, $data);
+}
+
+/**
  * Starts the import of the ticked frames: reads them in one GET nodes call,
  * converts each, asks for the addresses of the pictures (one call for the
  * image fills, one per hundred vectors), and keeps the work.
@@ -521,13 +630,17 @@ function pg_figma_import_start($key, $ids)
     $read = pg_figma_get('/v1/files/' . rawurlencode($key) . '/nodes?ids=' . rawurlencode(implode(',', $ids)), $connection['token'], 90);
 
     if (!$read['ok']) {
+        // The frame list was read from the session, so this is the first
+        // call with the token since: a refusal is marked as the file read
+        // marks it, for Connections to say so.
+        if ($read['error']['kind'] === 'token') {
+            pg_figma_connection_refused();
+        }
+
         return array('ok' => false, 'error' => $read['error']);
     }
 
     $frames = array();
-    $vectors = array();
-    $fills = false;
-    $budget = pg_figma_max_pictures();
 
     foreach ($ids as $fid) {
         $answer = pg_figma_answer_frame($read['data'], $fid);
@@ -541,27 +654,13 @@ function pg_figma_import_start($key, $ids)
 
         $frame['id'] = $fid;
         $frame['failed'] = false;
-
-        // Over the import's picture budget a place stays empty, and says so.
-        foreach ($frame['pictures'] as $i => $p) {
-            if ($budget <= 0) {
-                $frame['report'][] = array('figma' => $p['figma'], 'name' => '', 'code' => 'pictures');
-                unset($frame['pictures'][$i]);
-                continue;
-            }
-
-            $budget--;
-
-            if ($p['kind'] === 'vector') {
-                $vectors[] = $p['figma'];
-            } else {
-                $fills = true;
-            }
-        }
-
-        $frame['pictures'] = array_values($frame['pictures']);
         $frames[] = $frame;
     }
+
+    $budget = pg_figma_picture_budget($frames, pg_figma_max_pictures());
+    $frames = $budget['frames'];
+    $vectors = $budget['vectors'];
+    $fills = $budget['fills'];
 
     $urls = array('fills' => array(), 'vectors' => array());
 
@@ -672,6 +771,7 @@ function pg_figma_import_frame($id, $index, $user)
 
     $frame = $data['frames'][$index];
     $out = array('ok' => true, 'pictures' => 0, 'vectors' => 0, 'notes' => 0, 'failed' => !empty($frame['failed']));
+    $fetched = array();
 
     if (!$out['failed'] && $frame['pictures']) {
         @set_time_limit(300);
@@ -698,6 +798,7 @@ function pg_figma_import_frame($id, $index, $user)
 
                 if ($file) {
                     $data['files'][] = $file;
+                    $fetched[] = $file;
 
                     if ($ref !== '') {
                         $data['by_ref'][$ref] = $file;
@@ -719,7 +820,10 @@ function pg_figma_import_frame($id, $index, $user)
     $frame['pictures'] = array();
     $data['frames'][$index] = $frame;
     $out['notes'] = count($frame['report']);
-    pg_figma_import_keep($id, $data);
+
+    if (!pg_figma_import_keep_step($id, $data, $fetched)) {
+        return array('ok' => false);
+    }
 
     return $out;
 }
@@ -743,6 +847,7 @@ function pg_figma_import_finish($id, $user, $variables)
         return array('ok' => false);
     }
 
+    $data['frames'] = array_map('pg_figma_frame_unfetched', $data['frames']);
     $made = array_values(array_filter($data['frames'], function ($f) {
         return empty($f['failed']) && is_array($f['tree']);
     }));

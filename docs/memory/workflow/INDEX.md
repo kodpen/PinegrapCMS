@@ -55,6 +55,7 @@
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
+- bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
 - bug-hunt-areas-file-manager-permissions.md: Bug hunt 53, File Manager permissions (2026-11-24, PR #11492): who sees, moves, renames and deletes a file or folder, the Recycle Bin, design files, path checks; three faults fixed
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean

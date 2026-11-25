@@ -13,8 +13,13 @@
  * the page (designer/compare_render), one after the other, in frames that
  * run no script but share the panel's origin, so the window reads a page's
  * height; the editor draws a picture itself when the server gives none.
- * What the reader (window.PgCompareChanges) finds gives the state and the
- * foot's count; the rules are window.PgCompareLook's.
+ * What the reader (window.PgCompareChanges) finds gives the state, the
+ * foot's count and "What changed", the column beside the pictures: a row
+ * chosen scrolls both pictures to its place, lines them up on it and
+ * outlines it, on the window's own layer over the frames. Opened over a
+ * modal dialog (the Publish sheet), the window is placed inside it, and
+ * closing it gives the dialog back as it was. The rules are
+ * window.PgCompareLook's.
  *
  * Not needed to open a page: the core runs this file the first time
  * Compare is opened (_sdCompareOpen(), pg_designer_parts()).
@@ -121,7 +126,7 @@ StyleDesigner.definePart('compare', function (K) {
 
     function footText(read) {
         var live = w.sides.before.kind === 'live' && w.sides.after.kind === 'now';
-        var count = (read.state === 'changed') ? C.rows(read.changes).length : 0;
+        var count = w.rows.length;
         switch (L.foot(read.state, count, live)) {
             case 'live_one': return _sdT('1 change between the page on the site and the draft.');
             case 'live_many': return _sdT('{var} changes between the page on the site and the draft.', count);
@@ -139,6 +144,26 @@ StyleDesigner.definePart('compare', function (K) {
         return (w.sides.before.kind === 'live' && w.sides.after.kind === 'now')
             ? _sdT('Nothing has changed. The draft is the same as the page on the site.')
             : _sdT('Nothing has changed. The two versions are the same.');
+    }
+
+    // The reader's sentences, translated (PgCompareChanges' TEXT).
+    function texts() {
+        if (w.texts) return w.texts;
+        w.texts = {
+            added: _sdT('{what} added'), added_named: _sdT('{what} added: {name}'),
+            removed: _sdT('{what} removed'), removed_named: _sdT('{what} removed: {name}'),
+            moved_up: _sdT('{what} moved up'), moved_down: _sdT('{what} moved down'), moved_into: _sdT('{what} moved into {where}'),
+            words: _sdT('{what} text changed'), alt: _sdT('Picture description changed'), picture: _sdT('Picture replaced'),
+            link: _sdT('Link changed'), look: _sdT('{what} look changed'), other: _sdT('{what} changed'),
+            look_rows: _sdT('Look changed ({count} elements)'), other_rows: _sdT('Other changes ({count})'),
+            place_named: _sdT('{what}: {name}'),
+            kind_element: _sdT('Element'), kind_section: _sdT('Section'), kind_header: _sdT('Header'), kind_footer: _sdT('Footer'),
+            kind_menu: _sdT('Menu'), kind_heading: _sdT('Heading'), kind_text: _sdT('Text'), kind_picture: _sdT('Picture'),
+            kind_video: _sdT('Video'), kind_link: _sdT('Link'), kind_button: _sdT('Button'), kind_icon: _sdT('Icon'),
+            kind_list: _sdT('List'), kind_list_item: _sdT('List item'), kind_form: _sdT('Form'), kind_box: _sdT('Box'),
+            kind_container: _sdT('Container'), kind_row: _sdT('Row'), kind_column: _sdT('Column'), kind_component: _sdT('Component')
+        };
+        return w.texts;
     }
 
     // ── Trees ──
@@ -180,8 +205,10 @@ StyleDesigner.definePart('compare', function (K) {
             sides: { before: L.side(opts.left) || { kind: 'live', no: 0 }, after: L.side(opts.right) || { kind: 'now', no: 0 } },
             got: { before: null, after: null }, read: null, look: null,
             prefs: readPrefs(), pos: 50, pics: { before: {}, after: {} }, html: {}, code: false, seq: 0,
-            narrow: window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null
+            narrow: window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null,
+            chosen: null, list: false, back: document.activeElement, host: modalHost()
         };
+        w.rows = [];
         build();
         var list = pageId > 0
             ? K._pgApiPost('revisions_list', { page_id: pageId }).then(function (res) {
@@ -193,6 +220,16 @@ StyleDesigner.definePart('compare', function (K) {
             w.revisions = rows;
             load();
         });
+    }
+
+    // A modal dialog open under the window (the Publish sheet) makes the
+    // rest of the page inert: the window is placed inside it.
+    function modalHost() {
+        var open = document.querySelectorAll('dialog[open]');
+        for (var i = open.length - 1; i >= 0; i--) {
+            try { if (open[i].matches(':modal')) return open[i]; } catch (e) { return open[i]; }
+        }
+        return null;
     }
 
     function build() {
@@ -230,7 +267,7 @@ StyleDesigner.definePart('compare', function (K) {
                             '<div class="sd-cmp-side" data-side="after"></div>' +
                         '</div>' +
                         '<div class="sd-cmp-note" hidden></div>' +
-                        '<div class="sd-cmp-stage">' +
+                        '<div class="sd-cmp-main"><div class="sd-cmp-stage">' +
                             '<div class="sd-cmp-scroll"><div class="sd-cmp-pics">' +
                                 SIDES.map(function (k) {
                                     return '<div class="sd-cmp-pic" data-side="' + k + '"><div class="sd-cmp-cap"></div>' +
@@ -240,17 +277,23 @@ StyleDesigner.definePart('compare', function (K) {
                             '<div class="sd-cmp-handle" hidden><div class="sd-cmp-grip" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-label="' +
                                 esc(_sdT('Compare handle')) + '"></div></div>' +
                         '</div>' +
+                        '<aside class="sd-cmp-list" aria-label="' + esc(_sdT('What changed')) + '">' +
+                            '<div class="sd-cmp-list-head"><span>' + esc(_sdT('What changed')) + '</span><em></em></div>' +
+                            '<div class="sd-cmp-rows"><p class="sd-cmp-empty">' + esc(_sdT('Reading the two versions…')) + '</p></div>' +
+                        '</aside></div>' +
                     '</div>' +
                     '<div class="sd-rev-view sd-rev-view-code" hidden><pre class="sd-rev-diff"></pre></div>' +
                 '</div>' +
                 '<div class="sd-fr-footer">' +
                     '<span class="sd-rev-summary sd-cmp-foot">' + esc(_sdT('Reading the two versions…')) + '</span>' +
+                    '<button type="button" class="sd-fr-btn sd-cmp-swap" data-cmp="list" hidden></button>' +
                     '<button type="button" class="sd-fr-btn" data-cmp="close">' + esc(_sdT('Close')) + '</button>' +
                     (o.history ? '<button type="button" class="sd-fr-btn sd-fr-btn-primary" data-cmp="load"' + (refusal ? ' disabled title="' + esc(refusal) + '"' : '') + '>' +
                         esc(_sdT('Load this revision')) + '</button>' : '') +
                 '</div>' +
             '</div>';
-        document.body.appendChild(overlay);
+        (w.host || document.body).appendChild(overlay);
+        if (w.host) w.host.classList.add('sd-cmp-host');
         w.el = overlay;
         w.q = function (sel) { return overlay.querySelector(sel); };
         wire();
@@ -260,8 +303,21 @@ StyleDesigner.definePart('compare', function (K) {
         var el = w.el;
         el.querySelectorAll('[data-cmp="close"]').forEach(function (b) { b.addEventListener('click', close); });
         el.addEventListener('mousedown', function (ev) { if (ev.target === el) close(); });
-        w.onKey = function (ev) { if (ev.key === 'Escape' && !ev.defaultPrevented) { ev.preventDefault(); close(); } };
-        document.addEventListener('keydown', w.onKey);
+        // Escape closes the window only, never the dialog under it.
+        w.onKey = function (ev) {
+            if (ev.key !== 'Escape' || ev.defaultPrevented) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            close();
+        };
+        document.addEventListener('keydown', w.onKey, true);
+        w.onCancel = function (ev) { ev.preventDefault(); };
+        if (w.host) w.host.addEventListener('cancel', w.onCancel);
+        w.q('[data-cmp="list"]').addEventListener('click', function () { w.list = !w.list; layout(); });
+        w.q('.sd-cmp-rows').addEventListener('click', function (ev) {
+            var b = ev.target.closest('[data-row]');
+            if (b) choose(parseInt(b.dataset.row, 10), b.dataset.node || '');
+        });
         w.onResize = function () { layout(); };
         window.addEventListener('resize', w.onResize);
         if (w.narrow && w.narrow.addEventListener) w.narrow.addEventListener('change', w.onResize);
@@ -299,12 +355,18 @@ StyleDesigner.definePart('compare', function (K) {
 
     function close() {
         if (!w) return;
-        document.removeEventListener('keydown', w.onKey);
+        document.removeEventListener('keydown', w.onKey, true);
+        if (w.host) {
+            w.host.removeEventListener('cancel', w.onCancel);
+            w.host.classList.remove('sd-cmp-host');
+        }
         window.removeEventListener('resize', w.onResize);
         if (w.narrow && w.narrow.removeEventListener) w.narrow.removeEventListener('change', w.onResize);
         SIDES.forEach(function (k) { clearTimeout(w.pics[k].timer); });
         if (w.el) w.el.remove();
+        var back = w.back;
         w = null;
+        if (back && back.isConnected && typeof back.focus === 'function') back.focus();
     }
 
     // The two trees, the reader, then the pictures one after the other.
@@ -319,8 +381,11 @@ StyleDesigner.definePart('compare', function (K) {
             w.got.after = trees[1];
             w.html = {};
             w.code = false;
-            w.read = C.read(trees[0], trees[1]);
+            w.read = C.read(trees[0], trees[1], texts());
+            w.rows = (w.read.state === 'changed') ? C.rows(w.read.changes, texts()) : [];
+            w.chosen = null;
             w.q('.sd-cmp-foot').textContent = footText(w.read);
+            drawList();
             if (!w.q('.sd-rev-view-code').hidden) drawCode();
             layout();
             var first = (w.look.only || 'before');
@@ -481,6 +546,11 @@ StyleDesigner.definePart('compare', function (K) {
         var look = w.look = L.layout(w.read.state, w.prefs, narrow);
         var el = w.el;
         el.classList.toggle('sd-cmp-is-narrow', narrow);
+        if (!narrow) w.list = false;
+        el.classList.toggle('sd-cmp-is-list', w.list);
+        var swap = w.q('[data-cmp="list"]');
+        swap.hidden = !narrow;
+        swap.textContent = w.list ? _sdT('The pictures') : _sdT('What changed') + ' \u00b7 ' + w.rows.length;
         el.querySelectorAll('.sd-cmp-seg').forEach(function (seg) {
             var name = seg.dataset.seg;
             seg.hidden = (name === 'form') ? !look.forms : !look.widths;
@@ -502,7 +572,7 @@ StyleDesigner.definePart('compare', function (K) {
         var room = scroll.clientWidth - 32;
         var width = L.width(look.width);
         var two = !look.only && look.form === 'side';
-        var s = L.scale(two ? (room - 16) / 2 : room, width);
+        var s = w.scale = L.scale(two ? (room - 16) / 2 : room, width);
         var tall = 0;
         SIDES.forEach(function (k) {
             var pic = w.pics[k];
@@ -526,6 +596,7 @@ StyleDesigner.definePart('compare', function (K) {
         pics.style.height = two ? '' : picH + 'px';
         w.q('.sd-cmp-handle').hidden = !look.handle;
         place();
+        marks(false);
     }
 
     // ── The handle ──
@@ -578,6 +649,113 @@ StyleDesigner.definePart('compare', function (K) {
             place();
         });
         w.q('.sd-cmp-scroll').addEventListener('scroll', function () { if (w.look && w.look.handle) place(); }, { passive: true });
+    }
+
+    // ── What changed ──
+    function drawList() {
+        var box = w.q('.sd-cmp-rows');
+        w.q('.sd-cmp-list-head em').textContent = w.rows.length ? String(w.rows.length) : '';
+        var st = w.read.state;
+        if (st !== 'changed') {
+            var msg = (st === 'new') ? _sdT('The whole page is new.')
+                : (st === 'same') ? _sdT('Nothing has changed.')
+                : _sdT('The changes could not be listed. The two pictures are still the two pages.');
+            box.innerHTML = '<p class="sd-cmp-empty">' + esc(msg) + '</p>';
+            return;
+        }
+        var at = w.chosen ? w.chosen.i : -1;
+        box.innerHTML = w.rows.map(function (r, i) {
+            var on = (i === at);
+            var words = L.wordsOf(r);
+            var many = r.changes.length > 1 || r.code === 'other_rows' || r.code === 'look_rows';
+            var more = '';
+            if (on && words) {
+                more = '<div class="sd-cmp-words"><i>' + esc(_sdT('Before')) + '</i><span>' + esc(words.before) + '</span>' +
+                    '<i>' + esc(_sdT('Now')) + '</i><span>' + esc(words.after) + '</span></div>';
+            } else if (on && many) {
+                more = '<ul class="sd-cmp-names">' + r.changes.map(function (c) {
+                    return '<li><button type="button" data-row="' + i + '" data-node="' + esc(c.node) + '"' +
+                        (w.chosen.node === c.node ? ' class="is-current" aria-current="true"' : '') + '>' + esc(L.nameOf(c)) + '</button></li>';
+                }).join('') + '</ul>';
+            }
+            var chevron = (words || many) ? '<span class="bi ' + (on ? 'bi-chevron-up' : 'bi-chevron-down') + ' sd-cmp-chev" aria-hidden="true"></span>' : '';
+            return '<div class="sd-cmp-row' + (on ? ' is-on' : '') + '">' +
+                '<button type="button" class="sd-cmp-row-btn" data-row="' + i + '"' + ((words || many) ? ' aria-expanded="' + on + '"' : '') + '>' +
+                    '<span class="bi ' + L.icon(r) + '" aria-hidden="true"></span>' +
+                    '<span class="sd-cmp-row-text">' + esc(r.text) +
+                        (r.place ? '<small>' + esc(_sdT('in {var}', r.place)) + '</small>' : '') + '</span>' + chevron +
+                '</button>' + more + '</div>';
+        }).join('');
+    }
+
+    // A row chosen: the handle shows its side, the list opens it, the
+    // pictures go to its place. A name of an opened row goes to its element.
+    function choose(i, node) {
+        var r = w.rows[i];
+        if (!r) return;
+        w.chosen = { i: i, node: node || '' };
+        w.list = false;
+        if (w.look && w.look.handle) {
+            w.pos = L.handleFor(L.sideOf(r), w.pos);
+            place();
+        }
+        drawList();
+        layout();
+        marks(true);
+    }
+
+    // The element's boxes in a picture, at the picture's scale.
+    function boxesIn(k, ids) {
+        var f = w.pics[k].frame, out = [];
+        if (!f || w.pics[k].status !== 'loaded') return out;
+        var d;
+        try { d = f.contentDocument; } catch (e) { d = null; }
+        if (!d) return out;
+        var by = {};
+        d.querySelectorAll('[data-pg-node]').forEach(function (el) {
+            var id = el.getAttribute('data-pg-node');
+            if (!by[id]) by[id] = el;
+        });
+        ids.forEach(function (id) {
+            var el = by[id] || d.getElementById(id);
+            if (!el) return;
+            var r = el.getBoundingClientRect();
+            if (r.width <= 0 && r.height <= 0) return;
+            out.push({ top: r.top * w.scale, left: r.left * w.scale, width: r.width * w.scale, height: r.height * w.scale });
+        });
+        return out;
+    }
+
+    // The outlines of the chosen row on the pictures that carry its place,
+    // the two pictures lined up on it and, when asked, scrolled to it.
+    function marks(scroll) {
+        if (!w || !w.look) return;
+        w.el.querySelectorAll('.sd-cmp-mark').forEach(function (m) { m.remove(); });
+        var r = w.chosen ? w.rows[w.chosen.i] : null;
+        var side = r ? L.sideOf(r) : '';
+        var ids = r ? (w.chosen.node ? [w.chosen.node] : r.changes.map(function (c) { return c.node; })) : [];
+        var ys = {};
+        SIDES.forEach(function (k) {
+            var node = w.q('.sd-cmp-pic[data-side="' + k + '"]');
+            node.style.translate = '';
+            if (!r || (side !== 'both' && side !== k) || (w.look.only && w.look.only !== k)) return;
+            var box = node.querySelector('.sd-cmp-box');
+            boxesIn(k, ids).forEach(function (b, n) {
+                if (n === 0) ys[k] = b.top;
+                var m = document.createElement('div');
+                m.className = 'sd-cmp-mark';
+                m.style.cssText = 'top:' + Math.round(b.top) + 'px;left:' + Math.round(b.left) + 'px;width:' +
+                    Math.round(b.width) + 'px;height:' + Math.round(b.height) + 'px';
+                if (n === 0) m.innerHTML = '<span>' + esc(r.text) + '</span>';
+                box.appendChild(m);
+            });
+        });
+        var a = L.align(ys.before, ys.after);
+        if (!a) return;
+        SIDES.forEach(function (k) {
+            if (a[k]) w.q('.sd-cmp-pic[data-side="' + k + '"]').style.translate = '0 ' + Math.round(a[k]) + 'px';
+        });
+        if (scroll) w.q('.sd-cmp-scroll').scrollTop = Math.max(0, Math.round(a.top) - 48);
     }
 
     // ── Code ──

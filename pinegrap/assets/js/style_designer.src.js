@@ -16466,6 +16466,7 @@ const StyleDesigner = (function () {
         '__requested_url': '/old-page',
         '__group_name': _sdT('Newsletter'),
         '__group_description': _sdT('News and campaigns, once a month.'),
+        '__opt_in_sms_label': _sdT('Yes, you may send me text messages.'),
         '__recipient_full_name': _sdT('Jane Doe'),
         '__recipient_address': _sdT('Sample Street 1, 34000 Istanbul, Türkiye'),
         '__recipient_phone': '+90 555 000 00 00',
@@ -46206,7 +46207,9 @@ const StyleDesigner = (function () {
     var SW_EMAIL_PREFERENCES_TOKEN_GROUPS = [
         { label: _sdT('Account'), tokens: [
             ['__site_name',         _sdT('Site name')],
-            ['__email_address',     _sdT('Email whose preferences these are')]
+            ['__email_address',     _sdT('Email whose preferences these are')],
+            ['__opt_in_label',      _sdT('Campaign consent label (site setting)')],
+            ['__opt_in_sms_label',  _sdT('SMS consent label (site setting)')]
         ]},
         { label: _sdT('Mailing List (loop_area)'), tokens: [
             ['__group_id',          _sdT('List ID')],
@@ -51175,6 +51178,10 @@ const StyleDesigner = (function () {
             ['can_edit',               _sdT('The visitor may edit the record')],
             ['has_ai_links',           _sdT('The AI assistants\' links are filled (a record anybody may open)')]
         ],
+        login_form: [
+            ['shows_remember_me',        _sdT('The "Remember Me" box is offered')],
+            ['has_forgot_password_link', _sdT('A forgot password link is offered')]
+        ],
         logout: [
             ['is_signed_in',    _sdT('The visitor is signed in')],
             ['is_signed_out',   _sdT('The visitor is signed out')],
@@ -51200,7 +51207,9 @@ const StyleDesigner = (function () {
             ['is_signed_in',       _sdT('The visitor is signed in')],
             ['is_signed_out',      _sdT('The visitor is signed out and has no campaign link')],
             ['has_contact_groups', _sdT('There are mailing lists to choose')],
-            ['no_contact_groups',  _sdT('There are no mailing lists to choose')]
+            ['no_contact_groups',  _sdT('There are no mailing lists to choose')],
+            ['shows_opt_in_sms',   _sdT('The SMS box is offered (SMS is on and the contact has a mobile number)')],
+            ['group_has_description', _sdT('Row: the mailing list has a description')]
         ],
         address_book: [
             ['is_signed_in',   _sdT('The visitor is signed in')],
@@ -85036,13 +85045,75 @@ const StyleDesigner = (function () {
         return (p && p.page_id > 0) ? p.page_id : 0;
     }
 
-    function openSnapshotsPanel() {
+    // The History panel open now: its tab switch and its close; null when
+    // it is closed.
+    var _sdHistoryOpen = null;
+
+    // tab: 'activity' opens on the design's Activity (the command palette's
+    // row); anything else, as the canvas bar's button gives, on "This page".
+    function openSnapshotsPanel(tab) {
         var old = document.getElementById('sd-snapshots-panel');
-        if (old) { old.remove(); return; }
+        if (old) {
+            if (tab === 'activity' && _sdHistoryOpen) { _sdHistoryOpen.show('activity'); return; }
+            if (_sdHistoryOpen) _sdHistoryOpen.close();
+            else old.remove();
+            return;
+        }
         var btn = document.getElementById('sd-vb-snapshots');
         var panel = document.createElement('div');
         panel.id = 'sd-snapshots-panel';
         panel.className = 'sd-snapshots-panel';
+        // The head and the two tabs are drawn once; "This page" is redrawn
+        // by renderList(), "Activity" is the part `activity`.
+        panel.innerHTML = '<div class="sd-snap-hdr"><span><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '</span>' +
+            '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn" aria-label="' + esc(_sdT('Close')) + '" title="' + esc(_sdT('Close')) + '"></button></div>' +
+            '<div class="sd-hist-tabs" role="tablist" aria-label="' + esc(_sdT('History')) + '">' +
+                '<button type="button" class="sd-hist-tab" role="tab" data-tab="page">' + esc(_sdT('This page')) + '</button>' +
+                '<button type="button" class="sd-hist-tab" role="tab" data-tab="activity">' + esc(_sdT('Activity')) + '</button>' +
+            '</div>' +
+            '<div class="sd-hist-page" role="tabpanel"></div>' +
+            '<div class="sd-act-host" role="tabpanel" hidden></div>';
+        var pageBox = panel.querySelector('.sd-hist-page');
+        var actHost = panel.querySelector('.sd-act-host');
+        // The Activity list is asked for each time its tab is shown; the
+        // choosers and the counts are kept while History stays open.
+        var actFresh = true;
+        function closePanel() {
+            panel.remove();
+            _sdHistoryOpen = null;
+            document.removeEventListener('mousedown', onOutside);
+        }
+        function showTab(name) {
+            panel.querySelectorAll('.sd-hist-tab').forEach(function (t) {
+                var on = t.dataset.tab === name;
+                t.classList.toggle('is-active', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+                t.tabIndex = on ? 0 : -1;
+            });
+            pageBox.hidden = (name !== 'page');
+            actHost.hidden = (name !== 'activity');
+            if (name === 'activity') {
+                var fresh = actFresh;
+                actFresh = false;
+                _sdPartCall('activity', 'show', [actHost, { fresh: fresh, done: closePanel }]).catch(_sdPartFailed);
+            }
+        }
+        _sdHistoryOpen = { show: showTab, close: closePanel };
+        panel.querySelectorAll('.sd-hist-tab').forEach(function (t) {
+            t.addEventListener('click', function () { showTab(t.dataset.tab); });
+            // The two tabs are one stop: the arrow keys go between them.
+            t.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight' && ev.key !== 'Home' && ev.key !== 'End') return;
+                ev.preventDefault();
+                var next = (t.dataset.tab === 'page') ? 'activity' : 'page';
+                if (ev.key === 'Home') next = 'page';
+                if (ev.key === 'End') next = 'activity';
+                showTab(next);
+                var nb = panel.querySelector('.sd-hist-tab[data-tab="' + next + '"]');
+                if (nb) nb.focus();
+            });
+        });
+        panel.querySelector('#sd-snap-close-btn').addEventListener('click', closePanel);
 
         // Read the autosave record and surface it as a virtual snapshot at
         // the top of the list. Lets the user restore an unsaved design
@@ -85138,9 +85209,7 @@ const StyleDesigner = (function () {
         function renderList() {
             var snaps = _loadSnapshots();
             var autosaveSnap = _readAutosaveAsSnapshot();
-            var html = '<div class="sd-snap-hdr"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '' +
-                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn" aria-label="' + esc(_sdT('Close')) + '" title="' + esc(_sdT('Close')) + '"></button></div>';
-            html += revisionsHtml();
+            var html = revisionsHtml();
             html += '<div class="sd-snap-sect"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Local snapshots')) + '</div>' +
                 '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>' + esc(_sdT('New Snapshot')) + '</button>';
             if (!snaps.length && !autosaveSnap) {
@@ -85172,7 +85241,7 @@ const StyleDesigner = (function () {
                 });
                 html += '</div>';
             }
-            panel.innerHTML = html;
+            pageBox.innerHTML = html;
 
             var newBtn = panel.querySelector('#sd-snap-new');
             if (newBtn) newBtn.addEventListener('click', function() {
@@ -85182,9 +85251,6 @@ const StyleDesigner = (function () {
                 renderList();
             });
 
-            var closeBtn = panel.querySelector('#sd-snap-close-btn');
-            if (closeBtn) closeBtn.addEventListener('click', function() { panel.remove(); });
-            _sdTipAsk('history', _sdT('Every save is kept here. Open one to look at it, or bring it back.'), panel.querySelector('.sd-snap-hdr'), panel);
 
             var moreBtn = panel.querySelector('#sd-rev-more');
             if (moreBtn) moreBtn.addEventListener('click', function () {
@@ -85194,13 +85260,13 @@ const StyleDesigner = (function () {
 
             panel.querySelectorAll('.sd-rev-compare').forEach(function (b) {
                 b.addEventListener('click', function () {
-                    _sdRevisionOpenCompare(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                    _sdRevisionOpenCompare(revState.pageId, parseInt(this.dataset.no, 10), closePanel);
                 });
             });
             panel.querySelectorAll('.sd-rev-restore').forEach(function (b) {
                 b.addEventListener('click', function () {
                     if (this.disabled) return;
-                    _sdRevisionRestore(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                    _sdRevisionRestore(revState.pageId, parseInt(this.dataset.no, 10), closePanel);
                 });
             });
 
@@ -85229,7 +85295,7 @@ const StyleDesigner = (function () {
                     _replaceTreeWithPrefetch(cloneTree(snap.tree), {
                         selectedNodeId: snap.selectedNodeId || null
                     });
-                    panel.remove();
+                    closePanel();
                 });
             });
 
@@ -85250,15 +85316,18 @@ const StyleDesigner = (function () {
         renderList();
         loadRevisions(0);
         document.body.appendChild(panel);
+        _sdTipAsk('history', _sdT('Every save is kept here. Open one to look at it, or bring it back.'), panel.querySelector('.sd-snap-hdr'), panel);
+        // History opens on "This page" every time.
+        showTab(tab === 'activity' ? 'activity' : 'page');
         if (btn) {
             var r = btn.getBoundingClientRect();
-            panel.style.right = (window.innerWidth - r.right) + 'px';
+            panel.style.right = Math.max(0, window.innerWidth - r.right) + 'px';
             panel.style.top   = (r.bottom + 4) + 'px';
         }
         function onOutside(ev) {
             // A compare dialog opened from the panel is its own layer.
             if (document.getElementById('sd-rev-overlay')) return;
-            if (!panel.contains(ev.target) && ev.target !== btn) { panel.remove(); document.removeEventListener('mousedown', onOutside); }
+            if (!panel.contains(ev.target) && ev.target !== btn) closePanel();
         }
         setTimeout(function() { document.addEventListener('mousedown', onOutside); }, 0);
     }
@@ -87454,6 +87523,9 @@ const StyleDesigner = (function () {
         // (_design.prototypeShare); a saved draft tab is offered as the
         // link's start page.
         var protoShare = _pgPrototypeShareReady();
+        // Compare with the live page, for a page saved here: nothing is
+        // written, so view mode has it too.
+        var comparable = saved && p.page_id > 0 && !p.pickedPending;
         // The Workspace tasks tied to this page (ws_refs page:<id>), for a
         // page saved here and a person on the team (_design.workspaceTasks).
         var wsTasks = !!(_design && _design.workspaceTasks) && saved && p.page_id > 0 && !p.pickedPending;
@@ -87488,6 +87560,7 @@ const StyleDesigner = (function () {
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
             (protoUrl ? item('prototype', 'bi-play-btn', _sdT('Preview as prototype')) : '') +
+            (comparable ? item('compare', 'bi-arrow-left-right', _sdT('Compare with the live page')) : '') +
             (protoShare ? item('share-prototype', 'bi-share', _sdT('Share prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
@@ -87542,11 +87615,12 @@ const StyleDesigner = (function () {
             if (!b || b.disabled) return;
             var act = b.dataset.act;
             _pgTabsCloseMenu();
-            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
+            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype' && act !== 'compare'
                 && act !== 'share-prototype' && act !== 'ws-tasks' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
+                case 'compare':  _sdCompareOpen({ pageId: p.page_id }); break;
                 case 'share-prototype': _pgPrototypeShareDialog((p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
@@ -90928,13 +91002,16 @@ const StyleDesigner = (function () {
                       : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
             var t = _pgTreeOf(p);
             var hold = (state === 'held') ? _pgExperimentOf(p) : null;
+            var changed = !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null);
             return {
                 key: p.key,
                 name: p.page_name || _sdT('New Page'),
                 state: state,
                 label: (hold && hold.label) || '',
                 note: (hold && hold.hold_text) || '',
-                changed: !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null),
+                changed: changed,
+                // A page on the site that changed can be compared with it.
+                compare: state === 'live' && changed && p.page_id > 0 && !p.pickedPending,
                 locked: p.access === 'locked',
                 home: !!p.page_home,
                 active: p.key === _activeKey
@@ -90974,7 +91051,12 @@ const StyleDesigner = (function () {
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
-            takeOff: function (keys) { _pgSetDraft(keys, true); }
+            takeOff: function (keys) { _pgSetDraft(keys, true); },
+            // Opened over the sheet; closing it gives the sheet back.
+            compare: function (key) {
+                var p = _pgPageByKey(key);
+                if (p && p.page_id > 0) _sdCompareOpen({ pageId: p.page_id });
+            }
         };
         // The Publish check (the part 'publishcheck'): the ticked pages'
         // results and findings, loaded the first time the sheet checks one.
@@ -92056,9 +92138,24 @@ const StyleDesigner = (function () {
                 }});
         }
 
+        // Compare with the live page, for the open page once it is saved.
+        var cmpPage = _pgActivePage();
+        if (cmpPage && cmpPage.page_id > 0 && !cmpPage.pickedPending) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_compare_live', label: _sdT('Compare with the live page'), icon: 'bi-arrow-left-right', meta: _sdT('Page'), action: function () {
+                    var a = _pgActivePage();
+                    if (a && a.page_id > 0) _sdCompareOpen({ pageId: a.page_id });
+                }});
+        }
+
         // "Page from a document", listed only while the page is empty.
         if (_sdDocumentReady()) {
             items.push({ id: 'act_document', label: _sdT('Page from a document'), icon: 'bi-file-earmark-text', action: function () { _sdDocumentOpen(); } });
+        }
+
+        // History on the design's Activity tab (the part `activity`).
+        if (document.getElementById('sd-vb-snapshots') && _sdPartUrls('activity')) {
+            items.push({ id: 'act_activity', label: _sdT('Show the design\'s activity'), icon: 'bi-clock-history', action: function () { openSnapshotsPanel('activity'); } });
         }
 
         // Preview on a phone, where the Preview menu offers it.
@@ -97891,6 +97988,7 @@ const StyleDesigner = (function () {
             _sdLineDiff: _sdLineDiff,
             _sdLineDiffHtml: _sdLineDiffHtml,
             _sdLivePreviewSchedule: _sdLivePreviewSchedule,
+            _sdLocale: _sdLocale,
             _sdLookDrawingOf: _sdLookDrawingOf,
             _sdNodeSetBinding: _sdNodeSetBinding,
             _sdOpenThemeSettings: _sdOpenThemeSettings,
@@ -97901,6 +97999,7 @@ const StyleDesigner = (function () {
             _sdPaletteItemHTML: _sdPaletteItemHTML,
             _sdPartCall: _sdPartCall,
             _sdPartFailed: _sdPartFailed,
+            _sdPartLoad: _sdPartLoad,
             _sdPartUrls: _sdPartUrls,
             _sdPickerReady: _sdPickerReady,
             _sdPreviewDocHtml: _sdPreviewDocHtml,
@@ -97936,6 +98035,7 @@ const StyleDesigner = (function () {
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
             _sdThemes: _sdThemes,
+            _sdTreeObjects: _sdTreeObjects,
             _sdUndoBeforeFirstInput: _sdUndoBeforeFirstInput,
             _sdUserAttrValue: _sdUserAttrValue,
             _sdUsesBootstrap: _sdUsesBootstrap,

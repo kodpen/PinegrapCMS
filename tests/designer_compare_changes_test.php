@@ -195,6 +195,39 @@ function test_compare_changes_rows()
 	), $res, 'the rows');
 }
 
+// Each change carries its place (the section around it, none for a
+// section itself) and its element's short words; a row carries the place
+// its changes share.
+function test_compare_changes_place_and_words()
+{
+	$res = compare_changes_test_node('var hd = N("hd", "semantic", { tag: "header" }, [N("l1", "content", { contentType: "link", text: "A" }), N("l2", "content", { contentType: "link", text: "B" })]);'
+		. ' var a = T([hd, S("s1", "Welcome", [H("h1", "Breathe. Move. Rest."), N("t1", "content", { contentType: "text", text: "<b>3</b> places left in a very long sentence that goes on" }), N("t2", "content", { contentType: "text", text: "Full" })])]);'
+		. ' var b = clone(a); b.children[0].children.reverse(); b.children[1].children[0].props.text = "Breathe. Move. Rest well.";'
+		. ' b.children[1].children[1].props.cssClass = "x"; b.children[1].children[2].props.cssClass = "x"; b.children.push(S("s2", "Prices"));'
+		. ' var r = C.read(a, b); out = { c: r.changes.map(function (c) { return [c.node, c.place, c.words]; }),'
+		. ' rows: C.rows(r.changes).map(function (w) { return [w.text, w.place]; }),'
+		. ' tr: C.read(a, b, { place_named: "{what} - {name}", kind_section: "Bölüm" }).changes[1].place };');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('s2', '', 'Prices'),
+		array('h1', 'Section: Welcome', 'Breathe. Move. Rest well.'),
+		array('l1', 'Header', 'A'),
+		array('t1', 'Section: Welcome', '3 places left in a very long sentence t…'),
+		array('t2', 'Section: Welcome', 'Full'),
+	), $res['c'], 'place and words of each change');
+	pg_assert_same(array(
+		array('Section added: Prices', ''),
+		array('Heading text changed', 'Section: Welcome'),
+		array('Link moved down', 'Header'),
+		array('Look changed (2 elements)', 'Section: Welcome'),
+	), $res['rows'], 'a row keeps the place its changes share');
+	pg_assert_same('Bölüm - Welcome', $res['tr'], 'the place is translated');
+}
+
 // Translated sentences are handed in and filled.
 function test_compare_changes_texts()
 {

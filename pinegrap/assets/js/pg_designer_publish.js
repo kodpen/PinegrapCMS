@@ -63,7 +63,8 @@ var PgDesignerPublish = (function () {
     // for its publish time keeps waiting unless checked by hand) and every
     // page on the site that changed. A row is
     // { key, name, state: 'draft'|'scheduled'|'live'|'held', label, note, changed,
-    //   locked, home, active, override }; `override`: a held draft this
+    //   compare, locked, home, active, override }; `compare`: a page on the
+    //   site that changed, offered "Compare with the live page"; `override`: a held draft this
     //   person may publish anyway with a reason.
     function defaults(rows, check) {
         var blocked = (check && check.blocked) || null;
@@ -231,6 +232,20 @@ var PgDesignerPublish = (function () {
             ch.className = 'small fg-warning text-nowrap';
             ch.textContent = text('changed');
             item.appendChild(ch);
+        }
+        if (r.compare && bridge && typeof bridge.compare === 'function') {
+            var cmp = document.createElement('button');
+            cmp.type = 'button';
+            cmp.className = 'pg-button pg-button-quiet pg-button-sm flex-shrink-0';
+            cmp.title = text('compare');
+            cmp.setAttribute('aria-label', text('compare'));
+            cmp.innerHTML = '<span class="bi bi-arrow-left-right" aria-hidden="true"></span>';
+            cmp.addEventListener('click', function (e) {
+                // Inside the row's label: the click must not tick the box.
+                e.preventDefault();
+                bridge.compare(r.key);
+            });
+            item.appendChild(cmp);
         }
         if (r.locked) {
             var lk = document.createElement('span');

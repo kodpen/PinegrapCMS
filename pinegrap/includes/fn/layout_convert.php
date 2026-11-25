@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences');
 }
 
 /**
@@ -846,6 +846,16 @@ function pg_layout_piece_map($type)
 
         case 'view order':
             return _pg_lc_view_order_map($none);
+
+        case 'login':
+        case 'forgot password':
+        case 'set password':
+        case 'change password':
+            return _pg_lc_password_map($type, $none);
+
+        case 'my account profile':
+        case 'email preferences':
+            return _pg_lc_account_form_map($type, $none);
 
         case 'form item view':
             return array(
@@ -1768,6 +1778,105 @@ function _pg_lc_view_order_map($none)
         'replace' => array('/order_history_reorder.php?id=^^__order_id^^' => '^^__reorder_url^^'),
         'record' => true,
     );
+}
+
+// The login page and the three password pages (login_form,
+// forgot_password, set_password, change_password widgets): one form each,
+// whose <form> tags go (the widget draws its own, posting to the classic
+// handler, so the controls keep their classic names). The widget fills,
+// drops and checks the controls itself: a password hint box goes while
+// the site asks for none, the current password while the account has
+// none. The strong password rules are the widget's password_rules section.
+function _pg_lc_password_map($type, $none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $map = array(
+        'echo' => $none,
+        'if' => array(
+            '$strong_password_help' => array('becomes' => 'section', 'section' => 'password_rules'),
+            // The widget drops the hint box (and a wrapper left empty)
+            // while the site asks for no hint.
+            'PASSWORD_HINT' => array('becomes' => 'keep'),
+        ),
+        'else' => array(),
+        'loop' => array(),
+        'forms' => 'strip',
+        'record' => true,
+    );
+    switch ((string)$type) {
+        case 'login':
+            $map['echo'] += array(
+                "\$google_signin ?? ''" => 'section:google_signin',
+                'h($forgot_password_url)' => 'token:__forgot_password_url',
+            );
+            // The box's label holds words of its own: a flag, not the
+            // widget's drop of the control alone.
+            $map['if']['REMEMBER_ME'] = $flag('shows_remember_me');
+            $map['if']['$forgot_password_url'] = $flag('has_forgot_password_link');
+            break;
+        case 'forgot password':
+            $map['if']['!$screen'] = array('becomes' => 'keep');
+            // The hint screen: forgot_password.php shows it no more (a
+            // hint would tell which addresses hold an account), so the
+            // setting it needs is never on.
+            $map['if']["elseif:\$screen == 'password_hint'"] = array('becomes' => 'drop', 'state' => array('password_hint_screen'));
+            break;
+        case 'set password':
+            $map['echo']['h($email)'] = 'token:__email';
+            break;
+        case 'change password':
+            $map['echo']['h($my_account_url)'] = 'token:__my_account_url';
+            // The widget drops a link bound to an empty address.
+            $map['if']['$my_account_url'] = array('becomes' => 'keep');
+            $map['if']['!empty($password_not_set)'] = $flag('password_not_set');
+            $map['else']['!empty($password_not_set)'] = 'has_password';
+            break;
+    }
+    return $map;
+}
+
+// The profile and e-mail preferences pages (account_profile,
+// email_preferences widgets): the member's own form, its <form> tags gone
+// as on the password pages. The widget fills the controls by their classic
+// names and drops a link bound to an empty address.
+function _pg_lc_account_form_map($type, $none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $map = array(
+        'echo' => $none + array('h($my_account_url)' => 'token:__my_account_url'),
+        'if' => array('$my_account_url' => array('becomes' => 'keep')),
+        'else' => array(),
+        'loop' => array(),
+        'forms' => 'strip',
+        'record' => true,
+    );
+    if ((string)$type === 'my account profile') {
+        // The time zone row: every PHP the site runs on offers it.
+        $map['if']['$timezone'] = array('becomes' => 'keep');
+        return $map;
+    }
+    // E-mail preferences: the mailing lists are the widget's list, a row's
+    // box named by the widget; the SMS box under the widget's flag (its
+    // label holds words of its own).
+    $map['echo'] += array(
+        'h(OPT_IN_LABEL)' => 'token:__opt_in_label',
+        'h(pg_sms_opt_in_label())' => 'token:__opt_in_sms_label',
+        "\$contact_group['id']" => 'token:__group_id',
+        "h(\$contact_group['name'])" => 'token:__group_name',
+        "h(\$contact_group['description'])" => 'token:__group_description',
+    );
+    $map['if'] += array(
+        '$sms_opt_in' => $flag('shows_opt_in_sms'),
+        '$contact_groups' => $flag('has_contact_groups'),
+        "\$contact_group['description']" => $flag('group_has_description'),
+    );
+    $map['loop'] = array('$contact_groups as $contact_group' => 'list');
+    $map['flag_list'] = true;
+    unset($map['record']);
+    // The classic page's script shows the lists once the opt-in is ticked;
+    // the widget always shows them.
+    $map['replace'] = array(' style="display: none"' => '');
+    return $map;
 }
 
 /**
