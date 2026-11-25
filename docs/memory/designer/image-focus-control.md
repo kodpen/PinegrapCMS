@@ -25,6 +25,6 @@ module: image_focus
 ## How is it loaded and tested?
 - Part `focus`: `assets/js/style_designer_focus.min.js` = `pg_image_focus.js` (window.PGImageFocus(F), pure, over the core twins) + `style_designer_focus.js`. The core keeps `_sdFocusTakes/Place/Host/Bind()`; the place is `<div class="sd-fc" data-sd-focus="image|background">`. A closed Bg Image group loads the part on first open.
 - `tests/designer_image_focus_control_test.php`: views per screen, own values, typed, keys, pointer, Reset, Same on every screen, shapes, wiring. Not unit-tested: drawing and dragging in a browser.
-- Measured (PR of IF2): core `style_designer.min.js` +4.3 KB; part 9 KB loaded only when a control is shown; Node edit-cycle timing on the fixture unchanged within spread.
+- Measured (PR #11576): core `style_designer.min.js` +4.3 KB; part 9 KB loaded only when a control is shown; Node edit-cycle timing on the fixture unchanged within spread.
 
 Related: docs/memory/designer/image-focus-value.md, docs/memory/designer/designer-image-focus-drawing.md, docs/memory/designer/designer-parts-on-demand.md

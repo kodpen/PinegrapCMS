@@ -26,4 +26,4 @@ module: image_focus
 - Image: the page's `_render_content_html()`, the editor's `toHTML()`, the canvas's `render()` and the `_inlineBase` of `buildNodeEl()`; `tests/designer_image_size_test.php` holds a per screen case for all three.
 - Background: `pg_focus_style_read()` / `pg_focus_style_write()` (twins `_sdFocusStyleRead/Write()`) read and replace `background-position` in the style text in place; a `;` inside `url("data:…")` is kept. The caller adds or removes `pg-focus` in the node's classes by `pg_focus_has_screens()`.
 
-Related: docs/memory/designer/image-size-props.md, docs/memory/designer/designer-block-style.md, docs/memory/plans/designer-image-focus.md
+Related: docs/memory/designer/image-focus-overview.md, docs/memory/designer/image-size-props.md, docs/memory/designer/designer-block-style.md

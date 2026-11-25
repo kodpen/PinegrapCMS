@@ -21,7 +21,7 @@ priority: 7
 - DO8 (S) Done (#11587). "Scroll snap" on a flex or grid container (None, Always, Near) and "Snap to" on its children (Start, Centre, End). The scroller component keeps its own (`designer/designer-scroller-wide-slides.md`).
 - DO9 (S) after DO8: Aspect Ratio on any element as CSS `aspect-ratio` with no wrapper, adding 3:2, 2:3, 9:16 and 4:5; per size once DO2 has landed. Object Fit on a video and a background video.
   - An element that uses today's ratio wrapper stays as it is until its ratio is changed.
-  - A picture's position is the Focus control of `designer-image-focus.md`, never a second picker; a video gets that control after IF2.
+  - A picture's position is the Focus control (`designer/image-focus-overview.md`), never a second picker; a video gets that control too.
 
 ## What do these steps read from the look?
 - `--bs-breakpoint-*` for the sizes and `--bs-gutter-x` for a grid's first gap. Bootstrap 5.3 keeps its layer numbers in Sass, so DO7's list names them.

@@ -33,7 +33,7 @@ priority: 8
 - DD7 (M) Done (#11547). `designer-publish-check.md`: the sheet's results, the five groups, a finding with Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
 - DD8 (M) Done (#11550). `designer-canvas-guides.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
 - DD9 (M) Done (#11559). `designer-my-library.md`: the save window, "My library" in Blocks, "Manage library", Export and Import. Holds ML2 to ML4.
-- DD10 (S) Done (#11561). `designer-image-focus.md`: the Focus control with its three frames, "Set focus" on the canvas. Holds IF2, IF3.
+- DD10 (S) Done (#11561). `designer/designer-image-focus-drawing.md`: the Focus control, "Set focus". IF2, IF3 built.
 - DD11 (S) Done (#11565). `designer-phone-preview-drawing.md`: the QR code window, the phone's thin line, the signed-in case. Holds PP2, PP3.
 - DD4 (M) after SK2 and ST2 have landed: the Sketch tool and the New design window as they should look.
 
