@@ -216,3 +216,24 @@ function test_component_overrides_browser_twin_answers_the_same()
 	pg_assert_same(array(pg_co_clean_value('picture', '/x.png'), null, null), $js['clean'], 'the same value rules');
 	pg_assert_same(array(array('of_a' => 'x'), array(), array()), $js['place'], 'the same place values');
 }
+
+// The component's settings keep the order every place lists the fields in:
+// the root's `props._openOrder`. Ids it names come first, in its order; the
+// rest follow in document order; an id no open field has is skipped. The
+// designer's trees name a node by `_id`, which is the field's nodeId.
+function test_component_overrides_order_and_designer_ids()
+{
+	$tree = component_overrides_test_tree();
+	$tree['props']['_openOrder'] = array('of_note', 'of_gone', 'of_link', 7);
+	$tree['children'][0]['_id'] = 'sd_7';
+	$ids = array_map(function ($f) { return $f['id']; }, pg_co_open_fields($tree));
+	pg_assert_same(array('of_note', 'of_link', 'of_title', 'of_pic', 'of_icon', 'of_ref'), $ids, 'the stored order first, then document order');
+	$fields = pg_co_open_fields($tree);
+	pg_assert_same('sd_7', $fields[2]['nodeId'], 'a designer node is named by its _id');
+
+	$js = component_overrides_test_node('out = C.openFields(' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ');');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same($fields, $js, 'the twin orders the same');
+}
