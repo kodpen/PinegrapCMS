@@ -362,6 +362,7 @@
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
 - designer-canvas-guides-drawing.md: The drawing of plan designer-canvas-guides (DD8): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
 - designer-canvas-guides-geometry.md: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
+- designer-canvas-guides-measure.md: Measure on the designer canvas (CG2 #11570): Alt held with one element selected draws the distances to the element pointed at, in the part guides, outside the page
 - designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 - designer-canvas-mirror.md: The canvas mirror as the designer part 'mirror' (SS1, #11535): a frame filled from the canvas's markup without the editor, redrawn when the hand rests; its pure scheduling PGMirrorSchedule
 - designer-canvas-open-state.md: A modal, offcanvas or dropdown menu open on the canvas is canvas state only: renderCanvas() keeps it through a redraw, the tree never holds it, preview and code view show it closed.
@@ -415,6 +416,7 @@
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 - designer-interactions-chapter.md: The chapter interaction (Colour chapter): the page takes a section's background and text colour while it holds the window's middle; fields, script, reduced motion, canvas, panel, tests.
 - designer-interactions-count.md: The count interaction (Count up): fields, how pg_fx.src.js reads the first number and counts it, reduced motion, the canvas, the panel, tests.
+- designer-interactions-more-entrances.md: The four later entrances (Zoom out, Blur in, Rotate in, Reveal, DO18): start and hover states, what Distance means for each, Reveal entrance-only, filter and clip-path composed with the node's own
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
 - designer-interactions-part.md: The Interactions section of the designer's properties panel as the part 'interactions' (D5 part 7): what moved, what the core keeps, when it loads
 - designer-interactions-script.md: What pg_fx.src.js does: entrance start states and the observer, stagger, hover and click, parallax, scroll-linked effects, the node's own styles, reduced motion, pgFxBind.
@@ -557,6 +559,7 @@
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - figma-import-converter.md: The Figma converter (#11509): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step [decision: here]
+- figma-start-frame-list.md: The Figma start of the New design window (#11558, ST3): when it is listed, the pane's states, the server reads (figma_file, figma_pictures), the frame list part and what Next hands on
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-feed-detail-access.md: A form list's ?rss=true item whose detail page is not public is a teaser (title, link, guid, pubDate, category; no description, no media), whoever asks; both feeds (#11462, bug #11440) [decision: decisions-made-product-109.md]
 - form-feed-item-guid-enclosure.md: A form feed item's guid is unique per record (permalink with a detail page, page#code without one); a typed media address gets length 0 and a type from its extension, or no enclosure
