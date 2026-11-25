@@ -9,7 +9,7 @@ description: Options panel census, part 3: gaps to dress and move an element (ho
 
 ## Transitions and entrance motion?
 - A transition between states is code. Missing: Transition (property group, duration, easing) on the element. S. Reads `--pg-duration` and `--pg-ease`.
-- Entrance motion has six effects (Fade in, four slides, Scale) with Duration, Delay, Easing, Distance, Stagger. Missing: zoom out, blur in, rotate in, clip reveal, and a choice of easing curves beyond the stored list. S each. Reads `--pg-duration`, `--pg-ease`. Endless motion (pulse, float) is not offered; `designer-block-motion.md` binds what blocks may do.
+- Entrance motion has ten effects (Fade in, four slides, Scale, and Zoom out, Blur in, Rotate in, Reveal since DO18: `designer-interactions-more-entrances.md`) with Duration, Delay, Easing, Distance, Stagger. Missing: a choice of easing curves beyond the stored list. S. Reads `--pg-duration`, `--pg-ease`. Endless motion (pulse, float) is not offered; `designer-block-motion.md` binds what blocks may do.
 
 ## Gradients and several backgrounds?
 - Custom Background Color gives one gradient of two colours with a middle, and Bg Image one picture. A picture over a gradient, a gradient overlay on a photo, three or more stops, conic gradients are code. Missing: a list of background layers (colour, gradient, picture) in order, each with its own size, position and repeat. M. Reads the theme colours as stop choices.
