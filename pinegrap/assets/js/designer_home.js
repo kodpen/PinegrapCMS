@@ -955,6 +955,8 @@
                 return;
             }
 
+            leaveQuestions();
+
             if (tab.getAttribute('data-start') === 'template' && C.templatesStale && C.templateUrl) {
                 window.location.href = C.templateUrl;
                 return;
@@ -1006,6 +1008,132 @@
         });
 
         win.addEventListener('change', syncGo);
+
+        // The design variables' start questions: after the start's own form
+        // of a design built with Bootstrap 5, the pane turns into five
+        // questions (assets/js/designer_questions.js and its data, both
+        // fetched the first time). Their answers ride on the address the
+        // filled button leads to; skipping all five leads where it did.
+        var asking = null;
+        var questionsReady = null;
+
+        function questionsLoad() {
+            if (questionsReady) {
+                return questionsReady;
+            }
+
+            var script = new Promise(function (resolve, reject) {
+                if (window.pgStartQuestions) {
+                    resolve();
+                    return;
+                }
+                var el = document.createElement('script');
+                el.src = (C.partBase || 'assets/js/') + 'designer_questions.js' + (C.questionsStamp ? '?v=' + C.questionsStamp : '');
+                el.onload = resolve;
+                el.onerror = function () {
+                    el.remove();
+                    reject();
+                };
+                document.head.appendChild(el);
+            });
+            var data = api({ action: 'designer', sub_action: 'variables_state', questions: 1 }).then(function (res) {
+                if (!res || res.status !== 'success' || !res.questions) {
+                    throw new Error('questions');
+                }
+                return res.questions;
+            });
+
+            questionsReady = Promise.all([script, data]).then(function (both) {
+                return both[1];
+            }).catch(function () {
+                questionsReady = null;
+                return null;
+            });
+
+            return questionsReady;
+        }
+
+        function leaveQuestions() {
+            if (!asking) {
+                return;
+            }
+
+            asking.mounted.off();
+            asking.box.remove();
+            asking.foot.remove();
+            Array.prototype.forEach.call(asking.pane.children, function (child) {
+                child.hidden = child.hasAttribute('data-q-hidden') ? child.hidden : false;
+                child.removeAttribute('data-q-hidden');
+            });
+            asking.hide.forEach(function (el) {
+                el.classList.remove('d-none');
+            });
+            asking = null;
+            syncGo();
+        }
+
+        function askQuestions(pane, href) {
+            questionsLoad().then(function (q) {
+                if (!q) {
+                    // Without the questions the design opens as before.
+                    window.location.href = href;
+                    return;
+                }
+
+                if (asking || pane.hidden) {
+                    return;
+                }
+
+                Array.prototype.forEach.call(pane.children, function (child) {
+                    if (child.hidden) {
+                        child.setAttribute('data-q-hidden', '');
+                    }
+                    child.hidden = true;
+                });
+
+                var box = document.createElement('div');
+                var foot = document.createElement('span');
+                var hide = Array.prototype.slice.call(win.querySelectorAll('.dialog-footer > [data-bs-dismiss="dialog"], #sd-ns-go'));
+
+                foot.className = 'd-contents';
+                pane.appendChild(box);
+                go.parentNode.insertBefore(foot, go);
+                hide.forEach(function (el) {
+                    el.classList.add('d-none');
+                });
+
+                asking = { pane: pane, box: box, foot: foot, hide: hide, mounted: null };
+                asking.mounted = window.pgStartQuestions.mount({
+                    el: box,
+                    foot: foot,
+                    q: q,
+                    mode: 'window',
+                    btn: { fill: 'pg-button pg-button-fill', quiet: 'pg-button pg-button-quiet', ghost: 'pg-button pg-button-ghost' },
+                    back: leaveQuestions,
+                    cancel: leaveQuestions,
+                    done: function (answers) {
+                        var any = Object.keys(answers).some(function (k) { return !!answers[k]; });
+                        window.location.href = href + (any ? '&answers=' + encodeURIComponent(JSON.stringify(answers)) : '');
+                    }
+                });
+            });
+        }
+
+        if (go) {
+            go.addEventListener('click', function (event) {
+                var pane = win.querySelector('.sd-ns-pane:not([hidden])');
+                var pick = pane ? pane.querySelector('input[type="radio"][data-href]:checked') : null;
+
+                if (!pick || pick.value !== 'bootstrap5' || asking || event.ctrlKey || event.metaKey || event.shiftKey) {
+                    return;
+                }
+
+                event.preventDefault();
+                askQuestions(pane, go.href);
+            });
+        }
+
+        pgUI.dialog.on(win, 'hidden', leaveQuestions);
 
         pgUI.dialog.on(win, 'show', function (event) {
             var source = event.relatedTarget;

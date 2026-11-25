@@ -76015,7 +76015,9 @@ const StyleDesigner = (function () {
         var pal  = _sdThemeFind('palette', _sdThemeValue('palette'));
         var lookCss = _sdThemeTry.look, palCss = _sdThemeTry.palette;
         // The design's variables: the tab's model being tried, else the
-        // saved file (sdDesign.themes.variables, '' for none).
+        // saved file (sdDesign.themes.variables, '' for none). A new design
+        // made from the start questions brings its stylesheet to try on.
+        if (th.variablesTry) { _sdThemeTry.variables = th.variablesTry; th.variablesTry = ''; }
         var varCss = _sdThemeTry.variables, varUrl = varCss ? '' : (th.variables || '');
         if (!look && !pal && !lookCss && !palCss && !varCss && !varUrl) return out;
         out.push({ id: 'pg-theme-bridge', url: th.bridge });
@@ -76237,8 +76239,14 @@ const StyleDesigner = (function () {
         });
         tabs += '</div>';
         if (_sdThemePaneTab === 'variables') {
-            host.innerHTML = tabs + '<div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
+            // "More" at the row's right: the tab's rarer actions as rows of
+            // its menu, never buttons of their own.
+            var more = '<details class="sd-vars-more ms-auto position-relative">' +
+                '<summary class="btn btn-sm btn-link theme-secondary"><span class="bi bi-three-dots me-1" aria-hidden="true"></span>' + esc(_sdT('More')) + '</summary>' +
+                '<div class="dropdown-menu show end-0" role="menu"><button type="button" class="dropdown-item" role="menuitem" data-th-ask>' + esc(_sdT('Ask me again')) + '</button></div></details>';
+            host.innerHTML = '<div class="d-flex align-items-start gap-2">' + tabs + more + '</div><div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
             _sdThemeBindTabs(host);
+            host.querySelector('[data-th-ask]').addEventListener('click', _sdVarsAskAgain);
             _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
             return;
         }
@@ -76455,6 +76463,22 @@ const StyleDesigner = (function () {
             setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
             tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
         };
+    }
+
+    // "Ask me again": the start questions (the part 'questions') in place of
+    // the folds; the answers replace the four groups' values, a chosen feel
+    // the look. Cancel goes back to the folds with nothing changed.
+    function _sdVarsAskAgain() {
+        var pane = document.getElementById('sd-vars-pane');
+        if (!pane) return;
+        var more = document.querySelector('.sd-vars-more');
+        if (more) more.open = false;
+        var host = _sdVarsHost(pane);
+        host.setLook = function (key) { _sdThemeChoose('look', key); };
+        host.close = function () { _sdThemeRender(); };
+        // No filled button here: the window's Publish is the filled one.
+        host.btn = { fill: 'btn btn-sm btn-outline theme-primary', quiet: 'btn btn-sm btn-outline theme-secondary', ghost: 'btn btn-sm btn-link theme-secondary' };
+        _sdPartCall('questions', 'ask', [host]).catch(_sdPartFailed);
     }
 
     // A changed look or palette carries the variables along (the untouched

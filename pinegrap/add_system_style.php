@@ -70,6 +70,14 @@ if (!$template && pg_design_framework_has($framework, 'legacy')) $framework = 'b
 $look = isset($_GET['look']) ? pg_design_look_key($_GET['look'])
                              : ($template ? pg_design_default_look() : '');
 $palette = isset($_GET['palette']) ? pg_design_palette_key($_GET['palette']) : '';
+// The start questions of the New design window (?answers=, JSON): the feel
+// chooses the look, the other answers the variables the first save writes.
+$sd_start_vars = null;
+if (!$template && isset($_GET['answers']) && is_string($_GET['answers'])) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+    $sd_start_vars = pg_design_variables_start($_GET['answers'], $look, $palette);
+    $look = $sd_start_vars['look'];
+}
 // A new e-mail design wears the site's palette, so its canvas and the mail
 // it sends are in the site's colours.
 if ($start === 'email' && !isset($_GET['palette'])) $palette = pg_email_site_palette();
@@ -125,6 +133,8 @@ if (!$_POST) {
         'send_to'        => '',
         'from_pages'     => $from_pages,
         'delete_button'  => '',
+        // The start questions' variables model and its stylesheet, or null.
+        'start_variables' => ($sd_start_vars && $sd_start_vars['model']) ? $sd_start_vars : null,
         'auto_import'    => ($start === 'import'),
         'auto_paste'     => ($start === 'paste'),
         'template'       => $template ? pg_design_template_summary($template) : null,
