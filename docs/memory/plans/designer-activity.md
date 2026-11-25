@@ -17,15 +17,16 @@ priority: 5
 - It is read from rows the product already keeps: page versions, share links and their answers, content changes applied. Fifty at a time, more as the list is scrolled.
 
 ## What must it keep?
-- No new table or column in this plan. AC1 lists what leaves no row today (a shared component's save, a theme or variables save, a page deleted) and brings it to the architect as one question; a store for those is the owner's to decide, and the tab ships without them.
+- No new table or column in this plan. What leaves no page version (a shared component's save, a theme or variables save, a page deleted) is read from the audit trail; AC5 adds the lines missing there (`designer/designer-activity-audit-trail.md`, architect 2026-11-25).
 - The designer roles see the design's whole list; a content editor sees the rows of the pages that are theirs.
 - A person erased from the site shows as the panel shows an erased user; the list keeps no name of its own.
 - Read only when the tab is opened.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- AC1 (S) Census, no product code, written to `designer/`: every writer that changes a design and the row it leaves or does not; the question for the architect.
+- AC1 (S) Census, no product code, written to `designer/`: every writer that changes a design and the row it leaves or does not; the question for the architect. Done (#11579): `designer/designer-activity-writers.md`.
 - AC2 (M) after AC1: the reader: events from the rows that exist, their sentences, pages of fifty, rights; tests.
 - AC3 (M) after AC2, CL1 of the compare plan and DD21: the Activity tab, its choosers, the row that opens Compare.
+- AC5 (M) after AC2: the audit trail's missing lines (a shared component's writes; a design's save, rename, duplicate, delete and draft switch; the scheduled job taking a page on or off the site) and the reader's sentences for them, as `designer/designer-activity-audit-trail.md`; tests. Before AC4.
 - AC4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
