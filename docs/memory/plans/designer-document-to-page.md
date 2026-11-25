@@ -25,9 +25,9 @@ priority: 5
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - FD1 (M) The reader, pure: paragraphs with their styles in, sections with kinds and unsure marks out. Done (#11533, `designer/document-reader.md`; kinds intro, text, cards, questions, figures, testimonial, table, prices, contact, picture, gallery: FD3 maps them to SK3 starters).
 - FD2 (S) A .docx, .md or .txt to paragraphs through the own reader; pictures taken out. Done (#11601, `designer/document-paragraphs.md`; a .md or .txt comes back as text for `PGDocumentReader.paragraphs()`, pictures as a list, `src` `picture:<n>` until FD3 stores them).
-- FD3 (M) after FD1, FD2, SK3, ST2 and DD19: the start's form, the rows, "Build the page".
-- FD4 (S) after FD3: "Sort it for me".
+- FD3 (M) after FD1, FD2, SK3 and ST2: the start's form, the rows, "Build the page"; boards F1 to F4 and F6 of the drawing. The PR body carries a table of the boards: what was built for each, what differs and why.
+- FD4 (S) after FD3: "Sort it for me"; board F5. The PR body carries a table of the boards: what was built for each, what differs and why.
 - FD5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
-- No table or column. The drawing: `designer-drawings-levels.md`. Claim as `[plan:designer-document-to-page] <step> — <topic>`.
+- No table or column. The drawing: `designer/designer-document-to-page-drawing.md` and `designer-document-to-page-rows-drawing.md`; it decides where the two differ (`workflow/screen-follows-drawing.md`). Claim as `[plan:designer-document-to-page] <step> — <topic>`.
