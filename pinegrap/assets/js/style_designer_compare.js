@@ -7,7 +7,8 @@
  * page, one over the other with a slider handle between them, or "Side by
  * side", at a desktop's (1280 px) or a phone's (390 px) width; "Code" is
  * the line diff of their markup. Opened from History, each side's name is
- * a chooser and "Load this revision" loads the left side.
+ * a chooser and "Load this revision" loads the revision whose row opened
+ * it, else the left side.
  *
  * The pictures are drawn by the server as a signed-out visitor is served
  * the page (designer/compare_render), one after the other, in frames that
@@ -344,8 +345,9 @@ StyleDesigner.definePart('compare', function (K) {
         });
         var loadBtn = w.q('[data-cmp="load"]');
         if (loadBtn) loadBtn.addEventListener('click', function () {
-            var s = w.sides.before;
-            if (loadBtn.disabled || s.kind !== 'rev') return;
+            var k = L.loadSide(w.sides, w.opts.history);
+            var s = k ? w.sides[k] : null;
+            if (loadBtn.disabled || !s) return;
             var pageId = w.pageId, done = w.opts.done;
             close();
             K._sdRevisionRestore(pageId, s.no, done);
@@ -423,7 +425,7 @@ StyleDesigner.definePart('compare', function (K) {
         var who = w.q('.sd-cmp-who');
         if (who && o.history) who.textContent = sideDetail({ kind: 'rev', no: o.history });
         var loadBtn = w.q('[data-cmp="load"]');
-        if (loadBtn && !K._sdRevisionLoadRefusal()) loadBtn.disabled = (w.sides.before.kind !== 'rev');
+        if (loadBtn && !K._sdRevisionLoadRefusal()) loadBtn.disabled = !L.loadSide(w.sides, o.history);
     }
 
     // ── Pictures ──

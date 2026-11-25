@@ -20,7 +20,7 @@ module: designer_activity
 
 ## What is a row?
 - Day heads: Today, Yesterday, the weekday and date, the year when not this one (local time). The kind's grey mark, the person in bold, the reader's sentence, the hour; "change by …" for an applied change.
-- A page's version with a version before it is a button: Compare opens with `left: 'rev:<n-1>', right: 'rev:<n>', history: n`; closing Compare gives the tab back as it was. Revision 1 reads "first version" and opens nothing.
+- A page's version with a version before it is a button: Compare opens with `left: 'rev:<n-1>', right: 'rev:<n>', history: n`; closing Compare gives the tab back as it was. "Load this revision" there loads n (`designer-compare-look-tab.md`). Revision 1 reads "first version" and opens nothing.
 - The count: for the version rows in view, one at a time 300 ms after the list rests, both revisions read with `revision_get` (up to 24 trees kept), `PgCompareChanges.read()` and `rows()` (the part `compare` is loaded for it). "12 changes", "1 change", "settings only", empty when it cannot be made.
 
 ## Tests?
