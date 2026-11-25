@@ -553,6 +553,8 @@
 - designer-start-import-drawing-home-line.md: The line a Figma import puts on the design's card of the designs home, as drawn (figma.html, B11 and B12, ST5b): four states, "Continue", the dialog "Stop" opens, "Report"
 - designer-start-import-drawing.md: The drawing of the Figma and Canva starts (plans/designer-start-import.md, ST3, ST5a, ST5b and ST6): the three sheets, where each part is described, and which board belongs to which step
 - designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
+- designer-style-guide-blocks-drawing.md: The drawing of the Style guide's blocks Type, Spacing, Shape, Controls and Components, a name's click through to its variable or component, and the print sheet (boards G2 to G4, G6)
+- designer-style-guide-drawing.md: The drawing of the designer's Style guide: the Preview menu row, the window with its head and strip, the Colours block, dark, a design with no variables, a phone's width (boards G1, G5, G7)
 - designer-tab-anchor.md: A link or search result to an element inside a Bootstrap tab not shown opens that tab and scrolls to it: pg_bs_tips.js on load and hashchange, pg_search_highlight.js reveal() (#4823).
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout): shape, own endpoint apart from Save, twin normalisers, colours, the open group, the fitting strip, drag.
 - designer-tab-states.md: A designer page tab's states beside its name (D49): changed dot, lock of a page another person edits, home icon, draft pill, end mark; order, tip, narrow form
