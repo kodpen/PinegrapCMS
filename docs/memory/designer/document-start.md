@@ -7,7 +7,7 @@ module: document_start
 ## Where does it open?
 - The New design window's row "From a document" ("A text or a Word file"), after Canva and before ZIP file (`pg_designer_start_kinds()`), pane heading "Start from a document"; its pane has `data-part="document"` (`pg_designer_start_part_attrs()`), so `designer_home.js` loads `assets/js/designer_document.js` on first choice, which loads `pg_document_reader.js` and `pg_document_rows.js`.
 - In the designer: the command palette's "Page from a document", listed only on an empty page of a full-access editor (`_sdDocumentReady()`), opens the same form in the designer's own window (the part `document`, `when` always, the core decides). No bar button.
-- The empty canvas's third card (first-tour plan, T6) is not built here; it calls `_sdDocumentOpen()` once that plan lands.
+- The empty canvas's third card "From a document" (`designer-first-tour-help.md`) shows while `_sdDocumentReady()` and calls `_sdDocumentOpen()`.
 
 ## How are the form and the rows put together?
 - `PGDocumentRows.mount({box, foot, texts, reader, readFile, pickFile, build, cancel, head, dropArea, css})` draws both, in the home pane and the editor window alike; the texts come from `pg_document_start_texts()` (the pane's `data-texts`, or `designer_document.php?texts=1` for the editor), so one list is translated.
