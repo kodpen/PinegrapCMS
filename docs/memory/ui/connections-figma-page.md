@@ -16,6 +16,6 @@ module: figma
 ## What does a save do?
 - `figma_save`: the field's form only (`pg_figma_token_valid()`), then "Save" stores it as `untried`; "Save and try" asks `GET /v1/me` first and stores nothing when Figma refuses (field red) or does not answer. A 403 for the scope (no "Current user") is accepted with no name.
 - Stored sealed with `pg_connect_service_put('figma', …)`: token, name (only the handle; never e-mail or picture), state `untried|ok|refused`, tried time. No table or column.
-- A file read that Figma refuses for the token marks it `refused` (`pg_figma_connection_refused()`); the next successful read marks it `ok`.
+- A file read, or the import's nodes read, that Figma refuses for the token marks it `refused` (`pg_figma_connection_refused()`); the next successful read marks it `ok`.
 
 Tests: `tests/figma_test.php` (`test_figma_on_connections`), the count in the `connections_*` tests.

@@ -150,3 +150,68 @@ function test_figma_import_path_is_the_sessions()
 	pg_assert_same('', pg_figma_import_path('../etc'), 'only an import id');
 	pg_assert_contains('/data/temp/figma_', pg_figma_import_path('0123456789abcdef'));
 }
+
+// A frame step that ends after "Stop" removed the work file does not write
+// it back: the import stays stopped and leaves no file in data/temp.
+function test_figma_frame_step_after_stop_keeps_nothing()
+{
+	$id = 'f1a2b3c4d5e6f7a8';
+	$path = pg_figma_import_path($id);
+	@unlink($path);
+	pg_assert_same(false, pg_figma_import_keep_step($id, array('frames' => array()), array()), 'stopped: not kept');
+	pg_assert_same(false, is_file($path), 'no work file written back');
+	pg_assert_true(pg_figma_import_keep($id, array('frames' => array())), 'a running import');
+	pg_assert_same(true, pg_figma_import_keep_step($id, array('frames' => array(1)), array()), 'running: kept');
+	pg_assert_same(array(1), pg_figma_import_load($id)['frames'], 'the step is written');
+	@unlink($path);
+}
+
+// One image fill on many layers is fetched once, so it spends one place of
+// the import's picture budget, not one per layer.
+function test_figma_picture_budget_counts_a_fill_once()
+{
+	$pic = function ($n, $ref) {
+		return array('node' => 'sd_' . $n, 'figma' => '1:' . $n, 'kind' => 'image', 'image_ref' => $ref);
+	};
+	$frames = array(
+		array('pictures' => array($pic(1, 'logo'), $pic(2, 'logo'), $pic(3, 'hero')), 'report' => array()),
+		array('pictures' => array($pic(4, 'logo'), $pic(5, 'team'), array('node' => 'sd_6', 'figma' => '1:6', 'kind' => 'vector', 'image_ref' => '')), 'report' => array()),
+	);
+	$plan = pg_figma_picture_budget($frames, 3);
+	pg_assert_same(3, count($plan['frames'][0]['pictures']), 'the logo three times and the hero');
+	pg_assert_same(array(), $plan['frames'][0]['report'], 'nothing over the budget on the first frame');
+	pg_assert_same(2, count($plan['frames'][1]['pictures']), 'the logo again and the team picture; the vector is over');
+	pg_assert_same('pictures', $plan['frames'][1]['report'][0]['code'], 'the vector over the budget is a note');
+	pg_assert_same(array(), $plan['vectors'], 'no vector fetched');
+	pg_assert_same(true, $plan['fills'], 'image fills to ask for');
+}
+
+// A frame whose picture step never ended (the request failed) still has its
+// pictures listed at finish: each is a note, so the report does not call
+// the frame carried whole while its pictures are missing.
+function test_figma_report_notes_pictures_never_fetched()
+{
+	$frame = array('name' => 'Home', 'failed' => false, 'report' => array(),
+		'tree' => array('_id' => 'sd_1', 'type' => 'root', 'props' => array(), 'children' => array(
+			array('_id' => 'sd_2', 'type' => 'image', 'props' => array('customName' => 'Hero', 'src' => ''), 'children' => array()))),
+		'pictures' => array(array('node' => 'sd_2', 'figma' => '1:2', 'kind' => 'image', 'image_ref' => 'abc')));
+	$left = pg_figma_frame_unfetched($frame);
+	pg_assert_same(array(), $left['pictures'], 'no picture is left to fetch');
+	pg_assert_same('picture', $left['report'][0]['code'], 'the missing picture is a note');
+	pg_assert_same('Hero', $left['report'][0]['name'], 'naming its layer');
+	pg_assert_same('notes', pg_figma_report_frame($left)['state'], 'not carried whole');
+	$done = $frame;
+	$done['pictures'] = array();
+	pg_assert_same($done, pg_figma_frame_unfetched($done), 'a frame fetched is as it was');
+}
+
+// The import's reads mark a token Figma refuses, as the file read does, so
+// Connections shows "Figma no longer accepts the stored token" too. A
+// source check: the reads need Figma.
+function test_figma_import_start_marks_a_refused_token()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
+	$start = substr($source, strpos($source, 'function pg_figma_import_start('));
+	$start = substr($start, 0, strpos($start, "\n}\n"));
+	pg_assert_contains('pg_figma_connection_refused()', $start, 'the start marks the token');
+}
