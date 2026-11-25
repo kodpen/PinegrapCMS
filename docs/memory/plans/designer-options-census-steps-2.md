@@ -6,6 +6,7 @@ priority: 7
 
 ## What holds for these steps?
 - The frame of `designer-options-census.md`. The gaps as counted: `designer/options-panel-census-look.md`.
+- DO10 to DO12 are built as drawn in `designer/designer-options-states-drawing.md` (the State row, Transition, Transform, a section's "More"); the drawing wins where it differs from the lines below.
 
 ## Which steps add states and shapes? (line "states and shapes")
 - DO10 (M) after DD22: States. A "State" row, first in the Style tab's body, never in the panel's head: Normal (the default), Hover, Focus, Pressed.
