@@ -137,6 +137,7 @@ description: Generated from the module field of the memory files: each includes/
 - `delivery_tower_tell`: [[delivery-tower-alerts-events]]
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
+- `design_style_guide`: [[design-style-guide-model]]
 - `design_themes`: [[design-theme-dark-lines]], [[design-theme-look-drawing]], [[design-theme-pale-colours]], [[design-theme-product-looks]]
 - `design_variables`: [[design-variables-model]]
 - `designer`: [[bound-media-src]], [[design-asset-path-placeholders]]
