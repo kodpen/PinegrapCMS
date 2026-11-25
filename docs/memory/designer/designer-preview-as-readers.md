@@ -1,6 +1,6 @@
 ---
 name: designer-preview-as-readers
-description: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview, the visitor still open
+description: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview
 module: designer_preview_render
 ---
 
@@ -12,4 +12,5 @@ module: designer_preview_render
 - The cart's recurring defaults (`UPDATE order_items`) are not written in a background render (PW2b, #11632); before, the Preview wrote them to the operator's own cart.
 
 ## Is the visitor read?
-- Not yet. Renderers read the `USER_LOGGED_IN` family of constants, which an `api.php` call sets for the operator, and the sample account has no user row; how a widget is drawn signed in, member or returning is with the architect (plan step PW2c).
+- Not until step PW2c lands. How it is read is decided: one viewer reader in place of the `USER_LOGGED_IN` family of constants, the sample account with no user row (`designer-preview-as-visitor.md`).
+
