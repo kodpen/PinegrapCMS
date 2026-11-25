@@ -809,11 +809,13 @@ StyleDesigner.definePart('styleguide', function (K) {
         var mine = W;
         W.printing = true;
         btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
         btn.textContent = _sdT('Getting it ready…');
         var finish = function () {
             if (W !== mine || !W.printing) return;
             W.printing = false;
             btn.disabled = false;
+            btn.removeAttribute('aria-busy');
             btn.innerHTML = printLabel();
             var win = W.frame.contentWindow;
             try { win.focus(); win.print(); } catch (e) { sdToast(esc(_sdT('The sheet could not be printed.')), 'error', 5000); }
