@@ -82,7 +82,7 @@ function test_canva_measure_reads_the_stored_size()
 	imagefilledrectangle($img, 0, 0, 63, 63, 0x2563EB);
 	imagefilledrectangle($img, 64, 0, 127, 63, 0xF59E0B);
 	imagepng($img, $path);
-	imagedestroy($img);
+	pg_image_destroy($img);
 	$colors = pg_canva_measure($path, 'png', 256, 128);
 	@unlink($path);
 	pg_assert_same(2, count($colors), 'both halves are measured');
