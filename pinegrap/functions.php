@@ -394,3 +394,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/launch_journey.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/launch_journey_site.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/launch_journey_path.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/launch_summary.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/component_overrides.php');
