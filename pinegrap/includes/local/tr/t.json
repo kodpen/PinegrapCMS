@@ -7484,6 +7484,7 @@
     "The shared part {var:1} could not be copied: no trial design was made.": "Paylaşılan parça {var:1} kopyalanamadı: deneme tasarımı yapılmadı.",
     "The shared secret of the relay (static-auth-secret).": "Aktarıcının paylaşılan gizli anahtarı (static-auth-secret).",
     "The shares of the box {var:1} add up to {var:2}%, not 100%.": "{var:1} kutusunun payları toplamı %100 değil, %{var:2}.",
+    "The sheet could not be printed.": "Sayfa yazdırılamadı.",
     "The sheet is empty.": "Sayfa boş.",
     "The sheet is protected and this cell is locked.": "Sayfa korumalı ve bu hücre kilitli.",
     "The sheet is protected: only its unlocked cells can be changed.": "Sayfa korumalı: yalnız kilidi açık hücreleri değiştirilebilir.",

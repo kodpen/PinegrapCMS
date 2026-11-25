@@ -90118,6 +90118,24 @@ const StyleDesigner = (function () {
                 try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
             },
             button: document.getElementById('sd-preview-menu-btn'),
+            // A name of the sheet: its variable in Settings, Theme,
+            // Variables, its fold open and its row marked.
+            openVariable: function (key) {
+                _sdThemePaneTab = 'variables';
+                _sdOpenThemeSettings();
+                var pane = document.getElementById('sd-vars-pane');
+                if (!pane) return;
+                _sdPartCall('variables', 'reveal', [_sdVarsHost(pane), key]).catch(_sdPartFailed);
+            },
+            // A component's name: the component opened on its own, in a new
+            // window, so the design's unsaved changes stay where they are.
+            openComponent: function (id) {
+                if (!(id > 0)) return;
+                var base = (typeof path !== 'undefined' ? path : '') + (typeof software_directory !== 'undefined' ? software_directory + '/' : '');
+                var url = base + 'edit_system_style.php?component=' + id + (_design && _design.styleId ? '&id=' + _design.styleId : '');
+                var w = window.open(url, '_blank');
+                if (w) w.opener = null;
+            },
             askQuestions: function () {
                 _sdThemePaneTab = 'variables';
                 _sdOpenThemeSettings();
