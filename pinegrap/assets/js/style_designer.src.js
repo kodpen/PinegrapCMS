@@ -31635,6 +31635,8 @@ const StyleDesigner = (function () {
         if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && _arc) {
             parts.push('--bs-aspect-ratio:' + _arc);
         }
+        var _asp = _sdRatioCss(_sdSizingValue(p.aspect));
+        if (_asp) parts.push('aspect-ratio:' + _asp);
         return parts.join(';');
     }
     // Set of all sizing-managed CSS class names that this module owns. When a
@@ -66043,6 +66045,7 @@ const StyleDesigner = (function () {
     function _sdLenCheck(kind, raw) {
         var s = String(raw == null ? '' : raw).trim();
         if (kind === 'z') return _sdZValid(s) ? '' : _sdT('Use a whole number or auto.');
+        if (kind === 'ratio') return _sdRatioCss(s) !== null ? '' : _sdT('Use a ratio such as 16:9, 4/5 or 1.5.');
         if (s === '') return '';
         var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
         var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
@@ -66058,6 +66061,40 @@ const StyleDesigner = (function () {
             if (depth === 0 && f[2].trim() !== '') return '';
         }
         return _sdT('Use a number with a unit (px, %, rem, vh), auto or calc().');
+    }
+
+    // A ratio typed into an Aspect Ratio row as CSS aspect-ratio: '16:9',
+    // '16x9' and '16/9' give '16 / 9', one number stays, auto stays, empty
+    // is ''; anything else (a zero side, a unit, a second value) is null.
+    // The page reads the prop the same way (pg_designer_css_ratio()).
+    function _sdRatioCss(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (s === '' || s === 'auto') return s;
+        var num = '(\\d+(?:\\.\\d+)?|\\.\\d+)';
+        var m = new RegExp('^' + num + '(?:\\s*[:x/]\\s*' + num + ')?$', 'i').exec(s);
+        if (!m || !(parseFloat(m[1]) > 0) || (m[2] !== undefined && !(parseFloat(m[2]) > 0))) return null;
+        return m[2] === undefined ? m[1] : m[1] + ' / ' + m[2];
+    }
+
+    // Whether an element stands on today's ratio box (Bootstrap's .ratio):
+    // the Sizing switch, or an Image's own ratio preset (its wrapper).
+    function _sdRatioBoxed(p, isImg) {
+        if (!p) return false;
+        return !!p.aspectRatioEnabled || (!!isImg && /^\d+x\d+$/.test(String(p.aspectRatio || '')));
+    }
+
+    // The ratio an element shows in its Aspect Ratio rows: its own
+    // aspect-ratio, else the ratio box it keeps until the ratio is changed
+    // ('16x9' as '16 / 9', a custom percentage as '100 / 56.25'); '' for none.
+    function _sdRatioOf(p, isImg) {
+        var own = _sdRatioCss(p && p.aspect);
+        if (own) return own;
+        if (!_sdRatioBoxed(p, isImg)) return '';
+        var ar = String(p.aspectRatio || '') || (p.aspectRatioEnabled ? '16x9' : '');
+        var m = /^(\d+)x(\d+)$/.exec(ar);
+        if (m) return m[1] + ' / ' + m[2];
+        var pc = /^(\d+(?:\.\d+)?)%$/.exec(String(p.aspectRatioCustom || '').trim());
+        return ar === 'custom' && pc && parseFloat(pc[1]) > 0 ? '100 / ' + pc[1] : '';
     }
 
     // The screen-size badge of a row whose classes are `prefix` + value at
