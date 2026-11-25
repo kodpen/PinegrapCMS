@@ -1243,6 +1243,17 @@ function pg_panel_designer($request, $action)
             respond(pg_proto_links_panel($sub, $request, $user));
             break;
 
+        // "Preview on a phone" (includes/fn/prototype_phone.php): the
+        // person's phone link of the design found again or made, and ended.
+        // Designers only, like the share links above.
+        case 'prototype_phone':
+        case 'prototype_phone_end':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+            respond(pg_proto_phone_panel($sub, $request, $user));
+            break;
+
         // The figures of the "Clicks" layer (assets/js/style_designer_clicks.js):
         // one page over the last 30 days, all devices or one, in the shape
         // GET /reports/page-clicks gives a page. Read-only, for whoever may
