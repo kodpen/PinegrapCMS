@@ -777,6 +777,149 @@ button.sdh-page:hover {
   outline: none;
 }
 
+/* The Figma start (pg_designer_figma_pane(), assets/js/designer_figma.js):
+   the account line, then the frame list as tiles, four a row, the "Choice
+   cards" card with its picture; a ticked tile wears the chosen card's ring. */
+.sd-ns-part-foot.d-contents {
+  display: contents;
+}
+
+.sd-fg-acct {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  max-width: 560px;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 12px;
+}
+
+.sd-fg-ask {
+  max-width: 560px;
+}
+
+.sd-fg-empty {
+  padding: 3rem 1rem 2rem;
+}
+
+.sd-fg-head,
+.sd-fg-page-head,
+.sd-fg-tile-head {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+}
+
+.sd-fg-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sd-fg-page-head {
+  margin: 1.25rem 0 .5rem;
+}
+
+.sd-fg-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.sd-fg-tile {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  min-width: 0;
+  padding: .75rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 14px;
+  background: var(--pg-bg-body);
+  cursor: pointer;
+}
+
+.sd-fg-tile.is-on {
+  border-color: var(--pg-primary);
+  box-shadow: 0 0 0 3px var(--pg-primary-bg-subtle);
+}
+
+.sd-fg-tile:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 2px;
+}
+
+.sd-fg-tile-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: .8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-fg-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 4px;
+  color: transparent;
+}
+
+.sd-fg-tile.is-on .sd-fg-box {
+  border-color: var(--pg-primary);
+  background: var(--pg-primary);
+  color: #fff;
+}
+
+.sd-fg-pic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-2);
+  font-size: 1.25rem;
+}
+
+.sd-fg-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.sd-fg-pic.is-wait,
+.sd-fg-tile.is-wait {
+  cursor: default;
+  animation: sd-fg-wait 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes sd-fg-wait {
+  to { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-fg-pic.is-wait,
+  .sd-fg-tile.is-wait {
+    animation: none;
+  }
+}
+
+/* Narrow: two tiles a row, "Manage in Connections" leaves the account line. */
+@media (max-width: 767.98px) {
+  .sd-fg-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sd-fg-manage {
+    display: none;
+  }
+}
+
 /* Phones: the list over the pane, words only. */
 @media (max-width: 767.98px) {
   .sd-ns {

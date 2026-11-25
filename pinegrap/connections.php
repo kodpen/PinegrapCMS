@@ -586,6 +586,55 @@ if ($_POST) {
 
 	}
 
+	// Figma's personal access token, saved, tried or removed on its page by a
+	// manager. "Save and try" asks Figma whose token it is before anything is
+	// stored, so a refused token is never kept; the token is sealed and in no
+	// message or log.
+	if (in_array($action, array('figma_save', 'figma_remove'), true) && ((int) $user['role'] <= 2)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+
+		if ($action === 'figma_remove') {
+
+			pg_figma_connection_remove();
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'Figma')));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'Figma')), $_SESSION['sessionusername']);
+
+		} else {
+
+			$figma_typed = (isset($_POST['figma_token']) && is_string($_POST['figma_token'])) ? trim($_POST['figma_token']) : '';
+			$figma_stored = pg_figma_connection();
+			$figma_token = ($figma_typed !== '') ? $figma_typed : ($figma_stored ? $figma_stored['token'] : '');
+
+			if ($figma_token === '') {
+				$liveform->mark_error('figma_token', h(lang('Paste the personal access token.')));
+			} elseif (!pg_figma_token_valid($figma_token)) {
+				$liveform->mark_error('figma_token', h(lang('Figma refused this token. Check that it was copied whole and has not expired.')));
+			} elseif (!empty($_POST['submit_try'])) {
+
+				$figma_try = pg_figma_try_token($figma_token);
+
+				if ($figma_try['ok']) {
+					pg_figma_connection_store(array('token' => $figma_token, 'name' => $figma_try['name'], 'state' => 'ok', 'tried' => time()));
+					$liveform->add_notice(lang(array('string' => '{var:1} answered.', 'vars' => 'Figma')));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Figma')), $_SESSION['sessionusername']);
+				} elseif ($figma_try['error']['kind'] === 'token') {
+					$liveform->mark_error('figma_token', h(lang('Figma refused this token. Check that it was copied whole and has not expired.')));
+				} else {
+					$liveform->mark_error('figma_token', h(lang('Figma did not answer. The token was not saved; try again.')));
+				}
+
+			} elseif ($figma_typed !== '') {
+				pg_figma_connection_store(array('token' => $figma_typed, 'name' => '', 'state' => 'untried', 'tried' => 0));
+				$liveform->add_notice(lang(array('string' => 'The {var:1} token was saved.', 'vars' => 'Figma')));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Figma')), $_SESSION['sessionusername']);
+			}
+
+		}
+
+	}
+
 	// The WhatsApp and İYS accounts, saved or removed on their pages under
 	// the gate of the Communication cards they came from. The same checks as
 	// the cards ran: a changed account is asked about at Meta or İYS first,
@@ -1838,6 +1887,18 @@ foreach ($registry as $id => $service) {
 
 }
 
+// Figma's token is stored with its own state: once Figma refuses it, the
+// row needs attention until a new one is saved.
+if (isset($rows['figma']) && ($rows['figma']['state'] === 'connected')) {
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+
+	$figma_connection = pg_figma_connection();
+
+	if ($figma_connection && ($figma_connection['state'] === 'refused')) {
+		$rows['figma']['state'] = 'attention';
+	}
+}
+
 $site_accounts = array();
 
 foreach ($facts['accounts'] as $account) {
@@ -2096,6 +2157,109 @@ function connections_indexnow_page($page, $may_manage) {
 				</a>';
 
 	return $page;
+
+}
+
+/* Figma's page: "Status" says whose token is stored and whether Figma still
+   accepts it, with Disconnect; "Connection details" takes a personal access
+   token (sealed, never drawn back) for a manager; "Where it is used" is the
+   Figma start of the New design window. No button leaves the site: a
+   personal access token needs no application and no return address. */
+
+function connections_figma_page($page, $may_manage, $can_seal, $liveform) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+
+	$connection = pg_figma_connection();
+	$refused = $connection && ($connection['state'] === 'refused');
+
+	if (!$connection) {
+		$status = '<p class="pg-text-2 mt-4 mb-0">' . h(lang('No access token is stored.')) . '</p>';
+	} elseif ($refused) {
+		$status = '
+			<div class="alert theme-warning small py-3 mt-4 mb-0">
+				<strong class="d-block">' . h(lang('Figma no longer accepts the stored token')) . '</strong>
+				' . h(lang('It has expired or was removed in Figma. Make a new one in Figma\'s settings and save it here.')) . '
+			</div>';
+	} else {
+		$name = ($connection['name'] !== '') ? lang(array('string' => 'Connected as {var:1}', 'vars' => $connection['name'])) : lang('Connected');
+		$status = '
+			<div class="d-flex flex-wrap align-items-center gap-3 mt-4">
+				<span class="fw-semibold text-break">' . h($name) . '</span>
+				<span class="pg-text-meta">' . h(($connection['state'] === 'untried')
+					? lang('Not tried yet')
+					: lang(array('string' => 'Last tried {var:1}', 'vars' => get_relative_time(array('timestamp' => $connection['tried'], 'format' => 'plain_text'))))) . '</span>
+			</div>';
+	}
+
+	if ($connection && $may_manage) {
+		$status .= '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="figma_remove" data-id="0"
+					data-confirm="' . h(lang('The stored token is removed from this site. Designs already made from Figma files stay. The Figma start is off until a token is saved again. The token stays valid in Figma until it is removed there.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+	}
+
+	$page['status_extra'] = $status;
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$invalid = $liveform->check_field_error('figma_token');
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The token the New design window reads Figma files with.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="figma_save">
+				<input type="hidden" name="connections_return" value="figma">
+				<div>
+					<label class="pg-field-label" for="figma_token">' . h(lang('Personal access token')) . '</label>
+					<input type="password" class="pg-input font-monospace' . ($invalid ? ' is-invalid' : '') . '" id="figma_token" name="figma_token" value="" maxlength="250" autocomplete="new-password" spellcheck="false"
+						placeholder="' . h($connection ? lang('Stored. Leave empty to keep it.') : 'figd_…') . '" aria-describedby="figma_token-help' . ($invalid ? ' figma_token-error' : '') . '">
+					' . $liveform->field_feedback('figma_token', 'figma_token-error') . '
+					<div class="pg-field-help" id="figma_token-help">' . h(lang('Made in Figma: Settings, Security, "Generate new token". It needs the scope "File content" read only; with "Current user" too, this page says whose token it is. It is stored encrypted and never shown again.')) . '
+						<a href="https://www.figma.com/settings" target="_blank" rel="noopener noreferrer">' . h(lang('Open Figma\'s settings')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></div>
+					<details class="mt-2"><summary class="pg-text-meta">' . h(lang('More')) . '</summary>
+						<p class="pg-text-meta mt-2 mb-0">' . h(lang('On a Figma Enterprise plan, a token that also has the scope "Variables" brings the file\'s variables with their names.')) . '</p>
+					</details>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+	}
+
+	$use = connections_figma_use_state($connection);
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="view_system_styles.php?start=figma">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Page designer: start from a Figma file')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Page Design Studio')) . ' › ' . h(lang('New design')) . '</span>
+					</span>
+					<span class="connections-row-side"><span class="pg-pill pg-tone-' . $use[0] . '">' . h($use[1]) . '</span></span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+// The Figma start's state as a pill: off with no token, paused while Figma
+// refuses the stored one, on otherwise.
+function connections_figma_use_state($connection) {
+
+	if (!$connection) {
+		return array('gray', lang('Off'));
+	}
+
+	return ($connection['state'] === 'refused') ? array('amber', lang('Paused')) : array('teal', lang('On'));
 
 }
 
@@ -4807,6 +4971,7 @@ if ($provider_page !== '') {
 			'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
 			'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
 			'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
+			'figma'        => ($page_id === 'figma') && $is_manager,
 		)),
 		'details'      => '',
 		'note'         => '',
@@ -4815,7 +4980,7 @@ if ($provider_page !== '') {
 		'status_extra' => '',
 		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
 			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews')
-			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || ($page_id === 'claude')
+			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || in_array($page_id, array('claude', 'figma'), true)
 			|| (pg_connections_screen_mcp_connector($page_id) !== ''),
 	);
 
@@ -4910,6 +5075,11 @@ if ($provider_page !== '') {
 	// WhatsApp's and İYS's pages: the account and the cards that use it.
 	if (in_array($page_id, array('whatsapp', 'iys'), true)) {
 		$page = connections_contact_page($page, $page_id, connections_contact_may_manage($user));
+	}
+
+	// Figma's page: the personal access token and the start that reads with it.
+	if ($page_id === 'figma') {
+		$page = connections_figma_page($page, $is_manager, $can_seal, $liveform);
 	}
 
 	// Google Cloud Translation's page: its key and the languages that use it.

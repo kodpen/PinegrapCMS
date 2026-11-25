@@ -1748,6 +1748,41 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    every other click through; it stays under the Prototype view and the
    docked panels. */
 .sd-lm-layer { position: absolute; z-index: 20; overflow: hidden; pointer-events: none; }
+
+/* Measure (the part 'guides', assets/js/style_designer_guides.js): with
+   one element selected and Alt held, the element pointed at gets a dashed
+   frame with its name on white, and the distances are rose lines with a
+   short cap at each end and their number in page pixels. The layer covers
+   the part of the canvas frame in view and takes no pointer. */
+.sd-gm-layer { position: absolute; z-index: 21; overflow: hidden; pointer-events: none; }
+.sd-gm-layer > * { position: absolute; }
+.sd-gm-hov { outline: 1.5px dashed var(--sd-accent); outline-offset: 0; }
+.sd-gm-tag {
+    transform: translateY(-100%); height: 17px; padding: 0 6px; border-radius: 3px 3px 0 0;
+    font: 600 10.5px/17px system-ui, sans-serif; white-space: nowrap;
+    color: var(--sd-accent-strong); background: #fff; box-shadow: inset 0 0 0 1px var(--sd-accent);
+}
+.sd-gm-line, .sd-gm-edge { background: var(--sd-danger); }
+.sd-gm-line.sd-gm-h { height: 1px; }
+.sd-gm-line.sd-gm-v { width: 1px; }
+.sd-gm-line::before, .sd-gm-line::after { content: ""; position: absolute; background: var(--sd-danger); }
+.sd-gm-line.sd-gm-h::before, .sd-gm-line.sd-gm-h::after { top: -3px; width: 1px; height: 7px; }
+.sd-gm-line.sd-gm-h::before { left: 0; }
+.sd-gm-line.sd-gm-h::after { right: 0; }
+.sd-gm-line.sd-gm-v::before, .sd-gm-line.sd-gm-v::after { left: -3px; height: 1px; width: 7px; }
+.sd-gm-line.sd-gm-v::before { top: 0; }
+.sd-gm-line.sd-gm-v::after { bottom: 0; }
+.sd-gm-ext { opacity: .7; }
+.sd-gm-ext.sd-gm-h { height: 0; border-top: 1px dashed var(--sd-danger); }
+.sd-gm-ext.sd-gm-v { width: 0; border-left: 1px dashed var(--sd-danger); }
+.sd-gm-num {
+    transform: translate(-50%, -50%); height: 16px; padding: 0 5px; border-radius: 4px;
+    font: 650 10.5px/16px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+    color: var(--sd-panel-bg); background: var(--sd-danger);
+}
+/* A number that does not fit its line sits beside it. */
+.sd-gm-num.sd-gm-below { transform: translate(-50%, 6px); }
+.sd-gm-num.sd-gm-aside { transform: translate(6px, -50%); }
 .sd-lm {
     position: absolute; transform: translate(-50%, -50%);
     width: 18px; height: 18px; padding: 0;
@@ -1856,6 +1891,46 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background-color: color-mix(in srgb, var(--sd-text) 5%, transparent); color: var(--sd-text);
 }
 
+/* ── The Focus control (Content › Image, Color and background; part 'focus') ── */
+/* The whole picture with one point, the cut on a phone, a tablet and a
+   desktop beside it; the frame of the screen the canvas bar shows carries
+   the ring, a screen's own focus turns its mark to the accent. */
+.sd-fc { margin: 6px 0 8px; -webkit-user-select: none; user-select: none; }
+.sd-fc:empty { min-height: 96px; }
+.sd-fc-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11px; }
+.sd-fc-title { color: var(--sd-label); font-weight: 650; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.sd-fc-val { color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
+.sd-fc-reset { margin-left: auto; border: 0; background: none; padding: 0 2px; color: var(--sd-text-muted); font: inherit; cursor: pointer; }
+.sd-fc-reset:hover { color: var(--sd-text); }
+.sd-fc-reset:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; border-radius: 4px; }
+.sd-fc-chip { margin-left: auto; padding: 1px 7px; border-radius: 6px; background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: 10px; font-weight: 650; }
+.sd-fc-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.sd-fc-pic { position: relative; border-radius: 6px; overflow: hidden; cursor: crosshair; touch-action: none; background: var(--sd-input-bg); }
+.sd-fc-pic img { display: block; width: 100%; height: auto; pointer-events: none; }
+.sd-fc-pt {
+    position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+    background: var(--sd-accent-strong); border: 2px solid var(--sd-on-accent);
+    box-shadow: 0 0 0 1px var(--sd-shadow), 0 1px 4px var(--sd-shadow); cursor: grab;
+}
+.sd-fc-pic.is-none .sd-fc-pt { background: var(--sd-raised-bg); opacity: .85; }
+.sd-fc-pic.is-drag .sd-fc-pt { cursor: grabbing; box-shadow: 0 0 0 4px var(--sd-accent-soft); }
+.sd-fc-pt:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 2px; }
+.sd-fc-frames { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; max-width: 110px; }
+.sd-fc-frames-row { display: flex; gap: 6px; align-items: flex-end; }
+.sd-fc-fr { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 110px; }
+.sd-fc-fr-pic { max-width: 110px; border-radius: 3px; background-size: cover; background-repeat: no-repeat; box-shadow: inset 0 0 0 1px var(--sd-panel-border); }
+.sd-fc-fr.is-cur .sd-fc-fr-pic { box-shadow: 0 0 0 2px var(--sd-accent); }
+.sd-fc-fr-ic { font-size: 9px; color: var(--sd-text-muted); line-height: 1; }
+.sd-fc-fr.is-own .sd-fc-fr-ic { color: var(--sd-accent); }
+.sd-fc-foot { margin-top: 6px; font-size: 11px; color: var(--sd-text-muted); line-height: 1.4; }
+.sd-fc-foot strong { color: var(--sd-text); font-weight: 650; }
+.sd-fc-same { margin-top: 6px; }
+.sd-fc-info {
+    display: flex; gap: 6px; margin-top: 8px; padding: 6px 8px; border-radius: 6px; font-size: 11px; line-height: 1.4;
+    color: var(--sd-text); background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line);
+}
+.sd-fc-info .bi { color: var(--sd-accent); }
+
 /* ── The spacing box (Style › Spacing, part 'spacing') ── */
 /* Outer (margin) and inner (padding) boxes, four sides each: grey is
    inherited or the default, filled accent is set at the chosen size, a
@@ -1916,7 +1991,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     font-size: 10px; font-weight: 700; color: var(--sd-icon-quiet); cursor: pointer; display: grid; place-items: center;
 }
 .sd-spb-size:hover { color: var(--sd-text); }
-.sd-spb-size.is-has { color: var(--sd-text-muted); }
+.sd-spb-size.is-has { color: var(--sd-text-muted); position: relative; }
+/* A value set for that size: a dot under its name. */
+.sd-spb-size.is-has::after {
+    content: ''; position: absolute; left: 50%; bottom: 1px; width: 3px; height: 3px; margin-left: -1.5px;
+    border-radius: 50%; background: currentColor;
+}
 .sd-spb-size.is-on { background: var(--sd-warning-soft); color: var(--sd-warning); }
 .sd-spb-size:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; }
 /* The corners (Style › Border and corner, the same part): a side's number

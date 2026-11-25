@@ -8184,13 +8184,20 @@ function pg_js_bundles()
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
-        // Border and corner: their pure class mappings (window.PGSpacingBox,
-        // window.PGCornerBox), then the part that draws both.
-        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
+        // Border and corner, and a length per screen size: their pure
+        // mappings (window.PGSpacingBox, window.PGCornerBox,
+        // window.PGSizeStyle), then the part that draws them.
+        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/pg_size_style.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // The canvas guides: their pure geometry (window.PGCanvasGuides),
+        // then the part that draws Measure over the canvas.
+        'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
+        // The Focus control of an Image's and a background picture's
+        // options: what it shows (window.PGImageFocus), then the part.
+        'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
@@ -8279,7 +8286,8 @@ function pg_designer_parts()
         // the Comments list, for designers.
         'comments' => 'assets/js/style_designer_comments.min.js',
         // The spacing box of Style › Spacing and the size chooser in its
-        // head, drawn when the section is first shown.
+        // head (also on Size and display and Text), drawn when the section
+        // is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.
@@ -8296,6 +8304,12 @@ function pg_designer_parts()
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
+        // The canvas guides: Measure, the distances drawn while Alt is held
+        // with one element selected.
+        'guides' => 'assets/js/style_designer_guides.min.js',
+        // The Focus control: a picture's focus point dragged on the whole
+        // picture, with the cut on each screen, drawn when first shown.
+        'focus' => 'assets/js/style_designer_focus.min.js',
     );
 }
 

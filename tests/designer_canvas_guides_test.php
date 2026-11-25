@@ -173,6 +173,44 @@ function test_canvas_guides_distances_nested_and_overlapping()
 	pg_assert_same(75, $res[2][0]['at'], 'at the middle of the shared height');
 }
 
+// Two boxes that face each other: how far their starts are apart, at the
+// middle of the box pointed at, with a dashed guide along the selection's
+// start (the drawing's card and picture: 36 px between the tops).
+function test_canvas_guides_offset_between_facing_starts()
+{
+	$res = canvas_guides_test_node('var card = { left: 36, top: 84, right: 232, bottom: 244 };'
+		. 'out = ['
+		. ' G.offset(card, { left: 430, top: 48, right: 662, bottom: 198 }),'
+		. ' G.offset({ left: 430, top: 48, right: 662, bottom: 198 }, card),'
+		. ' G.offset(card, { left: 60, top: 300, right: 200, bottom: 360 }, 2),'
+		. ' G.offset(card, { left: 430, top: 84, right: 662, bottom: 198 }),'
+		. ' G.offset(card, { left: 430, top: 300, right: 662, bottom: 400 }),'
+		. ' G.offset(card, { left: 0, top: 0, right: 300, bottom: 300 }),'
+		. ' G.offset(card, null)'
+		. '];');
+
+	if ($res === null) {
+		return;
+	}
+
+	$tops = canvas_guides_test_line('y', 48, 84, 546, 36);
+	$tops['guide'] = array('axis' => 'x', 'from' => 232, 'to' => 662, 'at' => 84);
+	pg_assert_same($tops, $res[0], 'side by side: the tops, at the middle of the picture, the guide from the card to the far edge');
+
+	$back = canvas_guides_test_line('y', 48, 84, 134, 36);
+	$back['guide'] = array('axis' => 'x', 'from' => 430, 'to' => 36, 'at' => 48);
+	pg_assert_same($back, $res[1], 'seen from the picture: the guide runs back to the card\'s far edge');
+
+	$lefts = canvas_guides_test_line('x', 36, 60, 330, 12);
+	$lefts['guide'] = array('axis' => 'y', 'from' => 244, 'to' => 360, 'at' => 36);
+	pg_assert_same($lefts, $res[2], 'stacked: the starts on the left, in page pixels at a zoom of 2');
+
+	pg_assert_same(null, $res[3], 'tops level: no line');
+	pg_assert_same(null, $res[4], 'off diagonally: no line');
+	pg_assert_same(null, $res[5], 'one inside the other: no line');
+	pg_assert_same(null, $res[6], 'no box');
+}
+
 // A parent's inner distances by side; the start is on the right in a
 // right-to-left page; a child sticking out reads negative.
 function test_canvas_guides_inner_distances()

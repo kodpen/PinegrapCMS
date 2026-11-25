@@ -388,7 +388,7 @@ function pg_designer_screen_render($ctx)
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'guides', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -1197,6 +1197,17 @@ function pg_designer_home_drawing($kind, $templates = array())
                  . '<rect x="120" y="46" width="90" height="3" rx="1.5" class="l"/><rect x="120" y="52" width="74" height="3" rx="1.5" class="l"/>'
                  . '<rect x="120" y="61" width="44" height="17" rx="3" class="g"/><rect x="168" y="61" width="44" height="17" rx="3" class="g"/>';
             break;
+        case 'figma':
+            // A file's frames on a board; the ticked ones become pages.
+            $art = '<rect x="12" y="10" width="64" height="76" rx="8" class="p s"/>'
+                 . '<rect x="19" y="17" width="23" height="28" rx="3" class="as"/><rect x="46" y="17" width="23" height="28" rx="3" class="g"/>'
+                 . '<rect x="19" y="50" width="23" height="28" rx="3" class="as"/><rect x="46" y="50" width="23" height="28" rx="3" class="g"/>'
+                 . '<path d="M24 31 l3 3 l6 -6" class="sk"/><path d="M24 64 l3 3 l6 -6" class="sk"/>'
+                 . $arrow
+                 . $window(110, 114)
+                 . '<rect x="120" y="30" width="94" height="20" rx="4" class="as"/><rect x="128" y="36" width="40" height="4" rx="2" class="a"/>'
+                 . '<rect x="120" y="55" width="44" height="22" rx="3" class="g"/><rect x="170" y="55" width="44" height="22" rx="3" class="g"/>';
+            break;
         case 'paste':
             // Markup on the clipboard; it lands on the page as a section.
             $art = '<rect x="18" y="14" width="54" height="72" rx="7" class="p s"/>'
@@ -1630,6 +1641,9 @@ function pg_designer_start_screen($ctx)
         // A template made from a design is listed once the page is drawn
         // again: the gallery is printed with the page.
         'templateUrl' => 'view_system_styles.php?start=template' . ($from_pages ? '&from=pages' : ''),
+        // A start's own part (assets/js/designer_<part>.js), loaded on first use.
+        'partBase'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/',
+        'partStamp'   => pg_designer_asset_stamp('assets/js/designer_figma.js'),
         't'           => pg_designer_home_texts(),
     );
 
@@ -1830,24 +1844,114 @@ function pg_designer_components_rows()
  * list with a pane of its own in pg_designer_start_pane().
  *
  * @param bool $has_templates whether a template can be offered
+ * @param bool $figma         whether the Figma start is listed
+ *                            (pg_designer_figma_start_on())
  * @return array list of array('key', 'icon', 'title', 'line', 'drawing', 'go', 'disabled')
  */
-function pg_designer_start_kinds($has_templates)
+function pg_designer_start_kinds($has_templates, $figma = false)
 {
-    return array(
+    $figma_row = array('key' => 'figma', 'icon' => 'bi-vector-pen', 'title' => lang('Figma'),
+              'line' => lang('A Figma file\'s frames become pages.'),
+              'drawing' => 'figma', 'go' => '', 'disabled' => false);
+
+    return array_merge(array(
         array('key' => 'blank', 'icon' => 'bi-file-earmark-plus', 'title' => lang('Blank'),
               'line' => lang('An empty page; add sections from the palette.'),
               'drawing' => 'blank', 'go' => lang('Create design'), 'disabled' => false),
         array('key' => 'template', 'icon' => 'bi-grid-1x2', 'title' => lang('Template'),
               'line' => lang('A ready-made design to change as you like.'),
               'drawing' => 'template-none', 'go' => '', 'disabled' => !$has_templates),
+    ), $figma ? array($figma_row) : array(), array(
         array('key' => 'import', 'icon' => 'bi-file-earmark-zip', 'title' => lang('ZIP file'),
               'line' => lang('An HTML page or a project archive; its pages become tabs.'),
               'drawing' => 'import', 'go' => lang('Continue'), 'disabled' => false),
         array('key' => 'paste', 'icon' => 'bi-clipboard-plus', 'title' => lang('Pasted markup'),
               'line' => lang('The design starts from the markup you paste.'),
               'drawing' => 'paste', 'go' => lang('Continue'), 'disabled' => false),
+    ));
+}
+
+/**
+ * Whether the New design window lists the Figma start: once the import that
+ * turns the ticked frames into pages is there (pg_figma_import_start(), the
+ * converter's run), so "Next" never leads nowhere. The connection on
+ * Connections works before it.
+ *
+ * @return bool
+ */
+function pg_designer_figma_start_on()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+
+    return function_exists('pg_figma_import_start');
+}
+
+/**
+ * The Figma start's pane (the frame list is drawn by
+ * assets/js/designer_figma.js, loaded the first time the start is chosen).
+ * Not connected: an empty state leading to Connections, or for who may not
+ * open it a line to ask a manager. Connected: the account line, the file
+ * link field and the seat line; a token Figma no longer accepts says so
+ * above the field.
+ *
+ * @param array $connection pg_figma_connection()
+ * @param bool  $manager    whether the viewer may open Connections
+ * @return string
+ */
+function pg_designer_figma_pane($connection, $manager)
+{
+    $manage = 'connections.php?service=figma';
+
+    if (!$connection) {
+        return '<div class="sd-fg-empty text-center">'
+            . '<span class="pg-icon-tile pg-tone-violet" aria-hidden="true"><i class="bi bi-vector-pen"></i></span>'
+            . '<strong class="d-block mt-3">' . h(lang('Figma is not connected')) . '</strong>'
+            . '<p class="pg-text-2 mt-2">' . h(lang('Starting from a Figma file needs an access token, saved once on Connections.')) . '</p>'
+            . ($manager
+                ? '<a class="pg-button pg-button-quiet" href="' . h($manage) . '"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connect in Connections')) . '</a>'
+                : '<p class="pg-text-meta mb-0">' . h(lang('Ask a manager of the site to connect Figma.')) . '</p>')
+            . '</div>';
+    }
+
+    $texts = array(
+        'read'      => lang('Read the file'),
+        'reading'   => lang('Reading…'),
+        'another'   => lang('Another file'),
+        'back'      => lang('Back'),
+        'next'      => lang('Next'),
+        'tickAll'   => lang('Tick all'),
+        'untickAll' => lang('Untick all'),
+        'sizes'     => lang('{var:1} pages, {var:2} frames'),
+        'frames'    => lang('{var:1} frames'),
+        'lead'      => lang(array('string' => 'Tick the frames that become pages. One import takes {var:1} frames at most.', 'vars' => pg_figma_max_frames())),
+        'count'     => lang('{var:1} of {var:2} frames ticked: {var:1} pages'),
+        'over'      => lang('{var:1} of {var:2} frames ticked: untick {var:3}'),
+        'noLink'    => lang('This is not a Figma file link. Copy it in Figma with Share, then “Copy link”.'),
+        'network'   => lang('Network error.'),
+        'max'       => pg_figma_max_frames(),
     );
+
+    return '<div class="sd-fg" data-texts="' . h(json_encode($texts, JSON_UNESCAPED_UNICODE)) . '">'
+        . '<div class="sd-fg-acct pg-card-inner-row">'
+        .   '<span class="pg-icon-tile pg-tone-violet" aria-hidden="true"><i class="bi bi-vector-pen"></i></span>'
+        .   '<span>' . h(($connection['name'] !== '') ? lang(array('string' => 'Connected as {var:1}', 'vars' => $connection['name'])) : lang('Connected')) . '</span>'
+        .   ($manager ? '<a class="ms-auto sd-fg-manage" href="' . h($manage) . '">' . h(lang('Manage in Connections')) . '</a>' : '')
+        . '</div>'
+        . (($connection['state'] === 'refused')
+            ? '<div class="alert theme-warning small py-3 mt-4 mb-0"><strong class="d-block">' . h(lang('Figma no longer accepts the stored token')) . '</strong>'
+              . h(lang('It has expired or was removed in Figma. Make a new one in Figma\'s settings and save it here.'))
+              . ($manager ? ' <a href="' . h($manage) . '">' . h(lang('Manage in Connections')) . '</a>' : '') . '</div>'
+            : '')
+        . '<div class="sd-fg-ask mt-5">'
+        .   '<label class="pg-field-label" for="sd-fg-link">' . h(lang('Figma file link')) . '</label>'
+        .   '<input type="url" class="pg-input" id="sd-fg-link" placeholder="https://www.figma.com/design/…" autocomplete="off" spellcheck="false" aria-describedby="sd-fg-link-help sd-fg-error">'
+        .   '<div class="invalid-feedback d-block pg-inline-feedback" id="sd-fg-error" role="alert" hidden></div>'
+        .   '<div class="pg-field-help" id="sd-fg-link-help">' . h(lang('In Figma: Share, then “Copy link”.')) . '</div>'
+        .   '<p class="pg-text-meta mt-4 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('A View or Collab seat in Figma reads only a few files a month; more imports need a Dev or Full seat.')) . '</p>'
+        . '</div>'
+        . '<div class="sd-fg-limit" hidden></div>'
+        . '<div class="sd-fg-list" hidden></div>'
+        . '</div>';
 }
 
 /**
@@ -1929,6 +2033,11 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
         case 'import':
             return pg_designer_start_framework_choice('import', $from_pages)
                 . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens and asks for a single .html file or a .zip with the whole project.')) . '</p>';
+        case 'figma':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+            // The window is a designer's (role 1 or 0), who may open
+            // Connections (a manager's screen) too.
+            return pg_designer_figma_pane(pg_figma_connection(), true);
         case 'paste':
             return pg_designer_start_framework_choice('paste', $from_pages)
                 . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens with a box to paste the markup into.')) . '</p>';
@@ -1952,7 +2061,7 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
  */
 function pg_designer_start_window($templates, $from_pages)
 {
-    $kinds = pg_designer_start_kinds(!empty($templates));
+    $kinds = pg_designer_start_kinds(!empty($templates), pg_designer_figma_start_on());
     $tabs  = '';
     $panes = '';
     foreach ($kinds as $i => $k) {
@@ -1965,7 +2074,7 @@ function pg_designer_start_window($templates, $from_pages)
                . '<span class="pg-text-meta">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
-                . ' data-go="' . h($k['go']) . '"' . ($i === 0 ? '' : ' hidden') . '>'
+                . ' data-go="' . h($k['go']) . '"' . ($key === 'figma' ? ' data-part="figma"' : '') . ($i === 0 ? '' : ' hidden') . '>'
                 . '<h3 class="pg-sm-heading">' . h($k['title']) . '</h3>'
                 . '<p class="pg-sm-desc">' . h($k['line']) . '</p>'
                 . ($k['disabled'] ? '' : pg_designer_start_pane($k, $templates, $from_pages))
@@ -1982,7 +2091,9 @@ function pg_designer_start_window($templates, $from_pages)
                 <div class="sd-ns-panes">' . $panes . '</div>
             </div>
             <div class="dialog-footer">
+                <span class="sd-ns-count me-auto" aria-live="polite" hidden></span>
                 <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                <span class="sd-ns-part-foot d-contents" hidden></span>
                 <a href="' . h(pg_designer_start_go_href('blank', 'bootstrap5', $from_pages)) . '" class="pg-button pg-button-fill" id="sd-ns-go">' . h(lang('Create design')) . '</a>
             </div>
         </dialog>';

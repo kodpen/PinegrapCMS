@@ -20,6 +20,9 @@ description: Options controls offering a design's variables (DV3): which rows, t
 - The chip in the control's place (the control stays hidden in the row): the swatch (or the type icon), the name ("Brand", "Scale 2XL", "6 units"), "Detach". Names come from the part (`_sdVarNames`), before it runs from `_sdVarNamesMap()` or the key.
 - "Detach" (part `detach`) writes the value of that moment: a colour's light value, a step or multiple in whole px. A typed value of the property then shows as a field (Enter or leaving writes it; `CSS.supports()` refuses a bad one with one red line; empty brings back today's control). Background colour has no field: "Custom Background Color" already shows it.
 
+## How does it meet Font Size per screen size?
+- The size chooser (#11571, part `spacing`, `sizes`) writes `font-size` into the element's custom style class per size; a bound or typed value here is inline, so it wins at every size. The chooser still swaps the row's select inside the wrapper.
+
 ## How is "Used in n places" counted?
 - `_sdVarUsage()` over the trees of the pages open in the editor (`_pgTreeOf()`): per token, the elements whose style reads it, once per element. The Variables tab shows it per row ("Not used yet", "Used in 1 place", "Used in {var} places"); a step counts for Base size and Type scale.
 - Pages not open in the editor and shared components' stored rows are not counted.

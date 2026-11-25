@@ -8,7 +8,8 @@
  *
  *   • load / view: the node (or, with a stagger, each of its children one
  *     after another) comes in from the effect's start: faded out, moved by
- *     the distance or scaled down. view waits until it scrolls into sight
+ *     the distance, scaled down or up, blurred, turned, or clipped away
+ *     from the bottom (reveal, an entrance only). view waits until it scrolls into sight
  *     (IntersectionObserver); data-pg-fx-repeat plays it on every entry.
  *   • hover / click: the node goes to the effect's state while pointed at
  *     or focused, or toggles it on each click (class pg-fx-on).
@@ -86,7 +87,8 @@
     }
 
     // The same names, ranges and defaults as pg_fx_normalize().
-    var EFFECTS  = ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+    var EFFECTS  = ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale',
+        'zoom-out', 'blur-in', 'rotate-in', 'reveal', 'sticky', 'parallax',
         'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
@@ -96,6 +98,10 @@
     };
     // The start of a scroll-linked effect, as pg_fx_scroll_from().
     var FROM = { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] };
+    // The script's own distance where the node sets none, as
+    // [entrance, hover or click]: px for a slide, the blur in px for
+    // blur-in, the angle in degrees for rotate-in.
+    var OWN_DISTANCE = { 'blur-in': [8, 2], 'rotate-in': [8, 3] };
     // The duration and delay of a count, as pg_fx_count_numbers().
     var COUNT = { duration: [100, 5000, 2000], delay: [0, 5000, 0] };
 
@@ -124,18 +130,23 @@
         var trigger = String(get('data-pg-fx-trigger') || '').toLowerCase();
         var easing = String(get('data-pg-fx-easing') || '').toLowerCase();
         o.trigger  = TRIGGERS.indexOf(trigger) !== -1 ? trigger : TRIGGERS[0];
+        // Reveal is an entrance only, as pg_fx_normalize().
+        if (effect === 'reveal' && !/^(view|load)$/.test(o.trigger)) o.trigger = TRIGGERS[0];
         o.entrance = o.trigger === 'load' || o.trigger === 'view';
         o.duration = num('duration');
         o.delay    = num('delay');
         o.easing   = EASINGS.indexOf(easing) !== -1 ? easing : EASINGS[0];
         o.stagger  = o.entrance ? num('stagger') : 0;
-        o.distance = num('distance') || (o.entrance ? 24 : 6);
+        var own = OWN_DISTANCE[effect] || [24, 6];
+        o.distance = num('distance') || (o.entrance ? own[0] : own[1]);
         o.repeat   = o.trigger === 'view' && get('data-pg-fx-repeat') !== null;
         return o;
     }
 
     // The opacity and transform an entrance starts from, or a hover or
-    // click goes to; '' leaves the node's own value.
+    // click goes to; '' leaves the node's own value. Blur in adds a
+    // filter, Reveal a clip-path (no fade: the clip hides it); the six
+    // first effects have neither key.
     function shift(o) {
         var d = o.distance, x = 0, y = 0;
         if (o.effect === 'slide-up')    y = d;
@@ -147,16 +158,31 @@
         var transform = '';
         if (x || y) transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
         if (o.effect === 'scale') transform = o.entrance ? 'scale(0.9)' : 'scale(1.05)';
+        if (o.effect === 'zoom-out') transform = o.entrance ? 'scale(1.1)' : 'scale(0.95)';
+        if (o.effect === 'rotate-in') transform = 'rotate(' + (o.entrance ? -d : d) + 'deg)';
         var opacity = '';
-        if (o.entrance) opacity = '0';
+        if (o.entrance && o.effect !== 'reveal') opacity = '0';
         else if (o.effect === 'fade') opacity = '0.6';
-        return { opacity: opacity, transform: transform };
+        var s = { opacity: opacity, transform: transform };
+        if (o.effect === 'blur-in') s.filter = 'blur(' + d + 'px)';
+        if (o.effect === 'reveal') s.clip = 'inset(0 0 100% 0)';
+        return s;
+    }
+
+    // The node's own state, where a move ends: shift()'s keys emptied.
+    function rest(o) {
+        var s = shift(o), out = {};
+        for (var k in s) out[k] = '';
+        return out;
     }
 
     // The transition of a move that waits `delay` ms.
     function transition(o, delay) {
         var t = o.duration + 'ms ' + o.easing + ' ' + delay + 'ms';
-        return 'opacity ' + t + ',transform ' + t;
+        var out = 'opacity ' + t + ',transform ' + t;
+        if (o.effect === 'blur-in') out += ',filter ' + t;
+        if (o.effect === 'reveal') out += ',clip-path ' + t;
+        return out;
     }
 
     // The parallax offset (px) of a box whose top is `top` and height
@@ -303,7 +329,7 @@
     }
 
     window.pgFx = {
-        read: read, shift: shift, transition: transition, parallax: parallax,
+        read: read, shift: shift, rest: rest, transition: transition, parallax: parallax,
         progress: progress, scrollState: scrollState, riseFrom: riseFrom, number: number, countText: countText,
         chapterAt: chapterAt, chapterColours: chapterColours, sceneStep: sceneStep
     };
@@ -351,18 +377,31 @@
         return t.pgFxBase;
     }
 
+    // A filter is composed after the node's own; a clip-path stands in for
+    // the node's own while it moves. Kept the first time one is written.
     function put(t, s, move) {
         var b = base(t);
         t.style.transition = move || 'none';
         t.style.opacity = s.opacity !== '' ? s.opacity : b.opacity;
         t.style.transform = s.transform ? (b.transform ? b.transform + ' ' : '') + s.transform : b.transform;
+        if (s.filter !== undefined) {
+            if (b.filter === undefined) b.filter = t.style.filter || '';
+            t.style.filter = s.filter ? (b.filter ? b.filter + ' ' : '') + s.filter : b.filter;
+        }
+        if (s.clip !== undefined) {
+            if (b.clip === undefined) b.clip = t.style.clipPath || '';
+            t.style.clipPath = s.clip || b.clip;
+        }
     }
 
     function restore(t) {
-        if (!t.pgFxBase) return;
-        t.style.opacity = t.pgFxBase.opacity;
-        t.style.transform = t.pgFxBase.transform;
-        t.style.transition = t.pgFxBase.transition;
+        var b = t.pgFxBase;
+        if (!b) return;
+        t.style.opacity = b.opacity;
+        t.style.transform = b.transform;
+        t.style.transition = b.transition;
+        if (b.filter !== undefined) t.style.filter = b.filter;
+        if (b.clip !== undefined) t.style.clipPath = b.clip;
     }
 
     function arm(rec) {
@@ -388,7 +427,7 @@
 
     function play(rec) {
         rec.targets.forEach(function (t, i) {
-            put(t, { opacity: '', transform: '' }, transition(rec.o, rec.o.delay + i * rec.o.stagger));
+            put(t, rest(rec.o), transition(rec.o, rec.o.delay + i * rec.o.stagger));
         });
     }
 
@@ -756,7 +795,7 @@
             return;
         }
         var on = function () { if (!reduced()) put(el, shift(o), transition(o, o.delay)); };
-        var off = function () { put(el, { opacity: '', transform: '' }, transition(o, 0)); };
+        var off = function () { put(el, rest(o), transition(o, 0)); };
         if (o.trigger === 'hover') {
             el.addEventListener('mouseenter', on);
             el.addEventListener('mouseleave', off);
@@ -848,7 +887,7 @@
         }
         if (!rec || !rec.o.trigger) return false;
         var o = rec.o, ts = o.entrance ? rec.targets : [el];
-        var still = { opacity: '', transform: '' };
+        var still = rest(o);
         var go = function (s, wait) {
             ts.forEach(function (t, i) {
                 put(t, s);

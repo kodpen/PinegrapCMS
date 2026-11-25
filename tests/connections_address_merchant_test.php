@@ -53,7 +53,7 @@ function test_connections_address_merchant_pages_and_registry()
 
 	pg_assert_same('account', $registry['merchant_center']['state']['kind'], 'Merchant Center by the Google account for its purpose');
 	pg_assert_same('#settings/commerce/pgset-feeds', $registry['openai_feed']['place'], 'the OpenAI feed has no account, so it stays on the card');
-	pg_assert_same(84, pg_connections_count(), 'no service is added');
+	pg_assert_same(85, pg_connections_count(), 'no service is added');
 }
 
 function test_connections_address_merchant_card_shows_the_address_connection()

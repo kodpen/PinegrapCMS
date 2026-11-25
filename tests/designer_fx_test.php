@@ -61,6 +61,13 @@ function _test_fx_cases()
 		'chapter clamped' => array('effect' => 'chapter', 'duration' => 1),
 		'scene' => array('effect' => 'scene'),
 		'scene drops every field' => array('effect' => 'Scene', 'trigger' => 'view', 'duration' => 900, 'from' => 50, 'speed' => 30),
+		'zoom out' => array('effect' => 'zoom-out', 'trigger' => 'load', 'duration' => 900, 'stagger' => 60, 'distance' => 30),
+		'blur in' => array('effect' => 'Blur-In', 'distance' => 12, 'easing' => 'ease-in-out', 'repeat' => true),
+		'blur in on hover' => array('effect' => 'blur-in', 'trigger' => 'hover', 'stagger' => 40),
+		'rotate in' => array('effect' => 'rotate-in', 'delay' => 200, 'distance' => 15),
+		'reveal' => array('effect' => 'reveal', 'stagger' => 120, 'distance' => 40),
+		'reveal on hover becomes view' => array('effect' => 'reveal', 'trigger' => 'hover', 'duration' => 800),
+		'reveal on click becomes view' => array('effect' => 'reveal', 'trigger' => 'click'),
 	);
 }
 
@@ -76,6 +83,24 @@ function test_designer_fx_normalize()
 	pg_assert_same(651, pg_fx_normalize(array('effect' => 'scale', 'duration' => 650.5))['duration'], 'a half rounds up');
 	pg_assert_same(array('effect' => 'autoplay'), pg_fx_normalize(array('effect' => 'autoplay', 'trigger' => 'load', 'duration' => 900)), 'autoplay has no field');
 	pg_assert_same(' data-pg-fx="autoplay"', pg_fx_attrs(array('_fx' => array('effect' => 'autoplay'))), 'autoplay writes only its effect');
+}
+
+// The four later entrances take the same trigger, timing, easing and
+// stagger as the first six. Zoom out and Reveal have no distance; Blur in
+// reads it as the blur in px, Rotate in as the angle in degrees. Reveal
+// is an entrance only: a hover or click trigger is read as view.
+function test_designer_fx_more_entrances()
+{
+	foreach (array('zoom-out', 'blur-in', 'rotate-in', 'reveal') as $effect) {
+		pg_assert_true(in_array($effect, pg_fx_effects(), true), $effect . ' is known');
+	}
+	pg_assert_same(array('effect' => 'zoom-out', 'trigger' => 'load', 'duration' => 900, 'delay' => 0, 'easing' => 'ease-out', 'stagger' => 60), pg_fx_normalize(_test_fx_cases()['zoom out']), 'zoom out has no distance');
+	pg_assert_same(array('effect' => 'blur-in', 'trigger' => 'view', 'duration' => 600, 'delay' => 0, 'easing' => 'ease-in-out', 'distance' => 12, 'stagger' => 0, 'repeat' => true), pg_fx_normalize(_test_fx_cases()['blur in']), 'blur in keeps its distance');
+	pg_assert_same(array('effect' => 'blur-in', 'trigger' => 'hover', 'duration' => 600, 'delay' => 0, 'easing' => 'ease-out', 'distance' => 0), pg_fx_normalize(_test_fx_cases()['blur in on hover']), 'blur in on hover');
+	pg_assert_same(array('effect' => 'reveal', 'trigger' => 'view', 'duration' => 800, 'delay' => 0, 'easing' => 'ease-out', 'stagger' => 0, 'repeat' => false), pg_fx_normalize(_test_fx_cases()['reveal on hover becomes view']), 'reveal is an entrance only');
+	pg_assert_same(' data-pg-fx="rotate-in" data-pg-fx-trigger="view" data-pg-fx-delay="200" data-pg-fx-distance="15"', pg_fx_attrs(array('_fx' => _test_fx_cases()['rotate in'])));
+	pg_assert_same(' data-pg-fx="reveal" data-pg-fx-trigger="view" data-pg-fx-stagger="120"', pg_fx_attrs(array('_fx' => _test_fx_cases()['reveal'])), 'reveal writes no distance');
+	pg_assert_true(strpos(pg_fx_head_style(), 'reveal') === false, 'the head style hides them by their trigger, as the six');
 }
 
 function test_designer_fx_attrs()
@@ -387,6 +412,9 @@ function test_designer_fx_script_reads_the_page()
 		. ' out[k] = fx.read(function (n) { return Object.prototype.hasOwnProperty.call(a, n) ? a[n] : null; }); });'
 		. 'out._shift = ["fade|view", "slide-up|view", "slide-left|load", "slide-up|hover", "slide-right|click", "scale|view", "scale|hover", "fade|hover"].map(function (s) {'
 		. ' var p = s.split("|"); return fx.shift(fx.read(function (n) { return n === "data-pg-fx" ? p[0] : n === "data-pg-fx-trigger" ? p[1] : null; })); });'
+		. 'out._more = ["zoom-out|view", "zoom-out|hover", "blur-in|view", "blur-in|click", "rotate-in|load", "rotate-in|hover", "reveal|view", "reveal|hover"].map(function (s) {'
+		. ' var p = s.split("|"), o = fx.read(function (n) { return n === "data-pg-fx" ? p[0] : n === "data-pg-fx-trigger" ? p[1] : null; }); return [o.trigger, fx.shift(o), fx.rest(o)]; });'
+		. 'out._moreTransition = [fx.transition({ effect: "blur-in", duration: 600, easing: "ease-out" }, 0), fx.transition({ effect: "reveal", duration: 600, easing: "ease" }, 50)];'
 		. 'out._transition = fx.transition({ duration: 600, easing: "ease-out" }, 150);'
 		. 'out._parallax = [fx.parallax(400, 200, 1000, 20), fx.parallax(0, 100, 800, 50), fx.parallax(100, 100, 1000, 20)];'
 		. 'out._unknown = fx.read(function (n) { return n === "data-pg-fx" ? "spin" : null; });'
@@ -408,7 +436,8 @@ function test_designer_fx_script_reads_the_page()
 		$read = $got[$name];
 		foreach ($norm as $field => $value) {
 			if ($field === 'distance' && $value === 0) {
-				pg_assert_same($norm['trigger'] === 'view' || $norm['trigger'] === 'load' ? 24 : 6, $read['distance'], $name . ': the script\'s own distance');
+				$own = in_array($norm['effect'], array('blur-in', 'rotate-in'), true) ? array(8, $norm['effect'] === 'blur-in' ? 2 : 3) : array(24, 6);
+				pg_assert_same($norm['trigger'] === 'view' || $norm['trigger'] === 'load' ? $own[0] : $own[1], $read['distance'], $name . ': the script\'s own distance');
 				continue;
 			}
 			pg_assert_same($value, $read[$field], $name . ': ' . $field);
@@ -426,6 +455,20 @@ function test_designer_fx_script_reads_the_page()
 		array('opacity' => '0.6', 'transform' => ''),
 	), $got['_shift'], 'start and hover states');
 	pg_assert_same('opacity 600ms ease-out 150ms,transform 600ms ease-out 150ms', $got['_transition']);
+	pg_assert_same(array(
+		array('view', array('opacity' => '0', 'transform' => 'scale(1.1)'), array('opacity' => '', 'transform' => '')),
+		array('hover', array('opacity' => '', 'transform' => 'scale(0.95)'), array('opacity' => '', 'transform' => '')),
+		array('view', array('opacity' => '0', 'transform' => '', 'filter' => 'blur(8px)'), array('opacity' => '', 'transform' => '', 'filter' => '')),
+		array('click', array('opacity' => '', 'transform' => '', 'filter' => 'blur(2px)'), array('opacity' => '', 'transform' => '', 'filter' => '')),
+		array('load', array('opacity' => '0', 'transform' => 'rotate(-8deg)'), array('opacity' => '', 'transform' => '')),
+		array('hover', array('opacity' => '', 'transform' => 'rotate(3deg)'), array('opacity' => '', 'transform' => '')),
+		array('view', array('opacity' => '', 'transform' => '', 'clip' => 'inset(0 0 100% 0)'), array('opacity' => '', 'transform' => '', 'clip' => '')),
+		array('view', array('opacity' => '', 'transform' => '', 'clip' => 'inset(0 0 100% 0)'), array('opacity' => '', 'transform' => '', 'clip' => '')),
+	), $got['_more'], 'the four later entrances: start, hover and end states; reveal on hover is read as view');
+	pg_assert_same(array(
+		'opacity 600ms ease-out 0ms,transform 600ms ease-out 0ms,filter 600ms ease-out 0ms',
+		'opacity 600ms ease 50ms,transform 600ms ease 50ms,clip-path 600ms ease 50ms',
+	), $got['_moreTransition'], 'a blur and a clip move with the rest');
 	pg_assert_same(array(0, 175, 70), $got["_parallax"], "parallax offsets");
 	pg_assert_same(null, $got['_unknown'], 'an unknown effect is not read');
 	// 0 while the box is below the window, 1 once its middle reaches the
@@ -491,6 +534,12 @@ function test_designer_fx_panel()
 		. ' takes: [c("content", { contentType: "heading" }), c("content", { contentType: "custom_html" }), c("semantic", {}), c("row", {}), c("component", { componentType: "btn" }), c("shared_ref", {}), c("component", { componentType: "language_switcher" })].map(_sdFxTakes),'
 		. ' none: rows(propsInteractions(c("semantic", {}))),'
 		. ' slide: rows(propsInteractions(c("semantic", { _fx: { effect: "slide-up", trigger: "view" } }))),'
+		. ' zoomOut: rows(propsInteractions(c("semantic", { _fx: { effect: "zoom-out", trigger: "load" } }))),'
+		. ' blurIn: rows(propsInteractions(c("semantic", { _fx: { effect: "blur-in", trigger: "view" } }))),'
+		. ' rotateHover: rows(propsInteractions(c("semantic", { _fx: { effect: "rotate-in", trigger: "hover" } }))),'
+		. ' reveal: rows(propsInteractions(c("semantic", { _fx: { effect: "reveal", trigger: "view" } }))),'
+		. ' revealTriggers: (api.rows(c("semantic", { _fx: { effect: "reveal" } })).match(/data-fx="trigger">.*?<\\/select>/) || [""])[0].match(/value="[a-z]+"/g),'
+		. ' slideToReveal: _sdFxSet({ effect: "slide-up", trigger: "hover", distance: 30 }, "effect", "reveal"),'
 		. ' hover: rows(propsInteractions(c("semantic", { _fx: { effect: "fade", trigger: "hover" } }))),'
 		. ' sticky: rows(propsInteractions(c("semantic", { _fx: { effect: "sticky", offset: 8 } }))),'
 		. ' parallax: rows(propsInteractions(c("semantic", { _fx: { effect: "parallax" } }))),'
@@ -545,6 +594,12 @@ function test_designer_fx_panel()
 	pg_assert_same(array('Effect'), $got['none'], 'no interaction: the effect alone');
 	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Distance', 'Stagger children', 'Every time'), $got['slide'], 'a slide that enters on view');
 	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing'), $got['hover'], 'a hover fade');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Stagger children'), $got['zoomOut'], 'zoom out has no distance');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Blur', 'Stagger children', 'Every time'), $got['blurIn'], 'blur in: its distance is the blur');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Angle'), $got['rotateHover'], 'rotate in on hover: its distance is the angle');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Stagger children', 'Every time'), $got['reveal'], 'reveal');
+	pg_assert_same(array('value="view"', 'value="load"'), $got['revealTriggers'], 'reveal offers the two entrance triggers');
+	pg_assert_same(array('effect' => 'reveal', 'trigger' => 'view', 'duration' => 600, 'delay' => 0, 'easing' => 'ease-out', 'stagger' => 0, 'repeat' => false), $got['slideToReveal'], 'a hover slide switched to reveal enters on view');
 	pg_assert_same(array('Effect', 'Top offset'), $got['sticky']);
 	pg_assert_same(array('Effect', 'Speed'), $got['parallax']);
 	pg_assert_same('', $got['other'], 'not on the language switcher');
@@ -714,6 +769,22 @@ timers = [];
 out.replayEntrance = window.pgFx.replay(redrawn);
 out.entranceDuring = [redrawn.style.opacity, redrawn.style.getPropertyPriority('transition')];
 out.stickyReplay = window.pgFx.replay(sticky);
+var blur = new El({ 'data-pg-fx': 'blur-in', 'data-pg-fx-trigger': 'hover' });
+blur.style.filter = 'grayscale(1)';
+var reveal = new El({ 'data-pg-fx': 'reveal', 'data-pg-fx-trigger': 'view' });
+reveal.style.clipPath = 'circle(50%)';
+nodes.push(blur, reveal);
+window.pgFxBind(document);
+timers = [];
+window.pgFx.replay(blur);
+out.blurDuring = [blur.style.filter, blur.style.transition.indexOf(',filter 600ms') !== -1];
+timers.shift()(); timers.shift()();
+out.blurAfter = blur.style.filter;
+timers = [];
+window.pgFx.replay(reveal);
+out.revealDuring = [reveal.style.clipPath, reveal.style.opacity];
+timers.shift()(); timers.shift()();
+out.revealAfter = reveal.style.clipPath;
 console.log(JSON.stringify(out));
 JS;
 	$script = $fake . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps;
@@ -734,6 +805,10 @@ JS;
 	pg_assert_true($got['replayEntrance']);
 	pg_assert_same(array('', 'important'), $got['entranceDuring'], 'an entrance plays to its own state');
 	pg_assert_false($got['stickyReplay'], 'sticky has nothing to replay');
+	pg_assert_same(array('grayscale(1) blur(2px)', true), $got['blurDuring'], 'a blur on top of the node\'s own filter, moved with the rest');
+	pg_assert_same('grayscale(1)', $got['blurAfter'], 'its own filter again');
+	pg_assert_same(array('circle(50%)', ''), $got['revealDuring'], 'a reveal opens to the node\'s own clip with no fade');
+	pg_assert_same('circle(50%)', $got['revealAfter'], 'its own clip again');
 }
 
 // The scroll-linked effects on a fake page 800 px high: each frame puts

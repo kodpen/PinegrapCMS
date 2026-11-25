@@ -23,7 +23,7 @@ module: address_autocomplete, merchant_center, connections_screen
 
 ## Who may change them, and the registry?
 - Who may open Site Settings › Ecommerce (`connections_commerce_may_manage()`).
-- Registry: `place` `connections.php`, `found_at` `#settings/commerce/pgset-address-autocomplete` or `#settings/commerce/pgset-feeds`; states unchanged. The OpenAI feed stays on the card. No row added: `pg_connections_count()` stays 84.
+- Registry: `place` `connections.php`, `found_at` `#settings/commerce/pgset-address-autocomplete` or `#settings/commerce/pgset-feeds`; states unchanged. The OpenAI feed stays on the card. No row added: `pg_connections_count()` unchanged.
 - No legacy anchor for the moved field ids: no link points at them. No data step, table or column.
 
 Tests: `tests/connections_address_merchant_test.php`, `tests/address_autocomplete_test.php`.
