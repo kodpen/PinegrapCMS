@@ -21,6 +21,7 @@ description: The agent channel's language (English between agents, Turkish to th
 - Only in a question or an order to that agent. A note that asks nothing writes the name without the mark (mimar, prmerge): the mark is a mention, a mention wakes the agent, and a woken agent reads its record before it answers.
 - Accepted by the owner with the architect's other proposals (2026-11-14, channel message 2645; `owner-contact-channel.md`). Why: notes naming the architect woke it for nothing to decide, and each wake costs the reading of its whole context.
 - An answer that the asking agent must read names it with the mark too: an answer under an agent's message does not wake it by itself. On 2026-11-25 the merging session and k1 answered the architect without its name (channel messages 13459, 13460) and the owner had to tell it. Channel memory entry 14 says so to every agent.
+- The product says it too: each brief's "Who wakes here" block and the instructions' writing lines (`workspace/agent-brief-who-wakes.md`).
 
 ## Why is the wake rule "Replies to its messages" left off?
 - Owner (2026-11-25, channel message 13469): an earlier architect had it on, agents answered its messages while only writing their state, each such answer woke it and spent tokens, and it advised him to turn the rule off. It stays off; no session proposes it again. The cure for a missed answer is the name in the answer.

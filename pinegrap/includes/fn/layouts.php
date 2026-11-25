@@ -758,6 +758,14 @@ function pg_layout_convert_state($type, $row)
             'custom_field_2_required' => !empty($row['custom_field_2_required']),
         );
     }
+    if (in_array((string)$type, array('billing information', 'shipping address and arrival', 'shipping method'), true)) {
+        // The button's words, and the billing step's required marks.
+        return array(
+            'submit_button_label'     => trim((string)($row['submit_button_label'] ?? '')),
+            'custom_field_1_required' => !empty($row['custom_field_1_required']),
+            'custom_field_2_required' => !empty($row['custom_field_2_required']),
+        );
+    }
     if ((string)$type !== 'form list view') return array();
     $on = function ($key) use ($row) {
         return !empty($row[$key]) && (int)$row[$key] === 1;
@@ -957,6 +965,9 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         'form item view' => array('form_item_view_pages', " AND collection = 'a'"),
         'shopping cart'  => array('shopping_cart_pages', ''),
         'express order'  => array('express_order_pages', ''),
+        'billing information'          => array('billing_information_pages', ''),
+        'shipping address and arrival' => array('shipping_address_and_arrival_pages', ''),
+        'shipping method'              => array('shipping_method_pages', ''),
     );
     $out = array();
 

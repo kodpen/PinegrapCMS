@@ -989,6 +989,157 @@ function ws_agent_brief_asker_lines($asker)
 }
 
 /**
+ * The "Who wakes here" block of a brief: for each other active, allowed
+ * agent the place reaches, what the reader's own words do to it, asked of
+ * ws_agent_wake_matches() as an application writes, so the block cannot
+ * say other than what happens. Then the agent a discussion follows, Claude
+ * and Pinegrap AI where a person may ask them, and for a person's request
+ * that the answer tells the person itself. At most twelve agents and
+ * 1,000 characters; what is cut is counted. Pure.
+ *
+ * @param array[]    $rows       ws_agent_reach_rows()
+ * @param array      $reader     the reading agent's row: id, handle
+ * @param array|null $follow     the discussion's followed agent: handle ('@x'), registry (bool)
+ * @param string[]   $assistants 'Claude', 'Pinegrap AI': those a person may ask there
+ * @param bool       $by_person  a person asked the request
+ * @return string[]
+ */
+function ws_agent_brief_who_wakes_lines($rows, $reader, $follow = null, $assistants = array(), $by_person = false)
+{
+    $max_chars = 1000;
+    $max_agents = 12;
+    $reader_id = (int) ($reader['id'] ?? 0);
+    $reader_handle = (string) ($reader['handle'] ?? '');
+    $head = 'Who wakes here (what your own words do to the other agents of this place):';
+    $agents = array();
+
+    foreach ((array) $rows as $row) {
+        if (((int) $row['id'] === $reader_id) || ((string) ($row['status'] ?? 'active') !== 'active') || (isset($row['allowed']) && ((int) $row['allowed'] !== 1))) {
+            continue;
+        }
+
+        $handle = (string) ($row['handle'] ?? '');
+        $tag = ($handle !== '') ? '@' . $handle : '<@app:' . (int) ($row['app_id'] ?? 0) . '>';
+
+        // The same function that decides the wake, with an application's words.
+        if (!ws_agent_wake_matches($row, $tag, false, true)) {
+            continue;
+        }
+
+        $name = trim(preg_replace('/\s+/u', ' ', (string) ($row['name'] ?? '')));
+        $name = (mb_strlen($name) > 40) ? rtrim(mb_substr($name, 0, 39)) . '…' : $name;
+        $agents[] = '- ' . $tag . (($name !== '') ? ' (' . $name . ')' : '') . ': '
+            . (ws_agent_wake_matches($row, '', true, true) ? 'wakes when you name it or answer one of its messages.' : 'wakes when you name it.');
+    }
+
+    $tail = array();
+
+    if (is_array($follow) && ((string) ($follow['handle'] ?? '') !== '')) {
+        $followed = (string) $follow['handle'];
+
+        if (!empty($follow['registry']) && ($reader_handle !== '') && (strcasecmp($followed, '@' . $reader_handle) === 0)) {
+            $tail[] = 'This discussion follows you: a person\'s message here reaches you with no name.';
+        } else {
+            $tail[] = 'This discussion follows ' . $followed . ': a person\'s message here reaches it with no name; '
+                . (!empty($follow['registry']) ? 'your own words still wake it only as said above.' : 'your words never ask it.');
+        }
+    }
+
+    $assistants = array_values(array_filter(array_map('strval', (array) $assistants)));
+
+    if ($assistants) {
+        $tail[] = (count($assistants) > 1)
+            ? implode(' and ', $assistants) . ' are asked here by a person only: your words never ask them.'
+            : $assistants[0] . ' is asked here by a person only: your words never ask it.';
+    }
+
+    if ($by_person) {
+        $tail[] = 'A person asked: your answer is written under their message and tells them itself, so do not name them again.';
+    }
+
+    if (!$agents) {
+        return array_merge(array($head, 'No other agent is reached here: your words wake no agent.'), $tail);
+    }
+
+    $fixed = mb_strlen($head) + 1 + mb_strlen(implode("\n", $tail)) + ($tail ? 1 : 0);
+    $count_line = function ($n) {
+        return '- ' . $n . ' more agent' . (($n === 1) ? ' is' : 's are') . ' reached here.';
+    };
+    $shown = array();
+    $total = count($agents);
+
+    foreach ($agents as $i => $line) {
+        $left = $total - $i - 1;
+        $room = $max_chars - $fixed - mb_strlen(implode("\n", $shown)) - ($shown ? 1 : 0) - mb_strlen($line) - 1;
+
+        if ((count($shown) >= $max_agents) || ($room < ($left ? mb_strlen($count_line($left)) + 1 : 0))) {
+            break;
+        }
+
+        $shown[] = $line;
+    }
+
+    $cut = $total - count($shown);
+
+    while ($cut > 0 && ($fixed + mb_strlen(implode("\n", $shown)) + 1 + mb_strlen($count_line($cut)) + 1) > $max_chars) {
+        array_pop($shown);
+        $cut++;
+    }
+
+    if ($cut > 0) {
+        $shown[] = $count_line($cut);
+    }
+
+    return array_merge(array($head), $shown, $tail);
+}
+
+/**
+ * The agent a discussion follows, as the who-wakes block takes it: its
+ * handle and whether it is a registry agent; null outside a discussion or
+ * when it follows nobody.
+ *
+ * @param array|null $channel
+ * @return array|null handle, registry
+ */
+function ws_agent_brief_followed($channel)
+{
+    if (!is_array($channel) || !ws_channel_is_thread($channel) || !function_exists('ws_thread_follow_agent')) {
+        return null;
+    }
+
+    $key = ws_thread_follow_agent((int) $channel['id']);
+    $handle = ($key !== '') ? ws_thread_follow_handle($key, $channel) : '';
+
+    return ($handle !== '') ? array('handle' => $handle, 'registry' => ws_thread_follow_is_registry($key)) : null;
+}
+
+/**
+ * Claude and Pinegrap AI where a person may ask them in this channel: the
+ * who-wakes block says an application's words never ask them.
+ *
+ * @param array|null $channel
+ * @return string[]
+ */
+function ws_agent_brief_assistants($channel)
+{
+    if (!is_array($channel)) {
+        return array();
+    }
+
+    $names = array();
+
+    if (function_exists('ws_claude_ready') && ws_claude_ready() && ws_claude_channel_allowed($channel)) {
+        $names[] = 'Claude';
+    }
+
+    if (function_exists('ws_ai_ready') && ws_ai_ready() && ws_ai_channel_allowed($channel)) {
+        $names[] = 'Pinegrap AI';
+    }
+
+    return $names;
+}
+
+/**
  * What the brief says of a task handed to the agent (delegation.php): the
  * task as the person who asked reads it, inside a data block, the runs
  * before this one, and where the answer goes: on the task as the run's
@@ -1090,6 +1241,10 @@ function ws_agent_brief($agent, $row, $scopes)
             $lines[] = ws_thread_agent_close_sentence();
             $lines[] = ws_thread_agent_offer_sentence();
         }
+
+        // Who the agent's own words wake here (ws_agent_brief_who_wakes_lines()).
+        $lines[] = '';
+        $lines = array_merge($lines, ws_agent_brief_who_wakes_lines(ws_agent_reach_rows($channel), $agent, ws_agent_brief_followed($channel), ws_agent_brief_assistants($channel), !$by_app));
 
         $message = ws_message($row['message_id']);
 

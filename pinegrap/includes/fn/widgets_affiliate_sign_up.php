@@ -181,6 +181,9 @@ function _render_system_widget_affiliate_sign_up_form($tree_json, $widget_id, $c
     if ($label === '') $label = lang('Sign Up');
 
     $lf = new liveform('affiliate_sign_up_form');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'affiliate_sign_up_form');
     // Sent without a next page: the handler came back here with the
     // confirmation notice. The design stays; its controls, the terms link
     // and the form go, as on the other sign-up widgets' confirmation.

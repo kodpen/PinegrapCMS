@@ -1,20 +1,25 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the Activity tab of Channel info: in a channel with an agent
- * or a repository link, two tabs at the panel's top, Info (what the panel
- * holds) and Activity, which tells the channel's state in one place: the
- * summary of its agents and the project, a row each agent (what it works
- * on, its reported model, context, branch and when it reported), the
- * requests, what waits for a person, today's decisions, the repository's
- * numbers and the plan usage the agents reported. It only tells: links,
- * no setting and no action.
+ * Workspace - Channel info's agents block and its Activity tab. In a
+ * channel with an agent or a repository link two tabs stand at the panel's
+ * top, Info (what the panel holds) and Activity, which tells the channel's
+ * state in one place: the project, the requests, what waits for a person,
+ * today's decisions, the repository's numbers and the plan usage the agents
+ * reported. It only tells: links, no setting and no action.
+ *
+ * Over both tabs stands one block "Agents": a calm two-line row each agent
+ * (its state's word and the one thing worth knowing now), which opens in
+ * place for its facts. It is one node: changing the tab moves it to the top
+ * of the other pane, so open rows and "n more" keep their state; both are
+ * kept across a redraw of the panel and dropped when it closes. Without the
+ * tabs (assistants only) drawInfo() places it after People.
  *
  * It reads ws_channel_activity (includes/workspace/channel_activity.php)
- * when the tab opens, again when the channel's sync saw a message, a vote
- * or an answer change (at most once in 15 seconds) and every minute while
- * it is open, for the ages; nothing while it is closed. A part the answer
- * leaves null is left out.
+ * while the panel is open in a channel with a registry agent, else when the
+ * Activity tab opens; again when the channel's sync saw a message, a vote
+ * or an answer change (at most once in 15 seconds) and every minute, for
+ * the ages. A part the answer leaves null is left out.
  *
  * assets/js/workspace.js mounts it from drawInfo() through
  * window.PGWsChannelActivity.mount() and lends its helpers through
@@ -38,12 +43,27 @@
     var BRAKE = 15000;
     var EVERY = 60000;
 
-    // The tones of an agent's state, as the agent card draws them.
-    var STATE_TONES = { working: 'blue', waiting: 'amber', late: 'amber', paused: 'gray', idle: 'teal' };
+    // The rows the agents block shows before "n more", and the order of the
+    // states (ws_channel_activity_order()); the assistants come last.
+    var SHOWN = 6;
+    var STATE_RANK = { working: 0, waiting: 1, late: 2, idle: 3, paused: 4 };
 
-    // The one tab drawn now: a redraw of Channel info replaces it.
+    // The ring's radius in its 18 px box, and its whole length.
+    var RING_R = 7;
+    var RING_C = 2 * Math.PI * RING_R;
+
+    // The one panel drawn now: a redraw of Channel info replaces it.
     var current = null;
     var seq = 0;
+
+    // What the block keeps while the panel stays open in a channel: the rows
+    // opened (by the agent's key), "n more" pressed, the last answer and
+    // when it was read, and each agent's state as last told.
+    var kept = keptFresh(0);
+
+    function keptFresh(channelId) {
+        return { channelId: channelId, open: {}, more: false, data: null, readAt: 0, states: null };
+    }
 
     // Whether Channel info gets its two tabs: a team reader's channel with
     // an agent or a repository link. Pure
@@ -97,23 +117,176 @@
         return { words: t('act_context', activityTokens(used), activityTokens(size)), percent: percent, high: percent >= 90 };
     }
 
-    // What an agent's row says in words: its state; while it works who
-    // asked (only for a request of this channel), the message, since when
-    // and the progress note; then its report's model, branch and when it
-    // reported, a part it does not carry left out. Pure.
-    function activityRowWords(agent, t) {
-        var request = agent.request || null;
-        var asked = (request && request.asked_by && request.asked_by.name) ? t('act_asked_by', request.asked_by.name) : null;
+    // The block's rows: the agents the channel holds (channelAgents() of
+    // workspace.js: the assistants, then the registry agents), each joined
+    // by id with the read's agent, the read's row winning; then in the
+    // order working, waiting, not seen, ready, paused, the assistants last,
+    // the order they came in within each. Pure.
+    function agentsRows(base, read) {
+        var byId = {};
 
-        return {
-            state: agent.state_words || '',
-            asked: asked,
-            message_id: (request && request.message_id) ? request.message_id : null,
-            request: request ? [request.since, request.note].filter(Boolean) : [],
-            context: activityContext(agent.context, t),
-            report: [agent.model, agent.branch, agent.reported].filter(Boolean),
-            stale: !!agent.stale
-        };
+        (read || []).forEach(function (agent) {
+            if (agent && agent.id) {
+                byId[agent.id] = agent;
+            }
+        });
+
+        var rows = (base || []).map(function (agent, index) {
+            var row = Object.assign({}, agent);
+            var fresh = agent.id ? byId[agent.id] : null;
+
+            if (fresh) {
+                Object.assign(row, fresh);
+                row.name = fresh.name || agent.name;
+                row.key = agent.key;
+                row.tone = agent.tone;
+                row.read = true;
+            }
+
+            row.assistant = !!agent.assistant || (row.kind === 'model');
+            row.state = row.assistant ? 'idle' : (row.state || (row.active === false ? 'paused' : 'idle'));
+            row.at = index;
+
+            return row;
+        });
+
+        rows.sort(function (a, b) {
+            var ra = a.assistant ? 5 : (STATE_RANK[a.state] !== undefined ? STATE_RANK[a.state] : 3);
+            var rb = b.assistant ? 5 : (STATE_RANK[b.state] !== undefined ? STATE_RANK[b.state] : 3);
+
+            return (ra !== rb) ? ra - rb : a.at - b.at;
+        });
+
+        return rows;
+    }
+
+    // The rows shown: past six the first six and how many "n more" holds,
+    // all of them once it was pressed. Pure.
+    function agentsShown(rows, more) {
+        var list = rows || [];
+
+        if (more || (list.length <= SHOWN)) {
+            return { rows: list, rest: 0 };
+        }
+
+        return { rows: list.slice(0, SHOWN), rest: list.length - SHOWN };
+    }
+
+    // A row's second line at rest: the state's word, then the one thing
+    // worth knowing (rest) and an amber part (warn); tone colours the word.
+    // Before the read lands a working or a ready row shows its word alone.
+    // Pure.
+    function agentsLine(agent, t) {
+        if (agent.assistant) {
+            return { word: t('cm_assistant'), rest: t('agents_always'), warn: '', tone: '' };
+        }
+
+        var request = agent.request || null;
+        var out = { word: agent.state_words || '', rest: '', warn: '', tone: '' };
+        var waiting = Number(agent.waiting) || 0;
+
+        switch (agent.state) {
+            case 'working':
+                out.tone = 'blue';
+
+                if (agent.read && request) {
+                    out.rest = request.note || ((request.asked_by && request.asked_by.name) ? t('agents_for', request.asked_by.name, request.since || '') : (request.since || ''));
+                }
+                break;
+            case 'waiting':
+                out.tone = 'amber';
+                out.rest = (waiting === 1) ? t('agents_queue_one') : ((waiting > 1) ? t('agents_queue', waiting) : '');
+                break;
+            case 'late':
+                out.tone = 'amber';
+                out.rest = agent.seen_rest || '';
+                break;
+            case 'paused':
+                break;
+            default:
+                if (agent.read) {
+                    if ((agent.kind === 'app') && !agent.reported_at) {
+                        out.rest = t('agents_no_report');
+                    } else {
+                        out.rest = agent.model || '';
+                        out.warn = agent.stale ? (agent.reported || '') : '';
+                    }
+                }
+        }
+
+        return out;
+    }
+
+    // The facts of an opened row, in their order, a fact with nothing to
+    // say left out: Doing, Asked by, Queue, Handle, Wakes, Model, Context,
+    // Branch, Seen, Reported; an assistant has Handle, Wakes and Seen. Each
+    // is key, label, text, warn and muted; Asked by carries the asker's
+    // name, the message and since; Context its percent and high. Pure.
+    function agentsFacts(agent, t) {
+        var facts = [];
+        var request = agent.request || null;
+
+        function add(key, text, extra) {
+            if ((text === undefined) || (text === null) || (text === '')) {
+                return;
+            }
+
+            facts.push(Object.assign({ key: key, label: t('agents_f_' + key), text: String(text), warn: false, muted: false }, extra || {}));
+        }
+
+        if (!agent.assistant) {
+            add('doing', request ? request.note : '');
+
+            if (request && request.asked_by && request.asked_by.name) {
+                add('asked', request.asked_by.name, { message_id: request.message_id || null, since: request.since || '' });
+            }
+
+            var waiting = Number(agent.waiting) || 0;
+
+            add('queue', (waiting === 1) ? t('agents_queue_one') : ((waiting > 1) ? t('agents_queue', waiting) : ''));
+        }
+
+        add('handle', agent.handle ? '@' + agent.handle : '');
+        add('wakes', agent.wake_fact || t('agents_mentioned'));
+
+        if (!agent.assistant) {
+            var context = activityContext(agent.context, t);
+
+            add('model', agent.model);
+
+            if (context) {
+                add('context', t('agents_context', activityTokens(agent.context.used), activityTokens(agent.context.size), context.percent), { percent: context.percent, high: context.high });
+            }
+
+            add('branch', agent.branch);
+        }
+
+        add('seen', agent.seen, { warn: agent.seen_state === 'late' });
+
+        if (!agent.assistant) {
+            if (agent.reported_at) {
+                add('reported', agent.reported_ago, { warn: !!agent.stale });
+            } else if (agent.read && (agent.kind === 'app')) {
+                add('reported', t('agents_not_yet'), { muted: true });
+            }
+        }
+
+        return facts;
+    }
+
+    // The context ring at a row's end: the arc's length over the whole
+    // circle, amber from 90%; null for no context. Pure.
+    function agentsRing(context) {
+        var used = context ? Number(context.used) : 0;
+        var size = context ? Number(context.size) : 0;
+
+        if (!context || !(size > 0) || !(used >= 0)) {
+            return null;
+        }
+
+        var percent = Math.min(100, Math.round(used * 100 / size));
+
+        return { percent: percent, high: percent >= 90, dash: (percent * RING_C / 100).toFixed(2), whole: RING_C.toFixed(2) };
     }
 
     // How long a read asked by the sync waits after the last one: none
@@ -199,109 +372,319 @@
         return node;
     }
 
-    // The summary line and the project.
-    function drawSummary(h, pane, data) {
-        var box = h.el('div', 'ws-act-summary');
-
-        if (data.summary && data.summary.words) {
-            box.appendChild(h.el('div', 'pg-title-status ws-act-summary-line', data.summary.words));
+    // The project, the first line under the block in the Activity pane.
+    function drawProject(h, pane, data) {
+        if (!data.project || !data.project.name) {
+            return;
         }
 
-        if (data.project && data.project.name) {
-            var project = h.el('div', 'pg-text-meta ws-act-project');
+        var project = h.el('div', 'pg-text-meta ws-act-project');
 
-            project.appendChild(h.icon(data.project.from === 'repository' ? 'bi-github' : 'bi-folder2'));
-            project.appendChild(document.createTextNode(' ' + h.t('act_project', data.project.name)));
-            box.appendChild(project);
-        }
-
-        if (box.firstChild) {
-            pane.appendChild(box);
-        }
+        project.appendChild(h.icon(data.project.from === 'repository' ? 'bi-github' : 'bi-folder2'));
+        project.appendChild(document.createTextNode(' ' + h.t('act_project', data.project.name)));
+        pane.appendChild(project);
     }
 
-    // One agent's row: the face with its state dot, name and role, the
-    // state's words; while it works who asked, since when and the note; then
-    // its report. The name opens the agent card.
-    function drawAgent(h, list, channel, agent) {
-        var words = activityRowWords(agent, h.t);
-        var row = h.el('div', 'ws-act-agent' + (words.stale ? ' is-stale' : ''));
-        var face = h.el('span', 'ws-act-face');
-        var main = h.el('div', 'ws-act-agent-main');
-        var top = h.el('div', 'ws-act-agent-top');
-        var name = h.el('span', 'ws-act-agent-name', agent.name || ('@' + agent.handle));
+    // ── The agents block ──
 
-        face.appendChild(h.agentFace({ tone: agent.id, assistant: agent.kind !== 'app' }));
+    function svgNode(tag, attrs) {
+        var node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+
+        Object.keys(attrs).forEach(function (name) {
+            node.setAttribute(name, attrs[name]);
+        });
+
+        return node;
+    }
+
+    // The context ring, named by its tip's words.
+    function ringNode(h, agent) {
+        var ring = agentsRing(agent.context);
+
+        if (!ring) {
+            return null;
+        }
+
+        var context = activityContext(agent.context, h.t);
+        var words = h.t('agents_ring', context ? context.words : '', ring.percent);
+        var svg = svgNode('svg', { 'class': 'ws-agents-ring' + (ring.high ? ' is-high' : ''), viewBox: '0 0 18 18', width: '18', height: '18', role: 'img', 'aria-label': words });
+        var title = svgNode('title', {});
+
+        title.textContent = words;
+        svg.appendChild(title);
+        svg.appendChild(svgNode('circle', { cx: '9', cy: '9', r: String(RING_R), 'class': 'ws-agents-ring-track' }));
+        svg.appendChild(svgNode('circle', { cx: '9', cy: '9', r: String(RING_R), 'class': 'ws-agents-ring-arc', 'stroke-dasharray': ring.dash + ' ' + ring.whole, transform: 'rotate(-90 9 9)' }));
+
+        return svg;
+    }
+
+    // The facts of an opened row: labels at the left, values at the right.
+    function factsNode(h, channel, agent, id) {
+        var list = h.el('dl', 'ws-agents-facts');
+
+        list.id = id;
+
+        agentsFacts(agent, h.t).forEach(function (fact) {
+            var value = h.el('dd', 'ws-agents-fact-' + fact.key + (fact.warn ? ' ws-agents-warn' : '') + (fact.muted ? ' pg-text-meta' : ''));
+
+            list.appendChild(h.el('dt', '', fact.label));
+
+            if (fact.key === 'asked') {
+                value.appendChild(fact.message_id ? link(h, channel.id, fact.message_id, fact.text) : h.el('span', '', fact.text));
+
+                if (fact.since) {
+                    value.appendChild(document.createTextNode(' · ' + fact.since));
+                }
+            } else if (fact.key === 'context') {
+                value.appendChild(bar(h, fact.percent, fact.text, fact.high));
+                value.appendChild(h.el('span', 'pg-tabular', fact.text));
+            } else if (fact.key === 'branch') {
+                var cut = h.el('span', 'ws-agents-cut', fact.text);
+
+                cut.title = fact.text;
+                value.appendChild(cut);
+            } else {
+                value.textContent = fact.text;
+            }
+
+            list.appendChild(value);
+        });
+
+        return list;
+    }
+
+    // One row: a button with the face, two lines, the ring and the
+    // chevron, which opens the facts under it.
+    function rowNode(state, agent) {
+        var h = state.h;
+        var open = !!kept.open[agent.key];
+        var line = agentsLine(agent, h.t);
+        var row = h.el('div', 'ws-agents-row is-' + agent.state + (agent.assistant ? ' is-assistant' : '') + (open ? ' is-open' : ''));
+        var head = h.el('button', 'ws-agents-rowhead');
+        var face = h.el('span', 'ws-agents-face');
+        var text = h.el('span', 'ws-agents-text');
+        var first = h.el('span', 'ws-agents-l1');
+        var second = h.el('span', 'ws-agents-l2');
+        var factsId = 'ws-agents-facts-' + state.seq + '-' + agent.key;
+
+        head.type = 'button';
+        head.setAttribute('aria-expanded', open ? 'true' : 'false');
+        head.setAttribute('aria-controls', factsId);
+        head.setAttribute('data-info-key', 'agents-row-' + agent.key);
+
+        face.appendChild(h.agentFace({ tone: agent.tone, assistant: agent.assistant }));
+
         // The agents' one state mark (.ws-agent-dot); ready draws none.
-        if (['working', 'waiting', 'late', 'paused'].indexOf(agent.state) !== -1) {
-            var dot = h.el('span', 'ws-agent-dot is-' + agent.state + ' ws-act-dot');
+        if (!agent.assistant && ['working', 'waiting', 'late', 'paused'].indexOf(agent.state) !== -1) {
+            var dot = h.el('span', 'ws-agent-dot is-' + agent.state);
 
             dot.setAttribute('aria-hidden', 'true');
             face.appendChild(dot);
         }
-        row.appendChild(face);
 
-        top.appendChild(name);
+        head.appendChild(face);
+
+        first.appendChild(h.el('span', 'ws-agents-name', agent.name));
 
         if (agent.role) {
-            top.appendChild(h.el('span', 'pg-text-meta ws-act-agent-role', agent.role));
+            first.appendChild(h.el('span', 'ws-agents-role', agent.role));
         }
 
-        top.appendChild(h.el('span', 'pg-pill pg-tone-' + (STATE_TONES[agent.state] || 'gray') + ' ws-act-state', words.state));
-        main.appendChild(top);
+        second.appendChild(h.el('em', 'ws-agents-word' + (line.tone ? ' is-' + line.tone : ''), line.word));
 
-        if (h.agentCardHook) {
-            h.agentCardHook(name, channel, { id: agent.id, handle: agent.handle, name: agent.name }, true);
-        }
+        if (line.rest || line.warn) {
+            var rest = h.el('span', 'ws-agents-rest', ' · ' + (line.rest || ''));
 
-        if (words.asked || words.request.length) {
-            var work = h.el('div', 'pg-text-meta ws-act-agent-line');
-
-            if (words.asked) {
-                work.appendChild(words.message_id ? link(h, channel.id, words.message_id, words.asked) : h.el('span', '', words.asked));
-            }
-
-            words.request.forEach(function (part) {
-                if (work.firstChild) {
-                    work.appendChild(document.createTextNode(' · '));
+            if (line.warn) {
+                if (line.rest) {
+                    rest.appendChild(document.createTextNode(' · '));
                 }
 
-                work.appendChild(h.el('span', '', part));
-            });
+                rest.appendChild(h.el('span', 'ws-agents-warn', line.warn));
+            }
 
-            main.appendChild(work);
+            second.appendChild(rest);
         }
 
-        if (words.context) {
-            var context = h.el('div', 'ws-act-context');
+        text.appendChild(first);
+        text.appendChild(second);
+        head.appendChild(text);
 
-            context.appendChild(h.el('span', 'pg-text-meta pg-tabular', words.context.words));
-            context.appendChild(bar(h, words.context.percent, words.context.words, words.context.high));
-            main.appendChild(context);
+        var end = h.el('span', 'ws-agents-end');
+        var ring = agent.assistant ? null : ringNode(h, agent);
+
+        if (ring) {
+            end.appendChild(ring);
         }
 
-        if (words.report.length) {
-            main.appendChild(h.el('div', 'pg-text-meta ws-act-agent-line ws-act-report', words.report.join(' · ')));
-        }
+        end.appendChild(h.icon(open ? 'bi-chevron-up' : 'bi-chevron-down', 'ws-agents-chev'));
+        head.appendChild(end);
+        row.appendChild(head);
 
-        row.appendChild(main);
-        list.appendChild(row);
+        var facts = factsNode(h, state.channel, agent, factsId);
+
+        facts.hidden = !open;
+        row.appendChild(facts);
+
+        head.addEventListener('click', function () {
+            agentsToggle(row, head, facts, agent.key, !kept.open[agent.key]);
+        });
+
+        // Esc closes the open row that holds the focus; the next one the panel.
+        row.addEventListener('keydown', function (event) {
+            if ((event.key === 'Escape') && kept.open[agent.key]) {
+                event.stopPropagation();
+                agentsToggle(row, head, facts, agent.key, false);
+                head.focus();
+            }
+        });
+
+        return row;
     }
 
-    function drawAgents(h, pane, channel, data) {
-        if (!(data.agents || []).length) {
+    function agentsToggle(row, head, facts, key, open) {
+        var chevron = head.querySelector('.ws-agents-chev');
+
+        if (open) {
+            kept.open[key] = true;
+        } else {
+            delete kept.open[key];
+        }
+
+        row.classList.toggle('is-open', open);
+        head.setAttribute('aria-expanded', open ? 'true' : 'false');
+        facts.hidden = !open;
+
+        if (chevron) {
+            chevron.classList.toggle('bi-chevron-down', !open);
+            chevron.classList.toggle('bi-chevron-up', open);
+        }
+    }
+
+    // The block's rows, the count and the summary drawn anew from the
+    // channel and the last answer; the focus stays on the row that held it.
+    function drawRows(state) {
+        var h = state.h;
+        var block = state.block;
+
+        if (!block) {
             return;
         }
 
-        section(h, pane, h.t('act_agents'), data.agents.length);
+        var rows = agentsRows(h.channelAgents ? h.channelAgents(state.channel) : [], kept.data ? kept.data.agents : null);
+        var shown = agentsShown(rows, kept.more);
+        var active = block.contains(document.activeElement) ? document.activeElement.getAttribute('data-info-key') : null;
+        var list = h.clear(block.querySelector('.ws-agents-rows'));
 
-        var list = h.el('div', 'ws-act-agents');
+        block.querySelector('.ws-agents-count').textContent = String(rows.length);
+        block.querySelector('.ws-agents-sum').textContent = (kept.data && kept.data.summary && kept.data.summary.words) || '';
 
-        data.agents.forEach(function (agent) {
-            drawAgent(h, list, channel, agent);
+        shown.rows.forEach(function (agent) {
+            list.appendChild(rowNode(state, agent));
         });
 
-        pane.appendChild(list);
+        if (shown.rest) {
+            var more = h.el('button', 'ws-agents-more', h.t('act_more', shown.rest));
+
+            more.type = 'button';
+            more.setAttribute('data-info-key', 'agents-more');
+            more.appendChild(h.icon('bi-chevron-down', ''));
+            more.addEventListener('click', function () {
+                kept.more = true;
+                drawRows(state);
+
+                var next = list.querySelectorAll('.ws-agents-rowhead')[SHOWN];
+
+                if (next) {
+                    next.focus();
+                }
+            });
+            list.appendChild(more);
+        }
+
+        if (active) {
+            var target = block.querySelector('[data-info-key="' + active + '"]');
+
+            if (target) {
+                target.focus({ preventScroll: true });
+            }
+        }
+
+        agentsTell(state, rows);
+    }
+
+    // A state that changed while the panel is open is said once, politely:
+    // "Mimar: Working".
+    function agentsTell(state, rows) {
+        if (!kept.data) {
+            return;
+        }
+
+        var before = kept.states;
+        var said = [];
+
+        kept.states = {};
+
+        rows.forEach(function (agent) {
+            if (agent.assistant || !agent.read) {
+                return;
+            }
+
+            kept.states[agent.key] = agent.state;
+
+            if (before && before[agent.key] && (before[agent.key] !== agent.state)) {
+                said.push(agent.name + ': ' + (agent.state_words || ''));
+            }
+        });
+
+        if (said.length && state.live) {
+            state.live.textContent = said.join('. ');
+        }
+    }
+
+    // The block: its head (the count, the states that ask for a look, the
+    // manager's way to the agents' settings) and its rows; null for a
+    // channel with no agent at all.
+    function blockNode(state) {
+        var h = state.h;
+        var channel = state.channel;
+
+        if (!h.channelAgents || !h.channelAgents(channel).length) {
+            return null;
+        }
+
+        var block = h.el('section', 'ws-agents');
+        var head = h.el('div', 'ws-agents-head');
+        var title = h.el('h3', 'ws-panel-kicker', h.t('agents_title'));
+
+        title.id = 'ws-agents-title-' + state.seq;
+        block.setAttribute('aria-labelledby', title.id);
+        head.appendChild(title);
+        head.appendChild(h.el('span', 'ws-agents-count'));
+        head.appendChild(h.el('span', 'ws-agents-sum'));
+
+        if (channel.can_manage && h.channelSettings) {
+            var manage = h.el('button', 'pg-icon-button pg-icon-button-sm ws-agents-manage');
+
+            manage.type = 'button';
+            manage.title = h.t('agents_manage');
+            manage.setAttribute('aria-label', h.t('agents_manage'));
+            manage.setAttribute('data-info-key', 'agents-manage');
+            manage.appendChild(h.icon('bi-sliders', ''));
+            manage.addEventListener('click', function () {
+                h.channelSettings(channel, 'people');
+            });
+            head.appendChild(manage);
+        }
+
+        block.appendChild(head);
+        block.appendChild(h.el('div', 'ws-agents-rows'));
+
+        state.live = h.el('div', 'visually-hidden');
+        state.live.setAttribute('aria-live', 'polite');
+        block.appendChild(state.live);
+
+        return block;
     }
 
     // A label and its value on one line.
@@ -526,57 +909,74 @@
         }
     }
 
+    // The Activity pane under the block.
     function draw(state, data) {
         var h = state.h;
         var pane = h.clear(state.pane);
-        var scroll = state.pane.parentNode ? state.pane.parentNode.scrollTop : 0;
+        var scroll = state.holder.scrollTop;
 
-        drawSummary(h, pane, data);
-        drawAgents(h, pane, state.channel, data);
+        drawProject(h, pane, data);
         drawRequests(h, pane, state.channel, data);
         drawWaiting(h, pane, state.channel, data);
         drawDecisions(h, pane, state.channel, data);
         drawRepository(h, pane, data);
         drawUsage(h, pane, data);
+        state.drawn = true;
 
         // A redraw for the ages keeps the reader's place.
-        if (state.pane.parentNode) {
-            state.pane.parentNode.scrollTop = scroll;
-        }
+        state.holder.scrollTop = scroll;
     }
 
-    // Reads the answer and draws it, while the tab is the one shown.
+    // Whether the panel reads now: on either tab in a channel with a
+    // registry agent (for the block), else only while Activity is shown.
+    function wantsRead(state) {
+        return !!state.tabs && ((state.tab === 'activity') || ((state.channel.agents || []).length > 0));
+    }
+
+    // Reads the answer and draws it: the block's rows and the Activity pane.
+    // When the read fails the block stays drawn from what the channel holds.
     function read(state) {
         var h = state.h;
 
-        if (state.stopped || state.tab !== 'activity') {
+        if (state.stopped || !wantsRead(state)) {
             return;
         }
 
-        if (!state.pane.isConnected) {
+        if (!state.holder.isConnected) {
             stop(state);
             return;
         }
 
-        state.readAt = Date.now();
+        kept.readAt = Date.now();
 
-        if (!state.pane.firstChild) {
+        if (!state.drawn && !state.pane.firstChild) {
             state.pane.appendChild(h.el('div', 'pg-text-meta ws-act-loading', h.t('loading')));
         }
 
         h.api('ws_channel_activity', { channel_id: state.channel.id }).then(function (data) {
-            if (state.stopped || (state.tab !== 'activity') || !data || !data.activity) {
+            if (state.stopped || !data || !data.activity || (kept.channelId !== state.channel.id)) {
                 return;
             }
 
+            kept.data = data.activity;
+            drawRows(state);
             draw(state, data.activity);
         }).catch(function () {
-            if (state.stopped || (state.tab !== 'activity')) {
+            if (state.stopped || state.drawn) {
                 return;
             }
 
             h.clear(state.pane).appendChild(h.el('div', 'pg-text-meta ws-act-loading', h.t('act_failed')));
         });
+    }
+
+    function tick(state) {
+        clearInterval(state.ticker);
+        state.ticker = 0;
+
+        if (wantsRead(state)) {
+            state.ticker = setInterval(function () { read(state); }, EVERY);
+        }
     }
 
     function show(state, tab, focus) {
@@ -594,13 +994,26 @@
         state.body.hidden = (tab !== 'info');
         state.holder.hidden = (tab !== 'activity');
 
-        clearInterval(state.ticker);
-        state.ticker = 0;
-
-        if (tab === 'activity') {
-            read(state);
-            state.ticker = setInterval(function () { read(state); }, EVERY);
+        // The block moves to the top of the pane shown; it is not drawn
+        // again, so open rows stay open.
+        if (state.block) {
+            if (tab === 'info') {
+                state.body.insertBefore(state.block, state.body.firstChild);
+            } else {
+                state.holder.insertBefore(state.block, state.pane);
+            }
         }
+
+        // Activity drawn from the last answer; read only when it has none.
+        if ((tab === 'activity') && !state.drawn) {
+            if (kept.data) {
+                draw(state, kept.data);
+            } else {
+                read(state);
+            }
+        }
+
+        tick(state);
 
         if (focus) {
             state.buttons[tab].focus();
@@ -608,9 +1021,10 @@
     }
 
     /**
-     * Puts the Info and Activity tabs at the top of Channel info, where the
-     * channel has an agent or a repository link; elsewhere it leaves the
-     * panel as it is. The info's body stays the Info tab's pane.
+     * Puts the agents block and, where the channel has an agent or a
+     * repository link, the Info and Activity tabs at the top of Channel
+     * info; the info's body stays the Info tab's pane. Without the tabs the
+     * block waits for place().
      *
      * @param {HTMLElement} panel the info panel (aside.ws-info-panel)
      * @param {HTMLElement} body  its body, holding what Info shows
@@ -622,17 +1036,30 @@
         stop(current);
         current = null;
 
-        if (!h || !panel || !body || !activityTabsShow(channel)) {
+        if (!h || !panel || !body || !channel) {
             return;
+        }
+
+        if (kept.channelId !== channel.id) {
+            kept = keptFresh(channel.id);
         }
 
         seq += 1;
 
         var el = h.el;
-        var tabs = el('div', 'pg-seg ws-act-tabs');
         var pane = el('div', 'ws-act-pane');
         var holder = el('div', 'ws-panel-body ws-act-body');
-        var state = { h: h, channel: channel, body: body, pane: pane, holder: holder, buttons: {}, tab: 'info', readAt: 0, braked: 0, ticker: 0, stopped: false };
+        var state = { h: h, seq: seq, channel: channel, body: body, pane: pane, holder: holder, buttons: {}, tab: 'info', tabs: activityTabsShow(channel), block: null, live: null, drawn: false, braked: 0, ticker: 0, stopped: false };
+
+        state.block = blockNode(state);
+        current = state;
+
+        if (!state.tabs) {
+            drawRows(state);
+            return;
+        }
+
+        var tabs = el('div', 'pg-seg ws-act-tabs');
         var keys = ['info', 'activity'];
 
         tabs.setAttribute('role', 'tablist');
@@ -678,8 +1105,36 @@
         panel.insertBefore(head, body);
         panel.insertBefore(holder, body.nextSibling);
 
-        current = state;
+        drawRows(state);
         show(state, activityTabPick(storedTab(channel.id), true), false);
+
+        // A redraw of the panel reads at once only when the last answer is
+        // older than the brake; else the minute's ticker brings the next.
+        if (wantsRead(state) && (!kept.readAt || !activityBrake(kept.readAt, Date.now()))) {
+            read(state);
+        }
+    }
+
+    /**
+     * Places the block where Channel info's agents stood, after People, in
+     * a channel with no tabs (assistants only); with the tabs mount() has
+     * placed it already.
+     *
+     * @param {HTMLElement} body the panel's body
+     */
+    function place(body) {
+        if (current && !current.tabs && current.block && body) {
+            body.appendChild(current.block);
+        }
+    }
+
+    /**
+     * The panel closed: open rows, "n more" and the last answer go with it.
+     */
+    function forget() {
+        stop(current);
+        current = null;
+        kept = keptFresh(0);
     }
 
     /**
@@ -691,11 +1146,11 @@
     function changed(channelId) {
         var state = current;
 
-        if (!state || state.stopped || (state.tab !== 'activity') || (state.channel.id !== channelId) || state.braked) {
+        if (!state || state.stopped || !wantsRead(state) || (state.channel.id !== channelId) || state.braked) {
             return;
         }
 
-        var wait = activityBrake(state.readAt, Date.now());
+        var wait = activityBrake(kept.readAt, Date.now());
 
         if (!wait) {
             read(state);
@@ -710,6 +1165,8 @@
 
     window.PGWsChannelActivity = {
         mount: mount,
+        place: place,
+        forget: forget,
         changed: changed
     };
 })();

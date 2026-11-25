@@ -26,7 +26,7 @@ priority: 6
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - AV1 (M) The reader, pure: the keyboard's order over a tree, the heading outline, regions and their names, pictures' texts. Done (#11529): `designer/accessibility-reader.md`.
-- AV2 (M) after AV1: the card and the three kinds of marks, boards V1 to V4 and V6 of the drawing. The PR body carries a table of the boards: what was built for each, what differs and why.
+- AV2 (M) after AV1: the card and the three kinds of marks, boards V1 to V4 and V6 of the drawing. Done (#11657): `designer/accessibility-view.md`.
 - AV3 (S) after AV2: the sight filters, boards V5 and V6. The PR body carries a table of the boards: what was built for each, what differs and why.
 - AV4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 

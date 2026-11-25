@@ -7,7 +7,7 @@ description: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, 
 - `PGSketchReader.read(frame, boxes)`: frame `{x, y, w, h}`; boxes `{id, x, y, w, h}` in the same coordinates, optional `text` (typed word), `mark` (`cross` picture, `lines` text), `kind` (chosen in the chip's menu), `parent` (box id; without it a box nine tenths inside a bigger one is its child).
 - Answers `{sections, skipped}`. A section: `id` (its first box's, so a later "Build again" can match it), `kind`, `widget` (catalog, blog, booking or null), `boxes`, `buttons`, `columns`, `heading` (first typed word), `picture`, `top`, `height`, `unsure`, `reason`, `options`.
 - Kinds (`KINDS`, the chip menu's order): header, intro, features, cards, text, picture, gallery, form, cta, footer, catalog, blog, booking. Labels are the chip's job (`_sdT()`), not the reader's.
-- Pure, no DOM, not in a bundle yet: the step that loads it adds it to `pg_js_bundles()`.
+- Pure, no DOM; loaded in the designer part `sketchbuild` (`designer/sketch-build.md`), which reads with `h` the lowest box's bottom: with `h: 0` every box is skipped as outside the frame.
 
 ## Which rules read a sketch?
 - Sizes against the frame's width (zoom does not matter). A side under 1% is skipped, as is a box half outside the frame or with a bad number; `skipped` lists them.

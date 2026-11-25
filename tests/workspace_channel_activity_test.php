@@ -32,16 +32,64 @@ function test_workspace_channel_activity_summary()
 	pg_assert_same(1, $summary['paused']);
 	pg_assert_same(
 		lang(array('string' => '{var:1} working', 'vars' => 3)) . ' · ' . lang(array('string' => '{var:1} waiting', 'vars' => 1)) . ' · '
-			. lang(array('string' => '{var:1} not seen', 'vars' => 1)) . ' · ' . lang(array('string' => '{var:1} ready', 'vars' => 1)) . ' · '
-			. lang(array('string' => '{var:1} paused', 'vars' => 1)),
+			. lang(array('string' => '{var:1} not seen', 'vars' => 1)),
 		$summary['words'],
-		'the states in the order of the rows'
+		'only the states that ask for a look, in the order of the rows'
 	);
 
-	$quiet = ws_channel_activity_summary(array('idle'));
-
-	pg_assert_same(lang(array('string' => '{var:1} ready', 'vars' => 1)), $quiet['words'], 'a state with none is left out');
+	pg_assert_same(
+		lang(array('string' => '{var:1} working', 'vars' => 1)) . ' · ' . lang(array('string' => '{var:1} waiting', 'vars' => 1)),
+		ws_channel_activity_summary(array('working', 'waiting', 'idle'))['words'],
+		'working, waiting and ready: "1 working · 1 waiting"'
+	);
+	pg_assert_same('', ws_channel_activity_summary(array('idle', 'idle', 'idle'))['words'], 'three ready: nothing');
 	pg_assert_same('', ws_channel_activity_summary(array())['words'], 'no agent, no words');
+}
+
+// 6. The member row carries the two new fields, the read's agent the seven.
+function test_workspace_channel_activity_agent_fields()
+{
+	$now = 1700000000;
+	$push = array('agent' => array('id' => 4, 'kind' => 'app', 'handle' => 'mimar', 'name' => 'Mimar', 'status' => 'active', 'door_kind' => 'push', 'door_last_knock' => $now - 3 * 3600, 'report_at' => $now - 120, 'report_model' => 'fable'), 'wake_rule' => 'prefix', 'wake_prefix' => '!do');
+	$member = ws_channel_member_agent($push, $now, array('agent:4' => array('queued' => 2)));
+
+	pg_assert_same(lang(array('string' => 'last knock {var:1}', 'vars' => ws_seen_ago_words($now - 3 * 3600, $now))), $member['seen_rest'], 'the last seen in running words');
+	pg_assert_same(lang(array('string' => 'On {var:1}', 'vars' => '!do')), $member['wake_fact'], 'the wake rule with no verb');
+
+	$fresh = ws_channel_member_agent(array('agent' => array('id' => 5, 'kind' => 'app', 'status' => 'active', 'door_kind' => 'push', 'door_last_knock' => 0)), $now);
+
+	pg_assert_same(lang('not knocked yet'), $fresh['seen_rest']);
+	pg_assert_same(lang('When mentioned'), $fresh['wake_fact']);
+
+	$model = ws_channel_member_agent(array('agent' => array('id' => 6, 'kind' => 'model', 'status' => 'active'), 'wake_rule' => 'all'), $now);
+
+	pg_assert_same(lang('always ready'), $model['seen_rest']);
+	pg_assert_same(lang('On every message'), $model['wake_fact']);
+	pg_assert_same(lang('On replies to it'), ws_channel_agent_wake_fact('replies'));
+
+	$row = ws_channel_activity_agent_row($push['agent'], $member, null, $now);
+
+	foreach (array('wake_fact', 'seen', 'seen_state', 'seen_rest', 'waiting', 'active', 'reported_ago') as $field) {
+		pg_assert_true(array_key_exists($field, $row), 'the read\'s agent carries ' . $field);
+	}
+
+	pg_assert_same($member['wake_fact'], $row['wake_fact'], 'from its member row');
+	pg_assert_same($member['seen_rest'], $row['seen_rest']);
+	pg_assert_same(2, $row['waiting'], 'its queue');
+	pg_assert_true($row['active']);
+	pg_assert_same(ws_seen_ago_words($now - 120, $now), $row['reported_ago'], 'the report\'s age alone');
+	pg_assert_same('fable', $row['model']);
+
+	$unreported = ws_channel_activity_agent_row(array('id' => 7, 'kind' => 'app', 'report_at' => 0), $fresh, null, $now);
+
+	pg_assert_same('', $unreported['reported_ago'], 'no report, no age');
+	pg_assert_same(null, $unreported['reported_at']);
+
+	$schema = ws_api_channel_activity_schema();
+
+	foreach (array('wake_fact', 'seen', 'seen_state', 'seen_rest', 'waiting', 'active', 'reported_ago') as $field) {
+		pg_assert_true(array_key_exists($field, $schema['agents'][0]), 'the API declares ' . $field);
+	}
 }
 
 function test_workspace_channel_activity_order()

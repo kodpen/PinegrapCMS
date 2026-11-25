@@ -20,7 +20,7 @@ description: Endpoints that speak JSON: rejections and CSRF failures in JSON wit
 - A barcode scan whose request got no answer says the quantity may already have changed: the UPDATE can run before a dropped connection or a failed page, so a blind re-scan could count twice.
 
 ## Does `api.php` read a form body?
-- No: `api.php` decodes `php://input` as JSON. A FormData or multipart post decodes to nothing, so it has no action: a designer gets "Invalid action.", a lower role is stopped at the role gate first. An endpoint carrying files (multipart) is therefore a separate script (e.g. `designer_import.php`).
+- Multipart, yes: its `$_POST` fields are the request and the files are in `$_FILES` (Workspace attachments, designer `canva_page`). Otherwise `php://input` is decoded as JSON; a urlencoded post has no action.
 - New `api.php` actions: `panel-action-table.md`.
 
 ## How does an action keep PHP's text out of its JSON?

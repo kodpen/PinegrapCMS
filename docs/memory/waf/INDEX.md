@@ -13,6 +13,7 @@
 - security-scan-retired-files.md: Decision (architect 2026-11-25): a PHP file an earlier release carried and this one dropped is told from an unknown file by the Clean Up tool's list; the update still deletes nothing; step SC8b [decision: here]
 - security-scan-section.md: Security Scan row of Site Settings › Firewall and HTTPS: the joined run and its state row, the findings list, Quarantine and Restore (data/quarantine), Ignore with a note, Scan now through api.php
 - security-scan-stored-content.md: Security Scan stored content: script, hidden frame or redirect from an unknown host in pages, regions, styles, settings; known hosts; the resumable pass
+- security-scan-test-round.md: Security Scan test round (SC8, #11633): what tests/security_scan_round_test.php proves, the false alarms it turned into exceptions, and what stays unverified or open
 - waf-ai-bots-ranges.md: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() verification by published IP ranges (waf_bot_ranges), verdict ladder, refresh path (2026.4.4). [decision: decisions-made-product-97.md]
 - waf-ai-training-crawlers.md: SEO's "Allow AI training" in the firewall: on, the training crawlers leave the bad-bot match only (class training, no good-bot privilege); off, refused (#11023, poll 216) [decision: decisions-made-product-97.md]
 - waf-architecture-and-phases.md: waf.php structure: standalone module (no functions.php, no HTTP), what runs in the router vs init phase, signature scanning only in init, fail-open, waf_client_ip(), upgrade compatibility. [decision: here]

@@ -25,7 +25,7 @@ priority: 8
 - Every text is translated. No table or column.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- SM1 (S) The marks at rest, under the pointer and chosen, the tag's words, the View switch and the command palette row. Boards Q1 to Q4 of `designer/designer-shared-marks-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why, and names the change for the `[FIX]` line.
+- SM1 (S) — done in #11662. The marks at rest, under the pointer and chosen, the tag's words, the View switch and the command palette row. Boards Q1 to Q4 of `designer/designer-shared-marks-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why, and names the change for the `[FIX]` line.
 - SM2 (S) Close-out: `designer/shared-component-model.md` and `designer/designer-canvas-bar.md` say the new marks and the row, this file deleted.
 
 ## What does every step keep?

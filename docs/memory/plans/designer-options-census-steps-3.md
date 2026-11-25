@@ -25,4 +25,4 @@ priority: 7
 - DD24, `designer-options-layers-drawing`: the layer list with a gradient's stops, Clip shape and Mask. Holds DO13.
 - DD25, `designer-options-curve-drawing`: the curve editor, "Page transition". Holds DO19.
 - DD26, `designer-options-collection-drawing`: "New collection with pages" and its closing line. Holds DO23.
-- DD22 comes with the first sheets of the other plans, since the longest line waits on it; the others after the sheets of `designer-drawings.md` and `designer-drawings-levels.md`.
+- DD22 comes with the first sheets of the other plans, since the longest line waits on it; the others after the sheets of `designer-drawings.md`.

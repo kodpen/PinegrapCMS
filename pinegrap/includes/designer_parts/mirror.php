@@ -6,9 +6,10 @@
  * (includes/fn/output.php).
  *
  * The canvas mirrors: the draft at another width beside the canvas, drawn
- * again when the hand rests. When they are drawn again
- * (window.PGMirrorSchedule), then the part that fills their frames from the
- * canvas. Not handed until its switch is built.
+ * again when the hand rests. When the mirrors are drawn again
+ * (window.PGMirrorSchedule), then the part that fills their frames and lays
+ * out "Side by side". Handed to every editor; it runs the first time the
+ * View menu's switch "Side by side" is on.
  *
  * Memory: docs/memory/designer/designer-canvas-mirror.md
  *
@@ -27,5 +28,5 @@ return array(
 		'assets/js/pg_mirror_schedule.js',
 		'assets/js/style_designer_mirror.js',
 	),
-	'when'    => 'off',
+	'when'    => 'always',
 );

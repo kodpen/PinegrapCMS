@@ -1,6 +1,6 @@
 ---
 name: channel-activity-tab
-description: The Activity tab of Channel info (#10751, #10813, #10810, #10803): when it shows, what it tells, the one read behind it, how repository numbers are counted
+description: The Activity tab of Channel info (#10751, #10813, #10810, #10803, #11617): when it shows, what it tells under the agents block, the one read behind it, how repository numbers are counted
 ---
 
 ## What is it, and why?
@@ -9,8 +9,8 @@ description: The Activity tab of Channel info (#10751, #10813, #10810, #10803): 
 - It only tells: links, no setting, no action. Every team reader of the channel; never the guest page.
 
 ## What does it show?
-- A summary line, "3 working · 1 waiting · 1 not seen", and the project: the newest one an agent reported, else the linked repository's `owner/name`.
-- Agents, ordered working, waiting, not seen, ready, paused: face with state dot, name, role, state; while working who asked (linked), "since HH:MM", the progress note; the reported model, context ("412k of 1M tokens" with a bar, marked from 90%), branch and "reported … ago", muted after a day. The name opens the agent card.
+- First the agents block, the same as under Info (`channel-info-agents-block.md`, #11617): it holds each agent's state, request, model, context, branch and report. Its head carries the summary words, which name only working, waiting and not seen.
+- Then the project: the newest one an agent reported, else the linked repository's `owner/name`.
 - Requests (waiting with the oldest's age, in work, answered and failed today); polls, agent questions and approvals waiting for a person, oldest first, five then "n more"; today's decisions, count and newest three, "All decisions" opens the Decisions tab.
 - Repository: today's pull requests opened, merged, closed, checks green and red, the last five lines. Plan usage: each window once with the agents that reported it, under "As the agent reported it; the site cannot check it."
 
@@ -24,7 +24,7 @@ description: The Activity tab of Channel info (#10751, #10813, #10810, #10803): 
 - A private channel's link and numbers only for its members.
 
 ## When does the screen read it?
-- `assets/js/workspace_channel_activity.js` (bundled in `workspace.min.js`), mounted from `drawInfo()`: when the tab opens, on the channel's sync when a message, a vote or an answer changed (at most once in 15 seconds) and every 60 seconds while open. Nothing while the tab is closed.
+- `assets/js/workspace_channel_activity.js` (bundled in `workspace.min.js`), mounted from `drawInfo()`: while the panel is open in a channel with a registry agent, on either tab (for the agents block); else when Activity opens. Again on the channel's sync when a message, a vote or an answer changed (at most once in 15 seconds) and every 60 seconds.
 
 ## What was left out?
 - A history or chart of states, a cost in money, alarms, settings in the tab, the guest page, numbers from GitHub's API. Each is a later yes.

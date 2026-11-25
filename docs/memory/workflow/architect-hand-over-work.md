@@ -5,7 +5,6 @@ description: Hand-over of the architect session of 2026-11-24 and 25, the work i
 
 ## Which PRs of the architect are open?
 - #11548: the Options panel packages as steps DO2 to DO27, product part 110 of the decisions list, the note on coordinator 2's pause, who draws the sheets. #11550: the canvas guides sheet, DD8. Both are labelled `ready` and not touched after.
-- Owed once #11547 (DD6 and DD7, a worker's PR) has landed: DD8 is marked done with #11550 in `plans/designer-drawings.md`, and the "Who draws" lines there and in `plans/designer-drawings-levels.md` are corrected: the architect draws while no design session runs.
 
 ## Who holds the plans?
 - Owner (2026-11-25, agent channel): coordinator 2 takes no new work and its open steps stay open; coordinator 1 goes on. Coordinator 1 gives out every plan's free step, coordinator 2's too, and plan steps come before a bug hunt.

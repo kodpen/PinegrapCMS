@@ -280,6 +280,8 @@ function _render_system_widget_folder_view($tree_json, $widget_id, $cfg = array(
             $page_id, defined('OUTPUT_PATH') ? OUTPUT_PATH : '/');
     }
     $top = isset($by_folder[$folder_id]) ? $by_folder[$folder_id] : array();
+    // The Preview's cases "Empty" and "Long".
+    $top = pg_preview_as_rows($top);
 
     // The visitor's start page, unless it is this one.
     $start_url = '';

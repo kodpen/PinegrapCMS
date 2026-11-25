@@ -333,3 +333,132 @@ function test_designer_grid_tracks_wiring()
 		pg_assert_true(strpos($part, "_sdT('" . $key . "')") !== false, 'the part says ' . $key);
 	}
 }
+
+// A grid child's place (DO5): grid-column / grid-row read back as a start
+// line and a span; any other value is kept as typed.
+function test_designer_grid_place_parse()
+{
+	$r = designer_grid_tracks_run(<<<'JS'
+out = ['', 'auto', '3', 'span 2', '2 / span 3', '2 / 5', 'span 2 / auto', 'auto / span 4', ' 1  /  span  2 ', 'main', '-1', '3 / 2', 'span 13'].map(G.parsePlace);
+out.push(G.PLACE);
+out.push(G.parsePlace('span 2 / 3'));
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$p = function ($start, $span) {
+		return array($start, $span, false);
+	};
+	$got = array();
+	foreach (array_slice($r, 0, 13) as $x) {
+		$got[] = array($x['start'], $x['span'], $x['typed']);
+	}
+	pg_assert_same(array(
+		$p('', ''),
+		$p('', ''),
+		$p('3', ''),
+		$p('', '2'),
+		$p('2', '3'),
+		$p('2', '3'),
+		$p('', '2'),
+		$p('', '4'),
+		$p('1', '2'),
+		array('', '', true),
+		array('', '', true),
+		array('', '', true),
+		array('', '', true),
+	), $got);
+	pg_assert_same('main', $r[9]['value'], 'a typed value is kept');
+	pg_assert_true($r[14]['typed'], 'a span then an end line is typed');
+	pg_assert_same(array('columns' => 'grid-column', 'rows' => 'grid-row'), $r[13]);
+}
+
+// What a start and a span write; both empty is the browser's own place
+// (nothing written); a field out of range is refused (null).
+function test_designer_grid_place_build_edit()
+{
+	$r = designer_grid_tracks_run(<<<'JS'
+var cur = G.parsePlace('2 / span 3');
+out = [
+	G.buildPlace({ start: '', span: '' }),
+	G.buildPlace({ start: '3', span: '' }),
+	G.buildPlace({ start: '', span: 2 }),
+	G.buildPlace({ start: 2, span: 3 }),
+	G.buildPlace({ start: '0', span: '' }),
+	G.buildPlace({ start: '', span: '13' }),
+	G.buildPlace({ start: 'x', span: '' }),
+	G.editPlace(cur, 'span', '4'),
+	G.editPlace(cur, 'span', ''),
+	G.editPlace(cur, 'start', ''),
+	G.editPlace(G.parsePlace(''), 'span', ' 2 '),
+	G.editPlace(cur, 'span', '2.5'),
+	G.editPlace(G.parsePlace('main'), 'typed', 'main-end'),
+	G.editPlace(G.parsePlace('main'), 'typed', 'a; color: red'),
+	G.editPlace(G.parsePlace('main'), 'typed', '')
+];
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'',
+		'3',
+		'span 2',
+		'2 / span 3',
+		null,
+		null,
+		null,
+		'2 / span 4',
+		'2',
+		'span 3',
+		'span 2',
+		null,
+		'main-end',
+		null,
+		'',
+	), $r);
+}
+
+// A grid's child takes Span columns, Span rows and Start at, first of the
+// element's own rows; any other element does not.
+function test_designer_grid_place_layout_plan()
+{
+	$r = designer_grid_tracks_lay_run(<<<'JS'
+out = {
+	child: _sdLayPlan({ flex: false, parentFlex: false, gridItem: true }, {}),
+	none: _sdLayPlan({ flex: false, parentFlex: true }, {}).rows,
+	of: _sdLayOf('gridItem')
+};
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(array('gridItem'), $r['child']['rows'], 'a grid child: its place rows');
+	pg_assert_false(in_array('gridItem', $r['none'], true), 'a flex child gets no grid place');
+	pg_assert_same('item', $r['of']);
+}
+
+// The place rows are drawn by the part 'grid' through the size host.
+function test_designer_grid_place_wiring()
+{
+	$src = designer_grid_tracks_source();
+	pg_assert_true(strpos($src, "{ id: 'gridItem', of: 'item', name: '', when: 'gridItem' }") !== false, 'Layout lists the place rows');
+	pg_assert_true(strpos($src, 'gridItem: !!(par && _sdGridBox((par.props || {}).cssClass))') !== false, 'the context reads a grid child');
+	pg_assert_true(strpos($src, 'gridItem: a.gridItem && c.gridItem') !== false, 'several elements: a grid child when all are');
+	pg_assert_true(strpos($src, '<div data-sd-griditem hidden></div>') !== false, 'the rows\' place in Layout');
+	pg_assert_true(strpos($src, "_sdPartCall('grid', 'drawItem', [_sdSzHost(") !== false, 'the part draws the place rows');
+
+	$part = (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_grid.js');
+	foreach (array('Span columns', 'Span rows', 'Start at', 'Column', 'Row') as $key) {
+		pg_assert_true(strpos($part, "_sdT('" . $key . "')") !== false, 'the part says ' . $key);
+	}
+}
