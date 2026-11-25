@@ -223,7 +223,7 @@ function pg_panel_designer($request, $action)
     // nothing about why the button did nothing.
     if (!pg_designer_is_full($user)) {
         $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
-                            'page_load', 'seo_check', 'import_fragment',
+                            'page_load', 'seo_check', 'import_fragment', 'activity_list',
                             'form_fields', 'preview_widgets', 'preview_records', 'widget_ghosts', 'legacy_region_preview',
                             'revisions_list', 'revision_get', 'prototype_map');
         // The "Clicks" layer's figures: the sub action asks the Visitors
@@ -1163,6 +1163,20 @@ function pg_panel_designer($request, $action)
             // One row over the page size tells whether older ones remain.
             list($rv_list, $rv_more) = pg_page_revisions_page(pg_page_revisions_list($rv_page, 51, $rv_before), 50);
             respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => $rv_more));
+            break;
+
+        // The design's events for History's Activity tab
+        // (includes/fn/designer_activity.php), fifty at a time. Every role
+        // that opens the editor may ask; the reader keeps a content editor
+        // to the pages they may edit.
+        case 'activity_list':
+            $ac_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            if ($ac_style <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$ac_style'")) {
+                respond(array('status' => 'error', 'message' => lang('Design not found.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_activity.php');
+            $ac_before = isset($request['before']) ? (string)$request['before'] : '';
+            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before));
             break;
 
         case 'revision_get':

@@ -1831,6 +1831,7 @@
     "import {var:1} ({var:2}) was started": "{var:1} numaralı içe aktarma ({var:2}) başlatıldı",
     "import {var:1} was undone": "{var:1} numaralı içe aktarma geri alındı",
     "import, getting started": "içe aktarma, başlarken",
+    "imported {var:1}": "{var:1} sayfasını içe aktardı",
     "in": "inç",
     "in #{var:1}": "#{var:1} kanalında",
     "in 7 days {var:1}": "7 günde {var:1}",

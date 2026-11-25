@@ -24,7 +24,7 @@ priority: 5
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - AC1 (S) Census, no product code, written to `designer/`: every writer that changes a design and the row it leaves or does not; the question for the architect. Done (#11579): `designer/designer-activity-writers.md`.
-- AC2 (M) after AC1: the reader: events from the rows that exist, their sentences, pages of fifty, rights; tests.
+- AC2 (M) after AC1: the reader: events from the rows that exist, their sentences, pages of fifty, rights; tests. Done (#11599): `designer/designer-activity-reader.md`.
 - AC3 (M) after AC2, CL1 of the compare plan and DD21: the Activity tab, its choosers, the row that opens Compare.
 - AC5 (M) after AC2: the audit trail's missing lines (a shared component's writes; a design's save, rename, duplicate, delete and draft switch; the scheduled job taking a page on or off the site) and the reader's sentences for them, as `designer/designer-activity-audit-trail.md`; tests. Before AC4.
 - AC4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
