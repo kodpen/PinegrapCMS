@@ -1,10 +1,10 @@
 ---
 name: designer-canvas-guides-drawing
-description: The drawing of plan designer-canvas-guides (DD8): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
+description: The drawing of the canvas guides (DD8 #11550): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
 ---
 
 ## Where is the drawing?
-- `docs/memory/designer/designer-canvas-guides-drawing/`: `canvas-guides.html` on the look sheet's stylesheet and its own `drawing.css`, with `canvas-guides-light.jpg` and `canvas-guides-dark.jpg`. Where the plan and the sheet differ, the sheet wins.
+- `docs/memory/designer/designer-canvas-guides-drawing/`: `canvas-guides.html` on the look sheet's stylesheet and its own `drawing.css`, with `canvas-guides-light.jpg` and `canvas-guides-dark.jpg`. Where the sheet and the built canvas guides differ, the topic files (`designer-canvas-guides-overview.md`) say what was built.
 - The canvas bar is the designer's dark chrome in both pictures; the page on the canvas is a stand-in for a site's page.
 
 ## Which board belongs to which step?
@@ -24,7 +24,7 @@ description: The drawing of plan designer-canvas-guides (DD8): where the sheet i
 
 ## What does it add to the bars?
 - Nothing in the canvas bar. One switch row "Canvas guides" in the View menu under today's four rows, on by default, counted by the menu's badge; under it two plain lines naming the keys: "Measure: point at another element" with Alt, "Layout lines" with its key.
-- The key rows are not buttons and are dimmed while the switch is off. Shift+G is drawn as an example: CG5 takes a key the shortcuts list has free.
+- The key rows are not buttons and are dimmed while the switch is off. The sheet drew Shift+G as an example; CG5 took Shift+G (`designer-canvas-guides-lines.md`).
 - The first-use line under the bar: "Drag the edge of a tinted band to change the spacing. Hold Alt and point at another element to measure." with "Got it".
 
 ## Which states have no board?

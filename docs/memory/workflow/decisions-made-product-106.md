@@ -11,7 +11,7 @@ description: Decisions made, product part 106 (2026-11-24 on): seven more design
 - The Preview with a chosen record, visitor and case: `plans/designer-preview-as.md`.
 - A shared component's open fields changed per place, and variants: `plans/designer-component-overrides.md`.
 - One check before publishing, over links, accessibility, search engines, weight and left sample content: done (#11518, #11528, #11537, #11577, #11607), `designer/designer-publish-overview.md`.
-- Distances, spacing and columns handled on the canvas: `plans/designer-canvas-guides.md`.
+- Distances, spacing and columns handled on the canvas: done (#11517, #11570, #11568, #11603, #11623), `designer/designer-canvas-guides-overview.md`.
 - A section saved to the site's own library, exported and imported: `designer/designer-my-library-overview.md` (done).
 - A picture's focus point set by dragging: built, `designer/image-focus-overview.md`.
 - The draft on a real phone by a QR code: done (#11541, #11578, #11582), `designer/designer-phone-preview-rules.md`.
