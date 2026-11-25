@@ -9,8 +9,9 @@ module: prototype_phone
 - "Share prototype" lists it with `phone: true` (`pg_proto_links_panel_rows()`); the API's link summary is unchanged.
 
 ## Who makes, finds and ends it?
-- Designer sub-actions, roles 0-1 (not in `$content_ok`): `prototype_phone` (style_id, page_id, audience `anyone` default or `team`) finds the person's live phone link of that design and audience again (`pg_proto_phone_pick()`, newest), or makes one starting on the page being edited (the first draft when it is no draft). Answer: `link` (id, audience, start_page_id, hint, expires_at, seconds_left), `url`.
-- A page whose publish folder is not public or guest (`pg_proto_link_page_shown()`) answers `team_only: true` for anyone and makes nothing; the window offers the team link.
+- Designer sub-actions, roles 0-1 (not in `$content_ok`): `prototype_phone` (style_id, page_id, audience `anyone` default or `team`) finds the person's live phone link of that design and audience again (`pg_proto_phone_pick()`, newest), or makes one starting on the page being edited (the first draft when it is no draft).
+- Answer: `link` (id, audience, start_page_id, start_page, hint, expires_at, seconds_left), `url`, `qr` (inline SVG by `pg_qr_svg()`, #11578), sent with `Cache-Control: no-store`.
+- A page whose publish folder is not public or guest (`pg_proto_link_page_shown()`) answers `team_only: true` (with `start_page`, its name) for anyone and makes nothing; the window offers the team link.
 - A found link whose address cannot be shown again (no key, key changed) is revoked and a new one made: one phone link per person, design and audience.
 - `prototype_phone_end` (link_id) revokes it: only a phone link of the asking person. The design's delete revokes it as every share link.
 

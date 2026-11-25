@@ -604,6 +604,9 @@ function ws_channel_board_js_strings()
     $strings = array(
         'tab_board'        => lang('Board'),
         'cb_group'         => lang('Group the cards'),
+        'cb_view'          => lang('Board or list'),
+        'cb_view_board'    => lang('Board'),
+        'cb_view_list'     => lang('List'),
         'cb_all_people'    => lang('Everybody'),
         'cb_nobody'        => lang('Nobody on it'),
         'cb_mine'          => lang('Only mine'),

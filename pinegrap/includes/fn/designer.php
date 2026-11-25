@@ -2299,6 +2299,24 @@ function pg_page_draft_move($page_id, $on, $folder, $user_id = null)
 }
 
 /**
+ * The reason a page with a blocking Publish check finding is published
+ * anyway (the save's publish_check_reason): plain text on one line, at most
+ * 500 characters; '' when none was given.
+ *
+ * @param array $page the page as the save receives it
+ * @return string
+ */
+function pg_designer_publish_check_reason($page)
+{
+    $reason = (is_array($page) && isset($page['publish_check_reason']) && is_string($page['publish_check_reason']))
+        ? $page['publish_check_reason'] : '';
+    $reason = html_entity_decode(strip_tags($reason), ENT_QUOTES, 'UTF-8');
+    $reason = trim((string) preg_replace('/\s+/u', ' ', $reason));
+
+    return mb_substr($reason, 0, 500, 'UTF-8');
+}
+
+/**
  * What a save does with a page's draft state (pg_designer_save_page()):
  * whether the page ends up a draft, and the warning when a draft is refused.
  * The editor sends the state as page_draft; a save without it - and every
@@ -3544,6 +3562,70 @@ function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
 }
 
 /**
+ * What the "Page details" window of a sketch page in the Prototype view
+ * (assets/js/style_designer_sketchdetails.js) asks of the server. Without
+ * an address: the site's menus with their top items, for "In the menu".
+ * With one: who has it already, the page whose name it is ('used'), or a
+ * file, short link or address the site answers itself ('taken',
+ * pg_designer_page_name_taken_elsewhere()), and why it cannot be a page's
+ * name ('error', pg_designer_page_name_error()). Nothing is written.
+ *
+ * @param array $request the API request
+ * @return array the answer
+ */
+function pg_designer_sketch_details($request)
+{
+    $address = isset($request['address']) ? trim((string) $request['address']) : '';
+
+    if ($address === '') {
+        $menus = db_items("SELECT id, name FROM menus ORDER BY name, id");
+        $items = db_items("SELECT id, menu_id, name FROM menu_items WHERE parent_id = '0' ORDER BY sort_order, id LIMIT 2000");
+
+        return array('status' => 'success', 'menus' => pg_designer_sketch_menus($menus, $items));
+    }
+
+    $error = pg_designer_page_name_error($address, true);
+    $used = ($error === '') ? (string) db_value("SELECT page_name FROM page WHERE page_name = '" . e($address) . "' LIMIT 1") : '';
+
+    return array(
+        'status' => 'success',
+        'error'  => $error,
+        'used'   => $used,
+        'taken'  => ($error === '' && $used === '') ? pg_designer_page_name_taken_elsewhere($address) : false,
+    );
+}
+
+/**
+ * The menus as the "Page details" window lists them: each with its top
+ * items in printing order, an item whose menu is not listed left out.
+ * Pure.
+ *
+ * @param array $menus rows id, name
+ * @param array $items rows id, menu_id, name, in printing order
+ * @return array [['id' => int, 'name' => string, 'items' => [['id', 'name']]]]
+ */
+function pg_designer_sketch_menus($menus, $items)
+{
+    $out = array();
+    $at = array();
+
+    foreach (is_array($menus) ? $menus : array() as $row) {
+        $at[(int) $row['id']] = count($out);
+        $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'items' => array());
+    }
+
+    foreach (is_array($items) ? $items : array() as $row) {
+        $menu = (int) $row['menu_id'];
+
+        if (isset($at[$menu])) {
+            $out[$at[$menu]]['items'][] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The columns, as SQL values, a new page's INSERT names because the page
  * table gives them no default, unless the save writes them itself ($c_extra,
  * column => value): the message shown while new comments are off is a text
@@ -4167,6 +4249,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // A held draft an administrator published anyway, with the reason.
     if ($approval_hold && $approval_reason !== '' && $page_id > 0) {
         pg_proto_approval_override_log($approval_hold['page_name'], $approval_hold, $approval_reason);
+    }
+
+    // A page that goes on the site with a blocking Publish check finding,
+    // with the reason the Publish sheet asked for.
+    $check_reason = pg_designer_publish_check_reason($page);
+    if ($check_reason !== '' && $page_id > 0 && !$draft_plan['want']) {
+        log_activity(lang(array('string' => 'page ({var:1}) was published with a blocking Publish check finding: {var:2}',
+            'vars' => array($name, $check_reason))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
     }
 
     // Un-migrated database: the only place the tree can live is the style.
@@ -4814,8 +4904,10 @@ function pg_scroller_inject($content, $src = null)
 }
 
 /**
- * The markers of the visual editor's "Back to top" button (data-pg-to-top)
- * and "Scroll progress" bar (data-pg-scroll-progress): the attributes
+ * The markers of the visual editor's "Back to top" button (data-pg-to-top),
+ * "Scroll progress" bar (data-pg-scroll-progress) and a menu's "After
+ * scrolling" (data-pg-scrolled) and "Mark the section in view"
+ * (data-pg-spy) rows: the attributes
  * themselves, not longer names that start with them. The editor's Preview
  * tests the markup with the same expression (_SD_PAGE_SCRIPTS in
  * assets/js/style_designer.js).
@@ -4824,12 +4916,12 @@ function pg_scroller_inject($content, $src = null)
  */
 function pg_page_scroll_pattern()
 {
-    return '/\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i';
+    return '/\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i';
 }
 
 /**
- * The script behind "Back to top" and "Scroll progress", for a page whose
- * HTML holds either marker (pg_page_scroll_pattern()); a page without one
+ * The script behind "Back to top", "Scroll progress" and a menu's scroll
+ * rows, for a page whose HTML holds one of their markers (pg_page_scroll_pattern()); a page without one
  * gets nothing. Asked once every shared component and system widget is
  * drawn in (get_page_content.php), so the file follows the element wherever
  * it was placed. assets/js/pg_page_scroll.js is deferred and needs no

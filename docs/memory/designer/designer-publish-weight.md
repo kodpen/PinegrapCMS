@@ -5,7 +5,7 @@ module: publish_weight
 ---
 
 ## Where does it live, and what does it read?
-- `includes/fn/publish_weight.php`, pure, loaded where the Publish check runs (not by `functions.php`). It reads the draft's server render (`seo-check-draft-render.md`; the audit render writes `data-pg-node`) and the sizes of the files that page loads. No screen calls it yet.
+- `includes/fn/publish_weight.php`, pure, loaded where the Publish check runs (not by `functions.php`). It reads the draft's server render (`seo-check-draft-render.md`; the audit render writes `data-pg-node`) and the sizes of the files that page loads. `seo_check` calls it when the Publish check asks (`weight: 1`), through `pg_designer_publish_weight()` (`includes/fn/seo_draft.php`).
 - `pg_publish_weight_urls($html)`: the stylesheets, scripts and pictures the page loads, without query, once each. `pg_publish_weight_local_files($urls, $root, $base)` gives the site's own files' bytes and a picture's pixel size; another host, a path outside `$root` or a missing file is left out.
 
 ## What does `pg_publish_weight_measure($html, $files)` count?
@@ -24,8 +24,8 @@ module: publish_weight
 - `pg_publish_weight_findings($measure, $unused, $texts)` in PC1's shape (`designer-publish-findings.md`), source and group `weight`, level `look`, never blocking: `weight_<measure>` over budget (detail `bytes / budget`), `img_oversized` and `img_no_size` per picture (node = nearest `data-pg-node`, detail its address), `script_blocking` per script, one `css_unused` (count, one rule a line).
 - `pg_publish_weight_failed($why, $texts)`: one `failed` finding, blocks nothing. `pg_publish_weight_texts()` gives the translated sentences; English stands in without them.
 
-## How does it join `PgPublishFindings.read()`?
-- PC1 (#11518) reads no weight source. The findings are already in its shape, so `read()` takes `sources.weight` as that array (or `false` → the failed finding) and concatenates it before `merge()` and `sort()`; nothing of PC1 is rewritten.
+## What does `seo_check` answer, and how fast?
+- `designer-publish-weight-seo-check.md`.
 
 ## How fast is it?
 - 132 KB page with 1,500 elements and 188 pictures plus a 167 KB stylesheet of 6,000 rules, PHP 8.3, 4 cores: measure, unused rules and findings 24 ms median (15 runs). The editor loads none of it: opening, drawing and editing are unchanged.

@@ -9,4 +9,5 @@ description: Why settings, firewall, sessions, backups and updates have no exter
 
 ## What stays open?
 - A single setting a client must read is added as a field of `/meta` under `meta:read` as free work.
+- The Security Scan's findings and last run are read at `GET /security-scan` under `system:read`, read only, as the owner asked (`waf/security-scan-api.md`).
 - A real need for a settings group read or written (the fields named, the guard that holds) is a new architect issue, not a step claimed from a plan.

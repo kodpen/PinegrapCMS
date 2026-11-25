@@ -219,7 +219,7 @@ function test_component_overrides_editor_wiring()
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_overrides.min.js', isset($parts['overrides']) ? $parts['overrides'] : null, 'the part');
 	$bundles = pg_js_bundles();
-	pg_assert_same(array('assets/js/pg_component_overrides.js'), $bundles['assets/js/style_designer_overrides.min.js'], 'its source is the model');
+	pg_assert_same('assets/js/pg_component_overrides.js', $bundles['assets/js/style_designer_overrides.min.js'][0], 'its first source is the model');
 	pg_assert_false(in_array('assets/js/pg_component_overrides.js', $bundles['assets/js/style_designer.min.js'], true), 'not in the core');
 	pg_assert_contains("'overrides', 'pages')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php'), 'handed to the editor');
 }

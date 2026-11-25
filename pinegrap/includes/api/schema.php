@@ -4201,6 +4201,21 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'security_scan.read',
+			'method'  => 'GET',
+			'path'    => '/security-scan',
+			'scope'   => 'system:read',
+			'handler' => 'api_security_scan_read',
+			'returns' => 'SecurityScanReport',
+			'summary' => 'Is the site at risk? The Security Scan\'s findings and its last run',
+			'description' => 'at_risk is true while an open finding is high or critical; worst is the worst open severity, null when none is open; open counts open findings by severity. Each finding has a kind (the rule), a place (a file path or a record as type:id), and reason and what_to_do in the site language. scan is the last run or the one going on. Read only: Quarantine, Ignore and Scan now stay in the panel.',
+			'details' => 'The list of the Security Scan section in Site Settings > Firewall and HTTPS. scanned is false until a first run has finished; ready is false until the database update that adds the findings has run, and then everything is empty. A file place is relative to the software folder. Findings come open worst and newest first, then quarantined, then ignored; a finding the last run no longer saw is gone and not listed. At most 300 findings; the counts cover every finding listed, whatever state asks for.',
+			'params'  => array(
+				array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'quarantined', 'ignored'), 'description' => 'Only the findings in this state.')
+			)
+		),
+
+		array(
 			'id'      => 'launch.read',
 			'method'  => 'GET',
 			'path'    => '/launch',

@@ -93,9 +93,9 @@ function test_lc_piece_map_names_the_first_family()
 		$map = pg_layout_piece_map($type);
 		pg_assert_true(is_array($map) && isset($map['echo'], $map['if'], $map['loop']), $type . ' has a piece map');
 	}
-	pg_assert_same(null, pg_layout_piece_map('express order'), 'a type of a later family has none yet');
+	pg_assert_same(null, pg_layout_piece_map('billing information'), 'a type of a later family has none yet');
 	pg_assert_same(null, pg_layout_piece_map('custom form'), 'the custom form keeps its own converter');
-	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart'), pg_layout_convert_types());
+	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order'), pg_layout_convert_types());
 }
 
 function test_lc_row_template_from_the_starter()
@@ -164,7 +164,7 @@ function test_lc_unknown_code_and_values_are_dropped()
 
 function test_lc_unknown_type()
 {
-	$r = pg_layout_convert('express order', '<p>x</p>', array());
+	$r = pg_layout_convert('billing information', '<p>x</p>', array());
 	pg_assert_same(false, $r['ok']);
 }
 
@@ -394,7 +394,7 @@ function test_lc_type_file_convert_keeps_the_dropped_list()
 	pg_assert_same(array('browse'), _test_lc_codes($r['dropped']), 'the Region panel gets what the run refuses');
 	pg_assert_same('theme', $r['tree']['children'][0]['props']['cssClass'], 'the theme\'s wrapper stays');
 	pg_assert_same(1, count(_test_lc_of_type($r['tree'], 'loop_area')));
-	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'express order'), $code, array())['ok'], 'a type with no map');
+	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'billing information'), $code, array())['ok'], 'a type with no map');
 }
 
 function test_lc_dropped_rows()
@@ -731,4 +731,100 @@ function test_lc_skipped_switch_cases()
 	$r = pg_layout_convert('shopping cart', $code, array());
 	pg_assert_same(array(), $r['dropped']);
 	pg_assert_contains('__item_name', _test_lc_bound($r['tree'], 'text'), 'the value after the block');
+}
+
+function _test_lc_express_order_texts()
+{
+	return array(
+		'english_default/256' => _test_lc_site('english_default', 256),
+		'turkish_default/256' => _test_lc_site('turkish_default', 256),
+		'english_default/476' => _test_lc_site('english_default', 476),
+		'turkish_default/476' => _test_lc_site('turkish_default', 476),
+		'english_default/497' => _test_lc_site('english_default', 497),
+	);
+}
+
+// The express order pages of the starting sites: one recipient, a PO
+// number box on the order page, no quick add and no billing form.
+function _test_lc_express_order_state($row = array())
+{
+	return pg_layout_convert_state('express order', $row + array('product_description_type' => 'full_description', 'po_number' => 1));
+}
+
+// Every starting-site text of the express order: nothing dropped, the cart
+// rows in both tables by the cart's row flags, the blocks the widget prints
+// whole as its sections, the boxes and buttons named or bound as the
+// widget needs, the applied gift cards as its list, no form left.
+function test_lc_express_order_starting_site_texts()
+{
+	pg_assert_same(5, count(array_unique(_test_lc_express_order_texts())), 'five distinct texts');
+	foreach (_test_lc_express_order_texts() as $label => $code) {
+		$r = pg_layout_convert('express order', $code, array('state' => _test_lc_express_order_state()));
+		pg_assert_same(true, $r['ok'], $label);
+		pg_assert_same(array(), $r['dropped'], $label . ': nothing dropped');
+		$json = json_encode($r['tree']);
+		pg_assert_same(false, strpos($json, '<?'), $label . ': no PHP');
+		pg_assert_same(false, (bool)preg_match('/pg-(vis|loop|row|section|form|raw|source)|"_list"/', $json), $label . ': no marker left');
+		$loops = array_values(array_filter(_test_lc_of_type($r['tree'], 'loop_area'), function ($n) { return empty($n['props']['source']); }));
+		pg_assert_same(2, count($loops), $label . ': today\'s and the recurring table');
+		pg_assert_same('cart_item_today', $loops[0]['children'][0]['props']['_bindings']['eo_visible_if'], $label . ': the first table\'s rows');
+		pg_assert_same('cart_item_recurring', $loops[1]['children'][0]['props']['_bindings']['eo_visible_if'], $label . ': the second table\'s rows');
+		$sections = _test_lc_bound($r['tree'], 'section');
+		foreach (array('eo_errors_notices', 'eo_payment_methods', 'eo_terms', 'eo_applied_offers', 'eo_payment_periods') as $want) {
+			pg_assert_contains($want, $sections, $label . ': section ' . $want);
+		}
+		pg_assert_same(array('eo_submit_update', 'eo_submit_purchase'), array_slice(array_unique(_test_lc_bound($r['tree'], 'action')), 0, 2), $label . ': the buttons');
+		pg_assert_contains('billing_country', _test_lc_bound($r['tree'], 'eo_field'), $label . ': the country list the widget fills');
+		$names = _test_lc_names($r['tree']);
+		pg_assert_contains('quantity[^^__item_id^^]', $names, $label . ': the express order\'s quantity box');
+		pg_assert_false(in_array('donations[^^__item_id^^]', $names, true), $label . ': a donation\'s box is its quantity box');
+		pg_assert_contains('billing_email_address', $names, $label . ': billing fields keep the classic names');
+		$sourced = array_values(array_filter(_test_lc_of_type($r['tree'], 'loop_area'), function ($n) { return !empty($n['props']['source']); }));
+		pg_assert_same(array('checkout.gift_cards'), array_map(function ($n) { return $n['props']['source']; }, $sourced), $label . ': the applied gift cards');
+		pg_assert_same(array(), array_values(array_filter(_test_lc_nodes($r['tree']['children']), function ($n) { return _pg_lfc_tag($n) === 'form'; })), $label . ': the widget draws the form');
+		$text = _test_lc_bound($r['tree'], 'text');
+		foreach (array('__item_gift_card_html', '__item_form_data_html', '__item_recurring_schedule_html', '__cart_subtotal', '__cart_total',
+			'__cart_discount', '__update_button_label', '__purchase_now_button_label') as $want) {
+			pg_assert_contains($want, $text, $label . ': ' . $want);
+		}
+		$flags = _test_lc_flags($r['tree']);
+		foreach (array('has_recurring_products', 'has_today_items', 'has_subtotal_line', 'has_discount', 'has_gift_card', 'has_payment',
+			'has_special_offer_code', 'cart_item_not_donation', 'cart_item_donation') as $want_flag) {
+			pg_assert_contains($want_flag, $flags, $label . ': flag ' . $want_flag);
+		}
+		pg_assert_same(false, strpos($json, '-^^__cart_discount'), $label . ': the value carries its own minus');
+	}
+}
+
+// The parts the widget has not: a quick add box, the page's own billing
+// form, the ship-to names of a multi-recipient site are reported.
+function test_lc_express_order_settings_drop()
+{
+	$code = _test_lc_site('english_default', 256);
+	$r = pg_layout_convert('express order', $code, array('state' => _test_lc_express_order_state(array('quick_add_product_group_id' => 4, 'form' => 1, 'multi_recipient' => true))));
+	pg_assert_same(array('quick_add', 'recipients', 'billing_form'), array_values(array_unique(_test_lc_codes($r['dropped']))));
+	$off = pg_layout_convert('express order', $code, array('state' => _test_lc_express_order_state(array('po_number' => 0))));
+	pg_assert_false(in_array('po_number', _test_lc_names($off['tree']), true), 'no PO number box when the page asks none');
+	pg_assert_contains('po_number', _test_lc_names($r['tree']), 'the PO number box');
+}
+
+// The custom billing fields take the page's labels.
+function test_lc_express_order_custom_fields()
+{
+	$state = _test_lc_express_order_state(array('custom_field_1_label' => 'Tax <ID>', 'custom_field_1_required' => 1));
+	$r = pg_layout_convert('express order', _test_lc_site('english_default', 256), array('state' => $state));
+	pg_assert_contains('custom_field_1', _test_lc_names($r['tree']));
+	pg_assert_false(in_array('custom_field_2', _test_lc_names($r['tree']), true), 'the second field is off');
+	$labels = array_values(array_filter(_test_lc_nodes($r['tree']['children']), function ($n) { return _pg_lfc_attr($n, 'for') === 'custom_field_1'; }));
+	pg_assert_same('Tax <ID>*', $labels[0]['props']['text'], 'the label as words, with its star');
+}
+
+// The stock template converts; the words the page builds in PHP and the
+// parts only it carries are reported.
+function test_lc_express_order_template()
+{
+	$r = pg_layout_convert('express order', _test_lc_template('express order'), array('state' => _test_lc_express_order_state()));
+	pg_assert_same(true, $r['ok']);
+	pg_assert_contains('condition', _test_lc_codes($r['dropped']), 'the store credit box');
+	pg_assert_same(2, count(array_filter(_test_lc_of_type($r['tree'], 'loop_area'), function ($n) { return empty($n['props']['source']); })));
 }

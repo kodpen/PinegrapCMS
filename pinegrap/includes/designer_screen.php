@@ -240,6 +240,9 @@ function pg_designer_screen_render($ctx)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
+    // "Preview on a phone" (the part 'phone') goes to those who make share
+    // links: administrators and designers.
+    $sd_phone = ((int) $user['role'] <= 1) && $sd_proto_share;
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
@@ -387,8 +390,10 @@ function pg_designer_screen_render($ctx)
         // The editor's parts not needed to open a page, run on first use
         // (pg_designer_parts()): their file addresses by name.
         // The prototype comments' pins and list ('comments') only to a
-        // designer, once the site keeps comments.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'optsearch', 'review', 'guides', 'overrides', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_clicks ? array('clicks') : array())),
+        // designer, once the site keeps comments; My library's Export and
+        // Import ('libraryfile') and "Manage library" ('librarymanage') to a
+        // designer too.
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'questions', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'bands', 'optsearch', 'review', 'sketchdetails', 'guides', 'mylibrary', 'states', 'overrides', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_phone ? array('phone') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? array('publishcheck') : array(), ($access === PG_DESIGNER_ACCESS_FULL) ? array('libraryfile', 'librarymanage') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -456,7 +461,9 @@ function pg_designer_screen_render($ctx)
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
-        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
+        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id))
+            // A new design's start questions: the stylesheet tried on at once.
+            + (!empty($ctx['start_variables']) ? array('variablesTry' => $ctx['start_variables']['css']) : array()),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.
@@ -564,7 +571,7 @@ function pg_designer_screen_render($ctx)
                 <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
                 <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
                 <!-- The variables model the Variables tab changed (JSON); empty: unchanged. -->
-                <input type="hidden" name="style_variables" id="sd-style-variables" value="">
+                <input type="hidden" name="style_variables" id="sd-style-variables" value="' . (!empty($ctx['start_variables']) ? h(json_encode($ctx['start_variables']['model'])) : '') . '">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -1644,6 +1651,7 @@ function pg_designer_start_screen($ctx)
         // A start's own part (assets/js/designer_<part>.js), loaded on first use.
         'partBase'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/',
         'partStamp'   => pg_designer_asset_stamp('assets/js/designer_figma.js'),
+        'questionsStamp' => pg_designer_asset_stamp('assets/js/designer_questions.js'),
         't'           => pg_designer_home_texts(),
     );
 
@@ -3046,6 +3054,13 @@ function pg_designer_publish_sheet()
         'result-kept'     => lang('Not saved: the changes stay in the editor'),
         'anyway'          => lang('Publish anyway'),
         'anyway-reason'   => lang('Why is it published without approval? The reason goes to the Site Log.'),
+        'anyway-check'    => lang('Why is it published with a blocking finding? The reason goes to the Site Log.'),
+        'checking'        => lang('Checking…'),
+        'checking-n'      => lang('Checking {n} pages…'),
+        'result-ready'    => lang('Ready'),
+        'result-look'     => lang('{n} to look at'),
+        'result-block'    => lang('{n} blocking'),
+        'result-failed'   => lang('Not checked'),
     );
     $spans = '';
     foreach ($texts as $k => $v) {
@@ -3069,6 +3084,7 @@ function pg_designer_publish_sheet()
                         <div class="d-none" aria-hidden="true">' . $spans . '</div>
                     </div>
                     <div class="dialog-footer flex-wrap gap-2" style="border-color:#30363d;">
+                        <p class="small fg-secondary w-100 mb-0 d-none" data-sdp-checking aria-live="polite"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><span data-sdp-checking-text></span></p>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . h(lang('Save this page as a draft')) . '</button>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . h(lang('Take every page of the design off the site')) . '</button>
                         <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto" data-sdp-act="publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . h(lang('Publish selected')) . '</button>

@@ -728,7 +728,7 @@ function pg_layout_widget_tree_apply(array $tree, array $seed)
  *
  * @param string $type
  * @param array  $row
- * @return array  setting => bool
+ * @return array  setting => bool (or its words)
  */
 function pg_layout_convert_state($type, $row)
 {
@@ -738,6 +738,24 @@ function pg_layout_convert_state($type, $row)
         return array(
             'full_description' => (string)($row['product_description_type'] ?? '') !== 'short_description',
             'multi_recipient'  => !empty($row['multi_recipient']),
+        );
+    }
+    if ((string)$type === 'express order') {
+        // The cart's two, the extras the page asks for and the parts the
+        // widget has not (a quick add box, the page's own billing form).
+        $text = function ($key) use ($row) { return trim((string)($row[$key] ?? '')); };
+        return array(
+            'full_description'        => (string)($row['product_description_type'] ?? '') !== 'short_description',
+            'multi_recipient'         => !empty($row['multi_recipient']),
+            'quick_add'               => (int)($row['quick_add_product_group_id'] ?? 0) > 0,
+            'billing_form'            => !empty($row['form']),
+            'po_number'               => !empty($row['po_number']),
+            'custom_field_1'          => $text('custom_field_1_label') !== '',
+            'custom_field_1_label'    => $text('custom_field_1_label'),
+            'custom_field_1_required' => !empty($row['custom_field_1_required']),
+            'custom_field_2'          => $text('custom_field_2_label') !== '',
+            'custom_field_2_label'    => $text('custom_field_2_label'),
+            'custom_field_2_required' => !empty($row['custom_field_2_required']),
         );
     }
     if ((string)$type !== 'form list view') return array();
@@ -938,6 +956,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         'form list view' => array('form_list_view_pages', " AND collection = 'a'"),
         'form item view' => array('form_item_view_pages', " AND collection = 'a'"),
         'shopping cart'  => array('shopping_cart_pages', ''),
+        'express order'  => array('express_order_pages', ''),
     );
     $out = array();
 
@@ -957,7 +976,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
             $row = is_array($found) ? $found : array();
         }
 
-        if ($type === 'shopping cart') {
+        if ($type === 'shopping cart' || $type === 'express order') {
             // A heading per recipient: only a site that ships to several.
             $row['multi_recipient'] = (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING)
                 && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient';

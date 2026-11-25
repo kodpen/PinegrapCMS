@@ -17,7 +17,7 @@ module: component_overrides
 
 ## How do canvas, Preview and code view draw them?
 - `_sdPlaceDraw(refNode, tree, draw)` in `style_designer.src.js`: puts the place's values into the component's own nodes while `draw` runs and puts them back after, so canvas handlers keep the component's nodes. Used by the canvas (`buildNodeEl`) and by `_sdEmitNode()` (Preview, export, code view), never for a system widget.
-- The model is the part `overrides` (`style_designer_overrides.min.js` = `pg_component_overrides.js`), loaded the first time a place with values is drawn; until then the component's own tree is drawn, then `render()` runs once.
+- The model is the first file of the part `overrides` (`component-overrides-fields.md`), loaded the first time a place with values is drawn; until then the component's own tree is drawn, then `render()` runs once.
 
 ## How does translation see a place's texts?
 - `pg_tr_walk_tree()` adds a placing node's open text values to the page's segments (`pg_tr_place_segments()`, node id `<place id>.<field id>`, field `text`), reading the component's tree once per request (`pg_tr_shared_tree()`). At render the drawn text goes through `pg_tr_props()` like any text, so a translation of it is shown.

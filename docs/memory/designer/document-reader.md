@@ -11,6 +11,7 @@ description: The designer's document reader (assets/js/pg_document_reader.js): p
 - Items: cards `{title, text}`, questions `{question, answer}`, figures `{value, label}`, testimonial `{quote, name, role}`, table and prices `{rows}`, contact `{type: email|phone|address, value}`, picture and gallery `{src, alt}`, intro and text the paragraphs `{type, text}`. The words are never changed: a card's title is its lead, its text what follows after a `:` or dash.
 - `PGDocumentReader.paragraphs(text)`: a pasted plain or Markdown text to such paragraphs (`#` and underlined headings, `-`/`1.` items, `>` quotes, pipe tables, `![alt](src)`, `**bold**` leads). In a text with no marked heading, a short lone line before a block is a heading. A line broken mid-sentence is joined.
 - Pure, no DOM, in no bundle: the step that shows the form (FD3) loads it on first use.
+- A .docx comes to it as paragraphs from the server, a .md or .txt as text for `paragraphs()`: `document-paragraphs.md`.
 
 ## Which rules read a document?
 - The section level is the highest heading level after the first heading; such a heading opens a section, a deeper one stays inside it. What comes before the first heading is a section of its own.

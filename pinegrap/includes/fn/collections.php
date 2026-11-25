@@ -964,7 +964,9 @@ function pg_coll_shown_record_code($request)
  * or reference code, byte for byte: array('code' => its reference code,
  * 'label' => its Title field, else the code), complete records only; null
  * when none has it. A list filtered by ?category=news compares the code
- * and prints the label.
+ * and prints the label. A name no record has now finds the record that had
+ * it before (form_old_address), so an old ?category= lists as the name of
+ * today does.
  *
  * @param int    $page_id
  * @param string $value
@@ -976,16 +978,17 @@ function pg_coll_reference_lookup($page_id, $value)
     $value   = (string)$value;
     if ($page_id <= 0 || $value === '' || strlen($value) > 255) return null;
 
-    $row = db_item(
-        "SELECT
-            forms.reference_code,
-            (SELECT form_data.data
+    $title_sql = "(SELECT form_data.data
              FROM form_data
              JOIN form_fields ON form_data.form_field_id = form_fields.id
              WHERE form_data.form_id = forms.id
                AND form_fields.rss_field = 'title'
                AND form_fields.office_use_only = 0
-             LIMIT 1) AS title
+             LIMIT 1)";
+    $row = db_item(
+        "SELECT
+            forms.reference_code,
+            $title_sql AS title
          FROM forms
          WHERE forms.page_id = '$page_id'
            AND forms.complete = 1
@@ -994,6 +997,12 @@ function pg_coll_reference_lookup($page_id, $value)
                 OR CAST(forms.reference_code AS BINARY) = CAST('" . e($value) . "' AS BINARY))
          ORDER BY (CAST(forms.address_name AS BINARY) = CAST('" . e($value) . "' AS BINARY)) DESC, forms.id ASC
          LIMIT 1");
+    if (!$row && function_exists('pg_record_old_address_record')) {
+        $old = pg_record_old_address_record($page_id, $value, true);
+        if ($old) {
+            $row = db_item("SELECT forms.reference_code, $title_sql AS title FROM forms WHERE forms.id = '" . (int)$old['id'] . "'");
+        }
+    }
     if (!$row) return null;
 
     $code  = (string)$row['reference_code'];

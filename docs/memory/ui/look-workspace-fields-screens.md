@@ -19,6 +19,5 @@ description: WL9b: the Workspace PHP screens' fields and the command palette's s
 - `mail_add.php`'s choice cards (`.pg-start-choice .form-text`), `mail_phone.php`'s channel field (`.pg-set-card .pg-f-md > .form-control`), `mail_list.php`'s toolbar search (the toolbars' search, `tests/bs6_form_adorn_test.php`).
 - The department's colour (`form-control-color` in `team_settings.php`): no recipe draws a colour field.
 - `workspace_guest.php` and `workspace_approval.php`: pages without the panel stylesheet (WL11 names them).
-- `workspace_flow.js` (61): held by FE14 (#11475) then; WL9c in the plan.
 
 Related: docs/memory/ui/look-workspace-fields.md, docs/memory/ui/look-workspace-fields-scripts.md, docs/memory/ui/look-check.md

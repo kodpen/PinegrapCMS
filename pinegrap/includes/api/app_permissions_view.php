@@ -90,6 +90,7 @@ function api_app_permission_area_keys() {
 		'meta'               => 'site',
 		'system'             => 'site',
 		'launch'             => 'site',
+		'security_scan'      => 'site',
 		'visitors'           => 'site',
 		'users'              => 'site',
 		'site_log'           => 'site',

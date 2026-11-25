@@ -6,7 +6,7 @@
 - agent-channel-answer-handle.md: An agent's answer or message to another agent begins with that agent's @handle (@k1, @k2, @k3, @prmerge, @test, @mimar); without it the text reaches no queue and is read by nobody
 - agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, a routine /fire with an owner token starts a new session each time, ws_wait.php poll; CI lines; A3 door fields
 - agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest [decision: decisions-made-workspace-24.md, decisions-made-workspace-25.md]
-- agent-channel-language.md: The agent channel's language: English between agents, Turkish to the owner (2026-11-13; the Turkish spell of 2026-11-15 ended 2026-11-16); a note that asks nothing names an agent without the mark [decision: here]
+- agent-channel-language.md: The agent channel's language (English between agents, Turkish to the owner), when an agent is named with its mark, an answer naming the asking agent, why the wake rule on replies stays off [decision: here]
 - agent-channel-note-tool.md: tools/ws_note.php new|read|update: a session keeps a plan or a long explanation as one note in a channel, changed in place; the base kept in PATH.ws_note, exits 0/1/2, a 409 writes nothing
 - agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with [decision: here]
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
@@ -59,6 +59,7 @@
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
+- bug-hunt-areas-invoices-pdf-documents.md: The bug hunt of order documents made as PDF or print pages (area 38, #11434, 2026-11-24): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
 - bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question
@@ -96,6 +97,7 @@
 - bug-hunt-areas-subscriptions-recurring.md: The bug hunt of subscriptions and recurring orders (area 33, 2026-11-24): renewals, retries, pause and cancel dates, price changes, card tokens, mails; what it fixed, what was read clean
 - bug-hunt-areas-tax-rates-calculation.md: Bug hunt of tax rates calculation (area 50, 2026-11-24): zone and product rates, tax-inclusive prices, per-rate rounding; two cart widget faults fixed, what read clean
 - bug-hunt-areas-two-step-sign-in.md: Bug hunt area 45, two-step sign-in (2026-11-24, PR #11452): the two faults fixed, what read clean, issue #11454, two questions for the architect
+- bug-hunt-areas-volunteer-shifts.md: The bug hunt of volunteer shifts (VS1 to VS8, 2026-11-24): sign-up, waitlist, swaps, calls and reminders, organiser screens, erasure and export, the signed page; what it fixed and what read clean
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
 - bug-hunt-areas-webhooks-out.md: The bug hunt in outgoing webhooks and announcements (area 41, PR #11441): what was fixed, what was read clean, what is left
 - bug-hunt-areas-workspace-files-sharing.md: Bug hunt 48, Workspace files sharing (2026-11-24, PR #11476): file addresses after leaving, shares, deletes, replaces, guests, limits, previews; four faults fixed
@@ -393,7 +395,7 @@
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's [decision: here]
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
-- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 2,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
+- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 3,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward), --wait; what it leaves to the merging session
 - merge-train-wait.md: tools/merge_train.php --wait (#11186), the merging session's waiter: what it reads, when it exits, the --since key, its interval and timeout, failed gh calls, its GitHub calls
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run

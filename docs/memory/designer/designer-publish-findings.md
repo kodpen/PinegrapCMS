@@ -4,7 +4,7 @@ description: The Publish check's finding shape (pg_publish_findings.js): what th
 ---
 
 ## Where does it live, and what does it read?
-- `assets/js/pg_publish_findings.js`, `PgPublishFindings`: pure, no DOM, no request; not loaded by any screen yet (the Publish sheet's results load it on first use). The checks run where they always ran and hand their answers in.
+- `assets/js/pg_publish_findings.js`, `PgPublishFindings`: pure, no DOM, no request; loaded in the `publishcheck` part on the Publish sheet's first check (`designer-publish-check-results.md`). The checks run where they always ran and hand their answers in.
 - `read(sources, texts)`: `audit` (`validateTree()`'s issues), `seo` (designer/seo_check's answer: failed meta `checks`, `findings`, `a11y` rows, `concepts`), `links` (`PgProtoHotspots.canvasMarks()` of the page), `unreached` (no link leads to the page), `leftovers` (`{ node, shared, field, label }`: values a place keeps for a closed component field). One reader each: `fromAudit`, `fromSeo`, `fromA11y`, `fromLinks`, `fromLeftovers`.
 
 ## What is a finding?

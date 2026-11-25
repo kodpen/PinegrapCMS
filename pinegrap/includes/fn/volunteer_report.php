@@ -63,15 +63,17 @@ function pg_volunteer_late_cancel($cancelled, $start, $cutoff_hours)
  *
  * A shift counts in the week of its start: its roles' places as needed,
  * signed places up to each role's count as filled, "Did not come" and late
- * cancels. Approved minutes count in the week of their day (the shift's
+ * cancels; a place handed over by a swap (offered_at) and a request to take
+ * one (swap_from) are cancelled rows but no late cancel. Approved minutes count in the week of their day (the shift's
  * start day, or the day of hours outside a shift), by role ('' outside a
  * shift) and by volunteer.
  *
  * @param array    $shifts       id => start, roles (key => count)
  * @param array    $signups      rows: shift_id (null outside a shift),
  *                               volunteer_id, name, role, state, outcome,
- *                               cancelled (wall-clock, '' for none), day,
- *                               minutes, approved
+ *                               cancelled (wall-clock, '' for none),
+ *                               offered_at, swap_from, day, minutes,
+ *                               approved
  * @param int|null $cutoff_hours the programme's cut-off
  * @param string   $from         the period's first day
  * @param string   $to           its last day
@@ -127,7 +129,7 @@ function pg_volunteer_report_build(array $shifts, array $signups, $cutoff_hours,
                 } elseif ($row['outcome'] === 'came') {
                     $people[$id]['came']++;
                 }
-            } elseif (($row['state'] === 'cancelled') && pg_volunteer_late_cancel((string) ($row['cancelled'] ?? ''), $shift['start'], $cutoff_hours)) {
+            } elseif (($row['state'] === 'cancelled') && ((int) ($row['offered_at'] ?? 0) === 0) && ((int) ($row['swap_from'] ?? 0) === 0) && pg_volunteer_late_cancel((string) ($row['cancelled'] ?? ''), $shift['start'], $cutoff_hours)) {
                 $weeks[$week]['late']++;
                 $people[$id]['late']++;
             }
@@ -265,7 +267,7 @@ function pg_volunteer_report_load(array $programme, array $period)
 
     $signups = array();
 
-    foreach ((array) db_items("SELECT volunteer_signups.shift_id, volunteer_signups.volunteer_id, volunteer_signups.role, volunteer_signups.state, volunteer_signups.outcome, volunteer_signups.cancelled_at,
+    foreach ((array) db_items("SELECT volunteer_signups.shift_id, volunteer_signups.volunteer_id, volunteer_signups.role, volunteer_signups.state, volunteer_signups.outcome, volunteer_signups.cancelled_at, volunteer_signups.offered_at, volunteer_signups.swap_from,
             volunteer_signups.worked_on, volunteer_signups.minutes, volunteer_signups.approved_at, contacts.first_name, contacts.last_name, contacts.email_address
         FROM volunteer_signups INNER JOIN volunteers ON volunteers.id = volunteer_signups.volunteer_id LEFT JOIN contacts ON contacts.id = volunteers.contact_id
         LEFT JOIN volunteer_shifts ON volunteer_shifts.id = volunteer_signups.shift_id
@@ -282,6 +284,8 @@ function pg_volunteer_report_load(array $programme, array $period)
             // The cancel's stamp read as the site's wall clock, as a
             // shift's start is written.
             'cancelled'    => ((int) $row['cancelled_at'] > 0) ? date('Y-m-d H:i:s', (int) $row['cancelled_at']) : '',
+            'offered_at'   => (int) $row['offered_at'],
+            'swap_from'    => (int) $row['swap_from'],
             'day'          => (string) $row['worked_on'],
             'minutes'      => (int) $row['minutes'],
             'approved'     => (int) $row['approved_at'] > 0,

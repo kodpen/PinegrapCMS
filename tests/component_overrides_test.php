@@ -216,3 +216,64 @@ function test_component_overrides_browser_twin_answers_the_same()
 	pg_assert_same(array(pg_co_clean_value('picture', '/x.png'), null, null), $js['clean'], 'the same value rules');
 	pg_assert_same(array(array('of_a' => 'x'), array(), array()), $js['place'], 'the same place values');
 }
+
+// The component's settings keep the order every place lists the fields in:
+// the root's `props._openOrder`. Ids it names come first, in its order; the
+// rest follow in document order; an id no open field has is skipped. The
+// designer's trees name a node by `_id`, which is the field's nodeId.
+function test_component_overrides_order_and_designer_ids()
+{
+	$tree = component_overrides_test_tree();
+	$tree['props']['_openOrder'] = array('of_note', 'of_gone', 'of_link', 7);
+	$tree['children'][0]['_id'] = 'sd_7';
+	$ids = array_map(function ($f) { return $f['id']; }, pg_co_open_fields($tree));
+	pg_assert_same(array('of_note', 'of_link', 'of_title', 'of_pic', 'of_icon', 'of_ref'), $ids, 'the stored order first, then document order');
+	$fields = pg_co_open_fields($tree);
+	pg_assert_same('sd_7', $fields[2]['nodeId'], 'a designer node is named by its _id');
+
+	$js = component_overrides_test_node('out = C.openFields(' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ');');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same($fields, $js, 'the twin orders the same');
+}
+
+// The "Can change per place" part (assets/js/style_designer_overrides.js)
+// run in Node with a stub kit: which fields an element offers, the labels,
+// and a field opened from the list writes the component's tree through the
+// core's _sdCoWrite(). Skipped where Node cannot run.
+function test_component_overrides_part_fields_and_labels()
+{
+	$code = "var StyleDesigner = { definePart: function (n, f) { part = f(kit); } }, part = null, writes = 0;\n"
+		. "var comp = {_id: 'c', type: 'root', props: {}, children: [\n"
+		. " {_id: 'b', type: 'content', props: {contentType: 'button', text: 'Shop now', href: '/shop', customName: 'Button'}, children: []},\n"
+		. " {_id: 'i', type: 'content', props: {contentType: 'image', src: '/a.jpg', _bindings: {src: 'image'}}, children: []}]};\n"
+		. "var kit = { _sdT: function (k, v) { return v === undefined ? k : k.replace('{var}', v); }, esc: function (s) { return String(s); },\n"
+		. " getNodeLabel: function (n) { return n.props.customName || n._id; }, sharedCache: {5: {name: 'Promo card', tree: comp}},\n"
+		. " _resolveSharedSid: function () { return 5; }, _sdCoWrite: function (sid, fn) { writes++; fn(); } };\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_overrides.js') . "\n"
+		. "out = { button: part.kindsOf(comp.children[0], false), root: part.kindsOf(comp, true), image: part.kindsOf(comp.children[1], false),\n"
+		. " one: part.defaultLabel(comp.children[0], 'text', false), two: part.defaultLabel(comp.children[0], 'link', true) };";
+	$js = component_overrides_test_node($code);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(array('text', 'link', 'shown'), $js['button'], 'a button offers its text, its link and Shown');
+	pg_assert_same(array(), $js['root'], 'the component root offers no Shown');
+	pg_assert_same(array('picture', 'shown'), $js['image'], 'a picture offers its picture and Shown');
+	pg_assert_same('Button', $js['one'], 'one field takes the element name');
+	pg_assert_same('Button link', $js['two'], 'a second field adds the field name');
+}
+
+// The core offers the row only inside an ordinary component, for roles
+// that edit any component, and hands the part what it uses.
+function test_component_overrides_core_entry_points()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_true(strpos($src, "_sdCoMayOpen(node) ? [{ sep: true }") !== false, 'the element menu gains the row');
+	pg_assert_true(strpos($src, "id: 'act_open_field'") !== false, 'the command palette has the row');
+	pg_assert_true(preg_match('/function _sdCoMayOpen\(node\) \{[^}]*_sdIsContentLevel\(\)/', $src) === 1, 'content roles never get the row');
+	pg_assert_true(strpos($src, '_isInsideSystemWidget(node)') !== false, 'a system widget is left out');
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_overrides.min.js', $parts['overrides'], 'the part is loaded on first use');
+}

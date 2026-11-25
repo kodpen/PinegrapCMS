@@ -584,8 +584,9 @@ function pg_volunteer_call_people(array $programme, array $shift)
 }
 
 /**
- * Whom "Call volunteers" asks for a shift: for each short role, the
- * volunteers pg_volunteer_call_pick() gives, each once.
+ * Whom "Call volunteers" asks for a shift: for each short role the
+ * programme still has, the volunteers pg_volunteer_call_pick() gives, each
+ * once.
  *
  * @param array  $programme
  * @param array  $shift pg_volunteer_shift_get()
@@ -599,7 +600,13 @@ function pg_volunteer_shift_call_ids(array $programme, array $shift, array $peop
     $ids = array();
 
     foreach ($shift['roles'] as $key => $count) {
-        $role = ($programme['roles'][$key] ?? array()) + array('count' => $count);
+        // A role removed from the programme since the shift was made offers
+        // no place on the volunteer's page: nobody is called for it.
+        if (!isset($programme['roles'][$key])) {
+            continue;
+        }
+
+        $role = $programme['roles'][$key] + array('count' => $count);
         $days = ($programme['call_days'] > 0) ? $programme['call_days'] : null;
         $ids = array_merge($ids, pg_volunteer_call_pick($shift, $role, $shift['filled'][$key] ?? 0, $taken, array_values($people), $now, $days));
     }

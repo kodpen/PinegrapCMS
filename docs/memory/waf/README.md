@@ -24,6 +24,10 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Serve nothing to a banned address, token or not: the rescue is the command-line `waf_unban.php`, and a Settings save whose block entries cover the operator's own address is refused (`waf-self-rescue.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `security-scan-*`: 7 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

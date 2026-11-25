@@ -95,19 +95,13 @@ function pg_co_default_value($node, $kind)
     return null;
 }
 
-// A node's id: the editor's `_id`, else `id`; '' without one.
-function pg_co_node_id($node)
-{
-    foreach (array('_id', 'id') as $key) {
-        if (isset($node[$key]) && (is_string($node[$key]) || is_int($node[$key]))) return (string) $node[$key];
-    }
-    return '';
-}
-
-// The open fields of a component's tree in document order: each {id, kind,
-// label, nodeId, value} where value is the component's own. A placed
-// component inside it (shared_ref) is not entered: its fields are its own.
-// An id met a second time is dropped, so the first node keeps it.
+// The open fields of a component's tree in the order its places list them:
+// each {id, kind, label, nodeId, value} where value is the component's own
+// and nodeId the node's `_id` (the designer's) or `id`. The root's
+// `props._openOrder` (a list of ids) comes first, in its order; the rest
+// follow in document order. A placed component inside it (shared_ref) is
+// not entered: its fields are its own. An id met a second time is dropped,
+// so the first node keeps it.
 function pg_co_open_fields($tree)
 {
     $fields = array();
@@ -131,7 +125,36 @@ function pg_co_open_fields($tree)
         }
     };
     $walk($tree);
-    return $fields;
+    return pg_co_order_fields($fields, isset($tree['props']['_openOrder']) ? $tree['props']['_openOrder'] : null);
+}
+
+// A node's id: the designer's `_id`, else `id`, else ''.
+function pg_co_node_id($node)
+{
+    foreach (array('_id', 'id') as $key) {
+        if (isset($node[$key]) && (is_string($node[$key]) || is_int($node[$key]))) return (string) $node[$key];
+    }
+    return '';
+}
+
+// $fields put in the stored order: ids in $order first, then the rest as
+// given. Entries of $order that name no field are skipped.
+function pg_co_order_fields($fields, $order)
+{
+    if (!is_array($order) || empty($order) || empty($fields)) return $fields;
+    $byId = array();
+    foreach ($fields as $i => $field) $byId[$field['id']] = $i;
+    $out = array();
+    $used = array();
+    foreach ($order as $id) {
+        if (!is_string($id) || !isset($byId[$id]) || isset($used[$id])) continue;
+        $used[$id] = true;
+        $out[] = $fields[$byId[$id]];
+    }
+    foreach ($fields as $field) {
+        if (!isset($used[$field['id']])) $out[] = $field;
+    }
+    return $out;
 }
 
 // A place's value made fit for its kind, or null when it cannot be:

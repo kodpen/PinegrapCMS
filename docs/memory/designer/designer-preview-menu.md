@@ -1,6 +1,6 @@
 ---
 name: designer-preview-menu
-description: The designer's Preview menu beside Publish (DP23, D58, #10244): its four rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
+description: The designer's Preview menu beside Publish (DP23, D58, #10244; phone row #11578): its five rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
 ---
 
 ## Where are Preview and Open on the site?
@@ -8,8 +8,9 @@ description: The designer's Preview menu beside Publish (DP23, D58, #10244): its
 - The menu (`#sd-preview-menu`) is built by `_sdPreviewMenuBuild()` on `pgUI.overlayHost()`, with the View menu's row look (`.sd-vb-menu`, `.sd-vb-row`); the toolbar would cut a menu inside it.
 
 ## Which rows does it show?
-- In this order: Preview in a new window (`#sd-vb-preview`, `openPreview()`, the unsaved canvas, Ctrl+Alt+P), Open on the site (as saved) (`#sd-vb-live`, a link to `_pgPageViewUrl()`), Play as a prototype (`#sd-vb-play`), Share the prototype… (`#sd-vb-share`, `_pgPrototypeShareDialog()`).
-- `_sdPreviewMenuRows({live, play, share})` decides: Preview always; Open on the site only for a saved page under its saved name (a saved draft too, as before: its private Drafts folder opens for the team); Play only when `_sdPreviewPlayUrl()` finds a page (the page on screen if it is a saved draft, else the first one the viewer shows); Share when `_pgPrototypeShareReady()`. A row the page cannot use is left out, never shown dead. Tested in `tests/designer_preview_menu_test.php`.
+- In this order: Preview in a new window (`#sd-vb-preview`, `openPreview()`, the unsaved canvas, Ctrl+Alt+P), Preview on a phone (`#sd-vb-phone`, `_sdPhoneOpen()`, `designer-phone-preview-window.md`), Open on the site (as saved) (`#sd-vb-live`, a link to `_pgPageViewUrl()`), Play as a prototype (`#sd-vb-play`), Share the prototype… (`#sd-vb-share`, `_pgPrototypeShareDialog()`).
+- `_sdPreviewMenuRows({live, play, share})` decides: Preview always; Open on the site only for a saved page under its saved name (a saved draft too, as before: its private Drafts folder opens for the team); Play only when `_sdPreviewPlayUrl()` finds a page (the page on screen if it is a saved draft, else the first one the viewer shows); Share when `_pgPrototypeShareReady()`. A row the page cannot use is left out, never shown dead.
+- Preview on a phone shows where Share shows. Tested in `tests/designer_preview_menu_test.php`.
 - `_pgTabsSyncViewButton()` sets the rows on each tab switch and save, and again each time the menu opens (a draft can change state without a tab switch). Share starts its link at the page on screen when it is a saved draft.
 
 ## How does it behave?

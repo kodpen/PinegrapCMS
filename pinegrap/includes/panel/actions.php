@@ -349,7 +349,7 @@ function pg_panel_actions()
         'ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_add_many', 'ws_channel_agents_remove', 'ws_person_card',
         'ws_canvas_undo', 'ws_page_source', 'ws_page_undo', 'ws_page_call', 'ws_page_consent', 'ws_page_tables', 'ws_page_bind', 'ws_page_unbind', 'ws_canvas_binding_undo',
         'ws_link_preview_remove', 'ws_share_link_make', 'ws_share_link_revoke',
-        'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
+        'ws_search', 'ws_palette', 'ws_channel_board', 'ws_channel_board_rules', 'ws_channel_board_rule_set', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
         'ws_record_create',
         'ws_task_get', 'ws_task_check', 'ws_task_save',

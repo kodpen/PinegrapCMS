@@ -7217,6 +7217,8 @@ const StyleDesigner = (function () {
         // Placed AFTER semantic wraps so amber dominates when a node is both locked AND
         // shared/custom-html/custom-php. Child-fallback mirrors the pattern above to survive
         // display:contents contexts.
+        // A copy from My library whose binding the site lacked (amber, solid).
+        '.sd-wrap.sd-lib-unbound > *:not(.sd-tb):not(.sd-chip-row) { outline:2px solid #f59e0b !important; outline-offset:-2px !important; }',
         '.sd-wrap.sd-locked-root { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         '.sd-wrap.sd-locked-root > *:not(.sd-tb):not(.sd-chip-row) { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         // Form inputs: sd-wrap must be layout-transparent when wrapping input/textarea/select so
@@ -12648,6 +12650,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, cached)) wrapper.classList.add('sd-lib-unbound');
 
         // Detect if this is a system widget shared_ref (has system_region_config)
         var _isSysWidget = !!(cached && cached.system_region_config);
@@ -14759,6 +14762,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, null)) wrapper.classList.add('sd-lib-unbound');
         // Custom content types get their own semantic outline color.
         if (node.type === 'content' && node.props.contentType === 'custom_html') wrapper.classList.add('sd-custom-html-wrap');
         else if (node.type === 'content' && node.props.contentType === 'custom_php') wrapper.classList.add('sd-custom-php-wrap');
@@ -14999,6 +15003,19 @@ const StyleDesigner = (function () {
                 if (_hasNote) noteBtn.style.color = '#0dcaf0';
                 noteBtn.addEventListener('click', function (e) { e.stopPropagation(); openNotesPopup(node); });
                 tbBtns.appendChild(noteBtn);
+            }
+            // Set focus: where the element's picture is cut, the picture is
+            // dragged under its frame on the canvas (_sdFocusModeOpen()).
+            var _focusKind = _sdFocusKindOf(node);
+            if (_focusKind && _sdCanEditNode(node) && !node.props._locked && !hasLockedAncestor(node)) {
+                var focusBtn = doc.createElement('button');
+                focusBtn.type = 'button';
+                focusBtn.className = 'sd-tb-focus-btn bi bi-bullseye';
+                focusBtn.title = _sdT('Set focus');
+                focusBtn.setAttribute('aria-label', _sdT('Set focus'));
+                focusBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                focusBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdFocusModeOpen(node, _focusKind); });
+                tbBtns.appendChild(focusBtn);
             }
             // Delete
             if (node.type !== 'root') {
@@ -15950,7 +15967,9 @@ const StyleDesigner = (function () {
         '__quick_add_label':          ['quick_add_label',          _sdT('Quick Add')],
         '__special_offer_code_label': ['special_offer_code_label', _sdT('Special Offer Code')],
         '__update_button_label':      ['update_button_label',      _sdT('Update')],
-        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')]
+        '__checkout_button_label':    ['checkout_button_label',    _sdT('Checkout')],
+        // The express order's purchase button (its default label).
+        '__purchase_now_button_label': ['purchase_button_label',   _sdT('Place Order')]
     };
     // What a token with no sample of its own previews as: its name, readable
     // and in angle quotes ("‹Billing city›" for __billing_city, the field's
@@ -19582,6 +19601,8 @@ const StyleDesigner = (function () {
     /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
+            // An item of My library: its copy (part 'mylibrary').
+            case 'library': return _sdLibNode(extra);
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
             case 'container-fluid': return createNode('container', { fluid: true, cssClass: '' }, []);
             case 'row': return createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [createNode('col', colProps('col'), [])]);
@@ -25814,6 +25835,189 @@ const StyleDesigner = (function () {
         return t === 'style' ? _sdT('Style') : t === 'advanced' ? _sdT('Advanced') : _sdT('Content');
     }
 
+    // ── Options states: pure helpers ──
+    // The states an element takes: Hover for every element; Focus and
+    // Pressed for one a visitor can focus and press (a link, a button, a
+    // form control, a summary, an element drawn as a button or a nav link).
+    // tests/designer_option_states_test.php runs it under Node.
+    function _sdStatesFor(tag, cssClass) {
+        var t = String(tag || '').toLowerCase();
+        var list = String(cssClass || '').split(/\s+/);
+        var press = /^(a|button|input|select|textarea|summary)$/.test(t) ||
+            list.indexOf('btn') !== -1 || list.indexOf('nav-link') !== -1;
+        return press ? ['hover', 'focus', 'pressed'] : ['hover'];
+    }
+    // ── end of the Options states pure helpers
+
+    // ── Options states: the core's hooks ──
+    // "State", the first row of the Style tab's body: Normal, Hover, Focus,
+    // Pressed. Under a state Color and background, Border and corner and
+    // Shadow and effect write the state's rule on the element's custom
+    // style class in User Styles (`.pgs-xxxxxx:hover`, `:focus-visible`,
+    // `:active`); the part 'states' (pg_option_states.js,
+    // style_designer_states.js) draws the panel under the state, writes it
+    // and shows it on the canvas. The part loads the first time a state is
+    // chosen or an element whose class holds a state's rule is shown. The
+    // state is held while this element and the Style tab are open.
+    var _sdOptState = '';
+    var _sdOptStateId = '';
+    var _SD_STATE_PSEUDO = { hover: ':hover', focus: ':focus-visible', pressed: ':active' };
+
+    function _sdStateName(st) {
+        return st === 'hover' ? _sdT('Hover') : st === 'focus' ? _sdT('Focus') : st === 'pressed' ? _sdT('Pressed') : _sdT('Normal');
+    }
+
+    // The element the State row is drawn for: one element whose custom
+    // style is on (_sdCustomStyleOff()), or null.
+    function _sdStateNode() {
+        var n = selectedNode;
+        if (!n || selectedNodes.length > 1 || n.type === 'root' || _sdInnerSel()) return null;
+        if (typeof PgCustomStyle === 'undefined' || !window.PgUserStyles || _sdCustomStyleOff(n)) return null;
+        return n;
+    }
+
+    // The states whose rule the element's custom style class holds: a look
+    // at the User Styles text, no parse.
+    function _sdStateHeld(node) {
+        var cls = node && node.props ? PgCustomStyle.classOf(node.props.cssClass) : '';
+        if (!cls) return [];
+        var text = _userStylesGet();
+        if (text.indexOf(cls + ':') === -1) return [];
+        return Object.keys(_SD_STATE_PSEUDO).filter(function (st) {
+            return new RegExp('\\.' + cls + _SD_STATE_PSEUDO[st] + '\\s*\\{').test(text);
+        });
+    }
+
+    // The State row: a label and one group, a ring on a state that holds a
+    // value. The line under it is the part's (_sdStateAfter()).
+    function _sdStateRowHtml(node) {
+        var held = _sdStateHeld(node);
+        var states = _sdStatesFor(_sdIdTag(node), node.props.cssClass);
+        var seg = function (st) {
+            var on = st === _sdOptState;
+            var has = held.indexOf(st) !== -1;
+            var name = _sdStateName(st);
+            return '<button type="button" class="sd-state-seg' + (on ? ' sd-seg-on' : '') + '" data-sd-state="' + st + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+                (has ? ' aria-label="' + esc(_sdT('{var}, has values', name)) + '"' : '') + '>' + esc(name) +
+                (has ? '<span class="sd-state-ring" aria-hidden="true"></span>' : '') + '</button>';
+        };
+        return '<div class="sd-state-row" data-sd-state-row="1">' +
+            '<span class="sd-state-lbl" id="sd-state-lbl">' + esc(_sdT('State')) + '</span>' +
+            '<div class="sd-state-grp" role="group" aria-labelledby="sd-state-lbl">' + seg('') + states.map(seg).join('') + '</div>' +
+        '</div>';
+    }
+
+    // Back to Normal without a drawing: another element, another tab, the
+    // search, "Only what I changed".
+    function _sdStateDrop() {
+        if (!_sdOptState) return;
+        _sdOptState = '';
+        _sdOptStateId = '';
+        var api = _sdPartApis.states;
+        if (api && typeof api.leave === 'function') api.leave(canvasDoc);
+    }
+
+    // A state chosen in the row; the chosen one, or Normal, goes back to
+    // Normal. The part is loaded first.
+    function _sdStateGo(st) {
+        var node = _sdStateNode();
+        if (!node) return;
+        if (st === _sdOptState) st = '';
+        var done = function () {
+            renderProperties();
+            _sdStateSay(_sdT('State: {var}', _sdStateName(st)));
+            var b = document.querySelector('#sd-properties .sd-state-seg[data-sd-state="' + st + '"]');
+            if (b) b.focus();
+        };
+        if (!st) { _sdStateDrop(); done(); return; }
+        _sdPartLoad('states').then(function () {
+            if (selectedNode !== node) return;
+            _sdOptState = st;
+            _sdOptStateId = node._id;
+            done();
+        }, _sdPartFailed);
+    }
+
+    // Says what was chosen to a screen reader.
+    function _sdStateSay(text) {
+        var live = document.getElementById('sd-state-live');
+        if (!live) {
+            live = document.createElement('div');
+            live.id = 'sd-state-live';
+            live.className = 'visually-hidden';
+            live.setAttribute('aria-live', 'polite');
+            document.body.appendChild(live);
+        }
+        live.textContent = text;
+    }
+
+    // Writes the state's rule as one undo step: `fn(text, cls)` gives the
+    // new User Styles text; the element gets its custom style class the
+    // first time (as _sdWriteCustomStyle() does).
+    function _sdStateWrite(fn) {
+        var node = _sdStateNode();
+        if (!node || !_sdMayEdit(node)) return;
+        if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+        var cls = PgCustomStyle.classOf(node.props.cssClass) || _sdNewCustomStyleClass();
+        if (!cls) return;
+        var text = _userStylesGet();
+        var next = fn(text, cls);
+        if (next === text) return;
+        saveState();
+        if (String(node.props.cssClass || '').split(/\s+/).indexOf(cls) === -1) _sdSetNodeClass(node, '', cls);
+        _userStylesSet(next);
+        render();
+    }
+
+    // What the part reads and calls.
+    function _sdStateHost() {
+        return {
+            state: _sdOptState,
+            name: _sdStateName,
+            node: selectedNode,
+            panel: document.getElementById('sd-properties'),
+            canvasDoc: canvasDoc,
+            canvasEl: function () { return _sdCanvasInnerOf(selectedNode); },
+            cls: function () { return PgCustomStyle.classOf(selectedNode.props.cssClass); },
+            text: _userStylesGet,
+            held: function () { return _sdStateHeld(selectedNode); },
+            write: _sdStateWrite,
+            go: _sdStateGo,
+            locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(null, 'design'); },
+            segSync: _sdSegSync,
+            resetButtons: _sdChgResetButtons
+        };
+    }
+
+    // After markModifiedProps() in the single element's panel: the part
+    // draws the panel under the chosen state, or the rings of Normal's
+    // section heads. With nothing held and Normal chosen nothing loads; an
+    // element holding a state's rule loads the part (its values count in
+    // "Only what I changed") and draws the panel again.
+    function _sdStateAfter(panel) {
+        if (!_sdOptState && !(_sdStateNode() && _sdStateHeld(selectedNode).length)) return;
+        if (!_sdPartLoaded('states')) {
+            _sdPartLoad('states').then(function () { renderProperties(); }, _sdPartFailed);
+            return;
+        }
+        var api = _sdPartApis.states;
+        if (panel.querySelector('[data-sd-state-row]') && api && typeof api.after === 'function') api.after(_sdStateHost());
+    }
+
+    // The row of a state's value back to Normal's: the dot's arrow.
+    function _sdStateRowReset(propRow) {
+        var api = _sdPartApis.states;
+        if (api && typeof api.resetRow === 'function') api.resetRow(_sdStateHost(), propRow);
+    }
+
+    // The states that hold values on the selected element, for "Only what
+    // I changed": [{ state, name, count }].
+    function _sdStateReview() {
+        var api = _sdPartApis.states;
+        if (!_sdStateNode() || !api || typeof api.review !== 'function') return [];
+        return api.review(_sdStateHost());
+    }
+
     // ── "Only what I changed": the core's hooks ──
     // The switch under the Options panel counts the rows of the element
     // changed in its tabs. Switched on, the panel is drawn with every tab
@@ -25835,6 +26039,8 @@ const StyleDesigner = (function () {
         foot.hidden = !counts;
         if (!counts) { foot.innerHTML = ''; return; }
         var n = Object.keys(counts).reduce(function (sum, t) { return sum + (Number(counts[t]) || 0); }, 0);
+        // The values the element's states hold count too.
+        n += _sdStateReview().reduce(function (sum, e) { return sum + e.count; }, 0);
         var on = _sdReviewOn;
         foot.classList.toggle('is-on', on);
         foot.innerHTML = '<button type="button" class="sd-review-switch" role="switch" aria-checked="' + (on ? 'true' : 'false') + '">' +
@@ -25931,16 +26137,21 @@ const StyleDesigner = (function () {
         var n = 0;
         _sdReviewBusy = true;
         try {
-            n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
-                var rows = _sdReviewRows(document.getElementById('sd-properties'));
-                for (var i = 0; i < rows.length; i++) {
-                    var r = rows[i];
-                    if (!r.top || r.top === 'tr') continue;
-                    var key = r.tab + '|' + r.card + '|' + r.at;
-                    if (!done[key]) return { key: key, lbl: r.lbl };
-                }
-                return null;
-            }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+            // The rows and the states' values in one undo step.
+            _sdUndoAsOne(_saveStateRun, function () {
+                n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
+                    var rows = _sdReviewRows(document.getElementById('sd-properties'));
+                    for (var i = 0; i < rows.length; i++) {
+                        var r = rows[i];
+                        if (!r.top || r.top === 'tr') continue;
+                        var key = r.tab + '|' + r.card + '|' + r.at;
+                        if (!done[key]) return { key: key, lbl: r.lbl };
+                    }
+                    return null;
+                }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+                var api = _sdPartApis.states;
+                if (_sdStateNode() && api && typeof api.clearAll === 'function') n += api.clearAll(_sdStateHost());
+            });
         } finally {
             _sdReviewBusy = false;
         }
@@ -25960,6 +26171,10 @@ const StyleDesigner = (function () {
             locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(nodes) || !!(panel && panel.querySelector('.sd-panel-readonly')); },
             reset: _sdReviewResetRow,
             resetAll: _sdReviewResetAll,
+            // The states holding values ("In a state"), and "Show": the
+            // Style tab opened on that state.
+            states: _sdStateReview,
+            showState: function (st) { _sdReviewOn = false; _sdOptTab = 'style'; _sdStateGo(st); },
             // "Copy style" under the list: one element's changed Style rows.
             copyStyle: _sdStyleCopy,
             several: nodes.length > 1,
@@ -26740,6 +26955,9 @@ const StyleDesigner = (function () {
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
         _sdPalSwitchWire(compOuter);
+        // My library leads the Blocks list, or the Components list in a
+        // design without Bootstrap.
+        _sdLibInit(blockList || compList, !blockList);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -34320,6 +34538,10 @@ const StyleDesigner = (function () {
             ? '<span class="sd-tree-editable-badge bi bi-pencil-fill" title="' +
               esc(_sdT('Editable area')) + '"></span>'
             : '';
+        var _coOpen = _sdIsContentLevel() ? [] : _sdCoEntries(node);
+        var openBadge = _coOpen.length
+            ? '<span class="sd-tree-open-badge bi bi-arrows-angle-expand" role="img" title="' + esc(_sdCoTip(_coOpen)) + '" aria-label="' + esc(_sdCoTip(_coOpen)) + '"></span>'
+            : '';
         var foldBadge = _sdTreeFolded(node)
             ? '<span class="sd-tree-fold-badge" title="' + esc(_sdT('Edited in the Options panel')) + '">' +
               esc(_sdT('{var} options', (node.children || []).length)) + '</span>'
@@ -34340,7 +34562,7 @@ const StyleDesigner = (function () {
             var _cnt = _sdTreeNodeCount(_sharedRefTree || node);
             if (_cnt) sectCount = '<span class="sd-tree-sect-count" title="' + esc(_sdT('{var} elements inside', _cnt)) + '">' + _cnt + '</span>';
         }
-        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
+        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + openBadge + addBtn + sectCount;
         if (node.type === 'shared_ref') li.classList.add('sd-tree-shared');
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
@@ -34969,7 +35191,8 @@ const StyleDesigner = (function () {
         // A Style or Advanced section opens by its rule when it holds for
         // every element (_sdOptOpenByDefault()).
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
-            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex, visit: false };
+            return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex,
+                snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem, visit: false };
         });
         // Layout's rows follow the same context; a row any element holds a
         // value in is drawn (rowCss()).
@@ -35306,6 +35529,7 @@ const StyleDesigner = (function () {
                 }
                 var val = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value;
                 _sdMcCommit(nodes, function (n) { _sdMcWrite(n, s, val); });
+                _sdSnapEnsure(val);
             });
         });
 
@@ -36531,7 +36755,11 @@ const StyleDesigner = (function () {
                 (path ? '<div class="sd-id-path" title="' + esc(fullPath) + '">' + path + '</div>' : '') +
             '</div>' +
             (node.type !== 'root' ? '<button type="button" class="sd-id-more bi bi-three-dots" id="sd-id-more" title="' + esc(_sdT('More actions')) + '" aria-label="' + esc(_sdT('More actions')) + '" aria-haspopup="menu"></button>' : '') +
-        '</div>';
+        '</div>' +
+        (_sdLibUnbound(node, node.type === 'shared_ref' ? _sharedCache[node.props.sharedId] : null)
+            ? '<div class="sd-lib-unbound-line" role="note"><span class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></span>' +
+                esc(_sdT('This copy came from the library and this site lacks what it was bound to. Choose a form, collection or group for it.')) + '</div>'
+            : '');
     }
 
     function _sdIdentityBind(panel, node) {
@@ -36555,9 +36783,114 @@ const StyleDesigner = (function () {
                 _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
                 _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
                 { sep: true },
-                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
-            ]));
+                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } },
+                (_sdLibOffered(node) ? { icon: 'bi-bookmark-plus', label: _sdT('Save to my library'), handler: function () { _sdLibSave(node); } } : null)
+            ].filter(Boolean).concat(_sdCoMayOpen(node) ? [{ sep: true }, {
+                icon: 'bi-arrows-angle-expand',
+                label: esc(_sdT('Can change per place')) + '<i class="bi bi-chevron-right sd-ctx-car" aria-hidden="true"></i>',
+                handler: function () { _sdCoOpen(node, r); }
+            }] : [])));
         });
+    }
+
+    // ── Can change per place (the part 'overrides') ──────────────────────
+    // A node of a shared component may open fields to the places that use
+    // the component: props._open on the node (the model is
+    // includes/fn/component_overrides.php and its twin). The core keeps the
+    // marks and the entry points; the list and the settings rows are the
+    // part, loaded the first time one is asked for.
+
+    // The node's open entries, or [].
+    function _sdCoEntries(node) {
+        var l = node && node.props && node.props._open;
+        return Array.isArray(l) ? l.filter(function (e) { return e && typeof e.id === 'string' && typeof e.kind === 'string'; }) : [];
+    }
+
+    // Whether this operator may open a field of `node`: a node inside an
+    // ordinary shared component (not the placing node, not a system
+    // widget), for the roles that edit any component.
+    function _sdCoMayOpen(node) {
+        if (!node || node.type === 'shared_ref' || node.type === 'root' || !_collab.mayEdit || _sdIsContentLevel()) return false;
+        var sid = _resolveSharedSid(node);
+        return sid > 0 && !_isInsideSystemWidget(node) && !!(_sharedCache[sid] && _sharedCache[sid].tree);
+    }
+
+    function _sdCoOpen(node, rect) {
+        _sdPartCall('overrides', 'openFor', [node, rect || null]).catch(_sdPartFailed);
+    }
+
+    // The tip of an open field's mark: its labels.
+    function _sdCoTip(entries) {
+        return _sdT('Can change per place: {var}', entries.map(function (e) { return e.label || e.kind; }).join(', '));
+    }
+
+    // Whether a component's tree has an open field (a placed component
+    // inside it is not entered).
+    function _sdCoHas(n) {
+        if (!n || typeof n !== 'object') return false;
+        if (_sdCoEntries(n).length) return true;
+        if (n.type === 'shared_ref') return false;
+        return (n.children || []).some(_sdCoHas);
+    }
+
+    // The "Can change per place" rows of the "Shared Component" section:
+    // the holder the part fills, or the empty line while nothing is open
+    // and the part has not run.
+    function _sdCoSectHtml(sid, ctree) {
+        var head = '<p class="sd-co-sub">' + esc(_sdT('Can change per place')) + '</p>';
+        if (!_sdCoHas(ctree) && !_sdPartLoaded('overrides')) {
+            return head + '<p class="sd-co-none">' + esc(_sdT('No field yet. Select a text, picture, link or icon in the component and choose “Can change per place” in its menu.')) + '</p>';
+        }
+        return head + '<div class="sd-co-list" data-sd-co-sid="' + sid + '"></div>';
+    }
+
+    // After the Options panel is drawn: the mark after the label of each
+    // open field's row (an element's "Shown" after its name) and the
+    // settings list filled by the part.
+    var _SD_CO_PROP = { text: 'text', picture: 'src', link: 'href', icon: 'iconName' };
+    function _sdCoAfter(panel, node) {
+        var list = panel.querySelector('.sd-co-list[data-sd-co-sid]');
+        if (list) _sdPartCall('overrides', 'fillList', [list, parseInt(list.getAttribute('data-sd-co-sid'), 10) || 0]).catch(_sdPartFailed);
+        var entries = _sdIsContentLevel() ? [] : _sdCoEntries(node);
+        if (!entries.length) return;
+        var mark = function (holder, e) {
+            if (!holder || holder.querySelector('.sd-co-mark')) return;
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sd-co-mark bi bi-arrows-angle-expand';
+            b.title = _sdCoTip([e]);
+            b.setAttribute('aria-label', b.title);
+            b.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (_sdCoMayOpen(node)) _sdCoOpen(node, b.getBoundingClientRect());
+            });
+            holder.appendChild(b);
+        };
+        entries.forEach(function (e) {
+            if (e.kind === 'shown') {
+                mark(document.querySelector('#sd-props-head .sd-id-line'), e);
+                return;
+            }
+            var prop = _SD_CO_PROP[e.kind];
+            var ctrl = prop ? panel.querySelector('[data-prop="' + prop + '"]') : null;
+            var row = ctrl ? ctrl.closest('.sd-prop-row') : null;
+            mark(row ? row.querySelector('.sd-prop-label') : null, e);
+        });
+    }
+
+    // One change to component `sid` made by the part: its row's snapshot
+    // kept from before (never after a change, or Save skips it), an undo
+    // step, the change, the component marked changed, the editor drawn.
+    function _sdCoWrite(sid, fn) {
+        if (!_sharedSnapshots[sid] && !_sharedDirty[sid]) {
+            var c = _sharedCache[sid];
+            _sharedSnapshots[sid] = _sdSharedTreeJSON(c && c.tree);
+        }
+        saveState();
+        fn();
+        _sharedDirty[sid] = true;
+        render();
     }
 
     // A held-back body put into a detached copy, with the bodies of the
@@ -36694,6 +37027,8 @@ const StyleDesigner = (function () {
             text: _sdOptIsText(n.type, p.tag, p.contentType),
             flex: _sdOptIsFlex(n.type, p.cssClass),
             parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            snapBox: _sdSnapBox(n.type, p.cssClass),
+            snapItem: !!(par && _sdSnapBox(par.type, (par.props || {}).cssClass)),
             visit: _sdCondRowsOf(n).length > 0
         };
     }
@@ -36742,6 +37077,7 @@ const StyleDesigner = (function () {
         var box = document.getElementById('sd-props-search');
         var searching = !!(box && box.value.trim());
         if (!panel || !tab || (tab === _sdOptTab && !searching)) return;
+        if (tab !== _sdOptTab) _sdStateDrop();
         if (box) { box.value = ''; if (box.parentElement) box.parentElement.classList.remove('sd-has-q'); }
         _sdPropsSearchEmpty('');
         _sdOptSearchClose();
@@ -36883,7 +37219,12 @@ const StyleDesigner = (function () {
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || _sdReviewOn || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
-        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
+        // A state is held while this element and the Style tab are open; a
+        // search, a jump to a row and "Only what I changed" go back to Normal.
+        if (_sdOptState && (_allBodies || _sdOptStateId !== selectedNode._id || !_sdStateNode())) _sdStateDrop();
+        // Under a state every body is built: the part reads the rows of
+        // the closed cards too.
+        _sdSectBuild = { cards: {}, lazy: (_allBodies || _sdOptState) ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
         // Options section (node-specific)
         var optHtml = '';
@@ -36967,6 +37308,10 @@ const StyleDesigner = (function () {
         ].concat(_keyed.keyed));
         var _shown = _sdOptTabsShown(_plan);
         _sdOptTab = _sdOptTabPick(_sdOptTab, _shown);
+        if (_sdOptTab !== 'style') _sdStateDrop();
+        // "State", the first row of the Style tab's body.
+        var _stNode = _sdStateNode();
+        if (_stNode && _plan.style) _plan.style = _sdStateRowHtml(_stNode) + _plan.style;
         var _drawn = '';
         _shown.forEach(function (t) {
             if (_allBodies || t === _sdOptTab) _drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + _plan[t] + '</div>';
@@ -36986,11 +37331,13 @@ const StyleDesigner = (function () {
         _sdSpBoxBind([selectedNode]);
         _sdFocusBind(selectedNode);
         markModifiedProps();
+        _sdStateAfter(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
         _sdTrLoad(selectedNode);
         _sdPropsHead(selectedNode, _shown, _counts);
+        _sdCoAfter(panel, selectedNode);
         _sdQuickDraw(panel, [selectedNode]);
         _sdReviewAfter(_counts);
         panel.scrollTop = _keepScroll;
@@ -40048,6 +40395,7 @@ const StyleDesigner = (function () {
                     eo_address_book_shipping:  _sdT('Saved Addresses (shipping)'),
                     eo_upsell_offers:          _sdT('Upsell Offers (alert strip)'),
                     eo_applied_offers:         _sdT('Applied Offers (promotions active in the cart)'),
+                    eo_payment_periods:        _sdT('Recurring Totals (one line per payment period)'),
                     eo_totals:                 _sdT('Order Totals'),
                     eo_submit_button:          _sdT('Complete the Order button'),
                     eo_update_button:          _sdT('Update button')
@@ -40894,6 +41242,7 @@ const StyleDesigner = (function () {
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
                 row(_sdT('Status'), statusHtml) +
                 contentHtml +
+                ((!_cfg && sid > 0 && cached && cached.tree && !_sdIsContentLevel()) ? _sdCoSectHtml(sid, cached.tree) : '') +
                 usageHtml +
                 actionHtml
             );
@@ -45922,7 +46271,27 @@ const StyleDesigner = (function () {
             // container.
             ['__item_has_low_stock',              _sdT('Low stock flag (for visibility)')],
             ['__item_stock_warning',              _sdT('Low stock message (e.g. "Only 3 left")')],
-            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')]
+            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')],
+            // The row's parts alone, for a classic layout's cells.
+            ['__item_form_data_html',             _sdT('Product form fields (HTML)')],
+            ['__item_gift_card_html',             _sdT('Gift card recipient fields (HTML)')],
+            ['__item_recurring_schedule_html',    _sdT('Payment schedule fields (HTML)')],
+            ['__item_recurring_period',           _sdT('Payment period of a recurring product')],
+            ['__item_out_of_stock_message',       _sdT('Out of stock message')],
+            ['__item_calendar_event_name',        _sdT('Reserved calendar event')],
+            ['__item_calendar_event_dates',       _sdT('Reserved event date and time')]
+        ]},
+        { label: _sdT('Classic express order page'), tokens: [
+            ['__shopping_cart_label',             _sdT('The page\'s word for the cart')],
+            ['__update_button_label',             _sdT('Update button label')],
+            ['__purchase_now_button_label',       _sdT('Purchase button label')],
+            ['__special_offer_code_label',        _sdT('Offer code label')],
+            ['__special_offer_code_message',      _sdT('Offer code message')],
+            ['__retrieve_order_url',              _sdT('Address that restores this cart later')],
+            ['__currency_code',                   _sdT('Currency code shown beside amounts (empty when the site shows none)')],
+            ['__currency_selector',               _sdT('Currency pick list (its own form)')],
+            ['__opt_in_label',                    _sdT('E-mail opt-in label')],
+            ['__tax_exempt_label',                _sdT('Tax exemption label')]
         ]}
     ];
 
@@ -49576,7 +49945,35 @@ const StyleDesigner = (function () {
             ['has_shipping_cost',    _sdT('There is a shipping cost')],
             ['has_gift_card',        _sdT('A gift card is applied')],
             ['has_surcharge',        _sdT('There is a card surcharge')],
-            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')]
+            ['has_foreign_currency', _sdT('The visitor reads another currency than the one charged')],
+            // A classic express order layout's two tables, totals and
+            // payment part; the row flags are the cart's.
+            ['has_today_items',             _sdT('Something is charged today')],
+            ['has_today_non_donations',     _sdT('Something other than a donation is charged today')],
+            ['has_recurring_products',      _sdT('The cart has a recurring product, charged today or later')],
+            ['has_no_recurring_products',   _sdT('The cart has no recurring product')],
+            ['has_recurring_non_donations', _sdT('A recurring product is not a donation')],
+            ['has_special_offer_code',      _sdT('The offer code box is shown')],
+            ['has_currency_code',           _sdT('A currency code is shown beside amounts')],
+            ['has_subtotal_line',           _sdT('A discount, tax, shipping or gift card comes between subtotal and total')],
+            ['has_payment',                 _sdT('Something is to be paid')],
+            ['has_gift_card_code',          _sdT('Gift cards are accepted')],
+            ['can_update_contact',          _sdT('The buyer is signed in')],
+            ['has_referral_sources',        _sdT('The site lists referral sources')],
+            ['cart_item_today',                       _sdT('Row: charged today')],
+            ['cart_item_recurring',                   _sdT('Row: a recurring product')],
+            ['cart_item_recurring_only',              _sdT('Row: a recurring product first charged later')],
+            ['cart_item_donation',                    _sdT('Row: a donation')],
+            ['cart_item_not_donation',                _sdT('Row: not a donation')],
+            ['cart_item_added_by_offer',              _sdT('Row: added by an offer (quantity fixed)')],
+            ['cart_item_quantity_editable',           _sdT('Row: the visitor may change the quantity')],
+            ['cart_item_recurring_quantity_fixed',    _sdT('Row: among recurring charges, the quantity is not changed here')],
+            ['cart_item_recurring_quantity_editable', _sdT('Row: among recurring charges, the quantity is changed here')],
+            ['cart_item_recurring_donation',          _sdT('Row: among recurring charges, a donation whose amount is changed here')],
+            ['cart_item_recurring_amount',            _sdT('Row: among recurring charges, the amount is shown as text')],
+            ['cart_item_has_image',                   _sdT('Row: the product has an image')],
+            ['cart_item_out_of_stock',                _sdT('Row: the product is out of stock')],
+            ['cart_item_has_calendar_event',          _sdT('Row: a reservation for a calendar event')]
         ],
         shopping_cart: [
             ['has_items',            _sdT('The cart has items')],
@@ -52133,11 +52530,11 @@ const StyleDesigner = (function () {
         // data-sd-szbox: the size chooser of Font Size (_sdSzBind()).
         return _sdSectKey(sect('bi-type', _sdT('Text'),
             '<div data-sd-szbox hidden></div>' + _alignHtml +
-            row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
+            row(_sdT('Color'),        colorSelectGroup('text-', tColors), 'color:color') +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
-            row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors), 'color:background-color') +
             row(_sdT('Case'),         selStyleGroup(n.props, ['text-lowercase','text-uppercase','text-capitalize'], 'None')) +
-            row(_sdT('Font Size'),    selStyleGroup(n.props, fontSizeClasses, 'Default')) +
+            row(_sdT('Font Size'),    selStyleGroup(n.props, fontSizeClasses, 'Default'), 'size:font-size') +
             row(_sdT('Font Weight'),  selStyleGroup(n.props, ['fw-lighter','fw-light','fw-normal','fw-medium','fw-semibold','fw-bold','fw-bolder'], 'Default')) +
             row(_sdT('Font Style'),   selStyleGroup(n.props, ['fst-italic','fst-normal'], 'Default')) +
             row(_sdT('Line Height'),  selStyleGroup(n.props, ['lh-1','lh-sm','lh-base','lh-lg'], 'Default')) +
@@ -52419,8 +52816,66 @@ const StyleDesigner = (function () {
             row(_sdT('Sticky position'), posH) +
             row(_sdT('Theme'), themeH) +
             row(_sdT('Expand at'), expH) +
-            _sdSmartActiveRows(n)
+            _sdSmartActiveRows(n) +
+            _sdNavScrollRows(n)
         );
+    }
+
+    // A menu's two scroll rows. Both write attributes only (props._attrs),
+    // printed by both renderers as they are; each marker brings
+    // assets/js/pg_page_scroll.js to the page (pg_page_scroll_pattern()).
+    // "Mark the section in view" is data-pg-spy: the script makes the menu
+    // the target of Bootstrap's scrollspy on the body. "After scrolling" is
+    // data-pg-scrolled="<px>" with data-pg-scrolled-class, the Bootstrap
+    // classes the menu takes past that distance. Off writes nothing.
+    var _SD_NAV_SCROLLED_AT = 80;
+    var _SD_NAV_SCROLLED_DEFAULT = 'shadow py-1';
+    // The kind of a scrolled class: its own list in the panel.
+    function _sdNavScrolledKind(c) {
+        if (/^bg-(?!opacity|gradient)/.test(c) || /^navbar-(?:dark|light)$/.test(c)) return 'bg';
+        if (/^shadow(?:-|$)/.test(c)) return 'shadow';
+        if (/^p[ytb]-/.test(c)) return 'height';
+        return '';
+    }
+    // The class list split into its three lists; what fits none is dropped.
+    function _sdNavScrolledParts(cls) {
+        var out = { bg: [], shadow: [], height: [] };
+        String(cls || '').split(/\s+/).forEach(function (c) {
+            var k = c ? _sdNavScrolledKind(c) : '';
+            if (k && out[k].indexOf(c) === -1) out[k].push(c);
+        });
+        return { bg: out.bg.join(' '), shadow: out.shadow.join(' '), height: out.height.join(' ') };
+    }
+    // The one writer of data-pg-scrolled-class: one list's value changed.
+    function _sdNavScrolledClass(cls, part, value) {
+        var p = _sdNavScrolledParts(cls);
+        if (Object.prototype.hasOwnProperty.call(p, part)) p[part] = String(value || '').trim();
+        return [p.bg, p.shadow, p.height].filter(Boolean).join(' ');
+    }
+    function _sdNavScrollRows(n) {
+        var hint = function (t) { return '<div style="font-size:.66rem;color:#888;margin:-2px 0 4px">' + esc(t) + '</div>'; };
+        var h = row(_sdT('Mark the section in view'), swAttr('data-nav-spy', _sdAttr(n, 'data-pg-spy') !== null)) +
+            hint(_sdT('For a one-page menu: the link of the section on screen is marked active.'));
+        var at = _sdAttr(n, 'data-pg-scrolled');
+        h += row(_sdT('After scrolling'), swAttr('data-nav-scrolled', at !== null));
+        if (at === null) return h + hint(_sdT('Changes the menu once the page is scrolled down.'));
+        var parts = _sdNavScrolledParts(_sdAttr(n, 'data-pg-scrolled-class'));
+        var list = function (part, opts) {
+            var v = parts[part], known = opts.some(function (o) { return o[0] === v; });
+            if (!known) opts = opts.concat([[v, v]]);
+            return '<select class="form-control form-control-sm" data-nav-scrolled-part="' + part + '">' +
+                opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                '</select>';
+        };
+        var px = parseInt(at, 10);
+        h += row(_sdT('Distance'), '<input type="number" class="form-control form-control-sm" min="0" max="5000" step="10" data-nav-scrolled-at value="' +
+            (isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.max(0, px)) + '" aria-label="' + esc(_sdT('Distance in pixels')) + '">');
+        h += row(_sdT('Background'), list('bg', [['', _sdT('Unchanged')], ['bg-body', _sdT('Page colour')], ['bg-body-tertiary', _sdT('Light')],
+            ['bg-dark navbar-dark', _sdT('Dark')], ['bg-primary navbar-dark', _sdT('Primary')]]));
+        h += row(_sdT('Shadow'), list('shadow', [['', _sdT('Unchanged')], ['shadow-none', _sdT('None')], ['shadow-sm', _sdT('Small')],
+            ['shadow', _sdT('Regular')], ['shadow-lg', _sdT('Large')]]));
+        h += row(_sdT('Height'), list('height', [['', _sdT('Unchanged')], ['py-1', _sdT('Smaller')], ['py-0', _sdT('Smallest')]]));
+        return h;
     }
 
     // Smart active state (props.smartActive): an opt-in switch on navigation
@@ -56413,13 +56868,16 @@ const StyleDesigner = (function () {
     // A row: the changed dot's place, the label, the control. While the
     // single element's panel is built (_sdSectBuild) a lone select of up to
     // six values is drawn as a button group (_sdSegPlan()).
-    function row(label, ctrl) {
+    // `vars` ('<kind>:<css property>') makes the control one that offers the
+    // design's variables (_sdVarCtl()).
+    function row(label, ctrl, vars) {
         var extra = '';
         var ps = _sdSectBuild ? _sdSelParse(ctrl) : null;
         if (ps) {
             var plan = _sdSegPlan(ps.opts.filter(function (o) { return o.v !== ''; }).map(function (o) { return o.l; }));
             if (plan.kind === 'group') { ctrl = _sdSegGroup(ps); extra = _sdSegRowCls(plan); }
         }
+        if (vars) ctrl = _sdVarCtl(vars, ctrl);
         return '<div class="sd-prop-row' + extra + '"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
     }
     // A button group from a read select (_sdSelParse()). The select stays,
@@ -56815,6 +57273,215 @@ const StyleDesigner = (function () {
         return h;
     }
 
+    // ── Design variables in Options: pure helpers ──
+    // A control bound to a design variable holds a CSS expression on the
+    // design's --pg-var-* tokens (the variables stylesheet,
+    // includes/fn/design_variables.php): a variable ({ token: 'brand' }, a
+    // designer's own 'c-<key>'), a step of the type scale ({ step: n }: the
+    // base size times the scale n times, a negative n divides) or a multiple
+    // of the base unit ({ units: n }). Steps and multiples are not variables
+    // of their own: the expression works them out, so a change of the base
+    // size, the scale or the unit moves every element bound to one.
+    var _SD_VAR_STEPS = [['XS', -2], ['S', -1], ['L', 1], ['XL', 2], ['2XL', 3], ['3XL', 4], ['4XL', 5], ['5XL', 6]];
+    var _SD_VAR_UNITS = [2, 3, 4, 6, 8];
+
+    function _sdVarTok(t) {
+        return 'var(--pg-var-' + t + ')';
+    }
+
+    // The expression of a reference; '' for one that names nothing offered.
+    function _sdVarExpr(ref) {
+        if (!ref) return '';
+        if (ref.token != null) return /^[a-z0-9][a-z0-9-]*$/.test(ref.token) ? _sdVarTok(ref.token) : '';
+        if (ref.units != null) return _SD_VAR_UNITS.indexOf(ref.units) !== -1 ? 'calc(' + _sdVarTok('space-unit') + ' * ' + ref.units + ')' : '';
+        var n = +ref.step;
+        if (!_SD_VAR_STEPS.some(function (s) { return s[1] === n; })) return '';
+        var h = 'calc(' + _sdVarTok('size-base');
+        for (var i = 0; i < Math.abs(n); i++) h += (n > 0 ? ' * ' : ' / ') + _sdVarTok('scale');
+        return h + ')';
+    }
+
+    // The reference a style value is, read back; null for a typed value.
+    function _sdVarParse(v) {
+        v = String(v == null ? '' : v).trim();
+        var m = /^var\(--pg-var-([a-z0-9][a-z0-9-]*)\)$/.exec(v);
+        if (m) return { token: m[1] };
+        m = /^calc\(var\(--pg-var-space-unit\) \* (\d+)\)$/.exec(v);
+        if (m) return _sdVarExpr({ units: +m[1] }) ? { units: +m[1] } : null;
+        for (var i = 0; i < _SD_VAR_STEPS.length; i++) {
+            if (_sdVarExpr({ step: _SD_VAR_STEPS[i][1] }) === v) return { step: _SD_VAR_STEPS[i][1] };
+        }
+        return null;
+    }
+
+    // A length of the model in pixels (a rem is 16); null for anything else.
+    function _sdVarPx(v) {
+        var m = /^(-?\d*\.?\d+)(px|rem)?$/.exec(String(v == null ? '' : v).trim());
+        if (!m) return null;
+        return m[2] === 'rem' ? +m[1] * 16 : +m[1];
+    }
+
+    // What a step of the scale and a multiple of the unit give now, whole px.
+    function _sdVarStepPx(base, scale, n) {
+        return Math.round(base * Math.pow(scale, n));
+    }
+    function _sdVarUnitPx(unit, n) {
+        return Math.round(unit * n);
+    }
+
+    // The name a chip shows: `names` maps a token to its variable's name;
+    // a designer's own variable not in it is named from its key.
+    function _sdVarRefName(ref, names) {
+        if (!ref) return '';
+        if (ref.units != null) return _sdT('{var} units', ref.units);
+        if (ref.step != null) {
+            var s = _SD_VAR_STEPS.filter(function (x) { return x[1] === ref.step; })[0];
+            return _sdT('Scale {var}', s ? s[0] : String(ref.step));
+        }
+        if (names && names[ref.token]) return names[ref.token];
+        var t = String(ref.token).replace(/^c-/, '').replace(/-/g, ' ');
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    // "Used in n places": per token, the elements of `trees` whose style
+    // reads it (an element reading it twice counts once).
+    function _sdVarUsage(trees) {
+        var out = {};
+        var stack = (trees || []).slice();
+        while (stack.length) {
+            var n = stack.pop();
+            if (!n) continue;
+            var attrs = (n.props && n.props._attrs) || [];
+            var seen = {};
+            for (var i = 0; i < attrs.length; i++) {
+                if (!attrs[i] || attrs[i].name !== 'style') continue;
+                var re = /--pg-var-([a-z0-9][a-z0-9-]*)/g, m;
+                while ((m = re.exec(String(attrs[i].value || '')))) {
+                    if (!seen[m[1]]) { seen[m[1]] = 1; out[m[1]] = (out[m[1]] || 0) + 1; }
+                }
+            }
+            (n.children || []).forEach(function (c) { stack.push(c); });
+        }
+        return out;
+    }
+    // ── end of the design variables in Options ──
+
+    // ── Design variables in Options
+    // Colour and font size controls of the single element's panel offer
+    // the design's variables (row()'s `vars`). The list, the values and the
+    // names come from the part 'variables', loaded when a list or a Detach
+    // is first asked for; the core draws only the chip of a bound control.
+    // What the part last gave: token => { name, color }.
+    var _sdVarNames = {};
+
+    function _sdVarNamesMap() {
+        var out = {
+            brand: _sdT('Brand'), accent: _sdT('Accent'), neutral: _sdT('Neutral'), surface: _sdT('Surface'),
+            text: _sdT('Text'), success: _sdT('Success'), warning: _sdT('Warning'), danger: _sdT('Danger'),
+            'size-base': _sdT('Base size'), 'space-unit': _sdT('Base unit'), 'space-section': _sdT('Section rhythm'),
+            radius: _sdT('Corners')
+        };
+        Object.keys(_sdVarNames).forEach(function (t) { if (_sdVarNames[t].name) out[t] = _sdVarNames[t].name; });
+        return out;
+    }
+
+    // The control as today with a quiet "Variables" button beside it; a
+    // bound control shows the chip in its place (the variable's name and
+    // "Detach"), a typed value of the property a field. The control stays
+    // in the row, hidden, for the search and the counts.
+    function _sdVarCtl(vars, html) {
+        if (!selectedNode || selectedNodes.length > 1 || !_sdThemes() || !_sdUsesBootstrap()) return html;
+        var kind = vars.split(':')[0], prop = vars.split(':')[1];
+        var val = getAttrStyleProp(selectedNode, prop);
+        var ref = _sdVarParse(val);
+        var a = ' data-sd-var="' + kind + '" data-sd-var-prop="' + prop + '"';
+        var pick = '<button type="button" class="sd-var-pick" data-sd-var-open title="' + esc(_sdT('Variables')) + '" aria-label="' + esc(_sdT('Choose a variable')) + '">' +
+            '<span class="bi bi-braces" aria-hidden="true"></span></button>';
+        if (ref) {
+            var info = ref.token ? (_sdVarNames[ref.token] || {}) : {};
+            var nm = _sdVarRefName(ref, _sdVarNamesMap());
+            var mark = (kind === 'color' && info.color)
+                ? '<span class="sd-var-sw" style="background:' + esc(info.color) + '" aria-hidden="true"></span>'
+                : '<span class="bi ' + (kind === 'color' ? 'bi-palette' : 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>';
+            return '<div class="sd-var-ctl sd-var-bound"' + a + '><div hidden>' + html + '</div>' +
+                '<span class="sd-var-chip"><button type="button" class="sd-var-chip-name" data-sd-var-open title="' + esc(nm) + '">' + mark +
+                '<span class="sd-var-chip-txt">' + esc(nm) + '</span></button>' +
+                '<button type="button" class="sd-var-detach" data-sd-var-detach>' + esc(_sdT('Detach')) + '</button></span></div>';
+        }
+        if (val && prop !== 'background-color') {
+            return '<div class="sd-var-ctl"' + a + '><div hidden>' + html + '</div>' +
+                '<input type="text" class="form-control form-control-sm sd-var-lit" data-sd-var-lit value="' + esc(val) + '" spellcheck="false" aria-label="' + esc(_sdT('Value')) + '">' +
+                pick + '</div>';
+        }
+        return '<div class="sd-var-ctl"' + a + '><div class="sd-var-main">' + html + '</div>' + pick + '</div>';
+    }
+
+    // Writes a bound or typed value ('' removes it) as one undo step.
+    function _sdVarSet(node, prop, v) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!node || _sdPanelLockReason([node])) return;
+        if ((getAttrStyleProp(node, prop) || '') === (v || '')) return;
+        saveState();
+        setAttrStyleProp(node, prop, v || '');
+        _sdRenderNode(node, render);
+    }
+
+    // A typed value left in the field: written when the browser takes it.
+    function _sdVarLitChange(inp) {
+        var ctl = inp.closest('.sd-var-ctl');
+        if (!ctl || !selectedNode) return;
+        var prop = ctl.getAttribute('data-sd-var-prop'), v = inp.value.trim();
+        if (v && (/[;{}<>]/.test(v) || (window.CSS && CSS.supports && !CSS.supports(prop, v)))) {
+            _sdFieldInvalid(inp, ctl.getAttribute('data-sd-var') === 'color'
+                ? _sdT('Not a colour. Write a hex value such as #94A3B8.')
+                : _sdT('Not a size. Write a value such as 16px or 1rem.'));
+            return;
+        }
+        _sdFieldInvalid(inp, '');
+        _sdVarSet(selectedNode, prop, v);
+    }
+
+    // The way out to a typed value: the binding goes and the control opens
+    // as it does today.
+    function _sdVarTyped(prop) {
+        if (selectedNode && _sdVarParse(getAttrStyleProp(selectedNode, prop))) _sdVarSet(selectedNode, prop, '');
+        var ctl = document.querySelector('#sd-properties .sd-var-ctl[data-sd-var-prop="' + prop + '"]');
+        var main = ctl ? ctl.querySelector('.sd-var-main') : null;
+        if (!main) return;
+        var trig = main.querySelector('.sd-cp-trigger');
+        if (trig) { trig.click(); return; }
+        var f = main.querySelector('.sd-seg, select:not([hidden])');
+        if (!f) return;
+        f.focus();
+        if (f.tagName === 'SELECT' && typeof f.showPicker === 'function') { try { f.showPicker(); } catch (e) { /* not from a script here */ } }
+    }
+
+    // What the part reaches for one control: the variables host
+    // (_sdVarsHost()) and the control, its value, the write, the way out to
+    // a typed value and the count over the pages open in the editor.
+    function _sdVarsPickHost(ctl, node) {
+        var h = _sdVarsHost(null);
+        var prop = ctl.getAttribute('data-sd-var-prop');
+        h.anchor = ctl;
+        h.kind = ctl.getAttribute('data-sd-var');
+        h.value = getAttrStyleProp(node, prop);
+        h.locked = !_collab.mayEdit || !!_sdPanelLockReason([node]);
+        h.set = function (v) { _sdVarSet(node, prop, v); };
+        h.typed = function () { _sdVarTyped(prop); };
+        h.parse = _sdVarParse;
+        h.expr = _sdVarExpr;
+        h.px = _sdVarPx;
+        h.steps = _SD_VAR_STEPS;
+        h.names = function (map) { _sdVarNames = map || {}; };
+        return h;
+    }
+
+    function _sdVarOpen(btn) {
+        var ctl = btn.closest('.sd-var-ctl');
+        if (!ctl || !selectedNode) return;
+        _sdPartCall('variables', btn.hasAttribute('data-sd-var-detach') ? 'detach' : 'pick', [_sdVarsPickHost(ctl, selectedNode)]).catch(_sdPartFailed);
+    }
+
     /**
      * Color picker rendered as a custom dropdown (trigger + menu) so each option can show a
      * colored dot to the LEFT of the color name — something a native <select><option> can't do
@@ -56950,6 +57617,14 @@ const StyleDesigner = (function () {
         return size === 'cover' || (rep === 'no-repeat' && (size === '' || size === 'auto'));
     }
 
+    // The picture "Set focus" moves on the canvas: the Image's own, else a
+    // cut background picture; '' for neither.
+    function _sdFocusKindOf(node) {
+        if (!node || node.type === 'root') return '';
+        if (_sdFocusTakes(node, 'image')) return 'image';
+        return _sdFocusTakes(node, 'background') ? 'background' : '';
+    }
+
     function _sdFocusPlace(kind) {
         return '<div class="sd-fc" data-sd-focus="' + kind + '"></div>';
     }
@@ -57015,6 +57690,18 @@ const StyleDesigner = (function () {
             screen: screen,
             ratio: kind === 'image' ? String(node.props.aspectRatio || '') : '',
             measured: box && box.height > 0 ? box.width / box.height : 0,
+            id: node._id,
+            pic: pic,
+            // The fit and the position the canvas draws now, read on demand
+            // by the mode only.
+            drawnAs: function () {
+                var cs = null;
+                try { cs = pic ? pic.ownerDocument.defaultView.getComputedStyle(pic) : null; } catch (e) {}
+                if (!cs) return { fit: '', position: '' };
+                return kind === 'image'
+                    ? { fit: cs.objectFit, position: cs.objectPosition }
+                    : { fit: cs.backgroundSize, position: cs.backgroundPosition };
+            },
             bound: _sdFocusInLoop(node),
             locked: !!_sdPanelLockReason([node]),
             F: { parse: _sdFocusParse, format: _sdFocusFormat, forScreen: _sdFocusForScreen, set: _sdFocusSet, same: _sdFocusSameEverywhere },
@@ -57046,6 +57733,19 @@ const StyleDesigner = (function () {
                 _sdRenderNode(node, render);
             }
         };
+    }
+
+    // "Set focus" from the selected element's toolbar: the part draws the
+    // mode over the canvas and writes through the same host as the
+    // control, so the move is one undo step and the panel follows.
+    function _sdFocusModeOpen(node, kind) {
+        if (!node || !kind || !canvasDoc) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (_sdPanelLockReason([node])) return;
+        var host = _sdFocusHost(null, node, kind);
+        if (!host.pic || !host.src) return;
+        host.doc = canvasDoc;
+        _sdPartCall('focus', 'mode', [host]).catch(_sdPartFailed);
     }
 
     // Draws each Focus control of the panel. A control in a closed group
@@ -57402,6 +58102,12 @@ const StyleDesigner = (function () {
         // Position: Bootstrap class select + expandable top/right/bottom/left sub-rows
         var _posRowId = 'sdexp_pos_' + (++respRowCounter);
         var _posSel = mkRespSelect('position-', [['static',_sdT('Static')],['relative',_sdT('Relative')],['absolute',_sdT('Absolute')],['fixed',_sdT('Fixed')],['sticky',_sdT('Sticky')]], _sdT('Default'));
+        // Sticky from a size (sticky-md-top, the row data-sd-stickyfrom)
+        // reads as Sticky; another position removes it.
+        _posSel = _posSel.replace('data-stylegroup="', 'data-stylegroup="' + _SD_STICKY_FROM.join(',') + ',');
+        if (_SD_STICKY_FROM.some(function (c) { return (' ' + cls + ' ').indexOf(' ' + c + ' ') !== -1; })) {
+            _posSel = _posSel.replace(/ selected(?=>)/, '').replace('value="position-sticky">', 'value="position-sticky" selected>');
+        }
         var _posSubRows = [
             { label: _sdT('Top'),    ctrl: lenInp('top', p.top, _sdT('e.g. 0')), val: p.top    },
             { label: _sdT('Right'),  ctrl: lenInp('right', p.right, _sdT('e.g. 0')), val: p.right  },
@@ -57483,7 +58189,9 @@ const StyleDesigner = (function () {
         // data-sd-szbox: the size chooser of the lengths (_sdSzBind()).
         var _dsBody = '<div data-sd-szbox hidden></div><div class="sd-sp-section">' +
             mkRespRow(_sdT('Display'), 'd-',     dispValues,  _sdT('Default')) +
+            '<div data-sd-hideon hidden></div>' +
             _posRow +
+            '<div data-sd-stickyfrom hidden></div>' +
             mkRespRow(_sdT('Float'),   'float-', floatValues, _sdT('Default')) +
             _zIdxRow +
             _widthRow +
@@ -57530,7 +58238,11 @@ const StyleDesigner = (function () {
             order:        [_sdT('Flex Order'),      'order-',           orderValues],
             grow:         [_sdT('Grow'),            'flex-',            growValues],
             shrink:       [_sdT('Shrink'),          'flex-',            shrinkValues],
-            fill:         [_sdT('Fill'),            'flex-',            fillValues]
+            fill:         [_sdT('Fill'),            'flex-',            fillValues],
+            // Scroll snap (_SD_SNAP_CLASSES): one value for every size, None
+            // writes nothing; its rule joins User Styles on first use.
+            snap:         [_sdT('Scroll snap'),     'pg-scroll-snap-',  [['always',_sdT('Always')],['near',_sdT('Near')]], _sdT('None')],
+            snapTo:       [_sdT('Snap to'),         'pg-snap-to-',      [['start',_sdT('Start')],['center',_sdT('Centre')],['end',_sdT('End')]], _sdT('Default')]
         };
         var _layHeld = {};
         Object.keys(_layRows).forEach(function (id) { _layHeld[id] = _sdLayHeld(_layCls, _layRows[id][1], _layRows[id][2]); });
@@ -57539,7 +58251,13 @@ const StyleDesigner = (function () {
         _layPlan.rows.forEach(function (id, i) {
             // A line between the box rows and the element's own.
             if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
-            _fxBody += mkRespRow(_layRows[id][0], _layRows[id][1], _layRows[id][2], _sdT('Default'));
+            var _lr = _layRows[id];
+            if (!_lr[3]) { _fxBody += mkRespRow(_lr[0], _lr[1], _lr[2], _sdT('Default')); return; }
+            _fxBody += mkNonRespRow(_lr[0], _lr[2].map(function (v) { return [_lr[1] + v[0], v[1]]; }), _lr[3]);
+            if (id === 'snap' && _sdSnapNeedsScroll(_layCls, _laySeveral ? null : p)) {
+                _fxBody += '<div class="sd-lay-note" role="note"><span class="bi bi-info-circle" aria-hidden="true"></span>' +
+                    '<span class="sd-lay-note-txt">' + esc(_sdT('Snapping works once the element scrolls: set Overflow to Auto or Scroll.')) + '</span></div>';
+            }
         });
         _fxBody += _sdLayNoteHtml(_layPlan, _laySeveral) + '</div>';
         var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
@@ -57655,7 +58373,7 @@ const StyleDesigner = (function () {
         // the search read them as before.
         var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
-            row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
+            row(_sdT('Color'),  colorSelectGroup('border-', borderColors), 'color:border-color') +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
             '<div class="sd-spb-host sd-rdb-host sd-bm-wrap" data-sd-rdbox></div>' +
             '<div class="sd-rd-rows" hidden>' +
@@ -57849,10 +58567,10 @@ const StyleDesigner = (function () {
             '</div>';
 
         var colorsHtml = as(_sdT('Color and background'),
-            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
+            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors), 'color:color') +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors), 'color:background-color') +
             row(_sdT('Bg Opacity'),   selStyleGroup(n.props, ['bg-opacity-10','bg-opacity-25','bg-opacity-50','bg-opacity-75','bg-opacity-100'], 'Default')) +
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
@@ -59706,6 +60424,7 @@ const StyleDesigner = (function () {
                 });
                 valWords.forEach(function(w) { clsArray.push(w); });
                 tgt.props.cssClass = clsArray.join(' ').trim();
+                _sdSnapEnsure(val);
                 renderProperties();
                 renderCanvas();
                 renderAttrsPanel();
@@ -59820,6 +60539,47 @@ const StyleDesigner = (function () {
                 if (this.checked) selectedNode.props.smartActive = true;
                 else delete selectedNode.props.smartActive;
                 render();
+            });
+        });
+
+        // A menu's scroll rows (_sdNavScrollRows()): attributes only.
+        function navScrollWrite(fn) {
+            if (!selectedNode) return;
+            saveState();
+            var owner = _sdAnyParent(selectedNode);
+            if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+            fn(selectedNode);
+            render();
+        }
+        document.querySelectorAll('#sd-properties input[data-nav-spy]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-spy', on ? '' : null); });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) {
+                    _sdSetAttrOn(n, 'data-pg-scrolled', on ? String(_SD_NAV_SCROLLED_AT) : null);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', on ? _SD_NAV_SCROLLED_DEFAULT : null);
+                });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled-at]').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var px = parseInt(this.value, 10);
+                px = isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.min(5000, Math.max(0, px));
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-scrolled', String(px)); });
+            });
+        });
+        document.querySelectorAll('#sd-properties select[data-nav-scrolled-part]').forEach(function (sl) {
+            sl.addEventListener('change', function () {
+                var part = this.getAttribute('data-nav-scrolled-part'), val = this.value;
+                navScrollWrite(function (n) {
+                    var cls = _sdNavScrolledClass(_sdAttr(n, 'data-pg-scrolled-class'), part, val);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', cls);
+                });
             });
         });
 
@@ -60439,6 +61199,112 @@ const StyleDesigner = (function () {
     }
 
     // ========================= STATUS BAR =========================
+    // ── Spacing bands (canvas guides)
+    // The selection's margin and padding drawn as bands over the canvas,
+    // each band's edge a handle that steps the side through the spacing
+    // scale (the part 'bands', style_designer_bands.js). The core only says
+    // when to draw or hide them; the part loads on the first selection
+    // that can show them and holds no listener while they are hidden.
+    var _sdBandsRaf = 0;
+    function _sdBandsSoon() {
+        if (_sdBandsRaf || typeof requestAnimationFrame !== 'function') return;
+        _sdBandsRaf = requestAnimationFrame(function () {
+            _sdBandsRaf = 0;
+            _sdBandsDraw();
+        });
+    }
+
+    // One selected element the operator may change, on the Design canvas of
+    // a Bootstrap design, with no element being dragged.
+    function _sdBandsDraw() {
+        var node = (selectedNode && selectedNodes.length <= 1) ? selectedNode : null;
+        var show = !!(node && node.props && node.type !== 'root' && canvasDoc && canvasDoc.body && canvasIframe &&
+            _collab.mayEdit && !_sdProto.open && !dragData && _sdUsesBootstrap() &&
+            !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
+        if (show) {
+            // The part writes through window.PGSpacingBox, which comes with
+            // the Spacing box's part: loaded first, once.
+            _sdPartLoad('spacing').then(function () {
+                return _sdPartCall('bands', 'draw', [_sdBandsHost(node)]);
+            }).catch(_sdPartFailed);
+        } else if (_sdPartLoaded('bands') && _sdPartApis.bands) {
+            _sdPartApis.bands.hide();
+        }
+    }
+
+    // What the part draws from: the element, the screen size the canvas
+    // width stands for, the Spacing box's commit and where the layer goes
+    // (_sdBandsGeo(), asked again on every placing).
+    function _sdBandsHost(node) {
+        var host = _sdSpBoxHost(null, [node]);
+        host.id = node._id;
+        host.el = _sdCanvasInnerOf(node);
+        host.width = canvasDoc.documentElement.clientWidth;
+        host.userId = (_design && _design.userId) || 0;
+        host.geo = _sdBandsGeo;
+        host.col = _sdBandsCol(node);
+        // The siblings' frames, asked for only while a margin handle moves
+        // (equal gaps).
+        host.siblings = function () {
+            var up = _sdAnyParent(node), kids = (up && up.parent && up.parent.children) || [];
+            return kids.filter(function (c) { return c !== node; }).map(_sdCanvasInnerOf).filter(Boolean);
+        };
+        return host;
+    }
+
+    // A column in a row gets a handle on its end edge: its wrapper (the flex
+    // item that carries the col-* classes), the row it sits in, and the
+    // commit that writes the Column options' width for a screen size.
+    function _sdBandsCol(node) {
+        if (node.type !== 'col') return null;
+        var up = _sdAnyParent(node), parent = up && up.parent;
+        if (!parent || parent.type !== 'row') return null;
+        var wrap = _findCanvasEl(node);
+        var row = (wrap && wrap.parentElement) ? wrap.parentElement.closest('.row') : null;
+        if (!row) return null;
+        return {
+            el: wrap,
+            row: row,
+            commit: function (size, span) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                if (_sdPanelLockReason([node]) || ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'].indexOf(size) === -1) return;
+                if (String(node.props[size] || '') === String(span)) return;
+                saveState();
+                node.props[size] = String(span);
+                _sdRenderNode(node, render);
+            }
+        };
+    }
+
+    // The layer's place in the canvas wrapper over the part of the canvas
+    // frame in view, the frame's top left in it and the scale of a canvas
+    // pixel on screen (zoom and Fit, read as the link marks read them);
+    // null without a canvas.
+    function _sdBandsGeo() {
+        var frame = canvasIframe;
+        var area = (frame && canvasDoc) ? frame.closest('.sd-iframe-area') : null;
+        var wrapper = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!wrapper) return null;
+        var docEl = canvasDoc.documentElement;
+        var fr = frame.getBoundingClientRect(), ar = area.getBoundingClientRect(), hr = wrapper.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        return {
+            wrapper: wrapper,
+            area: area,
+            left: left - hr.left,
+            top: top - hr.top,
+            w: Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left,
+            h: Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top,
+            fx: fr.left - left,
+            fy: fr.top - top,
+            k: k
+        };
+    }
+
     function _ensureSizeBadge() {
         var badge = document.getElementById('sd-canvas-size-badge');
         if (!badge) {
@@ -60452,6 +61318,7 @@ const StyleDesigner = (function () {
     }
 
     function _positionSizeBadge() {
+        _sdBandsSoon();
         var badge = _ensureSizeBadge();
         if (!badge) return;
         if (!canvasDoc || !selectedNode || !canvasIframe) { badge.style.display = 'none'; return; }
@@ -64385,11 +65252,13 @@ const StyleDesigner = (function () {
         { id: 'alignItems', of: 'box', name: 'alignment' },
         { id: 'alignContent', of: 'box', name: 'alignment' },
         { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'snap', of: 'box', name: '', when: 'snapBox' },
         { id: 'alignSelf', of: 'item', name: 'self' },
         { id: 'order', of: 'item', name: 'order' },
         { id: 'grow', of: 'item', name: 'grow' },
         { id: 'shrink', of: 'item', name: 'shrink' },
-        { id: 'fill', of: 'item', name: 'grow' }
+        { id: 'fill', of: 'item', name: 'grow' },
+        { id: 'snapTo', of: 'item', name: '', when: 'snapItem' }
     ];
 
     // The group of a row: 'box', 'item', or '' for no row of Layout.
@@ -64401,7 +65270,9 @@ const StyleDesigner = (function () {
     }
 
     // What Layout draws. `ctx`: { flex: the element is a flex box,
-    // parentFlex: its parent is one } (_sdOptCtx()); `held`: { id: true }
+    // parentFlex: its parent is one, snapBox / snapItem: the element / its
+    // parent takes Scroll snap } (_sdOptCtx()); a row with `when` follows
+    // that key instead of flex / parentFlex; `held`: { id: true }
     // for a row holding a value, drawn whatever the context so nothing set
     // is out of sight. Returns { rows: the ids drawn, in order; make:
     // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
@@ -64412,7 +65283,7 @@ const StyleDesigner = (function () {
         held = held || {};
         var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
         _SD_LAY_ROWS.forEach(function (r) {
-            if ((r.of === 'box' ? ctx.flex : ctx.parentFlex) || held[r.id]) {
+            if (ctx[r.when || (r.of === 'box' ? 'flex' : 'parentFlex')] || held[r.id]) {
                 out.rows.push(r.id);
                 return;
             }
@@ -64497,6 +65368,34 @@ const StyleDesigner = (function () {
         var s = ' ' + out.join(' ') + ' ';
         if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
         return out.join(' ');
+    }
+    // Scroll snap's classes, their rules in _SD_BLOCK_CSS.
+    var _SD_SNAP_CLASSES = ['pg-scroll-snap-always', 'pg-scroll-snap-near', 'pg-snap-to-start', 'pg-snap-to-center', 'pg-snap-to-end'];
+
+    // Whether an element takes Scroll snap: a flex or grid box at any size,
+    // never the scroller's row (pg-snap), which keeps its own snapping.
+    function _sdSnapBox(type, cls) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (s.indexOf(' pg-snap ') !== -1) return false;
+        return _sdOptIsFlex(type, cls) || / d-((sm|md|lg|xl|xxl)-)?(inline-)?grid /.test(s);
+    }
+
+    // The Scroll snap rules a class list (or a picked value) needs, in
+    // _SD_SNAP_CLASSES's order.
+    function _sdSnapNames(cls) {
+        var have = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        return _SD_SNAP_CLASSES.filter(function (k) { return have.indexOf(' ' + k + ' ') !== -1; });
+    }
+
+    // Whether a box with Scroll snap set does not scroll yet: no Overflow
+    // of Auto or Scroll as a prop (`props`, null for several elements) or a
+    // Bootstrap overflow class. False without Scroll snap.
+    function _sdSnapNeedsScroll(cls, props) {
+        var s = ' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ';
+        if (!/ pg-scroll-snap-(always|near) /.test(s)) return false;
+        if (/ overflow-(x-|y-)?(auto|scroll) /.test(s)) return false;
+        var p = props || {};
+        return !['overflow', 'overflowX', 'overflowY'].some(function (k) { return /^(auto|scroll)$/.test(String(p[k] || '').trim()); });
     }
     // ── end of layout by context
 
@@ -64585,6 +65484,8 @@ const StyleDesigner = (function () {
     // ── Position presets and layers: pure helpers ──
     // Bootstrap 5.3's layers by name: its $zindex-* numbers live in its Sass
     // only (no --bs-* variable holds them), so the list carries them.
+    // Bootstrap's Position Sticky from a size up (assets/js/pg_size_style.js).
+    var _SD_STICKY_FROM = ['sticky-sm-top', 'sticky-md-top', 'sticky-lg-top', 'sticky-xl-top', 'sticky-xxl-top'];
     var _SD_Z_LAYERS = [['1000', 'Dropdown'], ['1020', 'Sticky'], ['1030', 'Fixed'], ['1055', 'Modal']];
 
     // Whether a typed z-index is written: a whole number or auto, as
@@ -65295,6 +66196,9 @@ const StyleDesigner = (function () {
         if (!propRow) return;
         var kind = lbl.dataset.resetKind;
 
+        // A state's value: the row back to Normal's (_sdStateRowReset()).
+        if (kind === 'state') { _sdStateRowReset(propRow); return; }
+
         if (kind === 'bg-color-all') {
             if (!selectedNode) return;
             saveState();
@@ -65490,10 +66394,14 @@ const StyleDesigner = (function () {
             if (!t || !t.closest) return;
             var pre = t.closest('[data-sd-pos-preset]');
             if (pre && panel.contains(pre)) { _sdPosPresetApply(pre.getAttribute('data-sd-pos-preset')); return; }
+            var stb = t.closest('.sd-state-seg');
+            if (stb && panel.contains(stb)) { _sdStateGo(stb.getAttribute('data-sd-state')); return; }
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
             if (mk && panel.contains(mk)) { if (!mk.disabled) _sdLayMake(); return; }
+            var vo = t.closest('[data-sd-var-open], [data-sd-var-detach]');
+            if (vo && panel.contains(vo)) { _sdVarOpen(vo); return; }
             var rb = t.closest('.sd-chg-reset');
             if (!rb || !panel.contains(rb) || rb.disabled) return;
             var lbl = rb.nextElementSibling;
@@ -65502,10 +66410,22 @@ const StyleDesigner = (function () {
             if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
         });
+        // Escape goes back to Normal from a state, outside a field and an
+        // open colour menu.
+        panel.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' || !_sdOptState) return;
+            var t = e.target;
+            if (t && t.closest && t.closest('input, select, textarea, .sd-cp-menu:not([hidden])')) return;
+            if (panel.querySelector('.sd-cp-menu:not([hidden])')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sdStateGo('');
+        });
         // A layer picked beside Z Index fills the field, whose own listener
         // writes: 'input' for one element, 'change' for several.
         panel.addEventListener('change', function (e) {
             var sel = e.target;
+            if (sel && sel.hasAttribute && sel.hasAttribute('data-sd-var-lit')) { _sdVarLitChange(sel); return; }
             if (!sel || !sel.hasAttribute || !sel.hasAttribute('data-sd-zlayer') || sel.value === '') return;
             var inp = sel.parentNode ? sel.parentNode.querySelector('input[data-prop="zIndex"]') : null;
             if (!inp || inp.disabled) return;
@@ -76072,7 +76992,9 @@ const StyleDesigner = (function () {
         var pal  = _sdThemeFind('palette', _sdThemeValue('palette'));
         var lookCss = _sdThemeTry.look, palCss = _sdThemeTry.palette;
         // The design's variables: the tab's model being tried, else the
-        // saved file (sdDesign.themes.variables, '' for none).
+        // saved file (sdDesign.themes.variables, '' for none). A new design
+        // made from the start questions brings its stylesheet to try on.
+        if (th.variablesTry) { _sdThemeTry.variables = th.variablesTry; th.variablesTry = ''; }
         var varCss = _sdThemeTry.variables, varUrl = varCss ? '' : (th.variables || '');
         if (!look && !pal && !lookCss && !palCss && !varCss && !varUrl) return out;
         out.push({ id: 'pg-theme-bridge', url: th.bridge });
@@ -76294,8 +77216,14 @@ const StyleDesigner = (function () {
         });
         tabs += '</div>';
         if (_sdThemePaneTab === 'variables') {
-            host.innerHTML = tabs + '<div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
+            // "More" at the row's right: the tab's rarer actions as rows of
+            // its menu, never buttons of their own.
+            var more = '<details class="sd-vars-more ms-auto position-relative">' +
+                '<summary class="btn btn-sm btn-link theme-secondary"><span class="bi bi-three-dots me-1" aria-hidden="true"></span>' + esc(_sdT('More')) + '</summary>' +
+                '<div class="dropdown-menu show end-0" role="menu"><button type="button" class="dropdown-item" role="menuitem" data-th-ask>' + esc(_sdT('Ask me again')) + '</button></div></details>';
+            host.innerHTML = '<div class="d-flex align-items-start gap-2">' + tabs + more + '</div><div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
             _sdThemeBindTabs(host);
+            host.querySelector('[data-th-ask]').addEventListener('click', _sdVarsAskAgain);
             _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
             return;
         }
@@ -76510,8 +77438,28 @@ const StyleDesigner = (function () {
                 try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
             },
             setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
-            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
+            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); },
+            // Whether the canvas reads a variables stylesheet: the saved
+            // file or one being tried.
+            hasCss: function () { return !!(_sdThemeTry.variables || th.variables); },
+            usage: function () { return _sdVarUsage(_pages.map(_pgTreeOf)); }
         };
+    }
+
+    // "Ask me again": the start questions (the part 'questions') in place of
+    // the folds; the answers replace the four groups' values, a chosen feel
+    // the look. Cancel goes back to the folds with nothing changed.
+    function _sdVarsAskAgain() {
+        var pane = document.getElementById('sd-vars-pane');
+        if (!pane) return;
+        var more = document.querySelector('.sd-vars-more');
+        if (more) more.open = false;
+        var host = _sdVarsHost(pane);
+        host.setLook = function (key) { _sdThemeChoose('look', key); };
+        host.close = function () { _sdThemeRender(); };
+        // No filled button here: the window's Publish is the filled one.
+        host.btn = { fill: 'btn btn-sm btn-outline theme-primary', quiet: 'btn btn-sm btn-outline theme-secondary', ghost: 'btn btn-sm btn-link theme-secondary' };
+        _sdPartCall('questions', 'ask', [host]).catch(_sdPartFailed);
     }
 
     // A changed look or palette carries the variables along (the untouched
@@ -76902,7 +77850,7 @@ const StyleDesigner = (function () {
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
-        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
@@ -77625,7 +78573,8 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
+            // The buttons of "Read the picture" (its foot, "Stop") too.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more, .sd-sketch-act',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -77686,6 +78635,9 @@ const StyleDesigner = (function () {
             },
             key: function (event) {
                 if (_sdSketchKey(event)) return true;
+                // The command palette, whose rows act on the selected
+                // sketch page too ("Page details").
+                if ((event.ctrlKey || event.metaKey) && event.shiftKey && String(event.key || '').toLowerCase() === 'p') { openCommandPalette(); return true; }
                 // Esc clears the path (or the wait for its page), else goes
                 // back from a frame zoomed to, else closes the view.
                 if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }
@@ -78310,6 +79262,8 @@ const StyleDesigner = (function () {
             if (!id || used['p' + id]) return;
             used['p' + id] = true;
             var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            var details = _sdSketchDetailsKeep(p.details);
+            if (details) page.details = details;
             var src = _sdSketchPicSrc(p.pic && p.pic.src);
             if (src) page.pic = { src: src, h: num(p.pic.h, SD_SKETCH.min, SD_SKETCH.picH, SD_SKETCH.minH), off: !!p.pic.off };
             (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
@@ -78328,6 +79282,19 @@ const StyleDesigner = (function () {
             out.n = Math.max(out.n, id + 1);
             out.pages.push(page);
         });
+        return out;
+    }
+
+    // A sketch page's "Page details" as kept (style_designer_sketchdetails.js
+    // writes them): the known keys only, texts short, numbers whole; null
+    // when the window never saved any. The part reads them through
+    // PGSketchDetails.keep(), which knows the values.
+    function _sdSketchDetailsKeep(raw) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+        var out = {};
+        ['address', 'type', 'menuName', 'afterName', 'title', 'description'].forEach(function (k) { out[k] = String(raw[k] == null ? '' : raw[k]).slice(0, 255); });
+        ['menu', 'after', 'folder'].forEach(function (k) { var n = Number(raw[k]); out[k] = isFinite(n) && n > 0 ? Math.floor(n) : 0; });
+        out.typed = !!raw.typed;
         return out;
     }
 
@@ -78460,6 +79427,7 @@ const StyleDesigner = (function () {
             body.appendChild(_sdSketchBoxEl(b, picked, on));
         });
         node.appendChild(body);
+        if (_sdPartLoaded('sketchread') && _sdPartApis.sketchread) _sdPartApis.sketchread.fill(item.id, node, head, body);
     }
 
     function _sdSketchBoxName(b) {
@@ -78529,6 +79497,7 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProto.sketchOn = !!on;
         if (!on) _sdProto.sk.sel = null;
+        if (on) _sdSketchReadReady();
         if (ui) {
             ui.sketchBtn.classList.toggle('active', !!on);
             ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -78739,6 +79708,7 @@ const StyleDesigner = (function () {
     // switch is on; Delete on a sketch frame takes the page out.
     function _sdSketchKey(event) {
         if (!_sdProto.sketchOn) return false;
+        if (event.key === 'Escape' && _sdPartLoaded('sketchread') && _sdPartApis.sketchread && _sdPartApis.sketchread.escape()) return true;
         var name = String(event.key || '');
         var ctrl = event.ctrlKey || event.metaKey;
         if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
@@ -78951,10 +79921,51 @@ const StyleDesigner = (function () {
                 delete page.pic;
                 _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
             } });
+            if (!page.pic.off && _sdProto.sk.reads === true) {
+                rows.push({ icon: 'bi-magic', text: _sdT('Read the picture'), run: function () { _sdPartCall('sketchread', 'start', [_sdSketchReadHost(), frameId]).catch(_sdPartFailed); } });
+            }
         }
+        rows.push({ sep: true });
+        rows.push({ icon: 'bi-card-list', text: _sdT('Page details'), run: function () { _sdSketchDetails(frameId); } });
         rows.push({ sep: true });
         rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
         return rows;
+    }
+
+    // Whether the browser's built-in model reads pictures, asked once when
+    // the switch first goes on (PinegrapAiWrite.imageReady(), the same
+    // check as the alt text's button): "Read the picture" is shown only
+    // then. Without "Write with AI" on the screen there is no such check
+    // and no row.
+    function _sdSketchReadReady() {
+        var sk = _sdProto.sk;
+        var ai = window.PinegrapAiWrite;
+        if (sk.reads !== undefined) return;
+        sk.reads = false;
+        if (!ai || typeof ai.imageReady !== 'function' || typeof ai.readImage !== 'function') return;
+        ai.imageReady().then(function (reads) { sk.reads = !!reads; }, function () { sk.reads = false; });
+    }
+
+    // What "Read the picture" (the part 'sketchread') reads the sketch
+    // through, and how its proposal becomes the page's boxes: one step of
+    // the sketch's history, the boxes there before replaced.
+    function _sdSketchReadHost() {
+        return {
+            page: _sdSketchPage,
+            redraw: function () { _sdSketchMount(false); },
+            announce: function (text) { if (_sdProto.canvas) _sdProto.canvas.announce(text); },
+            root: function () { return _sdProto.ui ? _sdProto.ui.root : document; },
+            el: _sdProtoEl,
+            limits: function () { return { w: SD_SKETCH.w, grid: SD_SKETCH.grid, min: SD_SKETCH.min, text: SD_SKETCH.text, boxes: SD_SKETCH.boxes }; },
+            keep: function (page, boxes) {
+                var data = _sdSketchData();
+                page.boxes = boxes.map(function (b) {
+                    return { id: data.n++, x: b.x, y: b.y, w: b.w, h: b.h, kind: '', text: b.text };
+                });
+                _sdProto.sk.sel = null;
+                _sdSketchChanged(false, page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length));
+            }
+        };
     }
 
     // A sketch page taken out, as Delete on a selected frame does.
@@ -78985,6 +79996,13 @@ const StyleDesigner = (function () {
             img.onerror = function () { sdToast(esc(_sdT('The picture could not be loaded.')), 'warning', 4000); };
             img.src = src;
         });
+    }
+
+    // The sketch frame selected on the open Prototype view, or ''.
+    function _sdSketchSelected() {
+        if (!_sdProto.open || !_sdProto.canvas) return '';
+        var id = _sdProto.canvas.focused();
+        return (id !== null && /^k:\d+$/.test(String(id)) && _sdSketchPage(id)) ? String(id) : '';
     }
 
     // The menu of "More", by its button; a second press closes it.
@@ -79049,6 +80067,59 @@ const StyleDesigner = (function () {
         el.style.top = place.top + 'px';
         var first = el.querySelector('.sd-proto-menu-item');
         if (first) first.focus({ preventScroll: true });
+    }
+
+    // "Page details" of a sketch page: a designer part
+    // (style_designer_sketchdetails.js), run the first time it is asked for.
+    function _sdSketchDetails(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page) return;
+        _sdSketchPick(null, null, false);
+        _sdPartCall('sketchdetails', 'open', [_sdSketchDetailsHost(frameId, page)]).catch(_sdPartFailed);
+    }
+
+    // What the window reads and writes of the editor: the page as the
+    // sketch keeps it, the folders of the Settings window's list (with who
+    // may open each), the addresses the design's pages and the other sketch
+    // pages have, and the save, kept and a step of the sketch's undo.
+    function _sdSketchDetailsHost(frameId, page) {
+        var item = _sdSketchItem(page);
+        var sel = document.getElementById('pg_page_folder');
+        var active = _pgActivePage() || {};
+        var folders = sel ? Array.prototype.map.call(sel.options, function (o) {
+            return { id: Number(o.value) || 0, label: String(o.textContent || '').replace(/\s+/g, ' ').trim(), access: o.getAttribute('data-access') || 'public' };
+        }).filter(function (f) { return f.id > 0; }) : [];
+        var site = (_design && _design.site && _design.site.url) ? String(_design.site.url) : (location.origin + (window.OUTPUT_PATH || '/'));
+        return {
+            page: page,
+            fallback: item.name,
+            mayEdit: !_sdIsContentLevel() && _collab.mayEdit !== false,
+            site: site,
+            folder: Number(active.page_folder) || (folders[0] ? folders[0].id : 0),
+            folders: function () { return folders; },
+            others: function () {
+                var out = _pages.map(function (p) { return { name: String(p.page_name || ''), address: String(p.page_name || '') }; });
+                _sdSketchData().pages.forEach(function (p) {
+                    if (p === page) return;
+                    var name = p.name || _sdT('Page {var:1}', p.id);
+                    var addr = (p.details && p.details.address) ? p.details.address : (window.PGSketchDetails ? window.PGSketchDetails.address(name) : '');
+                    out.push({ name: name, address: addr });
+                });
+                return out.filter(function (o) { return o.address; });
+            },
+            post: function (sub, extra) { return _pgApiPost(sub, extra); },
+            save: function (kept) {
+                var now = _sdSketchPage(frameId);
+                if (!now) return;
+                now.name = kept.name;
+                now.details = kept.details;
+                _sdSketchChanged(false, _sdT('Page details saved'));
+            },
+            closed: function () {
+                var node = _sdProto.ui ? _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]') : null;
+                if (node) node.focus({ preventScroll: true });
+            }
+        };
     }
 
     // ── The shortest click path ──
@@ -86828,6 +87899,9 @@ const StyleDesigner = (function () {
             // An administrator's reason for publishing a draft that waits
             // for a prototype link's approval (pg_proto_approval_override_reason()).
             if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
+            // The reason a page with a blocking Publish check finding goes on
+            // the site (pg_designer_publish_check_reason()).
+            if (!rec.unchanged && p._publishCheckReason) rec.publish_check_reason = p._publishCheckReason;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -87122,6 +88196,7 @@ const StyleDesigner = (function () {
         var row = function (l) {
             var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'theme-warning' : 'theme-info') + ' me-1">' +
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
+                         (l.phone ? '<span class="badge theme-secondary me-1"><span class="bi bi-phone me-1" aria-hidden="true"></span>' + esc(_sdT('Phone preview')) + '</span>' : '') +
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
@@ -87378,7 +88453,7 @@ const StyleDesigner = (function () {
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
         var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
-        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+        ['sd-vb-phone', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
             var row = document.getElementById(id);
             if (!row) return;
             var off = rows.indexOf(id) === -1;
@@ -87390,13 +88465,15 @@ const StyleDesigner = (function () {
 
     // ── Preview menu (D58) ───────────────────────────────────────────────
     // Beside Publish, the ways to see the page outside the editor, in this
-    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
-    // on the site (the page as the site serves it, as saved), Play as a
-    // prototype and Share the prototype… (the saved drafts). The rows a page
-    // cannot use are left out, never shown dead. s: { live, play, share }.
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P),
+    // Preview on a phone (a QR code of the saved drafts, shown where sharing
+    // is), Open on the site (the page as the site serves it, as saved), Play
+    // as a prototype and Share the prototype… (the saved drafts). The rows a
+    // page cannot use are left out, never shown dead. s: { live, play, share }.
     function _sdPreviewMenuRows(s) {
         s = s || {};
         var rows = ['sd-vb-preview'];
+        if (s.share) rows.push('sd-vb-phone');
         if (s.live) rows.push('sd-vb-live');
         if (s.play) rows.push('sd-vb-play');
         if (s.share) rows.push('sd-vb-share');
@@ -87427,6 +88504,7 @@ const StyleDesigner = (function () {
         menu.hidden = true;
         menu.innerHTML =
             '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-phone" role="menuitem" hidden><span class="bi bi-phone"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview on a phone')) + '</span></button>' +
             '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
@@ -87438,6 +88516,8 @@ const StyleDesigner = (function () {
             _sdPreviewMenuOpen(false);
             if (row.id === 'sd-vb-preview') {
                 openPreview();
+            } else if (row.id === 'sd-vb-phone') {
+                _sdPhoneOpen();
             } else if (row.id === 'sd-vb-live') {
                 if (row.getAttribute('href') === '#') e.preventDefault();
             } else if (row.id === 'sd-vb-play') {
@@ -87476,6 +88556,31 @@ const StyleDesigner = (function () {
             rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
         }, true);
         window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // "Preview on a phone" (the `phone` part): the QR code of the person's
+    // phone link, starting on the page on screen when it is a saved draft.
+    function _sdPhoneOpen() {
+        if (!_pgPrototypeShareReady()) return;
+        _sdPartCall('phone', 'open', [_sdPhoneHost()]).catch(_sdPartFailed);
+    }
+
+    // What the phone part reads the editor through: the design, the page on
+    // screen (its id only when it is a saved draft of this design), whether
+    // anything is unsaved, and the designer's own save.
+    function _sdPhoneHost() {
+        var p = _pgActivePage();
+        var draft = !!(p && p.page_id > 0 && p.page_draft && !p.pickedPending);
+        return {
+            styleId: _design.styleId,
+            page: { id: draft ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
+            dirty: function () { return _pages.some(_pgPageDirty); },
+            save: function (done) {
+                var b = document.getElementById('sd-ajax-save');
+                if (!b || b.disabled) { done(); return; }
+                saveAjax({ button: b, onSuccess: function () { done(); }, onError: function () { done(); } });
+            }
+        };
     }
 
     // Opens or closes the Preview menu under its button, its right edge on
@@ -87910,24 +89015,81 @@ const StyleDesigner = (function () {
             return;
         }
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
-        window.PgDesignerPublish.open({
+        var bridge = {
             rows: _pgPublishRows,
-            publish: function (keys, hold, report, reasons) {
-                // The reasons ride on the pages for this one save only.
+            reopen: opts.reopen || '',
+            publish: function (keys, hold, report, reasons, checks) {
+                // The reasons ride on the pages for this one save only: a
+                // held draft's approval reason, a blocking page's reason.
                 var over = [];
-                Object.keys(reasons || {}).forEach(function (k) {
-                    var p = _pgPageByKey(k);
-                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                [[reasons, '_approvalOverride'], [checks, '_publishCheckReason']].forEach(function (pair) {
+                    Object.keys(pair[0] || {}).forEach(function (k) {
+                        var p = _pgPageByKey(k);
+                        if (p) { p[pair[1]] = String(pair[0][k]); over.push(p); }
+                    });
                 });
                 if (over.length) {
                     var _report = report;
-                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; delete p._publishCheckReason; }); return _report(reply); };
                 }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); }
-        });
+        };
+        // The Publish check (the part 'publishcheck'): the ticked pages'
+        // results and findings, loaded the first time the sheet checks one.
+        if (_sdPartUrls('publishcheck')) {
+            bridge.check = function (keys, done) {
+                _sdPartCall('publishcheck', 'check', [keys, done]).catch(function () {
+                    keys.forEach(function (k) { done(k, { state: 'failed' }); });
+                });
+            };
+            bridge.findings = function (key, retry) {
+                var api = _sdPartLoaded('publishcheck') ? _sdPartApis.publishcheck : null;
+                return (api && typeof api.findings === 'function') ? api.findings(key, retry) : null;
+            };
+        }
+        window.PgDesignerPublish.open(bridge);
+    }
+
+    // A Publish check finding's path: the page's tab opened, its element
+    // selected and shown. False when the element is gone.
+    function _sdSelectFound(key, nodeId, sharedId) {
+        if (key && key !== _activeKey) _pgTabsSwitch(key);
+        if (key && key !== _activeKey) return false;
+        var cached = sharedId ? _sharedCache[sharedId] : null;
+        var root = sharedId ? (cached && cached.tree) : tree;
+        var node = (root && nodeId) ? findNodeById(nodeId, root) : null;
+        if (!node) return false;
+        _sdTextInnerSelect(node, null);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        scrollCanvasToNode(node);
+        return true;
+    }
+
+    // A Publish check "Fix", its "Undo" or an "Ignore": fn(tree) changes the
+    // page's tree as one undo step of that page. The active page goes
+    // through saveState() and is drawn again; another tab's page gets the
+    // step on its own history, taken when it is opened again. False when
+    // the page is gone or locked to this user.
+    function _sdPageEdit(key, fn) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked' || !_collab.mayEdit) return false;
+        if (key === _activeKey) {
+            saveState();
+            fn(tree);
+            render();
+            return true;
+        }
+        if (!p.tree) return false;
+        if (!Array.isArray(p.undoStack)) p.undoStack = [];
+        p.undoStack.push({ tree: JSON.stringify(p.tree), shared: {}, assets: null });
+        if (p.undoStack.length > 50) p.undoStack.shift();
+        p.redoStack = [];
+        fn(p.tree);
+        return true;
     }
 
     // The main button: Save on a draft (it stays off the site), the Publish
@@ -88795,6 +89957,9 @@ const StyleDesigner = (function () {
             { id: 'act_redo', label: _sdT('Redo'), icon: 'bi-arrow-clockwise', hint: 'Ctrl+Y', action: function() { redo(); } },
             { id: 'act_delete', label: _sdT('Delete'), icon: 'bi-trash', hint: 'Del', action: function() { if (selectedNode && selectedNode.type !== 'root' && !selectedNode.props._locked && !hasLockedAncestor(selectedNode)) onDelete(selectedNode); } },
             { id: 'act_duplicate', label: _sdT('Duplicate'), icon: 'bi-copy', hint: 'Ctrl+D', action: function() { if (selectedNode) onDuplicate(selectedNode); } },
+        ].concat(_sdCoMayOpen(selectedNode) ? [
+            { id: 'act_open_field', label: _sdT('Can change per place'), icon: 'bi-arrows-angle-expand', hint: getNodeLabel(selectedNode), action: function() { if (_sdCoMayOpen(selectedNode)) _sdCoOpen(selectedNode, null); } }
+        ] : []).concat([
             { id: 'act_copy', label: _sdT('Copy'), icon: 'bi-clipboard', hint: 'Ctrl+C', action: function() {
                 var _tc = selectedNodes.length > 1 ? selectedNodes.slice() : (selectedNode ? [selectedNode] : []);
                 if (_tc.length) clipboardNodes = _tc.map(function(n) { return cloneTree(n); });
@@ -88818,6 +89983,13 @@ const StyleDesigner = (function () {
             { id: 'act_to_shared', label: _sdT('Convert to Shared Component'), icon: 'bi-puzzle-fill', action: function() {
                 if (selectedNode && selectedNode.type !== 'root' && selectedNode.type !== 'shared_ref') convertToShared(selectedNode);
             }},
+            (_sdLibMaySave() ? { id: 'act_library_save', label: _sdT('Save to my library'), icon: 'bi-bookmark-plus', action: function() {
+                // One item is one element with what is inside it.
+                _sdLibSave(selectedNodes.length > 1 ? null : selectedNode);
+            }} : null),
+            (_sdLibMaySave() ? { id: 'act_library_manage', label: _sdT('Manage library'), icon: 'bi-collection', action: function() {
+                _sdPartCall('mylibrary', 'manage', []).catch(_sdPartFailed);
+            }} : null),
             // ── Settings / Modals ───────────────────────────────────
             { id: 'act_settings', label: _sdT('Open Settings'), icon: 'bi-gear', hint: 'Ctrl+,', action: function() {
                 var b = document.querySelector('[data-bs-target="#styleSettingsModal"]');
@@ -88826,7 +89998,18 @@ const StyleDesigner = (function () {
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
-        ];
+        ]).filter(Boolean);
+
+        // A sketch page selected in the Prototype view: its "Page details".
+        var sketchId = _sdSketchSelected();
+        if (sketchId) items.unshift({ id: 'act_sketch_details', label: _sdT('Page details'), icon: 'bi-card-list', action: function () { _sdSketchDetails(sketchId); } });
+        // My library's Import, for the designers its part is handed to: the
+        // part runs on the first choice.
+        if (_sdPartUrls('libraryfile')) {
+            items.push({ id: 'act_library_import', label: _sdT('Import to my library'), icon: 'bi-box-arrow-in-down', action: function () {
+                _sdPartCall('libraryfile', 'importFile', []).catch(_sdPartFailed);
+            }});
+        }
 
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
@@ -88835,6 +90018,12 @@ const StyleDesigner = (function () {
                     var a = _pgActivePage();
                     if (a) _pgSetDraft([a.key], false);
                 }});
+        }
+
+        // Preview on a phone, where the Preview menu offers it.
+        if (_pgPrototypeShareReady()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_phone', label: _sdT('Preview on a phone'), icon: 'bi-phone', action: function () { _sdPhoneOpen(); } });
         }
 
         // ── Assets-panel commands (only when the panel is mounted) ──
@@ -89026,6 +90215,9 @@ const StyleDesigner = (function () {
     function _trackRecentComp(type, extra, hintLabel, hintIcon) {
         // A widget's part or value is offered only while its widget is selected.
         if (type === 'widget_part') return;
+        // An item of My library may be renamed or deleted: it stays in its
+        // own group.
+        if (type === 'library') return;
         try {
             var id = type +
                 (extra && extra.componentType ? ':' + extra.componentType : '') +
@@ -89697,6 +90889,14 @@ const StyleDesigner = (function () {
                            '.pg-video-toggle[aria-pressed="true"] .pg-video-play { display: inline-block; }\n' +
                            '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }',
         'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
+        // Layout's Scroll snap on any flex or grid box (_SD_SNAP_CLASSES):
+        // the box snaps whichever way it scrolls, always (mandatory) or
+        // near a stop (proximity); a child names the edge it stops on.
+        'pg-scroll-snap-always': '.pg-scroll-snap-always { scroll-snap-type: both mandatory; }',
+        'pg-scroll-snap-near':   '.pg-scroll-snap-near { scroll-snap-type: both proximity; }',
+        'pg-snap-to-start':      '.pg-snap-to-start { scroll-snap-align: start; }',
+        'pg-snap-to-center':     '.pg-snap-to-center { scroll-snap-align: center; }',
+        'pg-snap-to-end':        '.pg-snap-to-end { scroll-snap-align: end; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,
         // which a transform skips.
@@ -89827,6 +91027,13 @@ const StyleDesigner = (function () {
         if (!add) return;
         if (css.indexOf(_SD_BLOCK_CSS_MARK) === -1) add = _SD_BLOCK_CSS_MARK + '\n' + add;
         _userStylesSet((css ? css.replace(/\s*$/, '\n') : '') + add);
+    }
+
+    // A Scroll snap value picked: its rule joins User Styles the first
+    // time (_SD_BLOCK_CSS), as a block rule does; an operator's edit is kept.
+    function _sdSnapEnsure(val) {
+        var names = _sdSnapNames(val);
+        if (names.length && !_sdPaletteDry) _sdEnsureBlockStyles(names);
     }
 
     // ── Palette item info: hover card and search words ──────────────────
@@ -91798,6 +93005,7 @@ const StyleDesigner = (function () {
     var _sdPalTip = { el: null, item: null, mute: null, timer: 0, closedAt: 0 };
 
     function _sdPalTipHTML(item) {
+        if (item.dataset.type === 'library') return _sdLibTip(item);
         var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
         try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
         var info = _sdPalInfo()[_sdPalKey(it)];
@@ -92063,6 +93271,7 @@ const StyleDesigner = (function () {
             if (pane) pane.hidden = !on;
         });
         if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (which === 'blocks') _sdLibMount();
         if (store) {
             try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
         }
@@ -93540,27 +94749,33 @@ const StyleDesigner = (function () {
         if (_seoCheckCache) { draw(_seoCheckCache); return; }
         var p = _pgActivePage() || {};
         _pgReadFieldsIntoPage(p);
+        _pgApiPost('seo_check', _sdSeoCheckBody(p, tree)).then(function (res) { _seoCheckCache = res; draw(res); })
+            .catch(function () { draw(null); });
+    }
+
+    // What designer/seo_check is sent for page `p` with tree `t` (the open
+    // page's, or another tab's for the Publish check).
+    function _sdSeoCheckBody(p, t) {
         var body = {
             style_id: (_design && _design.styleId) || 0,
             page_id: p.page_id || 0, page_name: p.page_name || '', page_folder: p.page_folder || 0,
             page_title: p.page_title || '', page_meta_description: p.page_meta_description || '',
             page_search_keywords: p.page_search_keywords || '', page_search: p.page_search ? 1 : 0,
             page_sitemap: p.page_sitemap ? 1 : 0, page_noindex: p.page_noindex ? 1 : 0,
-            html: (typeof generateHTML === 'function') ? generateHTML() : ''
+            html: t ? generateHTML(undefined, undefined, t) : ''
         };
         // A saved page's draft is rendered by the server as a whole page
         // (head, shared components, system widgets): its tree and the
         // system widgets it shows, as the Preview sends them. The markup
         // above is the fallback the server judges as a fragment.
-        if (body.page_id && tree) {
-            body.tree_json = JSON.stringify(tree);
+        if (body.page_id && t) {
+            body.tree_json = JSON.stringify(t);
             var wp = null;
             _sdPreviewWidgetMarkers = true;
-            try { wp = _sdPreviewWidgetPayload(generateHTML()); } finally { _sdPreviewWidgetMarkers = false; }
+            try { wp = _sdPreviewWidgetPayload(generateHTML(undefined, undefined, t)); } finally { _sdPreviewWidgetMarkers = false; }
             body.widgets = wp ? wp.widgets : [];
         }
-        _pgApiPost('seo_check', body).then(function (res) { _seoCheckCache = res; draw(res); })
-            .catch(function () { draw(null); });
+        return body;
     }
 
     // ========================= ELEMENT LOCK (inherited model) =========================
@@ -94655,7 +95870,33 @@ const StyleDesigner = (function () {
             getNodeExtraStyle: getNodeExtraStyle,
             hasLockedAncestor: hasLockedAncestor,
             render: render,
-            saveState: saveState
+            saveState: saveState,
+            createNode: createNode,
+            _findNodeAnywhereById: _findNodeAnywhereById,
+            _sdAccess: _sdAccess,
+            _sdBlockSketch: _sdBlockSketch,
+            _sdPalSwitchShow: _sdPalSwitchShow,
+            _sdPaletteItemHTML: _sdPaletteItemHTML,
+            _sdWirePaletteItems: _sdWirePaletteItems,
+            _userStylesGet: _userStylesGet,
+            _userStylesSet: _userStylesSet,
+            COMPONENTS: COMPONENTS,
+            validateTree: validateTree,
+            _pgPageByKey: _pgPageByKey,
+            _pgPublishSheet: _pgPublishSheet,
+            _sdBlockFamilies: _sdBlockFamilies,
+            _sdProtoTabs: _sdProtoTabs,
+            _sdSelectFound: _sdSelectFound,
+            _sdSeoCheckBody: _sdSeoCheckBody,
+            showCtxMenu: showCtxMenu,
+            scrollTreeToNode: scrollTreeToNode,
+            renderProperties: renderProperties,
+            _sdCoWrite: _sdCoWrite,
+            _sdPageEdit: _sdPageEdit,
+            _pgTabsOpenPageSettings: _pgTabsOpenPageSettings,
+            _sdPartUrls: _sdPartUrls,
+            _sdPartCall: _sdPartCall,
+            _sdPartFailed: _sdPartFailed
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
@@ -94679,6 +95920,82 @@ const StyleDesigner = (function () {
         if (!_sdPartLoaded('mirror')) return;
         var api = _sdPartApis.mirror;
         if (api && typeof api.rebind === 'function') api.rebind();
+    }
+
+    // ── My library ────────────────────────────────────────────────────────
+    // The part 'mylibrary' (assets/js/style_designer_mylibrary.js): "Save to
+    // my library" and the library's group in the palette. The group is
+    // drawn the first time its list is shown (at open only when that list
+    // is the one showing, once the editor has settled).
+    var _sdLib = { host: null };
+
+    function _sdLibApi() {
+        return _sdPartLoaded('mylibrary') ? (_sdPartApis.mylibrary || null) : null;
+    }
+
+    function _sdLibMaySave() {
+        return _sdAccess() === 'full' && !!_sdPartUrls('mylibrary');
+    }
+
+    // A section, a row, a card or a group: an element holding others.
+    function _sdLibOffered(node) {
+        return _sdLibMaySave() && selectedNodes.length < 2 && !!(node && node.type !== 'root' && node.type !== 'shared_ref'
+            && node.children && node.children.length);
+    }
+
+    function _sdLibSave(node) {
+        _sdPartCall('mylibrary', 'save', [node]).catch(_sdPartFailed);
+    }
+
+    function _sdLibInit(host, shown) {
+        if (!host || !_sdPartUrls('mylibrary')) return;
+        _sdLib.host = host;
+        var pane = host.closest('.sd-pal-list');
+        if (shown || (pane && !pane.hidden)) setTimeout(_sdLibMount, 1500);
+    }
+
+    function _sdLibMount() {
+        if (!_sdLib.host) return;
+        _sdPartCall('mylibrary', 'mount', [_sdLib.host]).catch(function () { /* the next showing asks again */ });
+    }
+
+    // The copy a row of the group adds (createFromPalette()); the rows are
+    // drawn by the part, so it has run when one is dragged.
+    function _sdLibNode(extra) {
+        var api = _sdLibApi();
+        return api ? api.node(extra || {}, _sdPaletteDry) : null;
+    }
+
+    function _sdLibTip(item) {
+        var api = _sdLibApi();
+        return api ? api.tip(item) : '';
+    }
+
+    // A copy whose binding the site lacked keeps its amber mark until a
+    // record of each kind cleared is chosen again (in its props, or in the
+    // widget's settings for a widget's placement).
+    function _sdLibUnbound(node, cached) {
+        var kinds = node && node.props && node.props._libraryUnbound;
+        if (!Array.isArray(kinds) || !kinds.length) return false;
+        var settings = node.props;
+        if (node.type === 'shared_ref') {
+            if (!cached || !cached.system_region_config) return true;
+            try { settings = JSON.parse(cached.system_region_config) || {}; } catch (e) { return true; }
+        }
+        var empty = false, seen = false;
+        Object.keys(settings).forEach(function (k) {
+            var kind = (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
+                : k.indexOf('folder_id') !== -1 ? 'folder'
+                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page' : '';
+            if (!kind || kinds.indexOf(kind) === -1) return;
+            seen = true;
+            if (!settings[k] || settings[k] === '0') empty = true;
+        });
+        if (seen && !empty) {
+            delete node.props._libraryUnbound;
+            return false;
+        }
+        return true;
     }
 
     // The assistant panel is the part 'ai', handed over only to the designers

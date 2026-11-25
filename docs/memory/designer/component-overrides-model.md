@@ -12,8 +12,9 @@ module: component_overrides
 - `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values. An id met twice in a tree keeps its first node.
 
 ## Which functions are there?
-- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), the designer part `overrides` (`component-overrides-render.md`).
-- `pg_co_open_fields($tree)` / `openFields`: `{id, kind, label, nodeId, value}` in document order, `nodeId` the node's `_id` (else `id`, #11595), `value` the component's own (a picture `{src, alt}`, shown `true`). A `shared_ref` inside the component is not entered.
+- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), bundled first in the designer part `overrides` (`component-overrides-fields.md`; drawing: `component-overrides-render.md`).
+- `pg_co_open_fields($tree)` / `openFields`: `{id, kind, label, nodeId, value}`, `value` the component's own (a picture `{src, alt}`, shown `true`), `nodeId` the node's `_id` (the designer's) else `id`. A `shared_ref` inside the component is not entered.
+- Order: the ids of the root's `props._openOrder` first, in its order (ids naming no field skipped), then the rest in document order (`pg_co_order_fields()`). It is the order of the component's settings list and of "This place" (#11597).
 - `pg_co_apply($tree, $values)` / `apply`: the tree as drawn at a place; a copy, the given tree unchanged. Nothing to apply (no values, no open field, only unfit values) gives the tree back as given (JS: the same object), so a component with no open field draws byte for byte as before. The root is never left out.
 - `pg_co_clean_value($kind, $value)` / `cleanValue`: text, link and icon strings; shown a boolean; picture `{src, alt}` (a string is the src; no alt keeps the component's). Unfit is `null` and ignored.
 - `pg_co_leftovers($tree, $values)` / `leftovers`: ids no open field takes any more, or whose value no longer fits; the Publish check lists them (CO2 on).

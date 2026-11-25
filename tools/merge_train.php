@@ -80,7 +80,7 @@ define('MERGE_TRAIN_IDENTITY_NAME', 'Erdal Güral');
 define('MERGE_TRAIN_IDENTITY_EMAIL', 'erdaltyy@gmail.com');
 define('MERGE_TRAIN_SIZE_LIMIT', 1000);
 define('MERGE_TRAIN_MAX_PRS', 12);
-define('MERGE_TRAIN_TOTAL_LIMIT', 2000);
+define('MERGE_TRAIN_TOTAL_LIMIT', 3000);
 define('MERGE_TRAIN_QUIET_SECONDS', 3600);
 define('MERGE_TRAIN_OVERSIZED_WAIT_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');

@@ -19,7 +19,6 @@ description: Hand-over of the architect session of 2026-11-24 and 25, the work i
 - Readings answered, written into the plans by the steps' workers: DD3 (ST3's PR), DD6 (CO3 to CO5), DD7 (PC4 and PC5). From DD3: the Figma import's drop place and progress bar become design examples by a small step before ST5 and ST6; ST5 is cut into ST5a and ST5b.
 
 ## What is open with other agents?
-- The merging session was asked whether the trains of 2026-11-24 stopped on conflicts. If none or one did, a train's total goes from 2,000 to 3,000 product lines while the queue is over its limit, written into `merge-train-order.md`. No answer yet.
 - AC1's census may show that shared component and theme changes need a store: a schema question for the owner.
 - A worker or coordinator asks in the channel naming the architect: a `## Decision question` in a PR body alone does not reach the request queue.
 - Nobody is asked to remove the generated footer of a PR text (`pr-text-generated-footer.md`).
