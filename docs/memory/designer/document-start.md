@@ -18,12 +18,12 @@ module: document_start
 
 ## What does "Build the page" do?
 - In the New design window: the rows go to this tab's `sessionStorage` (`pg_document_build`), the start questions are asked (`window.sdStartAsk`), and `add_system_style.php?framework=bootstrap5&start=document` opens; the editor (`sdDesign.startDocument`) runs the part's `auto()`, which builds once into the empty first page.
-- In the editor window: the sections are put on the page at once, one step of undo (`_sdDocumentHost().insert`).
-- `PGDocumentPage.build(rows, {make, node, src})`: intro, text, cards, picture and gallery through `PGSketchBuilder` (`sketch-builder.md`); figures `stats-counter`, questions `faq-twocol`; testimonial, table, prices and contact plain Bootstrap 5 sections. The words fill the starters' columns; their sample headings, paragraphs and links are taken out. Every section wears `var(--pg-var-space_section, 3rem)`.
+- In the editor window: the sections are put on the page at once, one undo step (`_sdDocumentHost().insert`).
+- `PGDocumentPage.build(rows, {make, node, src})` (builder from part `sketchbuild`): intro, text, cards, picture and gallery through `PGSketchBuilder` (`sketch-builder.md`); figures `stats-counter`, questions `faq-twocol`; testimonial, table, prices and contact plain Bootstrap 5 sections. The words fill the starters' columns; their sample headings, paragraphs and links are taken out. Every section wears `var(--pg-var-space_section, 3rem)`.
 
 ## Where do a Word document's pictures go?
-- `designer_document.php` keeps a document with pictures in `data/temp/documents/<token>.docx` (session-bound, at most 3, swept after 6 hours) and answers the pictures without their package part. At build time the editor posts `keep` with the numbers used; `pg_document_start_store()` writes each to the file manager's top folder and answers `n => address`. A pasted text's own picture address is used only when it is `http(s)://` or `/…`.
+- `designer_document.php` keeps a document with pictures in `data/temp/documents/<token>.docx` (per session, 3 at most, swept after 6 h) and answers the pictures without their package part. At build time the editor posts `keep` with the numbers used; `pg_document_start_store()` writes each to the file manager's top folder and answers `n => address`. A pasted text's own picture address is used only when it is `http(s)://` or `/…`.
 
 ## What did it cost, and where is it tested?
-- Nothing in the core but the palette row, the stub, the host and the start hook; the home page loads nothing until the start is chosen.
+- Core: the palette row, the stub, the host and the start hook only; the home loads nothing until the start is chosen.
 - `tests/document_start_test.php` (refusals, answer, texts, the start's place, rows, page in Node), `tests/document_reader_test.php` (`fits`).

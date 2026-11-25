@@ -71,7 +71,8 @@ StyleDesigner.definePart('document', function (K) {
     }
 
     function build(host, rows, keep, name) {
-        return store(rows, keep, name).then(function (stored) {
+        return Promise.all([store(rows, keep, name), host.builder()]).then(function (both) {
+            var stored = both[0];
             var nodes = window.PGDocumentPage.build(rows, {
                 make: host.make,
                 node: K.createNode,

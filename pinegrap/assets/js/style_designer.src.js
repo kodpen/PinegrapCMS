@@ -89561,6 +89561,8 @@ const StyleDesigner = (function () {
     function _sdDocumentHost() {
         return {
             make: function (type) { return createFromPalette('component', { componentType: type }); },
+            // The sketch builder (window.PGSketchBuilder) is the part 'sketchbuild''s.
+            builder: function () { return window.PGSketchBuilder ? Promise.resolve() : _sdPartLoad('sketchbuild'); },
             empty: function () { return !!(tree && !(tree.children || []).length); },
             insert: function (nodes) {
                 if (!tree || !nodes.length) return;

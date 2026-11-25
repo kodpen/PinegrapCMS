@@ -7,7 +7,8 @@
  *
  * "Page from a document": the form and the rows in the designer's own
  * window for an empty page, and the page built from the rows the New
- * design window left (?start=document).
+ * design window left (?start=document). The sketch builder comes with
+ * the part 'sketchbuild', loaded through the host first.
  *
  * Memory: docs/memory/designer/document-start.md
  *
@@ -25,7 +26,6 @@ return array(
 	'sources' => array(
 		'assets/js/pg_document_reader.js',
 		'assets/js/pg_document_rows.js',
-		'assets/js/pg_sketch_builder.js',
 		'assets/js/pg_document_page.js',
 		'assets/js/style_designer_document.js',
 	),
