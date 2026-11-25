@@ -27,7 +27,7 @@ priority: 7
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - ML1 (M) The item, pure: a subtree to an item and an item into a design (rule names, variables, cleared bindings); the store as files; rights. Done (#11521, `designer/designer-library-item.md`).
 - ML2 (M) after ML1 and DD9: "Save to my library" and the "My library" group with search and the hover card. Done (#11575, `designer/designer-my-library-save-and-group.md`).
-- ML3 (M) after ML2: "Manage library".
+- ML3 (M) after ML2: "Manage library". Done (#11608, `designer/designer-my-library-manage.md`).
 - ML4 (M) after ML1: Export and Import with the import's checks. Done (#11580, `designer/designer-library-export-import.md`, `designer/designer-library-import-checks.md`); the Export button is the foot of "Manage library" (ML3), calling `exportItems(ids)` of the part `libraryfile`.
 - ML5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
