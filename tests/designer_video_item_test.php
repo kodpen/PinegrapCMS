@@ -50,6 +50,9 @@ function designer_video_item_test_run($cases)
 		. 'function swAttr(a, on) { return "<input type=\\"checkbox\\" " + a + (on ? " checked" : "") + ">"; }'
 		. 'function getNodeAttr(n, nm) { var a = n.props._attrs || []; for (var i = 0; i < a.length; i++) if (a[i].name === nm) return a[i].value || ""; return ""; }'
 		. 'function hasNodeBoolAttr(n, nm) { return (n.props._attrs || []).some(function (a) { return a.name === nm; }); }'
+		. 'function selStyleGroup(p, classes) { var have = String(p.cssClass || "").split(" "); return "<select data-stylegroup=\\"" + classes.join(",") + "\\">" + classes.filter(function (c) { return have.indexOf(c) !== -1; }).join("") + "</select>"; }'
+		. 'function _sdFocusTakes(n, kind) { return kind === "video" && /poster/.test(JSON.stringify(n.props._attrs || [])); }'
+		. 'function _sdFocusPlace(kind) { return "<div data-sd-focus=\\"" + kind + "\\"></div>"; }'
 		. 'function createNode(type, props, kids) { return { type: type, props: props, children: kids || [] }; }'
 		. 'function auto(cls, attrs, kids) { var v = video(cls, attrs); var box = { type: "semantic", props: { tag: "section", cssClass: "d-flex pg-screen" }, children: [v].concat(kids || []) }; return { v: v, box: box }; }'
 		. 'function toggles(box) { return box.children.filter(function (k) { return (k.props._attrs || []).some(function (a) { return a.name === "data-pg-video-toggle"; }); }); }'
@@ -103,6 +106,8 @@ function test_designer_video_item_fill_classes()
 		'_sdVideoFillClass(_sdVideoFillClass("d-block w-100 h-auto", true), false)',
 		'_sdVideoFillClass("rounded-3 shadow position-relative z-2 h-50 object-fit-contain", true)',
 		'_sdVideoFillClass(_sdVideoFillClass("rounded-3", true), true)',
+		'_sdVideoFills(_sdVideoFillClass("d-block", true).replace("object-fit-cover", "object-fit-contain"))',
+		'_sdVideoFills("position-absolute top-0 start-0 w-100 h-100 z-n1")',
 	));
 
 	if ($r === null) {
@@ -115,6 +120,8 @@ function test_designer_video_item_fill_classes()
 	pg_assert_same('d-block w-100 h-auto', $r[3], 'turning the fill off gives back the palette size');
 	pg_assert_same('rounded-3 shadow position-absolute top-0 start-0 w-100 h-100 object-fit-cover z-n1', $r[4], 'a class of the same family gives way, the others stay');
 	pg_assert_same('rounded-3 position-absolute top-0 start-0 w-100 h-100 object-fit-cover z-n1', $r[5], 'turning the fill on twice changes nothing');
+	pg_assert_same(true, $r[6], 'a filling video picked to Contain still fills');
+	pg_assert_same(false, $r[7], 'a video without any fit does not fill');
 }
 
 function test_designer_video_item_fill_host_classes()
@@ -146,6 +153,7 @@ function test_designer_video_item_panel()
 		'propsVideoOptions(video("d-block w-100 h-auto", [{ name: "controls", value: "" }, { name: "preload", value: "metadata" }]))',
 		'propsVideoOptions(video(_sdVideoFillClass("d-block w-100 h-auto", true), []))',
 		'propsVideoOptions(video("d-block", [], { src: "film", poster: "still" }))',
+		'propsVideoOptions(video("d-block object-fit-contain", [{ name: "poster", value: "/still.jpg" }]))',
 	));
 
 	if ($r === null) {
@@ -167,6 +175,11 @@ function test_designer_video_item_panel()
 	pg_assert_true(strpos($r[2], 'sd-prop-video-src') === false, 'a bound file has no address field');
 	pg_assert_true(strpos($r[2], 'sd-prop-video-poster') === false, 'a bound poster has no address field');
 	pg_assert_same(2, substr_count($r[2], 'From a record field'), 'both bound rows say where the value comes from');
+
+	pg_assert_true(strpos($plain, 'Object Fit:<select data-stylegroup="object-fit-contain,object-fit-cover,object-fit-fill,object-fit-scale-down,object-fit-none">') !== false, 'a video has Object Fit');
+	pg_assert_true(strpos($r[3], 'object-fit-contain</select>') !== false, 'Object Fit shows the video\'s fit');
+	pg_assert_true(strpos($plain, 'data-sd-focus') === false, 'a video without a poster has no Focus');
+	pg_assert_true(strpos($r[3], '<div data-sd-focus="video"></div>') !== false, 'a video with a poster has the Focus control');
 }
 
 

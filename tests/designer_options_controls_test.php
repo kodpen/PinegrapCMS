@@ -28,7 +28,15 @@ function designer_options_controls_test_block()
 	$from = strpos($source, '    // ── The Options panel controls: pure helpers');
 	$to = ($from === false) ? false : strpos($source, '    // ── end of the Options panel controls', $from);
 
-	return ($to === false) ? '' : substr($source, $from, $to - $from);
+	if ($to === false) {
+		return '';
+	}
+
+	// The ratio reader sits with the Sizing style it serves (getNodeExtraStyle()).
+	$ratio = strpos($source, '    // A ratio typed into an Aspect Ratio row');
+	$ratio_end = ($ratio === false) ? false : strpos($source, "\n    }\n", $ratio);
+
+	return substr($source, $from, $to - $from) . (($ratio_end === false) ? '' : substr($source, $ratio, $ratio_end - $ratio + 7));
 }
 
 // Runs $code after the block; its `out` comes back decoded. Null without Node.
@@ -304,14 +312,14 @@ function test_designer_options_aspect_ratio_of_ratio_box()
 {
 	$answer = designer_options_controls_test_run(<<<'JS'
 out = [
-	_sdRatioOf({ aspectRatioEnabled: true, aspectRatio: '4x3' }, false),
-	_sdRatioOf({ aspectRatioEnabled: true, aspectRatio: '' }, false),
-	_sdRatioOf({ aspectRatioEnabled: false, aspectRatio: '16x9' }, false),
-	_sdRatioOf({ aspectRatio: '1x1' }, true),
-	_sdRatioOf({ aspectRatioEnabled: true, aspectRatio: 'custom', aspectRatioCustom: '56.25%' }, false),
-	_sdRatioOf({ aspectRatioEnabled: true, aspectRatio: 'custom', aspectRatioCustom: 'calc(9 / 16 * 100%)' }, false),
-	_sdRatioOf({ aspect: '3 / 2', aspectRatioEnabled: true, aspectRatio: '4x3' }, false),
-	_sdRatioOf({}, false),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: '4x3' }, false),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: '' }, false),
+	_sdAspectOf({ aspectRatioEnabled: false, aspectRatio: '16x9' }, false),
+	_sdAspectOf({ aspectRatio: '1x1' }, true),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: 'custom', aspectRatioCustom: '56.25%' }, false),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: 'custom', aspectRatioCustom: 'calc(9 / 16 * 100%)' }, false),
+	_sdAspectOf({ aspect: '3 / 2', aspectRatioEnabled: true, aspectRatio: '4x3' }, false),
+	_sdAspectOf({}, false),
 	_sdRatioBoxed({ aspectRatioEnabled: true }, false),
 	_sdRatioBoxed({ aspectRatio: '16x9' }, false),
 	_sdRatioBoxed({ aspectRatio: '16x9' }, true)

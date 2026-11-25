@@ -249,7 +249,7 @@ StyleDesigner.definePart('focus', function (K) {
         var moved = false;
         var size = null, box = null;
         // The element's own inline position, put back by Escape.
-        var prop = host.kind === 'image' ? 'object-position' : 'background-position';
+        var prop = host.kind === 'background' ? 'background-position' : 'object-position';
         var before = [pic.style.getPropertyValue(prop), pic.style.getPropertyPriority(prop)];
 
         var layer = css(doc.createElement('div'), 'position:fixed;inset:0;z-index:' + Z + ';touch-action:none;cursor:default;background:rgba(238,240,242,.55);');

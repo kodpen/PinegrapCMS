@@ -110,12 +110,13 @@ window.PGImageFocus = function (F) {
         return { desktop: '', tablet: '', phone: '' };
     }
 
-    // The shape of each frame as width / height. A fixed ratio (an Image's
-    // Aspect Ratio, '16x9') holds on every screen; else the screen shown
-    // takes the shape measured on the canvas and the others a typical one.
+    // The shape of each frame as width / height. A fixed ratio (an Aspect
+    // Ratio: '16x9', '16 / 9' or one number) holds on every screen; else the
+    // screen shown takes the shape measured on the canvas and the others a
+    // typical one.
     function shapes(ratio, screen, measured) {
-        var m = /^(\d+)x(\d+)$/.exec(String(ratio || ''));
-        var fixed = m && +m[2] > 0 ? +m[1] / +m[2] : 0;
+        var m = /^(\d+(?:\.\d+)?)(?:\s*[x\/]\s*(\d+(?:\.\d+)?))?$/.exec(String(ratio || '').trim());
+        var fixed = m && +(m[2] || 1) > 0 ? +m[1] / +(m[2] || 1) : 0;
         var out = { phone: 0.8, tablet: 4 / 3, desktop: 2.4 };
         SCREENS.forEach(function (s) {
             if (fixed) out[s] = fixed;

@@ -170,7 +170,7 @@ function test_image_focus_control_reset()
 // measured on the canvas.
 function test_image_focus_control_frame_shapes()
 {
-	$res = image_focus_control_test_node('out = [M.shapes("16x9", "desktop", 3), M.shapes("", "phone", 0.6), M.shapes("", "desktop", 0)];');
+	$res = image_focus_control_test_node('out = [M.shapes("16x9", "desktop", 3), M.shapes("", "phone", 0.6), M.shapes("", "desktop", 0), M.shapes("4 / 5", "desktop", 3), M.shapes("1.5", "phone", 0.6)];');
 	if ($res === null) {
 		return;
 	}
@@ -179,6 +179,8 @@ function test_image_focus_control_frame_shapes()
 	pg_assert_same(0.6, $res[1]['phone'], 'the phone shown is measured');
 	pg_assert_same(2.4, $res[1]['desktop'], 'the desktop keeps its typical shape');
 	pg_assert_same(2.4, $res[2]['desktop'], 'nothing measured');
+	pg_assert_same(0.8, $res[3]['desktop'], 'an aspect-ratio pair holds on every frame');
+	pg_assert_same(1.5, $res[4]['phone'], 'an aspect-ratio of one number holds too');
 }
 
 // The control is a part loaded on first use, drawn in the place the panel
