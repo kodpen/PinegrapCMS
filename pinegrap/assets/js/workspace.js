@@ -9610,9 +9610,14 @@
                 target = pinned.length ? pinned[0].id : 0;
             }
 
-            // The channel's board asked for in the address (?view=board).
+            // The channel's Board tab asked for in the address: ?view=board
+            // its board, ?view=list its List view; ?view=tasks, the Tasks
+            // tab's address, opens the List view, or the Tasks tab of a room
+            // without the board.
             if (target && (query.view === 'board')) {
                 self.pendingTab = 'board';
+            } else if (target && ((query.view === 'tasks') || (query.view === 'list'))) {
+                self.pendingTab = 'tasks';
             }
 
             // A discussion asked for in the address opens beside its channel.
@@ -11770,8 +11775,18 @@
 
             var thread = this.openThreadId();
 
-            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + ((this.tab === 'board') ? '&view=board' : '') + (thread ? '&thread=' + thread : ''));
+            window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + this.tabAddress() + (thread ? '&thread=' + thread : ''));
             menuAddressChanged();
+        },
+
+        // The address's part for the open tab: the Board tab's view, the
+        // Tasks tab of a room without the board.
+        tabAddress: function () {
+            if (this.tab === 'board') {
+                return (window.PGWsChannelBoard && (window.PGWsChannelBoard.view() === 'list')) ? '&view=list' : '&view=board';
+            }
+
+            return (this.tab === 'tasks') ? '&view=tasks' : '';
         },
 
         // Has the channel a Board tab (assets/js/workspace_board_channel.js)?
@@ -12018,7 +12033,7 @@
                 self.answerAfter = 0;
                 self.sinceTs = data.now;
                 self.hasMore = data.has_more;
-                self.tab = ((self.pendingTab === 'board') && !messageId && self.hasBoard(data.channel)) ? 'board' : 'messages';
+                self.tab = (self.pendingTab && !messageId) ? self.pendingTab : 'messages';
                 self.pendingTab = null;
                 self.drawCenter();
                 self.drawSide();
@@ -12061,7 +12076,7 @@
                 }
 
                 if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : '') + ((self.tab === 'board') ? '&view=board' : ''));
+                    window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : '') + self.tabAddress());
                     menuAddressChanged();
                 }
 
@@ -12452,7 +12467,32 @@
             tabs.setAttribute('role', 'tablist');
             self.tabsNode = tabs;
 
-            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')]];
+            var board = self.hasBoard(channel);
+
+            // Where the board is, Tasks and Board are one tab, "Board", with
+            // the Board and List views (workspace_board_channel.js); the Tasks
+            // tab asked for (the catch-up line, its old address) opens the
+            // List view. A room without the board keeps its Tasks tab.
+            if ((self.tab === 'tasks') && board) {
+                self.tab = 'board';
+                self.boardView = 'list';
+            } else if ((self.tab === 'board') && !board) {
+                self.tab = 'tasks';
+            }
+
+            var tabList = [['messages', t('tab_messages')]];
+
+            if (board) {
+                tabList.push(['board', t('tab_board')]);
+            }
+
+            tabList.push(['decisions', t('tab_decisions')]);
+
+            if (!board) {
+                tabList.push(['tasks', t('tab_tasks')]);
+            }
+
+            tabList.push(['files', t('tab_files')]);
 
             // The Notes tab beside Files, once the channel has a note of its
             // own (workspace_channel_notes.js).
@@ -12461,10 +12501,6 @@
             }
 
             tabList.push(['summary', t('tab_summary')]);
-
-            if (self.hasBoard(channel)) {
-                tabList.push(['board', t('tab_board')]);
-            }
 
             // The Memory tab: in a channel with an agent, or opened from the
             // channel settings (workspace_memory.js).
@@ -12620,8 +12656,14 @@
                 // /memory without a text opens New entry, filled.
                 window.PGWsMemory.mount(pane, channel, self.memoryFill || null);
                 self.memoryFill = null;
-            } else if ((self.tab === 'board') && self.hasBoard(channel)) {
+            } else if ((self.tab === 'board') && board) {
+                var view = self.boardView || '';
+
+                self.boardView = '';
                 window.PGWsChannelBoard.mount(pane, channel, {
+                    view: view,
+                    listInto: function (body, filters) { self.taskListInto(body, filters); },
+                    viewChanged: function () { self.syncAddress(); },
                     openMessage: function (messageId) { self.open(channel.id, messageId); },
                     openSummary: function () {
                         self.tab = 'summary';
@@ -12668,7 +12710,7 @@
                 filesTab.insertAdjacentElement('afterend', notesTab);
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['notes', counts.notes, 'cn_tab_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['board', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['notes', counts.notes, 'cn_tab_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
@@ -23995,14 +24037,33 @@
             });
             bar.appendChild(add);
             pane.appendChild(bar);
+            self.taskListInto(pane, { status: self.taskStatus || 'open' });
+        },
 
-            // The channel's tasks are cards in a grid (CSS on .ws-task-grid);
-            // My tasks and a record's window draw the same rows as a list.
+        // The channel's tasks as cards in a grid (CSS on .ws-task-grid), into
+        // the Tasks tab or the Board tab's List view; My tasks and a record's
+        // window draw the same rows as a list. filters: status (open, closed,
+        // all), and from the board's toolbar q, priority, person, mine,
+        // onChange (a task changed: the view is drawn again).
+        taskListInto: function (body, filters) {
+            var self = this;
             var list = el('div', 'ws-task-grid');
-            pane.appendChild(list);
+            var channel = self.channel;
+            var redraw = filters.onChange || function () { self.drawCenter(); };
 
-            api('ws_channel_tasks', { channel_id: self.channel.id, status: self.taskStatus || 'open' }).then(function (data) {
-                taskRows(list, data.tasks, function () { self.drawCenter(); });
+            body.appendChild(list);
+
+            api('ws_channel_tasks', {
+                channel_id: channel.id,
+                status: filters.status || 'open',
+                q: filters.q || '',
+                priority: filters.priority || '',
+                person: filters.person || 0,
+                mine: filters.mine ? 1 : 0
+            }).then(function (data) {
+                if (self.channel === channel) {
+                    taskRows(list, data.tasks, redraw);
+                }
             }).catch(fail);
         },
 
@@ -33173,6 +33234,8 @@
             askSeries: askSeries,
             scheduledList: scheduledList,
             priorityFilter: priorityFilter,
+            // The parts of a screen's one-line bar (workspace-screen-bar.md).
+            bar: { views: barViews, search: barSearch, filter: barFilter, label: barLabel, selectedText: selectedText },
             directMessage: directMessage,
             // The whole Flows editor over the page (flowLayer()).
             flowLayer: flowLayer,

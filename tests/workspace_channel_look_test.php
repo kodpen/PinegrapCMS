@@ -142,10 +142,11 @@ function test_workspace_channel_panes_tasks_are_cards_in_a_grid()
 {
 	$tasks = workspace_channel_look_method('drawTasks');
 
-	pg_assert_contains("var list = el('div', 'ws-task-grid');", $tasks, 'the channel\'s tasks are drawn into a grid');
+	pg_assert_contains("self.taskListInto(pane, { status: self.taskStatus || 'open' });", $tasks, 'the Tasks tab draws the list the Board tab\'s List view draws');
 	pg_assert_contains("el('div', 'pg-toolbar ws-pane-toolbar mb-3')", $tasks, 'under a quiet toolbar');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	pg_assert_contains("var list = el('div', 'ws-task-grid');", $js, 'the channel\'s tasks are drawn into a grid');
 	pg_assert_contains("var row = el('div', 'ws-list-row' + (task.open ? '' : ' ws-row-done'));", $js, 'each task stays one ws-list-row, so My tasks and the record window keep their rows');
 	pg_assert_same(1, substr_count($js, "'ws-task-grid'"), 'only the channel\'s tab draws the grid');
 
@@ -290,9 +291,10 @@ function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
 	$board = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js');
 
 	pg_assert_contains("k.el('div', 'ws-cb-chips')", $board, 'the grouping is a row of chips');
-	pg_assert_contains("k.button('btn btn-sm ws-cb-chip' + (prefs.group === key ? ' active' : '')", $board, 'each grouping a chip');
-	pg_assert_contains("var chip = k.button('btn btn-sm ws-cb-chip' + (on ? ' active' : '')", $board, 'the switches are chips');
-	pg_assert_contains("chip.setAttribute('aria-pressed', on ? 'true' : 'false');", $board, 'that say whether they are on');
+	pg_assert_contains("var item = k.button('ws-cb-chip', t('cb_by_' + key));", $board, 'each grouping a chip');
+	pg_assert_contains("item.setAttribute('aria-pressed', on ? 'true' : 'false');", $board, 'that says whether it is chosen');
+	pg_assert_contains("var chip = k.bar.label(k.button('ws-cb-chip', label, 'bi-person'));", $board, 'Only mine is a chip');
+	pg_assert_contains("chip.setAttribute('aria-pressed', isOn() ? 'true' : 'false');", $board, 'that says whether it is on');
 	pg_assert_false(strpos($board, "'btn-group btn-group-sm'") !== false, 'no button group left');
 	pg_assert_false((bool) preg_match('/[\'\s]ws-chip[\'\s]/', $board), 'not the message reference chip\'s class');
 	pg_assert_false(strpos($board, "draw(self);\n            load(self);") !== false, 'a switch draws the board once, through load()');
