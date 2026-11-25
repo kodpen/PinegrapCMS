@@ -8172,6 +8172,7 @@ function pg_js_bundles()
         'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
         'assets/js/style_designer_variables.min.js' => array('assets/js/style_designer_variables.js'),
+        'assets/js/style_designer_questions.min.js' => array('assets/js/designer_questions.js'),
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
@@ -8322,6 +8323,9 @@ function pg_designer_parts()
         // The Variables tab of Settings › Theme: the design's named colours,
         // type, spacing and shape, tried on the canvas as they change.
         'variables' => 'assets/js/style_designer_variables.min.js',
+        // The variables' five start questions (also the New design
+        // window's), asked by the Variables tab's "Ask me again".
+        'questions' => 'assets/js/style_designer_questions.min.js',
         // My library's file: the Import window (the file checked, the
         // report, a refusal) and the Export download, designers only.
         'libraryfile' => 'assets/js/style_designer_libraryfile.min.js',

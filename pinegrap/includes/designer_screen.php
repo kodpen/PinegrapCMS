@@ -392,7 +392,7 @@ function pg_designer_screen_render($ctx)
         // The prototype comments' pins and list ('comments') only to a
         // designer, once the site keeps comments; My library's Export and
         // Import ('libraryfile') to a designer too.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'bands', 'optsearch', 'review', 'guides', 'mylibrary', 'states', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_phone ? array('phone') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? array('publishcheck') : array(), ($access === PG_DESIGNER_ACCESS_FULL) ? array('libraryfile') : array(), $sd_clicks ? array('clicks') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'variables', 'questions', 'fonts', 'interactions', 'treesearch', 'move', 'spacing', 'bands', 'optsearch', 'review', 'guides', 'mylibrary', 'states', 'pages'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array(), $sd_phone ? array('phone') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? array('publishcheck') : array(), ($access === PG_DESIGNER_ACCESS_FULL) ? array('libraryfile') : array(), $sd_clicks ? array('clicks') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -460,7 +460,9 @@ function pg_designer_screen_render($ctx)
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
-        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
+        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id))
+            // A new design's start questions: the stylesheet tried on at once.
+            + (!empty($ctx['start_variables']) ? array('variablesTry' => $ctx['start_variables']['css']) : array()),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.
@@ -568,7 +570,7 @@ function pg_designer_screen_render($ctx)
                 <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
                 <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
                 <!-- The variables model the Variables tab changed (JSON); empty: unchanged. -->
-                <input type="hidden" name="style_variables" id="sd-style-variables" value="">
+                <input type="hidden" name="style_variables" id="sd-style-variables" value="' . (!empty($ctx['start_variables']) ? h(json_encode($ctx['start_variables']['model'])) : '') . '">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -1648,6 +1650,7 @@ function pg_designer_start_screen($ctx)
         // A start's own part (assets/js/designer_<part>.js), loaded on first use.
         'partBase'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/',
         'partStamp'   => pg_designer_asset_stamp('assets/js/designer_figma.js'),
+        'questionsStamp' => pg_designer_asset_stamp('assets/js/designer_questions.js'),
         't'           => pg_designer_home_texts(),
     );
 

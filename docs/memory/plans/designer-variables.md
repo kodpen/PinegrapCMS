@@ -23,7 +23,7 @@ priority: 7
 - DV2 (M) after DV1: the Variables tab, canvas, preview and site loading the file. Done: PR #11553 (`designer/design-variables-tab.md`).
 - DV3 (M) after DV2: the Options controls offering variables, the chip, "Used in n places". Done for the colour and font size controls with the type scale: PR #11589 (`designer/design-variables-options.md`).
 - DV3b (S) after DV3: the spacing box and the corners (part `spacing`) offering "Base unit", "Section rhythm", the units, "Corners" and the designer's own sizes, with the same chip and list.
-- DV4 (S) after DV2: the start questions as a part the New design window and the tab call.
+- DV4 (S) after DV2: the start questions as a part the New design window and the tab call. Done: PR #11593 (`designer/design-variables-questions.md`).
 - DV5 (S) after DV2: Export and Import, refused with the reason when the file is not tokens.
 - DV6 (S) Close-out: memory in `designer/`, starters and palette components moved to variables counted, this file deleted, the `[NEW]` line named.
 

@@ -723,6 +723,7 @@
     "Your answer (a number)": "Cevabınız (sayı)",
     "Your answer goes to {var:1} and cannot be changed afterwards. This link works until {var:2}.": "Yanıtınız {var:1} adlı kişiye iletilir ve sonradan değiştirilemez. Bu bağlantı {var:2} tarihine kadar geçerli.",
     "Your answer on the prototype of {var:1} is asked for by {var:2}.": "{var:1} prototipi için yanıtınız {var:2} tarihine kadar bekleniyor.",
+    "Your answers replace the values of the four groups. Your own variables and every bound control stay.": "Yanıtlarınız dört grubun değerlerinin yerine geçer. Kendi değişkenleriniz ve bağlı her denetim kalır.",
     "Your answers were saved, but the entry does not meet the programme's rules yet.": "Cevaplarınız kaydedildi, ancak başvuru henüz programın kurallarına uymuyor.",
     "Your application": "Başvurunuz",
     "Your application has reached us. We read every one and answer within a week; if it fits, we invite you for a coffee and a short talk in one of our cafés.": "Başvurunuz bize ulaştı. Her başvuruyu okur, bir hafta içinde yanıt veririz; uygun olursa sizi kafelerimizden birinde bir kahve ve kısa bir sohbete davet ederiz.",
