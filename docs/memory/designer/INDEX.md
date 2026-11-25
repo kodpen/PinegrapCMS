@@ -478,7 +478,7 @@
 - designer-panels-numbers.md: Plan designer-panels' feature numbers D1 to D62 and K1 to K12: which PR built each, the memory file and the test that hold it; checked against the code at the close-out (#10760)
 - designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)
 - designer-panels-overview.md: Start file of the Page Design Studio's redrawn chrome (plan designer-panels, ended #10760): Options panel, Overview tree, page strip, canvas bar; what binds them, which file holds what [decision: decisions-made-product-69.md, decisions-made-product-71.md]
-- designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the parts (D5)
+- designer-parts-on-demand.md: The designer's parts not needed to open a page: one file each in includes/designer_parts/, their conditions, the loader _sdPartLoad(), definePart and the sorted kit for parts cut from the core [decision: here]
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-phone-preview-drawing-phone.md: The phone's view of "Preview on a phone" as drawn (phone-preview.html, boards V1 and V2, step PP3): the thin line, a redraw, the page list, Paused, and the phone's messages

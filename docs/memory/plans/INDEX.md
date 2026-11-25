@@ -50,7 +50,6 @@
 - designer-options-census-steps-3.md: Plan designer-options-census, DO21 to DO27 and sheets DD22 to DD26: back to top, scroll progress, scrollspy, scrolled navbar, a collection with its pages, favourites, find and replace, Markdown
 - designer-options-census-steps.md: Plan designer-options-census, DO2 to DO9: a value per screen size, grid columns, rows, spans and areas, the small layout rows (inset presets, layer order, scroll snap, aspect ratio, object fit)
 - designer-options-census.md: Plan (owner 2026-11-24, 2026-11-25): the eleven packages he picked from the Options panel census as DO2 to DO27 in three steps files; how an option enters the panel, the lines, what a step keeps
-- designer-parts-registry.md: Plan (owner 2026-11-25): each designer part described in a file of its own, so a step adding a part edits no shared list; step PR1
 - designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
 - designer-record-edit-in-place.md: Plan (owner 2026-11-24, level 3): a collection item's words and pictures corrected in place in the designer's Preview, saved to the record by its own writer, apart from the design; steps RE1 to RE5
 - designer-screens-side-by-side.md: Plan (owner 2026-11-24, level 1): the designer's canvas with a phone and a tablet mirror beside it, redrawn when the hand rests, a click choosing the element; steps SS1 to SS4
