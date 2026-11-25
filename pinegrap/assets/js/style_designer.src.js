@@ -77977,7 +77977,7 @@ const StyleDesigner = (function () {
     // (a reload in the preview window works); the one it replaces is
     // released.
     function _sdShowPreview(html, w) {
-        var url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        var url = URL.createObjectURL(new Blob([_sdPvAsInject(html)], { type: 'text/html' }));
         if (w && !w.closed) {
             w.location.replace(url);
         } else {
@@ -77992,12 +77992,13 @@ const StyleDesigner = (function () {
         _sdPreviewUrl  = url;
         _sdPreviewSent = html;
         _sdPreviewWin  = w;
+        _sdPvAsAttach(w);
         return w;
     }
 
     function openPreview() {
         var raw = _sdPreviewDocHtml();
-        var payload = _sdPreviewWidgetPayload(raw);
+        var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
         if (!payload) { _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
 
         // The window opens now, inside the click - one opened when the
@@ -78024,6 +78025,7 @@ const StyleDesigner = (function () {
             _sdLive.widgetHtml = ok ? widgetHtml : null;
             _sdLive.busy--;
             _sdShowPreview(_sdPreviewDocHtml(widgetHtml, raw), w);
+            _sdPvAsAnswered(ok ? res.setups : null);
             _sdLivePreviewAgain();
         }, function () {
             _sdLive.busy--;
@@ -82427,6 +82429,134 @@ const StyleDesigner = (function () {
         if (row) canvas.announce(_sdT('{var:1}: the link “{var:2}” is picked', [_sdProtoFrameName(item), row.from ? row.from + ' › ' + row.label : row.label]));
     }
 
+    // ── Preview as ──
+    // The bar at the top of the Preview window: "Record", "Visitor" and
+    // "Case" (part 'previewas', docs/memory/designer/preview-as-bar.md).
+    // The core keeps the page's choice in this browser and sends it with
+    // designer/preview_widgets; an answer whose widgets offer a choice loads
+    // the part, which draws the bar into the Preview's document. A page
+    // that offers none never loads it. `asked`: a refresh the bar asked for
+    // is on its way.
+    var _sdPvAs = { asked: false, setups: null };
+
+    // The browser key of the page's choice: the design and the saved page,
+    // or the tab before its first save.
+    function _sdPvAsKey() {
+        var p = _pgActivePage();
+        var pid = (p && p.page_id) ? parseInt(p.page_id, 10) : 0;
+        return 'pgPreviewAs:' + _sdAutosaveSid() + ':' + (pid > 0 ? 'p' + pid : (_activeKey || 'p0'));
+    }
+
+    // The page's choice as kept: {case, who, visit, records: {sid: id},
+    // labels: {sid: name}}; the default when none is kept.
+    function _sdPvAsChoice() {
+        var c = null;
+        try { c = JSON.parse(localStorage.getItem(_sdPvAsKey()) || 'null'); } catch (e) { c = null; }
+        c = (c && typeof c === 'object') ? c : {};
+        var str = function (v, d) { return (typeof v === 'string' && /^[a-z_]{1,20}$/.test(v)) ? v : d; };
+        var map = function (v) { return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; };
+        return { case: str(c.case, 'typical'), who: str(c.who, 'signed_out'), visit: str(c.visit, 'first_visit'),
+                 records: map(c.records), labels: map(c.labels) };
+    }
+
+    // Keeps the choice for this page (removed when it is the default) and
+    // draws the Preview again with it at once; `quiet` only keeps it (the
+    // page drawn already shows it).
+    function _sdPvAsChoose(c, quiet) {
+        var plain = c.case === 'typical' && c.who === 'signed_out' && c.visit === 'first_visit' && !Object.keys(c.records || {}).length;
+        try {
+            if (plain) localStorage.removeItem(_sdPvAsKey());
+            else localStorage.setItem(_sdPvAsKey(), JSON.stringify(c));
+        } catch (e) {}
+        if (quiet || !_sdLivePreviewOpen()) return;
+        _sdPvAs.asked = true;
+        clearTimeout(_sdLive.timer);
+        _sdLivePreviewRefresh();
+    }
+
+    // Whether the active page shows an element only to an audience (a
+    // condition on a returning visit, a country, a member…), which is
+    // where "First visit" and "Returning" mean something.
+    function _sdPvAsAudience() {
+        var found = false;
+        (function walk(n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (Array.isArray(n)) { n.forEach(walk); return; }
+            if (_sdCondRowsOf(n).some(function (r) { return _sdAudienceToken(r.token); })) { found = true; return; }
+            if (n.children) walk(n.children);
+        })(tree);
+        return found;
+    }
+
+    // The choice into a preview_widgets body: the page's visitor and case,
+    // each widget's own record. The server reads it back against what the
+    // page offers (pg_preview_as_choice()). It takes one visitor: one who
+    // is signed in or a member wins over the visit.
+    function _sdPvAsApply(payload) {
+        if (!payload) return payload;
+        var c = _sdPvAsChoice();
+        payload.preview_as = {
+            case: c.case,
+            visitor: c.who !== 'signed_out' ? c.who : c.visit,
+            page: { access_rules: false, audience: _sdPvAsAudience() }
+        };
+        payload.widgets.forEach(function (w) {
+            var id = parseInt(c.records[w.id], 10);
+            if (id > 0) w.record = id;
+        });
+        return payload;
+    }
+
+    // A preview_widgets answer (null: it failed): what each widget was drawn
+    // with and offers, for the bar. The part loads the first time a page
+    // offers a choice; once loaded it hears every answer (a page with none
+    // hides the bar).
+    function _sdPvAsAnswered(setups) {
+        _sdPvAs.asked = false;
+        if (setups) _sdPvAs.setups = setups;
+        if (!_sdLivePreviewOpen()) return;
+        var offers = !!setups && Object.keys(setups).some(function (sid) {
+            var s = setups[sid] || {};
+            return !!s.source || (Array.isArray(s.cases) && s.cases.length > 1);
+        });
+        if (!offers && setups && _sdPvAsAudience()) offers = true;
+        if (!offers && !_sdPartLoaded('previewas')) return;
+        _sdPartCall('previewas', 'answer', [_sdPreviewWin, setups || null, _sdPvAsAudience()]).catch(_sdPartFailed);
+    }
+
+    // The records the "Record" chooser lists for widget `sid` whose name
+    // holds `q` (designer/preview_records, only those the operator may
+    // open): a promise of [{id, label}], null when the server failed.
+    function _sdPvAsRecords(sid, q) {
+        var p = _pgActivePage(), c = _sharedCache[sid] || {};
+        return _pgApiPost('preview_records', {
+            page_id: (p && p.page_id) ? parseInt(p.page_id, 10) : 0,
+            widget: { id: parseInt(sid, 10), system_region_config: c.system_region_config || '' },
+            q: q || ''
+        }).then(function (res) {
+            return (res && res.status === 'success' && Array.isArray(res.rows)) ? res.rows : null;
+        }, function () { return null; });
+    }
+
+    // A refresh the bar asked for failed: the part says so and the last
+    // page stays. False for any other refresh.
+    function _sdPvAsFailed() {
+        if (!_sdPvAs.asked || !_sdPartLoaded('previewas')) return false;
+        _sdPvAs.asked = false;
+        _sdPartCall('previewas', 'failed', []).catch(_sdPartFailed);
+        return true;
+    }
+
+    // The bar in a Preview document's markup, so a reload draws it at once.
+    function _sdPvAsInject(html) {
+        return _sdPartLoaded('previewas') ? _sdPartApis.previewas.inject(html) : html;
+    }
+
+    // A new Preview document: the bar binds to it once it has loaded.
+    function _sdPvAsAttach(w) {
+        if (_sdPartLoaded('previewas')) _sdPartApis.previewas.attach(w);
+    }
+
     // ── Live preview ──
     // While the preview window is open, every change in the editor (tree,
     // shared components and widgets, assets, theme, page settings, the
@@ -82478,15 +82608,19 @@ const StyleDesigner = (function () {
         if (!_sdLivePreviewOpen()) return;
         if (_sdLive.busy > 0) { _sdLive.again = true; return; }
         var raw = _sdPreviewDocHtml();
-        var payload = _sdPreviewWidgetPayload(raw);
-        var finish = function (widgetHtml, requested) {
+        var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
+        var finish = function (widgetHtml, requested, keep) {
             if (requested) _sdLive.busy--;
-            if (_sdLivePreviewOpen()) _sdLivePreviewWrite(_sdPreviewDocHtml(widgetHtml, raw));
+            if (!keep && _sdLivePreviewOpen()) _sdLivePreviewWrite(_sdPreviewDocHtml(widgetHtml, raw));
             _sdLivePreviewAgain();
         };
         if (!payload) { finish(null); return; }
         var sig = JSON.stringify(payload);
-        if (sig === _sdLive.sig && _sdLive.widgetHtml) { finish(_sdLive.widgetHtml); return; }
+        if (sig === _sdLive.sig && _sdLive.widgetHtml) {
+            finish(_sdLive.widgetHtml);
+            if (_sdPvAs.asked) _sdPvAsAnswered(_sdPvAs.setups);
+            return;
+        }
         _sdLive.busy++;
         // Two-handler then(): a failure inside finish() must not reach the
         // error handler and count the request twice.
@@ -82495,8 +82629,15 @@ const StyleDesigner = (function () {
             var ok = !!(res && res.status === 'success' && res.html);
             _sdLive.sig = ok ? sig : null;
             _sdLive.widgetHtml = ok ? res.html : null;
+            // A choice of the bar that could not be drawn leaves the last
+            // page as it is (the bar says so).
+            if (!ok && _sdPvAsFailed()) { finish(null, true, true); return; }
             finish(ok ? res.html : {}, true);
-        }, function () { finish({}, true); });
+            if (ok) _sdPvAsAnswered(res.setups);
+        }, function () {
+            if (_sdPvAsFailed()) { finish(null, true, true); return; }
+            finish({}, true);
+        });
     }
 
     // Reloads the preview window with new markup and puts it back where the
@@ -95797,6 +95938,9 @@ const StyleDesigner = (function () {
             _sdProtoCommentsOpen: _sdProtoCommentsOpen,
             _sdProtoCommentsPane: _sdProtoCommentsPane,
             _sdProtoTabs: _sdProtoTabs,
+            _sdPvAsChoice: _sdPvAsChoice,
+            _sdPvAsChoose: _sdPvAsChoose,
+            _sdPvAsRecords: _sdPvAsRecords,
             _sdRetargetLabels: _sdRetargetLabels,
             _sdSelectFound: _sdSelectFound,
             _sdSelectRender: _sdSelectRender,

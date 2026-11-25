@@ -10600,6 +10600,10 @@ function pg_designer_preview_override_rows($widgets)
             'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
             // The Preview's case for this widget alone ("Check all cases").
             'case'      => (isset($w['case']) && is_string($w['case'])) ? $w['case'] : '',
+            // The record chosen for this widget alone, 0 none (the "Record"
+            // chooser of a page with more than one single-record widget).
+            'record'    => (isset($w['record']) && (is_int($w['record']) || (is_string($w['record']) && ctype_digit($w['record']) && strlen($w['record']) <= 18)))
+                ? max(0, (int)$w['record']) : 0,
         );
     }
     return $overrides;
@@ -10629,20 +10633,21 @@ function pg_designer_preview_override_rows($widgets)
  *
  * "Preview as" ($preview_as, with the operator in $user): the page's
  * choice of record, visitor and case (pg_preview_as_choice()), a widget
- * row's own 'case' over the page's. Each widget is drawn with its setup
+ * row's own 'case' and 'record' over the page's. Each widget is drawn with its setup
  * (pg_preview_as_setup()) held for its renderers in pg_preview_as_while(),
  * which also puts the session back after it; a single-record widget draws
  * the record of its pick (pg_preview_as_record_target()), within what the
  * operator may open. With no operator the default pick is drawn, as before.
- * $setups, when given, receives sid => {case, record} of what was drawn.
+ * $setups, when given, receives sid => {case, record, source, cases}: the
+ * case and record drawn, and what the "Preview as" bar offers the widget.
  *
  * @param int        $page_id          the page, 0 when it has not been saved
- * @param array      $widgets          [{id, tree_json, system_region_config, case}]
+ * @param array      $widgets          [{id, tree_json, system_region_config, case, record}]
  * @param array      $comment_settings the page's comment settings as the editor
  *                                     holds them (pg_comment_editor_keys())
  * @param mixed      $preview_as       {record, visitor, case, page: {access_rules, audience}}
  * @param array|null $user             validate_user(), null for no operator
- * @param array|null $setups           out: sid => {case, record}
+ * @param array|null $setups           out: sid => {case, record, source, cases}
  * @return array sid => html
  */
 function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array(), $preview_as = null, $user = null, &$setups = null)
@@ -10700,6 +10705,7 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
             $type = pg_sw_widget_kind($cfg);
             $own  = $choice;
             if ($ov['case'] !== '') $own['case'] = $ov['case'];
+            if (!empty($ov['record'])) $own['record'] = (int)$ov['record'];
             $setup = pg_preview_as_setup($type, $own);
 
             $target = array('get' => array(), 'address' => '', 'id' => 0);
@@ -10718,7 +10724,14 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
                 if ($target['address'] !== '') $_GET['page'] = $page_name . '/' . $target['address'];
             }
             foreach ($target['get'] as $k => $v) $_GET[$k] = $v;
-            $setups[(int)$sid] = array('case' => $setup['case'], 'record' => (int)$target['id']);
+            // What the "Preview as" bar offers for this widget: its record
+            // source ('' none) and its cases (pg_preview_as_kind_cases()).
+            $setups[(int)$sid] = array(
+                'case'   => $setup['case'],
+                'record' => (int)$target['id'],
+                'source' => pg_preview_as_record_source($type),
+                'cases'  => pg_preview_as_kind_cases($type),
+            );
 
             $html = pg_preview_as_while($setup, function () use ($sid) {
                 ob_start();
