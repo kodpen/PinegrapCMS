@@ -26,7 +26,7 @@
  * What a part takes from the sketch: the typed heading (the first heading of
  * the block), the number of columns of a row of equal boxes (features,
  * cards, gallery) and a picture beside the text (the split intro). A body
- * section's padding is the design's section rhythm, var(--pg-var-space_section),
+ * section's padding is the design's section rhythm, var(--pg-var-space-section),
  * falling back to the starter's own 3rem, so a design without variables
  * draws as before. Every built root carries _sketchId, the section's id.
  *
@@ -57,7 +57,7 @@
 
     // A body section's padding: the design's section rhythm, else the
     // starters' own py-5.
-    var RHYTHM = 'padding-top: var(--pg-var-space_section, 3rem); padding-bottom: var(--pg-var-space_section, 3rem)';
+    var RHYTHM = 'padding-top: var(--pg-var-space-section, 3rem); padding-bottom: var(--pg-var-space-section, 3rem)';
 
     function count(value) {
         return (typeof value === 'number' && isFinite(value) && value > 0) ? Math.floor(value) : 0;

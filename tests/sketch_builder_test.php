@@ -243,7 +243,7 @@ JS
 		return;
 	}
 
-	$rhythm = 'padding-top: var(--pg-var-space_section, 3rem); padding-bottom: var(--pg-var-space_section, 3rem)';
+	$rhythm = 'padding-top: var(--pg-var-space-section, 3rem); padding-bottom: var(--pg-var-space-section, 3rem)';
 	pg_assert_same('Fish &amp; &lt;chips&gt;', $out['heading'], 'the typed heading, escaped');
 	pg_assert_same($rhythm, $out['introStyle'], 'a body section takes the section rhythm');
 	pg_assert_same('color: red; ' . $rhythm, $out['ctaStyle'], 'its own style is kept before it');
