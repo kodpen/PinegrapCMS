@@ -21,13 +21,14 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `theme` (#8245): the Themes tab of the assets panel, `designer-theme-part.md`.
 - `variables`: Settings, Theme, Variables, `design-variables-tab.md`.
 - `fonts` (#8268): the Google Fonts browser, `designer-fonts-part.md`.
-- `interactions` (#8281): the Interactions section's rows and fields, `designer-interactions-part.md`.
-- `treesearch` (DP13), `move` (DP16): the Overview's search and "Move…" window: `overview-search-map.md`, `overview-move-without-drag.md`.
+- `interactions` (#8281): the Interactions rows, `designer-interactions-part.md`.
+- `treesearch` (DP13), `move` (DP16): `overview-search-map.md`, `overview-move-without-drag.md`.
 - `optsearch` (DP8): `designer-options-search.md`; `pages` (DP20): `designer-pages-window.md`.
-- `comments` (#10042): prototype comments, `designer-prototype-comments-list.md`.
+- `comments` (#10042): `designer-prototype-comments-list.md`.
 - `spacing` (DP7): `designer-spacing-box.md`; `focus` (IF2): `image-focus-control.md`.
 - `guides` (#11570): canvas guides, `designer-canvas-guides-measure.md`.
 - `bands` (CG3): spacing bands and handles, `designer-canvas-guides-bands.md`.
+- `phone` (#11578): "Preview on a phone", `designer-phone-preview-window.md`.
 - Assistant code kept in the core for open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), `_sdAiAltButton()`.
 
 ## What is not measured?

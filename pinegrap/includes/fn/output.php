@@ -8197,6 +8197,7 @@ function pg_js_bundles()
         // draws them. What the Spacing box writes (window.PGSpacingBox) comes
         // with the part 'spacing', which the core loads first.
         'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
+        'assets/js/style_designer_phone.min.js'    => array('assets/js/style_designer_phone.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8318,6 +8319,9 @@ function pg_designer_parts()
         // The Focus control: a picture's focus point dragged on the whole
         // picture, with the cut on each screen, drawn when first shown.
         'focus' => 'assets/js/style_designer_focus.min.js',
+        // The "Preview on a phone" window: the QR code of the person's
+        // phone link, its time left, "Copy link" and "End now".
+        'phone' => 'assets/js/style_designer_phone.min.js',
     );
 }
 

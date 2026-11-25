@@ -87338,6 +87338,7 @@ const StyleDesigner = (function () {
         var row = function (l) {
             var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'theme-warning' : 'theme-info') + ' me-1">' +
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
+                         (l.phone ? '<span class="badge theme-secondary me-1"><span class="bi bi-phone me-1" aria-hidden="true"></span>' + esc(_sdT('Phone preview')) + '</span>' : '') +
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
@@ -87594,7 +87595,7 @@ const StyleDesigner = (function () {
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
         var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
-        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+        ['sd-vb-phone', 'sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
             var row = document.getElementById(id);
             if (!row) return;
             var off = rows.indexOf(id) === -1;
@@ -87606,13 +87607,15 @@ const StyleDesigner = (function () {
 
     // ── Preview menu (D58) ───────────────────────────────────────────────
     // Beside Publish, the ways to see the page outside the editor, in this
-    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
-    // on the site (the page as the site serves it, as saved), Play as a
-    // prototype and Share the prototype… (the saved drafts). The rows a page
-    // cannot use are left out, never shown dead. s: { live, play, share }.
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P),
+    // Preview on a phone (a QR code of the saved drafts, shown where sharing
+    // is), Open on the site (the page as the site serves it, as saved), Play
+    // as a prototype and Share the prototype… (the saved drafts). The rows a
+    // page cannot use are left out, never shown dead. s: { live, play, share }.
     function _sdPreviewMenuRows(s) {
         s = s || {};
         var rows = ['sd-vb-preview'];
+        if (s.share) rows.push('sd-vb-phone');
         if (s.live) rows.push('sd-vb-live');
         if (s.play) rows.push('sd-vb-play');
         if (s.share) rows.push('sd-vb-share');
@@ -87643,6 +87646,7 @@ const StyleDesigner = (function () {
         menu.hidden = true;
         menu.innerHTML =
             '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-phone" role="menuitem" hidden><span class="bi bi-phone"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview on a phone')) + '</span></button>' +
             '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
@@ -87654,6 +87658,8 @@ const StyleDesigner = (function () {
             _sdPreviewMenuOpen(false);
             if (row.id === 'sd-vb-preview') {
                 openPreview();
+            } else if (row.id === 'sd-vb-phone') {
+                _sdPhoneOpen();
             } else if (row.id === 'sd-vb-live') {
                 if (row.getAttribute('href') === '#') e.preventDefault();
             } else if (row.id === 'sd-vb-play') {
@@ -87692,6 +87698,31 @@ const StyleDesigner = (function () {
             rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
         }, true);
         window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // "Preview on a phone" (the `phone` part): the QR code of the person's
+    // phone link, starting on the page on screen when it is a saved draft.
+    function _sdPhoneOpen() {
+        if (!_pgPrototypeShareReady()) return;
+        _sdPartCall('phone', 'open', [_sdPhoneHost()]).catch(_sdPartFailed);
+    }
+
+    // What the phone part reads the editor through: the design, the page on
+    // screen (its id only when it is a saved draft of this design), whether
+    // anything is unsaved, and the designer's own save.
+    function _sdPhoneHost() {
+        var p = _pgActivePage();
+        var draft = !!(p && p.page_id > 0 && p.page_draft && !p.pickedPending);
+        return {
+            styleId: _design.styleId,
+            page: { id: draft ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
+            dirty: function () { return _pages.some(_pgPageDirty); },
+            save: function (done) {
+                var b = document.getElementById('sd-ajax-save');
+                if (!b || b.disabled) { done(); return; }
+                saveAjax({ button: b, onSuccess: function () { done(); }, onError: function () { done(); } });
+            }
+        };
     }
 
     // Opens or closes the Preview menu under its button, its right edge on
@@ -89051,6 +89082,12 @@ const StyleDesigner = (function () {
                     var a = _pgActivePage();
                     if (a) _pgSetDraft([a.key], false);
                 }});
+        }
+
+        // Preview on a phone, where the Preview menu offers it.
+        if (_pgPrototypeShareReady()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_phone', label: _sdT('Preview on a phone'), icon: 'bi-phone', action: function () { _sdPhoneOpen(); } });
         }
 
         // ── Assets-panel commands (only when the panel is mounted) ──
