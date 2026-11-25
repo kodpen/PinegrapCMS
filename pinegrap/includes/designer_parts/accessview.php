@@ -2,13 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Designer part 'a11yview', read by pg_designer_part_files()
+ * Designer part 'accessview', read by pg_designer_part_files()
  * (includes/fn/output.php).
  *
  * The canvas's Accessibility view: the card in the canvas's corner and its
  * marks for tab order, headings and names, worked out by the pure reader.
  *
- * Memory: docs/memory/designer/accessibility-reader.md
+ * Memory: docs/memory/designer/accessibility-view.md
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,7 +23,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 return array(
 	'sources' => array(
 		'assets/js/pg_a11y_reader.js',
-		'assets/js/style_designer_a11yview.js',
+		'assets/js/style_designer_accessview.js',
 	),
 	'when'    => 'always',
 );

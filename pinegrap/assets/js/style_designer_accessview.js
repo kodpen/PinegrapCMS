@@ -1,7 +1,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Visual Page Editor - the a11yview part: the canvas's Accessibility view.
+ * Visual Page Editor - the accessview part: the canvas's Accessibility view.
  * While the View menu's "Accessibility view" switch is on, a card stands in
  * the canvas's bottom right corner and the canvas carries one kind of mark:
  * the tab order (a number on every stop, joined by a line), the headings (a
@@ -25,7 +25,7 @@
  * @copyright   2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
-StyleDesigner.definePart('a11yview', function (K) {
+StyleDesigner.definePart('accessview', function (K) {
     'use strict';
 
     var R = window.PGA11yReader;

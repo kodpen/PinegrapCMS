@@ -7590,7 +7590,7 @@ const StyleDesigner = (function () {
             motionBtn.addEventListener('click', function () { _sdSetMotion(_sdMotionPaused()); });
         }
 
-        // Accessibility view: its card and marks are the part 'a11yview'.
+        // Accessibility view: its card and marks are the part 'accessview'.
         var a11yBtn = document.getElementById('sd-vb-a11y');
         if (a11yBtn) a11yBtn.addEventListener('click', function () { _sdA11ySet(!_sdA11yState().on); });
 
@@ -96034,8 +96034,8 @@ const StyleDesigner = (function () {
     // ── Accessibility view ──────────────────────────────────────────────
     // A switch of the View menu (#sd-vb-a11y): a card in the canvas's
     // corner and one kind of mark (tab order, headings, names) over the
-    // canvas, drawn by the part 'a11yview'
-    // (assets/js/style_designer_a11yview.js), loaded when the switch first
+    // canvas, drawn by the part 'accessview'
+    // (assets/js/style_designer_accessview.js), loaded when the switch first
     // goes on. On or off, the kind chosen and the fold are kept per browser.
     // Design mode only. Each draw (render()) lets the part read the page
     // again once the hand rests.
@@ -96105,13 +96105,13 @@ const StyleDesigner = (function () {
         var st = _sdA11yState();
         var btn = document.getElementById('sd-vb-a11y');
         if (btn && btn.classList.contains('active') !== st.on) btn.classList.toggle('active', st.on);
-        if (st.on && canvasDoc && !(_sdProto && _sdProto.open) && _sdPartUrls('a11yview')) {
-            _sdPartCall('a11yview', 'show', [_sdA11yHost()]).catch(function () {
+        if (st.on && canvasDoc && !(_sdProto && _sdProto.open) && _sdPartUrls('accessview')) {
+            _sdPartCall('accessview', 'show', [_sdA11yHost()]).catch(function () {
                 _sdA11ySet(false);
                 _sdPartFailed();
             });
-        } else if (_sdPartLoaded('a11yview') && _sdPartApis.a11yview && _sdPartApis.a11yview.hide) {
-            _sdPartApis.a11yview.hide();
+        } else if (_sdPartLoaded('accessview') && _sdPartApis.accessview && _sdPartApis.accessview.hide) {
+            _sdPartApis.accessview.hide();
         }
     }
 
