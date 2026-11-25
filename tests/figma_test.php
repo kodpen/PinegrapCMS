@@ -102,3 +102,51 @@ function test_figma_frame_list()
 
 	pg_assert_same(null, pg_figma_frame_list(array('err' => 'x')), 'an answer that is no file');
 }
+
+function test_figma_refusal_says_each_kind()
+{
+	pg_assert_same('token', pg_figma_refusal(array('kind' => 'token', 'retry' => 0))['code'], 'a refused token');
+	pg_assert_same('scope', pg_figma_refusal(array('kind' => 'scope', 'retry' => 0))['code'], 'no file scope');
+	pg_assert_same('access', pg_figma_refusal(array('kind' => 'access', 'retry' => 0))['code'], 'a file it cannot open');
+	pg_assert_same('not_connected', pg_figma_refusal(array('kind' => 'not_connected', 'retry' => 0))['code'], 'no token');
+	pg_assert_same('other', pg_figma_refusal(array('kind' => 'strange', 'retry' => 0))['code'], 'an unknown kind');
+	$limit = pg_figma_refusal(array('kind' => 'limit', 'retry' => 150));
+	pg_assert_same(array('limit', 150), array($limit['code'], $limit['retry']), 'the limit with its wait');
+	pg_assert_true(strpos($limit['detail'], '3') !== false, 'the wait in whole minutes, rounded up');
+}
+
+function test_figma_on_connections()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_registry.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+	$row = pg_connections_registry()['figma'];
+	pg_assert_same(array('connections.php', 'other'), array($row['place'], $row['group']), 'its page on Connections, group Other');
+	pg_assert_same(array('kind' => 'service', 'key' => 'figma'), $row['state'], 'the sealed service entry is its state');
+	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('figma', array('figma' => true)), 'a manager types the token');
+	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('figma', array('manager' => true)), 'the details only with the Figma gate');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/connections.php');
+	pg_assert_true(strpos($source, "name=\"figma_token\" value=\"\"") !== false, 'the stored token is never drawn back');
+	pg_assert_true(strpos($source, 'pg_figma_try_token($figma_token)') < strpos($source, "pg_figma_connection_store(array('token' => \$figma_token, 'name' => \$figma_try['name']"), 'Save and try asks Figma before storing');
+}
+
+function test_figma_start_in_the_new_design_window()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true, true));
+	pg_assert_same(array('blank', 'template', 'figma', 'import', 'paste'), $keys, 'Figma after Template, as the plan orders the starts');
+	pg_assert_false(in_array('figma', array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true)), true), 'not listed until the import is there');
+	pg_assert_same(function_exists('pg_figma_import_start'), pg_designer_figma_start_on(), 'listed once the import exists');
+
+	$empty = pg_designer_figma_pane(array(), true);
+	pg_assert_true(strpos($empty, 'connections.php?service=figma') !== false && strpos($empty, 'sd-fg-link') === false, 'not connected: the way to Connections, no field');
+	pg_assert_true(strpos(pg_designer_figma_pane(array(), false), 'connections.php') === false, 'who may not open Connections is told to ask');
+
+	$pane = pg_designer_figma_pane(array('token' => 'figd_secret_token_value_123', 'name' => 'Ada', 'state' => 'ok', 'tried' => 1), true);
+	pg_assert_true(strpos($pane, 'id="sd-fg-link"') !== false, 'connected: the link field');
+	pg_assert_true(strpos($pane, 'figd_secret') === false, 'the token never reaches the browser');
+	pg_assert_true(strpos($pane, 'theme-warning') === false, 'no warning while the token works');
+	pg_assert_true(strpos(pg_designer_figma_pane(array('token' => 'x', 'name' => '', 'state' => 'refused', 'tried' => 1), true), 'theme-warning') !== false, 'a refused token says so above the field');
+}

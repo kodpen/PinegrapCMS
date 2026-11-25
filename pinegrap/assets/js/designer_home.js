@@ -883,6 +883,23 @@
 
             var label = pane.getAttribute('data-go') || '';
             var pick = pane.querySelector('input[type="radio"][data-href]:checked');
+            var part = pane.getAttribute('data-part') || '';
+            var partFoot = win.querySelector('.sd-ns-part-foot');
+            var count = win.querySelector('.sd-ns-count');
+
+            // A start with a part of its own (the Figma start) draws its own
+            // buttons and count in the foot; the part is loaded the first
+            // time the start is chosen.
+            if (partFoot) {
+                partFoot.hidden = !part;
+                partFoot.setAttribute('data-part', part);
+            }
+            if (count && !part) {
+                count.hidden = true;
+            }
+            if (part) {
+                loadPart(part, pane);
+            }
 
             go.classList.toggle('d-none', !label || !pick);
 
@@ -890,6 +907,37 @@
                 go.textContent = label;
                 go.href = pick.getAttribute('data-href');
             }
+        }
+
+        var parts = {};
+
+        function loadPart(part, pane) {
+            var ready = function () {
+                if (window.sdStartParts && window.sdStartParts[part]) {
+                    window.sdStartParts[part].show(pane, win);
+                }
+            };
+
+            if (parts[part]) {
+                if (parts[part] === 'loaded') {
+                    ready();
+                }
+                return;
+            }
+
+            parts[part] = 'loading';
+
+            var script = document.createElement('script');
+            script.src = (C.partBase || 'assets/js/') + 'designer_' + part + '.js' + (C.partStamp ? '?v=' + C.partStamp : '');
+            script.onload = function () {
+                parts[part] = 'loaded';
+                ready();
+            };
+            script.onerror = function () {
+                parts[part] = '';
+                toast(say('network'), 'danger');
+            };
+            document.head.appendChild(script);
         }
 
         function choose(key, focus) {

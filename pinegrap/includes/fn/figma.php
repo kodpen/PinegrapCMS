@@ -477,3 +477,45 @@ function pg_figma_read_pictures($key)
 
     return array('ok' => true, 'pictures' => $pictures, 'error' => null);
 }
+
+/**
+ * The answer the New design window gets for a read that failed: its code
+ * and the sentence it shows. The limit carries its wait, and says that what
+ * was read so far is kept.
+ *
+ * @param array $error array('kind', 'retry') (pg_figma_answer_error())
+ * @return array status, code, message [, retry]
+ */
+function pg_figma_refusal($error)
+{
+    $kind = isset($error['kind']) ? (string) $error['kind'] : 'other';
+
+    switch ($kind) {
+        case 'not_connected':
+            $message = lang('Figma is not connected');
+            break;
+        case 'token':
+            $message = lang('Figma no longer accepts the stored token');
+            break;
+        case 'scope':
+            $message = lang('This token cannot read files. Make one with the scope File content.');
+            break;
+        case 'access':
+            $message = lang('The connected account cannot open this file. Ask its owner to share it, or save another account\'s token.');
+            break;
+        case 'limit':
+            $minutes = max(1, (int) ceil(((int) $error['retry']) / 60));
+
+            return array('status' => 'error', 'code' => 'limit', 'retry' => (int) $error['retry'],
+                'message' => lang('Figma\'s limit for this account is reached'),
+                'detail' => lang(array('string' => 'Try again in {var:1} minutes. What was read so far is kept.', 'vars' => $minutes)));
+        case 'network':
+            $message = lang('Figma did not answer. Try again.');
+            break;
+        default:
+            $kind = 'other';
+            $message = lang('Figma\'s answer could not be read. Try again.');
+    }
+
+    return array('status' => 'error', 'code' => $kind, 'message' => $message);
+}

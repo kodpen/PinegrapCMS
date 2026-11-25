@@ -95,7 +95,7 @@ function test_connections_mailchimp_registry_and_anchors_follow_the_move()
 
 	pg_assert_same('connections.php', $registry['mailchimp']['place'], 'its place is Connections');
 	pg_assert_same('#settings/email/pgset-mail-campaign', $registry['mailchimp']['found_at'], 'Campaign mail still finds it');
-	pg_assert_same(84, pg_connections_count(), 'the figure stays');
+	pg_assert_same(85, pg_connections_count(), 'the figure stays');
 
 	$away = pg_settings_anchors_to_connections();
 	$anchors = pg_settings_legacy_anchors();

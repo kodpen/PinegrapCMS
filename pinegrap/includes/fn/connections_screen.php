@@ -886,6 +886,8 @@ function pg_connections_screen_page_cards($id, $can)
         $cards[] = 'details';
     } elseif (($id === 'claude') && !empty($can['claude'])) {
         $cards[] = 'details';
+    } elseif (($id === 'figma') && !empty($can['figma'])) {
+        $cards[] = 'details';
     } elseif ((pg_connections_screen_mcp_connector($id) !== '') && !empty($can['mcp'])) {
         $cards[] = 'details';
     }

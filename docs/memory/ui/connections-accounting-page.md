@@ -25,6 +25,6 @@ module: connections_screen, parasut
 - Connected: `erp_edoc_connected()`: a driver with `erp_edoc_<code>_connected()` says (Paraşüt: a working or renewable token), else every required field stored.
 
 ## Registry and data
-- `parasut`, `isbasi`: `place` `connections.php`, `found_at` `#settings/accounting/pgset-invoice`; `pg_connections_count()` stays 84. No data step, table or column: the same `config` columns, `parasut_credentials_enc`, the sealed token and `erp_edoc_providers` rows.
+- `parasut`, `isbasi`: `place` `connections.php`, `found_at` `#settings/accounting/pgset-invoice`; `pg_connections_count()` unchanged. No data step, table or column: the same `config` columns, `parasut_credentials_enc`, the sealed token and `erp_edoc_providers` rows.
 
 Tests: `tests/connections_accounting_test.php`, `tests/settings_accounting_test.php`, `tests/parasut_connection_card_test.php`.

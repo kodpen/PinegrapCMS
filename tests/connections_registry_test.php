@@ -198,7 +198,7 @@ function test_connections_registry_count_follows_its_rule()
 	pg_assert_same($services, pg_connections_count(), 'the figure counts every row but the ready-made MCP connectors');
 	pg_assert_same($connectors, pg_connections_connector_count(), 'the connectors are counted apart');
 	pg_assert_same(count(ws_mcp_catalogue()), pg_connections_connector_count(), 'one connector per catalogue entry');
-	pg_assert_same(84, pg_connections_count(), 'the figure: the census\'s 79, less what the rule leaves out, plus what it missed (api/connections-registry.md)');
+	pg_assert_same(85, pg_connections_count(), 'the figure: the census\'s 79, less what the rule leaves out, plus what it missed (api/connections-registry.md)');
 }
 
 function test_connections_registry_groups_are_used_and_ordered()

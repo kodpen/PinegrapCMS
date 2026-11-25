@@ -215,7 +215,7 @@ function test_connections_screen_folds_the_mail_routes()
 
 	pg_assert_same('connections.php', $registry['mailchimp']['place'], 'Mailchimp is set up on its page of Connections');
 	pg_assert_same('#settings/email/pgset-mail-campaign', $registry['mailchimp']['found_at'], 'and found at the Campaign mail row that shows it');
-	pg_assert_same(84, pg_connections_count(), 'the figure stays');
+	pg_assert_same(85, pg_connections_count(), 'the figure stays');
 
 	$rows = array(
 		'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'state' => 'connected', 'search' => array('Stripe')),

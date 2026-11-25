@@ -258,6 +258,7 @@
     "Last test {var:1}: not sent.": "Son deneme {var:1}: gönderilemedi.",
     "Last test {var:1}: passed.": "Son test {var:1}: başarılı.",
     "Last touch": "Son temas",
+    "Last tried {var:1}": "Son deneme: {var:1}",
     "Last updated": "Son güncelleme",
     "Last updated:": "Son güncelleme:",
     "Last uploads": "Son yüklenenler",
