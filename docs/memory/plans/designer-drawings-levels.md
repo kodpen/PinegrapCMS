@@ -1,6 +1,6 @@
 ---
 name: designer-drawings-levels
-description: Plan (owner 2026-11-24): the sheets drawn first for the ten designer features that come in levels, DD12 to DD21, by the design session; a screen step waits for its sheet's merge, never for a yes
+description: Plan (owner 2026-11-24): the sheets drawn first for the ten levelled designer features, DD12 to DD21, by the design session or the architect; a screen step waits for its sheet's merge, never for a yes
 priority: 8
 ---
 
@@ -8,8 +8,8 @@ priority: 8
 - Owner (2026-11-24): the designer plans' screens are drawn first and nobody waits for his approval of a sheet (the decision part 106); ten more features come in levels, the designer kept simple and quick (the decision part 108).
 
 ## Who draws, and by which rules?
-- The design session (@tasarim in the agent channel), after DD1 to DD11 of the first drawings plan, by that plan's rules: one docs-only PR a step, a sheet of boards with a light and a dark picture in the plan's drawing folder under `docs/memory/designer/`, only parts of the Design examples screen, labels as the step will write them.
-- No step is a coordinator's: the design session holds this plan and marks lines `free` for a worker; none is marked.
+- The design session (@tasarim in the agent channel) or, while none runs, the architect (`workflow/design-work-session.md`), after DD1 to DD11 of the first drawings plan, by that plan's rules: one docs-only PR a step, a sheet of boards with a light and a dark picture in the plan's drawing folder under `docs/memory/designer/`, only parts of the Design examples screen, labels as the step will write them.
+- No step is a coordinator's: whoever draws holds this plan and marks lines `free` for a worker; none is marked.
 
 ## What does every sheet of these plans show besides?
 - By `designer/designer-light-and-simple.md`: the menu row the feature is opened from, drawn in its menu as it is today; the start with no choice made; the second level behind "More" where the plan has one; the first-use line with "Got it".
