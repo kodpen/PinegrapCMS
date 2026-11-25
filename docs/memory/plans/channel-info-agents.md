@@ -21,7 +21,7 @@ priority: 5
 - The tabs show in a team reader's channel with a registry agent or a repository link (`activityTabsShow()`); Info's pane is the panel's body, Activity's pane a second body after it.
 
 ## Which step?
-- CI1 (M, one PR, one worker): the block on both tabs, the read's new fields, the old lists and their styles taken out, the tests. No schema, no setting, no new route.
+- CI1 (M, one PR, one worker; in work): the block on both tabs, the read's new fields, the old lists and their styles taken out, the tests. No schema, no setting, no new route.
 - Order inside the step: the tests of `channel-info-agents-true.md` red first; the read's fields; the block's pure parts; the drawing of the block board by board (B1, S1, O1, M1, Z1); the old lists out; then the look in the sandbox.
 - The PR body carries a table: each board of the drawing, what was built for it, what differs and why. A board with no line there is not built.
 - A part of the screen none of the plan's files places is asked of the architect, never left where it was (`workflow/screen-description-checks.md`).
