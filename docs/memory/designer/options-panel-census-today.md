@@ -22,4 +22,4 @@ description: Options panel census, part 1: every Options panel control on 2026-1
 - System widgets, loop and list areas, shared components: their data and display options, no look rows of their own beyond the common Style tab.
 
 ## Which rows take a per screen size value today?
-- Display, Float, every Layout row, Gap, Spacing, text Alignment, Column width; Offset only at MD. Everything else holds one value for all sizes.
+- Display, Float, every Layout row, Gap, Spacing, text Alignment, Column width; Offset only at MD. Since DO2: Width, Height, their Min and Max, Top, Right, Bottom, Left and Font Size (`designer-size-per-screen.md`). Everything else holds one value for all sizes.

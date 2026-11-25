@@ -29454,12 +29454,13 @@ const StyleDesigner = (function () {
     }
 
     // A class nobody uses yet, on any page or in the stylesheet.
-    function _sdNewCustomStyleClass() {
+    // `text`: the User Styles being written, when not yet set.
+    function _sdNewCustomStyleClass(text) {
         var taken = {};
         _sdCustomStyleClassLists().forEach(function (l) {
             l.split(/\s+/).forEach(function (c) { if (c) taken[c] = true; });
         });
-        (_userStylesGet().match(/pgs-[a-z0-9]{6}/g) || []).forEach(function (c) { taken[c] = true; });
+        (String(text == null ? _userStylesGet() : text).match(/pgs-[a-z0-9]{6}/g) || []).forEach(function (c) { taken[c] = true; });
         return PgCustomStyle.newClass(taken);
     }
 
@@ -52075,8 +52076,9 @@ const StyleDesigner = (function () {
 
         var tColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','muted','body-emphasis','|','primary-emphasis','secondary-emphasis','success-emphasis','danger-emphasis','warning-emphasis','info-emphasis'];
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
+        // data-sd-szbox: the size chooser of Font Size (_sdSzBind()).
         return _sdSectKey(sect('bi-type', _sdT('Text'),
-            _alignHtml +
+            '<div data-sd-szbox hidden></div>' + _alignHtml +
             row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors)) +
@@ -57034,7 +57036,7 @@ const StyleDesigner = (function () {
             size: _sdSpSize,
             classes: nodes.map(function (n) { return (n.props && n.props.cssClass) || ''; }),
             locked: !!_sdPanelLockReason(nodes),
-            setSize: function (s) { _sdSpSize = s; },
+            setSize: _sdSpSizeSet,
             commit: function (fn) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
                 if (_sdPanelLockReason(nodes)) return;
@@ -57062,6 +57064,75 @@ const StyleDesigner = (function () {
         if (el) _sdSpBoxBindOne(el, nodes, function (host) { return _sdPartCall('spacing', 'draw', [host]); });
         var rd = panel.querySelector('[data-sd-rdbox]');
         if (rd) _sdSpBoxBindOne(rd, nodes, function (host) { return _sdPartCall('spacing', 'corners', [host]); });
+        panel.querySelectorAll('[data-sd-szbox]').forEach(function (sz) {
+            _sdSpBoxBindOne(sz, nodes, function () { return _sdPartCall('spacing', 'sizes', [_sdSzHost(sz, nodes)]); });
+        });
+    }
+
+    // ── A length per screen size (Size and display, Text › Font Size)
+    // The chosen size of the chooser is _sdSpSize; the part 'spacing'
+    // draws the chooser in the section's head and, at a size or where the
+    // class holds one, takes the rows' fields over: a value from a size up
+    // is an @media rule on the element's custom style class
+    // (pg_size_style.js). Choosing a size draws the panel again and puts
+    // the canvas at that size.
+    function _sdSpSizeSet(s) {
+        _sdSpSize = s;
+        _sdCanvasToSize(s);
+        renderProperties();
+    }
+
+    // The canvas bar's width for each size; XXL is the full width, at
+    // least 1400 px.
+    var _SD_SIZE_CANVAS_W = { xs: '375', sm: '576', md: '768', lg: '992', xl: '1200', xxl: '0' };
+    function _sdCanvasToSize(s) {
+        var wrap = document.getElementById('sd-iframe-wrap');
+        if (!wrap || !_SD_SIZE_CANVAS_W.hasOwnProperty(s)) return;
+        if (_sdBpLabelText(wrap.offsetWidth, false).split('· ')[1] === s.toUpperCase()) return;
+        var b = document.querySelector('#sd-bp-bar .sd-bp-btn:not(.sd-bp-mail)[data-w="' + _SD_SIZE_CANVAS_W[s] + '"]');
+        if (!b) return;
+        b.click();
+        if (s === 'xxl' && wrap.offsetWidth < 1400) {
+            wrap.style.maxWidth = '1400px';
+            wrap.style.width = '1400px';
+            updateBpLabel();
+        }
+    }
+
+    // What the part reads and writes: the elements, why a custom style is
+    // off for one of them, the User Styles text, a new class, the length
+    // check, and the commit of the new text with each element's changes
+    // ({ cssClass, props } or null) as one undo step.
+    function _sdSzHost(el, nodes) {
+        var off = '';
+        nodes.forEach(function (n) { off = off || _sdCustomStyleOff(n); });
+        return {
+            el: el,
+            size: _sdSpSize,
+            nodes: nodes,
+            off: off,
+            locked: !!_sdPanelLockReason(nodes) || !!_sdPanelLockReason(null, 'design'),
+            text: _userStylesGet,
+            newClass: _sdNewCustomStyleClass,
+            lenCheck: function (v) { return _sdLenCheck('len', v); },
+            setSize: _sdSpSizeSet,
+            commit: function (next, changes) {
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                if (_sdPanelLockReason(nodes)) return;
+                if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+                var text = _userStylesGet();
+                if (next === text && !changes.some(Boolean)) { renderProperties(); return; }
+                saveState();
+                nodes.forEach(function (n, i) {
+                    var c = changes[i];
+                    if (!c || !n.props) return;
+                    if (c.cssClass != null) n.props.cssClass = c.cssClass;
+                    Object.keys(c.props || {}).forEach(function (k) { n.props[k] = c.props[k]; });
+                });
+                if (next !== text) _userStylesSet(next);
+                render();
+            }
+        };
     }
 
     function _sdSpBoxBindOne(el, nodes, call) {
@@ -57355,7 +57426,8 @@ const StyleDesigner = (function () {
             '</select></div>' +
         '</div>';
 
-        var _dsBody = '<div class="sd-sp-section">' +
+        // data-sd-szbox: the size chooser of the lengths (_sdSzBind()).
+        var _dsBody = '<div data-sd-szbox hidden></div><div class="sd-sp-section">' +
             mkRespRow(_sdT('Display'), 'd-',     dispValues,  _sdT('Default')) +
             _posRow +
             mkRespRow(_sdT('Float'),   'float-', floatValues, _sdT('Default')) +

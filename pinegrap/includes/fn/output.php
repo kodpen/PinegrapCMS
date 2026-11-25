@@ -8184,9 +8184,10 @@ function pg_js_bundles()
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
-        // Border and corner: their pure class mappings (window.PGSpacingBox,
-        // window.PGCornerBox), then the part that draws both.
-        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
+        // Border and corner, and a length per screen size: their pure
+        // mappings (window.PGSpacingBox, window.PGCornerBox,
+        // window.PGSizeStyle), then the part that draws them.
+        'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/pg_size_style.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The canvas guides: their pure geometry (window.PGCanvasGuides),
         // then the part that draws Measure over the canvas.
@@ -8285,7 +8286,8 @@ function pg_designer_parts()
         // the Comments list, for designers.
         'comments' => 'assets/js/style_designer_comments.min.js',
         // The spacing box of Style › Spacing and the size chooser in its
-        // head, drawn when the section is first shown.
+        // head (also on Size and display and Text), drawn when the section
+        // is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.

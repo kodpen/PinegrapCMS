@@ -8627,6 +8627,7 @@
     "a task finished": "bir görev bitti",
     "a task handed to you": "size bir görev verildi",
     "a test of campaign (subject: {var:1}) was sent": "kampanyanın denemesi gönderildi (konu: {var:1})",
+    "a value is set for this size": "bu boyut için bir değer var",
     "a value iyzico does not list": "iyzico'nun listesinde olmayan bir değer",
     "a value of a box that is not in the flow": "akışta olmayan bir kutunun değeri",
     "a visit": "bir ziyaret",
