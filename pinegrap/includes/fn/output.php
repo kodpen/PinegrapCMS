@@ -8200,6 +8200,9 @@ function pg_js_bundles()
         'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // A place's own values of a shared component: the model
+        // (window.PGComponentOverrides) the canvas and the Preview draw with.
+        'assets/js/style_designer_overrides.min.js' => array('assets/js/pg_component_overrides.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8310,6 +8313,9 @@ function pg_designer_parts()
         // The Focus control: a picture's focus point dragged on the whole
         // picture, with the cut on each screen, drawn when first shown.
         'focus' => 'assets/js/style_designer_focus.min.js',
+        // A place's own values of a shared component, loaded the first time
+        // a place with values is drawn (_sdPlaceDraw()).
+        'overrides' => 'assets/js/style_designer_overrides.min.js',
     );
 }
 

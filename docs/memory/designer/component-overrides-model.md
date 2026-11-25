@@ -12,15 +12,15 @@ module: component_overrides
 - `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values. An id met twice in a tree keeps its first node.
 
 ## Which functions are there?
-- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), not in a bundle yet: the step that draws with it (CO2) loads it.
-- `pg_co_open_fields($tree)` / `openFields`: `{id, kind, label, nodeId, value}` in document order, `value` the component's own (a picture `{src, alt}`, shown `true`). A `shared_ref` inside the component is not entered.
+- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), the designer part `overrides` (`component-overrides-render.md`).
+- `pg_co_open_fields($tree)` / `openFields`: `{id, kind, label, nodeId, value}` in document order, `nodeId` the node's `_id` (else `id`, #11595), `value` the component's own (a picture `{src, alt}`, shown `true`). A `shared_ref` inside the component is not entered.
 - `pg_co_apply($tree, $values)` / `apply`: the tree as drawn at a place; a copy, the given tree unchanged. Nothing to apply (no values, no open field, only unfit values) gives the tree back as given (JS: the same object), so a component with no open field draws byte for byte as before. The root is never left out.
 - `pg_co_clean_value($kind, $value)` / `cleanValue`: text, link and icon strings; shown a boolean; picture `{src, alt}` (a string is the src; no alt keeps the component's). Unfit is `null` and ignored.
 - `pg_co_leftovers($tree, $values)` / `leftovers`: ids no open field takes any more, or whose value no longer fits; the Publish check lists them (CO2 on).
 - `pg_co_place_values($ref)` / `placeValues`: `props._place` or nothing.
 
 ## What does the model not do?
-- No check of a link or picture address and no escaping: the field's own checks run where the value is saved and drawn (CO2, CO4).
+- `pg_co_apply()` checks no address and escapes nothing: drawing runs `pg_co_safe_values()` first (`component-overrides-render.md`); the save checks are CO4's.
 
 ## Tests?
 - `tests/component_overrides_test.php`: the PHP functions, and the twin run in Node on the same cases with the answers compared (skipped without Node). CO1, #11520.

@@ -12467,6 +12467,60 @@ const StyleDesigner = (function () {
 
     // ========================= SHARED_REF CANVAS ELEMENT =========================
 
+    // ── A place's own values of a shared component ──
+    // A placing shared_ref may keep values of the component's open fields in
+    // props._place (includes/fn/component_overrides.php). The canvas, the
+    // Preview and the code view draw the component with them, as the site
+    // does. The model (window.PGComponentOverrides) is the part 'overrides',
+    // loaded the first time a place with values is drawn; until it has run,
+    // and for a place without values, the component's tree is drawn as it is.
+    var _sdPlaceAsked = false;
+
+    function _sdPlaceValues(refNode) {
+        var values = refNode && refNode.props ? refNode.props._place : null;
+        if (!values || typeof values !== 'object' || Array.isArray(values)) return null;
+        var any = false;
+        for (var k in values) { if (Object.prototype.hasOwnProperty.call(values, k)) { any = true; break; } }
+        if (!any) return null;
+        if (_sdPartLoaded('overrides') && window.PGComponentOverrides) return values;
+        if (!_sdPlaceAsked) {
+            _sdPlaceAsked = true;
+            _sdPartLoad('overrides').then(function () { render(); }, function () { /* drawn as the component has it */ });
+        }
+        return null;
+    }
+
+    // Runs draw(tree) with the place's values in the component's nodes, and
+    // puts the component's own back after: the drawing's handlers keep the
+    // component's nodes, never a copy. A node a value hides is left out of
+    // its parent's children while draw runs. Answers what draw answers.
+    /* @pg-site-output */
+    function _sdPlaceDraw(refNode, tree, draw) {
+        var values = _sdPlaceValues(refNode);
+        if (!values || !tree) return draw(tree);
+        var C = window.PGComponentOverrides, originals = [], saved = [], placed;
+        (function tag(n) {
+            if (!n || typeof n !== 'object') return;
+            n.__sdPlace = originals.length;
+            originals.push(n);
+            if (n.type !== 'shared_ref' && Array.isArray(n.children)) n.children.forEach(tag);
+        })(tree);
+        try { placed = C.apply(tree, C.safeValues(tree, values)); }
+        finally { originals.forEach(function (n) { delete n.__sdPlace; }); }
+        if (placed === tree) return draw(tree);
+        (function swap(c) {
+            var o = originals[c.__sdPlace];
+            if (!o) return;
+            saved.push([o, o.props, o.children]);
+            o.props = c.props;
+            if (o.type !== 'shared_ref' && Array.isArray(c.children)) {
+                o.children = c.children.map(function (k) { swap(k); return originals[k.__sdPlace]; }).filter(Boolean);
+            }
+        })(placed);
+        try { return draw(tree); }
+        finally { saved.forEach(function (e) { e[0].props = e[1]; e[0].children = e[2]; }); }
+    }
+
     // Build a canvas element for a shared_ref node.
     // The shared component's tree is rendered as static HTML (no interactive sd-wrap
     // descendants) so the shared_ref wrapper is a single atomic selection unit.
@@ -12829,7 +12883,7 @@ const StyleDesigner = (function () {
                 var _prevCfg = _sysWidgetRenderCfg, _prevRoot = _sysWidgetRenderTreeRoot;
                 _sysWidgetRenderCfg = _sysCfg;
                 _sysWidgetRenderTreeRoot = cached.tree;
-                inner.appendChild(buildNodeEl(cached.tree));
+                inner.appendChild(_isSysWidget ? buildNodeEl(cached.tree) : _sdPlaceDraw(node, cached.tree, buildNodeEl));
                 // Sample comments after the card (canvas only), drawn while
                 // the widget's settings and tree are the ones read.
                 _sdAppendCommentSamples(doc, inner, cached, _sysCfg);
@@ -75584,7 +75638,10 @@ const StyleDesigner = (function () {
                     var _prPic = _sdPicShared;
                     if (sink) sink.scope = _prId;
                     _sdPicShared = _prId;
-                    try { h += _sdEmitNode(_prCached.tree, indent, base + h.length, sink); }
+                    try {
+                        h += _prCached.system_region_config ? _sdEmitNode(_prCached.tree, indent, base + h.length, sink)
+                            : _sdPlaceDraw(n, _prCached.tree, function (t) { return _sdEmitNode(t, indent, base + h.length, sink); });
+                    }
                     finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; _sdPicShared = _prPic; }
                 }
                 break; }

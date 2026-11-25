@@ -17,8 +17,10 @@
  * - apply(tree, values): the tree as drawn at a place; with nothing to
  *   apply, the same tree object comes back.
  * - leftovers(tree, values): ids of values no open field takes any more.
+ * - safeValues(tree, values): the values as they may be drawn (a link or
+ *   picture that would run a script left out, a text's markers inert).
  * - newFieldId(taken), validFieldId(id), cleanValue(kind, value),
- *   placeValues(refNode).
+ *   placeValues(refNode), addressRunsScript(address, picture).
  *
  * Nothing runs at load but the definition. tests/component_overrides_test.php
  * runs it in Node beside the PHP functions.
@@ -96,6 +98,16 @@
         return null;
     }
 
+    // A node's id: the editor's _id, else id; '' without one.
+    function nodeId(node) {
+        var keys = ['_id', 'id'], i, v;
+        for (i = 0; i < keys.length; i++) {
+            v = node[keys[i]];
+            if (typeof v === 'string' || (typeof v === 'number' && v % 1 === 0)) return String(v);
+        }
+        return '';
+    }
+
     function openFields(tree) {
         var fields = [], seen = {};
         (function walk(node) {
@@ -107,7 +119,7 @@
                     id: entry.id,
                     kind: entry.kind,
                     label: entry.label,
-                    nodeId: node.id === undefined || node.id === null ? '' : String(node.id),
+                    nodeId: nodeId(node),
                     value: defaultValue(node, entry.kind)
                 });
             });
@@ -200,6 +212,36 @@
         });
     }
 
+    // Whether an address would run a script where a link or a picture
+    // prints it (javascript:, vbscript:, livescript:, and data: but for a
+    // picture's data:image/).
+    function addressRunsScript(address, picture) {
+        var el = typeof document !== 'undefined' ? document.createElement('textarea') : null, raw = String(address);
+        if (el) { el.innerHTML = raw.replace(/</g, '&lt;'); raw = el.value; }
+        raw = raw.replace(/[\x00-\x20]+/g, '').toLowerCase();
+        if (/^(?:javascript|vbscript|livescript):/.test(raw)) return true;
+        if (raw.indexOf('data:') === 0) return !(picture && raw.indexOf('data:image/') === 0);
+        return false;
+    }
+
+    // A place's values as they may be drawn: the ones an open field takes
+    // and that fit, a link or picture that would run a script left out,
+    // a text's render markers and PHP open tags made inert.
+    function safeValues(tree, values) {
+        var out = {};
+        if (!isObject(values)) return out;
+        openFields(tree).forEach(function (field) {
+            if (!has(values, field.id) || has(out, field.id)) return;
+            var value = cleanValue(field.kind, values[field.id]);
+            if (value === null) return;
+            if (field.kind === 'link' && addressRunsScript(value, false)) return;
+            if (field.kind === 'picture' && addressRunsScript(value.src, true)) return;
+            if (field.kind === 'text') value = value.replace(/<!--pg-/gi, '<!-- pg-').split('<?').join('&lt;?');
+            out[field.id] = value;
+        });
+        return out;
+    }
+
     window.PGComponentOverrides = {
         KINDS: KINDS,
         validFieldId: validFieldId,
@@ -208,6 +250,8 @@
         cleanValue: cleanValue,
         placeValues: placeValues,
         apply: apply,
-        leftovers: leftovers
+        leftovers: leftovers,
+        addressRunsScript: addressRunsScript,
+        safeValues: safeValues
     };
 })();
