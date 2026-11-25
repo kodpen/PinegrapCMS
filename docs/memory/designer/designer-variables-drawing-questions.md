@@ -1,6 +1,6 @@
 ---
 name: designer-variables-drawing-questions
-description: The drawing of the variables' start questions, "Ask me again", Export and Import (plans/designer-variables.md, DV4 and DV5): the boards and the layout calls
+description: The drawing of the variables' start questions, "Ask me again", Export and Import (DV4 and DV5, `design-variables-overview.md`): the boards and the layout calls
 ---
 
 ## Where is the drawing?

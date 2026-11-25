@@ -23,7 +23,7 @@ description: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): section
 - Every built root carries `_sketchId` (the section's id), for "Build again" to match.
 
 ## Which variables does it wear?
-- A body section gets `padding-top` and `padding-bottom: var(--pg-var-space_section, 3rem)` after its own inline style (and `_styles` rows when `_stylesInit`). 3rem is the starters' `py-5`, so a design without variables draws as before. Header and footer get none.
+- A body section gets `padding-top` and `padding-bottom: var(--pg-var-space_section, 3rem)` after its own inline style (and `_styles` rows when `_stylesInit`). The stylesheet's token is `--pg-var-space-section` (underscores become hyphens), so today the 3rem fallback always applies (`design-variables-starters.md`). 3rem is the starters' `py-5`, so a design without variables draws as before. Header and footer get none.
 - Colours, fonts and corners come through the starters' Bootstrap classes, which the variables' theme tokens drive (`designer/design-variables-model.md`); the section rhythm is the one variable no theme token carries.
 
 ## Where is it tested?
