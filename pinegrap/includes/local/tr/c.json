@@ -3794,6 +3794,7 @@
     "Content change waiting": "İçerik değişikliği bekliyor",
     "Content change: {var:1}": "İçerik değişikliği: {var:1}",
     "Content changes wait for approval": "İçerik değişiklikleri onay bekler",
+    "Content changes wait for approval on this site, so this item is not changed from the Preview.": "Bu sitede içerik değişiklikleri onay bekler; bu yüzden bu öğe Önizleme'den değiştirilmez.",
     "Content editors": "İçerik düzenleyiciler",
     "Content editors can now edit this shared component.": "İçerik düzenleyiciler artık bu ortak bileşeni düzenleyebilir.",
     "Content for Tab ": "Sekme içeriği ",

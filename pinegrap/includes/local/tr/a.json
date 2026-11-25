@@ -1023,6 +1023,7 @@
     "A field of a record": "Bir kaydın alanı",
     "A field of a referenced record": "Başvurulan kaydın bir alanı",
     "A field of the form": "Formun bir alanı",
+    "A field sent cannot be changed from the Preview.": "Gönderilen bir alan Önizleme'den değiştirilemez.",
     "A field that hides what is typed into it.": "Yazılanı gizleyen alan.",
     "A field that takes numbers only.": "Yalnız sayı kabul eden alan.",
     "A field the visitor does not see; it sends a fixed value with the form.": "Ziyaretçinin görmediği alan; formla birlikte sabit bir değer gönderir.",

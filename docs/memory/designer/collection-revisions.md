@@ -8,13 +8,14 @@ module: record_revisions
 - Only items of forms with `custom_form_pages.collection = 1` (architect, #3051): enquiries and other submissions get none, so running sites change nothing until a form is marked a collection. `pg_record_revisions_ready()` needs the table and `pg_coll_ready()`.
 
 ## Which saves write one?
-- Each writer calls `pg_record_revision_before($form_id)` before its write and `pg_record_revision_after($form_id, $before, $source, $user_id)` after the address-name rename: `edit_submitted_form.php` (`edit`), `api_form_submission_update()` (`api`), `ws_change_write_form()` (`workspace`). `restore` is the C7b History section and `api_form_submission_revision_restore()` (`api/api-form-submission-revisions.md`). Other paths (CSV import, bulk list actions, the visitor's own form) write none.
+- Each writer calls `pg_record_revision_before($form_id)` before its write and `pg_record_revision_after($form_id, $before, $source, $user_id)` after the address-name rename: `edit_submitted_form.php` (`edit`), `api_form_submission_update()` (`api`), `ws_change_write_form()` (`workspace`).
+- `pg_rec_edit_write()` (`designer`): a field corrected in place from the designer's Preview (`record-edit-in-place-server.md`). `restore` is the C7b History section and `api_form_submission_revision_restore()` (`api/api-form-submission-revisions.md`). Other paths (CSV import, bulk list actions, the visitor's own form) write none.
 - `restore`: the edit save of a revision loaded from the History section (below).
 - `pg_record_revision_plan()` (pure): with history, one row when the hash differs from the newest row; without, the state before is seeded as revision 1 (source `edit`, signed and dated by the record's last save: `last_modified_*`, else `user_id` / `submitted_timestamp`), then the new state, only when the save changed it. No migration backfill.
 - The hash (`pg_record_revision_hash()`) is SHA-1 of `values_json` and the address name: a save that only flips `complete` writes none.
 
 ## What does a row hold?
-- `form_id` (= `forms.id`), `page_id` (its form), `revision_no` (per item, `COALESCE(MAX)+1` in the INSERT, unique `(form_id, revision_no)`; retries by `pg_page_revision_retry_delay()`), `values_json` MEDIUMTEXT, `record_json` TEXT (`address_name`, `complete`), `values_hash`, `user_id`, `source` (edit/restore/api/workspace; anything else becomes `edit`), `created_at`. No foreign keys.
+- `form_id` (= `forms.id`), `page_id` (its form), `revision_no` (per item, `COALESCE(MAX)+1` in the INSERT, unique `(form_id, revision_no)`; retries by `pg_page_revision_retry_delay()`), `values_json` MEDIUMTEXT, `record_json` TEXT (`address_name`, `complete`), `values_hash`, `user_id`, `source` (edit/restore/api/workspace/designer, the last labelled "Page Design Studio"; anything else becomes `edit`), `created_at`. No foreign keys.
 - `values_json` (`pg_record_revision_values()`, pure): field id => list in `form_data.id` order; a file as `{"file_id": n}` only (the file is never copied: a restore whose file is gone brings none back and says so); empty values and blank rows dropped, so a blank row written or removed is no change.
 - A row above MEDIUMTEXT / TEXT (`pg_record_revision_fits()`) is skipped and logged ("Item revisions: …"); a failed write is logged. The save is never stopped.
 
