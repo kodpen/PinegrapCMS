@@ -819,6 +819,7 @@ function _expand_shared_refs($html, $depth = 0, $ancestors = array())
     // of being rendered as static HTML — get_page_content.php processes them later
     // via _expand_system_widgets(), which wires them into the dynamic render pipeline.
     $replacements = array();
+    $trees        = array();
     foreach ($ids as $sid) {
         // Placed inside itself, directly or through others: not drawn again.
         if (isset($ancestors[$sid])) {
@@ -853,30 +854,59 @@ function _expand_shared_refs($html, $depth = 0, $ancestors = array())
             $replacements[$sid] = '<!-- pg-shared-ref:' . $sid . ' tree_json not valid JSON -->';
             continue;
         }
-        // _render_tree_node emits a marker for every shared_ref it meets: the components
-        // nested in this one, expanded here with this one counted as their ancestor.
-        $rendered = pg_img_responsive_html(_render_tree_node($sc_tree, 0));
-        if (strpos($rendered, '<!--pg-shared-ref:') !== false) {
-            $rendered = _expand_shared_refs($rendered, $depth + 1, $ancestors + array($sid => true));
-        }
-        if (trim($rendered) === '') {
-            // Tree parsed fine but produced no visible output — most common cause:
-            // root.children=[] (widget body is empty). Emit a hint so admin sees it.
-            $rendered = '<!-- pg-shared-ref:' . $sid . ' rendered empty (tree has no children) -->';
-        }
-        $replacements[$sid] = $rendered;
+        $trees[$sid]        = $sc_tree;
+        $replacements[$sid] = _pg_shared_tree_html($sid, $sc_tree, $depth, $ancestors);
     }
 
-    // Single-pass replace using preg_replace_callback (stable, no re-scan of replacement text).
-    // A placement marker stays before a system widget's marker, which reads it;
-    // before anything else it is dropped.
+    return _pg_shared_refs_replace($html, $replacements, $trees, function ($sid, $tree) use ($depth, $ancestors) {
+        return _pg_shared_tree_html($sid, $tree, $depth, $ancestors);
+    });
+}
+
+// One shared component's tree drawn for _expand_shared_refs(): the
+// components nested in it expanded with it counted as their ancestor, and
+// a hint comment when it draws nothing.
+function _pg_shared_tree_html($sid, $sc_tree, $depth = 0, $ancestors = array())
+{
+    // _render_tree_node emits a marker for every shared_ref it meets: the components
+    // nested in this one, expanded here with this one counted as their ancestor.
+    $rendered = pg_img_responsive_html(_render_tree_node($sc_tree, 0));
+    if (strpos($rendered, '<!--pg-shared-ref:') !== false) {
+        $rendered = _expand_shared_refs($rendered, $depth + 1, $ancestors + array($sid => true));
+    }
+    if (trim($rendered) === '') {
+        // Tree parsed fine but produced no visible output — most common cause:
+        // root.children=[] (widget body is empty). Emit a hint so admin sees it.
+        $rendered = '<!-- pg-shared-ref:' . $sid . ' rendered empty (tree has no children) -->';
+    }
+    return $rendered;
+}
+
+// The replace of _expand_shared_refs(), one pass over $html (no re-scan of
+// replacement text). $own holds each id's drawing as the component has it;
+// $trees the trees of the ones drawn from a tree, for a place with values
+// of its own (`<!--pg-place:…-->` before the marker), which $render draws
+// once per id and values within this call and never keeps beyond it: the
+// page's cached copy is the only one that holds them. A placement marker
+// stays before a system widget's marker, which reads it; before anything
+// else it is dropped, and a widget's place marker too.
+function _pg_shared_refs_replace($html, $own, $trees, $render)
+{
+    $placed = array();
     return preg_replace_callback(
-        '/(<!--pg-placement:[A-Za-z0-9_-]*-->)?<!--pg-shared-ref:(\d+)-->/',
-        function ($m) use ($replacements) {
-            $sid = (int)$m[2];
-            if (!isset($replacements[$sid])) return '';
-            $is_widget = ($replacements[$sid] === '<!--pg-system-widget:' . $sid . '-->');
-            return ($is_widget ? $m[1] : '') . $replacements[$sid];
+        '/(<!--pg-placement:[A-Za-z0-9_-]*-->)?(?:<!--pg-place:([A-Za-z0-9_-]*)-->)?<!--pg-shared-ref:(\d+)-->/',
+        function ($m) use ($own, $trees, $render, &$placed) {
+            $sid = (int)$m[3];
+            if (!isset($own[$sid])) return '';
+            if ($own[$sid] === '<!--pg-system-widget:' . $sid . '-->') return $m[1] . $own[$sid];
+            if ($m[2] === '' || !isset($trees[$sid])) return $own[$sid];
+            $key = $sid . ':' . $m[2];
+            if (!isset($placed[$key])) {
+                $tree    = $trees[$sid];
+                $applied = pg_co_apply($tree, pg_co_safe_values($tree, pg_co_place_decode($m[2])));
+                $placed[$key] = ($applied === $tree) ? $own[$sid] : call_user_func($render, $sid, $applied);
+            }
+            return $placed[$key];
         },
         $html
     );
@@ -5538,10 +5568,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             // regex-matchable on the server). See `_expand_shared_refs()` for the expander.
             // A widget placement's own content values (widgets_placement.php)
             // ride in a marker just before it; none without values.
+            // A place's own values of the component's open fields
+            // (component_overrides.php) ride in the next one; none without.
             $sc_id = isset($props['sharedId']) ? (int)$props['sharedId'] : 0;
             if ($sc_id > 0) {
                 $placement = pg_sw_placement_marker(isset($props['placement']) ? $props['placement'] : null);
-                $html .= $pad . $placement . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
+                $place     = pg_co_place_marker(isset($props['_place']) ? $props['_place'] : null);
+                $html .= $pad . $placement . $place . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
             }
             break;
     }
