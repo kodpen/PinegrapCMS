@@ -102,7 +102,7 @@
 - connections-chat-notify-page.md: Slack's, Microsoft Teams' and Telegram's pages on Connections (CX11j2): each lists its chat notification targets and adds one; the Chat notifications card only leads there [decision: here]
 - connections-claude-page.md: Claude's page on Connections (CX11k2): the routine's address and token in Connection details, Save and try; Claude's row in Assistants and agents and set-up step 4 only lead there [decision: here]
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
-- connections-figma-page.md: Figma's page on Connections (#11558): the personal access token pasted there by a manager, Save and try asking Figma whose token it is, the token's states, Disconnect, where it is used [decision: here]
+- connections-figma-page.md: Figma's page on Connections (#11558): the personal access token pasted there by a manager, Save and try asking Figma whose token it is, the token's states, Disconnect, where it is used [decision: decisions-made-product-107.md]
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-reviews-page.md: Google reviews' page on Connections (CX11i): the Places API key and Place ID typed there under the Integrations gate; the Google Reviews card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
