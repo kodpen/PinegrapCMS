@@ -237,9 +237,9 @@ function pg_canva_color_distance($a, $b)
  * picture cannot be read or is too large to open in memory.
  *
  * @param string $path
- * @param string $kind 'png' or 'jpg'
- * @param int    $width
- * @param int    $height
+ * @param string $kind   'png' or 'jpg'
+ * @param int    $width  as uploaded, for the memory check before opening
+ * @param int    $height as uploaded
  * @return array
  */
 function pg_canva_measure($path, $kind, $width, $height)
@@ -257,6 +257,11 @@ function pg_canva_measure($path, $kind, $width, $height)
     if (!$src) {
         return array();
     }
+    // The stored file may be smaller than the upload it came from (the
+    // site's upload cap shrinks it): the picture's own size is sampled, so
+    // no part of it falls outside the copy and reads as black.
+    $width = imagesx($src);
+    $height = imagesy($src);
     $w = 64;
     $h = max(1, min(256, (int) round($height * $w / $width)));
     $small = imagecreatetruecolor($w, $h);
