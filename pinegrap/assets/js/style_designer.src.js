@@ -10186,6 +10186,7 @@ const StyleDesigner = (function () {
         _sdTabLinksStale();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
+        _sdGuidesSync();
     }
 
     // Every cached component tree gets a snapshot of what its row holds the
@@ -10453,6 +10454,7 @@ const StyleDesigner = (function () {
         renderStylesPanel();
         updateCtxBar();
         _sdSharedBaseline();
+        _sdGuidesSync();
     }
 
     // The <details> the operator opened or closed on the canvas. A render
@@ -94430,6 +94432,53 @@ const StyleDesigner = (function () {
         setTimeout(function () {
             _sdPartLoad('ai').catch(function () { /* the button asks again */ });
         }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
+    }
+
+    // ── Canvas guides: Measure ────────────────────────────────────────────
+    // With one element selected, holding Alt and pointing at another element
+    // shows the distances between them (the part 'guides',
+    // assets/js/style_designer_guides.js, run the first time Alt is pressed).
+    // The key listener is bound only while one element of the canvas is
+    // selected; the part listens to the pointer only while Alt is held.
+    var _sdGuides = { win: null };
+
+    function _sdGuidesOne() {
+        return !!(selectedNode && selectedNodes.length <= 1 && canvasDoc && canvasDoc.defaultView && !(_sdProto && _sdProto.open) && _sdPartUrls('guides'));
+    }
+
+    function _sdGuidesKey(e) {
+        if (e.key !== 'Alt' || e.repeat || e.ctrlKey || e.metaKey || e.shiftKey || !_sdGuidesOne()) return;
+        var doc = canvasDoc;
+        _sdPartCall('guides', 'measure', [{
+            doc: doc,
+            selected: function () {
+                return (canvasDoc === doc && _sdGuidesOne()) ? _findCanvasEl(selectedNode) : null;
+            },
+            rectOf: _sdBoxRect,
+            nameOf: function (wrap) {
+                var node = _sdFindNodeForEl(wrap.getAttribute('data-sd-id'), wrap);
+                return node ? getNodeLabel(node) : '';
+            }
+        }]).catch(_sdPartFailed);
+    }
+
+    // After a draw or a selection change: binds or drops the key listener.
+    function _sdGuidesSync() {
+        // A draw made while the editor's script is still being run.
+        if (!_sdGuides) return;
+        var win = _sdGuidesOne() ? canvasDoc.defaultView : null;
+        if (win === _sdGuides.win) return;
+        if (_sdGuides.win) {
+            window.removeEventListener('keydown', _sdGuidesKey, true);
+            _sdGuides.win.removeEventListener('keydown', _sdGuidesKey, true);
+        }
+        _sdGuides.win = win;
+        if (win) {
+            window.addEventListener('keydown', _sdGuidesKey, true);
+            win.addEventListener('keydown', _sdGuidesKey, true);
+        } else if (_sdPartLoaded('guides') && _sdPartApis.guides && _sdPartApis.guides.stop) {
+            _sdPartApis.guides.stop();
+        }
     }
 
     // ── The "Clicks" layer ────────────────────────────────────────────────

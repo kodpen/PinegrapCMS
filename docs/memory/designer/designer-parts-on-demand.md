@@ -15,7 +15,7 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - The readers of `_sdT()` keys read `pg_designer_js_all_sources()` (core, families, then the parts' sources); `tools/check_lang.php` scans every `style_designer_<name>.js`. A test that cut a moved function from `style_designer.src.js` reads the part file too.
 
 ## Which parts are there?
-- `ai` (#8112): the assistant panel, `assets/js/designer_ai.js`. Handed over only when `sdDesign.ai.enabled`. The toolbar button `#sd-ai-btn` and the canvas menu's "Ask the assistant about this" run it (`_sdAiRun()`); after it ran, its own listener answers the button. It also runs 1.5 s after `init()` (at once for a proposal link, `sdDesign.ai.proposal`), so requests still waiting from an earlier visit keep being carried on (its `ai_state` poll).
+- `ai` (#8112): the assistant panel, `assets/js/designer_ai.js`. Handed over only when `sdDesign.ai.enabled`. The toolbar button `#sd-ai-btn` and the canvas menu's "Ask the assistant about this" run it (`_sdAiRun()`). It also runs 1.5 s after `init()` (at once for a proposal link), so waiting requests go on (its `ai_state` poll).
 - `import` (#8131): `assets/js/style_designer_import.js`, the HTML / ZIP import dialog and the reply opened as tabs (also the paste-a-page dialog's). Handed to every editor. The core keeps `_pgImportOpen()` and `_pgImportApply(d, projectName)` as stubs.
 - `code` (#8166, D5 part 3; #8213, part 4): the code view's runtime and its typed-changes engine, `designer-code-view-part.md`.
 - `theme` (#8245): the Themes tab of the assets panel, `designer-theme-part.md`.
@@ -26,6 +26,7 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `optsearch` (DP8): `designer-options-search.md`; `pages` (DP20): `designer-pages-window.md`.
 - `comments` (#10042): prototype comments, `designer-prototype-comments-list.md`.
 - `spacing` (DP7): Style › Spacing box, `designer-spacing-box.md`.
+- `guides` (#11570): canvas guides, `designer-canvas-guides-measure.md`.
 - Assistant code kept in the core for open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), `_sdAiAltButton()`.
 
 ## What is not measured?
