@@ -13,7 +13,7 @@ priority: 7
   - Pure writer and reader with tests; the canvas shows the size the chooser names; a value set for one size shows a dot on the chooser.
 - DO3 (S) Done (#11602). "Hide on" with Phone, Tablet and Desktop (Display None per size, today's classes, read back from them), and "Sticky from" a size on Position Sticky (`sticky-md-top`).
 - DO4 (M) Done (#11611). On an element whose Display is Grid, "Columns" and "Rows": a count, equal or fixed sizes, "As many as fit" with a smallest width; per size through DO2's writer. Layout's Gap stays the gap.
-- DO5 (S) after DO4 (in progress): on a grid's child, "Span columns", "Span rows" and "Start at".
+- DO5 (S) Done (#11654). On a grid's child, "Span columns", "Span rows" and "Start at" (column and row); per size through DO2's writer.
 - DO6 (M) after DO5 and DD23: named areas drawn as a small grid: cells dragged into an area, a child given its area from a list; per size.
 
 ## Which steps add the small layout rows? (line "small rows")
