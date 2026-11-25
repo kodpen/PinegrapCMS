@@ -578,7 +578,7 @@ function ws_channel_activity_js_strings()
         'act_project'         => ws_js_template('Project: {var:1}', 1),
         'act_context'         => ws_js_template('{var:1} of {var:2} tokens', 2),
         // The agents block, the same under both tabs.
-        'agents_title'        => lang('Agents'),
+        'agents_title'        => lang('AI agents'),
         'agents_manage'       => lang('Manage agents'),
         'agents_no_report'    => lang('no report yet'),
         'agents_always'       => lang('always ready'),
@@ -596,7 +596,7 @@ function ws_channel_activity_js_strings()
         'agents_f_wakes'      => lang('Wakes'),
         'agents_f_model'      => lang('Model'),
         'agents_f_context'    => lang('Context'),
-        'agents_f_branch'     => lang('Branch'),
+        'agents_f_branch'     => lang('Git branch'),
         'agents_f_seen'       => lang('Seen'),
         'agents_f_reported'   => lang('Reported'),
         'act_requests'        => lang('Requests'),
