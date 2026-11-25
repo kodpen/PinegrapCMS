@@ -75,9 +75,11 @@ function ws_channel_activity_state_count($state, $count)
 }
 
 /**
- * The summary line of a channel's agents: how many are in each state and
- * the words "3 working · 1 waiting · 1 not seen", a state with none left
- * out. Pure but for lang().
+ * The summary of a channel's agents: how many are in each state, and the
+ * words at the end of the agents block's head, "1 working · 1 waiting ·
+ * 1 not seen": only the states that ask for a look (working, waiting, not
+ * seen), a state with none left out; '' when there are none. Pure but for
+ * lang().
  *
  * @param string[] $states ws_agent_card_state() of each agent
  * @return array working, waiting, late, idle, paused, words
@@ -94,7 +96,7 @@ function ws_channel_activity_summary($states)
 
     $words = array();
 
-    foreach (ws_channel_activity_states() as $state) {
+    foreach (array('working', 'waiting', 'late') as $state) {
         if ($out[$state] > 0) {
             $words[] = ws_channel_activity_state_count($state, $out[$state]);
         }
@@ -469,6 +471,50 @@ function ws_channel_activity_requests($counts, $values, $channel_id, $now)
 }
 
 /**
+ * One agent of the read, as the agents block of Channel info draws it: its
+ * card's state, the request it holds, its report's model and age, and from
+ * its member row how it wakes, its last seen, its queue and whether it is
+ * active. Pure but for lang().
+ *
+ * @param array      $agent   ws_agent_shape()
+ * @param array      $member  ws_channel_member_agent() with its brief
+ * @param array|null $request ws_channel_activity_request_line(), null while it holds none
+ * @param int        $now
+ * @return array
+ */
+function ws_channel_activity_agent_row($agent, $member, $request, $now)
+{
+    $now = (int) $now;
+    $report_at = (int) ($agent['report_at'] ?? 0);
+    $reported = ((string) ($agent['kind'] ?? '') === 'app') && ($report_at > 0);
+
+    return array(
+        'id'           => (int) ($agent['id'] ?? 0),
+        'handle'       => (string) ($agent['handle'] ?? ''),
+        'name'         => (string) ($agent['name'] ?? ''),
+        'kind'         => (string) ($agent['kind'] ?? ''),
+        'avatar'       => ws_agent_card_avatar($agent['avatar'] ?? ''),
+        'role'         => (string) ($member['role'] ?? ''),
+        'role_key'     => (string) ($member['role_key'] ?? ''),
+        'state'        => (string) ($member['state'] ?? 'idle'),
+        'state_words'  => (string) ($member['state_words'] ?? ''),
+        'usage_high'   => !empty($member['usage_high']),
+        'active'       => !empty($member['active']),
+        'waiting'      => (int) ($member['waiting'] ?? 0),
+        'wake_fact'    => (string) ($member['wake_fact'] ?? ''),
+        'seen'         => (string) ($member['seen'] ?? ''),
+        'seen_state'   => (string) ($member['seen_state'] ?? ''),
+        'seen_rest'    => (string) ($member['seen_rest'] ?? ''),
+        'request'      => is_array($request) ? $request : null,
+        'model'        => $reported ? (string) ($agent['report_model'] ?? '') : '',
+        'reported_at'  => $reported ? $report_at : null,
+        'reported'     => $reported ? lang(array('string' => 'reported {var:1}', 'vars' => ws_seen_ago_words($report_at, $now))) : '',
+        'reported_ago' => $reported ? ws_seen_ago_words($report_at, $now) : '',
+        'stale'        => $reported && (($now - $report_at) >= WS_AGENT_REPORT_STALE_AFTER),
+    );
+}
+
+/**
  * The Activity tab of a channel the reader reads, in one answer. The
  * caller has checked the reader (ws_action_channel(),
  * ws_api_channel_or_404()); a guest gets nothing.
@@ -495,29 +541,12 @@ function ws_channel_activity($viewer, $channel, $now)
         $agent = (array) $row['agent'];
         $member = ws_channel_member_agent($row, $now, $counts);
         $value = ws_agent_request_value($agent);
-        $report_at = (int) ($agent['report_at'] ?? 0);
-        $reported = ((string) ($agent['kind'] ?? '') === 'app') && ($report_at > 0);
         $extra = ws_channel_activity_agent_extra($agent);
 
-        $reports[] = array('project' => $extra['project'], 'report_at' => $report_at);
+        $reports[] = array('project' => $extra['project'], 'report_at' => (int) ($agent['report_at'] ?? 0));
 
-        $out_agents[] = array(
-            'id'          => (int) $agent['id'],
-            'handle'      => (string) $agent['handle'],
-            'name'        => (string) $agent['name'],
-            'kind'        => (string) $agent['kind'],
-            'avatar'      => ws_agent_card_avatar($agent['avatar'] ?? ''),
-            'role'        => $member['role'],
-            'role_key'    => $member['role_key'],
-            'state'       => $member['state'],
-            'state_words' => $member['state_words'],
-            'usage_high'  => $member['usage_high'],
-            'request'     => ($member['state'] === 'working') ? ws_channel_activity_request_line($held[$value] ?? null, $channel['id'], $people) : null,
-            'model'       => $reported ? (string) ($agent['report_model'] ?? '') : '',
-            'reported_at' => $reported ? $report_at : null,
-            'reported'    => $reported ? lang(array('string' => 'reported {var:1}', 'vars' => ws_seen_ago_words($report_at, $now))) : '',
-            'stale'       => $reported && (($now - $report_at) >= WS_AGENT_REPORT_STALE_AFTER),
-        ) + $extra;
+        $request = ($member['state'] === 'working') ? ws_channel_activity_request_line($held[$value] ?? null, $channel['id'], $people) : null;
+        $out_agents[] = ws_channel_activity_agent_row($agent, $member, $request, $now) + $extra;
     }
 
     $out_agents = ws_channel_activity_order($out_agents);
@@ -547,9 +576,29 @@ function ws_channel_activity_js_strings()
         'act_tab_info'        => lang('Info'),
         'act_tab_activity'    => lang('Activity'),
         'act_project'         => ws_js_template('Project: {var:1}', 1),
-        'act_agents'          => lang('Agents here'),
-        'act_asked_by'        => ws_js_template('Asked by {var:1}', 1),
         'act_context'         => ws_js_template('{var:1} of {var:2} tokens', 2),
+        // The agents block, the same under both tabs.
+        'agents_title'        => lang('Agents'),
+        'agents_manage'       => lang('Manage agents'),
+        'agents_no_report'    => lang('no report yet'),
+        'agents_always'       => lang('always ready'),
+        'agents_queue'        => ws_js_template('{var:1} requests in its queue', 1),
+        'agents_queue_one'    => lang('1 request in its queue'),
+        'agents_for'          => ws_js_template('for {var:1}, {var:2}', 2),
+        'agents_mentioned'    => lang('When mentioned'),
+        'agents_context'      => ws_js_template('{var:1} of {var:2} · {var:3}%', 3),
+        'agents_ring'         => ws_js_template('Context {var:1} ({var:2}%)', 2),
+        'agents_not_yet'      => lang('Not yet'),
+        'agents_f_doing'      => lang('Doing'),
+        'agents_f_asked'      => lang('Asked by'),
+        'agents_f_queue'      => lang('Queue'),
+        'agents_f_handle'     => lang('Handle'),
+        'agents_f_wakes'      => lang('Wakes'),
+        'agents_f_model'      => lang('Model'),
+        'agents_f_context'    => lang('Context'),
+        'agents_f_branch'     => lang('Branch'),
+        'agents_f_seen'       => lang('Seen'),
+        'agents_f_reported'   => lang('Reported'),
         'act_requests'        => lang('Requests'),
         'act_req_waiting'     => lang('Waiting'),
         'act_oldest'          => ws_js_template('oldest {var:1}', 1),

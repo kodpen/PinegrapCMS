@@ -4226,7 +4226,8 @@
         return stack;
     }
 
-    // A channel's agents as its head and Channel info show them: Claude and
+    // A channel's agents as its head, Channel info's agents block and a
+    // discussion's people panel show them: Claude and
     // Pinegrap AI where they can be asked, then the registry agents the
     // server sends (ws_channel_member_agents()); in a discussion also the
     // channel's agents asked there by name (reach_from) and the one it
@@ -4236,11 +4237,11 @@
         var follow = (channel.thread && channel.thread.follow) || '';
 
         if (BOOT.claude && channel.claude && channel.claude.available) {
-            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'claude' });
+            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, handle: 'Claude', line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'claude' });
         }
 
         if (BOOT.ai && channel.ai && channel.ai.available) {
-            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'ai' });
+            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, handle: String(BOOT.ai.handle || '').replace(/^@/, ''), line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'ai' });
         }
 
         (channel.agents || []).forEach(function (agent) {
@@ -4255,8 +4256,16 @@
                 line: ['@' + agent.handle, agent.wake].filter(Boolean).join(' · '),
                 assistant: !!agent.assistant,
                 active: !!agent.active,
+                kind: agent.kind || '',
+                // Its card's state and the words Channel info's agents block
+                // draws before the activity read lands.
+                state: agent.state || '',
+                state_words: agent.state_words || '',
+                waiting: agent.waiting || 0,
+                wake_fact: agent.wake_fact || '',
                 seen: agent.seen,
                 seen_state: agent.seen_state,
+                seen_rest: agent.seen_rest || '',
                 reach_from: agent.reach_from || 0,
                 following: !!agent.following
             });
@@ -4265,10 +4274,10 @@
         return out;
     }
 
-    // One agent's row as Channel info and a discussion's people panel draw
-    // it: its face and name (a registry agent's open its card), role, badge,
-    // Paused, Following, under it @handle and what wakes it, its last seen
-    // at the right of the first line. In a narrow column the badges move
+    // One agent's row as a discussion's people panel draws it: its face and
+    // name (a registry agent's open its card), role, badge, Paused,
+    // Following, under it @handle and what wakes it, its last seen at the
+    // right of the first line. In a narrow column the badges move
     // to the next line and the role is the part cut (.ws-info-agents).
     function agentInfoRow(channel, agent, list) {
         var row = el('div', 'ws-info-person');
@@ -13110,6 +13119,11 @@
             self.infoOpen = false;
             self.root.classList.remove('ws-info-open');
 
+            // The agents block's open rows and "n more" go with the panel.
+            if (window.PGWsChannelActivity) {
+                window.PGWsChannelActivity.forget();
+            }
+
             if (self.infoPanel) {
                 clear(self.infoPanel);
             }
@@ -13185,8 +13199,8 @@
             panel.appendChild(body);
 
             // Info and Activity (workspace_channel_activity.js): the tabs
-            // where the channel has an agent or a repository link; this
-            // body is the Info tab's pane.
+            // where the channel has an agent or a repository link, this
+            // body the Info tab's pane, and the agents block over both.
             if (window.PGWsChannelActivity) {
                 window.PGWsChannelActivity.mount(panel, body, channel);
             }
@@ -13324,21 +13338,11 @@
                 }
             }
 
-            // Its agents with their handle, what wakes them here and their
-            // last seen, which everyone in the channel reads; a manager
-            // opens "Agents in this channel" from here.
-            var agents = channelAgents(channel);
-
-            if (agents.length) {
-                section(t('cm_agents') + ' · ' + agents.length);
-
-                var agentList = el('div', 'ws-info-people ws-info-agents');
-
-                agents.forEach(function (agent) {
-                    agentInfoRow(channel, agent, agentList);
-                });
-
-                body.appendChild(agentList);
+            // The agents block (workspace_channel_activity.js): with the
+            // tabs it stands first in the pane shown; without them (the
+            // assistants only) here, after People.
+            if (window.PGWsChannelActivity) {
+                window.PGWsChannelActivity.place(body);
             }
 
             // Sharing: the guests with an open share (ws_channel_info_guests():
@@ -33219,8 +33223,14 @@
             avatar: avatar,
             avatarStack: avatarStack,
             agentFace: agentFace,
-            // A name that opens an agent's card (the Activity tab's rows).
+            // A name that opens an agent's card.
             agentCardHook: agentCardHook,
+            // Channel info's agents block: the channel's agents, and its
+            // "Manage agents" opening Channel settings on a tab.
+            channelAgents: channelAgents,
+            channelSettings: function (channel, tab) {
+                channelForm(channel, { tab: tab }, function () { app.refreshInfo(); });
+            },
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,

@@ -13274,72 +13274,268 @@ body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
 .ws-info-panel > .ws-panel-body[hidden] {
   display: none;
 }
-/* The Activity tab: the summary line and the project, a row each agent,
-   label and value lines, linked lines with their age at the right, and the
-   bars of context and plan usage. */
-.ws-act-summary {
-  margin-top: var(--ws-space-3);
-}
+/* The Activity pane under the agents block: the project, label and value
+   lines, linked lines with their age at the right, and the bars of context
+   and plan usage. */
 .ws-act-project {
-  margin-top: .15rem;
+  margin-top: var(--ws-space-3);
   overflow-wrap: anywhere;
 }
 .ws-act-count {
   margin-inline-start: .4rem;
   vertical-align: baseline;
 }
-.ws-act-agent {
+/* Channel info's agents block (workspace_channel_activity.js), the same
+   under both tabs: a head with the count, the states that ask for a look
+   and the manager's icon button; a two-line row each agent, 8 above and
+   below, 10 at the sides, reaching 10 past the text column, corner 12, 2
+   between rows and no line; pointed at it takes the hover ground, opened
+   the inset card ground with a hairline and its facts under it. */
+.ws-agents {
+  margin-top: 1.15rem;
+}
+.ws-agents-head {
   display: flex;
-  align-items: flex-start;
-  gap: .65rem;
-  padding: .45rem 0;
-}
-.ws-act-agent + .ws-act-agent {
-  border-top: 1px solid var(--pg-field-line);
-}
-.ws-act-agent.is-stale .ws-act-report,
-.ws-act-agent.is-stale .ws-act-context {
-  opacity: .5;
-}
-.ws-act-face {
-  position: relative;
-  flex: none;
-}
-.ws-act-face > .avatar {
-  --bs-avatar-size: 1.75rem;
-}
-.ws-act-dot {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-}
-.ws-act-agent-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ws-act-agent-top {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: .25rem .4rem;
-  font-size: var(--pg-text-2);
+  gap: 7px;
+  min-height: 24px;
 }
-.ws-act-agent-name {
+.ws-agents-head > .ws-panel-kicker {
+  margin: 0;
+  white-space: nowrap;
+}
+.ws-agents-count {
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-medium);
+  color: var(--pg-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.ws-agents-sum {
   min-width: 0;
+  margin-inline-start: auto;
   overflow: hidden;
-  font-weight: var(--pg-weight-strong);
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ws-act-state {
-  margin-inline-start: auto;
+.ws-agents-manage {
+  flex: none;
+  margin: -2px -6px -2px 4px;
 }
-.ws-act-agent-line {
-  margin-top: .15rem;
-  overflow-wrap: anywhere;
+.ws-agents-rows {
+  display: grid;
+  gap: 2px;
+  margin: 6px -10px 0;
 }
-.ws-act-context {
-  margin-top: .25rem;
+.ws-agents-row {
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.ws-agents-row:hover {
+  background: var(--pg-hover);
+}
+.ws-agents-row.is-open {
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.ws-agents-row:has(> .ws-agents-rowhead:focus-visible) {
+  box-shadow: 0 0 0 2px var(--pg-accent);
+}
+.ws-agents-row.is-paused {
+  opacity: .5;
+}
+.ws-agents-rowhead {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.ws-agents-rowhead:focus-visible {
+  outline: 0;
+}
+.ws-agents-face {
+  position: relative;
+  display: inline-flex;
+}
+.ws-agents-face > .avatar {
+  --bs-avatar-size: 1.75rem;
+}
+.ws-agents-face > .ws-agent-dot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+}
+.ws-agents-text {
+  display: block;
+  min-width: 0;
+}
+.ws-agents-l1 {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+}
+.ws-agents-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+  line-height: 18px;
+  text-overflow: ellipsis;
+}
+.ws-agents-role {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+  text-overflow: ellipsis;
+}
+.ws-agents-l2 {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  font-size: var(--pg-text-meta);
+  line-height: 17px;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agents-word {
+  font-style: normal;
+  font-weight: var(--pg-weight-strong);
+}
+.ws-agents-word.is-blue {
+  color: var(--pg-tone-blue);
+}
+.ws-agents-word.is-amber,
+.ws-agents-warn {
+  color: var(--pg-tone-amber);
+}
+.ws-agents-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-agents-ring {
+  display: block;
+  flex: none;
+}
+.ws-agents-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+.ws-agents-ring-track {
+  stroke: color-mix(in srgb, var(--pg-fg-body) 13%, transparent);
+}
+.ws-agents-ring-arc {
+  stroke: var(--pg-fg-2);
+  stroke-linecap: round;
+}
+.ws-agents-ring.is-high .ws-agents-ring-arc {
+  stroke: var(--pg-tone-amber);
+}
+/* The chevron only while the row is pointed at, holds the focus or is open. */
+.ws-agents-chev {
+  font-size: .72em;
+  color: var(--pg-fg-3);
+  visibility: hidden;
+}
+.ws-agents-row:hover .ws-agents-chev,
+.ws-agents-row.is-open .ws-agents-chev,
+.ws-agents-rowhead:focus-visible .ws-agents-chev {
+  visibility: visible;
+}
+/* An opened row's facts, 10 under the second line in the text column:
+   labels 76 wide in the third ink, values in the first, 7 between facts. */
+.ws-agents-facts {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 7px 0;
+  margin: 10px 0 2px 38px;
+  font-size: var(--pg-text-meta);
+  line-height: 17px;
+}
+.ws-agents-facts[hidden] {
+  display: none;
+}
+.ws-agents-facts > dt {
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.ws-agents-facts > dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agents-facts > .ws-agents-fact-doing {
+  display: block;
+  white-space: normal;
+}
+.ws-agents-facts > .ws-agents-fact-asked {
+  display: block;
+}
+.ws-agents-cut {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-agents-facts .ws-act-link {
+  text-decoration: underline;
+  text-decoration-color: var(--pg-fg-3);
+  text-underline-offset: 3px;
+}
+.ws-agents-facts .ws-act-bar {
+  flex: 0 1 52px;
+  min-width: 20px;
+  height: 4px;
+  margin-top: 0;
+}
+.ws-agents-facts .ws-act-bar > span {
+  background: var(--pg-fg-2);
+}
+.ws-agents-facts .ws-act-bar.is-high > span {
+  background: var(--pg-tone-amber);
+}
+.ws-agents-facts .ws-act-bar.is-high + span {
+  color: var(--pg-tone-amber);
+}
+.ws-agents-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px 7px 48px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-2);
+}
+.ws-agents-more:hover {
+  background: var(--pg-hover);
+}
+.ws-agents-more > .bi {
+  font-size: .84em;
+  color: var(--pg-fg-3);
+}
+/* On a phone a row is 52 high, for the finger. */
+@media (max-width: 767.98px) {
+  .ws-agents-rowhead {
+    min-height: 36px;
+  }
 }
 .ws-act-bar {
   height: 6px;
