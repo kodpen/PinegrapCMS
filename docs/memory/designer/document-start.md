@@ -7,7 +7,7 @@ module: document_start
 ## Where does it open?
 - The New design window's row "From a document" ("A text or a Word file"), after Canva and before ZIP file (`pg_designer_start_kinds()`), pane heading "Start from a document"; its pane has `data-part="document"` (`pg_designer_start_part_attrs()`), so `designer_home.js` loads `assets/js/designer_document.js` on first choice, which loads `pg_document_reader.js` and `pg_document_rows.js`.
 - In the designer: the command palette's "Page from a document", listed only on an empty page of a full-access editor (`_sdDocumentReady()`), opens the same form in the designer's own window (the part `document`, `when` always, the core decides). No bar button.
-- The empty canvas's third card (first-tour plan, T6) is not built here; it calls `_sdDocumentOpen()` once that plan lands.
+- The empty canvas's third card "From a document" (`designer-first-tour-help.md`) shows while `_sdDocumentReady()` and calls `_sdDocumentOpen()`.
 
 ## How are the form and the rows put together?
 - `PGDocumentRows.mount({box, foot, texts, reader, readFile, pickFile, build, cancel, head, dropArea, css})` draws both, in the home pane and the editor window alike; the texts come from `pg_document_start_texts()` (the pane's `data-texts`, or `designer_document.php?texts=1` for the editor), so one list is translated.
@@ -19,7 +19,7 @@ module: document_start
 ## What does "Build the page" do?
 - In the New design window: the rows go to this tab's `sessionStorage` (`pg_document_build`), the start questions are asked (`window.sdStartAsk`), and `add_system_style.php?framework=bootstrap5&start=document` opens; the editor (`sdDesign.startDocument`) runs the part's `auto()`, which builds once into the empty first page.
 - In the editor window: the sections are put on the page at once, one undo step (`_sdDocumentHost().insert`).
-- `PGDocumentPage.build(rows, {make, node, src})` (builder from part `sketchbuild`): intro, text, cards, picture and gallery through `PGSketchBuilder` (`sketch-builder.md`); figures `stats-counter`, questions `faq-twocol`; testimonial, table, prices and contact plain Bootstrap 5 sections. The words fill the starters' columns; their sample headings, paragraphs and links are taken out. Every section wears `var(--pg-var-space_section, 3rem)`.
+- `PGDocumentPage.build(rows, {make, node, src})` (builder from part `sketchbuild`): intro, text, cards, picture and gallery through `PGSketchBuilder` (`sketch-builder.md`); figures `stats-counter`, questions `faq-twocol`; testimonial, table, prices and contact plain Bootstrap 5 sections. The words fill the starters' columns; their sample headings, paragraphs and links are taken out. Every section wears `var(--pg-var-space-section, 3rem)`.
 
 ## Where do a Word document's pictures go?
 - `designer_document.php` keeps a document with pictures in `data/temp/documents/<token>.docx` (per session, 3 at most, swept after 6 h) and answers the pictures without their package part. At build time the editor posts `keep` with the numbers used; `pg_document_start_store()` writes each to the file manager's top folder and answers `n => address`. A pasted text's own picture address is used only when it is `http(s)://` or `/…`.

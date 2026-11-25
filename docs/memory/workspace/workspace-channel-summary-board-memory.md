@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-summary-board-memory
-description: The channel's Summary and Board tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the Memory tab is in workspace-memory-tab.md
+description: The channel's Summary tab as cards (pinned message, Time spent) and the channel panes' empty states as a dashed card (CL3 #8703); Board look in workspace-channel-board-look.md
 ---
 
 ## How does the Summary tab look?
@@ -12,10 +12,8 @@ description: The channel's Summary and Board tabs as cards and the channel panes
 - Time spent's three figures (`.ws-task-time-stat`) are tiles: border, small radius, a 3% tint, `auto-fit` columns of at least 7rem. The customer and Time spent cards lost `mt-7`: the layout's gap places them (a utility would beat the panel's layer).
 
 ## How does the Board tab look?
-- The tab's toolbar (Board and List views, `toolbar()` in workspace_board_channel.js) is in `workspace-channel-board-tab.md`. The grouping and "Only mine" are `.ws-cb-chip` buttons with aria-pressed and `active`.
-- Not `.ws-chip`: that is the message's @person, #task and department chip, and an unscoped rule of that name repainted every reference chip.
-- On `.ws-pane-board` a column is a card (1px border, 1rem, `--pg-card-bg`) that grows with the pane from 17rem up to twice that (`flex: 1 1 17rem`, `max-width: 34rem`); many columns still scroll sideways. A card there has `--pg-card-bg`, a .75rem radius and `--ws-shadow-soft`; its priority stripe stays, on `inset-inline-start` (#8759, owner 2026-11-11: use the width). Drop, no-drop, the current column and the phone picker work as before.
-- The workflow table's board (`mountSource()`, `.ws-wt-board`) keeps its columns (`.ws-cb-col`, `flex: 0 0 17rem`, 2px transparent border, `--pg-bg-1`) and cards: it is not the channel screen. An empty column keeps `ws-cb-empty` without a dashed card: the column is already a card.
+- The tab and its toolbar: `workspace-channel-board-tab.md`; the figures, columns, cards and drop place (BM3, which replaced the card columns of #8759): `workspace-channel-board-look.md`; the Automations drawer: `workspace-channel-board-automations.md`.
+- The grouping and "Only mine" are `.ws-cb-chip` buttons with aria-pressed and `active`. Not `.ws-chip`: that is the message's @person, #task and department chip, and an unscoped rule of that name repainted every reference chip.
 
 ## How does the Memory tab look?
 - Rows under folding project headings since GM3a: `workspace-memory-tab.md`.
@@ -28,4 +26,4 @@ description: The channel's Summary and Board tabs as cards and the channel panes
 - Owner (2026-11-10): the channel screen is "line after line"; the before/after picture he approved shows the summary as a card with Time spent beside it as tiles. CL3 of the channel look (`workspace-channel-screen.md`).
 
 ## How was it checked?
-- #8703: sandbox before/after at 1440 and 390 px, light and dark (Summary with and without text, Board with tasks and empty, Memory with records, empty and its form, an empty Tasks tab); `tests/workspace_channel_look_test.php`. Dev look after landing.
+- #8703: sandbox before/after at 1440 and 390 px, light and dark (Summary with and without text, the Board as it was then with tasks and empty, Memory with records, empty and its form, an empty Tasks tab); `tests/workspace_channel_look_test.php`. Dev look after landing.
