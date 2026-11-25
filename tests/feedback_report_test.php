@@ -170,3 +170,69 @@ function test_feedback_report_record_url()
 	pg_assert_same('', pg_feedback_report_record_url('periodic', 3), 'a periodic survey has no record');
 	pg_assert_same('', pg_feedback_report_record_url('booking', 0), 'no id, no link');
 }
+
+// Runs pg_feedback_contact_scores() in a PHP process of its own, with the
+// database helpers replaced by recorders, and answers the calls made (name,
+// SQL, second argument), or null when PHP cannot be started.
+function feedback_report_contact_scores_calls($contact_id, $email, $phone)
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgfbcs');
+
+	if ($file === false) {
+		return null;
+	}
+
+	$script = '<?php' . "\n"
+		. 'define("PG_FUNCTIONS_DIR", ' . var_export(PG_FUNCTIONS_DIR, true) . ');' . "\n"
+		. '$args = ' . var_export(array($contact_id, $email, $phone), true) . ';' . "\n"
+		. <<<'PHP'
+$GLOBALS['calls'] = array();
+function db_q($sql, array $params = array()) { $GLOBALS['calls'][] = array('db_q', $sql, $params); return false; }
+function db_items($sql, $key_column = '') { $GLOBALS['calls'][] = array('db_items', $sql, $key_column); return array(); }
+function db_item($sql) { $GLOBALS['calls'][] = array('db_item', $sql, null); return array(); }
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_sends.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_report.php');
+$scores = pg_feedback_contact_scores($args[0], $args[1], $args[2]);
+echo json_encode(array('scores' => $scores, 'calls' => $GLOBALS['calls']));
+PHP;
+
+	file_put_contents($file, $script);
+	$out = array();
+	exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out);
+	@unlink($file);
+
+	$decoded = json_decode(implode("\n", $out), true);
+	pg_assert_true(is_array($decoded), 'the recorded run answered: ' . implode("\n", $out));
+
+	return is_array($decoded) ? $decoded : null;
+}
+
+function test_feedback_report_contact_scores_fill_placeholders()
+{
+	$cases = array(
+		'e-mail and mobile' => array(5, 'ayse@example.com', '0532 111 22 33', 3),
+		'no address' => array(6, '', '', 1),
+	);
+
+	foreach ($cases as $label => $case) {
+		$run = feedback_report_contact_scores_calls($case[0], $case[1], $case[2]);
+
+		if ($run === null) {
+			continue;
+		}
+
+		pg_assert_same(array(), $run['scores'], $label . ': no rows, no scores');
+		pg_assert_same(1, count($run['calls']), $label . ': one query');
+		$call = $run['calls'][0];
+		pg_assert_same('db_q', $call[0], $label . ': the query goes through the helper that takes values');
+		pg_assert_same($case[3], substr_count($call[1], '?'), $label . ': placeholders');
+		pg_assert_same($case[3], count((array) $call[2]), $label . ': one value per placeholder');
+		pg_assert_same($case[0], $call[2][0], $label . ': the contact id comes first');
+	}
+}
