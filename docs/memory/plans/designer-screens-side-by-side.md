@@ -26,7 +26,7 @@ priority: 7
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - SS1 (M) done (#11535) The mirror as a part: a frame filled from the canvas's output, the redraw when the hand rests, its scheduling pure and tested.
 - SS2 (M) done (#11647) the part `mirror` handed to the editor (its `when` in `includes/designer_parts/mirror.php` once the parts registry has landed, else `'mirror'` in the parts list of `includes/designer_screen.php`); the layout of three, the heads with their size lists, Fit, the narrow window. Boards Y1, Y2, Y3 (head and list), Y5, Y6.
-- SS3 (S) after SS2: the chosen element followed, a click choosing, "Edit at this size". Boards Y3 (the swap) and Y4.
+- SS3 (S) done (#11676) the chosen element followed, a click choosing, "Edit at this size". Boards Y3 (the swap) and Y4.
 - SS4 (S) Close-out: memory in `designer/` with the numbers measured, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
