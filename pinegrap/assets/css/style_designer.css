@@ -1891,6 +1891,46 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background-color: color-mix(in srgb, var(--sd-text) 5%, transparent); color: var(--sd-text);
 }
 
+/* ── The Focus control (Content › Image, Color and background; part 'focus') ── */
+/* The whole picture with one point, the cut on a phone, a tablet and a
+   desktop beside it; the frame of the screen the canvas bar shows carries
+   the ring, a screen's own focus turns its mark to the accent. */
+.sd-fc { margin: 6px 0 8px; -webkit-user-select: none; user-select: none; }
+.sd-fc:empty { min-height: 96px; }
+.sd-fc-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11px; }
+.sd-fc-title { color: var(--sd-label); font-weight: 650; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.sd-fc-val { color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
+.sd-fc-reset { margin-left: auto; border: 0; background: none; padding: 0 2px; color: var(--sd-text-muted); font: inherit; cursor: pointer; }
+.sd-fc-reset:hover { color: var(--sd-text); }
+.sd-fc-reset:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 1px; border-radius: 4px; }
+.sd-fc-chip { margin-left: auto; padding: 1px 7px; border-radius: 6px; background: var(--sd-accent-strong); color: var(--sd-on-accent); font-size: 10px; font-weight: 650; }
+.sd-fc-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.sd-fc-pic { position: relative; border-radius: 6px; overflow: hidden; cursor: crosshair; touch-action: none; background: var(--sd-input-bg); }
+.sd-fc-pic img { display: block; width: 100%; height: auto; pointer-events: none; }
+.sd-fc-pt {
+    position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+    background: var(--sd-accent-strong); border: 2px solid var(--sd-on-accent);
+    box-shadow: 0 0 0 1px var(--sd-shadow), 0 1px 4px var(--sd-shadow); cursor: grab;
+}
+.sd-fc-pic.is-none .sd-fc-pt { background: var(--sd-raised-bg); opacity: .85; }
+.sd-fc-pic.is-drag .sd-fc-pt { cursor: grabbing; box-shadow: 0 0 0 4px var(--sd-accent-soft); }
+.sd-fc-pt:focus-visible { outline: 2px solid var(--sd-focus-ring); outline-offset: 2px; }
+.sd-fc-frames { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; max-width: 110px; }
+.sd-fc-frames-row { display: flex; gap: 6px; align-items: flex-end; }
+.sd-fc-fr { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 110px; }
+.sd-fc-fr-pic { max-width: 110px; border-radius: 3px; background-size: cover; background-repeat: no-repeat; box-shadow: inset 0 0 0 1px var(--sd-panel-border); }
+.sd-fc-fr.is-cur .sd-fc-fr-pic { box-shadow: 0 0 0 2px var(--sd-accent); }
+.sd-fc-fr-ic { font-size: 9px; color: var(--sd-text-muted); line-height: 1; }
+.sd-fc-fr.is-own .sd-fc-fr-ic { color: var(--sd-accent); }
+.sd-fc-foot { margin-top: 6px; font-size: 11px; color: var(--sd-text-muted); line-height: 1.4; }
+.sd-fc-foot strong { color: var(--sd-text); font-weight: 650; }
+.sd-fc-same { margin-top: 6px; }
+.sd-fc-info {
+    display: flex; gap: 6px; margin-top: 8px; padding: 6px 8px; border-radius: 6px; font-size: 11px; line-height: 1.4;
+    color: var(--sd-text); background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line);
+}
+.sd-fc-info .bi { color: var(--sd-accent); }
+
 /* ── The spacing box (Style › Spacing, part 'spacing') ── */
 /* Outer (margin) and inner (padding) boxes, four sides each: grey is
    inherited or the default, filled accent is set at the chosen size, a
