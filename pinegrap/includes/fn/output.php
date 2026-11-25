@@ -8181,6 +8181,7 @@ function pg_js_bundles()
         // reset loop (window.PGOptionsReview), then the part that draws it.
         'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
+        'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
         // Border and corner: their pure class mappings (window.PGSpacingBox,
@@ -8292,6 +8293,9 @@ function pg_designer_parts()
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
+        // "Read the picture" of a sketch page: its reference picture read
+        // by the browser's built-in model into proposed boxes.
+        'sketchread' => 'assets/js/style_designer_sketchread.min.js',
     );
 }
 

@@ -77156,7 +77156,8 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
+            // The buttons of "Read the picture" (its foot, "Stop") too.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more, .sd-sketch-act',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -77991,6 +77992,7 @@ const StyleDesigner = (function () {
             body.appendChild(_sdSketchBoxEl(b, picked, on));
         });
         node.appendChild(body);
+        if (_sdPartLoaded('sketchread') && _sdPartApis.sketchread) _sdPartApis.sketchread.fill(item.id, node, head, body);
     }
 
     function _sdSketchBoxName(b) {
@@ -78060,6 +78062,7 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProto.sketchOn = !!on;
         if (!on) _sdProto.sk.sel = null;
+        if (on) _sdSketchReadReady();
         if (ui) {
             ui.sketchBtn.classList.toggle('active', !!on);
             ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -78270,6 +78273,7 @@ const StyleDesigner = (function () {
     // switch is on; Delete on a sketch frame takes the page out.
     function _sdSketchKey(event) {
         if (!_sdProto.sketchOn) return false;
+        if (event.key === 'Escape' && _sdPartLoaded('sketchread') && _sdPartApis.sketchread && _sdPartApis.sketchread.escape()) return true;
         var name = String(event.key || '');
         var ctrl = event.ctrlKey || event.metaKey;
         if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
@@ -78482,10 +78486,49 @@ const StyleDesigner = (function () {
                 delete page.pic;
                 _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
             } });
+            if (!page.pic.off && _sdProto.sk.reads === true) {
+                rows.push({ icon: 'bi-magic', text: _sdT('Read the picture'), run: function () { _sdPartCall('sketchread', 'start', [_sdSketchReadHost(), frameId]).catch(_sdPartFailed); } });
+            }
         }
         rows.push({ sep: true });
         rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
         return rows;
+    }
+
+    // Whether the browser's built-in model reads pictures, asked once when
+    // the switch first goes on (PinegrapAiWrite.imageReady(), the same
+    // check as the alt text's button): "Read the picture" is shown only
+    // then. Without "Write with AI" on the screen there is no such check
+    // and no row.
+    function _sdSketchReadReady() {
+        var sk = _sdProto.sk;
+        var ai = window.PinegrapAiWrite;
+        if (sk.reads !== undefined) return;
+        sk.reads = false;
+        if (!ai || typeof ai.imageReady !== 'function' || typeof ai.readImage !== 'function') return;
+        ai.imageReady().then(function (reads) { sk.reads = !!reads; }, function () { sk.reads = false; });
+    }
+
+    // What "Read the picture" (the part 'sketchread') reads the sketch
+    // through, and how its proposal becomes the page's boxes: one step of
+    // the sketch's history, the boxes there before replaced.
+    function _sdSketchReadHost() {
+        return {
+            page: _sdSketchPage,
+            redraw: function () { _sdSketchMount(false); },
+            announce: function (text) { if (_sdProto.canvas) _sdProto.canvas.announce(text); },
+            root: function () { return _sdProto.ui ? _sdProto.ui.root : document; },
+            el: _sdProtoEl,
+            limits: function () { return { w: SD_SKETCH.w, grid: SD_SKETCH.grid, min: SD_SKETCH.min, text: SD_SKETCH.text, boxes: SD_SKETCH.boxes }; },
+            keep: function (page, boxes) {
+                var data = _sdSketchData();
+                page.boxes = boxes.map(function (b) {
+                    return { id: data.n++, x: b.x, y: b.y, w: b.w, h: b.h, kind: '', text: b.text };
+                });
+                _sdProto.sk.sel = null;
+                _sdSketchChanged(false, page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length));
+            }
+        };
     }
 
     // A sketch page taken out, as Delete on a selected frame does.
