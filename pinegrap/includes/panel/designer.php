@@ -229,6 +229,10 @@ function pg_panel_designer($request, $action)
         // The "Clicks" layer's figures: the sub action asks the Visitors
         // right itself.
         $content_ok[] = 'page_clicks';
+        // My library: the content roles see the items and add a copy; the
+        // calls check pg_library_may() themselves.
+        $content_ok[] = 'library_list';
+        $content_ok[] = 'library_prepare';
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -252,6 +256,12 @@ function pg_panel_designer($request, $action)
 
             return pg_design_ai_panel($sub, $request, $user);
         }, array('status' => 'error', 'code' => 'server_error', 'message' => pg_error_json_action_sentence())));
+    }
+
+    // My library (includes/fn/designer_library.php): the Blocks list's
+    // group, "Save to my library" and a copy added to a page.
+    if (in_array($sub, array('library_list', 'library_save', 'library_prepare'), true)) {
+        respond(pg_library_editor($sub, $request, $user));
     }
 
     switch ($sub) {
