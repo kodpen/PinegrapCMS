@@ -9,7 +9,7 @@ module: security_scan_files
 - Architect (2026-11-25): the update is not changed. Clean Up in System tools (a person's click) removes such files, and the scan reads the same list. Whether the update should remove them by itself is a product question for the owner, outside the security-scan plan.
 
 ## How is a retired file reported?
-- A PHP file the scan would call unknown, at a place on the list, is `file_php_retired` (medium), #PR. Reason "A file of an earlier version that this version no longer uses."; "What to do" names Clean Up, and `pg_security_rule_link()` adds an "Open Clean Up" link; Quarantine works as for any file finding.
+- A PHP file the scan would call unknown, at a place on the list, is `file_php_retired` (medium), #11672. Reason "A file of an earlier version that this version no longer uses."; "What to do" names Clean Up, and `pg_security_rule_link()` adds an "Open Clean Up" link; Quarantine works as for any file finding.
 - It is reported, never passed over: a file left callable is a risk by itself, and a retired name can also be a planted file.
 - Its content is still read for shell marks as a file outside the reference: a mark gives `file_shell_mark` (critical) beside it.
 - Without a release reference root and `includes/` files are not judged, so a finished run does not mark it gone.
