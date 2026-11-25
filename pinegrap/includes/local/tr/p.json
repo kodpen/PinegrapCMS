@@ -3830,6 +3830,8 @@
     "public, visible, profile, location, metadata": "herkese açık, görünür, profil, konum, üst veri",
     "publish_at has passed. A new page starts as a draft, so its publish time has to be ahead.": "publish_at geçmiş. Yeni sayfa taslak olarak başlar, bu yüzden yayına alınma zamanı ileride olmalı.",
     "published": "yayınlandı",
+    "published {var:1}": "{var:1} sayfasını yayımladı",
+    "published {var:1} with a release bundle": "{var:1} sayfasını bir yayın paketiyle yayımladı",
     "purchase, restore, subscription, refund": "satın alma, geri yükleme, abonelik, iade",
     "purchase_order_line is only taken on a purchase invoice draft made from a purchase order.": "purchase_order_line yalnızca satın alma siparişinden oluşturulmuş alış faturası taslağında kabul edilir."
 }

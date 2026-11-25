@@ -2150,6 +2150,7 @@
     "bring, clothes, shoes, towel, gloves": "getirmek, kıyafet, ayakkabı, havlu, eldiven",
     "bring, linen, towels, kitchen, packing": "getirmek, nevresim, havlu, mutfak, bavul",
     "broken, damaged, wrong, missing, help": "kırık, hasarlı, yanlış, eksik, yardım",
+    "brought {var:1} back from the Recycle Bin": "{var:1} sayfasını Geri Dönüşüm Kutusu'ndan geri getirdi",
     "budget, mortgage, costs, tax": "bütçe, konut kredisi, masraflar, vergi",
     "budget, payments, changes, revisions, music licence, archive": "bütçe, ödemeler, değişiklikler, düzeltmeler, müzik lisansı, arşiv",
     "build-your-first-website": "ilk-web-sitenizi-yapin",
