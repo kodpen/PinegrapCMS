@@ -61,7 +61,7 @@ function test_design_cleanup_tree_reads_interactions_conditions_and_settings()
 	pg_assert_true(pg_cleanup_class_used($state, 'is-open'), 'a word of an interaction');
 	pg_assert_true(pg_cleanup_class_used($state, 'member-tier'), 'a word of a condition');
 	pg_assert_true(pg_cleanup_class_used($state, 'tab-on'), 'a word of a component setting');
-	pg_assert_equal('', $state['blocked'], 'nothing blocks');
+	pg_assert_same('', $state['blocked'], 'nothing blocks');
 }
 
 function test_design_cleanup_class_bound_to_a_value_blocks_everything()
@@ -71,10 +71,10 @@ function test_design_cleanup_class_bound_to_a_value_blocks_everything()
 	));
 	$state = pg_cleanup_state();
 	pg_cleanup_add_tree($state, $tree, 'page 4');
-	pg_assert_equal('bound_class', $state['blocked'], 'a class from a record value cannot be told');
+	pg_assert_same('bound_class', $state['blocked'], 'a class from a record value cannot be told');
 	$found = pg_cleanup_unused_rules('.nobody { color: red; }', $state);
-	pg_assert_equal(array(), $found['rows'], 'nothing is listed');
-	pg_assert_equal('bound_class', $found['blocked'], 'the reason is passed on');
+	pg_assert_same(array(), $found['rows'], 'nothing is listed');
+	pg_assert_same('bound_class', $found['blocked'], 'the reason is passed on');
 }
 
 function test_design_cleanup_class_attribute_with_a_token_gives_a_prefix()
@@ -89,7 +89,7 @@ function test_design_cleanup_class_attribute_with_a_token_gives_a_prefix()
 	pg_assert_true(!pg_cleanup_class_used($state, 'badges'), 'another name is not covered');
 	$state2 = pg_cleanup_state();
 	pg_cleanup_add_markup($state2, '<div class="<?php echo $c; ?>">');
-	pg_assert_equal('dynamic_class', $state2['blocked'], 'a class attribute made all by code blocks');
+	pg_assert_same('dynamic_class', $state2['blocked'], 'a class attribute made all by code blocks');
 }
 
 function test_design_cleanup_script_words_and_built_names()
@@ -123,7 +123,7 @@ function test_design_cleanup_framework_and_state_classes_are_never_listed()
 	$state = pg_cleanup_state(array('known' => array('btn', 'col-md-6')));
 	$css = ".btn { padding: 0; }\n.col-md-6 { flex: 1; }\n.active { color: red; }\n.pg-note { x: y; }\n.bi-star { a: b; }\n.lonely { a: b; }";
 	$found = pg_cleanup_unused_rules($css, $state);
-	pg_assert_equal(array('.lonely'), _dc_test_selectors($found['rows']), 'only the design\'s own unused class');
+	pg_assert_same(array('.lonely'), _dc_test_selectors($found['rows']), 'only the design\'s own unused class');
 }
 
 function test_design_cleanup_rules_matched_against_the_classes()
@@ -142,12 +142,12 @@ function test_design_cleanup_rules_matched_against_the_classes()
 		. ".card:not(.ghost) { x: y; }\n"
 		. ".ghost::after { content: \"}\"; }\n";
 	$found = pg_cleanup_unused_rules($css, $state);
-	pg_assert_equal(array('.ghost', '.hero .ghost', '.ghost::after'), _dc_test_selectors($found['rows']), 'every alternative needs a class nothing uses');
+	pg_assert_same(array('.ghost', '.hero .ghost', '.ghost::after'), _dc_test_selectors($found['rows']), 'every alternative needs a class nothing uses');
 	$row = $found['rows'][0];
-	pg_assert_equal(array('ghost'), $row['classes'], 'the missing class');
-	pg_assert_equal('.ghost { color: blue; }', substr($css, $row['start'], $row['end'] - $row['start']), 'the offsets cut the whole rule');
-	pg_assert_equal($row['end'] - $row['start'], $row['bytes'], 'its size');
-	pg_assert_equal('', $row['media'], 'outside any at-rule');
+	pg_assert_same(array('ghost'), $row['classes'], 'the missing class');
+	pg_assert_same('.ghost { color: blue; }', substr($css, $row['start'], $row['end'] - $row['start']), 'the offsets cut the whole rule');
+	pg_assert_same($row['end'] - $row['start'], $row['bytes'], 'its size');
+	pg_assert_same('', $row['media'], 'outside any at-rule');
 }
 
 function test_design_cleanup_rules_inside_media_and_supports()
@@ -160,9 +160,9 @@ function test_design_cleanup_rules_inside_media_and_supports()
 		. "@font-face { font-family: x; }\n"
 		. "@import url(\"x.css\");\n";
 	$found = pg_cleanup_unused_rules($css, $state);
-	pg_assert_equal(array('.gone', '.gone2'), _dc_test_selectors($found['rows']), 'rules in nested blocks; keyframes and font faces skipped');
-	pg_assert_equal('@media (min-width: 768px)', $found['rows'][0]['media'], 'the at-rule chain');
-	pg_assert_equal('@supports (display: grid) @media print', $found['rows'][1]['media'], 'a nested chain');
+	pg_assert_same(array('.gone', '.gone2'), _dc_test_selectors($found['rows']), 'rules in nested blocks; keyframes and font faces skipped');
+	pg_assert_same('@media (min-width: 768px)', $found['rows'][0]['media'], 'the at-rule chain');
+	pg_assert_same('@supports (display: grid) @media print', $found['rows'][1]['media'], 'a nested chain');
 }
 
 function test_design_cleanup_keep_comment_protects_a_rule_or_a_block()
@@ -173,7 +173,7 @@ function test_design_cleanup_keep_comment_protects_a_rule_or_a_block()
 		. "/* Keep */ @media print { .app-b { a: b; } }\n"
 		. "/* kept for later? no: a note */ .app-c { a: b; }\n";
 	$found = pg_cleanup_unused_rules($css, $state);
-	pg_assert_equal(array('.plain'), _dc_test_selectors($found['rows']), 'a keep comment before a rule or a block holds it');
+	pg_assert_same(array('.plain', '.app-c'), _dc_test_selectors($found['rows']), 'a keep comment before a rule or a block holds it; "kept" in a note does not');
 }
 
 function test_design_cleanup_prefix_and_escaped_names()
@@ -183,24 +183,24 @@ function test_design_cleanup_prefix_and_escaped_names()
 	pg_cleanup_add_classes($state, array('md:flex'));
 	$css = ".tone-dark { a: b; }\n.md\\:flex { a: b; }\n.lg\\:flex { a: b; }";
 	$found = pg_cleanup_unused_rules($css, $state);
-	pg_assert_equal(array('.lg\\:flex'), _dc_test_selectors($found['rows']), 'a built name and an escaped one are used');
-	pg_assert_equal(array('lg:flex'), $found['rows'][0]['classes'], 'the name unescaped');
+	pg_assert_same(array('.lg\\:flex'), _dc_test_selectors($found['rows']), 'a built name and an escaped one are used');
+	pg_assert_same(array('lg:flex'), $found['rows'][0]['classes'], 'the name unescaped');
 }
 
 function test_design_cleanup_unreadable_sheet_lists_nothing()
 {
 	$state = pg_cleanup_state();
 	$found = pg_cleanup_unused_rules(".a { color: red;\n.b { x: y; }", $state);
-	pg_assert_equal(array(), $found['rows'], 'an unclosed block lists nothing');
-	pg_assert_equal('unreadable', $found['blocked'], 'and says why');
+	pg_assert_same(array(), $found['rows'], 'an unclosed block lists nothing');
+	pg_assert_same('unreadable', $found['blocked'], 'and says why');
 	$found = pg_cleanup_unused_rules(".a } .b { x: y; }", $state);
-	pg_assert_equal('unreadable', $found['blocked'], 'a stray closing brace too');
+	pg_assert_same('unreadable', $found['blocked'], 'a stray closing brace too');
 }
 
 function test_design_cleanup_total_bytes()
 {
 	$state = pg_cleanup_state();
 	$found = pg_cleanup_unused_rules(".a { x: y; }\n.bb { x: y; }", $state);
-	pg_assert_equal(2, count($found['rows']), 'both unused');
-	pg_assert_equal(12 + 13, $found['bytes'], 'the size it would free');
+	pg_assert_same(2, count($found['rows']), 'both unused');
+	pg_assert_same(12 + 13, $found['bytes'], 'the size it would free');
 }
