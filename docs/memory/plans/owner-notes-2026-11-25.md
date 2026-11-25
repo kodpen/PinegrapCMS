@@ -9,8 +9,8 @@ priority: 7
 - His fourth note, the channel's Board tab not looking like its drawing, needs no step: the look (BM3, #11670) landed on 2026-11-25 at 18:57 UTC and the dev site's scripts were from 18:42 UTC.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- ON1 (S) The Focus control's frames, as board F5 of the image focus drawing draws them (`designer/designer-image-focus-drawing-frames.md`; the drawing wins, `workflow/screen-follows-drawing.md`). The sizes come from a pure function beside `PGImageFocus.shapes()` (rows, heights, the one-frame case), tested; `style_designer_focus.js` and the `.sd-fc-*` rules draw them. The PR body carries the board's columns: what was built for each, what differs and why.
-  - `designer/image-focus-control.md` is corrected to what is built.
+- ON1 (S) after DO9 (#11681) has landed, which changes the same two scripts: the Focus control's frames, as board F5 of the image focus drawing draws them (`designer/designer-image-focus-drawing-frames.md`; the drawing wins, `workflow/screen-follows-drawing.md`). The sizes come from a pure function beside `PGImageFocus.shapes()` (rows, heights, the one-frame case), tested; `style_designer_focus.js` and the `.sd-fc-*` rules draw them.
+  - The PR body carries the board's columns: what was built for each, what differs and why. `designer/image-focus-control.md` is corrected to what is built.
 - ON2 (M) "Build the page" says what the site knows, with Pinegrap AI off too (`designer/sketch-build.md`, `sketch-builder.md`):
   - A new shared "Header": the site's name as the brand, and as its links the Prototype view's pages in their order, by name, to their addresses from "Page details", at most six. A new "Footer": the site's name, the year, the same links. A design's own header and footer are used untouched, as today.
   - The intro: the page's title from "Page details" (else its name) as the heading, its description as the paragraph when there is one.
@@ -19,6 +19,6 @@ priority: 7
 - ON3 (S) A picture text's fit floor by its size (`core/picture-text-translation-fit-letters.md`, the owner's words and the rule): `M.languageFit()` in `pg_image_editor_model.js` and its PHP twin `pg_picture_tr_language_fit()` take the source text's size and the picture's shorter side; tests for both with the same cases. `core/picture-text-translation-draw.md` and `picture-text-auto-server.md` are corrected.
 
 ## What does every step keep?
-- No table, no column, no new right, no new button in a bar. The three steps share no file and can be given out together.
+- No table, no column, no new right, no new button in a bar. The three steps share no file; ON1 and ON2 are k1's, ON3 is k2's (`workflow/coordinator-second-paused.md`).
 - When the three have landed this file is deleted; nothing of it needs to stay but what the steps write into their topics' memory.
 - Claim as `[plan:owner-notes-2026-11-25] <step> — <topic>`.
