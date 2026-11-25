@@ -304,6 +304,7 @@
 - designer-activity-reader.md: The reader behind the designer's History "Activity" tab (AC2, #11599): which rows become events, their sentences, the cursor and pages of fifty, who sees which event, the panel action
 - designer-activity-writers.md: Census for the designer's History "Activity" tab (AC1): every writer that changes a visual design, the row it leaves with who and when, the ones that leave none, and the open store question [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
+- designer-aspect-ratio-object-fit.md: Aspect Ratio as CSS aspect-ratio on any element (DO9): the prop, presets, per size, today's ratio box kept until changed; Object Fit and Focus on a video
 - designer-assistant-apply-answers.md: Assistant Apply's "Unexpected token '<'" (#8970): its cause, class names sent as lists (#9093), what an operation's fields accept, how the Assistant actions keep their answer JSON (#9093)
 - designer-assistant-unreadable-answer.md: The designer Assistant panel (designer_ai.js, #9112) when an answer cannot be read: its own translated sentence once per click, never the browser's parse text; a failed Apply keeps the proposal
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
@@ -611,6 +612,7 @@
 - designer-widget-ghosts-and-edit-chips.md: Canvas ghost records of listing widgets (designer/widget_ghosts); the edit pencil on records (pg_sw_add_edit_chip()): who sees it, inline !important look, its page stylesheet.
 - document-paragraphs.md: A .docx, .md or .txt turned into the paragraphs the designer's document reader takes (includes/fn/document_paragraphs.php): styles, bold leads, pictures taken out, limits, how much was read
 - document-reader.md: The designer's document reader (assets/js/pg_document_reader.js): paragraphs with their styles in, sections with kinds, items and unsure marks out; pasted text to paragraphs; rules, test
+- document-start.md: The "From a document" start as built (FD3): where it opens, the form, the rows and their kind list, Build the page, designer_document.php, the pictures, the files, the cost
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
