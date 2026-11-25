@@ -170,6 +170,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-110.md: Which of the census's gaps go into the designer? (owner, 2026-11-25, in the architect's window)
 - decisions-made-product-110.md: What is the architect's reading, not his words?
 - decisions-made-product-110.md: Who draws the designer plans' sheets while no design session runs? (owner, 2026-11-25)
+- decisions-made-product-111.md: Where are the rules and the earlier parts?
+- decisions-made-product-111.md: Which model reads the Sketch tool's reference picture? (owner, 2026-11-25, agent channel poll 223, message 13373)
+- decisions-made-product-111.md: What follows for the step? (architect, 2026-11-25, agent channel message 13373)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
