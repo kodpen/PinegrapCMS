@@ -64,6 +64,7 @@
 - cart-default-quantity.md: A product added without a quantity box enters the cart with pg_product_default_quantity(), at least 1; new products store default_quantity 1.
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves or joins the cart: remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products, a refused add making no recipient
+- cart-link-order-owner.md: Whose account an order belongs to when a saved-cart link (?r=) is opened by someone else: whoever completes it (pg_cart_link_take_over(), PR #11463, #11435) [decision: decisions-made-product-109.md]
 - cart-offer-code-refused.md: Special Offer Code box of the classic Shopping Cart and Express Order: a mistyped or not running code is refused and the order keeps the code already applied, with its discount (#9069)
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
 - cart-posted-quantity.md: How storefront forms (cart, checkout, order form, product page, cart widget) read a typed quantity: pg_cart_posted_quantity(), site separators, "2,5" refused (#6803, #9068)

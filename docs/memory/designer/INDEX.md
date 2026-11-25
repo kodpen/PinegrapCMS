@@ -457,6 +457,7 @@
 - designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the parts (D5)
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
+- designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-as-cases.md: The Preview's case model (PW1): the cases each widget kind has, the visitors a page offers, the choice read back from the browser, what a case sets per widget (record, visitor, flags)
 - designer-preview-as-drawing-bar.md: The "Preview as" bar as drawn (boards P1, P5, P7 of designer-preview-as-drawing): what stands in it, the one line under it, its states, the narrow window, the keyboard
@@ -478,9 +479,11 @@
 - designer-publish-check-drawing-findings.md: Publish check drawing, boards P5 to P7 (step PC5): "Fix", "Show me", "Ignore on this page" with its reason, the Weight group with its budget bars and the list of unused rules
 - designer-publish-check-drawing-results.md: Publish check drawing, boards P1 to P4 (step PC4): the result on a row, the five groups, a finding and its path, a check that could not run, a blocking page, narrow
 - designer-publish-check-drawing.md: The drawing of the Publish check (plans/designer-publish-check.md, PC4 and PC5): the sheet, its seven boards and what each step builds from it
+- designer-publish-content.md: The Publish check's Content group (pg_publish_content.js): starters' sample words and pictures left, a link to the page itself, the audit's empty heading moved in
 - designer-publish-findings.md: The Publish check's finding shape (pg_publish_findings.js): what the four checks become, one concept kept once, the blocking table, a failed check, a page's summary
 - designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
+- designer-publish-weight.md: The Publish check's weight measure (includes/fn/publish_weight.php): what it counts on the rendered draft, the budget and its grades, the findings it gives, how it joins the finding shape
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
 - designer-regions-api-missing-fields.md: api.php get_designer_regions reads missing content and search fields as not sent, so the LiveSite migration's request gets clean JSON (#4722)

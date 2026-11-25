@@ -1075,6 +1075,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/booking-deposit-late-payment.md: A booking deposit paid after its hold ran out (#10378): booked again under the staff lock while free, else an open request, deposit awaiting refund, honest widget text
 - commerce/booking-meeting-link.md: Start file of the meeting link: a staff member's "Book a time with <name>" page book_with.php and Workspace screen My meeting link; decisions, PRs, files, left out
 - commerce/card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
+- commerce/cart-link-order-owner.md: Whose account an order belongs to when a saved-cart link (?r=) is opened by someone else: whoever completes it (pg_cart_link_take_over(), PR #11463, #11435)
 - commerce/cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery
 - commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
 - commerce/cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days
