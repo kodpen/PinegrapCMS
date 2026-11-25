@@ -57892,6 +57892,12 @@ const StyleDesigner = (function () {
         // Position: Bootstrap class select + expandable top/right/bottom/left sub-rows
         var _posRowId = 'sdexp_pos_' + (++respRowCounter);
         var _posSel = mkRespSelect('position-', [['static',_sdT('Static')],['relative',_sdT('Relative')],['absolute',_sdT('Absolute')],['fixed',_sdT('Fixed')],['sticky',_sdT('Sticky')]], _sdT('Default'));
+        // Sticky from a size (sticky-md-top, the row data-sd-stickyfrom)
+        // reads as Sticky; another position removes it.
+        _posSel = _posSel.replace('data-stylegroup="', 'data-stylegroup="' + _SD_STICKY_FROM.join(',') + ',');
+        if (_SD_STICKY_FROM.some(function (c) { return (' ' + cls + ' ').indexOf(' ' + c + ' ') !== -1; })) {
+            _posSel = _posSel.replace(/ selected(?=>)/, '').replace('value="position-sticky">', 'value="position-sticky" selected>');
+        }
         var _posSubRows = [
             { label: _sdT('Top'),    ctrl: lenInp('top', p.top, _sdT('e.g. 0')), val: p.top    },
             { label: _sdT('Right'),  ctrl: lenInp('right', p.right, _sdT('e.g. 0')), val: p.right  },
@@ -57973,7 +57979,9 @@ const StyleDesigner = (function () {
         // data-sd-szbox: the size chooser of the lengths (_sdSzBind()).
         var _dsBody = '<div data-sd-szbox hidden></div><div class="sd-sp-section">' +
             mkRespRow(_sdT('Display'), 'd-',     dispValues,  _sdT('Default')) +
+            '<div data-sd-hideon hidden></div>' +
             _posRow +
+            '<div data-sd-stickyfrom hidden></div>' +
             mkRespRow(_sdT('Float'),   'float-', floatValues, _sdT('Default')) +
             _zIdxRow +
             _widthRow +
@@ -65266,6 +65274,8 @@ const StyleDesigner = (function () {
     // ── Position presets and layers: pure helpers ──
     // Bootstrap 5.3's layers by name: its $zindex-* numbers live in its Sass
     // only (no --bs-* variable holds them), so the list carries them.
+    // Bootstrap's Position Sticky from a size up (assets/js/pg_size_style.js).
+    var _SD_STICKY_FROM = ['sticky-sm-top', 'sticky-md-top', 'sticky-lg-top', 'sticky-xl-top', 'sticky-xxl-top'];
     var _SD_Z_LAYERS = [['1000', 'Dropdown'], ['1020', 'Sticky'], ['1030', 'Fixed'], ['1055', 'Modal']];
 
     // Whether a typed z-index is written: a whole number or auto, as
