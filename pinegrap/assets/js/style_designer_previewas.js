@@ -215,7 +215,7 @@ StyleDesigner.definePart('previewas', function (K) {
         if (!L) {
             var seen = false;
             try { seen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { seen = true; }
-            if (seen) return '';
+            if (seen || K._sdTipsOff()) return '';
             L = { tone: '', text: _sdT('See this page as a visitor would: choose a record, who is looking, and a case. Nothing is written to the site.'), act: 'seen' };
         }
         var btn = '';

@@ -198,6 +198,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     // ── Drawing on the frame ──
 
     function seen() {
+        if (K._sdTipsOff()) return true;
         try { return window.localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return false; }
     }
 

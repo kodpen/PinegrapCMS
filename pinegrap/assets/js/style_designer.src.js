@@ -97828,6 +97828,7 @@ const StyleDesigner = (function () {
             _pgNewPageDraft: _pgNewPageDraft,
             _pgPageByKey: _pgPageByKey,
             _pgPublishSheet: _pgPublishSheet,
+            _sdTipsOff: _sdTipsOff,
             _pgTabsInsertAfter: _pgTabsInsertAfter,
             _pgTabsOpenPageSettings: _pgTabsOpenPageSettings,
             _pgTabsPersistActive: _pgTabsPersistActive,
@@ -98136,6 +98137,23 @@ const StyleDesigner = (function () {
         try { o = JSON.parse(window.localStorage.getItem('pg.designer.' + uid + '.tour') || 'null'); } catch (e) { return false; }
         if (!o || typeof o !== 'object') return true;
         return o.tipsOff !== true && !(o.tips && o.tips[name] === true);
+    }
+
+    // Whether the stored tour state `raw` (the text of the browser key) has
+    // "Tips" switched off. Anything unreadable counts as on.
+    function _sdTipsOffIn(raw) {
+        var o = null;
+        try { o = JSON.parse(raw || 'null'); } catch (e) { return false; }
+        return !!(o && typeof o === 'object' && o.tipsOff === true);
+    }
+
+    // Whether this person switched "Tips" off in the Help window. Every
+    // older first-use line with its own browser key reads it before it shows
+    // (parts reach it as K._sdTipsOff()).
+    function _sdTipsOff() {
+        var uid = parseInt(_design && _design.userId, 10);
+        if (!(uid > 0)) return false;
+        try { return _sdTipsOffIn(window.localStorage.getItem('pg.designer.' + uid + '.tour')); } catch (e) { return false; }
     }
 
     // `head`: the element the line goes under; `box`: the feature, where a

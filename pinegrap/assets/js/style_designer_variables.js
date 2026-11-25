@@ -568,6 +568,7 @@ StyleDesigner.definePart('variables', function (K) {
     }
 
     function tipShown() {
+        if (K._sdTipsOff()) return false;
         try { return !localStorage.getItem(TIP); } catch (e) { return false; }
     }
     function tipDone() {

@@ -20,7 +20,7 @@ module: output
 ## How does a feature ask for a first-use tip?
 - `_sdTipAsk(name, text, head, box)`: the core reads `pg.designer.<user id>.tour` itself and loads nothing when the tip was seen or "Tips" is off. The part puts one line under `head`; "Got it", or a click inside `box` outside the line and the head, writes it seen. Asked again after the feature redrew its head, the line moves under the new head.
 - Never two at once, never while the tour or a pointer runs (a starting tour takes the line away). "Tips" off hides the line shown; tips seen stay seen.
-- Asked today by History (`history`) and by Overview when it is unfolded (`overview`). The older lines (select similar, bands, states, side by side, overrides, variables, Sketch, Preview as) keep their own drawing and their own browser key and do not read "Tips": off does not hide them yet (#11711).
+- Asked today by History (`history`) and by Overview when it is unfolded (`overview`). The older lines with their own key and how they read "Tips": `designer-tips-switch.md`.
 
 ## When does an empty page offer its starts?
 - `_sdEmptySync()` at the end of `render()`: a root with no children, full access, not a shared component alone, Prototype view closed. Drawn in `#sd-canvas .sd-iframe-area`, never in the page; it goes with the first element.
