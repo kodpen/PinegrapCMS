@@ -40,7 +40,7 @@ StyleDesigner.definePart('previewas', function (K) {
     // the bar ({tone, text, act}) or null; narrow: the one-button form.
     var S = {
         win: null, doc: null, root: null, setups: {}, audience: false, defaults: {}, labels: {},
-        menu: '', sid: 0, find: {}, drawing: false, line: null, narrow: false, timer: 0, poll: 0
+        menu: '', sheet: '', sid: 0, find: {}, drawing: false, line: null, narrow: false, timer: 0, poll: 0
     };
 
     function caseNames() {
@@ -129,11 +129,11 @@ StyleDesigner.definePart('previewas', function (K) {
         '.pg-pva-pop{position:absolute;top:42px;width:252px;max-height:calc(100vh - 60px);overflow:auto;padding:8px;border-radius:12px;background:#1f242c;box-shadow:inset 0 0 0 1px #343c48,0 14px 34px rgba(0,0,0,.55)}' +
         '.pg-pva-pop.rec{width:320px}' +
         '.pg-pva-cap{margin:8px 8px 3px;font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:#8c96a4}' +
-        '.pg-pva-row{display:flex;align-items:center;gap:9px;width:100%;min-height:30px;padding:4px 8px;border-radius:8px;text-align:left}' +
+        '#pg-pva .pg-pva-row{display:flex;align-items:center;gap:9px;width:100%;min-height:30px;padding:4px 8px;border-radius:8px;text-align:left}' +
         '.pg-pva-row>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.pg-pva-row em{font-style:normal;color:#8c96a4}' +
         '.pg-pva-row small{display:block;color:#8c96a4;white-space:normal}' +
         '.pg-pva-row:hover,.pg-pva-row:focus{background:#2a313b;outline:0}.pg-pva-row.on{background:rgba(91,155,255,.14)}' +
-        '.pg-pva-tk{flex:none;width:18px;color:#5b9bff}' +
+        '#pg-pva .pg-pva-tk{flex:none;width:18px;color:#5b9bff}' +
         '.pg-pva-rule{height:1px;margin:6px 0;background:#2a313b}' +
         '.pg-pva-note{margin:6px 8px;color:#8c96a4;white-space:normal}' +
         '.pg-pva-note svg{vertical-align:-2px;margin-right:6px}' +
@@ -212,7 +212,7 @@ StyleDesigner.definePart('previewas', function (K) {
         var L = S.line;
         if (!L) {
             var seen = false;
-            try { seen = S.win.opener ? localStorage.getItem(SEEN_KEY) === '1' : true; } catch (e) { seen = true; }
+            try { seen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { seen = true; }
             if (seen) return '';
             L = { tone: '', text: _sdT('See this page as a visitor would: choose a record, who is looking, and a case. Nothing is written to the site.'), act: 'seen' };
         }
@@ -583,12 +583,15 @@ StyleDesigner.definePart('previewas', function (K) {
         rows[i].focus();
     }
 
+    // Typing in the search; the widget select. A search field fires change
+    // as it loses the focus too, which must not draw the list again under
+    // the row taking the focus.
     function onInput(e) {
         var t = e.target;
-        if (t.hasAttribute && t.hasAttribute('data-pva-q')) {
+        if (e.type === 'input' && t.hasAttribute && t.hasAttribute('data-pva-q')) {
             loadRecords(S.sid, String(t.value || '').trim(), true);
             drawList();
-        } else if (t.hasAttribute && t.hasAttribute('data-pva-widget')) {
+        } else if (e.type === 'change' && t.hasAttribute && t.hasAttribute('data-pva-widget')) {
             S.sid = t.value;
             loadRecords(S.sid, (S.find[S.sid] || {}).q || '');
             render();
@@ -673,7 +676,7 @@ StyleDesigner.definePart('previewas', function (K) {
         // The label of the default record, for the chooser's value.
         var sids = recordSids();
         if (sids.length && !S.find[sids[0]]) loadRecords(sids[0], '');
-        if (w && w !== S.win) { S.doc = null; attach(w); return; }
+        if (w && w !== S.win) { S.doc = null; S.menu = ''; S.sheet = ''; attach(w); return; }
         if (!S.doc && w) { attach(w); return; }
         try { if (S.win && S.win.document !== S.doc) { attach(S.win); return; } } catch (e) {}
         render();
