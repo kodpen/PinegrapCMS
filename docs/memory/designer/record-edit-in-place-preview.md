@@ -10,6 +10,7 @@ module: designer
 
 ## When is the switch shown?
 - After `record_edit_read` of the item the first form widget draws answers `ok`. `waits: true`: the link "Open the record" (`edit_submitted_form.php?id=`, new tab) in its place. `missing`/`denied` (not a collection item, no right): nothing.
+- Product, event: the link (`record-edit-in-place-canvas-row.md`).
 - Off each time the Preview opens (`openPreview()` calls the part's `reset()`); another record drawn reads the new one.
 
 ## How do frames find the elements?

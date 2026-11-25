@@ -1792,7 +1792,7 @@ function pg_page_cache_panel_sub_actions()
                 'design_rename', 'design_delete', 'theme_save', 'theme_look_save', 'theme_palette_save'),
             'clean' => array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch', 'form_fields',
                 'design_targets', 'selectable_pages', 'page_load', 'import_fragment', 'seo_check',
-                'widget_ghosts', 'preview_widgets', 'preview_records', 'legacy_region_preview', 'page_regions_import', 'template_prepare', 'template_from_design',
+                'widget_ghosts', 'preview_widgets', 'preview_records', 'preview_record_open', 'legacy_region_preview', 'page_regions_import', 'template_prepare', 'template_from_design',
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get', 'compare_render', 'activity_list',
                 'theme_look_css', 'theme_palette_css', 'variables_state', 'style_guide', 'library_export', 'library_import',
                 'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',

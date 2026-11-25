@@ -11,8 +11,11 @@
  * - The switch is the last thing of the "Preview as" bar (html('bar'), a
  *   row of the narrow sheet with html('row')), shown when the read says the
  *   person may edit the item; where their change would wait for approval
- *   the link "Open the record" stands in its place. Off each time the
- *   Preview window opens.
+ *   the link "Open the record" stands in its place, as it does for a
+ *   product or an event the page draws. Off each time the
+ *   Preview window opens. The canvas row "Edit this record's content"
+ *   opens the Preview with the switch on and that element's frame focused
+ *   (the core's _sdRecEditWant()).
  * - On, the core draws the Preview with node marks (data-pg-node) and the
  *   spots of PGRecordEditSpots get a dashed frame; a click (Enter from the
  *   keyboard) edits one with its field's control: a line of text, the
@@ -43,12 +46,15 @@ StyleDesigner.definePart('recordedit', function (K) {
     // the field being edited {fid, el, before}; mode: the foot bar's '' |
     // 'saving' | 'refused' | 'error' | 'ask' | 'conflict'; conflicts and ci:
     // the fields changed meanwhile and the one asked about; pending: what
-    // the ask goes on with.
+    // the ask goes on with; other: a product or an event drawn where no
+    // collection item is, {key, screen} (screen '' until the server says it
+    // may be opened).
     var R = {
         win: null, doc: null, sid: 0, id: 0, read: null, reading: 0, on: false,
         base: {}, edits: {}, bad: {}, names: {}, theirs: {}, open: null,
         mode: '', conflicts: [], ci: 0, pending: null, refused: 0, pop: null,
-        spots: [], hot: null, theirsName: {}
+        spots: [], hot: null, theirsName: {},
+        other: null
     };
 
     var GREEN = '#16a34a';
@@ -198,19 +204,30 @@ StyleDesigner.definePart('recordedit', function (K) {
             R.base = {};
             if (R.read) takeFields(R.read.fields);
             K._sdRecEditBar();
+            // Opened from the canvas row "Edit this record's content": the
+            // switch turns on by itself unless the change would wait.
+            if (K._sdRecEditWant(false)) {
+                if (R.read && !R.read.waits) setOn(true);
+                else K._sdRecEditWant(true);
+            }
         }, function () {
             if (ask === R.reading) { R.read = null; K._sdRecEditBar(); }
         });
     }
 
     // ── The switch ──
+    // The link "Open the record" to a record's own screen, in a new tab; the
+    // arrow is a character, since the site's page may load no icon font.
+    function link(screen, where) {
+        var a = '<a class="pg-re-ln" href="' + esc(K._sdRecScreenUrl(screen)) + '" target="_blank" rel="noopener">' + esc(_sdT('Open the record')) +
+            '<span aria-hidden="true">\u2197</span></a>';
+        return where === 'row' ? '<div class="pg-pva-rule"></div>' + a : a;
+    }
+
     function html(where) {
-        if (!R.read || !R.id) return '';
-        if (R.read.waits) {
-            var href = (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/edit_submitted_form.php?id=' + R.id;
-            var a = '<a class="pg-re-ln" href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(_sdT('Open the record')) + '</a>';
-            return where === 'row' ? '<div class="pg-pva-rule"></div>' + a : a;
-        }
+        if (!R.id) return (R.other && R.other.screen) ? link(R.other.screen, where) : '';
+        if (!R.read) return '';
+        if (R.read.waits) return link('edit_submitted_form.php?id=' + R.id, where);
         var sw = '<button type="button" class="pg-re-sw' + (R.on ? ' on' : '') + '" role="switch" aria-checked="' + (R.on ? 'true' : 'false') + '" data-re-act="switch">' +
             esc(_sdT('Edit content here')) + '<span class="pg-re-tg" aria-hidden="true"></span></button>';
         return where === 'row' ? '<div class="pg-pva-rule"></div>' + sw : sw;
@@ -246,7 +263,7 @@ StyleDesigner.definePart('recordedit', function (K) {
             var list = d.querySelectorAll('[data-pg-node="' + String(s.node).replace(/["\\]/g, '') + '"]');
             Array.prototype.forEach.call(list, function (el) {
                 if (el.closest('#pg-pva,#pg-re-foot,#pg-re-layer')) return;
-                out.push({ el: el, fid: s.field, prop: s.prop, control: s.control, page: String(s.token).indexOf('__record__') === 0 });
+                out.push({ el: el, node: String(s.node), fid: s.field, prop: s.prop, control: s.control, page: String(s.token).indexOf('__record__') === 0 });
             });
         });
         return out;
@@ -797,12 +814,14 @@ StyleDesigner.definePart('recordedit', function (K) {
             R.edits = {}; R.bad = {}; R.theirs = {}; R.mode = ''; R.open = null; R.pop = null;
             K._sdRecEditMarks(false);
         }
-        var sid = 0, id = 0;
-        Object.keys(setups || {}).some(function (k) {
-            var s = setups[k] || {};
-            if (s.source === 'form' && parseInt(s.record, 10) > 0) { sid = parseInt(k, 10); id = parseInt(s.record, 10); return true; }
-            return false;
+        var sid = 0, id = 0, other = null;
+        Object.keys(setups || {}).forEach(function (k) {
+            var s = setups[k] || {}, rec = parseInt(s.record, 10) || 0;
+            if (rec <= 0) return;
+            if (s.source === 'form' && !id) { sid = parseInt(k, 10); id = rec; }
+            else if ((s.source === 'product' || s.source === 'event') && !other) other = { sid: parseInt(k, 10), id: rec };
         });
+        otherRecord(id ? null : other);
         if (id !== R.id) {
             R.id = id;
             R.sid = sid;
@@ -819,11 +838,41 @@ StyleDesigner.definePart('recordedit', function (K) {
             bind(doc, win);
             frame();
             foot();
+            focusWanted();
             if (open) {
                 var s = (R.spots || []).filter(function (o) { return o.fid === open && o.prop !== 'alt'; })[0];
                 if (s && s.control !== 'picture') startEdit(s);
             }
         }
+    }
+
+    // The frame of the element the canvas row was used on, focused once the
+    // page is drawn with its frames; nothing when that element is not framed.
+    function focusWanted() {
+        var want = R.on ? K._sdRecEditWant(false) : null;
+        if (!want || !R.spots.length || R.open) return;
+        K._sdRecEditWant(true);
+        var framed = R.spots.filter(function (o) { return o.prop !== 'alt'; });
+        var s = framed.filter(function (o) { return o.node === want.node; })[0];
+        if (!s) return;
+        try { s.el.scrollIntoView({ block: 'center' }); } catch (e) {}
+        s.el.focus();
+    }
+
+    // A product or an event the Preview draws (none when a collection item
+    // is drawn): the link "Open the record" once the server says this
+    // person may open it on its own screen; asked once per record.
+    function otherRecord(o) {
+        var key = o ? o.sid + ':' + o.id : '';
+        if (key === (R.other ? R.other.key : '')) return;
+        R.other = o ? { key: key, screen: '' } : null;
+        K._sdRecEditBar();
+        if (!o) return;
+        K._sdRecOpenAsk(o.sid, o.id).then(function (a) {
+            if (!R.other || R.other.key !== key || !a || a.status !== 'ok') return;
+            R.other.screen = String(a.screen);
+            K._sdRecEditBar();
+        });
     }
 
     // A choice of the "Preview as" bar while changes are not saved: the foot
@@ -838,6 +887,7 @@ StyleDesigner.definePart('recordedit', function (K) {
     function reset() {
         R.win = null;
         R.id = 0;
+        R.other = null;
     }
 
     return { holds: holds, html: html, reset: reset, sync: sync };

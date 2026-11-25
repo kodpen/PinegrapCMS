@@ -233,6 +233,9 @@ function pg_panel_designer($request, $action)
         // calls check pg_library_may() themselves.
         $content_ok[] = 'library_list';
         $content_ok[] = 'library_prepare';
+        // A bound element's row "Edit this record's content" / "Open the
+        // record": the answer checks the record's own rights.
+        $content_ok[] = 'preview_record_open';
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -1007,6 +1010,24 @@ function pg_panel_designer($request, $action)
                 'status' => 'success',
                 'rows'   => pg_preview_as_record_search(is_array($pr_cfg) ? $pr_cfg : array(), $pr_page, isset($request['q']) ? $request['q'] : '', $user),
             ));
+            break;
+
+        // A bound element's canvas row: the record its widget shows in the
+        // Preview (the one kept in "Preview as", else the default) and
+        // whether it is edited in place or opened on its own screen
+        // (pg_rec_edit_open()).
+        case 'preview_record_open':
+            $po_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ($po_page > 0 && pg_designer_page_access($po_page, $user) === 'hidden') $po_page = 0;
+            $po_widget = (isset($request['widget']) && is_array($request['widget'])) ? $request['widget'] : array();
+            $po_rows   = pg_designer_preview_override_rows(array($po_widget));
+            $po_sid    = isset($po_widget['id']) ? (int)$po_widget['id'] : 0;
+            $po_cfg    = isset($po_rows[$po_sid]) ? $po_rows[$po_sid]['cfg'] : null;
+            if (!is_array($po_cfg) && $po_sid > 0) {
+                $po_cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . $po_sid . "' LIMIT 1"), true);
+            }
+            $po_record = (isset($request['record']) && is_scalar($request['record'])) ? (int)$request['record'] : 0;
+            respond(array('status' => 'success', 'open' => pg_rec_edit_open($user, $po_cfg, $po_page, $po_record)));
             break;
 
         case 'template_prepare':

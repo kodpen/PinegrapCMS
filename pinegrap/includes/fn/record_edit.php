@@ -658,3 +658,109 @@ function pg_rec_edit_write($user, $record, $fields, $write, $liveform)
         pg_tr_records_saved($record['page_id'], $user_id);
     }
 }
+
+/**
+ * The panel screen a record of a "Preview as" source is opened on, relative
+ * to the software directory; '' for no record or a kind with no screen.
+ * Pure.
+ *
+ * @param string $source  pg_preview_as_record_source(): form, product, event
+ * @param mixed  $id      the record's id
+ * @return string
+ */
+function pg_rec_edit_open_screen($source, $id)
+{
+    $screens = array(
+        'form'    => 'edit_submitted_form.php',
+        'product' => 'edit_product.php',
+        'event'   => 'edit_calendar_event.php',
+    );
+    $id = is_scalar($id) ? (int) $id : 0;
+
+    if (($id <= 0) || !is_string($source) || !isset($screens[$source])) {
+        return '';
+    }
+
+    return $screens[$source] . '?id=' . $id;
+}
+
+/**
+ * What a bound element's canvas row offers for the record its widget shows:
+ * a collection item is edited in place ("Edit this record's content")
+ * unless the person's change would wait for approval; that item, a product
+ * or an event is opened on its own screen ("Open the record"). Pure.
+ *
+ * @param string $source  pg_preview_as_record_source()
+ * @param int    $id      the record the widget shows, 0 none
+ * @param bool   $may     the person may edit it on its own screen
+ * @param bool   $waits   their change would wait for approval
+ * @return array status (ok, missing, denied); with ok source, id, screen, edit
+ */
+function pg_rec_edit_open_out($source, $id, $may, $waits)
+{
+    $screen = pg_rec_edit_open_screen($source, $id);
+
+    if ($screen === '') {
+        return array('status' => 'missing');
+    }
+
+    if (!$may) {
+        return array('status' => 'denied');
+    }
+
+    return array(
+        'status' => 'ok',
+        'source' => (string) $source,
+        'id' => (int) $id,
+        'screen' => $screen,
+        'edit' => ($source === 'form') && !$waits,
+    );
+}
+
+/**
+ * The record a single-record widget shows in the Preview (the one kept in
+ * "Preview as", else the default pick) and what its canvas row offers
+ * (pg_rec_edit_open_out()). Rights as on each record's own screen: the
+ * item's writer (pg_rec_edit_rights()), the store's right for a product,
+ * the event's calendars for an event.
+ *
+ * @param array $user       validate_user()
+ * @param mixed $cfg        the widget's settings
+ * @param int   $page_id    the page it is on, 0 unsaved
+ * @param int   $record_id  the record kept in "Preview as", 0 the default
+ * @return array
+ */
+function pg_rec_edit_open($user, $cfg, $page_id, $record_id)
+{
+    $cfg = is_array($cfg) ? $cfg : array();
+    $kind = pg_sw_widget_kind($cfg);
+    $source = pg_preview_as_record_source($kind);
+
+    if ($source === '') {
+        return array('status' => 'missing');
+    }
+
+    $setup = pg_preview_as_setup($kind, array('record' => (int) $record_id));
+    $target = pg_preview_as_record_target($setup, $cfg, (int) $page_id, $user);
+    $id = (int) $target['id'];
+    $may = false;
+    $waits = false;
+
+    if ($id > 0 && $source === 'form') {
+        $record = pg_rec_edit_record($id);
+
+        if (!$record) {
+            return array('status' => 'missing');
+        }
+
+        $rights = pg_rec_edit_rights($user, $record);
+        $may = $rights['may'];
+        $waits = $rights['waits'];
+    } elseif ($id > 0 && $source === 'product') {
+        $may = pg_preview_as_source_right('product', $user) !== 'none';
+    } elseif ($id > 0) {
+        $may = (pg_preview_as_source_right('event', $user) !== 'none') && validate_calendar_event_access($id);
+    }
+
+    return pg_rec_edit_open_out($source, $id, $may, $waits);
+}

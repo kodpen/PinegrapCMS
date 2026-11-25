@@ -34884,21 +34884,23 @@ const StyleDesigner = (function () {
 
     // ── Canvas Right-Click Context Menu ───────────────────────────────────────────
     function showCanvasCtxMenu(x, y, node) {
+        var targets = selectedNodes.length > 1 ? selectedNodes.slice() : [node];
+        var multi = targets.length > 1;
+        // A bound element's record (a change to the record, not the page).
+        var recItem = multi ? null : _sdRecEditItem(node, 'menu');
         // View mode: the menu still opens, because a menu that refuses to
-        // appear reads as a broken right-click. It just has one thing in it —
-        // the one thing this session may actually do. Ten greyed-out entries
-        // would say the same and take longer to read.
+        // appear reads as a broken right-click. It just has the things this
+        // session may actually do. Ten greyed-out entries would say the same
+        // and take longer to read.
         if (!_collab.mayEdit) {
             showCtxMenu(x, y, [{
                 icon: 'bi-chat-left-text',
                 label: _sdT('Add note'),
                 handler: function () { openNotesPopup(node); }
-            }]);
+            }, recItem].filter(Boolean));
             return;
         }
 
-        var targets = selectedNodes.length > 1 ? selectedNodes.slice() : [node];
-        var multi = targets.length > 1;
         // Not findParent(node, tree): a node inside a widget lives in the
         // shared component's own tree, so the page tree does not know it. Move
         // up / move down / select parent were all inert in there — which
@@ -34941,6 +34943,8 @@ const StyleDesigner = (function () {
                 selectedNodes = []; if (lc) selectedNode = lc;
                 render();
             }}, targets),
+            (recItem ? { sep: true } : null),
+            recItem,
             { sep: true },
             _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete') + (multi ? ' (' + targets.length + ')' : ''), danger: true, handler: function() {
                 saveState();
@@ -77697,8 +77701,9 @@ const StyleDesigner = (function () {
     var _sdPicMarkers = false;
     var _sdPicShared = 0;
     // marks: "Edit content here" is on, so the Preview's markup carries node
-    // marks (_sdRecEditMarkHtml()); emit: that markup is being written now.
-    var _sdRecEdit = { marks: false, emit: false };
+    // marks (_sdRecEditMarkHtml()); emit: that markup is being written now;
+    // want: the element the canvas row opened the Preview for ({node}).
+    var _sdRecEdit = { marks: false, emit: false, want: null };
 
     // `h`, a node's markup, with the markers of its links: its own link on
     // its first tag, the links of its text or custom HTML on their <a> tags
@@ -79189,6 +79194,7 @@ const StyleDesigner = (function () {
         // "Edit content here" is off each time the Preview opens.
         if (_sdPartLoaded('recordedit')) _sdPartApis.recordedit.reset();
         _sdRecEdit.marks = false;
+        _sdRecEdit.want = null;
         var raw = _sdPreviewDocHtml();
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
         if (!payload) { _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
@@ -84043,12 +84049,13 @@ const StyleDesigner = (function () {
     }
 
     // The Preview's document and the bar's last answer: the part loads the
-    // first time a form widget draws a record.
+    // first time a widget draws a record (a collection item gets the switch,
+    // a product or an event the link "Open the record").
     function _sdRecEditSync(doc, win, setups) {
         if (!_sdPartLoaded('recordedit')) {
             var item = Object.keys(setups || {}).some(function (sid) {
                 var s = setups[sid] || {};
-                return s.source === 'form' && parseInt(s.record, 10) > 0;
+                return !!s.source && parseInt(s.record, 10) > 0;
             });
             if (!item) return;
         }
@@ -84075,6 +84082,139 @@ const StyleDesigner = (function () {
     function _sdRecEditBar(line) {
         if (!_sdPartLoaded('previewas')) return;
         _sdPartCall('previewas', line === undefined ? 'redraw' : 'note', line === undefined ? [] : [line]).catch(_sdPartFailed);
+    }
+
+    // ── The canvas row of a bound element ──
+    // "Edit this record's content" in a bound element's menu and in the
+    // command palette: the record its widget shows in the Preview is edited
+    // in place there; a product, an event, or an item whose change would
+    // wait for approval, reads "Open the record" and opens its own screen
+    // in a new tab. The server's answer (preview_record_open,
+    // pg_rec_edit_open()) is asked once per widget and kept record; before
+    // it comes, the row follows the widget's kind; for whoever may not edit
+    // the record there is no row once it has come.
+    var _sdRecOpen = {};
+    var _SD_REC_KINDS = { form_item_view: 'form', catalog_item_view: 'product', calendar_event_view: 'event' };
+
+    // The record kind a shared component's row draws ('' none).
+    function _sdRecKindOf(sid) {
+        var c = sid ? _sharedCache[sid] : null;
+        if (!c || !c.system_region_config) return '';
+        var cfg = null;
+        try { cfg = JSON.parse(c.system_region_config); } catch (e) { cfg = null; }
+        return (cfg && _SD_REC_KINDS[cfg.regionType]) || '';
+    }
+
+    // The page's first record widget, as the page's own record values
+    // (__record__…) read it: {sid, kind} or null.
+    function _sdRecPageWidget() {
+        var found = null;
+        (function walk(n, depth) {
+            if (found || !n || depth > 50) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt((n.props || {}).sharedId, 10) || 0;
+                var kind = _sdRecKindOf(sid);
+                if (kind) { found = { sid: sid, kind: kind }; return; }
+                var c = sid ? _sharedCache[sid] : null;
+                if (c && !c.system_region_config) walk(c.tree, depth + 1);
+                return;
+            }
+            (n.children || []).forEach(function (ch) { walk(ch, depth + 1); });
+        })(tree, 0);
+        return found;
+    }
+
+    // The record widget whose value `node` shows: {sid, kind} or null. A
+    // text, a formatted text, a picture or its alternative text bound to a
+    // value; an address is not one.
+    function _sdRecWidgetOf(node) {
+        var b = node && node.props && node.props._bindings;
+        if (!b || typeof b !== 'object') return null;
+        var props = ['text', 'html', 'src', 'alt'].filter(function (k) { return typeof b[k] === 'string' && b[k] !== ''; });
+        if (!props.length) return null;
+        var owner = _findParentInShared(node);
+        var kind = owner ? _sdRecKindOf(owner.sid) : '';
+        if (kind) return { sid: owner.sid, kind: kind };
+        var page = props.some(function (k) { return b[k].toLowerCase().indexOf('__record__') === 0; });
+        return page ? _sdRecPageWidget() : null;
+    }
+
+    // The row for `node`: {label, edit, answer} or null; asks the server
+    // the first time.
+    function _sdRecEditRow(node) {
+        var w = _sdRecWidgetOf(node);
+        if (!w) return null;
+        var key = w.sid + ':' + (parseInt(_sdPvAsChoice().records[w.sid], 10) || 0);
+        var e = _sdRecOpen[key];
+        if (!e) e = _sdRecOpen[key] = { answer: null, ask: _sdRecOpenAsk(w.sid, _sdPvAsChoice().records[w.sid]) };
+        if (!e.answer && !e.asked) {
+            e.asked = true;
+            e.ask.then(function (a) { e.answer = a || { status: 'error' }; if (!a) e.asked = false; });
+        }
+        var a = e.answer;
+        if (a && a.status !== 'ok' && a.status !== 'error') return null;
+        var edit = (a && a.status === 'ok') ? !!a.edit : w.kind === 'form';
+        return { label: edit ? _sdT('Edit this record\'s content') : _sdT('Open the record'), edit: edit, entry: e, kind: w.kind };
+    }
+
+    // preview_record_open for widget `sid` showing `record` (0: the default
+    // pick): a promise of its `open` answer, null when the server failed.
+    function _sdRecOpenAsk(sid, record) {
+        var p = _pgActivePage(), c = _sharedCache[sid] || {};
+        return _pgApiPost('preview_record_open', {
+            page_id: (p && p.page_id) ? parseInt(p.page_id, 10) : 0,
+            widget: { id: parseInt(sid, 10), system_region_config: c.system_region_config || '' },
+            record: parseInt(record, 10) || 0
+        }).then(function (res) {
+            return (res && res.status === 'success' && res.open) ? res.open : null;
+        }, function () { return null; });
+    }
+
+    // The record's own screen.
+    function _sdRecScreenUrl(screen) {
+        return (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/' + screen;
+    }
+
+    // The row used: the Preview with the switch on and the element's frame
+    // focused, or the record's screen in a new tab. A tab opened before the
+    // answer comes is opened inside the click (the pop-up blocker) and led
+    // there, or closed with a line saying why.
+    function _sdRecEditGo(node) {
+        var row = _sdRecEditRow(node);
+        if (!row) return;
+        var a = row.entry.answer;
+        if (row.edit) {
+            openPreview();
+            _sdRecEdit.want = { node: String(node._id) };
+            return;
+        }
+        if (a && a.status === 'ok') { window.open(_sdRecScreenUrl(a.screen), '_blank', 'noopener'); return; }
+        var tab = window.open('', '_blank');
+        if (!tab) { alert(_sdT('A pop-up blocker may be on. Please allow pop-ups for this site.')); return; }
+        try { tab.opener = null; } catch (e) {}
+        row.entry.ask.then(function (ans) {
+            if (ans && ans.status === 'ok') { tab.location.href = _sdRecScreenUrl(ans.screen); return; }
+            tab.close();
+            sdToast(esc(_sdT('This record cannot be opened from here.')), 'warning');
+        });
+    }
+
+    // The element the canvas row was used on, for the part: read, or
+    // taken (`take`) once its frame is focused or the switch is not offered.
+    function _sdRecEditWant(take) {
+        var w = _sdRecEdit.want;
+        if (take) _sdRecEdit.want = null;
+        return w;
+    }
+
+    // The row as a menu item ('menu') or a command palette entry.
+    function _sdRecEditItem(node, where) {
+        var row = (node && node.type !== 'root') ? _sdRecEditRow(node) : null;
+        if (!row) return null;
+        var go = function () { _sdRecEditGo(node); };
+        // A menu row's label is markup (showCtxMenu()).
+        if (where === 'menu') return { icon: 'bi-pencil-square', label: esc(row.label) + (row.edit ? '' : '<i class="bi bi-box-arrow-up-right sd-tree-ctx-ext" aria-hidden="true"></i>'), handler: go };
+        return { id: 'act_record_edit', label: row.label, icon: 'bi-pencil-square', meta: _sdT('Preview'), action: go };
     }
 
     // ── Live preview ──
@@ -91667,6 +91807,8 @@ const StyleDesigner = (function () {
             { id: 'act_duplicate', label: _sdT('Duplicate'), icon: 'bi-copy', hint: 'Ctrl+D', action: function() { if (selectedNode) onDuplicate(selectedNode); } },
         ].concat(_sdCoMayOpen(selectedNode) ? [
             { id: 'act_open_field', label: _sdT('Can change per place'), icon: 'bi-arrows-angle-expand', hint: getNodeLabel(selectedNode), action: function() { if (_sdCoMayOpen(selectedNode)) _sdCoOpen(selectedNode, null); } }
+        ] : []).concat((selectedNode && selectedNodes.length <= 1) ? [
+            _sdRecEditItem(selectedNode, 'palette')
         ] : []).concat(_sdSimOffered(selectedNode) ? [
             { id: 'act_select_similar', label: _sdT('Select similar'), icon: 'bi-ui-checks-grid', meta: _sdMcKindName(selectedNode), hint: 'S', action: function() { if (_sdSimOffered(selectedNode)) _sdSimOpen(selectedNode); } }
         ] : []).concat(((_sdCoPlaceOf(selectedNode) || _sdCoLocked(selectedNode)) && _sdCoMayEditComp(_sdCoPlaceOf(selectedNode) ? _sdCoPlaceOf(selectedNode).sid : _sdNodeSharedSid(selectedNode))) ? [
@@ -97607,6 +97749,9 @@ const StyleDesigner = (function () {
             _sdRecEditMarks: _sdRecEditMarks,
             _sdRecEditRedraw: _sdRecEditRedraw,
             _sdRecEditSync: _sdRecEditSync,
+            _sdRecEditWant: _sdRecEditWant,
+            _sdRecOpenAsk: _sdRecOpenAsk,
+            _sdRecScreenUrl: _sdRecScreenUrl,
             _sdRetargetLabels: _sdRetargetLabels,
             _sdRevisionFetch: _sdRevisionFetch,
             _sdRevisionLoadRefusal: _sdRevisionLoadRefusal,

@@ -225,3 +225,39 @@ function test_record_edit_record_out_names_the_form()
 	pg_assert_same(7, $out['id']);
 	pg_assert_same('Blue', $out['title']);
 }
+
+// The canvas row "Open the record" opens each kind's own screen; a kind with no screen or no record opens nothing.
+function test_record_edit_open_screen()
+{
+	pg_assert_same('edit_submitted_form.php?id=7', pg_rec_edit_open_screen('form', 7));
+	pg_assert_same('edit_product.php?id=12', pg_rec_edit_open_screen('product', '12'));
+	pg_assert_same('edit_calendar_event.php?id=3', pg_rec_edit_open_screen('event', 3));
+	pg_assert_same('', pg_rec_edit_open_screen('page', 3), 'no screen for another kind');
+	pg_assert_same('', pg_rec_edit_open_screen('product', 0), 'no record');
+	pg_assert_same('', pg_rec_edit_open_screen('', 5));
+}
+
+// A collection item is edited in place unless the change would wait; a product or an event is only opened; no right, no row.
+function test_record_edit_open_out()
+{
+	pg_assert_same(
+		array('status' => 'ok', 'source' => 'form', 'id' => 7, 'screen' => 'edit_submitted_form.php?id=7', 'edit' => true),
+		pg_rec_edit_open_out('form', 7, true, false)
+	);
+	pg_assert_false(pg_rec_edit_open_out('form', 7, true, true)['edit'], 'a change that waits opens the record');
+	pg_assert_false(pg_rec_edit_open_out('product', 12, true, false)['edit'], 'a product is opened, never edited in place');
+	pg_assert_same('edit_calendar_event.php?id=3', pg_rec_edit_open_out('event', 3, true, false)['screen']);
+	pg_assert_same('denied', pg_rec_edit_open_out('product', 12, false, false)['status']);
+	pg_assert_same('missing', pg_rec_edit_open_out('product', 0, true, false)['status']);
+	pg_assert_same('missing', pg_rec_edit_open_out('page', 4, true, false)['status']);
+}
+
+// The canvas row's question is open to the content roles and keeps the page cache.
+function test_record_edit_open_sub_action_listed()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	pg_assert_true(strpos($src, "case 'preview_record_open':") !== false, 'the designer action answers it');
+	pg_assert_true((bool) preg_match("/\\\$content_ok\\[\\] = 'preview_record_open';/", $src), 'content roles may ask');
+	$subs = pg_page_cache_panel_sub_actions();
+	pg_assert_true(in_array('preview_record_open', $subs['designer']['clean'], true), 'it leaves the page cache alone');
+}
