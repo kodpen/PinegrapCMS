@@ -22,10 +22,20 @@
  *   caller's translated sample words for a section built here. opts.kept:
  *   section id => node, a section the operator already edited, given back as
  *   it is ("Build again").
+ * - opts.site: {name, year, path, pages: [{name, address}]}, what the site
+ *   knows: its name, the year, its site path ('/' when none) and the
+ *   Prototype view's pages in their order. With it the header is a navbar of
+ *   the name and the pages' links (at most six) and the footer the name, the
+ *   year and the same links; the caller uses them only when the design has
+ *   no header or footer of its own. opts.page: {title, description} of
+ *   "Page details", the intro's heading and paragraph. opts.names: kind =>
+ *   the caller's translated name, the heading of a section whose box has no
+ *   typed word.
  *
  * What a part takes from the sketch: the typed heading (the first heading of
  * the block), the number of columns of a row of equal boxes (features,
- * cards, gallery) and a picture beside the text (the split intro). A body
+ * cards, gallery; a column copied to reach the count gets its number in its
+ * heading) and a picture beside the text (the split intro). A body
  * section's padding is the design's section rhythm, var(--pg-var-space-section),
  * falling back to the starter's own 3rem, so a design without variables
  * draws as before. Every built root carries _sketchId, the section's id.
@@ -54,6 +64,9 @@
 
     // The most columns a built row takes; a wider sketch row is cut to it.
     var MAX_COLUMNS = 6;
+
+    // The most page links a built header or footer carries.
+    var MAX_LINKS = 6;
 
     // A body section's padding: the design's section rhythm, else the
     // starters' own py-5.
@@ -134,6 +147,14 @@
         return node.type === 'content' && node.props && node.props.contentType === 'heading';
     }
 
+    function isParagraph(node) {
+        return node.type === 'content' && node.props && node.props.contentType === 'paragraph';
+    }
+
+    function str(value) {
+        return (typeof value === 'string') ? value.trim() : '';
+    }
+
     // A row of two or more columns: the repeated items of a block.
     function isItemRow(node) {
         var kids = node.children || [];
@@ -162,7 +183,12 @@
             kids.length = want;
         }
         while (kids.length < want) {
-            kids.push(copyTree(kids[kids.length - 1], make));
+            var copy = copyTree(kids[kids.length - 1], make);
+            var heading = find(copy, isHeading);
+            if (heading && heading.props) {
+                heading.props.text = String(heading.props.text || '').replace(/\s+\d+$/, '') + ' ' + (kids.length + 1);
+            }
+            kids.push(copy);
         }
         if (WIDTHS[want]) {
             kids.forEach(function (col) {
@@ -224,6 +250,99 @@
         ]);
     }
 
+    // The page links of what the site knows: the pages' names to their
+    // addresses under the site path, at most MAX_LINKS, nameless or
+    // addressless pages left out.
+    function siteLinks(site) {
+        var path = str(site.path) || '/';
+        if (path.charAt(path.length - 1) !== '/') {
+            path += '/';
+        }
+        var out = [];
+        (Array.isArray(site.pages) ? site.pages : []).forEach(function (page) {
+            var name = page ? str(page.name) : '';
+            var address = page ? str(page.address).replace(/^\/+|\/+$/g, '') : '';
+            if (name && address && out.length < MAX_LINKS) {
+                out.push({text: name, href: path + address.split('/').map(encodeURIComponent).join('/')});
+            }
+        });
+        return out;
+    }
+
+    function siteHome(site) {
+        return str(site.path) || '/';
+    }
+
+    function linkNode(link, cssClass, make) {
+        return make('content', {contentType: 'link', text: escapeText(link.text), href: link.href, cssClass: cssClass});
+    }
+
+    // A new header: the site's name as the brand and its pages' links.
+    /* @pg-site-output */
+    function siteHeader(section, site, make) {
+        var collapse = 'pg-sk-nav-' + String(section.id === undefined ? '' : section.id).replace(/[^A-Za-z0-9_-]/g, '');
+        var items = siteLinks(site).map(function (link) {
+            return make('semantic', {tag: 'li', cssClass: 'nav-item', customName: link.text}, [linkNode(link, 'nav-link', make)]);
+        });
+        return make('semantic', {tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom', customName: 'Navbar'}, [
+            make('semantic', {tag: 'div', cssClass: 'container', customName: ''}, [
+                make('content', {contentType: 'link', text: escapeText(str(site.name)), href: siteHome(site), cssClass: 'navbar-brand fw-bold'}),
+                make('semantic', {tag: 'button', cssClass: 'navbar-toggler border-0', customName: '', _attrs: [
+                    {name: 'type', value: 'button'},
+                    {name: 'data-bs-toggle', value: 'collapse'},
+                    {name: 'data-bs-target', value: '#' + collapse},
+                    {name: 'aria-controls', value: collapse},
+                    {name: 'aria-expanded', value: 'false'},
+                    {name: 'aria-label', value: str(site.toggle)}
+                ]}, [
+                    make('semantic', {tag: 'span', cssClass: 'navbar-toggler-icon', customName: ''})
+                ]),
+                make('semantic', {tag: 'div', cssClass: 'collapse navbar-collapse', id: collapse, customName: ''}, [
+                    make('semantic', {tag: 'ul', cssClass: 'navbar-nav ms-auto mb-2 mb-lg-0', customName: ''}, items)
+                ])
+            ])
+        ]);
+    }
+
+    // A new footer: the site's name, the year and its pages' links.
+    /* @pg-site-output */
+    function siteFooter(site, make) {
+        var name = escapeText(str(site.name));
+        var year = count(site.year);
+        var items = siteLinks(site).map(function (link) {
+            return make('semantic', {tag: 'li', cssClass: 'nav-item', customName: link.text}, [linkNode(link, 'nav-link px-2 text-body-secondary', make)]);
+        });
+        return make('semantic', {tag: 'footer', cssClass: 'py-4 border-top bg-body', customName: 'Footer'}, [
+            make('container', {fluid: false, cssClass: ''}, [
+                make('semantic', {tag: 'div', cssClass: 'd-flex flex-column flex-md-row justify-content-between align-items-center gap-3', customName: ''}, [
+                    make('content', {contentType: 'heading', tag: 'span', text: name, cssClass: 'fw-bold mb-0'}),
+                    make('semantic', {tag: 'ul', cssClass: 'nav justify-content-center', customName: ''}, items),
+                    make('content', {contentType: 'paragraph', text: '&copy; ' + (year ? year + ' ' : '') + name, cssClass: 'small text-body-secondary mb-0'})
+                ])
+            ])
+        ]);
+    }
+
+    // The block's first paragraph takes `html`; a block without one gets
+    // it after its first heading.
+    function placeParagraph(root, html, make) {
+        var para = find(root, isParagraph);
+        if (para) {
+            para.props.text = html;
+            return;
+        }
+        var parent = find(root, function (node) {
+            return (node.children || []).some(isHeading);
+        });
+        if (parent) {
+            var at = 0;
+            while (!isHeading(parent.children[at])) {
+                at++;
+            }
+            parent.children.splice(at + 1, 0, make('content', {contentType: 'paragraph', text: html, cssClass: 'lead'}));
+        }
+    }
+
     // One part of the page from one section.
     function part(section, place, opts) {
         var kind = section.kind;
@@ -247,6 +366,13 @@
         }
 
         var root = null;
+        if (opts.site && (place === 'header' || place === 'footer')) {
+            item.block = null;
+            root = place === 'header' ? siteHeader(section, opts.site, opts.node) : siteFooter(opts.site, opts.node);
+            root.props._sketchId = section.id || '';
+            item.node = root;
+            return item;
+        }
         if (item.block) {
             root = opts.make(item.block);
             if (root) {
@@ -264,11 +390,27 @@
         if (COUNTED[kind] && count(section.columns) >= 2) {
             fitColumns(root, count(section.columns), opts.node);
         }
-        if (section.heading) {
+        var page = opts.page || {};
+        var title = str(section.heading);
+        var paragraph = '';
+        if (!title && kind === 'intro') {
+            title = str(page.title) || str(page.name);
+            paragraph = str(page.description);
+        }
+        if (!title && opts.names && typeof opts.names[kind] === 'string') {
+            title = str(opts.names[kind]);
+        }
+        if (title) {
             var heading = find(root, isHeading);
             if (heading) {
-                heading.props.text = escapeText(section.heading);
+                heading.props.text = escapeText(title);
             }
+            if (!section.heading && root.props && root.props.customName !== undefined) {
+                root.props.customName = title;
+            }
+        }
+        if (paragraph) {
+            placeParagraph(root, escapeText(paragraph), opts.node);
         }
         if (place === 'body') {
             addStyle(root, RHYTHM);
@@ -284,7 +426,10 @@
             make: typeof o.make === 'function' ? o.make : function () { return null; },
             node: typeof o.node === 'function' ? o.node : plainMaker(),
             words: o.words || {},
-            kept: o.kept || null
+            kept: o.kept || null,
+            site: (o.site && typeof o.site === 'object') ? o.site : null,
+            page: (o.page && typeof o.page === 'object') ? o.page : null,
+            names: (o.names && typeof o.names === 'object') ? o.names : null
         };
         var list = Array.isArray(sections) ? sections.filter(function (s) { return s && typeof s === 'object'; }) : [];
         var headerAt = -1;

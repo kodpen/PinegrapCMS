@@ -15,7 +15,7 @@ description: How many starter blocks (Blocks tab, core and family files) and pal
 
 ## What do they not read yet?
 - Spacing: section padding is Bootstrap's `py-*` classes in every block, and scale, base unit and section rhythm drive no theme token, so none of the 315 follows the type scale, base unit or section rhythm.
-- The sketch builder's body sections write `var(--pg-var-space_section, 3rem)`, but the stylesheet's token is `--pg-var-space-section` (underscores become hyphens), so the 3rem fallback always applies (`sketch-builder.md`).
+- The sketch builder's and the document page's body sections write `var(--pg-var-space-section, 3rem)`, the stylesheet's token (`pg_design_variable_token()` turns underscores into hyphens), so a changed section rhythm reaches them (#11699; before it they wrote `space_section` and the fallback always applied).
 
 ## How was it counted?
 - Every item built under Node with `_sdDragTree()` (the harness of `tests/designer_block_sketch_test.php`), its nodes' inline styles and colour props read, and its rules from `_SD_BLOCK_CSS_NEEDS` read with `var(…)` taken out. A count again uses the same reading.

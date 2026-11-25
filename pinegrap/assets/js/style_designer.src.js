@@ -81284,6 +81284,19 @@ const StyleDesigner = (function () {
                     alt: _sdT('Picture')
                 };
             },
+            // What the site knows for a new header and footer: its name, the
+            // site path and the Prototype view's sketch pages in their order,
+            // each by name to its address from "Page details".
+            site: function () {
+                return {
+                    name: _sdSiteWord('site_name') || '',
+                    path: (_sdProto.env && _sdProto.env.path) || '/',
+                    pages: _sdSketchData().pages.map(function (p) {
+                        var name = _sdSketchItem(p).name;
+                        return { name: name, address: (p.details && p.details.address) || _swSlug(name) };
+                    })
+                };
+            },
             pageOf: _sdSketchBuiltPage,
             treeOf: _pgTreeOf,
             // The design's header or footer when it has one, else a new
