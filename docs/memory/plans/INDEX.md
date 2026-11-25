@@ -46,7 +46,6 @@
 - designer-drawings-levels.md: Plan (owner 2026-11-24): the sheets drawn first for the ten levelled designer features, DD12 to DD21, by the design session or the architect; a screen step waits for its sheet's merge, never for a yes
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 - designer-first-tour.md: Plan (owner 2026-11-24, level 1): the designer's first tour of five stops, "How do I" pointers on the real controls, one-line first-use tips and an empty canvas that offers starts; steps FT1 to FT4
-- designer-my-library.md: Plan (owner 2026-11-24): a section saved to the site's own library, inserted as a copy in any design, exported and imported as a file; kept as files; steps ML1 to ML5
 - designer-options-census-steps-2.md: Plan designer-options-census, DO10 to DO20: states, transition, transform, background layers, clip shape and mask, the small effects, new entrances, the easing curve, page transitions
 - designer-options-census-steps-3.md: Plan designer-options-census, DO21 to DO27 and sheets DD22 to DD26: back to top, scroll progress, scrollspy, scrolled navbar, a collection with its pages, favourites, find and replace, Markdown
 - designer-options-census-steps.md: Plan designer-options-census, DO2 to DO9: a value per screen size, grid columns, rows, spans and areas, the small layout rows (inset presets, layer order, scroll snap, aspect ratio, object fit)
