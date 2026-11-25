@@ -164,11 +164,6 @@
         "tabs": 0,
         "field": 4
     },
-    "assets/js/workspace_board_channel.js": {
-        "button": 2,
-        "tabs": 0,
-        "field": 1
-    },
     "assets/js/workspace_customer.js": {
         "button": 0,
         "tabs": 0,
@@ -178,11 +173,6 @@
         "button": 1,
         "tabs": 0,
         "field": 6
-    },
-    "assets/js/workspace_flow.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 61
     },
     "assets/js/workspace_guest.js": {
         "button": 3,

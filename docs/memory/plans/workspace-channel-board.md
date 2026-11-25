@@ -24,10 +24,10 @@ priority: 6
 - Flows keep their gate and their right: without them there is no "Automations" button.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- BM1 (M) One tab: the tab list, the Segmented control, the List view moved in unchanged, the shared toolbar, the remembered view, the old address.
+- BM1 (M) One tab: the tab list, the Segmented control, the List view moved in unchanged, the shared toolbar, the remembered view, the old address. Done #11555.
 - BM2 (S) after BM1: tasks only. "By kind" and what `ws_channel_board()` gathers for it go; a remembered "By kind" falls back to "By status". The Summary tab shows the pinned message; if it does not, this step adds it.
 - BM3 (M) after BM2: the look. The four figures (a pure function, in the board's answer), a figure as a filter, the columns, the cards, the drop place.
-- BM4 (M) beside BM1 to BM3, server only: the board's rules as a pure function (this channel's flows that start on a task event, and the ready rules not made yet), making a rule from its template, publishing and pausing it, the gate.
+- BM4 (M, done #11567) beside BM1 to BM3, server only: the board's rules as a pure function (this channel's flows that start on a task event, and the ready rules not made yet), making a rule from its template, publishing and pausing it, the gate.
 - BM5 (M) after BM3 and BM4: the button, the drawer, a column's rule line, the last runs.
 - BM6 (S) Close-out: memory in `workspace/` (the tab, the board, the rules), `workspace/workspace-channel-summary-board-memory.md` corrected, this plan's files deleted, the `[NEW]` line named.
 

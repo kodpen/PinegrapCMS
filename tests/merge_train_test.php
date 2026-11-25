@@ -304,20 +304,21 @@ function test_merge_train_order_total_limit()
 {
 	$now = strtotime('2026-11-07T22:00:00Z');
 	$prs = array(
-		array('number' => 2201, 'product_lines' => 660, 'docs_only' => false, 'eligible_since' => $now - 5000),
-		array('number' => 2202, 'product_lines' => 522, 'docs_only' => false, 'eligible_since' => $now - 4000),
-		array('number' => 2203, 'product_lines' => 499, 'docs_only' => false, 'eligible_since' => $now - 3000),
-		array('number' => 2204, 'product_lines' => 781, 'docs_only' => false, 'eligible_since' => $now - 2000),
-		array('number' => 2205, 'product_lines' => 246, 'docs_only' => false, 'eligible_since' => $now - 1000),
+		array('number' => 2201, 'product_lines' => 900, 'docs_only' => false, 'eligible_since' => $now - 5000),
+		array('number' => 2202, 'product_lines' => 850, 'docs_only' => false, 'eligible_since' => $now - 4000),
+		array('number' => 2203, 'product_lines' => 800, 'docs_only' => false, 'eligible_since' => $now - 3000),
+		array('number' => 2204, 'product_lines' => 950, 'docs_only' => false, 'eligible_since' => $now - 2000),
+		array('number' => 2205, 'product_lines' => 400, 'docs_only' => false, 'eligible_since' => $now - 1000),
 	);
 
-	pg_assert_same(2000, MERGE_TRAIN_TOTAL_LIMIT);
+	pg_assert_same(3000, MERGE_TRAIN_TOTAL_LIMIT);
 	pg_assert_same(array('alone' => array(), 'train' => array(2201, 2202, 2203, 2205), 'later' => array(2204)), merge_train_order($prs, $now));
 
 	// The next train starts with the one left behind.
 	$prs = array($prs[3], array('number' => 2206, 'product_lines' => 990, 'docs_only' => false, 'eligible_since' => $now - 500),
-		array('number' => 2207, 'product_lines' => 300, 'docs_only' => false, 'eligible_since' => $now - 100));
-	pg_assert_same(array('alone' => array(), 'train' => array(2204, 2206), 'later' => array(2207)), merge_train_order($prs, $now));
+		array('number' => 2207, 'product_lines' => 990, 'docs_only' => false, 'eligible_since' => $now - 300),
+		array('number' => 2208, 'product_lines' => 300, 'docs_only' => false, 'eligible_since' => $now - 100));
+	pg_assert_same(array('alone' => array(), 'train' => array(2204, 2206, 2207), 'later' => array(2208)), merge_train_order($prs, $now));
 }
 
 // With only oversized PRs waiting, the smallest of them is a train alone.

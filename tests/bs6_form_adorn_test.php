@@ -211,32 +211,13 @@ function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
 function test_bs6_form_adorn_workspace_toolbar_searches()
 {
 	$root = dirname(__DIR__) . '/pinegrap/assets/js/';
-	// The Decision Timeline's search is the screen bar's barSearch()
-	// (tests/workspace_task_filters_test.php) since its one-line bar.
-	$cases = array(
-		'workspace_board_channel.js' => array("t('cb_search')"),
-	);
+	// The Decision Timeline's search and the channel board's are the screen
+	// bar's barSearch() (tests/workspace_task_filters_test.php,
+	// tests/workspace_channel_board_tab_test.php) since their one-line bars.
+	$source = (string) file_get_contents($root . 'workspace_board_channel.js');
 
-	foreach ($cases as $file => $placeholders) {
-		$source = (string) file_get_contents($root . $file);
-
-		// No toolbar search is an input-group around a lone input any more.
-		pg_assert_false(strpos($source, "'input-group input-group-sm rounded-pill pg-toolbar-search'") !== false, $file . ': a toolbar search is still an input-group');
-
-		foreach ($placeholders as $placeholder) {
-			$at = strpos($source, $placeholder);
-			pg_assert_true($at !== false, $file . ': ' . $placeholder);
-			$before = substr($source, max(0, (int) $at - 700), 700);
-			$after = substr($source, (int) $at, 500);
-
-			pg_assert_contains("'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search'", $before, $file . ': ' . $placeholder);
-			pg_assert_contains("'form-ghost'", $before, $file . ': ' . $placeholder);
-			pg_assert_contains("'form-adorn-text'", $before, $file . ': ' . $placeholder);
-			pg_assert_contains("setAttribute('aria-hidden', 'true')", $before, $file . ': ' . $placeholder);
-			pg_assert_contains("'bi-search'", $before, $file . ': ' . $placeholder);
-			pg_assert_contains("setAttribute('aria-label'", $after, $file . ': ' . $placeholder);
-		}
-	}
+	pg_assert_false(strpos($source, "'input-group input-group-sm rounded-pill pg-toolbar-search'") !== false, 'the board\'s search is no input-group');
+	pg_assert_contains("k.bar.search(t('cb_search')", $source, 'the board\'s search is the bar\'s search field');
 }
 
 function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()

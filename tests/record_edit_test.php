@@ -198,3 +198,17 @@ function test_record_edit_panel_actions()
 		pg_assert_same($write, $actions[$name]['write']);
 	}
 }
+
+// The read names each field's RSS role, so the Preview finds the bound post title and picture (PGRecordEditSpots).
+function test_record_edit_fields_out()
+{
+	$out = pg_rec_edit_fields_out(array(
+		5 => array('id' => '5', 'name' => 'cover', 'label' => 'Cover', 'control' => 'picture', 'required' => '1', 'rss_field' => 'media', 'value' => '12', 'file_name' => 'a.jpg'),
+		6 => array('id' => '6', 'name' => 'note', 'label' => 'Note', 'control' => 'text', 'required' => '0', 'rss_field' => null, 'value' => 'x', 'file_name' => ''),
+	));
+
+	pg_assert_same(array(
+		array('id' => 5, 'name' => 'cover', 'label' => 'Cover', 'control' => 'picture', 'required' => true, 'rss' => 'media', 'value' => '12', 'file_name' => 'a.jpg'),
+		array('id' => 6, 'name' => 'note', 'label' => 'Note', 'control' => 'text', 'required' => false, 'rss' => '', 'value' => 'x', 'file_name' => ''),
+	), $out);
+}

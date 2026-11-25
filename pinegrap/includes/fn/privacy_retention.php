@@ -266,7 +266,7 @@ function pg_privacy_rules_catalogue()
 {
     return array(
         'contacts' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'contacts', 'entries' => null),
-        'forms'    => array('unit' => 'years', 'default' => 2, 'min' => 1, 'max' => 20, 'table' => 'forms', 'entries' => array('record_revisions', 'files', 'form_data', 'form_signatures', 'forms')),
+        'forms'    => array('unit' => 'years', 'default' => 2, 'min' => 1, 'max' => 20, 'table' => 'forms', 'entries' => array('record_revisions', 'files', 'form_data', 'form_signatures', 'form_old_address', 'forms')),
         // The cart row stays: cart recovery counts open carts from orders.
         'carts'    => array('unit' => 'days', 'default' => 90, 'min' => 31, 'max' => 3650, 'table' => 'orders', 'entries' => array('ship_tos', 'orders')),
         'orders'   => array('unit' => 'years', 'default' => null, 'min' => 1, 'max' => 30, 'table' => 'orders', 'entries' => array('ship_tos', 'order_returns', 'shipment_labels', 'orders')),

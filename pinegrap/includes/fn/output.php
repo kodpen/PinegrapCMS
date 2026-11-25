@@ -8182,7 +8182,12 @@ function pg_js_bundles()
         // "Only what I changed" of the Options panel: its pure list and
         // reset loop (window.PGOptionsReview), then the part that draws it.
         'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
+        // The Options panel's states: the state rule model
+        // (window.PGOptionStates), then the part that draws the panel under
+        // a state and writes it.
+        'assets/js/style_designer_states.min.js' => array('assets/js/pg_option_states.js', 'assets/js/style_designer_states.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
+        'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
         // Border and corner, and a length per screen size: their pure
@@ -8193,6 +8198,13 @@ function pg_js_bundles()
         // The canvas guides: their pure geometry (window.PGCanvasGuides),
         // then the part that draws Measure over the canvas.
         'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
+        // The spacing bands over the canvas: their geometry
+        // (window.PGCanvasBands), the first-use tips' state (window.PGDesignerTour), then the part that
+        // draws them. What the Spacing box writes (window.PGSpacingBox) comes
+        // with the part 'spacing', which the core loads first.
+        'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
+        'assets/js/style_designer_phone.min.js'    => array('assets/js/style_designer_phone.js'),
+        'assets/js/style_designer_mylibrary.min.js' => array('assets/js/style_designer_mylibrary.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8201,6 +8213,12 @@ function pg_js_bundles()
         'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // The Publish check: its pure finding shape (window.PgPublishFindings)
+        // and Content check (window.PgPublishContent), then the part that
+        // checks the Publish sheet's pages and lists their findings.
+        'assets/js/style_designer_publishcheck.min.js' => array('assets/js/pg_publish_findings.js', 'assets/js/pg_publish_content.js', 'assets/js/style_designer_publishcheck.js'),
+        // My library's Import window and the Export download.
+        'assets/js/style_designer_libraryfile.min.js' => array('assets/js/style_designer_libraryfile.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8290,6 +8308,9 @@ function pg_designer_parts()
         // head (also on Size and display and Text), drawn when the section
         // is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The spacing bands and their handles on the selected element over
+        // the canvas, drawn on the first selection that can show them.
+        'bands' => 'assets/js/style_designer_bands.min.js',
         // The Pages window: every page by group, searched and filtered,
         // opened, renamed and moved into a group.
         'pages' => 'assets/js/style_designer_pages.min.js',
@@ -8305,6 +8326,9 @@ function pg_designer_parts()
         // The variables' five start questions (also the New design
         // window's), asked by the Variables tab's "Ask me again".
         'questions' => 'assets/js/style_designer_questions.min.js',
+        // My library's file: the Import window (the file checked, the
+        // report, a refusal) and the Export download, designers only.
+        'libraryfile' => 'assets/js/style_designer_libraryfile.min.js',
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
@@ -8314,6 +8338,21 @@ function pg_designer_parts()
         // The Focus control: a picture's focus point dragged on the whole
         // picture, with the cut on each screen, drawn when first shown.
         'focus' => 'assets/js/style_designer_focus.min.js',
+        // The "Preview on a phone" window: the QR code of the person's
+        // phone link, its time left, "Copy link" and "End now".
+        'phone' => 'assets/js/style_designer_phone.min.js',
+        // "Read the picture" of a sketch page: its reference picture read
+        // by the browser's built-in model into proposed boxes.
+        'sketchread' => 'assets/js/style_designer_sketchread.min.js',
+        // My library: "Save to my library" and the library's group of the
+        // palette, its hover card and the copy it adds.
+        'mylibrary' => 'assets/js/style_designer_mylibrary.min.js',
+        // The Publish check: each ticked page's result in the Publish sheet,
+        // its findings in five groups, a finding's element selected.
+        'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
+        // The Style tab's states (Hover, Focus, Pressed): the panel under a
+        // state, its rule in User Styles and the state on the canvas.
+        'states' => 'assets/js/style_designer_states.min.js',
     );
 }
 

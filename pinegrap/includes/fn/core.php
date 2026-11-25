@@ -3660,8 +3660,11 @@ function update_submitted_form_address_name($submitted_form_id)
     // We do this in case pretty URLs were just enabled and there happen
     // to be multiple submitted forms with the same title (so the submitted forms
     // are still accessible).
+    // The record as it was: its form page, and the name it had and whether
+    // it was on the site, which pg_record_old_address_saved() keeps.
+    $record = db_item("SELECT page_id, address_name, complete FROM forms WHERE id = '" . escape($submitted_form_id) . "'");
+    $custom_form_page_id = is_array($record) ? $record['page_id'] : '';
     if ($address_name != '') {
-        $custom_form_page_id = db_value("SELECT page_id FROM forms WHERE id = '" . escape($submitted_form_id) . "'");
         $address_name = get_unique_submitted_form_address_name(array(
             'address_name' => $address_name,
             'custom_form_page_id' => $custom_form_page_id,
@@ -3669,6 +3672,10 @@ function update_submitted_form_address_name($submitted_form_id)
         ));
     }
     db("UPDATE forms SET address_name = '" . escape($address_name) . "' WHERE id = '" . escape($submitted_form_id) . "'");
+    // An earlier name keeps answering at its address (form_old_address).
+    if (is_array($record) && function_exists('pg_record_old_address_saved')) {
+        pg_record_old_address_saved($submitted_form_id, $custom_form_page_id, (string)$record['address_name'], $address_name, (int)$record['complete'] === 1);
+    }
     return $address_name;
 }
 // Create a function that will take content and prepare a name that will appear in a URL.

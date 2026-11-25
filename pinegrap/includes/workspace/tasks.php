@@ -1409,6 +1409,29 @@ function ws_task_app_label($app)
 }
 
 /**
+ * The tasks a person is on, of a list of briefs: the board's and the List
+ * view's person choice (0 everybody, -1 the tasks nobody is on).
+ *
+ * @param array[] $tasks briefs with their assignees
+ * @param int     $person a user id, 0 or -1
+ * @return array[]
+ */
+function ws_tasks_for_person($tasks, $person)
+{
+    $person = (int) $person;
+
+    if ($person === 0) {
+        return array_values($tasks);
+    }
+
+    return array_values(array_filter($tasks, function ($task) use ($person) {
+        $ids = array_map('intval', array_column((array) ($task['assignees'] ?? array()), 'id'));
+
+        return ($person < 0) ? empty($ids) : in_array($person, $ids, true);
+    }));
+}
+
+/**
  * Tasks for a list, filtered, with only what the reader may see.
  *
  * @param array $viewer

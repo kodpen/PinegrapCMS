@@ -23,4 +23,4 @@ module: security_scan_section
 - Quarantine moves the file to `data/quarantine/<sha1(place)>.quarantine` (an extension nothing runs; the folder gets `Require all denied` and is skipped by the walk) and marks every open quarantinable finding of that place quarantined. Restore moves it back only when nothing is at the place again, and the place's quarantined findings become open.
 - Ignore first shows a note field ("Why is it ignored?", 255 characters, `pg_security_note_clean()`); Return in it sends the note, not the settings form. Each action writes a Site Log line.
 
-Related: `security-scan-findings.md`, `security-scan-file-scan.md`, `plans/security-scan.md`.
+Related: `security-scan-api.md` (the API read), `security-scan-findings.md`, `security-scan-file-scan.md`, `plans/security-scan.md`.

@@ -911,3 +911,271 @@ function pg_library_framework_classes()
     }
     return $set;
 }
+
+// ── What the editor shows (pure) ───────────────────────────────────────
+
+// The number of elements a tree holds, the root included.
+function pg_library_node_count($tree, $depth = 0)
+{
+    if (!is_array($tree) || $depth > 80) return 0;
+    $n = 1;
+    if (isset($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $child) $n += pg_library_node_count($child, $depth + 1);
+    }
+    return $n;
+}
+
+/**
+ * What an item's root is, for its row and its card: section, row, card or
+ * group (any other element that holds others).
+ */
+function pg_library_root_kind($node)
+{
+    $type = isset($node['type']) ? (string)$node['type'] : '';
+    $tag = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    $classes = _pg_library_node_classes($node);
+    if ($type === 'row' || in_array('row', $classes, true)) return 'row';
+    if (in_array('card', $classes, true)) return 'card';
+    $sections = array('section', 'header', 'footer', 'main', 'article', 'aside', 'nav');
+    if (in_array($type, $sections, true) || in_array($tag, $sections, true)) return 'section';
+    return 'group';
+}
+
+// Whether an item's elements use a class of the framework (Bootstrap).
+function pg_library_uses_framework($item, $framework)
+{
+    $uses = false;
+    _pg_library_each_tree($item, function (&$n) use ($framework, &$uses) {
+        foreach (_pg_library_node_classes($n) as $c) {
+            if (isset($framework[$c])) $uses = true;
+        }
+    });
+    return $uses;
+}
+
+/**
+ * One item as the Blocks list draws it: its row, its card's drawing (the
+ * tree), the variables it reads (the editor tells which the design has),
+ * and how many widgets and components an insert makes.
+ */
+function pg_library_card($item, $framework)
+{
+    return array(
+        'id'        => isset($item['id']) ? (int)$item['id'] : 0,
+        'name'      => (string)$item['name'],
+        'group'     => (string)$item['group'],
+        'kind'      => pg_library_root_kind($item['tree']),
+        'count'     => pg_library_node_count($item['tree']),
+        'tree'      => $item['tree'],
+        'variables' => array_keys((array)$item['variables']),
+        'rows'      => count((array)$item['widgets']) + count((array)$item['shared']),
+        'bootstrap' => pg_library_uses_framework($item, $framework),
+    );
+}
+
+/**
+ * The tree of an insert with the rows just made: a placement of a widget
+ * or component of the item (props.libraryWidget / libraryShared) points at
+ * its new row. $made: key => array('id', 'name'). A key not made is left
+ * as it is.
+ */
+function pg_library_tree_place_rows($tree, $made)
+{
+    _pg_library_walk($tree, function (&$n) use ($made) {
+        if (!isset($n['type']) || $n['type'] !== 'shared_ref' || !isset($n['props']) || !is_array($n['props'])) return;
+        foreach (array('libraryWidget', 'libraryShared') as $k) {
+            $key = isset($n['props'][$k]) ? (string)$n['props'][$k] : '';
+            if ($key === '' || !isset($made[$key])) continue;
+            unset($n['props'][$k]);
+            $n['props']['sharedId'] = (int)$made[$key]['id'];
+            $n['props']['sharedName'] = (string)$made[$key]['name'];
+        }
+    });
+    return $tree;
+}
+
+// ── What the editor asks (database) ────────────────────────────────────
+
+/**
+ * The rows a subtree places, and the rows those place: sid => array('name',
+ * 'tree', 'config' (null for a plain shared component)).
+ */
+function pg_library_site_rows($node)
+{
+    $rows = array();
+    $queue = array($node);
+    for ($guard = 0; $queue && $guard < 200; $guard++) {
+        $want = array();
+        foreach ($queue as $tree) {
+            _pg_library_walk($tree, function (&$n) use (&$want, $rows) {
+                if (!isset($n['type']) || $n['type'] !== 'shared_ref') return;
+                $sid = isset($n['props']['sharedId']) ? (int)$n['props']['sharedId'] : 0;
+                if ($sid > 0 && !isset($rows[$sid])) $want[$sid] = true;
+            });
+        }
+        $queue = array();
+        if (!$want) break;
+        $found = db_items("SELECT id, name, tree_json, system_region_config FROM shared_components
+            WHERE id IN (" . implode(',', array_map('intval', array_keys($want))) . ")");
+        foreach ((array)$found as $row) {
+            $tree = json_decode((string)$row['tree_json'], true);
+            $config = $row['system_region_config'] !== null && $row['system_region_config'] !== ''
+                ? json_decode((string)$row['system_region_config'], true) : null;
+            $rows[(int)$row['id']] = array('name' => (string)$row['name'],
+                'tree' => is_array($tree) ? $tree : array('type' => 'div', 'children' => array()),
+                'config' => is_array($config) ? $config : null);
+            if (is_array($tree)) $queue[] = $tree;
+        }
+    }
+    return $rows;
+}
+
+// The site's records an item may point at, id => name, by kind.
+function pg_library_site_records()
+{
+    $out = array('pages' => array(), 'groups' => array(), 'folders' => array());
+    foreach ((array)db_items("SELECT page_id, page_name FROM page") as $r) $out['pages'][(int)$r['page_id']] = (string)$r['page_name'];
+    foreach ((array)db_items("SELECT id, name FROM contact_groups") as $r) $out['groups'][(int)$r['id']] = (string)$r['name'];
+    foreach ((array)db_items("SELECT folder_id, folder_name FROM folder") as $r) $out['folders'][(int)$r['folder_id']] = (string)$r['folder_name'];
+    return $out;
+}
+
+// sid => name of the site's shared components an item's entries name.
+function pg_library_site_shared($item)
+{
+    $ids = array();
+    foreach ((array)$item['shared'] as $entry) {
+        if (!empty($entry['sid'])) $ids[] = (int)$entry['sid'];
+    }
+    $out = array();
+    if (!$ids) return $out;
+    foreach ((array)db_items("SELECT id, name FROM shared_components WHERE id IN (" . implode(',', $ids) . ")") as $r) {
+        $out[(int)$r['id']] = (string)$r['name'];
+    }
+    return $out;
+}
+
+// The design as the editor hands it in: its User Styles, and the values of
+// the variables it was asked about that the canvas defines.
+function _pg_library_request_design($request)
+{
+    $css = isset($request['css']) && is_string($request['css']) ? $request['css'] : '';
+    $vars = pg_library_css_var_defs($css);
+    if (isset($request['vars']) && is_array($request['vars'])) {
+        foreach ($request['vars'] as $name => $value) {
+            if (is_string($name) && preg_match('/^--[_a-zA-Z0-9-]+$/', $name) && pg_library_var_value_ok(trim((string)$value))) {
+                if (!isset($vars[$name])) $vars[$name] = trim((string)$value);
+            }
+        }
+    }
+    return array('css' => $css, 'vars' => $vars, 'framework' => pg_library_framework_classes());
+}
+
+/**
+ * The visual designer's library calls (sub actions of the designer panel
+ * action). Answers the response array.
+ *
+ *   library_list     the items as the Blocks list draws them ('use')
+ *   library_save     a subtree saved as a new item ('save'): tree, name,
+ *                    group, css, vars
+ *   library_prepare  an item made ready for this design ('use'): id, css,
+ *                    vars; with make=1 the widgets and components it holds
+ *                    are made as rows and the tree points at them
+ */
+function pg_library_editor($sub, $request, $user)
+{
+    $deny = array('status' => 'error', 'message' => lang('Permission denied.'));
+    if ($sub === 'library_list') {
+        if (!pg_library_may('use', $user)) return $deny;
+        $framework = pg_library_framework_classes();
+        $items = array();
+        foreach (pg_library_list() as $item) $items[] = pg_library_card($item, $framework);
+        return array('status' => 'success', 'items' => $items, 'may_save' => pg_library_may('save', $user));
+    }
+
+    if ($sub === 'library_save') {
+        if (!pg_library_may('save', $user)) return $deny;
+        $tree = isset($request['tree']) ? $request['tree'] : null;
+        if (is_string($tree)) $tree = json_decode($tree, true);
+        if (!is_array($tree) || !isset($tree['type'])) return array('status' => 'error', 'message' => lang('The library item could not be saved.'));
+        $name = pg_library_clean_label(isset($request['name']) ? $request['name'] : '');
+        if ($name === '') return array('status' => 'error', 'message' => lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
+        $site = pg_library_site_records();
+        $site['rows'] = pg_library_site_rows($tree);
+        $item = pg_library_item_from_subtree($tree, array('name' => $name, 'group' => isset($request['group']) ? $request['group'] : ''),
+            _pg_library_request_design($request), $site);
+        // A new item goes to the end of the library's order.
+        $last = 0;
+        foreach (pg_library_list() as $other) $last = max($last, (int)$other['order']);
+        $item['order'] = $last + 1;
+        $saved = pg_library_save($item, (int)$user['id']);
+        if (!is_array($saved)) return array('status' => 'error', 'message' => $saved);
+        $item['id'] = $saved['id'];
+        return array('status' => 'success', 'item' => pg_library_card($item, pg_library_framework_classes()));
+    }
+
+    if ($sub === 'library_prepare') {
+        if (!pg_library_may('use', $user)) return $deny;
+        $item = pg_library_get(isset($request['id']) ? $request['id'] : 0);
+        if (!$item) return array('status' => 'error', 'message' => lang('The library item was not found.'));
+        $site = pg_library_site_records();
+        $site['shared'] = pg_library_site_shared($item);
+        $out = pg_library_item_into_design($item, _pg_library_request_design($request), $site);
+        $made = array();
+        if (!empty($request['make']) && ($out['widgets'] || $out['shared'])) {
+            // Rows of the design are a designer's to make.
+            if (!pg_library_may('save', $user)) {
+                return array('status' => 'error', 'message' => lang('This item holds widgets or shared components: a designer adds it.'));
+            }
+            $made = _pg_library_make_rows($out, (int)$user['id']);
+            $out['tree'] = pg_library_tree_place_rows($out['tree'], $made);
+        }
+        $unbound = array();
+        foreach ($out['widgets'] as $key => $w) {
+            if (!empty($w['cleared'])) $unbound[] = $w['name'];
+        }
+        return array('status' => 'success', 'tree' => $out['tree'], 'css' => $out['css'], 'renamed' => $out['renamed'],
+            'cleared' => (int)$out['cleared'], 'unbound' => $unbound, 'rows' => count($out['widgets']) + count($out['shared']),
+            'made' => $made);
+    }
+
+    return array('status' => 'error', 'message' => lang('Invalid action.'));
+}
+
+// Makes the widgets and shared components an insert needs as new rows:
+// key => array('id', 'name'). A component placed inside another is made
+// first, so the outer one's tree points at it.
+function _pg_library_make_rows($out, $user_id)
+{
+    $made = array();
+    $now = time();
+    $pending = array();
+    foreach ($out['shared'] as $key => $entry) $pending[$key] = array('entry' => $entry, 'config' => null);
+    foreach ($out['widgets'] as $key => $entry) {
+        $config = is_array($entry['config']) ? $entry['config'] : array();
+        if ($entry['kind'] !== '' && !isset($config['regionType'])) $config['regionType'] = $entry['kind'];
+        $pending[$key] = array('entry' => $entry, 'config' => $config);
+    }
+    for ($round = 0; $pending && $round < 20; $round++) {
+        foreach ($pending as $key => $p) {
+            // Wait while its tree places a row not made yet.
+            $waits = false;
+            _pg_library_walk($p['entry']['tree'], function (&$n) use ($made, $pending, $key, &$waits) {
+                foreach (array('libraryWidget', 'libraryShared') as $k) {
+                    $inner = isset($n['props'][$k]) ? (string)$n['props'][$k] : '';
+                    if ($inner !== '' && $inner !== $key && !isset($made[$inner]) && isset($pending[$inner])) $waits = true;
+                }
+            });
+            if ($waits && $round < 19) continue;
+            $tree = pg_library_tree_place_rows(is_array($p['entry']['tree']) ? $p['entry']['tree'] : array('type' => 'div', 'children' => array()), $made);
+            $name = _sc_unique_name($p['entry']['name'] !== '' ? $p['entry']['name'] : lang('Shared Component'));
+            $cfg_sql = $p['config'] !== null ? "'" . e(json_encode($p['config'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "'" : 'NULL';
+            db("INSERT INTO shared_components (name, description, tree_json, system_region_config, category, created_by, created_at, updated_at)
+                VALUES ('" . e($name) . "', '', '" . e(pg_designer_tree_encode($tree)) . "', $cfg_sql, '', '" . (int)$user_id . "', '$now', '$now')");
+            $sid = (int)mysqli_insert_id(db::$con);
+            if ($sid > 0) $made[$key] = array('id' => $sid, 'name' => $name);
+            unset($pending[$key]);
+        }
+    }
+    return $made;
+}

@@ -511,7 +511,7 @@
 - look-translations-screen.md: The Translations screen (translations.php) in look A (S6c): card titles, row Save and review buttons, glossary icon buttons, dialog buttons, status pills, the style block's tokens; what stayed
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - look-workspace-fields-screens.md: WL9b: the Workspace PHP screens' fields and the command palette's search box on the look's field parts; what stayed as the Site Settings row grid needs it
-- look-workspace-fields-scripts.md: WL9: the small Workspace scripts' form-control and form-label lines on pg-input and pg-field-label, the CSS that followed, the 16px tip fields, what stayed
+- look-workspace-fields-scripts.md: WL9 and WL9c: the Workspace scripts' form-control and form-label lines (workspace_flow.js's too) on pg-input and pg-field-label, the CSS that followed, the 16px tip fields, what stayed
 - look-workspace-fields.md: WL8: formRow() is the form parts' field(), the form-control and form-label lines of assets/js/workspace.js on pg-input and pg-field-label, input groups, the CSS that followed, what is left
 - look-workspace-main-script.md: WL2: the buttons of assets/js/workspace.js (channel head, panes, drawers, dialogs, the writing box's Send and Send later, My Tasks, settings parts) on look A's ranks; the old buttons left and why
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording

@@ -135,10 +135,7 @@ if (isset($_GET['page']) && $_GET['page'])
 			if (function_exists('pg_sw_route_record_address')) {
 				$pg_record_address = pg_sw_route_record_address($page_id, pg_sw_request_segment($page_name));
 				if ($pg_record_address !== '') {
-					$pg_record_query = $_GET;
-					unset($pg_record_query['page']);
-					header('Location: ' . URL_SCHEME . HOSTNAME . $pg_record_address . ($pg_record_query ? '?' . http_build_query($pg_record_query) : ''), true, 301);
-					exit();
+					pg_record_address_redirect($pg_record_address);
 				}
 			}
 			$page_name = $page_name_before_slash;
@@ -166,7 +163,8 @@ if (isset($_GET['page']) && $_GET['page'])
 				// Get info about form list view.
 				$form_list_view = db_item("SELECT
                             form_list_view_pages.custom_form_page_id,
-                            form_item_view_page.page_name AS form_item_view_page_name
+                            form_item_view_page.page_name AS form_item_view_page_name,
+                            form_item_view_page.page_folder AS form_item_view_page_folder
                         FROM form_list_view_pages
                         LEFT JOIN page AS form_item_view_page ON form_list_view_pages.form_item_view_page_id = form_item_view_page.page_id
                         WHERE
@@ -188,6 +186,15 @@ if (isset($_GET['page']) && $_GET['page'])
                             WHERE
                                 (page_id = '" . $form_list_view['custom_form_page_id'] . "')
                                 AND (address_name = '" . e($address_name) . "')");
+					// A name the record had before (form_old_address) is sent
+					// on to the address of today, when the visitor may open
+					// the page that shows it: never drawn at the old name.
+					if (((string) $_GET['r'] === '') && function_exists('pg_record_old_address_record')) {
+						$pg_old_record = pg_record_old_address_record($form_list_view['custom_form_page_id'], $address_name);
+						if ($pg_old_record && ((string) $pg_old_record['address_name'] !== '') && check_view_access($form_list_view['form_item_view_page_folder'], true)) {
+							pg_record_address_redirect(pg_sw_record_url($page_name_before_slash, $pg_old_record['reference_code'], $pg_old_record['address_name'], true, defined('LANGUAGE_PATH') ? LANGUAGE_PATH : null));
+						}
+					}
 				}
 				// Otherwise the address name is blank, so remove the trailing slash on the end
 				// of the form list view page name so that the form list view will load.

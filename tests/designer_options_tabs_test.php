@@ -290,7 +290,7 @@ JS
 	}
 
 	$source = designer_options_tabs_test_source();
-	pg_assert_contains('_sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };', $source, 'the single element\'s panel reads the context');
+	pg_assert_contains('_sdSectBuild = { cards: {}, lazy: (_allBodies || _sdOptState) ? null : {}, ctx: _sdOptCtx(selectedNode) };', $source, 'the single element\'s panel reads the context');
 	pg_assert_contains('o.open = _sdSectOpenRead(o.stored, _sdOptOpenByDefault(key, b.ctx));', $source, 'a keyed Style or Advanced section takes its rule');
 	pg_assert_contains("if (b.ctx && _sdOptTabOf(key) !== 'content') {", $source, 'Content keeps its own rules');
 }

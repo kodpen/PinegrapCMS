@@ -226,6 +226,8 @@ function pg_privacy_inventory()
             'purpose' => 'What people typed into forms', 'ground' => 'legitimate_interest', 'retention' => 'form_submissions'),
         'form_signatures' => array('categories' => array('signature'), 'subjects' => array('customer', 'applicant'),
             'purpose' => 'Signatures on forms', 'ground' => 'contract', 'retention' => 'form_submissions'),
+        'form_old_address' => array('categories' => array('identity'), 'subjects' => array('customer', 'visitor', 'applicant'),
+            'purpose' => 'Earlier addresses of records, sent on to the record', 'ground' => 'legitimate_interest', 'retention' => 'form_submissions'),
         'application_entries' => array('categories' => array('identity'), 'subjects' => array('applicant'),
             'purpose' => 'Applications and their decisions', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
         'application_reviews' => array('categories' => array('messages'), 'subjects' => array('applicant', 'staff'),

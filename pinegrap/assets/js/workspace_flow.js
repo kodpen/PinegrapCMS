@@ -1603,7 +1603,7 @@
         K.clear(ui.flows);
 
         var tools = el('div', 'wsf-flows-tools');
-        var search = el('input', 'form-control form-control-sm wsf-flows-search');
+        var search = el('input', 'pg-input pg-input-sm wsf-flows-search');
 
         search.type = 'search';
         search.value = state.query;
@@ -2071,7 +2071,7 @@
         var id = 'wsf-f' + (++uid);
         var label = el('label', 'wsf-start-title', t('fl_ai_sketch'));
         var help = el('span', 'wsf-start-help', t('fl_ai_sketch_help'));
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', 'pg-input pg-input-sm');
         var go = K.lookButton('pg-button pg-button-fill pg-button-sm align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
         var status = el('div', 'wsf-start-help');
 
@@ -2246,8 +2246,8 @@
         var submit = K.button('pg-button pg-button-fill pg-button-sm', '');
         var error = el('div', 'alert theme-danger small py-2 mb-0 d-none');
         var categories = Object.keys(FL.template_categories || {}).filter(function (key) { return key !== 'saved'; });
-        var name = el('input', 'form-control form-control-sm');
-        var line = el('input', 'form-control form-control-sm');
+        var name = el('input', 'pg-input pg-input-sm');
+        var line = el('input', 'pg-input pg-input-sm');
         var group = K.select(categories.map(function (key) { return [key, FL.template_categories[key]]; }), categories[0] || '');
 
         modal.id = 'wsf-tpl-dialog';
@@ -2629,7 +2629,7 @@
             control = channelPick({ channel_id: answers.channel }, t('fl_post_pick'));
             control.addEventListener('change', function () { answers.channel = parseInt(control.value, 10) || 0; });
         } else if (type === 'text') {
-            control = el('textarea', 'form-control form-control-sm');
+            control = el('textarea', 'pg-input pg-input-sm');
             control.rows = 3;
             control.maxLength = 4000;
             control.value = value || '';
@@ -2685,7 +2685,7 @@
             control = K.select([1, 2, 3, 4, 5, 6, 7].map(function (item) { return [item, t(DAYS[item])]; }), day);
             control.addEventListener('change', function () { answers.day = parseInt(control.value, 10) || 0; });
         } else {
-            control = el('input', 'form-control form-control-sm');
+            control = el('input', 'pg-input pg-input-sm');
             control.type = (type === 'url') ? 'url' : 'text';
             control.value = value || '';
 
@@ -3267,7 +3267,7 @@
         backToList();
 
         if (state.edit) {
-            ui.name = el('input', 'form-control form-control-sm wsf-name');
+            ui.name = el('input', 'pg-input pg-input-sm wsf-name');
             ui.name.type = 'text';
             ui.name.maxLength = 160;
             ui.name.value = flow.name;
@@ -4803,7 +4803,7 @@
             return;
         }
 
-        value.className = into.className = 'form-control';
+        value.className = into.className = 'pg-input';
         value.addEventListener('change', fill);
         body.appendChild(field(t('fl_cond_value_ref'), value));
         body.appendChild(field(t('fl_thread_field'), into));
@@ -5900,7 +5900,7 @@
         var id = 'wsf-f' + (++uid);
         var tick = control.tagName === 'INPUT' && control.type === 'checkbox';
         var parts = helpSplit(help);
-        var caption = el('label', tick ? 'small' : 'form-label small fw-semibold mb-1', label);
+        var caption = el('label', tick ? 'small' : 'pg-field-label', label);
         var head = caption;
         var words = wrap;
         var asked = null;
@@ -5939,7 +5939,7 @@
         }
 
         if (parts.line) {
-            var note = el('div', 'form-text' + (parts.more ? ' text-truncate' : ''), parts.line);
+            var note = el('div', 'pg-field-help' + (parts.more ? ' text-truncate' : ''), parts.line);
 
             note.id = id + '-help';
             described.push(note.id);
@@ -5958,7 +5958,7 @@
     }
 
     function textInput(value, max, onInput, multi) {
-        var input = el(multi ? 'textarea' : 'input', 'form-control form-control-sm');
+        var input = el(multi ? 'textarea' : 'input', 'pg-input pg-input-sm');
 
         if (multi) {
             input.rows = 3;
@@ -5980,7 +5980,7 @@
     // is in the page. The box writes the input with a change event, never an
     // input event; a native input fires a change too.
     function dateInput(type, value, onValue) {
-        var input = el('input', 'form-control form-control-sm');
+        var input = el('input', 'pg-input pg-input-sm');
 
         K.dateField(input, type);
         input.value = value || '';
@@ -6649,7 +6649,7 @@
     // chip's token (per thread: each place has its own).
     function askFallback(chip, names, done) {
         var body = el('div');
-        var input = el('input', 'form-control');
+        var input = el('input', 'pg-input');
         var token = chip.getAttribute('data-token');
 
         input.type = 'text';
@@ -6768,7 +6768,7 @@
     // types an id. Pasted or saved tokens become chips too. `bare`: the
     // field takes no "When empty, write" text (fieldFallback()).
     function valueInput(node, value, max, onInput, multi, bare) {
-        var input = el('div', 'form-control form-control-sm wsf-values' + (multi ? ' wsf-values-multi' : ''));
+        var input = el('div', 'pg-input pg-input-sm wsf-values' + (multi ? ' wsf-values-multi' : ''));
         var names = Object.assign(valueNames(node), mailWordNames(node));
         var words = valueWords(names);
         var last = value || '';
@@ -9136,9 +9136,9 @@
         var fallback = el('div', 'wsf-people mt-3');
         var showFallback = function () {
             if (!fallback.firstChild) {
-                fallback.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_assign_fallback')));
+                fallback.appendChild(el('div', 'pg-field-label', t('fl_assign_fallback')));
                 peopleList(node, fallback, 'fallback', 20, t('fl_assign_fallback'));
-                fallback.appendChild(el('div', 'form-text', t('fl_assign_fallback_help')));
+                fallback.appendChild(el('div', 'pg-field-help', t('fl_assign_fallback_help')));
             }
         };
 
@@ -9178,7 +9178,7 @@
         whoField.appendChild(fallback);
         box.appendChild(whoField);
 
-        var due = el('input', 'form-control form-control-sm wsf-number');
+        var due = el('input', 'pg-input pg-input-sm wsf-number');
 
         due.type = 'number';
         due.min = '0';
@@ -9193,7 +9193,7 @@
 
         // Hours the box waits for its task before it leaves on timeout
         // (ws_flow_timeout_hours()); the task itself stays open.
-        var timeout = el('input', 'form-control form-control-sm wsf-number');
+        var timeout = el('input', 'pg-input pg-input-sm wsf-number');
 
         timeout.type = 'number';
         timeout.min = '1';
@@ -9326,7 +9326,7 @@
         // A box that sends a page (a converted campaign profile, the API)
         // says so: its text is not sent.
         if ((parseInt(config.page_id, 10) || 0) > 0) {
-            box.appendChild(el('div', 'form-text mb-5', t('fl_email_page', config.page_id)));
+            box.appendChild(el('div', 'pg-field-help mb-5', t('fl_email_page', config.page_id)));
         }
 
         emailSenderFields(box, node, group);
@@ -9464,7 +9464,7 @@
         if (chosen && chosen.vars.length) {
             var vars = el('div', 'wsf-wa-vars');
 
-            vars.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_wa_vars')));
+            vars.appendChild(el('div', 'pg-field-label', t('fl_wa_vars')));
             chosen.vars.forEach(function (variable) {
                 var key = 'v' + variable.n;
                 var row = valueField(node, variable.label, config[key], 1000, function (value) {
@@ -9488,7 +9488,7 @@
                 row.setAttribute('data-wa-part', variable.part);
                 vars.appendChild(row);
             });
-            vars.appendChild(el('div', 'form-text mb-5', t('fl_wa_vars_help')));
+            vars.appendChild(el('div', 'pg-field-help mb-5', t('fl_wa_vars_help')));
             box.appendChild(vars);
         }
 
@@ -9550,7 +9550,7 @@
         });
         box.appendChild(field(t('fl_task_channel'), pick));
 
-        var due = el('input', 'form-control form-control-sm wsf-number');
+        var due = el('input', 'pg-input pg-input-sm wsf-number');
 
         due.type = 'number';
         due.min = '0';
@@ -9652,7 +9652,7 @@
         draw();
 
         function numberInput(value, min, max, set) {
-            var input = el('input', 'form-control form-control-sm wsf-number');
+            var input = el('input', 'pg-input pg-input-sm wsf-number');
 
             input.type = 'number';
             input.min = String(min);
@@ -9914,7 +9914,7 @@
         var pick = K.select(options, config.server_id || 0);
         var toolWrap = el('div');
         var askWrap = el('div');
-        var about = el('div', 'form-text');
+        var about = el('div', 'pg-field-help');
         var note = el('div', 'small fg-danger mb-5');
         var argNote = el('div', 'small fg-danger mb-5');
         var tell = function () {
@@ -10130,7 +10130,7 @@
         }
 
         var pick = K.select(options, config.target_id || 0);
-        var delay = el('input', 'form-control form-control-sm wsf-number');
+        var delay = el('input', 'pg-input pg-input-sm wsf-number');
 
         pick.addEventListener('change', function () {
             config.target_id = parseInt(pick.value, 10) || 0;
@@ -10192,7 +10192,7 @@
         var config = node.config;
         var until = config.mode === 'until';
         var mode = K.select([['for', t('fl_delay_mode_for')], ['until', t('fl_delay_mode_until')]], until ? 'until' : 'for');
-        var amount = el('input', 'form-control form-control-sm wsf-number');
+        var amount = el('input', 'pg-input pg-input-sm wsf-number');
         var unit = K.select([
             ['minutes', t('fl_delay_unit_minutes')],
             ['hours', t('fl_delay_unit_hours')],
@@ -10320,7 +10320,7 @@
             list.appendChild(line);
         });
 
-        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_constants_rows')));
+        box.appendChild(el('div', 'pg-field-label', t('fl_constants_rows')));
         box.appendChild(list);
 
         var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_constants_add'), 'bi-plus-lg');
@@ -10448,8 +10448,8 @@
         var config = node.config;
         var max = retry.max || 7;
         var afterMax = retry.after_max || 10080;
-        var times = el('input', 'form-control form-control-sm wsf-number');
-        var after = el('input', 'form-control form-control-sm wsf-number');
+        var times = el('input', 'pg-input pg-input-sm wsf-number');
+        var after = el('input', 'pg-input pg-input-sm wsf-number');
 
         times.type = 'number';
         times.min = '0';
@@ -10602,7 +10602,7 @@
         box.appendChild(field(t('fl_approval_answer'), answer, t('fl_approval_answer_help')));
 
         if ((config.answer || 'none') !== 'none') {
-            var question = el('input', 'form-control form-control-sm');
+            var question = el('input', 'pg-input pg-input-sm');
 
             question.type = 'text';
             question.maxLength = 120;
@@ -10620,7 +10620,7 @@
     // and that of an MCP box whose tool asks first.
     function closesField(box, node) {
         var config = node.config;
-        var closes = el('input', 'form-control form-control-sm wsf-number');
+        var closes = el('input', 'pg-input pg-input-sm wsf-number');
 
         closes.type = 'number';
         closes.min = '1';
@@ -10658,7 +10658,7 @@
         box.appendChild(field(t('fl_when_repeat'), repeat));
 
         if (['none', 'workdays'].indexOf(config.repeat || 'none') === -1) {
-            var every = el('input', 'form-control form-control-sm wsf-number');
+            var every = el('input', 'pg-input pg-input-sm wsf-number');
 
             every.type = 'number';
             every.min = '1';
@@ -10844,7 +10844,7 @@
     // A box on customers who stopped ordering: the days since their last
     // order (1 to WS_FLOW_NO_ORDER_DAYS_MAX).
     function noOrderFields(box, node) {
-        var days = el('input', 'form-control form-control-sm wsf-number');
+        var days = el('input', 'pg-input pg-input-sm wsf-number');
 
         days.type = 'number';
         days.min = '1';
@@ -10919,7 +10919,7 @@
             list.appendChild(line);
         });
 
-        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_web_fields')));
+        box.appendChild(el('div', 'pg-field-label', t('fl_web_fields')));
         box.appendChild(list);
 
         var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-5', t('fl_web_field_add'), 'bi-plus-lg');
@@ -10941,7 +10941,7 @@
     // the old one, after a confirmation.
     function webAddressField(box) {
         var flow = state.flow;
-        var url = el('input', 'form-control form-control-sm font-monospace');
+        var url = el('input', 'pg-input pg-input-sm font-monospace');
         var renew = K.lookButton('pg-button pg-button-quiet pg-button-sm mt-2', t('fl_web_address_make'), 'bi-arrow-repeat');
         var show = function (address) {
             url.value = address || '';
@@ -11240,7 +11240,7 @@
         }
 
         kind.setAttribute('data-refocus', 'rows-link-' + node.id + '-' + id);
-        wrap.appendChild(el('legend', 'form-label small fw-semibold mb-1', column.name));
+        wrap.appendChild(el('legend', 'pg-field-label', column.name));
         wrap.appendChild(field(t('fl_rows_link_kind'), kind));
         wrap.appendChild(valueField(node, t('fl_rows_link_id'), link.id, 200, function (text) {
             link.id = text;
@@ -11443,7 +11443,7 @@
             refreshNode(node);
         };
 
-        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_rows_where')));
+        box.appendChild(el('div', 'pg-field-label', t('fl_rows_where')));
 
         if (list.length > 1) {
             var join = K.select([['all', t('fl_rows_where_all')], ['any', t('fl_rows_where_any')]], (config.match === 'any') ? 'any' : 'all');
@@ -11560,7 +11560,7 @@
         var sort = K.select([[0, t('fl_rows_sort_table')]].concat(columns.map(function (one) { return [one.id, one.name]; }))
             .concat((config.sort && !columns.some(function (one) { return one.id === config.sort; })) ? [[config.sort, '#' + config.sort]] : []), config.sort || 0);
         var dir = K.select([['asc', t('fl_rows_dir_asc')], ['desc', t('fl_rows_dir_desc')]], (config.dir === 'desc') ? 'desc' : 'asc');
-        var limit = el('input', 'form-control form-control-sm wsf-number');
+        var limit = el('input', 'pg-input pg-input-sm wsf-number');
 
         sort.setAttribute('data-refocus', 'rows-sort-' + node.id);
         sort.addEventListener('change', function () {
@@ -11932,7 +11932,7 @@
                 list.appendChild(line);
             });
 
-            box.appendChild(el('div', 'form-label small fw-semibold', t('fl_ai_classes')));
+            box.appendChild(el('div', 'pg-field-label', t('fl_ai_classes')));
             box.appendChild(list);
 
             var add = K.lookButton('pg-button pg-button-quiet pg-button-sm mb-2', t('fl_ai_class_add'), 'bi-plus-lg');
@@ -11949,7 +11949,7 @@
             box.appendChild(el('p', 'small fg-secondary', t('fl_ai_classes_help')));
         }
 
-        var hours = el('input', 'form-control form-control-sm wsf-number');
+        var hours = el('input', 'pg-input pg-input-sm wsf-number');
 
         hours.type = 'number';
         hours.min = '1';
@@ -12146,7 +12146,7 @@
             refreshNode(node);
         }, true, t('fl_agent_prompt_help')));
 
-        var hours = el('input', 'form-control form-control-sm wsf-number');
+        var hours = el('input', 'pg-input pg-input-sm wsf-number');
 
         hours.type = 'number';
         hours.min = '1';
@@ -12215,8 +12215,8 @@
         var columns = rowWriteColumns(table);
         var group = el('fieldset', 'wsf-rows-cells');
 
-        group.appendChild(el('legend', 'form-label small fw-semibold mb-1', t('fl_rows_cells')));
-        group.appendChild(el('div', 'form-text mt-0 mb-2', columns.length ? t((node.kind === 'row_set') ? 'fl_rows_set_help' : 'fl_rows_add_help') : t('fl_rows_no_columns')));
+        group.appendChild(el('legend', 'pg-field-label', t('fl_rows_cells')));
+        group.appendChild(el('div', 'pg-field-help mt-0 mb-2', columns.length ? t((node.kind === 'row_set') ? 'fl_rows_set_help' : 'fl_rows_add_help') : t('fl_rows_no_columns')));
         columns.forEach(function (column) {
             group.appendChild(cellField(node, column, cells[column.id]));
         });
@@ -12430,7 +12430,7 @@
         }
 
         if (info && (info.scope === 'threshold')) {
-            var most = el('input', 'form-control form-control-sm wsf-number');
+            var most = el('input', 'pg-input pg-input-sm wsf-number');
 
             most.type = 'number';
             most.min = '0';
@@ -12461,7 +12461,7 @@
 
         var kind = K.select(options, rule.record || '');
         var record = lists.records[rule.record] || null;
-        var id = el('input', 'form-control form-control-sm wsf-number');
+        var id = el('input', 'pg-input pg-input-sm wsf-number');
 
         kind.addEventListener('change', function () {
             rule.record = kind.value;
@@ -12693,7 +12693,7 @@
                 refreshNode(node);
             }, false, t('fl_change_id_help')));
         } else {
-            box.appendChild(el('p', 'form-text mt-0', t('fl_change_hidden')));
+            box.appendChild(el('p', 'pg-field-help mt-0', t('fl_change_hidden')));
         }
 
         if (config.action !== 'delete') {
@@ -12712,7 +12712,7 @@
         }
 
         channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
-        box.appendChild(el('p', 'form-text mt-0', t('fl_change_ask_help')));
+        box.appendChild(el('p', 'pg-field-help mt-0', t('fl_change_ask_help')));
         closesField(box, node);
     }
 
@@ -12784,12 +12784,12 @@
             input = K.select([['1', t('fl_change_yes')], ['0', t('fl_change_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
             input.addEventListener('change', function () { onChange(input.value === '1'); });
         } else if (meta.kind === 'answers') {
-            input = el('input', 'form-control form-control-sm');
+            input = el('input', 'pg-input pg-input-sm');
             input.type = 'text';
             input.value = t('fl_change_answers');
             input.disabled = true;
         } else if (meta.kind === 'money') {
-            input = el('input', 'form-control form-control-sm');
+            input = el('input', 'pg-input pg-input-sm');
             input.type = 'number';
             input.step = '0.01';
             input.min = '0';
@@ -12821,7 +12821,7 @@
         list.setAttribute('aria-label', label || t('fl_assign_people'));
 
         if (team.length > 8) {
-            var filter = el('input', 'form-control form-control-sm mb-1');
+            var filter = el('input', 'pg-input pg-input-sm mb-1');
 
             filter.type = 'search';
             filter.placeholder = t('fl_people_filter');
@@ -12908,7 +12908,7 @@
                 after.appendChild(nameText(nodeById(edge.from)));
             });
 
-            box.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_after')));
+            box.appendChild(el('div', 'pg-field-label', t('fl_after')));
             box.appendChild(after);
         }
 
@@ -12916,7 +12916,7 @@
             return box;
         }
 
-        box.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_then')));
+        box.appendChild(el('div', 'pg-field-label', t('fl_then')));
 
         var list = el('ul', 'list-unstyled mb-3');
 
@@ -12991,7 +12991,7 @@
         var from = nodeById(edge.from);
         var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, outcomeText(from, on)]; }), edge.on);
 
-        pick.className = 'form-control form-control-sm wsf-link-on';
+        pick.className = 'pg-input pg-input-sm wsf-link-on';
         pick.setAttribute('aria-label', onLabel(from));
         pick.setAttribute('data-refocus', 'on-' + edge.from + '-' + edge.to);
         pick.disabled = !state.edit;
@@ -14065,7 +14065,7 @@
 
         var pick = K.select(targets.map(function (target) { return [target.id, t(kindOf(target).name) + ': ' + nameOf(target)]; }), targets[0].id);
 
-        pick.className = 'form-control';
+        pick.className = 'pg-input';
         pick.setAttribute('aria-label', t('fl_connect_title', nameOf(node)));
 
         var answer = K.ask(t('fl_connect_title', nameOf(node)), t('fl_connect_add'), false, pick).then(function (yes) {
@@ -14568,9 +14568,9 @@
 
         // What it gives now, when that is less than it was given.
         if (share.effective_level === '') {
-            level.appendChild(el('span', 'form-text d-block m-0', t('fl_share_gone')));
+            level.appendChild(el('span', 'pg-field-help d-block m-0', t('fl_share_gone')));
         } else if ((share.target_type === 'user') && (share.effective_level !== share.level)) {
-            level.appendChild(el('span', 'form-text d-block m-0', t('fl_share_as_run')));
+            level.appendChild(el('span', 'pg-field-help d-block m-0', t('fl_share_as_run')));
         }
 
         row.appendChild(level);
@@ -15566,7 +15566,7 @@
         wrap.appendChild(facts);
 
         if (step && step.result) {
-            wrap.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_run_result')));
+            wrap.appendChild(el('div', 'pg-field-label', t('fl_run_result')));
             wrap.appendChild(el('p', 'small wsf-run-result', step.result));
         }
 
@@ -15912,7 +15912,7 @@
 
         var wrap = el('div', 'wsf-run-reads mt-3');
 
-        wrap.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_run_values')));
+        wrap.appendChild(el('div', 'pg-field-label', t('fl_run_values')));
 
         fieldTexts(node).forEach(function (item) {
             var reads = threads.filter(function (thread) { return thread.field === item.key; });
@@ -16185,9 +16185,9 @@
         var picked = { id: 0 };
         var wrap = el('div', 'wsf-run-customer');
         var id = 'wsf-run-customer-' + Date.now();
-        var label = el('label', 'form-label small fw-semibold mb-1', t('fl_run_customer'));
-        var input = el('input', 'form-control form-control-sm');
-        var help = el('div', 'form-text', (options && options.help) || t('fl_run_customer_help'));
+        var label = el('label', 'pg-field-label', t('fl_run_customer'));
+        var input = el('input', 'pg-input pg-input-sm');
+        var help = el('div', 'pg-field-help', (options && options.help) || t('fl_run_customer_help'));
         var list = el('div', 'list-group mt-1 d-none');
         var chip = el('div', 'd-flex align-items-center gap-2 mt-1 d-none');
         var serial = 0;

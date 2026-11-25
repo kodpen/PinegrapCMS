@@ -709,6 +709,62 @@
 
     cfg.imageReady = imageReady;
 
+    // A picture read by the browser's model alone, for a screen that asks
+    // something of a picture other than a draft (the designer's "Read the
+    // picture"): nothing goes to the server. options: image (its address),
+    // text (the whole prompt), schema (the answer's JSON shape), signal (an
+    // AbortSignal). Answers the parsed JSON. Only after imageReady()
+    // resolved true; the model is created in the call itself, as a
+    // download needs the person's gesture.
+    function readImage(options) {
+        var plan = imagePlanNow;
+        var signal = options.signal || null;
+
+        if (!plan || !plan.mode || !modelSupported()) {
+            return Promise.reject(new Error('unavailable'));
+        }
+
+        var model = createModel(plan, (plan.mode === 'bridge') ? 'en' : siteLanguage, true, function () {}, signal);
+        var picture = loadImage(options.image);
+
+        // A failure of either is reported where both are awaited.
+        model.then(null, function () {});
+        picture.then(null, function () {});
+
+        return Promise.all([model, picture]).then(function (made) {
+            var session = made[0];
+
+            if (signal && signal.aborted) {
+                release(session);
+                throw new Error('stopped');
+            }
+
+            if (signal) {
+                signal.addEventListener('abort', function () {
+                    release(session);
+                });
+            }
+
+            var prompt = [{ role: 'user', content: [{ type: 'text', value: String(options.text || '') }, { type: 'image', value: made[1] }] }];
+            var asked = new Promise(function (resolve) {
+                resolve(session.prompt(prompt, { responseConstraint: options.schema, omitResponseConstraintInput: true }));
+            });
+
+            return withTimeout(asked, 120000).then(function (raw) {
+                release(session);
+                return JSON.parse(String(raw || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
+            }, function (error) {
+                release(session);
+                throw error;
+            });
+        }, function (error) {
+            model.then(release, function () {});
+            throw error;
+        });
+    }
+
+    cfg.readImage = readImage;
+
     function percentOf(event) {
         var share = (event.total > 0) ? (event.loaded / event.total) : (event.loaded || 0);
 

@@ -229,6 +229,10 @@ function pg_panel_designer($request, $action)
         // The "Clicks" layer's figures: the sub action asks the Visitors
         // right itself.
         $content_ok[] = 'page_clicks';
+        // My library: the content roles see the items and add a copy; the
+        // calls check pg_library_may() themselves.
+        $content_ok[] = 'library_list';
+        $content_ok[] = 'library_prepare';
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -252,6 +256,12 @@ function pg_panel_designer($request, $action)
 
             return pg_design_ai_panel($sub, $request, $user);
         }, array('status' => 'error', 'code' => 'server_error', 'message' => pg_error_json_action_sentence())));
+    }
+
+    // My library (includes/fn/designer_library.php): the Blocks list's
+    // group, "Save to my library" and a copy added to a page.
+    if (in_array($sub, array('library_list', 'library_save', 'library_prepare'), true)) {
+        respond(pg_library_editor($sub, $request, $user));
     }
 
     switch ($sub) {
@@ -1298,6 +1308,41 @@ function pg_panel_designer($request, $action)
                 + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
             break;
 
+        // ── MY LIBRARY'S FILE ────────────────────────────────────────
+        // includes/fn/designer_library_io.php. Export answers with the text
+        // of one file holding the chosen items (every item when none is
+        // chosen), named after the site; the editor offers it as a
+        // download. Import takes the text of such a file, read in the
+        // browser since api.php reads JSON only, refuses it whole with the
+        // reason when one item fails the checks, and answers with one row
+        // per item kept. Designer roles only (pg_library_may()); the list
+        // above does not open them to a content-level operator.
+        case 'library_export':
+        case 'library_import':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_library_io.php');
+            if (!pg_library_may($sub === 'library_export' ? 'export' : 'import', $user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if ($sub === 'library_export') {
+                $lib_items = pg_library_export_items(isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array());
+                respond(array('status' => 'success', 'count' => count($lib_items),
+                              'name' => pg_library_export_file_name(defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : ''),
+                              'text' => $lib_items ? pg_library_export_text($lib_items, date('Y-m-d')) : ''));
+            }
+            $lib_file = isset($request['file']) ? basename((string)$request['file']) : '';
+            $lib_read = pg_library_import_read(isset($request['text']) ? (string)$request['text'] : '');
+            if (isset($lib_read['error'])) {
+                respond(array('status' => 'error', 'code' => $lib_read['error'],
+                              'message' => pg_library_import_message($lib_read['error'], $lib_file, $lib_read['item'], $lib_read['detail'])));
+            }
+            $lib_kept = pg_library_import_save($lib_read['items'], $user['id']);
+            if (!is_array($lib_kept)) {
+                respond(array('status' => 'error', 'message' => $lib_kept));
+            }
+            log_activity(lang(array('string' => '{var:1} item(s) were imported into My library', 'vars' => count($lib_kept['rows']))), $_SESSION['sessionusername']);
+            respond(array('status' => 'success', 'rows' => $lib_kept['rows']));
+            break;
+
         // ── PROTOTYPE SHARE LINKS ────────────────────────────────────
         // The Share prototype dialog (includes/fn/prototype_links.php): a
         // design's links, a new one, a link's address shown again, and
@@ -1329,6 +1374,10 @@ function pg_panel_designer($request, $action)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/qr.php');
+            // The answer holds the link's address and its code: never kept
+            // by a browser or a proxy.
+            header('Cache-Control: no-store, private');
             respond(pg_proto_phone_panel($sub, $request, $user));
             break;
 

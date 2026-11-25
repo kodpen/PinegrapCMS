@@ -271,6 +271,74 @@ function pg_security_section_detail($kind, $detail)
     return '';
 }
 
+/**
+ * Open findings by severity, worst first, from grouped rows (severity,
+ * total). A severity the model does not know is left out.
+ *
+ * @param array $rows
+ * @return array<int, int>
+ */
+function pg_security_open_count_map(array $rows)
+{
+    $counts = array(PG_SECURITY_SEVERITY_CRITICAL => 0, PG_SECURITY_SEVERITY_HIGH => 0, PG_SECURITY_SEVERITY_MEDIUM => 0, PG_SECURITY_SEVERITY_LOW => 0);
+
+    foreach ($rows as $row) {
+        if (isset($counts[(int) $row['severity']])) {
+            $counts[(int) $row['severity']] += (int) $row['total'];
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * The dashboard Firewall card's severity pills: one per severity with open
+ * findings, worst first.
+ *
+ * @param array<int, int> $counts From pg_security_open_count_map()
+ * @return array label, count (formatted), tone class
+ */
+function pg_security_card_pills(array $counts)
+{
+    $pills = array();
+
+    foreach ($counts as $severity => $count) {
+        if ((int) $count < 1) {
+            continue;
+        }
+
+        $face = pg_security_severity_face($severity);
+        $pills[] = array(
+            'label' => $face[0],
+            'count' => function_exists('pg_format_number') ? pg_format_number((int) $count, 0) : (string) (int) $count,
+            'tone' => $face[1],
+        );
+    }
+
+    return $pills;
+}
+
+/**
+ * The operations alert's sentence: '' while no critical or high finding is
+ * open, the same line that opens the section's row on its own.
+ *
+ * @param array<int, int> $counts From pg_security_open_count_map()
+ * @return string
+ */
+function pg_security_alert_text(array $counts)
+{
+    $serious = (int) ($counts[PG_SECURITY_SEVERITY_CRITICAL] ?? 0) + (int) ($counts[PG_SECURITY_SEVERITY_HIGH] ?? 0);
+
+    if ($serious < 1) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'The security scan has {var:1} open finding(s) of high or critical severity. Review them under Site Settings > Firewall and HTTPS > Security Scan.',
+        'vars' => $serious,
+    ));
+}
+
 // ---------------------------------------------------------------------------
 // Disk and database
 // ---------------------------------------------------------------------------
@@ -293,6 +361,21 @@ function pg_security_scan_close_kinds(array $kinds, $started)
         "UPDATE security_finding SET state = ? WHERE kind IN (" . implode(', ', array_fill(0, count($kinds), '?')) . ") AND state IN (?, ?) AND last_seen < ?",
         array_merge(array(PG_SECURITY_STATE_GONE), array_values($kinds), array(PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started))
     );
+}
+
+/**
+ * Open findings by severity, counted in the table (the section's list stops
+ * at its limit).
+ *
+ * @return array<int, int>
+ */
+function pg_security_open_counts()
+{
+    $rows = pg_security_finding_ready()
+        ? db_items("SELECT severity, COUNT(*) AS total FROM security_finding WHERE state = '" . PG_SECURITY_STATE_OPEN . "' GROUP BY severity")
+        : array();
+
+    return pg_security_open_count_map(is_array($rows) ? $rows : array());
 }
 
 /**

@@ -279,6 +279,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/places.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/short_link_redirects.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/record_old_address.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/not_found_log.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_search_stats.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auto_dialog_counts.php');

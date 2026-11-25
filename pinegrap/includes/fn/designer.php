@@ -2269,6 +2269,24 @@ function pg_page_draft_move($page_id, $on, $folder, $user_id = null)
 }
 
 /**
+ * The reason a page with a blocking Publish check finding is published
+ * anyway (the save's publish_check_reason): plain text on one line, at most
+ * 500 characters; '' when none was given.
+ *
+ * @param array $page the page as the save receives it
+ * @return string
+ */
+function pg_designer_publish_check_reason($page)
+{
+    $reason = (is_array($page) && isset($page['publish_check_reason']) && is_string($page['publish_check_reason']))
+        ? $page['publish_check_reason'] : '';
+    $reason = html_entity_decode(strip_tags($reason), ENT_QUOTES, 'UTF-8');
+    $reason = trim((string) preg_replace('/\s+/u', ' ', $reason));
+
+    return mb_substr($reason, 0, 500, 'UTF-8');
+}
+
+/**
  * What a save does with a page's draft state (pg_designer_save_page()):
  * whether the page ends up a draft, and the warning when a draft is refused.
  * The editor sends the state as page_draft; a save without it - and every
@@ -4139,6 +4157,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_proto_approval_override_log($approval_hold['page_name'], $approval_hold, $approval_reason);
     }
 
+    // A page that goes on the site with a blocking Publish check finding,
+    // with the reason the Publish sheet asked for.
+    $check_reason = pg_designer_publish_check_reason($page);
+    if ($check_reason !== '' && $page_id > 0 && !$draft_plan['want']) {
+        log_activity(lang(array('string' => 'page ({var:1}) was published with a blocking Publish check finding: {var:2}',
+            'vars' => array($name, $check_reason))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+    }
+
     // Un-migrated database: the only place the tree can live is the style.
     // Keep the old single-page behaviour so nothing is lost.
     if (!$multi_ready) {
@@ -4784,8 +4810,10 @@ function pg_scroller_inject($content, $src = null)
 }
 
 /**
- * The markers of the visual editor's "Back to top" button (data-pg-to-top)
- * and "Scroll progress" bar (data-pg-scroll-progress): the attributes
+ * The markers of the visual editor's "Back to top" button (data-pg-to-top),
+ * "Scroll progress" bar (data-pg-scroll-progress) and a menu's "After
+ * scrolling" (data-pg-scrolled) and "Mark the section in view"
+ * (data-pg-spy) rows: the attributes
  * themselves, not longer names that start with them. The editor's Preview
  * tests the markup with the same expression (_SD_PAGE_SCRIPTS in
  * assets/js/style_designer.js).
@@ -4794,12 +4822,12 @@ function pg_scroller_inject($content, $src = null)
  */
 function pg_page_scroll_pattern()
 {
-    return '/\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i';
+    return '/\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i';
 }
 
 /**
- * The script behind "Back to top" and "Scroll progress", for a page whose
- * HTML holds either marker (pg_page_scroll_pattern()); a page without one
+ * The script behind "Back to top", "Scroll progress" and a menu's scroll
+ * rows, for a page whose HTML holds one of their markers (pg_page_scroll_pattern()); a page without one
  * gets nothing. Asked once every shared component and system widget is
  * drawn in (get_page_content.php), so the file follows the element wherever
  * it was placed. assets/js/pg_page_scroll.js is deferred and needs no

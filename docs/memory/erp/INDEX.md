@@ -39,6 +39,7 @@
 - erp-discounted-order-vat.md: Order VAT at checkout and on the ERP invoice (per rate, again after a discount), which lines they carry, and why header amounts are not line items.
 - erp-document-archive.md: ERP documents kept as issued (4.65, includes/erp/archive.php): what is kept, where and under which name, the deferred render, get_file.php's ERP gate, the file manager's ERP folders. [decision: decisions-made-product-14.md]
 - erp-document-numbering.md: ERP document numbers: erp_next_number() inside the transaction, the three number styles (4.72), what issue_year holds and why, the series of each document kind, the doc_kind ENUM trap.
+- erp-document-template-css.md: CSS of the ERP document templates that dompdf reads its own way: overflow-wrap anywhere for long words (#11434), never text-transform uppercase
 - erp-document-templates-settings.md: Per-document template settings in erp_settings.php (config.erp_<doc>_template, $documents map, preview) and how placeholder references are built from data.
 - erp-edoc-account-autolink.md: Which provider cards ERP › Account sync links to accounts on its own after a read (erp_edoc_accounts_autolink()): active cards only, the shared number rule, what is left to the operator
 - erp-edoc-account-sync.md: Account sync (4.69): the provider's customer and supplier cards beside the ERP accounts in erp_edoc_accounts, the one automatic link, field-by-field alignment, no balance in either direction.

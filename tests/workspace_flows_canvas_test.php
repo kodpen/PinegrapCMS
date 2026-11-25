@@ -2748,7 +2748,7 @@ function test_workspace_flows_canvas_next_row_fits_the_panel()
 	pg_assert_true((bool) preg_match('/\n\.wsf-link-name \{[^}]*min-width: 0;/', $css), 'the name may shrink');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link-on \{[^}]*flex: 1 1 100%;[^}]*min-width: 0;/', $css), 'the outcome goes on its own line and may shrink');
 	pg_assert_contains("nameText(nodeById(edge.to), 'wsf-link-name text-truncate')", $source, 'the name is cut with an ellipsis');
-	pg_assert_contains("pick.className = 'form-control form-control-sm wsf-link-on';", $source, 'the outcome select is no longer as wide as its longest choice');
+	pg_assert_contains("pick.className = 'pg-input pg-input-sm wsf-link-on';", $source, 'the outcome select is no longer as wide as its longest choice');
 	pg_assert_false(strpos($source, "form-control-sm w-auto';") !== false, 'no w-auto outcome select');
 }
 
@@ -3364,7 +3364,7 @@ function test_workspace_flows_canvas_template_text_and_home()
 
 	pg_assert_contains("text: 'fl_tpl_set_text'", $script, 'the words have their label');
 	pg_assert_true(isset($strings['fl_tpl_set_text']), 'the label is handed over');
-	pg_assert_contains("} else if (type === 'text') {\n            control = el('textarea', 'form-control form-control-sm');", $script, 'a box for the words');
+	pg_assert_contains("} else if (type === 'text') {\n            control = el('textarea', 'pg-input pg-input-sm');", $script, 'a box for the words');
 	pg_assert_contains('control.maxLength = 4000;', $script, 'as long as a post box keeps');
 	pg_assert_contains('answers.channel = value || (state.flow && state.flow.channel_id) || 0;', $script, 'the home channel offered');
 }
