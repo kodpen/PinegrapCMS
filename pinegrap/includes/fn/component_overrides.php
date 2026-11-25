@@ -189,6 +189,52 @@ function pg_co_place_values($ref)
     return $ref['props']['_place'];
 }
 
+// A place's values as the save keeps them: valid ids only, each a text
+// (at most 20,000 characters), a switch or a picture {src, alt?}; at most
+// 200. Which field takes a value is not known here: drawing checks that
+// (pg_co_safe_values()).
+function pg_co_clean_place($values)
+{
+    if (!is_array($values)) return array();
+    $out = array();
+    foreach ($values as $id => $value) {
+        $id = (string) $id;
+        if (!pg_co_valid_field_id($id)) continue;
+        if (is_bool($value)) {
+            $out[$id] = $value;
+        } elseif (is_string($value)) {
+            $out[$id] = function_exists('mb_substr') ? mb_substr($value, 0, 20000, 'UTF-8') : substr($value, 0, 20000);
+        } elseif (is_array($value) && isset($value['src']) && is_string($value['src'])) {
+            $pic = array('src' => $value['src']);
+            if (isset($value['alt']) && is_string($value['alt'])) $pic['alt'] = $value['alt'];
+            $out[$id] = $pic;
+        } else {
+            continue;
+        }
+        if (count($out) >= 200) break;
+    }
+    return $out;
+}
+
+// Every placing node of a page tree keeps only what pg_co_clean_place()
+// keeps; a place left with nothing keeps no `_place`.
+function pg_co_clean_tree_places(&$node)
+{
+    if (!is_array($node)) return;
+    if (isset($node['type']) && $node['type'] === 'shared_ref') {
+        if (isset($node['props']) && is_array($node['props']) && array_key_exists('_place', $node['props'])) {
+            $clean = pg_co_clean_place($node['props']['_place']);
+            if ($clean) $node['props']['_place'] = $clean;
+            else unset($node['props']['_place']);
+        }
+        return;
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) pg_co_clean_tree_places($child);
+        unset($child);
+    }
+}
+
 // The component's tree as drawn at a place: each open field with a fitting
 // value takes it; a node whose shown field is false is left out. Values for
 // no open field, or unfit for their kind, are ignored. With nothing to

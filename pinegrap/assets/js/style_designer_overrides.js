@@ -9,7 +9,11 @@
  * fields in the order every place shows them (drag by the grip, Alt+Up and
  * Alt+Down), with Rename, Show in Overview and Close the field. The marks
  * live in the component's tree (props._open on a node, the order in the
- * root's props._openOrder) and are saved with the component by Save. Not
+ * root's props._openOrder) and are saved with the component by Save.
+ * Where the component is placed, "This place" lists the open fields for
+ * this place only (props._place on the placing node, saved with the page),
+ * with the changed dot and "Reset to the component", and an open text is
+ * typed in place on the canvas. Not
  * needed to open a page: the core runs this file the first time one of
  * these is asked for (_sdPartLoad(), pg_designer_parts()); the pure model
  * (window.PGComponentOverrides) comes in the same bundle.
@@ -525,11 +529,258 @@ StyleDesigner.definePart('overrides', function (K) {
         });
     }
 
+
+    // ── "This place": a placed component's open fields ───────────────────
+    // A place keeps its own values on the placing node (props._place, field
+    // id => value); an empty field shows the component's value as its hint
+    // and draws it. Written to the page's tree: Save sends the page.
+
+    function plainOf(v) {
+        return String(v == null ? '' : v).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function placeValuesOf(ref) {
+        var v = ref && ref.props ? ref.props._place : null;
+        return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+    }
+
+    function copyOf(values) {
+        var o = {};
+        Object.keys(values || {}).forEach(function (k) { o[k] = values[k]; });
+        return o;
+    }
+
+    // Whether a row differs from the component: a value of its kind is kept
+    // ("Shown" only when it hides the element here).
+    function placeChanged(values, field) {
+        if (!hasOwn(values, field.id)) return false;
+        var v = CO.cleanValue(field.kind, values[field.id]);
+        if (v === null) return false;
+        return field.kind === 'shown' ? v === false : true;
+    }
+
+    // The values after `raw` is given to `field`: { values, refused }.
+    // `values` is null when none is left; an empty value or the component's
+    // own resets the row; a link or picture that would run a script is
+    // refused (`refused` says why) and nothing is kept.
+    function placeSet(values, field, raw) {
+        var out = copyOf(values);
+        var comp = field.value;
+        var v;
+        if (field.kind === 'shown') {
+            v = raw !== false;
+            if (v) delete out[field.id]; else out[field.id] = false;
+        } else {
+            v = String(raw == null ? '' : raw).trim();
+            var own = field.kind === 'picture' ? String((comp && comp.src) || '') : String(comp == null ? '' : comp);
+            if ((field.kind === 'link' || field.kind === 'picture') && v !== '' && CO.addressRunsScript(v, field.kind === 'picture')) {
+                return { values: null, refused: _sdT('This address cannot be used here.') };
+            }
+            if (v === '' || v === own) delete out[field.id];
+            else out[field.id] = field.kind === 'picture' ? { src: v } : v;
+        }
+        return { values: Object.keys(out).length ? out : null, refused: '' };
+    }
+
+    // The values with one row back at the component's, null when none is left.
+    function placeReset(values, id) {
+        var out = copyOf(values);
+        delete out[id];
+        return Object.keys(out).length ? out : null;
+    }
+
+    // One change to a place: an undo step, the values, the editor drawn.
+    function placeWrite(ref, values) {
+        K.saveState();
+        if (!ref.props) ref.props = {};
+        if (values) ref.props._place = values;
+        else delete ref.props._place;
+        K.render();
+    }
+
+    function placeFields(sid) {
+        return fieldsOf(sid);
+    }
+
+    function placeControl(f, values, ro) {
+        var dis = ro ? ' disabled' : '';
+        var mine = hasOwn(values, f.id) ? CO.cleanValue(f.kind, values[f.id]) : null;
+        var idAttr = ' data-co-field="' + esc(f.id) + '" id="sd-co-f-' + esc(f.id) + '"';
+        if (f.kind === 'shown') {
+            var on = mine !== false;
+            return '<label class="sd-prop-switch"><input type="checkbox" class="sd-sw-inp"' + idAttr + (on ? ' checked' : '') + dis + '>' +
+                '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                '<span class="sd-co-shown">' + esc(on ? _sdT('Shown') : _sdT('Hidden')) + '</span></label>';
+        }
+        if (f.kind === 'text') {
+            return '<textarea class="form-control form-control-sm" rows="2"' + idAttr + dis +
+                ' placeholder="' + esc(plainOf(f.value)) + '">' + esc(mine === null ? '' : mine) + '</textarea>';
+        }
+        var hint = f.kind === 'picture' ? String((f.value && f.value.src) || '') : String(f.value || '');
+        var cur = f.kind === 'picture' ? (mine ? mine.src : '') : (mine === null ? '' : mine);
+        var input = '<input type="text" class="form-control form-control-sm"' + idAttr + dis +
+            ' placeholder="' + esc(hint) + '" value="' + esc(cur) + '">';
+        if (f.kind === 'icon') return input;
+        return '<div class="input-group input-group-sm">' + input +
+            '<button class="btn btn-sm btn-outline theme-secondary" type="button" data-co-pick="' + esc(f.id) + '"' + dis + '>' +
+            esc(_sdT('Choose')) + '</button></div><div class="invalid-feedback" data-co-why="' + esc(f.id) + '"></div>';
+    }
+
+    // Draws the rows of `ref` (a place of component `sid`) into `holder`.
+    // opts: { readOnly, mayEdit, focusId }.
+    function fillPlace(holder, ref, sid, opts) {
+        opts = opts || {};
+        var ro = !!opts.readOnly;
+        var fields = placeFields(sid);
+        var values = placeValuesOf(ref);
+        var changed = [];
+        var h = '';
+        fields.forEach(function (f) {
+            var ch = placeChanged(values, f);
+            if (ch) changed.push(f);
+            var label = esc(f.label || kindName(f.kind));
+            h += '<div class="sd-prop-row sd-co-prow" data-co-row="' + esc(f.id) + '">' +
+                (ch ? '<button type="button" class="sd-chg-reset" data-co-reset="' + esc(f.id) + '"' + (ro ? ' disabled' : '') +
+                    ' title="' + esc(_sdT('Reset to the component')) + '" aria-label="' + esc(_sdT('Reset {var} to the component', f.label || kindName(f.kind))) + '"></button>' : '') +
+                '<label class="sd-prop-label' + (ch ? ' sd-prop-modified' : '') + '" for="sd-co-f-' + esc(f.id) + '">' + label + '</label>' +
+                '<div class="sd-prop-control">' + placeControl(f, values, ro) + '</div></div>';
+        });
+        h += '<div class="sd-co-foot"><span>' + esc(_sdT('The rest is the same in every place.')) + '</span>' +
+            (opts.mayEdit ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-co-edit>' + esc(_sdT('Edit the component')) + '</button>' : '') +
+            '</div>';
+        holder.innerHTML = h;
+        headSum(holder, changed, values);
+        if (opts.focusId) {
+            var want = holder.querySelector('[data-co-field="' + opts.focusId + '"]');
+            if (want) want.focus();
+        }
+        if (holder._sdCoPlace) { holder._sdCoPlace = { ref: ref, sid: sid }; return; }
+        holder._sdCoPlace = { ref: ref, sid: sid };
+        var fieldOf = function (id) {
+            var all = placeFields(holder._sdCoPlace.sid);
+            for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
+            return null;
+        };
+        var give = function (id, raw) {
+            var at = holder._sdCoPlace, f = fieldOf(id);
+            if (!f) return;
+            var r = placeSet(placeValuesOf(at.ref), f, raw);
+            var why = holder.querySelector('[data-co-why="' + id + '"]');
+            var ctl = holder.querySelector('[data-co-field="' + id + '"]');
+            if (r.refused) {
+                if (ctl) ctl.classList.add('is-invalid');
+                if (why) { why.textContent = r.refused; why.style.display = 'block'; }
+                return;
+            }
+            placeWrite(at.ref, r.values);
+        };
+        // The panel's own reset of the changed dot is not run for these rows.
+        holder.addEventListener('click', function (e) {
+            var t = e.target;
+            var rb = t.closest('[data-co-reset]');
+            if (rb) {
+                e.stopPropagation();
+                if (rb.disabled) return;
+                placeWrite(holder._sdCoPlace.ref, placeReset(placeValuesOf(holder._sdCoPlace.ref), rb.getAttribute('data-co-reset')));
+                return;
+            }
+            if (t.closest('[data-co-edit]')) { K._sdCoEditComponent(holder._sdCoPlace.ref); return; }
+            var pick = t.closest('[data-co-pick]');
+            if (!pick || pick.disabled || !K._sdPickerReady()) return;
+            var id = pick.getAttribute('data-co-pick'), f = fieldOf(id);
+            var box = holder.querySelector('[data-co-field="' + id + '"]');
+            var cur = box ? (box.value || box.getAttribute('placeholder') || '') : '';
+            var picker = window.pgEditorPicker;
+            var p = f && f.kind === 'picture' ? picker.image(cur) : picker.link(cur);
+            Promise.resolve(p).then(function (v) { if (v) give(id, v); });
+        });
+        holder.addEventListener('change', function (e) {
+            var id = e.target.getAttribute && e.target.getAttribute('data-co-field');
+            if (!id) return;
+            e.stopPropagation();
+            give(id, e.target.type === 'checkbox' ? e.target.checked : e.target.value);
+        });
+        holder.addEventListener('input', function (e) {
+            if (e.target.getAttribute && e.target.getAttribute('data-co-field')) e.stopPropagation();
+        });
+        holder.addEventListener('keydown', function (e) {
+            var t = e.target;
+            if (!t.getAttribute || !t.getAttribute('data-co-field')) return;
+            if (e.key === 'Escape') {
+                // Leaves the field with what it held.
+                e.preventDefault();
+                e.stopPropagation();
+                t.value = t.defaultValue;
+                t.classList.remove('is-invalid');
+                t.blur();
+            } else if (e.key === 'Enter' && t.tagName === 'INPUT') {
+                e.preventDefault();
+                t.blur();
+            }
+        });
+    }
+
+    // The section head: the count of changed fields (none at none) and, while
+    // closed, the first changed value.
+    function headSum(holder, changed, values) {
+        var card = holder.closest('[data-sd-card]');
+        var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
+        if (!hdr) return;
+        hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (el) { el.remove(); });
+        var sum = null;
+        if (changed.length) {
+            var first = changed[0], v = values[first.id];
+            var text = first.kind === 'shown' ? _sdT('Hidden') : plainOf(first.kind === 'picture' ? (v && v.src) || v : v);
+            sum = { count: changed.length, kind: 'value', text: text, swatch: '' };
+        }
+        hdr.insertAdjacentHTML('beforeend', K._sdSectHeadExtras(sum));
+    }
+
+    // Typing in place on the canvas: `el` is the open text's element in the
+    // place `ref` of component `sid`, `id` its text field. Escape leaves
+    // with what was there, Enter or a click outside keeps the text; an
+    // emptied text shows the component's again.
+    function typeIn(el, ref, sid, id) {
+        var field = placeFields(sid).filter(function (f) { return f.id === id && f.kind === 'text'; })[0];
+        if (!el || !field || el.isContentEditable) return;
+        var before = el.innerHTML;
+        var done = false;
+        el.setAttribute('contenteditable', 'true');
+        el.classList.add('sd-co-typing');
+        el.focus();
+        var finish = function (keep) {
+            if (done) return;
+            done = true;
+            el.removeAttribute('contenteditable');
+            el.classList.remove('sd-co-typing');
+            el.removeEventListener('keydown', onKey, true);
+            el.removeEventListener('blur', onBlur);
+            if (!keep) { el.innerHTML = before; K.render(); return; }
+            var text = el.innerHTML.replace(/(?:\s*<br\s*\/?>)+\s*$/i, '').trim();
+            if (text === before.trim()) { K.render(); return; }
+            var r = placeSet(placeValuesOf(ref), field, text);
+            if (r.refused) { el.innerHTML = before; K.render(); return; }
+            placeWrite(ref, r.values);
+        };
+        var onKey = function (e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+            else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); finish(true); }
+        };
+        var onBlur = function () { finish(true); };
+        el.addEventListener('keydown', onKey, true);
+        el.addEventListener('blur', onBlur);
+    }
+
     return {
         openFor: openFor,
         fillList: fillList,
         close: closePop,
         kindsOf: kindsOf,
-        defaultLabel: defaultLabel
+        defaultLabel: defaultLabel,
+        fillPlace: fillPlace,
+        typeIn: typeIn,
+        placeChanged: placeChanged,
+        placeSet: placeSet,
+        placeReset: placeReset
     };
 });

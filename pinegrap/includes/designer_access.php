@@ -283,8 +283,9 @@ function _pg_dm_node($stored, $submitted, $in_editable)
 {
     $type = isset($stored['type']) ? (string)$stored['type'] : '';
 
-    // A shared component is never the page's to change.
-    if ($type === 'shared_ref') return $stored;
+    // A shared component is never the page's to change; only its place's
+    // values of the component's open fields are (_pg_dm_take_place()).
+    if ($type === 'shared_ref') return _pg_dm_take_place($stored, $submitted);
 
     $editable_here = $in_editable || !empty($stored['props']['_editable']);
 
@@ -459,6 +460,10 @@ function pg_designer_gate_tree($tree, $page_id, $user)
 {
     $page_id = (int)$page_id;
 
+    // A place's values of a shared component's open fields keep only what
+    // fits (pg_co_clean_place()), whoever saves.
+    if (is_array($tree) && function_exists('pg_co_clean_tree_places')) pg_co_clean_tree_places($tree);
+
     if (!is_array($tree) || pg_designer_is_full($user)) {
         return array('ok' => true, 'tree' => $tree, 'error' => '');
     }
@@ -531,13 +536,37 @@ function _pg_dm_replace_locked(&$node, $refs, &$i)
             $n = isset($i[$kind]) ? $i[$kind] : 0;
             $i[$kind] = $n + 1;
             if (!isset($refs[$kind][$n])) continue;   // added by the operator: dropped
-            $kids[] = $refs[$kind][$n];
+            $kids[] = $kind === 'shared_ref' ? _pg_dm_take_place($refs[$kind][$n], $c) : $refs[$kind][$n];
             continue;
         }
         _pg_dm_replace_locked($c, $refs, $i);
         $kids[] = $c;
     }
     $node['children'] = $kids;
+}
+
+/**
+ * A placed shared component as stored, with the place's values of the
+ * component's open fields (`props._place`) taken from the submission: a
+ * content editor may change them on a page that is theirs. The node was
+ * matched by its id (or position); a value no open field of the stored
+ * component takes is ignored when drawn. The values are cleaned
+ * (pg_co_clean_place()) and their markers made inert. A submission without
+ * values resets the place to the component.
+ */
+function _pg_dm_take_place($stored, $submitted)
+{
+    if (!is_array($submitted) || (isset($submitted['type']) ? $submitted['type'] : '') !== 'shared_ref') return $stored;
+    $values = (isset($submitted['props']['_place']) && function_exists('pg_co_clean_place'))
+        ? pg_co_clean_place($submitted['props']['_place']) : array();
+    if (!isset($stored['props']) || !is_array($stored['props'])) $stored['props'] = array();
+    if ($values) {
+        _pg_dm_neutralise_markers($values);
+        $stored['props']['_place'] = $values;
+    } else {
+        unset($stored['props']['_place']);
+    }
+    return $stored;
 }
 
 /**

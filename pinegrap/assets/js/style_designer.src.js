@@ -4601,6 +4601,7 @@ const StyleDesigner = (function () {
      */
     function _sdCanEditNode(node, what) {
         if (!_collab.mayEdit) return false;
+        if (_sdCoLocked(node)) return false;
         if (!_sdIsContentLevel()) return true;
         // A shared component's node is theirs only in a component opened to
         // them; inside it the page's rule applies. A widget never opens.
@@ -4625,6 +4626,7 @@ const StyleDesigner = (function () {
             return false;
         }
         if (_sdCanEditNode(node, what)) return true;
+        if (_sdCoLocked(node)) { _sdContentNudge('component'); return false; }
         if (!_sdIsContentLevel()) return true;
         _sdContentNudge((node && _sdInClosedShared(node)) ? 'shared' : 'area');
         return false;
@@ -4956,6 +4958,7 @@ const StyleDesigner = (function () {
     function _sdContentReason(why) {
         if (why === 'shared') return _sdT('System widgets and shared components are managed by designers.');
         if (why === 'design') return _sdT('The design\'s styles are managed by designers.');
+        if (why === 'component') return _sdT('Part of a shared component: the same in every place. Choose “Edit the component” to change it.');
         return _sdT('You can edit text, and anything inside an area marked as editable.');
     }
 
@@ -4968,6 +4971,7 @@ const StyleDesigner = (function () {
     // and was gone after the save. The design's stylesheets are never
     // written at this level. View mode keeps its own nudge.
     function _sdPanelLockReason(nodes, part) {
+        if (_collab.mayEdit && part !== 'design' && [].concat(nodes || []).some(_sdCoLocked)) return 'component';
         if (!_collab.mayEdit || !_sdIsContentLevel()) return '';
         if (part === 'design') return 'design';
         var list = [].concat(nodes || []).filter(Boolean);
@@ -7004,6 +7008,10 @@ const StyleDesigner = (function () {
         'body.sd-parts-lit .sd-wrap.sd-shared-wrap:not(.sd-system-wrap):not(.sd-selected):not(:hover) > .sd-tb > .sd-tb-name.sd-part-tag { display:flex !important; }',
         _sdPartBoxless(' > .sd-wrap.sd-shared-wrap::after', 'display:none !important;'),
         _sdPartBoxless(' > .sd-wrap.sd-shared-wrap > :not(.sd-tb)', 'outline:1px solid rgba(var(--sd-part),.55) !important; outline-offset:-1px !important; background-color:rgba(var(--sd-part),.06);', 'body.sd-parts-lit '),
+        // A selected place: the elements of the component open per place
+        // (_sdCoOutline()); the one typed in place.
+        '.sd-co-open-el { outline:1px dashed rgba(16,185,129,.85) !important; outline-offset:1px; }',
+        '.sd-co-typing { outline:2px solid rgba(16,185,129,.9) !important; outline-offset:2px; cursor:text; }',
         '.sd-shared-placeholder { padding:.5rem .75rem; font-size:.8rem; color:#10b981; opacity:.9; font-style:italic; border:1px dashed rgba(16,185,129,.5); border-radius:.25rem; text-align:center; }',
         // On the page _render_system_widget_express_order() draws the widget
         // inside `.container.py-4.pg-eo-wrap`, whose side padding takes in the
@@ -10514,6 +10522,10 @@ const StyleDesigner = (function () {
     function _sdTrackSharedEditing() {
         var _prevSid = _editingSharedSid;
         _editingSharedSid = _resolveSharedSid(selectedNode);
+        // "Edit the component" lasts while the selection stays in it.
+        Object.keys(_sdCoEditing).forEach(function (k) { if ((parseInt(k, 10) || 0) !== _editingSharedSid) delete _sdCoEditing[k]; });
+        // A read-only element of a component with open fields is not edited.
+        if (_editingSharedSid > 0 && _sdCoLocked(selectedNode)) _editingSharedSid = 0;
         // At content level only a component opened to the operator is
         // written; selecting inside another one changes nothing.
         if (_editingSharedSid > 0 && _sdIsContentLevel() && !_sdSharedOpenToContent(_editingSharedSid)) {
@@ -11013,6 +11025,7 @@ const StyleDesigner = (function () {
         // the fidelity pass has moved things; so do the layout lines.
         if (selectedNode) _positionSizeBadge();
         _sdLinesSoon();
+        _sdCoOutline();
     }
 
     // The wrapper under the pointer (the canvas mouseover handler).
@@ -13177,6 +13190,7 @@ const StyleDesigner = (function () {
         }
 
         setupDropEvents(wrapper, node);
+        if (!_isSysWidget && sid > 0 && _sdCoHasSid(sid)) _sdCoCanvasWire(wrapper, node, sid);
 
         wrapper.addEventListener('click', function (e) {
             // FORM CONTROL EARLY EXIT — mirror the main sd-wrap handler (see buildNodeEl click).
@@ -37271,6 +37285,8 @@ const StyleDesigner = (function () {
     // settings list filled by the part.
     var _SD_CO_PROP = { text: 'text', picture: 'src', link: 'href', icon: 'iconName' };
     function _sdCoAfter(panel, node) {
+        _sdCoFillPlace(panel, node);
+        if (_sdCoLocked(node)) _sdCoLockPanel(panel, node);
         var list = panel.querySelector('.sd-co-list[data-sd-co-sid]');
         if (list) _sdPartCall('overrides', 'fillList', [list, parseInt(list.getAttribute('data-sd-co-sid'), 10) || 0]).catch(_sdPartFailed);
         var entries = _sdIsContentLevel() ? [] : _sdCoEntries(node);
@@ -37305,6 +37321,8 @@ const StyleDesigner = (function () {
     // kept from before (never after a change, or Save skips it), an undo
     // step, the change, the component marked changed, the editor drawn.
     function _sdCoWrite(sid, fn) {
+        // Opening a field does not make the element read-only under the hand.
+        _sdCoEditing[sid] = true;
         if (!_sharedSnapshots[sid] && !_sharedDirty[sid]) {
             var c = _sharedCache[sid];
             _sharedSnapshots[sid] = _sdSharedTreeJSON(c && c.tree);
@@ -37313,6 +37331,170 @@ const StyleDesigner = (function () {
         fn();
         _sharedDirty[sid] = true;
         render();
+    }
+
+    // ── This place ───────────────────────────────────────────────────────
+    // Where a component with an open field is placed, the place's own values
+    // (props._place on the placing node) are changed under "This place" and
+    // an open text is typed in place; every other element of the component
+    // is read-only there until "Edit the component", which starts today's
+    // editing of the component (for every place) while the selection stays
+    // in it. A component with no open field is edited as before.
+    var _sdCoEditing = {};
+    // The field whose row takes the focus when "This place" is drawn next.
+    var _sdCoFocus = '';
+    var _sdCoMemo = { epoch: -1, has: {}, map: {} };
+
+    function _sdCoMemoNow() {
+        if (_sdCoMemo.epoch !== _sdEditEpoch) _sdCoMemo = { epoch: _sdEditEpoch, has: {}, map: {} };
+        return _sdCoMemo;
+    }
+
+    // Whether component `sid` (an ordinary one, loaded) has an open field.
+    function _sdCoHasSid(sid) {
+        var m = _sdCoMemoNow();
+        if (!Object.prototype.hasOwnProperty.call(m.has, sid)) {
+            var c = _sharedCache[sid];
+            m.has[sid] = !!(c && c.tree && !c.system_region_config && _sdCoHas(c.tree));
+        }
+        return m.has[sid];
+    }
+
+    // The component's open entries by the canvas id of their node.
+    function _sdCoNodeMap(sid) {
+        var m = _sdCoMemoNow();
+        if (m.map[sid]) return m.map[sid];
+        var c = _sharedCache[sid], map = {};
+        (function walk(n, top) {
+            if (!n || typeof n !== 'object') return;
+            var e = _sdCoEntries(n);
+            if (e.length && n._id != null) map[String(n._id)] = e;
+            if (n.type === 'shared_ref' && !top) return;
+            (n.children || []).forEach(function (k) { walk(k, false); });
+        })(c && c.tree, true);
+        return (m.map[sid] = map);
+    }
+
+    // An element of a component with an open field, outside "Edit the
+    // component": read-only. At content level only in a component opened
+    // to the operator (another one is read-only by its own rule).
+    function _sdCoLocked(node) {
+        if (!node || node.type === 'shared_ref') return false;
+        var sid = _sdNodeSharedSid(node);
+        if (!(sid > 0) || _sdCoEditing[sid] || !_sdCoHasSid(sid)) return false;
+        return !_sdIsContentLevel() || _sdSharedOpenToContent(sid);
+    }
+
+    // { ref, sid } when `node` places a component with an open field.
+    function _sdCoPlaceOf(node) {
+        if (!node || node.type !== 'shared_ref') return null;
+        var sid = parseInt(node.props && node.props.sharedId, 10) || 0;
+        return (sid > 0 && _sdCoHasSid(sid)) ? { ref: node, sid: sid } : null;
+    }
+
+    // Who may edit the component itself: every designer, a content editor
+    // when it is opened to them.
+    function _sdCoMayEditComp(sid) {
+        return !!_collab.mayEdit && (!_sdIsContentLevel() || _sdSharedOpenToContent(sid));
+    }
+
+    // "This place", the first section of a place's panel; the part fills it.
+    function _sdCoPlaceSect(n, sid, cached) {
+        if (!(sid > 0) || !cached || cached.system_region_config || !_sdCoHasSid(sid)) return '';
+        return sect('bi-arrows-angle-expand', _sdT('This place'), '<div class="sd-co-place" data-sd-co-place="' + sid + '"></div>');
+    }
+
+    function _sdCoFillPlace(panel, node) {
+        var holder = panel.querySelector('.sd-co-place[data-sd-co-place]');
+        var at = holder ? _sdCoPlaceOf(node) : null;
+        if (!at) return;
+        var focus = _sdCoFocus;
+        _sdCoFocus = '';
+        _sdPartCall('overrides', 'fillPlace', [holder, node, at.sid,
+            { readOnly: !_collab.mayEdit, mayEdit: _sdCoMayEditComp(at.sid), focusId: focus }]).catch(_sdPartFailed);
+    }
+
+    // The panel of a read-only element: its fields disabled, dimmed, and the
+    // line "Part of …" with "Edit the component" on top.
+    function _sdCoLockPanel(panel, node) {
+        var sid = _sdNodeSharedSid(node);
+        var c = _sharedCache[sid];
+        panel.querySelectorAll('.sd-tab-content, .sd-props-readonly').forEach(function (box) {
+            box.classList.add('sd-panel-readonly');
+            box.querySelectorAll('input, textarea, select, button').forEach(function (el) { el.disabled = true; });
+        });
+        var line = document.createElement('div');
+        line.className = 'sd-co-partof';
+        line.innerHTML = '<span>' + esc(_sdT('Part of “{var}”: the same in every place.', (c && c.name) || ('#' + sid))) + '</span>' +
+            (_sdCoMayEditComp(sid) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary">' + esc(_sdT('Edit the component')) + '</button>' : '');
+        var b = line.querySelector('button');
+        if (b) b.addEventListener('click', function () { _sdCoEditComponent(node); });
+        panel.insertBefore(line, panel.firstChild);
+    }
+
+    // "Edit the component": today's editing of it, for every place. From a
+    // place, its first element is selected.
+    function _sdCoEditComponent(node) {
+        var sid = (node && node.type === 'shared_ref') ? (parseInt(node.props && node.props.sharedId, 10) || 0) : _sdNodeSharedSid(node);
+        if (!(sid > 0) || !_sdCoMayEditComp(sid)) return;
+        _sdCoEditing[sid] = true;
+        var c = _sharedCache[sid];
+        if (node.type === 'shared_ref') {
+            var first = c && c.tree && Array.isArray(c.tree.children) ? c.tree.children[0] : null;
+            if (!first) return;
+            selectedNode = first;
+            selectedNodes = [];
+        }
+        render();
+    }
+
+    // A selected place: its open elements carry a dashed outline.
+    function _sdCoOutline() {
+        if (!canvasDoc) return;
+        canvasDoc.querySelectorAll('.sd-co-open-el').forEach(function (el) { el.classList.remove('sd-co-open-el'); });
+        var at = _sdCoPlaceOf(selectedNode);
+        var wrap = at ? _findCanvasEl(selectedNode) : null;
+        if (!wrap) return;
+        var map = _sdCoNodeMap(at.sid);
+        wrap.querySelectorAll('[data-sd-id]').forEach(function (el) {
+            if (map[el.getAttribute('data-sd-id')]) el.classList.add('sd-co-open-el');
+        });
+    }
+
+    // On a place of a component with open fields: a click on an open
+    // element selects the place with the focus in its row; a double click on
+    // an open text types in place; a double click elsewhere in the component
+    // starts no editing (read-only). Taken before the elements' own handlers.
+    function _sdCoCanvasWire(wrapper, ref, sid) {
+        var hitOf = function (e) {
+            if (_sdCoEditing[sid] || e.ctrlKey || e.metaKey || e.shiftKey) return null;
+            var el = (e.target && e.target.closest) ? e.target.closest('[data-sd-id]') : null;
+            if (!el || el === wrapper || !wrapper.contains(el)) return null;
+            return { el: el, entries: _sdCoNodeMap(sid)[el.getAttribute('data-sd-id')] || null };
+        };
+        wrapper.addEventListener('click', function (e) {
+            var hit = hitOf(e);
+            if (!hit || !hit.entries) return;
+            e.stopPropagation();
+            e.preventDefault();
+            var row = hit.entries.filter(function (x) { return x.kind !== 'shown'; })[0] || hit.entries[0];
+            _sdCoFocus = row.id;
+            selectedNode = ref;
+            selectedNodes = [];
+            _sdSelectRender();
+        }, true);
+        wrapper.addEventListener('dblclick', function (e) {
+            var hit = hitOf(e);
+            if (!hit) return;
+            e.stopPropagation();
+            e.preventDefault();
+            var text = (hit.entries || []).filter(function (x) { return x.kind === 'text'; })[0];
+            if (!text || !_collab.mayEdit) return;
+            var inner = _sdWrapInner(hit.el) || hit.el;
+            var tag = wrapper.querySelector(':scope > .sd-tb .sd-tb-name');
+            if (tag) tag.textContent = (text.label || _sdT('Text')) + ' · ' + _sdT('This place');
+            _sdPartCall('overrides', 'typeIn', [inner, ref, sid, text.id]).catch(_sdPartFailed);
+        }, true);
     }
 
     // A held-back body put into a detached copy, with the bodies of the
@@ -37539,6 +37721,16 @@ const StyleDesigner = (function () {
         // would discard on save. The text row stays when the node has text —
         // that part IS theirs.
         if (_sdIsContentLevel() && !_sdCanEditNode(selectedNode)) {
+            // A place of a component with open fields: "This place" alone on
+            // a page that is theirs; under today's read-only box, its
+            // fields disabled, on one they may not change.
+            var _coAt = _sdCoPlaceOf(selectedNode);
+            var _coSect = _coAt ? '<div class="sd-tab-content">' + _sdCoPlaceSect(selectedNode, _coAt.sid, _sharedCache[_coAt.sid]) + '</div>' : '';
+            if (_coSect && _collab.mayEdit) {
+                panel.innerHTML = _coSect;
+                _sdCoFillPlace(panel, selectedNode);
+                return;
+            }
             var _roText  = _sdCanEditNode(selectedNode, 'text');
             var _roImage = _sdCanEditNode(selectedNode, 'image') ? _sdNodeImage(selectedNode) : null;
             // The translations of a text the operator may edit are theirs as
@@ -37573,6 +37765,11 @@ const StyleDesigner = (function () {
                           '</div></div></div>'
                         : '') +
                 '</div>';
+            if (_coSect) {
+                panel.insertAdjacentHTML('beforeend', _coSect);
+                _sdCoFillPlace(panel, selectedNode);
+            }
+            if (_sdCoLocked(selectedNode)) _sdCoLockPanel(panel, selectedNode);
             if (_roText) bindPropEvents();
             if (_roTr) _sdTrLoad(selectedNode);
             if (_roImage) {
@@ -41663,6 +41860,7 @@ const StyleDesigner = (function () {
 
         return systemSection +
             (_cfg && sid > 0 ? _swPlacementSection(n, sid, _cfg, _placeOrderOpts) : '') +
+            (_cfg ? '' : _sdCoPlaceSect(n, sid, cached)) +
             sect('bi-puzzle-fill', _cfg ? _sdT('System Widget Record') : _sdT('Shared Component'),
                 nameHtml +
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
@@ -90998,6 +91196,8 @@ const StyleDesigner = (function () {
             { id: 'act_open_field', label: _sdT('Can change per place'), icon: 'bi-arrows-angle-expand', hint: getNodeLabel(selectedNode), action: function() { if (_sdCoMayOpen(selectedNode)) _sdCoOpen(selectedNode, null); } }
         ] : []).concat(_sdSimOffered(selectedNode) ? [
             { id: 'act_select_similar', label: _sdT('Select similar'), icon: 'bi-ui-checks-grid', meta: _sdMcKindName(selectedNode), hint: 'S', action: function() { if (_sdSimOffered(selectedNode)) _sdSimOpen(selectedNode); } }
+        ] : []).concat(((_sdCoPlaceOf(selectedNode) || _sdCoLocked(selectedNode)) && _sdCoMayEditComp(_sdCoPlaceOf(selectedNode) ? _sdCoPlaceOf(selectedNode).sid : _sdNodeSharedSid(selectedNode))) ? [
+            { id: 'act_edit_component', label: _sdT('Edit the component'), icon: 'bi-puzzle', hint: getNodeLabel(selectedNode), action: function() { _sdCoEditComponent(selectedNode); } }
         ] : []).concat([
             { id: 'act_copy', label: _sdT('Copy'), icon: 'bi-clipboard', hint: 'Ctrl+C', action: function() {
                 var _tc = selectedNodes.length > 1 ? selectedNodes.slice() : (selectedNode ? [selectedNode] : []);
@@ -96868,6 +97068,7 @@ const StyleDesigner = (function () {
             _sdBlockSketch: _sdBlockSketch,
             _sdCanEditNode: _sdCanEditNode,
             _sdCanvasInnerOf: _sdCanvasInnerOf,
+            _sdCoEditComponent: _sdCoEditComponent,
             _sdCoWrite: _sdCoWrite,
             _sdCode: _sdCode,
             _sdCodeActiveTab: _sdCodeActiveTab,
@@ -96906,6 +97107,7 @@ const StyleDesigner = (function () {
             _sdPartCall: _sdPartCall,
             _sdPartFailed: _sdPartFailed,
             _sdPartUrls: _sdPartUrls,
+            _sdPickerReady: _sdPickerReady,
             _sdProtoClose: _sdProtoClose,
             _sdProtoCommentsFrame: _sdProtoCommentsFrame,
             _sdProtoCommentsMark: _sdProtoCommentsMark,
@@ -96916,6 +97118,7 @@ const StyleDesigner = (function () {
             _sdPvAsChoose: _sdPvAsChoose,
             _sdPvAsRecords: _sdPvAsRecords,
             _sdRetargetLabels: _sdRetargetLabels,
+            _sdSectHeadExtras: _sdSectHeadExtras,
             _sdSelectFound: _sdSelectFound,
             _sdSelectRender: _sdSelectRender,
             _sdSeoCheckBody: _sdSeoCheckBody,
