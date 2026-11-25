@@ -1,6 +1,6 @@
 ---
 name: designer-image-focus-drawing
-description: The drawing of the image focus (plans/designer-image-focus.md, IF2 and IF3): the sheet, its four boards, what each step builds from it and what the sheet settles
+description: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its four boards, what each step builds from it and what the sheet settles
 ---
 
 ## Where is the drawing?

@@ -24,4 +24,4 @@ description: Options panel census, part 2: gaps to place and size an element (gr
 - Today a switch with 1:1, 4:3, 16:9, 21:9 or a custom percentage, writing Bootstrap's `ratio` wrapper, which forces its child to fill it. Missing: CSS `aspect-ratio` on any element (a picture, a card) without the wrapper, more presets (3:2, 2:3, 9:16, 4:5) and per size. S (value), M (per size, through the per size writer). Reads none.
 
 ## Object fit?
-- Today only on a picture: Object Fit (five values) and Object Position as typed text. Missing: the same on video and on a background video, Object Position as a nine-point picker, per size. S. Reads none.
+- Today only on a picture: Object Fit (five values) and Object Position as typed text. Missing: the same on video and on a background video. S. Reads none. Object Position is the Focus control, per size, since #11576 (`image-focus-control.md`).

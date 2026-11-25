@@ -13,7 +13,7 @@ description: Decisions made, product part 106 (2026-11-24 on): seven more design
 - One check before publishing, over links, accessibility, search engines, weight and left sample content: `plans/designer-publish-check.md`.
 - Distances, spacing and columns handled on the canvas: `plans/designer-canvas-guides.md`.
 - A section saved to the site's own library, exported and imported: `plans/designer-my-library.md`.
-- A picture's focus point set by dragging: `plans/designer-image-focus.md`.
+- A picture's focus point set by dragging: built, `designer/image-focus-overview.md`.
 - The draft on a real phone by a QR code: `plans/designer-phone-preview.md`.
 
 ## Are the screens drawn first? (owner, 2026-11-24, two choices)

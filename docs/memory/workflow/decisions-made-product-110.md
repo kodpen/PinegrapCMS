@@ -17,7 +17,7 @@ description: Decisions made, product part 110 (2026-11-25 on): all eleven packag
 ## What is the architect's reading, not his words?
 - "Girsin" is read as before the launch, with the other designer plans (part 106). The architect told him the same day that twenty-six more steps make the designer plans tighter still for 1 January 2027; what slips is his to choose.
 - Find and replace does not reach records: the choice he ticked named other pages and code files.
-- A picture's position gets no second picker: the Focus control of `plans/designer-image-focus.md` is that control.
+- A picture's position gets no second picker: the Focus control (`designer/image-focus-overview.md`) is that control.
 - The state chooser is a row in the Style tab's body, not a button in the panel's head (`designer/designer-light-and-simple.md`).
 
 ## Who draws the designer plans' sheets while no design session runs? (owner, 2026-11-25)
