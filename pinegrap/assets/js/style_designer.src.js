@@ -4780,6 +4780,9 @@ const StyleDesigner = (function () {
             // M — the "Move…" window for the selection.
             if (!isInput && _sdMoveKey(e)) { e.preventDefault(); return; }
 
+            // S — Select similar for the one selected element.
+            if (!isInput && _sdSimKey(e)) { e.preventDefault(); return; }
+
             // An element picked inside a text: Delete removes that element,
             // not the whole text, and Escape goes back to the text.
             if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && _sdTextInnerKey(e)) return;
@@ -33028,7 +33031,9 @@ const StyleDesigner = (function () {
             el.className = 'sd-tree-ctx-item' +
                 (item.danger   ? ' sd-tree-ctx-danger'   : '') +
                 (item.disabled ? ' sd-tree-ctx-disabled' : '');
-            el.innerHTML = (item.iconHtml || '<i class="bi ' + item.icon + '"></i>') + ' ' + item.label;
+            el.innerHTML = (item.iconHtml || '<i class="bi ' + item.icon + '"></i>') + ' ' + item.label +
+                (item.key ? '<kbd class="sd-tree-ctx-key">' + esc(item.key) + '</kbd>' : '');
+            if (item.key) el.setAttribute('aria-keyshortcuts', item.key);
             if (item.title) el.title = item.title;
             if (!item.disabled) el.addEventListener('click', function() { menu.remove(); item.handler(); });
             menu.appendChild(el);
@@ -33153,6 +33158,9 @@ const StyleDesigner = (function () {
                     items.push(_sdGuardItem({ icon: 'bi-plus-circle', label: COMPOSITE_ADD_LABELS[ct] || _sdT('Add'), handler: function() { addCompositeChild(node, ct); } }, [node]));
                     items.push({ sep: true });
                 })(_mCType);
+            }
+            if (!multi && _sdSimOffered(node)) {
+                items.push({ icon: 'bi-ui-checks-grid', label: _sdT('Select similar'), key: 'S', handler: function () { _sdSimOpen(node); } });
             }
             items.push(_sdGuardItem({ icon: 'bi-arrows-move', label: _sdT('Move…'), handler: function() { _sdMoveOpen(targets); } }, targets));
             items.push(_sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate') + (multi ? ' (' + targets.length + ')' : ''), handler: function() {
@@ -34333,6 +34341,72 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // ── Select similar ──────────────────────────────────────────────────────
+    // "Select similar" chooses every element like the selected one (the
+    // `similar` part, run on the first press). _sdSim holds the ids the
+    // press chose, the pressed one first, while its line stands above the
+    // Options panel; null otherwise. Nothing is counted before the press.
+    var _sdSim = null;
+
+    // The row is offered for one selected element that is not the page.
+    function _sdSimOffered(node) {
+        return !!node && node.type !== 'root' && selectedNodes.length < 2;
+    }
+
+    function _sdSimOpen(node) {
+        if (!node || node.type === 'root') return;
+        _sdPartCall('similar', 'run', [_sdSimHost(node)]).catch(_sdPartFailed);
+    }
+
+    // S: Select similar for the one selected element. False when several or
+    // none are selected, so the key does nothing then.
+    function _sdSimKey(e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || String(e.key).toLowerCase() !== 's') return false;
+        if (!selectedNode || !_sdSimOffered(selectedNode)) return false;
+        _sdSimOpen(selectedNode);
+        return true;
+    }
+
+    // The line holds while every selected element is one the press chose
+    // (Ctrl and a click takes one out); a plain click on one of them, a
+    // cleared selection or another element ends it.
+    function _sdSimHolds() {
+        if (!_sdSim || !selectedNode) return false;
+        var sel = selectedNodes.length > 1 ? selectedNodes : [selectedNode];
+        if (_sdSim.length > 1 && sel.length < 2) return false;
+        return sel.every(function (n) { return n && _sdSim.indexOf(n._id) !== -1; });
+    }
+
+    // Draws the line at the top of the Options panel's head while it holds.
+    function _sdSimHead(head) {
+        if (!_sdSimHolds()) { _sdSim = null; return; }
+        var count = selectedNodes.length > 1 ? selectedNodes.length : 1;
+        _sdPartCall('similar', 'head', [head, count]).catch(_sdPartFailed);
+    }
+
+    // What the similar part reads the page through: the tree the element
+    // lives in (the page's, or its shared component's), who may be changed,
+    // and the selection it makes.
+    function _sdSimHost(node) {
+        var pi = _sdAnyParent(node);
+        var sid = pi ? (pi.sid || 0) : 0;
+        return {
+            node: node,
+            tree: (sid && _sharedCache[sid] && _sharedCache[sid].tree) ? _sharedCache[sid].tree : tree,
+            mayEdit: function (n) {
+                return !(n.props && n.props._locked) && !hasLockedAncestor(n) && (!_sdIsContentLevel() || _sdCanEditNode(n));
+            },
+            // Choosing is no undo step: the selection only.
+            select: function (nodes) {
+                _sdSim = nodes.map(function (n) { return n._id; });
+                selectedNode = node;
+                selectedNodes = nodes.length > 1 ? nodes.slice() : [];
+                renderSelectionOnly();
+            },
+            say: _sdStateSay
+        };
+    }
+
     // What the move part reads the page through: the elements as the
     // Overview lists them (the tree search's host), and the move itself.
     function _sdMoveHost(nodes) {
@@ -34579,6 +34653,9 @@ const StyleDesigner = (function () {
                 renderSelectionOnly(); renderProperties();
                 scrollTreeToNode(parent);
             }},
+            (!multi && _sdSimOffered(node)
+                ? { icon: 'bi-ui-checks-grid', label: _sdT('Select similar'), key: 'S', handler: function () { _sdSimOpen(node); } }
+                : null),
             { sep: true },
             // An element of a detail widget shown outside the widget too, or
             // instead (parts anywhere).
@@ -37355,7 +37432,8 @@ const StyleDesigner = (function () {
         if (!head) return;
         head.hidden = !node;
         head.innerHTML = node ? (mc ? mc.id : _sdIdentityRow(node)) + _sdOptTabStrip(shown, _sdOptTab, counts) + (mc ? mc.tail : '') : '';
-        if (!node) return;
+        if (!node) { _sdSim = null; return; }
+        if (_sdSim) _sdSimHead(head);
         if (!mc) _sdIdentityBind(head, node);
         _sdStyleBrushPut(head);
         var strip = head.querySelector('.sd-otabs');
@@ -90690,7 +90768,8 @@ const StyleDesigner = (function () {
                 ]},
                 { title: _sdT('Selection'), rows: [
                     ['Ctrl+Click',          _sdT('Add to / remove from the selection (multi-select)')],
-                    ['Shift+Click',         _sdT('Select a range of siblings (canvas & tree)')]
+                    ['Shift+Click',         _sdT('Select a range of siblings (canvas & tree)')],
+                    ['S',                   _sdT('Select the elements like the selected one')]
                 ]},
                 { title: _sdT('Overview rows'), rows: [
                     ['↑  /  ↓',             _sdT('Go to the row above / below')],
@@ -90786,6 +90865,8 @@ const StyleDesigner = (function () {
             { id: 'act_duplicate', label: _sdT('Duplicate'), icon: 'bi-copy', hint: 'Ctrl+D', action: function() { if (selectedNode) onDuplicate(selectedNode); } },
         ].concat(_sdCoMayOpen(selectedNode) ? [
             { id: 'act_open_field', label: _sdT('Can change per place'), icon: 'bi-arrows-angle-expand', hint: getNodeLabel(selectedNode), action: function() { if (_sdCoMayOpen(selectedNode)) _sdCoOpen(selectedNode, null); } }
+        ] : []).concat(_sdSimOffered(selectedNode) ? [
+            { id: 'act_select_similar', label: _sdT('Select similar'), icon: 'bi-ui-checks-grid', meta: _sdMcKindName(selectedNode), hint: 'S', action: function() { if (_sdSimOffered(selectedNode)) _sdSimOpen(selectedNode); } }
         ] : []).concat([
             { id: 'act_copy', label: _sdT('Copy'), icon: 'bi-clipboard', hint: 'Ctrl+C', action: function() {
                 var _tc = selectedNodes.length > 1 ? selectedNodes.slice() : (selectedNode ? [selectedNode] : []);
@@ -90971,6 +91052,7 @@ const StyleDesigner = (function () {
                     sec += '<div class="sd-cp-item" data-flat-idx="' + (startIdx + i) + '">' +
                         '<span class="bi ' + (it.icon || 'bi-dot') + ' sd-cp-item-icon"></span>' +
                         '<span class="sd-cp-item-label">' + esc(it.label) + '</span>' +
+                        (it.meta ? '<span class="sd-cp-item-meta">' + esc(it.meta) + '</span>' : '') +
                         (it.hint ? '<kbd class="sd-cp-item-hint">' + esc(it.hint) + '</kbd>' : '') +
                         '</div>';
                 });
@@ -95726,6 +95808,11 @@ const StyleDesigner = (function () {
             }
             // M — the "Move…" window, as from the canvas.
             if (!e.target.isContentEditable && !(e.target.closest && e.target.closest('dialog, .sd-note-overlay')) && _sdMoveKey(e)) {
+                e.preventDefault();
+                return;
+            }
+            // S — Select similar, as from the canvas.
+            if (!e.target.isContentEditable && !(e.target.closest && e.target.closest('dialog, .sd-note-overlay')) && _sdSimKey(e)) {
                 e.preventDefault();
                 return;
             }
