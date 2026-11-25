@@ -6,7 +6,7 @@ module: security_scan
 
 ## Where is it?
 - Table `security_finding`, step `upgrade_2026_11_0_security_finding()` (11.0.277), listed in `get_tables()`; columns as `workflow/decisions-made-schema-51.md` agreed. Readiness probe: `pg_security_finding_ready()`.
-- Model: `includes/fn/security_scan.php`, pure but the probe; tests `tests/security_finding_test.php`. The file scan that writes findings: `security-scan-file-scan.md`. Plan: `plans/security-scan.md`.
+- Model: `includes/fn/security_scan.php`, pure but the probe; tests `tests/security_finding_test.php`. The file scan that writes findings: `security-scan-file-scan.md`. Overview: `security-scan-overview.md`.
 
 ## What is a finding?
 - One row per rule and place. `kind` is the rule's name (`^[a-z][a-z0-9_]{0,39}$`, `pg_security_kind_valid()`).

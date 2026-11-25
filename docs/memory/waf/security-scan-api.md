@@ -15,6 +15,6 @@ description: GET /security-scan and its MCP tool security_scan_read: is the site
 - `?state=open|quarantined|ignored` narrows `findings` only; the counts and the risk always cover every row.
 
 ## Why read only?
-- Quarantine, Ignore and Scan now stay a person's clicks in the panel (`plans/security-scan.md` rules): a leaked key or an assistant must not move files or start the heavy run. The settings screens keep no endpoint (`api/api-settings-no-endpoint.md`); this read was asked for by the owner (`workflow/decisions-made-product-102.md`).
+- Quarantine, Ignore and Scan now stay a person's clicks in the panel (`security-scan-overview.md`): a leaked key or an assistant must not move files or start the heavy run. The settings screens keep no endpoint (`api/api-settings-no-endpoint.md`); this read was asked for by the owner (`workflow/decisions-made-product-102.md`).
 
 Related: `security-scan-section.md`, `security-scan-findings.md`.
