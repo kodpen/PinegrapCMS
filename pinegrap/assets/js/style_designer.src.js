@@ -57197,7 +57197,10 @@ const StyleDesigner = (function () {
             _sdSpBoxBindOne(sz, nodes, function () { return _sdPartCall('spacing', 'sizes', [_sdSzHost(sz, nodes)]); });
         });
         var gr = panel.querySelector('[data-sd-gridbox]');
-        if (gr) _sdSpBoxBindOne(gr, nodes, function () { return _sdPartCall('grid', 'draw', [_sdSzHost(gr, nodes)]); }, 'grid');
+        // The grid part writes through the spacing part's PGSizeStyle.
+        if (gr) _sdSpBoxBindOne(gr, nodes, function () {
+            return _sdPartLoad('spacing').then(function () { return _sdPartCall('grid', 'draw', [_sdSzHost(gr, nodes)]); });
+        }, 'grid');
     }
 
     // ── A length per screen size (Size and display, Text › Font Size)

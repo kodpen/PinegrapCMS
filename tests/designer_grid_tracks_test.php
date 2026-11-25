@@ -317,12 +317,12 @@ function test_designer_grid_tracks_wiring()
 	pg_assert_true(strpos($src, 'gridBox: _sdGridBox(p.cssClass)') !== false, 'the context reads a grid box');
 	pg_assert_true(strpos($src, 'gridBox: a.gridBox && c.gridBox') !== false, 'several elements: a grid box when all are');
 	pg_assert_true(strpos($src, '<div data-sd-gridbox hidden></div>') !== false, 'the rows\' place in Layout');
-	pg_assert_true(strpos($src, "_sdPartCall('grid', 'draw', [_sdSzHost(") !== false, 'the part draws through the size host');
+	pg_assert_true(strpos($src, "_sdPartLoad('spacing').then(function () { return _sdPartCall('grid', 'draw', [_sdSzHost(") !== false, 'the part draws through the size host, after the spacing part');
 
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_grid.min.js', isset($parts['grid']) ? $parts['grid'] : '', 'grid is a part');
 	$bundles = pg_js_bundles();
-	pg_assert_same(array('assets/js/pg_size_style.js', 'assets/js/pg_grid_tracks.js', 'assets/js/style_designer_grid.js'),
+	pg_assert_same(array('assets/js/pg_grid_tracks.js', 'assets/js/style_designer_grid.js'),
 		isset($bundles['assets/js/style_designer_grid.min.js']) ? $bundles['assets/js/style_designer_grid.min.js'] : null, 'its bundle');
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_true(strpos($screen, "'spacing', 'grid'") !== false, 'the editor is handed the part');

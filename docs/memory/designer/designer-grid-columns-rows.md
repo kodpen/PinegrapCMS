@@ -22,7 +22,7 @@ description: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (
 - Where a custom style is off (system widget, shared component, component placement) the rows are not drawn: there is no class to write to.
 
 ## How is it loaded?
-- Part `grid` (`style_designer_grid.min.js`: pg_size_style.js, pg_grid_tracks.js, style_designer_grid.js), handed to every editor. Layout holds `<div data-sd-gridbox hidden>`; `_sdSpBoxBind()` runs `_sdPartCall('grid', 'draw', [_sdSzHost(…)])` once the section is shown. Core grew about 0.4 KB (#PR).
+- Part `grid` (`style_designer_grid.min.js`: pg_grid_tracks.js, style_designer_grid.js), handed to every editor. A source sits in one bundle only, so PGSizeStyle comes from the part `spacing`: `_sdSpBoxBind()` loads `spacing`, then runs `_sdPartCall('grid', 'draw', [_sdSzHost(…)])` into Layout's `<div data-sd-gridbox hidden>` once the section is shown. Core grew about 0.4 KB (#PR).
 
 ## Where is it tested?
 - `tests/designer_grid_tracks_test.php`: parse, build, pick, edit, the per size rule, Layout's plan, the wiring. Not unit-tested: the fields in a browser.
