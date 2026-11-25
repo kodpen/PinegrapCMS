@@ -125,7 +125,7 @@ StyleDesigner.definePart('librarymanage', function (K) {
             '<span class="sd-lib-thumb" aria-hidden="true">' + (K._sdBlockSketch(it.tree) || '') + '</span>' +
             '<span class="sd-lib-mtext"><span class="sd-lib-mname">' + esc(it.name) + '</span>' +
                 '<span class="sd-lib-mmeta">' + esc(L.countLine(it.kind, it.count)) + '</span></span>' +
-            '<button type="button" class="btn btn-sm btn-ghost sd-lib-mmore" data-mg-more tabindex="-1" aria-label="' + esc(_sdT('More for "{var}"', it.name)) + '">' +
+            '<button type="button" class="btn btn-sm btn-text theme-secondary sd-lib-mmore" data-mg-more tabindex="-1" aria-label="' + esc(_sdT('More for "{var}"', it.name)) + '">' +
                 '<span class="bi bi-three-dots" aria-hidden="true"></span></button>' +
         '</div>';
     }
