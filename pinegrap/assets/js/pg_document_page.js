@@ -12,7 +12,7 @@
  * a wide picture, image-grid); figures and questions are the stats-counter
  * and faq-twocol starters; a testimonial, a table, prices and contact are
  * plain Bootstrap 5 sections. Every section wears the design's section
- * rhythm (var(--pg-var-space_section)), as the sketch builder's do.
+ * rhythm (var(--pg-var-space-section)), as the sketch builder's do.
  *
  * The words go in as they were written: each item's words fill a starter's
  * column, and what the starter brought as sample words (headings,
@@ -35,7 +35,7 @@
 (function () {
     'use strict';
 
-    var RHYTHM = 'padding-top: var(--pg-var-space_section, 3rem); padding-bottom: var(--pg-var-space_section, 3rem)';
+    var RHYTHM = 'padding-top: var(--pg-var-space-section, 3rem); padding-bottom: var(--pg-var-space-section, 3rem)';
     var WIDTHS = {1: '12', 2: '6', 3: '4', 4: '3'};
     var SAMPLE = {heading: true, paragraph: true, link: true, span: true};
     // A kind the sketch builder makes, as the builder's own kind.
@@ -126,7 +126,7 @@
 
     function withRhythm(root) {
         var p = root.props = root.props || {};
-        if (p.inlineStyle === undefined || String(p.inlineStyle).indexOf('--pg-var-space_section') === -1) {
+        if (p.inlineStyle === undefined || String(p.inlineStyle).indexOf('--pg-var-space-section') === -1) {
             var own = p.inlineStyle ? String(p.inlineStyle).replace(/[;\s]+$/, '') : '';
             p.inlineStyle = own ? own + '; ' + RHYTHM : RHYTHM;
         }
