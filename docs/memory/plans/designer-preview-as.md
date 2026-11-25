@@ -25,7 +25,7 @@ priority: 7
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - PW1 (M) The case model, pure: per widget kind the cases it has and what each sets (record, visitor, flags). Done (#11516).
-- PW2 (M) after PW1: the server: `preview_widgets` takes a case per widget; the record search with the rights check; the never-writes tests: the record cases (chosen, long, sold out) drawn, the flags and the visitor held for renderers (`designer/designer-preview-as-server.md`). Done (#PRNUM).
+- PW2 (M) after PW1: the server: `preview_widgets` takes a case per widget; the record search with the rights check; the never-writes tests: the record cases (chosen, long, sold out) drawn, the flags and the visitor held for renderers (`designer/designer-preview-as-server.md`). Done (#11546).
 - PW2b (M) after PW2: the renderers read the held flags (empty lists, search and cart; long lists; a form sent with a required field missing) and the visitor (signed in as the sample account, member, first visit, returning), inside the same scope.
 - PW3 (M) after PW2 and DD5: the bar and its three choosers.
 - PW4 (M) after PW3 and PW2b: "Check all cases", measured in the Preview's frame.
