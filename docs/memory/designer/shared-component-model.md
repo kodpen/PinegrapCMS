@@ -1,6 +1,6 @@
 ---
 name: shared-component-model
-description: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
+description: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, colours, canvas marks.
 ---
 
 ## How does a page point at a shared component?
@@ -24,4 +24,9 @@ description: How a shared_ref places a shared component: id link and name snapsh
 - Opening a component to content editors: `shared-component-content-editing.md`. Deleting rows outside the editor: `shared-components-panel.md`.
 
 ## Which colours mean what in the editor?
-- A lock is orange `#f07820`, a shared component green `#22c55e` (`style_designer.css` tree labels and badges, the editing toast).
+- A lock is orange `#f07820`; in the panels a shared component is green `#22c55e` (`style_designer.css` tree labels and badges, the editing toast).
+- On the canvas a shared component is green `#10b981`, a system widget indigo `#6366f1` (`--sd-part` on `.sd-shared-wrap` / `.sd-system-wrap`).
+
+## How is it marked on the canvas?
+- Nothing at rest, so the canvas has the site's sizes (#11662). Under the pointer a 1.5 px frame and the tag "Header · Shared" / "Cart · System" (`_sdPartTag()`); chosen a 2 px frame and the tag with the grip.
+- The View switch "Shared parts" lights every part at once (`designer-canvas-bar.md`). Boards and why: `designer-shared-marks-drawing.md`. Test: `tests/designer_shared_marks_test.php`.
