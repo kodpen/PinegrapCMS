@@ -6,7 +6,7 @@ module: designer_preview_render
 
 ## What does preview_widgets take now?
 - `preview_as` `{record, visitor, case, page: {access_rules, audience}}` and, per widget row, an optional `case` ("Check all cases" draws one widget's case). `pg_designer_preview_widgets()` reads the choice back with `pg_preview_as_choice()` against the kinds of the widgets sent, and gives each widget `pg_preview_as_setup()` (the row's case over the page's).
-- The answer adds `setups`: sid => `{case, record}` (the case drawn, the record id drawn, 0 none), so the bar can say when a choice fell back.
+- The answer adds `setups`: sid => `{case, record, source, cases}` (the case drawn, the record id drawn, 0 none, the widget's record source and cases), so the bar knows what to offer and can say when a choice fell back. A widget row's own `record` goes over the page's (`preview-as-bar.md`).
 - No `preview_as` = typical, signed out, default record: the Preview as before. The canvas's ghost records call it with no operator and get the default pick.
 
 ## Which record does a pick draw?

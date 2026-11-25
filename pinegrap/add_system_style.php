@@ -32,7 +32,8 @@ $from_pages = (isset($_GET['from']) && $_GET['from'] === 'pages')
            || ($liveform->field_in_session('from') && $liveform->get_field_value('from') === 'pages');
 
 // Straight onto the canvas. ?start=import opens the file-import dialog on top
-// of it and ?start=paste the paste-HTML box; the choice is made on
+// of it, ?start=paste the paste-HTML box and ?start=canva the Sketch tool
+// with the Canva start's pages; the choice is made on
 // view_system_styles.php.
 $start = (isset($_GET['start']) && is_string($_GET['start'])) ? $_GET['start'] : '';
 
@@ -137,6 +138,9 @@ if (!$_POST) {
         'start_variables' => ($sd_start_vars && $sd_start_vars['model']) ? $sd_start_vars : null,
         'auto_import'    => ($start === 'import'),
         'auto_paste'     => ($start === 'paste'),
+        // ?start=canva: the Canva start's pages wait in this browser as
+        // sketch pages; the Prototype view opens with the Sketch switch on.
+        'auto_sketch'    => ($start === 'canva'),
         'template'       => $template ? pg_design_template_summary($template) : null,
         // ?folder= from the design chooser: the first page's folder.
         'start_action'   => pg_designer_start_action($user, 0),

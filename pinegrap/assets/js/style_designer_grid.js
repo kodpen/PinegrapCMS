@@ -9,9 +9,12 @@
  * size (the size the Spacing box chooses, _sdSpSize) as an @media rule on
  * the element's custom style class through window.PGSizeStyle; Gap stays
  * Layout's own row. What a mode or a field writes is window.PGGridTracks's.
+ * On a grid's child the part draws Span columns, Span rows and Start at
+ * (column and row) the same way, as `grid-column` and `grid-row`; an empty
+ * field leaves the browser's own placement.
  *
  * Not needed to open a page: the core runs this file the first time
- * Layout is shown on a grid box (_sdSpBoxBind(), pg_designer_parts()) and
+ * Layout is shown on a grid box or its child (_sdSpBoxBind(), pg_designer_parts()) and
  * hands it the size host (_sdSzHost()): the elements, the chosen size, the
  * User Styles text, a new class and the commit as one undo step.
  *
@@ -50,18 +53,26 @@ StyleDesigner.definePart('grid', function (K) {
         return window.PgCustomStyle.classOf(String((n.props || {}).cssClass || '').split(/\s+/).filter(Boolean));
     }
 
-    // Each element's value in force at the size, and whether it is its own.
-    function _reads(host, text, axis) {
+    // Each element's value of `css` in force at the size, and whether it
+    // is its own.
+    function _readsCss(host, text, css) {
         return host.nodes.filter(function (n) { return n && n.props; }).map(function (n) {
             var cls = _cls(n);
-            return Z.at(cls ? Z.read(text, cls, G.CSS[axis]) : {}, host.size);
+            return Z.at(cls ? Z.read(text, cls, css) : {}, host.size);
         });
     }
 
-    // Writes `value` ('' clears the size) on every element as one change;
-    // an element without a custom style class gets one.
+    function _reads(host, text, axis) {
+        return _readsCss(host, text, G.CSS[axis]);
+    }
+
+    // Writes `value` ('' clears the size) of `css` on every element as one
+    // change; an element without a custom style class gets one.
     function _write(host, axis, value) {
-        var css = G.CSS[axis];
+        _writeCss(host, G.CSS[axis], value);
+    }
+
+    function _writeCss(host, css, value) {
         var text = host.text();
         var changes = host.nodes.map(function (n) {
             if (!n || !n.props) return null;
@@ -81,12 +92,13 @@ StyleDesigner.definePart('grid', function (K) {
         host.commit(text, changes);
     }
 
-    function _sizeRowHtml(host, text) {
+    // `props`: the CSS properties whose sizes are marked with a dot.
+    function _sizeRowHtml(host, text, props) {
         var has = {};
         host.nodes.forEach(function (n) {
             if (!n || !n.props) return;
             var cls = _cls(n);
-            if (cls) Z.held(text, cls, [G.CSS.columns, G.CSS.rows]).forEach(function (s) { has[s] = true; });
+            if (cls) Z.held(text, cls, props).forEach(function (s) { has[s] = true; });
         });
         return '<div class="sd-sp-row"><span class="sd-sp-label">' + esc(_sdT('Screen size')) + '</span>' +
             '<select class="form-control form-control-sm" data-sd-grid-size aria-label="' + esc(_sdT('Screen size')) + '">' +
@@ -138,7 +150,7 @@ StyleDesigner.definePart('grid', function (K) {
         var text = host.text();
         var html = _axisHtml(host, text, 'columns');
         if (!html) return;
-        el.innerHTML = _sizeRowHtml(host, text) + html + _axisHtml(host, text, 'rows');
+        el.innerHTML = _sizeRowHtml(host, text, [G.CSS.columns, G.CSS.rows]) + html + _axisHtml(host, text, 'rows');
         el.hidden = false;
 
         var size = el.querySelector('[data-sd-grid-size]');
@@ -168,5 +180,81 @@ StyleDesigner.definePart('grid', function (K) {
         });
     }
 
-    return { draw: draw };
+    // ── A grid child's place: Span columns, Span rows, Start at.
+
+    // One axis's value as the elements hold it at the size: { place: the
+    // parsed value, own: set at this size, mixed, from: the size it comes
+    // from when not own }.
+    function _placeOf(host, text, axis) {
+        var reads = _readsCss(host, text, G.PLACE[axis]);
+        if (!reads.length) return null;
+        var first = reads[0];
+        var mixed = reads.some(function (r) { return r.value !== first.value || r.here !== first.here; });
+        return { place: G.parsePlace(mixed ? '' : first.value), own: !mixed && first.here, mixed: mixed,
+            from: !mixed && !first.here && first.value ? first.size : '' };
+    }
+
+    // A number field of the place: its value when set at this size, the
+    // value in force from a smaller size as its placeholder.
+    function _numField(host, axis, k, p, label) {
+        var v = p.mixed ? '' : p.place[k];
+        var ph = p.mixed ? _sdT('— Multiple —') : (!p.own && v ? v + ' (' + _sdT('from {var}', p.from.toUpperCase()) + ')' : _sdT('Auto'));
+        return '<input class="form-control form-control-sm" type="number" min="1" max="' + G.MAX + '" step="1" data-sd-grid-place="' + axis +
+            '" data-k="' + k + '" value="' + esc(p.own ? v : '') + '" placeholder="' + esc(ph) + '" aria-label="' + esc(label) + '"' +
+            (host.locked ? ' disabled' : '') + '>';
+    }
+
+    // A value typed another way ("main", "-1", "a / b"): one text field
+    // keeps it as it is.
+    function _typedRow(host, axis, p, label) {
+        return '<div class="sd-sp-row"><span class="sd-sp-label">' + esc(label) + '</span>' +
+            '<input class="form-control form-control-sm" type="text" data-sd-grid-place="' + axis + '" data-k="typed" value="' +
+            esc(p.own ? p.place.value : '') + '" placeholder="' + esc(p.own ? '' : p.place.value) + '" aria-label="' + esc(label) + '"' +
+            (host.locked ? ' disabled' : '') + '></div>';
+    }
+
+    // Draws the place rows into host.el, on a grid's child.
+    function drawItem(host) {
+        var el = host.el;
+        if (!el || !el.isConnected || host.off || !Z || !G || !window.PgCustomStyle) return;
+        var text = host.text();
+        var c = _placeOf(host, text, 'columns');
+        var r = _placeOf(host, text, 'rows');
+        if (!c || !r) return;
+        // An element that is a grid box too has the Screen size row there.
+        var sect = el.closest('.sd-sp-section');
+        var html = sect && sect.querySelector('[data-sd-gridbox]') ? '' : _sizeRowHtml(host, text, [G.PLACE.columns, G.PLACE.rows]);
+        var spanC = _sdT('Span columns'), spanR = _sdT('Span rows');
+        html += c.place.typed ? _typedRow(host, 'columns', c, _sdT('Column') + ' (' + _sdT('Custom') + ')')
+            : '<div class="sd-sp-row"><span class="sd-sp-label">' + esc(spanC) + '</span>' + _numField(host, 'columns', 'span', c, spanC) + '</div>';
+        html += r.place.typed ? _typedRow(host, 'rows', r, _sdT('Row') + ' (' + _sdT('Custom') + ')')
+            : '<div class="sd-sp-row"><span class="sd-sp-label">' + esc(spanR) + '</span>' + _numField(host, 'rows', 'span', r, spanR) + '</div>';
+        if (!c.place.typed || !r.place.typed) {
+            var start = _sdT('Start at');
+            html += '<div class="sd-sp-row"><span class="sd-sp-label">' + esc(start) + '</span><span class="d-flex gap-1">' +
+                (c.place.typed ? '' : _numField(host, 'columns', 'start', c, start + ': ' + _sdT('Column'))) +
+                (r.place.typed ? '' : _numField(host, 'rows', 'start', r, start + ': ' + _sdT('Row'))) + '</span></div>';
+        }
+        el.innerHTML = html;
+        el.hidden = false;
+
+        var size = el.querySelector('[data-sd-grid-size]');
+        if (size) size.addEventListener('change', function () { host.setSize(size.value); });
+
+        el.querySelectorAll('[data-sd-grid-place]').forEach(function (f) {
+            var was = f.value;
+            f.addEventListener('change', function () {
+                var axis = f.getAttribute('data-sd-grid-place');
+                // A field changed at a size starts from the value in force
+                // there, so a span set at XS is kept when MD sets a start.
+                var cur = _readsCss(host, host.text(), G.PLACE[axis])[0];
+                var v = G.editPlace(G.parsePlace(cur ? cur.value : ''), f.getAttribute('data-k'), f.value);
+                f.classList.toggle('is-invalid', v === null);
+                if (v === null || f.value.trim() === was.trim()) return;
+                _writeCss(host, G.PLACE[axis], v);
+            });
+        });
+    }
+
+    return { draw: draw, drawItem: drawItem };
 });
