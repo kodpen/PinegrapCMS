@@ -245,7 +245,7 @@ function pg_proto_phone_shell_script()
     var dim = document.getElementById("pp-dim");
     var nameEl = document.getElementById("pp-name");
     var frame = document.getElementById("pg-proto-frame");
-    var drawn = Date.now(), timer = 0, wait = 10, stopped = !cfg.watch, busy = false, asked = 0;
+    var drawn = Date.now(), timer = 0, wait = 10, stopped = !cfg.watch, busy = false, pending = false, asked = 0;
     var kept = null;
     function store(v) { try { if (v) window.sessionStorage.setItem(cfg.key, JSON.stringify(v)); else window.sessionStorage.removeItem(cfg.key); } catch (e) {} }
     try { kept = JSON.parse(window.sessionStorage.getItem(cfg.key) || "null"); } catch (e) {}
@@ -300,10 +300,12 @@ function pg_proto_phone_shell_script()
     }
     function ask() {
         clearTimeout(timer);
-        if (stopped || busy || document.visibilityState === "hidden") return;
+        if (stopped || busy || pending || document.visibilityState === "hidden") return;
         asked++;
+        pending = true;
         var url = cfg.watch + "&since=" + (cfg.since > 0 ? cfg.since : "");
         fetch(url, { credentials: "same-origin", cache: "no-store", headers: { "Accept": "application/json" } }).then(function (r) {
+            pending = false;
             if (r.status === 404) return { gone: true };
             if (!r.ok) throw new Error("status");
             return r.json();
@@ -321,6 +323,7 @@ function pg_proto_phone_shell_script()
             ago();
             schedule();
         }).catch(function () {
+            pending = false;
             say(cfg.offline, true);
             schedule();
         });

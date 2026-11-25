@@ -400,3 +400,23 @@ function test_prototype_phone_view_says_how_long_ago()
 
 	pg_assert_same('Updated 12 min ago', $got['s']['words']);
 }
+
+// Coming back to the tab while an answer is on its way asks no second time.
+function test_prototype_phone_view_asks_once_at_a_time()
+{
+	$got = prototype_phone_view_test_run(prototype_phone_view_test_config_js(), null, '
+		var hold;
+		global.fetch = function (url) { asked.push(url); return new Promise(function (r) { hold = r; }); };
+		document.visibilityState = "hidden"; fire("document", "visibilitychange");
+		document.visibilityState = "visible"; fire("document", "visibilitychange");
+		fire("document", "visibilitychange");
+		await settle();
+		console.log(JSON.stringify({ asked: asked.length }));
+	');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(1, $got['asked']);
+}
