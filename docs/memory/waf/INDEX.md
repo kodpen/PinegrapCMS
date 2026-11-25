@@ -10,6 +10,7 @@
 - security-scan-card.md: Security Scan part of the new dashboard Firewall card (last scan, open findings by severity, Scan now) and the daily ops alert security_finding for a critical or high finding
 - security-scan-file-scan.md: Security Scan file scan - the five file rules, what each reads, the release reference it judges by, the resumable walk, the server-config baseline, the job and its state row.
 - security-scan-findings.md: Security Scan findings - the security_finding table (11.0.277), the pure finding model, fingerprint, severities, states and which moves a scan or a person may make.
+- security-scan-retired-files.md: Decision (architect 2026-11-25): a PHP file an earlier release carried and this one dropped is told from an unknown file by the Clean Up tool's list; the update still deletes nothing; step SC8b [decision: here]
 - security-scan-section.md: Security Scan row of Site Settings › Firewall and HTTPS: the joined run and its state row, the findings list, Quarantine and Restore (data/quarantine), Ignore with a note, Scan now through api.php
 - security-scan-stored-content.md: Security Scan stored content: script, hidden frame or redirect from an unknown host in pages, regions, styles, settings; known hosts; the resumable pass
 - waf-ai-bots-ranges.md: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() verification by published IP ranges (waf_bot_ranges), verdict ladder, refresh path (2026.4.4). [decision: decisions-made-product-97.md]

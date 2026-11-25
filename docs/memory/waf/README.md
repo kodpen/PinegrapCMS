@@ -26,7 +26,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 
 ## Clusters
 
-- `security-scan-*`: 7 files.
+- `security-scan-*`: 8 files.
 
 ## Files
 
