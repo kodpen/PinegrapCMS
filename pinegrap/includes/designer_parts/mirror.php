@@ -6,8 +6,7 @@
  * (includes/fn/output.php).
  *
  * The canvas mirrors: the draft at another width beside the canvas, drawn
- * again when the hand rests. The tour's tip state (window.PGDesignerTour,
- * for the first-use line), when the mirrors are drawn again
+ * again when the hand rests. When the mirrors are drawn again
  * (window.PGMirrorSchedule), then the part that fills their frames and lays
  * out "Side by side". Handed to every editor; it runs the first time the
  * View menu's switch "Side by side" is on.
@@ -26,7 +25,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 return array(
 	'sources' => array(
-		'assets/js/pg_designer_tour.js',
 		'assets/js/pg_mirror_schedule.js',
 		'assets/js/style_designer_mirror.js',
 	),

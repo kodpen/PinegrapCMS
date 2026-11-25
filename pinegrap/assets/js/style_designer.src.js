@@ -8008,6 +8008,8 @@ const StyleDesigner = (function () {
             email: now.email,
             userId: (_design && _design.userId) || 0,
             canvasWidth: _sdSideCanvasW,
+            // The first-use line's state module comes with the part 'bands'.
+            tour: function () { return _sdPartLoad('bands'); },
             choose: function (widths) {
                 _sdSideStore('pg_sd_side_w', widths.join(','));
                 _sdSideSync();

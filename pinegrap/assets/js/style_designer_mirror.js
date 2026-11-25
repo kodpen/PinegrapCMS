@@ -506,10 +506,18 @@ StyleDesigner.definePart('mirror', function (K) {
 
     // ── The first-use line ───────────────────────────────────────────────
     // Once per person, under the canvas bar; "Got it" ends it for good
-    // (the tour's tip state, PGDesignerTour).
+    // (the tour's tip state, PGDesignerTour, which comes with the part
+    // 'bands': cfg.tour() runs it when it has not run yet).
     function tip(cfg) {
         var T = window.PGDesignerTour;
-        if (!T || !row) return;
+        if (!row) return;
+        if (!T) {
+            if (cfg.tour && !tip.asked) {
+                tip.asked = true;
+                cfg.tour().then(function () { if (row && !row.tip) tip(row.cfg); }, function () {});
+            }
+            return;
+        }
         var key = T.key(cfg.userId), state = null;
         if (!key) return;
         try { state = T.read(window.localStorage.getItem(key)); } catch (e) { return; }

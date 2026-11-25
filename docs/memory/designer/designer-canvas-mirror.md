@@ -14,7 +14,7 @@ description: The canvas mirror, designer part 'mirror' (SS1 #11535): a frame fil
 - `fit(width, boxW, boxH)`: the scale (at most 1, three decimals) and the frame's height before scaling.
 
 ## How is it loaded and what runs while it is off?
-- The part `mirror` (`assets/js/style_designer_mirror.js`, bundle `style_designer_mirror.min.js` = `pg_designer_tour.js`, the pure module, then the part; `pg_designer_parts()`), handed to every editor (`'when' => 'always'`) and run the first time the switch is on. Entry points: `side(cfg)`, `open(host, width)` (answers an id, draws at once), `width(id, w)`, `resize()`, `close(id)` (all with no id), `rebind()`, `draw()`, `count()`.
+- The part `mirror` (`assets/js/style_designer_mirror.js`, bundle `style_designer_mirror.min.js` = the pure module, then the part; `pg_designer_parts()`), handed to every editor (`'when' => 'always'`) and run the first time the switch is on. Entry points: `side(cfg)`, `open(host, width)` (answers an id, draws at once), `width(id, w)`, `resize()`, `close(id)` (all with no id), `rebind()`, `draw()`, `count()`.
 - Only while a mirror is open: a MutationObserver on the canvas document, capture listeners for pointer, drag and keys on the canvas and the editor document, and `blur` on the window. The last `close()` removes them all and the timer.
 - The core holds `_sdMirrorRebind()`, called when `createCanvasIframe()` writes a new canvas document; it does nothing until the part has loaded.
 - The row, its heads and lists: `designer-side-by-side.md`.

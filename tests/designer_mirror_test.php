@@ -178,7 +178,7 @@ function test_mirror_is_a_part()
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_mirror.min.js', isset($parts['mirror']) ? $parts['mirror'] : null, 'mirror part listed');
 	$bundles = pg_js_bundles();
-	pg_assert_same(array('assets/js/pg_designer_tour.js', 'assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'), $bundles['assets/js/style_designer_mirror.min.js'], 'mirror bundle sources');
+	pg_assert_same(array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'), $bundles['assets/js/style_designer_mirror.min.js'], 'mirror bundle sources');
 	pg_assert_false(in_array('assets/js/style_designer_mirror.js', $bundles['assets/js/style_designer.min.js'], true), 'not in the core bundle');
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_false(strpos($core, 'PGMirrorSchedule') !== false, 'the core holds no scheduling');
