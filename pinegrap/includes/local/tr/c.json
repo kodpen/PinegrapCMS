@@ -4013,6 +4013,7 @@
     "Copy style": "Stili kopyala",
     "Copy style takes one element: select only one.": "Stili kopyalamak tek öğe ister: yalnız birini seçin.",
     "Copy tags from Fields and paste in the layout below.": "Etiketleri Alanlardan kopyalayın ve aşağıdaki düzene yapıştırın.",
+    "Copy the Client ID and the client secret from the portal's API Bilgilerim page here, save, then press Connect.": "Client ID ve client secret değerlerini portalın API Bilgilerim sayfasından buraya kopyalayın, kaydedin ve Bağlan'a basın.",
     "Copy the Product ID / SKU": "Ürün kodunu / SKU'yu kopyala",
     "Copy the URL of the routine's {var:1} trigger, press {var:2} and copy the token at once: both go into Claude's page of Connections.": "Rutinin {var:1} tetikleyicisinin adresini kopyala, {var:2} düğmesine bas ve belirteci hemen kopyala: ikisi de Bağlantılar'daki Claude sayfasına girer.",
     "Copy the URL of the routine's {var:1} trigger, press {var:2} and copy the token at once: both go into the two fields behind this drawer.": "Rutinin {var:1} tetikleyicisinin adresini kopyala, {var:2} düğmesine bas ve belirteci hemen kopyala: ikisi de bu çekmecenin arkasındaki iki alana girer.",

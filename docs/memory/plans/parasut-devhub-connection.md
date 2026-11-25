@@ -23,5 +23,5 @@ description: Plan (2026-11-25): connecting Paraşüt with a client from its Deve
 - "Disconnect" ends whichever connection the site has.
 
 ## Steps
-- PD1 (M, in progress): the provider and its purpose, the token choice, the page as described. Tests: the authorize address (return address, scope, PKCE, state), the token choice, the page's boxes. What no test reaches is said in the PR: a connect against Paraşüt, made on dev with the owner's client once the step has landed.
+- PD1 (M, done #11694): the provider and its purpose, the token choice, the page as described. Tests: the authorize address (return address, scope, PKCE, state), the token choice, the page's boxes. What no test reaches is said in the PR: a connect against Paraşüt, made on dev with the owner's client once the step has landed.
 - Claim as `[plan:parasut-devhub-connection] PD1 — <topic>`. When PD1 has landed and dev is connected, what the live answers showed goes into `erp/erp-parasut-connection.md` and `erp-parasut-devhub-client.md`, and this plan is deleted.
