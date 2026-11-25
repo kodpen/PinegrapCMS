@@ -3347,6 +3347,7 @@
     "Nothing is selected.": "Hiçbir şey seçilmedi.",
     "Nothing is sent": "Hiçbiri gönderilmez",
     "Nothing is sent while the survey is off.": "Anket kapalıyken hiçbir şey gönderilmez.",
+    "Nothing is set for {var}.": "{var} için hiçbir şey ayarlı değil.",
     "Nothing is shared outside this channel.": "Bu kanaldan dışarıya hiçbir şey paylaşılmadı.",
     "Nothing is shared with you yet": "Henüz sizinle bir şey paylaşılmadı",
     "Nothing is shared with you yet.": "Henüz sizinle paylaşılan bir not yok.",

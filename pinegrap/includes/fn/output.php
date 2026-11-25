@@ -8181,6 +8181,10 @@ function pg_js_bundles()
         // "Only what I changed" of the Options panel: its pure list and
         // reset loop (window.PGOptionsReview), then the part that draws it.
         'assets/js/style_designer_review.min.js' => array('assets/js/pg_options_review.js', 'assets/js/style_designer_review.js'),
+        // The Options panel's states: the state rule model
+        // (window.PGOptionStates), then the part that draws the panel under
+        // a state and writes it.
+        'assets/js/style_designer_states.min.js' => array('assets/js/pg_option_states.js', 'assets/js/style_designer_states.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
@@ -8337,6 +8341,9 @@ function pg_designer_parts()
         // The Publish check: each ticked page's result in the Publish sheet,
         // its findings in five groups, a finding's element selected.
         'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
+        // The Style tab's states (Hover, Focus, Pressed): the panel under a
+        // state, its rule in User Styles and the state on the canvas.
+        'states' => 'assets/js/style_designer_states.min.js',
     );
 }
 

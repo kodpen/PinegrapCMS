@@ -2704,6 +2704,66 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-quick-card:last-child { flex: 1 1 0; }
 .sd-rcol-narrow .sd-quick-cap { display: none; }
 .sd-review-empty { margin: 0; padding: 1.5rem .75rem; font-size: 12px; color: var(--sd-text-muted); text-align: center; }
+/* "In a state" under the review list: one line per state with "Show". */
+.sd-review-states-h { padding: 12px 8px 4px; font-size: 11px; font-weight: 600; color: var(--sd-text-muted); }
+
+/* ── The Style tab's State row (Normal, Hover, Focus, Pressed) ──
+   First in the Style tab's body: the label and one group drawn as the
+   button groups are (28 high, segments 24). A state that holds a value
+   carries a ring, 7 px, a 1.5 px accent line, white on the chosen
+   segment. Under 300 px the group stands under its label. */
+.sd-state-row { display: flex; align-items: center; gap: 6px 10px; margin: 2px 0 8px; padding-left: 14px; }
+.sd-state-lbl { width: 92px; min-width: 92px; font-size: 12px; color: var(--sd-label); }
+.sd-state-grp {
+    display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; height: 28px; padding: 1px;
+    border: 1px solid var(--sd-input-border); border-radius: 9px; background: var(--sd-input-bg); box-sizing: border-box;
+}
+.sd-state-seg {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 24px; height: 24px; padding: 0 6px; border: none; border-radius: 7px;
+    background: transparent; color: var(--sd-label); font-size: 11.5px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; cursor: pointer;
+    transition: background-color .12s, color .12s, box-shadow .12s;
+}
+.sd-state-seg:hover { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-state-seg.sd-seg-on, .sd-state-seg.sd-seg-on:hover {
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); box-shadow: var(--sd-segment-shadow);
+}
+.sd-state-seg:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-state-ring {
+    display: inline-block; flex: 0 0 7px; width: 7px; height: 7px; margin-left: 5px;
+    border: 1.5px solid var(--sd-accent); border-radius: 50%; box-sizing: border-box; vertical-align: middle;
+}
+.sd-state-seg .sd-state-ring { margin-left: 0; }
+.sd-state-seg.sd-seg-on .sd-state-ring { border-color: #fff; }
+.sd-rcol-narrow .sd-state-row { flex-direction: column; align-items: stretch; }
+.sd-rcol-narrow .sd-state-lbl { width: auto; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .sd-state-seg { transition: none; } }
+/* The line under the row, the first-use line. */
+.sd-state-line, .sd-state-hint {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin: -2px 0 8px 14px; font-size: 11.5px; color: var(--sd-text-muted);
+}
+.sd-state-hint { padding: 8px 10px; border-radius: 8px; background: var(--sd-raised-bg); color: var(--sd-text); }
+.sd-state-reset, .sd-state-got {
+    flex-shrink: 0; padding: 2px 6px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--sd-accent); font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.sd-state-reset:hover, .sd-state-got:hover { background: color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-state-reset:focus-visible, .sd-state-got:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-state-reset:disabled { opacity: .4; cursor: default; }
+/* Under a state: the sections the same in every state closed and dimmed,
+   a row no state writes dimmed in place, Normal's value in grey, the
+   corners as their five rows. */
+#sd-properties .sd-state-dim { opacity: .55; }
+#sd-properties .sd-state-dim > .sd-sect-hdr { cursor: default; }
+#sd-properties .sd-state-off { opacity: .45; }
+#sd-properties .sd-state-normal .sd-prop-control { color: var(--sd-text-muted); }
+#sd-properties .sd-state-normal .sd-prop-control select,
+#sd-properties .sd-state-normal .sd-cp-label,
+#sd-properties .sd-state-normal .sd-seg { color: var(--sd-text-muted); }
+#sd-properties .sd-state-normal .sd-seg.sd-seg-on { background: var(--sd-raised-bg-2); box-shadow: none; }
+#sd-properties.sd-state-on .sd-rdb-host { display: none; }
 .sd-props-results[hidden] { display: none; }
 .sd-props-results {
     flex-shrink: 0; max-height: 264px; overflow-y: auto; padding: 4px;

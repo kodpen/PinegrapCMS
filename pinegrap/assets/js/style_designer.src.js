@@ -25768,6 +25768,189 @@ const StyleDesigner = (function () {
         return t === 'style' ? _sdT('Style') : t === 'advanced' ? _sdT('Advanced') : _sdT('Content');
     }
 
+    // ── Options states: pure helpers ──
+    // The states an element takes: Hover for every element; Focus and
+    // Pressed for one a visitor can focus and press (a link, a button, a
+    // form control, a summary, an element drawn as a button or a nav link).
+    // tests/designer_option_states_test.php runs it under Node.
+    function _sdStatesFor(tag, cssClass) {
+        var t = String(tag || '').toLowerCase();
+        var list = String(cssClass || '').split(/\s+/);
+        var press = /^(a|button|input|select|textarea|summary)$/.test(t) ||
+            list.indexOf('btn') !== -1 || list.indexOf('nav-link') !== -1;
+        return press ? ['hover', 'focus', 'pressed'] : ['hover'];
+    }
+    // ── end of the Options states pure helpers
+
+    // ── Options states: the core's hooks ──
+    // "State", the first row of the Style tab's body: Normal, Hover, Focus,
+    // Pressed. Under a state Color and background, Border and corner and
+    // Shadow and effect write the state's rule on the element's custom
+    // style class in User Styles (`.pgs-xxxxxx:hover`, `:focus-visible`,
+    // `:active`); the part 'states' (pg_option_states.js,
+    // style_designer_states.js) draws the panel under the state, writes it
+    // and shows it on the canvas. The part loads the first time a state is
+    // chosen or an element whose class holds a state's rule is shown. The
+    // state is held while this element and the Style tab are open.
+    var _sdOptState = '';
+    var _sdOptStateId = '';
+    var _SD_STATE_PSEUDO = { hover: ':hover', focus: ':focus-visible', pressed: ':active' };
+
+    function _sdStateName(st) {
+        return st === 'hover' ? _sdT('Hover') : st === 'focus' ? _sdT('Focus') : st === 'pressed' ? _sdT('Pressed') : _sdT('Normal');
+    }
+
+    // The element the State row is drawn for: one element whose custom
+    // style is on (_sdCustomStyleOff()), or null.
+    function _sdStateNode() {
+        var n = selectedNode;
+        if (!n || selectedNodes.length > 1 || n.type === 'root' || _sdInnerSel()) return null;
+        if (typeof PgCustomStyle === 'undefined' || !window.PgUserStyles || _sdCustomStyleOff(n)) return null;
+        return n;
+    }
+
+    // The states whose rule the element's custom style class holds: a look
+    // at the User Styles text, no parse.
+    function _sdStateHeld(node) {
+        var cls = node && node.props ? PgCustomStyle.classOf(node.props.cssClass) : '';
+        if (!cls) return [];
+        var text = _userStylesGet();
+        if (text.indexOf(cls + ':') === -1) return [];
+        return Object.keys(_SD_STATE_PSEUDO).filter(function (st) {
+            return new RegExp('\\.' + cls + _SD_STATE_PSEUDO[st] + '\\s*\\{').test(text);
+        });
+    }
+
+    // The State row: a label and one group, a ring on a state that holds a
+    // value. The line under it is the part's (_sdStateAfter()).
+    function _sdStateRowHtml(node) {
+        var held = _sdStateHeld(node);
+        var states = _sdStatesFor(_sdIdTag(node), node.props.cssClass);
+        var seg = function (st) {
+            var on = st === _sdOptState;
+            var has = held.indexOf(st) !== -1;
+            var name = _sdStateName(st);
+            return '<button type="button" class="sd-state-seg' + (on ? ' sd-seg-on' : '') + '" data-sd-state="' + st + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+                (has ? ' aria-label="' + esc(_sdT('{var}, has values', name)) + '"' : '') + '>' + esc(name) +
+                (has ? '<span class="sd-state-ring" aria-hidden="true"></span>' : '') + '</button>';
+        };
+        return '<div class="sd-state-row" data-sd-state-row="1">' +
+            '<span class="sd-state-lbl" id="sd-state-lbl">' + esc(_sdT('State')) + '</span>' +
+            '<div class="sd-state-grp" role="group" aria-labelledby="sd-state-lbl">' + seg('') + states.map(seg).join('') + '</div>' +
+        '</div>';
+    }
+
+    // Back to Normal without a drawing: another element, another tab, the
+    // search, "Only what I changed".
+    function _sdStateDrop() {
+        if (!_sdOptState) return;
+        _sdOptState = '';
+        _sdOptStateId = '';
+        var api = _sdPartApis.states;
+        if (api && typeof api.leave === 'function') api.leave(canvasDoc);
+    }
+
+    // A state chosen in the row; the chosen one, or Normal, goes back to
+    // Normal. The part is loaded first.
+    function _sdStateGo(st) {
+        var node = _sdStateNode();
+        if (!node) return;
+        if (st === _sdOptState) st = '';
+        var done = function () {
+            renderProperties();
+            _sdStateSay(_sdT('State: {var}', _sdStateName(st)));
+            var b = document.querySelector('#sd-properties .sd-state-seg[data-sd-state="' + st + '"]');
+            if (b) b.focus();
+        };
+        if (!st) { _sdStateDrop(); done(); return; }
+        _sdPartLoad('states').then(function () {
+            if (selectedNode !== node) return;
+            _sdOptState = st;
+            _sdOptStateId = node._id;
+            done();
+        }, _sdPartFailed);
+    }
+
+    // Says what was chosen to a screen reader.
+    function _sdStateSay(text) {
+        var live = document.getElementById('sd-state-live');
+        if (!live) {
+            live = document.createElement('div');
+            live.id = 'sd-state-live';
+            live.className = 'visually-hidden';
+            live.setAttribute('aria-live', 'polite');
+            document.body.appendChild(live);
+        }
+        live.textContent = text;
+    }
+
+    // Writes the state's rule as one undo step: `fn(text, cls)` gives the
+    // new User Styles text; the element gets its custom style class the
+    // first time (as _sdWriteCustomStyle() does).
+    function _sdStateWrite(fn) {
+        var node = _sdStateNode();
+        if (!node || !_sdMayEdit(node)) return;
+        if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+        var cls = PgCustomStyle.classOf(node.props.cssClass) || _sdNewCustomStyleClass();
+        if (!cls) return;
+        var text = _userStylesGet();
+        var next = fn(text, cls);
+        if (next === text) return;
+        saveState();
+        if (String(node.props.cssClass || '').split(/\s+/).indexOf(cls) === -1) _sdSetNodeClass(node, '', cls);
+        _userStylesSet(next);
+        render();
+    }
+
+    // What the part reads and calls.
+    function _sdStateHost() {
+        return {
+            state: _sdOptState,
+            name: _sdStateName,
+            node: selectedNode,
+            panel: document.getElementById('sd-properties'),
+            canvasDoc: canvasDoc,
+            canvasEl: function () { return _sdCanvasInnerOf(selectedNode); },
+            cls: function () { return PgCustomStyle.classOf(selectedNode.props.cssClass); },
+            text: _userStylesGet,
+            held: function () { return _sdStateHeld(selectedNode); },
+            write: _sdStateWrite,
+            go: _sdStateGo,
+            locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(null, 'design'); },
+            segSync: _sdSegSync,
+            resetButtons: _sdChgResetButtons
+        };
+    }
+
+    // After markModifiedProps() in the single element's panel: the part
+    // draws the panel under the chosen state, or the rings of Normal's
+    // section heads. With nothing held and Normal chosen nothing loads; an
+    // element holding a state's rule loads the part (its values count in
+    // "Only what I changed") and draws the panel again.
+    function _sdStateAfter(panel) {
+        if (!_sdOptState && !(_sdStateNode() && _sdStateHeld(selectedNode).length)) return;
+        if (!_sdPartLoaded('states')) {
+            _sdPartLoad('states').then(function () { renderProperties(); }, _sdPartFailed);
+            return;
+        }
+        var api = _sdPartApis.states;
+        if (panel.querySelector('[data-sd-state-row]') && api && typeof api.after === 'function') api.after(_sdStateHost());
+    }
+
+    // The row of a state's value back to Normal's: the dot's arrow.
+    function _sdStateRowReset(propRow) {
+        var api = _sdPartApis.states;
+        if (api && typeof api.resetRow === 'function') api.resetRow(_sdStateHost(), propRow);
+    }
+
+    // The states that hold values on the selected element, for "Only what
+    // I changed": [{ state, name, count }].
+    function _sdStateReview() {
+        var api = _sdPartApis.states;
+        if (!_sdStateNode() || !api || typeof api.review !== 'function') return [];
+        return api.review(_sdStateHost());
+    }
+
     // ── "Only what I changed": the core's hooks ──
     // The switch under the Options panel counts the rows of the element
     // changed in its tabs. Switched on, the panel is drawn with every tab
@@ -25789,6 +25972,8 @@ const StyleDesigner = (function () {
         foot.hidden = !counts;
         if (!counts) { foot.innerHTML = ''; return; }
         var n = Object.keys(counts).reduce(function (sum, t) { return sum + (Number(counts[t]) || 0); }, 0);
+        // The values the element's states hold count too.
+        n += _sdStateReview().reduce(function (sum, e) { return sum + e.count; }, 0);
         var on = _sdReviewOn;
         foot.classList.toggle('is-on', on);
         foot.innerHTML = '<button type="button" class="sd-review-switch" role="switch" aria-checked="' + (on ? 'true' : 'false') + '">' +
@@ -25885,16 +26070,21 @@ const StyleDesigner = (function () {
         var n = 0;
         _sdReviewBusy = true;
         try {
-            n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
-                var rows = _sdReviewRows(document.getElementById('sd-properties'));
-                for (var i = 0; i < rows.length; i++) {
-                    var r = rows[i];
-                    if (!r.top || r.top === 'tr') continue;
-                    var key = r.tab + '|' + r.card + '|' + r.at;
-                    if (!done[key]) return { key: key, lbl: r.lbl };
-                }
-                return null;
-            }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+            // The rows and the states' values in one undo step.
+            _sdUndoAsOne(_saveStateRun, function () {
+                n = R.resetAll(function (fn) { _sdUndoAsOne(_saveStateRun, fn); }, function (done) {
+                    var rows = _sdReviewRows(document.getElementById('sd-properties'));
+                    for (var i = 0; i < rows.length; i++) {
+                        var r = rows[i];
+                        if (!r.top || r.top === 'tr') continue;
+                        var key = r.tab + '|' + r.card + '|' + r.at;
+                        if (!done[key]) return { key: key, lbl: r.lbl };
+                    }
+                    return null;
+                }, function (row) { _sdReviewResetRow(row.lbl); }, 500);
+                var api = _sdPartApis.states;
+                if (_sdStateNode() && api && typeof api.clearAll === 'function') n += api.clearAll(_sdStateHost());
+            });
         } finally {
             _sdReviewBusy = false;
         }
@@ -25914,6 +26104,10 @@ const StyleDesigner = (function () {
             locked: function () { return !_collab.mayEdit || !!_sdPanelLockReason(nodes) || !!(panel && panel.querySelector('.sd-panel-readonly')); },
             reset: _sdReviewResetRow,
             resetAll: _sdReviewResetAll,
+            // The states holding values ("In a state"), and "Show": the
+            // Style tab opened on that state.
+            states: _sdStateReview,
+            showState: function (st) { _sdReviewOn = false; _sdOptTab = 'style'; _sdStateGo(st); },
             // "Copy style" under the list: one element's changed Style rows.
             copyStyle: _sdStyleCopy,
             several: nodes.length > 1,
@@ -36708,6 +36902,7 @@ const StyleDesigner = (function () {
         var box = document.getElementById('sd-props-search');
         var searching = !!(box && box.value.trim());
         if (!panel || !tab || (tab === _sdOptTab && !searching)) return;
+        if (tab !== _sdOptTab) _sdStateDrop();
         if (box) { box.value = ''; if (box.parentElement) box.parentElement.classList.remove('sd-has-q'); }
         _sdPropsSearchEmpty('');
         _sdOptSearchClose();
@@ -36849,7 +37044,12 @@ const StyleDesigner = (function () {
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || _sdReviewOn || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
-        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
+        // A state is held while this element and the Style tab are open; a
+        // search, a jump to a row and "Only what I changed" go back to Normal.
+        if (_sdOptState && (_allBodies || _sdOptStateId !== selectedNode._id || !_sdStateNode())) _sdStateDrop();
+        // Under a state every body is built: the part reads the rows of
+        // the closed cards too.
+        _sdSectBuild = { cards: {}, lazy: (_allBodies || _sdOptState) ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
         // Options section (node-specific)
         var optHtml = '';
@@ -36933,6 +37133,10 @@ const StyleDesigner = (function () {
         ].concat(_keyed.keyed));
         var _shown = _sdOptTabsShown(_plan);
         _sdOptTab = _sdOptTabPick(_sdOptTab, _shown);
+        if (_sdOptTab !== 'style') _sdStateDrop();
+        // "State", the first row of the Style tab's body.
+        var _stNode = _sdStateNode();
+        if (_stNode && _plan.style) _plan.style = _sdStateRowHtml(_stNode) + _plan.style;
         var _drawn = '';
         _shown.forEach(function (t) {
             if (_allBodies || t === _sdOptTab) _drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + _plan[t] + '</div>';
@@ -36952,6 +37156,7 @@ const StyleDesigner = (function () {
         _sdSpBoxBind([selectedNode]);
         _sdFocusBind(selectedNode);
         markModifiedProps();
+        _sdStateAfter(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -65528,6 +65733,9 @@ const StyleDesigner = (function () {
         if (!propRow) return;
         var kind = lbl.dataset.resetKind;
 
+        // A state's value: the row back to Normal's (_sdStateRowReset()).
+        if (kind === 'state') { _sdStateRowReset(propRow); return; }
+
         if (kind === 'bg-color-all') {
             if (!selectedNode) return;
             saveState();
@@ -65723,6 +65931,8 @@ const StyleDesigner = (function () {
             if (!t || !t.closest) return;
             var pre = t.closest('[data-sd-pos-preset]');
             if (pre && panel.contains(pre)) { _sdPosPresetApply(pre.getAttribute('data-sd-pos-preset')); return; }
+            var stb = t.closest('.sd-state-seg');
+            if (stb && panel.contains(stb)) { _sdStateGo(stb.getAttribute('data-sd-state')); return; }
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
@@ -65734,6 +65944,17 @@ const StyleDesigner = (function () {
             // Several elements: the row back to its default in all of them.
             if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
+        });
+        // Escape goes back to Normal from a state, outside a field and an
+        // open colour menu.
+        panel.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' || !_sdOptState) return;
+            var t = e.target;
+            if (t && t.closest && t.closest('input, select, textarea, .sd-cp-menu:not([hidden])')) return;
+            if (panel.querySelector('.sd-cp-menu:not([hidden])')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sdStateGo('');
         });
         // A layer picked beside Z Index fills the field, whose own listener
         // writes: 'input' for one element, 'change' for several.

@@ -41,7 +41,21 @@ StyleDesigner.definePart('review', function (K) {
         var rows = host.rows();
         var list = R.list(rows, { content: host.tabName('content'), style: host.tabName('style'), advanced: host.tabName('advanced') });
         var locked = host.locked();
-        if (!list.length) {
+        // The states holding values (the part 'states'): one line each
+        // under the list, with "Show".
+        var states = host.states ? host.states() : [];
+        var held = states.reduce(function (n, e) { return n + e.count; }, 0);
+        var statesHtml = !states.length ? '' :
+            '<div class="sd-review-states-h">' + esc(_sdT('In a state')) + '</div>' +
+            '<ul class="sd-review-list" aria-label="' + esc(_sdT('In a state')) + '">' +
+            states.map(function (e) {
+                return '<li class="sd-review-row">' +
+                    '<div class="sd-review-tx"><b>' + esc(e.name) + '</b></div>' +
+                    '<div class="sd-review-val"><span class="sd-review-v">' + esc(e.count === 1 ? _sdT('1 option') : _sdT('{var} options', e.count)) + '</span></div>' +
+                    '<button type="button" class="pg-button pg-button-ghost pg-button-sm sd-review-show" data-rv-state="' + esc(e.state) + '">' + esc(_sdT('Show')) + '</button>' +
+                '</li>';
+            }).join('') + '</ul>';
+        if (!list.length && !states.length) {
             box.innerHTML = '<p class="sd-review-empty">' + esc(_sdT('No option is changed here.')) + '</p>';
             _rvFocusAt = null;
             return;
@@ -59,7 +73,7 @@ StyleDesigner.definePart('review', function (K) {
                         ' title="' + esc(_sdT('Reset to default')) + '" aria-label="' + esc(_sdT('Reset {var} to default', e.label)) + '"' + (off ? ' disabled' : '') + '></button>' +
                 '</li>';
             }).join('') +
-        '</ul>' +
+        '</ul>' + statesHtml +
         '<div class="sd-review-ft">' +
             '<button type="button" class="pg-button pg-button-ghost pg-button-sm sd-review-copy"' + (host.several ? ' disabled title="' + esc(_sdT('Copy style takes one element: select only one.')) + '"' : '') + '>' +
                 '<span class="bi bi-brush" aria-hidden="true"></span><span class="pg-btn-label">' + esc(_sdT('Copy style')) + '</span></button>' +
@@ -84,12 +98,16 @@ StyleDesigner.definePart('review', function (K) {
                 host.reset(r.lbl);
                 return;
             }
+            if (t.classList.contains('sd-review-show')) {
+                host.showState(t.getAttribute('data-rv-state'));
+                return;
+            }
             if (t.classList.contains('sd-review-copy')) {
                 host.copyStyle();
                 return;
             }
             if (t.classList.contains('sd-review-all')) {
-                host.ask(list.length).then(function (ok) {
+                host.ask(list.length + held).then(function (ok) {
                     if (!ok) return;
                     var n = host.resetAll();
                     if (n) K.sdToast(esc(_sdT('{var} options back to their defaults.', n)), 'success');
