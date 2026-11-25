@@ -484,6 +484,9 @@
 - designer-options-controls.md: Options panel controls of the Visual Page Editor: button groups, the changed dot and its one-step reset, the size badge, length fields that refuse a bad value, rows stacked under 300 px
 - designer-options-copy-style.md: Options panel "Copy style" and "Paste style" (DP10): the brush, what is never taken, fitting to another kind, one undo step, the copy kept in the browser; the quick strip on Content
 - designer-options-effects.md: Filter, Background blur and Blend in Shadow and effect's "More" as built (DO15, #11700): the rows, how a state holds a filter, the glass hint, the slider preview, the part, the cost
+- designer-options-grid-drawing-child.md: A grid box's named areas as drawn for DO6, the rest: the row "Area" on a child of the grid, what the canvas shows, the keys and what is read out, the 240 px panel
+- designer-options-grid-drawing-rules.md: How a grid box's named areas behave as drawn for DO6: when "Areas" is offered, making, naming, refusals, what a change takes with it, screen sizes
+- designer-options-grid-drawing.md: The drawing of a grid box's named areas (plan designer-options-census, DO6): the sheet, its seven boards, the rows "Areas" and "Area", what is new and where it differs from the plan's words
 - designer-options-layout.md: Advanced › Layout in the Options panel draws its rows by context (DP6, #10504): flex container rows, flex child rows under "parent: flex", the note naming hidden rows, "Make it a container"
 - designer-options-multiple.md: The Options panel with several elements selected (#10468): identity row with the count, tabs by kind, "— Multiple —" per control, the ring dot, the counts, a change written to all as one undo step
 - designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts [decision: here]
@@ -672,6 +675,7 @@
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
 - language-switcher-component.md: The Language Switcher Button component (COMPONENTS.language_switcher, 2026.4.7): a placeholder in the saved body, drawn per request after the language pass; the pattern for request-bound output.
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
+- layout-convert-widget-gap.md: What the layout converter does with a piece a page type's layout has and its widget lacks (LE10b to LE10d): a state, a carried setting, a page link, a second form or list; the guest button [decision: here]
 - layout-editor-classic.md: The layout editor screen edit_page_layout.php (L5a, #3084) for a page not on a visual design: who reaches it, the layout_code action, hosted sites, where Edit Layout goes [decision: decisions-made-product-2.md]
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
