@@ -109,7 +109,7 @@ function test_designer_options_variables_computed_rows()
 		. " steps: _SD_VAR_STEPS.map(function (s) { return s[0] + ':' + _sdVarStepPx(16, 1.25, s[1]); }),"
 		. " units: _SD_VAR_UNITS.map(function (u) { return _sdVarUnitPx(8, u); }),"
 		. " px: [_sdVarPx('1rem'), _sdVarPx('13px'), _sdVarPx('0'), _sdVarPx('auto')],"
-		. " names: [_sdVarRefName({ step: 2 }, {}), _sdVarRefName({ units: 6 }, {}), _sdVarRefName({ token: 'brand' }, { brand: 'Brand' }), _sdVarRefName({ token: 'c-caption-size' }, {})]"
+		. " names: [_sdVarRefName({ step: 3 }, {}), _sdVarRefName({ units: 6 }, {}), _sdVarRefName({ token: 'brand' }, { brand: 'Brand' }), _sdVarRefName({ token: 'c-caption-size' }, {})]"
 		. "};"
 	);
 	if ($out === null) {
@@ -134,5 +134,6 @@ function test_designer_options_variables_usage()
 	if ($out === null) {
 		return;
 	}
-	pg_assert_same(array('brand' => 1, 'size-base' => 1, 'scale' => 1, 'brand-2' => 1, 'space-unit' => 1), $out);
+	ksort($out);
+	pg_assert_same(array('brand' => 1, 'brand-2' => 1, 'scale' => 1, 'size-base' => 1, 'space-unit' => 1), $out);
 }

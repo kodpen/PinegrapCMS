@@ -52074,11 +52074,11 @@ const StyleDesigner = (function () {
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
         return _sdSectKey(sect('bi-type', _sdT('Text'),
             _alignHtml +
-            row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
+            row(_sdT('Color'),        colorSelectGroup('text-', tColors), 'color:color') +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
-            row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Text Bg'),      colorSelectGroup('bg-', bColors), 'color:background-color') +
             row(_sdT('Case'),         selStyleGroup(n.props, ['text-lowercase','text-uppercase','text-capitalize'], 'None')) +
-            row(_sdT('Font Size'),    selStyleGroup(n.props, fontSizeClasses, 'Default')) +
+            row(_sdT('Font Size'),    selStyleGroup(n.props, fontSizeClasses, 'Default'), 'size:font-size') +
             row(_sdT('Font Weight'),  selStyleGroup(n.props, ['fw-lighter','fw-light','fw-normal','fw-medium','fw-semibold','fw-bold','fw-bolder'], 'Default')) +
             row(_sdT('Font Style'),   selStyleGroup(n.props, ['fst-italic','fst-normal'], 'Default')) +
             row(_sdT('Line Height'),  selStyleGroup(n.props, ['lh-1','lh-sm','lh-base','lh-lg'], 'Default')) +
@@ -56351,13 +56351,16 @@ const StyleDesigner = (function () {
     // A row: the changed dot's place, the label, the control. While the
     // single element's panel is built (_sdSectBuild) a lone select of up to
     // six values is drawn as a button group (_sdSegPlan()).
-    function row(label, ctrl) {
+    // `vars` ('<kind>:<css property>') makes the control one that offers the
+    // design's variables (_sdVarCtl()).
+    function row(label, ctrl, vars) {
         var extra = '';
         var ps = _sdSectBuild ? _sdSelParse(ctrl) : null;
         if (ps) {
             var plan = _sdSegPlan(ps.opts.filter(function (o) { return o.v !== ''; }).map(function (o) { return o.l; }));
             if (plan.kind === 'group') { ctrl = _sdSegGroup(ps); extra = _sdSegRowCls(plan); }
         }
+        if (vars) ctrl = _sdVarCtl(vars, ctrl);
         return '<div class="sd-prop-row' + extra + '"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
     }
     // A button group from a read select (_sdSelParse()). The select stays,
@@ -56751,6 +56754,215 @@ const StyleDesigner = (function () {
         });
         h += '</div>';
         return h;
+    }
+
+    // ── Design variables in Options: pure helpers ──
+    // A control bound to a design variable holds a CSS expression on the
+    // design's --pg-var-* tokens (the variables stylesheet,
+    // includes/fn/design_variables.php): a variable ({ token: 'brand' }, a
+    // designer's own 'c-<key>'), a step of the type scale ({ step: n }: the
+    // base size times the scale n times, a negative n divides) or a multiple
+    // of the base unit ({ units: n }). Steps and multiples are not variables
+    // of their own: the expression works them out, so a change of the base
+    // size, the scale or the unit moves every element bound to one.
+    var _SD_VAR_STEPS = [['XS', -2], ['S', -1], ['L', 1], ['XL', 2], ['2XL', 3], ['3XL', 4], ['4XL', 5], ['5XL', 6]];
+    var _SD_VAR_UNITS = [2, 3, 4, 6, 8];
+
+    function _sdVarTok(t) {
+        return 'var(--pg-var-' + t + ')';
+    }
+
+    // The expression of a reference; '' for one that names nothing offered.
+    function _sdVarExpr(ref) {
+        if (!ref) return '';
+        if (ref.token != null) return /^[a-z0-9][a-z0-9-]*$/.test(ref.token) ? _sdVarTok(ref.token) : '';
+        if (ref.units != null) return _SD_VAR_UNITS.indexOf(ref.units) !== -1 ? 'calc(' + _sdVarTok('space-unit') + ' * ' + ref.units + ')' : '';
+        var n = +ref.step;
+        if (!_SD_VAR_STEPS.some(function (s) { return s[1] === n; })) return '';
+        var h = 'calc(' + _sdVarTok('size-base');
+        for (var i = 0; i < Math.abs(n); i++) h += (n > 0 ? ' * ' : ' / ') + _sdVarTok('scale');
+        return h + ')';
+    }
+
+    // The reference a style value is, read back; null for a typed value.
+    function _sdVarParse(v) {
+        v = String(v == null ? '' : v).trim();
+        var m = /^var\(--pg-var-([a-z0-9][a-z0-9-]*)\)$/.exec(v);
+        if (m) return { token: m[1] };
+        m = /^calc\(var\(--pg-var-space-unit\) \* (\d+)\)$/.exec(v);
+        if (m) return _sdVarExpr({ units: +m[1] }) ? { units: +m[1] } : null;
+        for (var i = 0; i < _SD_VAR_STEPS.length; i++) {
+            if (_sdVarExpr({ step: _SD_VAR_STEPS[i][1] }) === v) return { step: _SD_VAR_STEPS[i][1] };
+        }
+        return null;
+    }
+
+    // A length of the model in pixels (a rem is 16); null for anything else.
+    function _sdVarPx(v) {
+        var m = /^(-?\d*\.?\d+)(px|rem)?$/.exec(String(v == null ? '' : v).trim());
+        if (!m) return null;
+        return m[2] === 'rem' ? +m[1] * 16 : +m[1];
+    }
+
+    // What a step of the scale and a multiple of the unit give now, whole px.
+    function _sdVarStepPx(base, scale, n) {
+        return Math.round(base * Math.pow(scale, n));
+    }
+    function _sdVarUnitPx(unit, n) {
+        return Math.round(unit * n);
+    }
+
+    // The name a chip shows: `names` maps a token to its variable's name;
+    // a designer's own variable not in it is named from its key.
+    function _sdVarRefName(ref, names) {
+        if (!ref) return '';
+        if (ref.units != null) return _sdT('{var} units', ref.units);
+        if (ref.step != null) {
+            var s = _SD_VAR_STEPS.filter(function (x) { return x[1] === ref.step; })[0];
+            return _sdT('Scale {var}', s ? s[0] : String(ref.step));
+        }
+        if (names && names[ref.token]) return names[ref.token];
+        var t = String(ref.token).replace(/^c-/, '').replace(/-/g, ' ');
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    // "Used in n places": per token, the elements of `trees` whose style
+    // reads it (an element reading it twice counts once).
+    function _sdVarUsage(trees) {
+        var out = {};
+        var stack = (trees || []).slice();
+        while (stack.length) {
+            var n = stack.pop();
+            if (!n) continue;
+            var attrs = (n.props && n.props._attrs) || [];
+            var seen = {};
+            for (var i = 0; i < attrs.length; i++) {
+                if (!attrs[i] || attrs[i].name !== 'style') continue;
+                var re = /--pg-var-([a-z0-9][a-z0-9-]*)/g, m;
+                while ((m = re.exec(String(attrs[i].value || '')))) {
+                    if (!seen[m[1]]) { seen[m[1]] = 1; out[m[1]] = (out[m[1]] || 0) + 1; }
+                }
+            }
+            (n.children || []).forEach(function (c) { stack.push(c); });
+        }
+        return out;
+    }
+    // ── end of the design variables in Options ──
+
+    // ── Design variables in Options
+    // Colour and font size controls of the single element's panel offer
+    // the design's variables (row()'s `vars`). The list, the values and the
+    // names come from the part 'variables', loaded when a list or a Detach
+    // is first asked for; the core draws only the chip of a bound control.
+    // What the part last gave: token => { name, color }.
+    var _sdVarNames = {};
+
+    function _sdVarNamesMap() {
+        var out = {
+            brand: _sdT('Brand'), accent: _sdT('Accent'), neutral: _sdT('Neutral'), surface: _sdT('Surface'),
+            text: _sdT('Text'), success: _sdT('Success'), warning: _sdT('Warning'), danger: _sdT('Danger'),
+            'size-base': _sdT('Base size'), 'space-unit': _sdT('Base unit'), 'space-section': _sdT('Section rhythm'),
+            radius: _sdT('Corners')
+        };
+        Object.keys(_sdVarNames).forEach(function (t) { if (_sdVarNames[t].name) out[t] = _sdVarNames[t].name; });
+        return out;
+    }
+
+    // The control as today with a quiet "Variables" button beside it; a
+    // bound control shows the chip in its place (the variable's name and
+    // "Detach"), a typed value of the property a field. The control stays
+    // in the row, hidden, for the search and the counts.
+    function _sdVarCtl(vars, html) {
+        if (!selectedNode || selectedNodes.length > 1 || !_sdThemes() || !_sdUsesBootstrap()) return html;
+        var kind = vars.split(':')[0], prop = vars.split(':')[1];
+        var val = getAttrStyleProp(selectedNode, prop);
+        var ref = _sdVarParse(val);
+        var a = ' data-sd-var="' + kind + '" data-sd-var-prop="' + prop + '"';
+        var pick = '<button type="button" class="sd-var-pick" data-sd-var-open title="' + esc(_sdT('Variables')) + '" aria-label="' + esc(_sdT('Choose a variable')) + '">' +
+            '<span class="bi bi-braces" aria-hidden="true"></span></button>';
+        if (ref) {
+            var info = ref.token ? (_sdVarNames[ref.token] || {}) : {};
+            var nm = _sdVarRefName(ref, _sdVarNamesMap());
+            var mark = (kind === 'color' && info.color)
+                ? '<span class="sd-var-sw" style="background:' + esc(info.color) + '" aria-hidden="true"></span>'
+                : '<span class="bi ' + (kind === 'color' ? 'bi-palette' : 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>';
+            return '<div class="sd-var-ctl sd-var-bound"' + a + '><div hidden>' + html + '</div>' +
+                '<span class="sd-var-chip"><button type="button" class="sd-var-chip-name" data-sd-var-open title="' + esc(nm) + '">' + mark +
+                '<span class="sd-var-chip-txt">' + esc(nm) + '</span></button>' +
+                '<button type="button" class="sd-var-detach" data-sd-var-detach>' + esc(_sdT('Detach')) + '</button></span></div>';
+        }
+        if (val && prop !== 'background-color') {
+            return '<div class="sd-var-ctl"' + a + '><div hidden>' + html + '</div>' +
+                '<input type="text" class="form-control form-control-sm sd-var-lit" data-sd-var-lit value="' + esc(val) + '" spellcheck="false" aria-label="' + esc(_sdT('Value')) + '">' +
+                pick + '</div>';
+        }
+        return '<div class="sd-var-ctl"' + a + '><div class="sd-var-main">' + html + '</div>' + pick + '</div>';
+    }
+
+    // Writes a bound or typed value ('' removes it) as one undo step.
+    function _sdVarSet(node, prop, v) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!node || _sdPanelLockReason([node])) return;
+        if ((getAttrStyleProp(node, prop) || '') === (v || '')) return;
+        saveState();
+        setAttrStyleProp(node, prop, v || '');
+        _sdRenderNode(node, render);
+    }
+
+    // A typed value left in the field: written when the browser takes it.
+    function _sdVarLitChange(inp) {
+        var ctl = inp.closest('.sd-var-ctl');
+        if (!ctl || !selectedNode) return;
+        var prop = ctl.getAttribute('data-sd-var-prop'), v = inp.value.trim();
+        if (v && (/[;{}<>]/.test(v) || (window.CSS && CSS.supports && !CSS.supports(prop, v)))) {
+            _sdFieldInvalid(inp, ctl.getAttribute('data-sd-var') === 'color'
+                ? _sdT('Not a colour. Write a hex value such as #94A3B8.')
+                : _sdT('Not a size. Write a value such as 16px or 1rem.'));
+            return;
+        }
+        _sdFieldInvalid(inp, '');
+        _sdVarSet(selectedNode, prop, v);
+    }
+
+    // The way out to a typed value: the binding goes and the control opens
+    // as it does today.
+    function _sdVarTyped(prop) {
+        if (selectedNode && _sdVarParse(getAttrStyleProp(selectedNode, prop))) _sdVarSet(selectedNode, prop, '');
+        var ctl = document.querySelector('#sd-properties .sd-var-ctl[data-sd-var-prop="' + prop + '"]');
+        var main = ctl ? ctl.querySelector('.sd-var-main') : null;
+        if (!main) return;
+        var trig = main.querySelector('.sd-cp-trigger');
+        if (trig) { trig.click(); return; }
+        var f = main.querySelector('.sd-seg, select:not([hidden])');
+        if (!f) return;
+        f.focus();
+        if (f.tagName === 'SELECT' && typeof f.showPicker === 'function') { try { f.showPicker(); } catch (e) { /* not from a script here */ } }
+    }
+
+    // What the part reaches for one control: the variables host
+    // (_sdVarsHost()) and the control, its value, the write, the way out to
+    // a typed value and the count over the pages open in the editor.
+    function _sdVarsPickHost(ctl, node) {
+        var h = _sdVarsHost(null);
+        var prop = ctl.getAttribute('data-sd-var-prop');
+        h.anchor = ctl;
+        h.kind = ctl.getAttribute('data-sd-var');
+        h.value = getAttrStyleProp(node, prop);
+        h.locked = !_collab.mayEdit || !!_sdPanelLockReason([node]);
+        h.set = function (v) { _sdVarSet(node, prop, v); };
+        h.typed = function () { _sdVarTyped(prop); };
+        h.parse = _sdVarParse;
+        h.expr = _sdVarExpr;
+        h.px = _sdVarPx;
+        h.steps = _SD_VAR_STEPS;
+        h.names = function (map) { _sdVarNames = map || {}; };
+        return h;
+    }
+
+    function _sdVarOpen(btn) {
+        var ctl = btn.closest('.sd-var-ctl');
+        if (!ctl || !selectedNode) return;
+        _sdPartCall('variables', btn.hasAttribute('data-sd-var-detach') ? 'detach' : 'pick', [_sdVarsPickHost(ctl, selectedNode)]).catch(_sdPartFailed);
     }
 
     /**
@@ -57377,7 +57589,7 @@ const StyleDesigner = (function () {
         // the search read them as before.
         var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
-            row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
+            row(_sdT('Color'),  colorSelectGroup('border-', borderColors), 'color:border-color') +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
             '<div class="sd-spb-host sd-rdb-host sd-bm-wrap" data-sd-rdbox></div>' +
             '<div class="sd-rd-rows" hidden>' +
@@ -57568,10 +57780,10 @@ const StyleDesigner = (function () {
             '</div>';
 
         var colorsHtml = as(_sdT('Color and background'),
-            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
+            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors), 'color:color') +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors), 'color:background-color') +
             row(_sdT('Bg Opacity'),   selStyleGroup(n.props, ['bg-opacity-10','bg-opacity-25','bg-opacity-50','bg-opacity-75','bg-opacity-100'], 'Default')) +
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
@@ -65213,6 +65425,8 @@ const StyleDesigner = (function () {
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
             if (mk && panel.contains(mk)) { if (!mk.disabled) _sdLayMake(); return; }
+            var vo = t.closest('[data-sd-var-open], [data-sd-var-detach]');
+            if (vo && panel.contains(vo)) { _sdVarOpen(vo); return; }
             var rb = t.closest('.sd-chg-reset');
             if (!rb || !panel.contains(rb) || rb.disabled) return;
             var lbl = rb.nextElementSibling;
@@ -65225,6 +65439,7 @@ const StyleDesigner = (function () {
         // writes: 'input' for one element, 'change' for several.
         panel.addEventListener('change', function (e) {
             var sel = e.target;
+            if (sel && sel.hasAttribute && sel.hasAttribute('data-sd-var-lit')) { _sdVarLitChange(sel); return; }
             if (!sel || !sel.hasAttribute || !sel.hasAttribute('data-sd-zlayer') || sel.value === '') return;
             var inp = sel.parentNode ? sel.parentNode.querySelector('input[data-prop="zIndex"]') : null;
             if (!inp || inp.disabled) return;
@@ -76223,7 +76438,11 @@ const StyleDesigner = (function () {
                 try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
             },
             setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
-            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
+            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); },
+            // Whether the canvas reads a variables stylesheet: the saved
+            // file or one being tried.
+            hasCss: function () { return !!(_sdThemeTry.variables || th.variables); },
+            usage: function () { return _sdVarUsage(_pages.map(_pgTreeOf)); }
         };
     }
 

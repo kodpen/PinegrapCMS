@@ -3777,6 +3777,7 @@
     "A value to use when the first one fails": "İlki hata verirse kullanılacak değer",
     "A van or campervan": "Kamyonet veya karavan",
     "A vapour chamber that keeps it cool": "Serin tutan buhar odası",
+    "A variable is a value the whole design shares. Pick one and this control follows it when it changes.": "Değişken, tüm tasarımın paylaştığı bir değerdir. Birini seçin; değiştiğinde bu kontrol de onu izler.",
     "A variable's name may hold at most {var:1} characters.": "Bir değişkenin adı en çok {var:1} karakter olabilir.",
     "A variant of this experiment is no longer a draft.": "Bu deneyin bir varyantı artık taslak değil.",
     "A variant set needs at least two variants.": "Bir varyant setinde en az iki varyant olmalıdır.",
