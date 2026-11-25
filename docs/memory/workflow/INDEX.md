@@ -120,6 +120,7 @@
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
 - coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators [decision: here]
 - coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps [decision: here]
+- coordinator-second-paused.md: Since 2026-11-25 the second coordinator (k2) takes no new work and the design session is stopped, both for their account's quota: k1 gives out k2's open steps, the architect draws; the owner's words [decision: decisions-made-product-110.md]
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs [decision: here]
 - coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task [decision: here]
@@ -162,6 +163,7 @@
 - decisions-made-product-108.md: Decisions made, product part 108 (2026-11-24 on): ten more designer features in three levels, and the rule that every designer feature keeps the designer simple and quick
 - decisions-made-product-109.md: Decisions made, product part 109 (2026-11-24 on): a form list's feed sends a teaser for a record whose detail page is not public; a saved-cart link's order belongs to whoever completes it
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
+- decisions-made-product-110.md: Decisions made, product part 110 (2026-11-25 on): all eleven packages of the Options panel census go into the designer; the architect draws the designer plans' sheets while no design session runs
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
@@ -368,7 +370,7 @@
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
-- design-work-session.md: Where a screen's look is designed (2026-11-23, #11186): in a design session of its own that the owner talks to, not in the architect session; why
+- design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down [decision: decisions-made-product-110.md]
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
 - docs-only-pr-checks.md: A pull request whose every changed file is under docs/ runs only the memory check and the branch guards in php-checks.yml; its jobs keep their names and end green
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
