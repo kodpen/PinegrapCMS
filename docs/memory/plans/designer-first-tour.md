@@ -19,14 +19,14 @@ priority: 7
 - A content editor gets three stops of their own: what they may change, how, and how it reaches the site.
 
 ## What must it keep?
-- Never over a dialog, never while a text is typed or something is dragged, never twice. Escape ends it. Focus goes to the card and back where it was; every stop is read by a screen reader.
+- Never over a dialog, never while a text is typed or something is dragged, never twice. Escape ends it. The first card is announced and takes no focus; from "Start" focus goes to each stop's bubble and back where it was; every stop is read by a screen reader.
 - What was seen is kept per browser; FT1 looks whether the panel already keeps such a thing per person and uses it. No table or column.
 - Every sentence is a translated text, short enough for a phone's width. The part loads only when a tour or a tip is due.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - FT1 (S) The model, pure: stops and their anchors per role, the order, what was seen, a stop whose control is not on the screen skipped. Done (#11531, `designer/designer-first-tour-model.md`).
-- FT2 (M) after FT1 and DD14: the card and the tour.
-- FT3 (M) after FT2: "How do I…", first-use tips, the empty canvas's starts.
+- FT2 (M) after FT1 and DD14: the card and the tour. Boards T1 to T3 and T7 of `designer/designer-first-tour-drawing.md`; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
+- FT3 (M) after FT2: "How do I…", first-use tips, the empty canvas's starts. Boards T4 to T6 of `designer/designer-first-tour-help-drawing.md`, and T7 for the phone; where a line here differs, the drawing wins. The PR body carries a table of the boards: what was built for each, what differs and why.
 - FT4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
