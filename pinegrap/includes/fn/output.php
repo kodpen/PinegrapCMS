@@ -8187,6 +8187,9 @@ function pg_js_bundles()
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // The canvas guides: their pure geometry (window.PGCanvasGuides),
+        // then the part that draws Measure over the canvas.
+        'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8292,6 +8295,9 @@ function pg_designer_parts()
         // The canvas mirrors: the draft at another width beside the canvas,
         // drawn again when the hand rests.
         'mirror' => 'assets/js/style_designer_mirror.min.js',
+        // The canvas guides: Measure, the distances drawn while Alt is held
+        // with one element selected.
+        'guides' => 'assets/js/style_designer_guides.min.js',
     );
 }
 

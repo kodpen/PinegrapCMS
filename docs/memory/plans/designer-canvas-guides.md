@@ -27,7 +27,7 @@ priority: 7
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - CG1 (M) done (#11517). The geometry, pure: distances between two boxes, a parent's inner distances, the scale's nearest step, the column under a pointer, equal gaps among siblings; tested as the designer's other pure scripts are.
-- CG2 (M) after CG1 and DD8: Measure.
+- CG2 (M) done (#11570). Measure.
 - CG3 (M) after CG1 and DD8: the spacing bands and handles.
 - CG4 (M) after CG3: the column handles, the grid over the row, equal gaps.
 - CG5 (S) after CG2: layout lines, the View menu's switch, the keys shown.

@@ -5,7 +5,7 @@ description: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box dist
 
 ## What is it?
 - `window.PGCanvasGuides` in `pinegrap/assets/js/pg_canvas_guides.js`: the numbers behind Measure, the spacing bands, the column handles and the equal-gap marks (plan `designer-canvas-guides`). Pure: plain boxes and numbers in, plain objects out; no element, no listener.
-- Not in a bundle yet: the step that draws the first guide puts it first in the guides part's bundle (`pg_js_bundles()`, `pg_designer_parts()`), as `pg_spacing_box.js` is in `spacing`.
+- First file of the part `guides`'s bundle `style_designer_guides.min.js` (CG2 #11570), as `pg_spacing_box.js` is in `spacing`.
 
 ## What does it take and answer?
 - A box: `{ left, top, right, bottom }` or DOMRect-like `x / y / width / height`, all in the canvas frame's zoomed space. `zoom` (default 1) turns lengths back into page CSS pixels for the numbers; positions stay in canvas space.
@@ -14,6 +14,7 @@ description: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box dist
 
 ## Which functions are there?
 - `distances(a, b, zoom)`: apart along an axis, one gap line at the middle of where they face; off diagonally, drawn at a's middle with `reach` (b's near edge, for the dashed guide). Overlapping on both axes (nested, crossing): start-to-start and end-to-end lines with a length. Apart on one axis only: no line on the other.
+- `offset(a, b, zoom)` (#11570): two boxes facing each other (apart on one axis, sharing the other): the line between their starts (tops side by side, lefts stacked) at b's middle, with `guide` `{ axis, from, to, at }` along a's start from its facing edge to b's far edge; null otherwise or when the starts meet.
 - `inner(child, parent, zoom, rtl)`: `{ t, e, b, s }`, each `{ value, line }`; a side sticking out reads negative.
 - `scale(root)`: Bootstrap 5.3's spacers 0, .25, .5, 1, 1.5, 3 rem in px (root 16). `nearestStep(px, root|scale)`: `{ step: '0'..'5', px }`, a tie takes the smaller. `dragStep(from, delta, root|scale)`: from a class value plus the pointer's page pixels; `auto` and none start at 0.
 - `columns(row, { count, gutter, root, zoom, rtl })`: twelve equal boxes with `content` half a gutter (1.5rem) in. `columnAt(x, row, opts)`: 1..12, outside the row the nearest end. `spanAt(startCol, x, row, opts)`: `{ span, of }` ("6 of 12"), nearest column line, at least 1, at most what is left.
