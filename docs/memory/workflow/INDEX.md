@@ -82,6 +82,7 @@
 - bug-hunt-areas-private-content-access.md: The bug hunt in private content access (area 26, #11408): pages, folders and files for members or groups; the faults fixed and what was read clean
 - bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-product-variants-stock.md: The bug hunt of product variants and stock (area 30, 2026-11-24): three faults fixed, what was left for a decision, what was read clean
+- bug-hunt-areas-prototype-approval.md: The bug hunt of prototype approval (2026-11-25, hunt 56, PA1 to PA6): the four faults fixed in #11701, the issue opened, what was read clean
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
 - bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]

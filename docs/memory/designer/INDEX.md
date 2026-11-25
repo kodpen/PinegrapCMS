@@ -480,6 +480,7 @@
 - designer-option-change-panels.md: One Options panel select or switch change draws the Options panel and the node now; Layers rows, status bar, Attributes, HTML tree after the pause; badges of the redrawn element (#10013)
 - designer-options-controls.md: Options panel controls of the Visual Page Editor: button groups, the changed dot and its one-step reset, the size badge, length fields that refuse a bad value, rows stacked under 300 px
 - designer-options-copy-style.md: Options panel "Copy style" and "Paste style" (DP10): the brush, what is never taken, fitting to another kind, one undo step, the copy kept in the browser; the quick strip on Content
+- designer-options-effects.md: Filter, Background blur and Blend in Shadow and effect's "More" as built (DO15, #11700): the rows, how a state holds a filter, the glass hint, the slider preview, the part, the cost
 - designer-options-layout.md: Advanced › Layout in the Options panel draws its rows by context (DP6, #10504): flex container rows, flex child rows under "parent: flex", the note naming hidden rows, "Make it a container"
 - designer-options-multiple.md: The Options panel with several elements selected (#10468): identity row with the count, tabs by kind, "— Multiple —" per control, the ring dot, the counts, a change written to all as one undo step
 - designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts [decision: here]
@@ -617,6 +618,7 @@
 - designer-widget-ghosts-and-edit-chips.md: Canvas ghost records of listing widgets (designer/widget_ghosts); the edit pencil on records (pg_sw_add_edit_chip()): who sees it, inline !important look, its page stylesheet.
 - document-paragraphs.md: A .docx, .md or .txt turned into the paragraphs the designer's document reader takes (includes/fn/document_paragraphs.php): styles, bold leads, pictures taken out, limits, how much was read
 - document-reader.md: The designer's document reader (assets/js/pg_document_reader.js): paragraphs with their styles in, sections with kinds, items and unsure marks out; pasted text to paragraphs; rules, test
+- document-sort.md: "Sort it for me" on the "From a document" rows (FD4): when it shows, what is sent, the proposals and their answers, limits, designer_document.php sort, includes/fn/document_sort.php, tests
 - document-start.md: The "From a document" start as built (FD3): where it opens, the form, the rows and their kind list, Build the page, designer_document.php, the pictures, the files, the cost
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
