@@ -21,5 +21,6 @@ description: The first tour's pure model (window.PGDesignerTour, FT1): stops and
 - In the browser, per person, as the panel keeps its lists' choices (`commerce/orders-list-figure-strip.md`): localStorage `key(userId)` = `pg.designer.<user id>.tour` (`sdDesign.userId`). No table or column (the plan says so).
 - `read(raw)` / `write(state)`: `{ v: 1, offered, seen: { full, content }, tips: { <name>: true }, tipsOff }`; anything unreadable is a first visit; only `true` values and tip names of `[a-z0-9_-]{1,40}` are read.
 - `offer(state, access, busy)`: the card is shown when never offered, that access's tour not seen, and `busy` has no `dialog`, `typing` or `dragging`. `offered(state)` after the card was shown (once, whatever the answer); `seen(state, access)` after the tour ended by its last stop, Skip or Escape.
-- First-use tips (FT3): `tipDue(state, name)`, `tipSeen(state, name)` ("Got it"), `tipsOn(state, on)` (the "Tips" switch; seen tips stay seen).
+- First-use tips: `tipDue(state, name)`, `tipSeen(state, name)` ("Got it"), `tipsOn(state, on)` (the "Tips" switch; seen tips stay seen).
+- `tasks(access)`: the Help window's ten "How do I…" tasks, each three pointers `{ id: '<task>.<n>', anchors }`; `starts(access, have)`: an empty page's starts (`designer-first-tour-help.md`).
 - Every function returns a new state; the one given is not changed.

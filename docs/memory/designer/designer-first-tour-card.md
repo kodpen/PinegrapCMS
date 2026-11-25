@@ -22,4 +22,4 @@ module: output
 - The card and the bubble are a sheet across the foot; the bubble stands under the page bar when the ringed control's middle is in the window's lower half. The palette and Options are not on screen, so the model skips "add" and "shape" falls back to the canvas: the count follows.
 
 ## How is it started again?
-- "Take the tour" in the command palette (`act_tour`, shown when the part is handed). FT3 adds it as the Help window's first row.
+- "Take the tour" in the command palette (`act_tour`, shown when the part is handed) and as the first row of the Help window's "How do I…" (`designer-first-tour-help.md`).

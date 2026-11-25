@@ -16,6 +16,9 @@
  * - key(userId), read(raw), write(state): what was seen, kept per person in
  *   the browser under pg.designer.<user id>.tour.
  * - offer(state, access, busy): whether the card "New here?" may be shown.
+ * - tasks(access): the Help window's "How do I…" tasks, each { id, pointers }
+ *   with three pointers walked as the stops are (shown, move).
+ * - starts(access, have): the starts an empty page's canvas offers.
  *
  * Nothing runs at load but the definition of window.PGDesignerTour.
  * tests/designer_tour_model_test.php runs it in Node.
@@ -48,6 +51,27 @@
             { id: 'send', anchors: ['#sd-ajax-save', '#sd-publish-page'] }
         ]
     };
+
+    // The Help window's "How do I…" tasks in their order, each with three
+    // pointers on the real controls; a pointer's selectors are tried in
+    // order, as a stop's are. A content editor sees only the tasks they can
+    // do: change a text or a picture, publish.
+    var CANVAS = '#sd-canvas-iframe';
+    var TASKS = [
+        { id: 'section', pointers: [['#sd-pal-sw-blocks'], ['#sd-pal-blocks .sd-drag-item'], [CANVAS]] },
+        { id: 'text', content: true, pointers: [[CANVAS], ['#sd-props-head .sd-otab[data-otab="content"]', '#sd-properties'], ['#sd-prop-img-src']] },
+        { id: 'colours', pointers: [['#sd-rcol-tab-design'], ['#sd-assets-tabs [data-as-tab="themes"]'], [CANVAS]] },
+        { id: 'phone', pointers: [['#sd-bp-bar .sd-bp-sizes', '#sd-bp-size-select'], [CANVAS], ['#sd-preview-menu-btn']] },
+        { id: 'page', pointers: [['.sd-tabs-add-btn'], ['#sd-tabs-list .sd-tab.active'], ['#sd-tabs-list .sd-tab.active .sd-tab-menu']] },
+        { id: 'list', pointers: [['#sd-panel-tabs [data-tab="system"]'], ['#sd-system-new-items [data-region-type="form_list_view"]'], ['#sd-properties']] },
+        { id: 'form', pointers: [['#sd-panel-tabs [data-tab="system"]'], ['#sd-system-new-items [data-region-type="custom_form"]'], ['#sd-properties']] },
+        { id: 'shared', pointers: [['#sd-tree-list'], ['#sd-panel-tabs [data-tab="shared"]'], [CANVAS]] },
+        { id: 'history', pointers: [['#sd-main-undo'], ['#sd-vb-snapshots'], ['#sd-snapshots-panel .sd-snap-item']] },
+        { id: 'publish', content: true, pointers: [['#sd-preview-menu-btn'], ['#sd-publish-page', '#sd-ajax-save'], ['#sd-tabs-list .sd-tab.active']] }
+    ];
+
+    // The starts an empty page offers, in their order.
+    var STARTS = ['section', 'sketch', 'document'];
 
     var VERSION = 1;
 
@@ -103,6 +127,29 @@
     // The tour's first stop: the one after "before the first".
     function first(list, has) {
         return move(list, -1, 1, has);
+    }
+
+    // The "How do I…" tasks of `access`, each { id, pointers } where a
+    // pointer is { id: '<task>.<n>', anchors }; copies, so a caller may
+    // change them. A task's pointers go through shown() and move() as stops.
+    function tasks(access) {
+        var content = level(access) === 'content';
+        return TASKS.filter(function (t) { return !content || t.content; }).map(function (t) {
+            return {
+                id: t.id,
+                pointers: t.pointers.map(function (a, n) {
+                    return { id: t.id + '.' + (n + 1), anchors: a.slice() };
+                })
+            };
+        });
+    }
+
+    // The starts an empty page's canvas offers: `have` says which feature
+    // is there ({ section, sketch, document }); a content editor gets none.
+    function starts(access, have) {
+        if (level(access) === 'content') return [];
+        have = have || {};
+        return STARTS.filter(function (id) { return have[id] === true; });
     }
 
     // The browser storage key of a person's tour state; '' without a person.
@@ -195,6 +242,8 @@
 
     root.PGDesignerTour = {
         stops: stops,
+        tasks: tasks,
+        starts: starts,
         anchor: anchor,
         shown: shown,
         move: move,
