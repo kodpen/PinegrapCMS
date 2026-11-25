@@ -341,6 +341,7 @@ function test_designer_grid_place_parse()
 	$r = designer_grid_tracks_run(<<<'JS'
 out = ['', 'auto', '3', 'span 2', '2 / span 3', '2 / 5', 'span 2 / auto', 'auto / span 4', ' 1  /  span  2 ', 'main', '-1', '3 / 2', 'span 13'].map(G.parsePlace);
 out.push(G.PLACE);
+out.push(G.parsePlace('span 2 / 3'));
 JS
 	);
 
@@ -371,6 +372,7 @@ JS
 		array('', '', true),
 	), $got);
 	pg_assert_same('main', $r[9]['value'], 'a typed value is kept');
+	pg_assert_true($r[14]['typed'], 'a span then an end line is typed');
 	pg_assert_same(array('columns' => 'grid-column', 'rows' => 'grid-row'), $r[13]);
 }
 
