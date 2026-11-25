@@ -448,7 +448,7 @@ function pg_proto_phone_panel($sub, $request, $user)
     $start = ($plan['start_page_id'] > 0) ? $plan['start_page_id'] : $draft_ids[0];
 
     if (!pg_proto_link_page_shown($audience, pg_proto_link_page_access($start))) {
-        return array('status' => 'success', 'team_only' => true);
+        return array('status' => 'success', 'team_only' => true, 'start_page' => pg_proto_phone_start_name($pages, $start));
     }
 
     $row = pg_proto_phone_pick(pg_proto_links_of_design($style_id), (int) $user['id'], $audience, $now);

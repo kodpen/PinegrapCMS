@@ -1546,6 +1546,7 @@
     "A line under the option": "Seçeneğin altında bir satır",
     "A link bound to the address name opens the record on its detail page, by its name when the form has pretty URLs on.": "Adres adına bağlı bir link kaydı detay sayfasında açar; formda güzel URL'ler açıksa kaydın adıyla.",
     "A link drawn as a button, centred; mail programs show no real buttons.": "Düğme gibi çizilmiş, ortalanmış bir bağlantı; e-posta programları gerçek düğme göstermez.",
+    "A link for anyone cannot show it. A team link opens after a sign-in on the phone.": "Herkese açık bir bağlantı bu sayfayı gösteremez. Ekip bağlantısı, telefonda oturum açıldıktan sonra açılır.",
     "A link for anyone who has it must run out within 90 days. Choose one of the offered times.": "Bağlantıya sahip herkese açık bir bağlantının süresi en geç 90 gün içinde dolmalıdır. Sunulan sürelerden birini seçin.",
     "A link lasts {var:1} days.": "Bir bağlantı {var:1} gün geçerli olur.",
     "A link of an option must be an http or https address.": "Bir seçeneğin bağlantısı http veya https adresi olmalıdır.",
