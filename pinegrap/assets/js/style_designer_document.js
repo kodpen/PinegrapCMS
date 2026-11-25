@@ -8,7 +8,8 @@
  * left in this tab's sessionStorage. Either way the rows become the page's
  * sections (window.PGDocumentPage) in one step of undo; a Word document's
  * pictures are stored in the file manager first (designer_document.php).
- * The texts are fetched once from designer_document.php. Not needed to
+ * The texts are fetched once from designer_document.php; with Pinegrap AI
+ * on (texts.sortOn) "Sort it for me" posts the rows' sections there. Not needed to
  * open a page: the core runs this file on first use (_sdPartLoad()) and
  * hands it the editor through a host (_sdDocumentHost()).
  *
@@ -125,6 +126,7 @@ StyleDesigner.definePart('document', function (K) {
                 dropArea: win.el,
                 css: url('').replace(/designer_document\.php$/, 'assets/css/pg_document_rows.css'),
                 readFile: function (file) { return post(file.id ? {file_id: file.id} : {file: file.file}); },
+                sort: t.sortOn ? function (sections) { return post({sort: '1', sections: JSON.stringify(sections)}); } : null,
                 pickFile: window.pgPicker ? function () { return window.pgPicker.open({kind: 'document', title: t.manager}); } : null,
                 cancel: close,
                 build: function (rows, answer) {

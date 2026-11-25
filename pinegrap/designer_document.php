@@ -11,6 +11,9 @@
  *   POST file | file_id, token     a .docx, .md or .txt read into paragraphs
  *                                  or text; a Word document's pictures kept
  *                                  under the answer's `keep` token
+ *   POST sort, sections, token     "Sort it for me": the rows' sections to
+ *                                  Pinegrap AI, its proposals back
+ *                                  (includes/fn/document_sort.php)
  *   POST keep, pictures, name, token
  *                                  the kept pictures stored in the file
  *                                  manager when the page is built: n => address
@@ -59,6 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 validate_token_field();
+
+// "Sort it for me": proposals for the rows, nothing written.
+if (isset($_POST['sort'])) {
+    echo encode_json(pg_document_sort_request(json_decode((string) ($_POST['sections'] ?? ''), true), $user));
+    exit();
+}
 
 // The pictures of a read document, stored as the page is built.
 if (isset($_POST['keep'])) {

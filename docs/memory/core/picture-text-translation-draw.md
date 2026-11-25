@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-draw
-description: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
+description: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the fit floor by a text's size, the draw after a Save
 module: picture_translation
 ---
 
@@ -15,7 +15,7 @@ module: picture_translation
 ## How is a picture drawn?
 - Action `picture_languages` (`pg_picture_tr_languages_answer()`) gives the live canvas document, its hash and per language the texts (`id`, `field`, `text` or null), a stamp and `queued` (a row waiting or out of date). The browser draws from that saved document, never the unsaved one ("Changes not saved yet are not in these pictures.").
 - A Save of the file the list belongs to draws its `queued` languages that are drawable again at once, with no press: `picture-text-auto-panel.md`.
-- `M.languageDoc()` puts the words in by layer id and field; each changed text layer is fitted (`M.languageFit()`): the size shrinks to the source's box width and height, never under `LANGUAGE_FLOOR` 0.7; below it the text is drawn at 70% and the draw is marked (`fit` 1). The aligned side stays across (`M.textFit()`), the box's middle stays upright.
+- `M.languageDoc()` puts the words in by layer id and field; each changed text layer is fitted (`M.languageFit()`): the size shrinks to the source's box width and height, never under its floor (`M.languageFloor()`, by the source's size on the picture's shorter side, `picture-text-translation-fit-letters.md`); below it the text is drawn at the floor and the draw is marked (`fit` 1). The aligned side stays across (`M.textFit()`), the box's middle stays upright.
 - A painter on the editor's prototype (as `workspace_canvas_picture.js`) waits for fonts (`layersReady()`) and draws with `drawArtboard()`, the save's renderer.
 
 ## What does the server check and keep, and where is the picture hidden?

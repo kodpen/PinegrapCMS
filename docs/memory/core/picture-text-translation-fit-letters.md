@@ -9,13 +9,13 @@ module: picture_translation
 - The architect's reading, not his words: the fit as built is what he expects, and an improvement is made only where a point below turns out to need one. These words changed no behaviour.
 
 ## What does the draw already do for a longer text?
-- `M.languageFit()` (`picture-text-translation-draw.md`): the size shrinks until the text is inside its source's box, never under 70%. Under it the text is drawn at 70%, so it runs past the box, and the language is listed as "Look by hand". The server's draw follows the same rule with its own letter widths (`pg_picture_tr_language_fit()`, `picture-text-auto-server.md`).
+- `M.languageFit()` (`picture-text-translation-draw.md`): the size shrinks until the text is inside its source's box, never under its floor (below). Under it the text is drawn at the floor, so it runs past the box, and the language is listed as "Look by hand". The server's draw follows the same rule with its own letter widths (`pg_picture_tr_language_fit()`, `picture-text-auto-server.md`).
 - A line breaks only where the text has a new line (`ui/image-editor-text.md`): a long translation is made smaller, never wrapped.
 
 ## What floor does a large text get?
 - Owner (2026-11-25), after a slightly longer English translation was marked at once: "küçültme oranı 70% ile sınırlı olsa da belli bir boyut üstünde tolerans artsın."
 - The numbers are the architect's reading: the floor goes by the source text's size as a share of the picture's shorter side. Up to 4% the floor is 70%; from 8% it is 50%; between them a straight line. On a 1080 px picture a text of 43 px keeps 70% and a headline of 86 px or more may go down to half, still as large as the small text that keeps its floor.
-- Step ON3 of `plans/owner-notes-2026-11-25.md` builds it in `M.languageFit()` and its PHP twin; until it lands the floor is 70% for every size.
+- Built in `M.languageFloor()` / `M.languageFit()` and their PHP twins `pg_picture_tr_language_floor()` / `pg_picture_tr_language_fit()` (PR #11698): the side is `M.docSize()` in a browser, the artboard on the server; a text with no size or a picture with no side keeps 70%. The floor is rounded to four places.
 
 ## What does the draw already do for letters?
 - A browser: `loadTextFont()` (`assets/js/pg_image_editor_text.js`) asks the face with the layer's own text, so the part of a Google font that holds those letters is loaded before the draw; each language is drawn by a painter with its own font list. A letter the family lacks is drawn by the browser in the next family: never an empty box, but another face's letter, and nothing says so.

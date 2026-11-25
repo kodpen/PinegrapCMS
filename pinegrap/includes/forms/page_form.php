@@ -4290,6 +4290,28 @@ function pg_page_form_folder_verdict($posted, $rows, $workspace, $bin, $current 
 }
 
 /**
+ * Where a page save writes its folder. A draft stays in the Drafts folder:
+ * the posted folder is the one it goes to when published, kept in
+ * page_drafts; only Publish in the Page Design Studio takes it out, past
+ * its approval, experiment and bundle holds. Pure.
+ *
+ * @param mixed $posted       The submitted folder
+ * @param int   $current      The page's stored folder
+ * @param int   $draft_folder The Drafts folder, 0 when there is none
+ * @return array page_folder (int), draft_folder (int, or null for a live page)
+ */
+function pg_page_form_folder_write($posted, $current, $draft_folder)
+{
+    $posted = is_scalar($posted) ? (int) $posted : 0;
+
+    if (((int) $draft_folder > 0) && ((int) $current === (int) $draft_folder)) {
+        return array('page_folder' => (int) $current, 'draft_folder' => $posted);
+    }
+
+    return array('page_folder' => $posted, 'draft_folder' => null);
+}
+
+/**
  * The folder error of a page save, as array('folder' => message), or an
  * empty array.
  *
@@ -4308,6 +4330,14 @@ function pg_page_form_folder_errors($posted, $current = null)
 
     if ($verdict === 'workspace') {
         return array('folder' => lang('A page cannot be placed in the Workspace folder. Please select another folder.'));
+    }
+
+    // Pages enter the Drafts folder only through the Page Design Studio,
+    // which records the folder they go back to.
+    $drafts = (int) pg_page_draft_folder_id(false);
+
+    if (($drafts > 0) && is_scalar($posted) && ((int) $posted === $drafts) && ((int) $current !== $drafts)) {
+        return array('folder' => lang('A page becomes a draft in the Page Design Studio. Please select another folder.'));
     }
 
     return array();

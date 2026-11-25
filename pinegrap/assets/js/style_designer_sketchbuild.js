@@ -498,8 +498,25 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         return host.shared(part.kind, made, part.section);
     }
 
-    function parts(r, kept) {
-        var out = window.PGSketchBuilder.build(r.sections, { make: host.make, node: host.node, words: host.words(), kept: kept || null });
+    // What the site knows, for the builder: its name, the year, the site
+    // path and the Prototype view's pages; the page's "Page details"; the
+    // kinds' names as headings of sections with no typed word.
+    function known(page) {
+        var site = host.site ? host.site() : null;
+        var d = (page && page.details) || {};
+        var names = {};
+        host.kinds().forEach(function (k) { names[k.key] = host.kindLabel(k.key); });
+        names.form = _sdT('Contact');
+        return {
+            site: site ? { name: site.name || _sdT('Your site'), year: new Date().getFullYear(), path: site.path, pages: site.pages, toggle: _sdT('Toggle navigation') } : null,
+            page: { title: d.title || '', description: d.description || '', name: page ? host.name(page) : '' },
+            names: names
+        };
+    }
+
+    function parts(r, kept, page) {
+        var k = known(page);
+        var out = window.PGSketchBuilder.build(r.sections, { make: host.make, node: host.node, words: host.words(), kept: kept || null, site: k.site, page: k.page, names: k.names });
         var list = [];
         if (out.header) list.push(out.header);
         list = list.concat(out.body);
@@ -542,7 +559,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     function first(frameId, page) {
         var name = host.name(page);
         var r = read(page);
-        var list = parts(r);
+        var list = parts(r, null, page);
         busy = frameId;
         setSeen();
         host.redraw();
@@ -588,7 +605,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         if (!host.history(p, name)) { failed(frameId, name); return; }
         var keep = {};
         pl.stay.concat(pl.clash).forEach(function (id) { if (!ticked[id]) keep[id] = onPage[id]; });
-        var list = parts(r, keep);
+        var list = parts(r, keep, page);
         busy = frameId;
         host.redraw();
         host.announce(_sdT('Building the page…'));
