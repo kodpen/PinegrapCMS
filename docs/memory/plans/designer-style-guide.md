@@ -8,7 +8,7 @@ priority: 6
 - Owner (2026-11-24): ten more features, in levels, the designer kept simple and quick (the decision part 108; `designer/designer-light-and-simple.md`). This one: what a design is made of on one sheet, for the designer, the team and the customer an agency hands the site to.
 
 ## What is there today?
-- A design's colours and type live in the Theme pane; with `designer-variables.md` they become named variables. Nothing shows them together with the buttons, forms and components built on them.
+- A design's colours and type live in the Theme pane; with `designer/design-variables-overview.md` they become named variables. Nothing shows them together with the buttons, forms and components built on them.
 
 ## What is built?
 - "Style guide" as a row of the Preview menu (`designer/designer-preview-menu.md`): a sheet drawn for the design that is open, in a frame with the design's own stylesheets. Nothing is saved; it is always what the design is now.
