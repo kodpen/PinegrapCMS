@@ -9209,3 +9209,19 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-sim-opt.on { color: var(--sd-accent); font-weight: 600; }
 .sd-sim-opt.off { opacity: .45; cursor: default; }
 .sd-sim-opt.off:hover { background: transparent; }
+
+/* The Sketch tool's Pinegrap AI actions (style_designer_sketchai.js): the
+   "Describe the page" window and the page dimmed while it is drawn. */
+.sd-sai { width: min(480px, 100%); }
+.sd-sai .sd-skd-body { padding-top: .85rem; }
+.sd-sai-field { min-height: 7.5rem; resize: vertical; }
+.sd-sai-note { margin: .4rem 0 .6rem; font-size: .75rem; color: var(--sd-text-muted); }
+.sd-sai-warn { margin: 0 0 .85rem; padding: .45rem .6rem; border-radius: 8px; font-size: .75rem; background: color-mix(in srgb, #f5a524 16%, transparent); color: #f5c46b; }
+.sd-sai .sd-skd-foot { justify-content: flex-end; }
+.sd-sai-dim { pointer-events: none; }
+.sd-sai-dim .sd-sketch-box { opacity: .4; filter: grayscale(1); }
+@media (max-width: 575.98px) {
+    .sd-skd-back:has(.sd-sai) { padding: 0; align-items: flex-end; }
+    .sd-sai { width: 100%; border-radius: 12px 12px 0 0; }
+    .sd-sai .sd-skd-foot > * { flex: 1; }
+}
