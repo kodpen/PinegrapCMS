@@ -22,7 +22,7 @@ priority: 7
 - DV1 (M) The model, pure: the list, defaults from a look and palette, the stylesheet writer and reader, contrast check of text on surface; tests. Done: PR #11495 (`designer/design-variables-model.md`).
 - DV2 (M) after DV1: the Variables tab, canvas, preview and site loading the file. Done: PR #11553 (`designer/design-variables-tab.md`).
 - DV3 (M) after DV2: the Options controls offering variables, the chip, "Used in n places".
-- DV4 (S) after DV2: the start questions as a part the New design window and the tab call.
+- DV4 (S) after DV2: the start questions as a part the New design window and the tab call. In progress.
 - DV5 (S) after DV2: Export and Import, refused with the reason when the file is not tokens.
 - DV6 (S) Close-out: memory in `designer/`, starters and palette components moved to variables counted, this file deleted, the `[NEW]` line named.
 
