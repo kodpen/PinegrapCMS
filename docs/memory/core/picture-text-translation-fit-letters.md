@@ -15,7 +15,7 @@ module: picture_translation
 ## What floor does a large text get?
 - Owner (2026-11-25), after a slightly longer English translation was marked at once: "küçültme oranı 70% ile sınırlı olsa da belli bir boyut üstünde tolerans artsın."
 - The numbers are the architect's reading: the floor goes by the source text's size as a share of the picture's shorter side. Up to 4% the floor is 70%; from 8% it is 50%; between them a straight line. On a 1080 px picture a text of 43 px keeps 70% and a headline of 86 px or more may go down to half, still as large as the small text that keeps its floor.
-- Built in `M.languageFloor()` / `M.languageFit()` and their PHP twins `pg_picture_tr_language_floor()` / `pg_picture_tr_language_fit()` (PR #ON3PR): the side is `M.docSize()` in a browser, the artboard on the server; a text with no size or a picture with no side keeps 70%. The floor is rounded to four places.
+- Built in `M.languageFloor()` / `M.languageFit()` and their PHP twins `pg_picture_tr_language_floor()` / `pg_picture_tr_language_fit()` (PR #11698): the side is `M.docSize()` in a browser, the artboard on the server; a text with no size or a picture with no side keeps 70%. The floor is rounded to four places.
 
 ## What does the draw already do for letters?
 - A browser: `loadTextFont()` (`assets/js/pg_image_editor_text.js`) asks the face with the layer's own text, so the part of a Google font that holds those letters is loaded before the draw; each language is drawn by a painter with its own font list. A letter the family lacks is drawn by the browser in the next family: never an empty box, but another face's letter, and nothing says so.

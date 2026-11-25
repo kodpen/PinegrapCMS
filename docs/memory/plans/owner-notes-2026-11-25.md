@@ -16,7 +16,7 @@ priority: 7
   - The intro: the page's title from "Page details" (else its name) as the heading, its description as the paragraph when there is one.
   - A section whose box has no typed word: its heading is its kind's name ("Features", "Gallery", "Contact") in place of the starter's sample line. A column copied to reach the sketch's count gets its number in its heading, so no two columns read the same.
   - Pure in `pg_sketch_builder.js` with what the caller hands it; tests. "Build again" keeps edited sections as today. Not waiting for SK6 of `plans/designer-sketch.md`, whose "Write the texts" writes real copy with AI on.
-- ON3 (S) A picture text's fit floor by its size (`core/picture-text-translation-fit-letters.md`, the owner's words and the rule): `M.languageFit()` in `pg_image_editor_model.js` and its PHP twin `pg_picture_tr_language_fit()` take the source text's size and the picture's shorter side; tests for both with the same cases. `core/picture-text-translation-draw.md` and `picture-text-auto-server.md` are corrected.
+- ON3 (S) — done, #11698 — A picture text's fit floor by its size (`core/picture-text-translation-fit-letters.md`, the owner's words and the rule): `M.languageFit()` in `pg_image_editor_model.js` and its PHP twin `pg_picture_tr_language_fit()` take the source text's size and the picture's shorter side; tests for both with the same cases. `core/picture-text-translation-draw.md` and `picture-text-auto-server.md` are corrected.
 
 ## What does every step keep?
 - No table, no column, no new right, no new button in a bar. The three steps share no file; ON1 and ON2 are k1's, ON3 is k2's (`workflow/coordinator-second-paused.md`).
