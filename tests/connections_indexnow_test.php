@@ -65,7 +65,7 @@ function test_connections_indexnow_registry_and_anchor_follow_the_move()
 
 	pg_assert_same('connections.php', $registry['indexnow']['place'], 'its place is Connections');
 	pg_assert_same('#settings/seo/pgset-seo', $registry['indexnow']['found_at'], 'the SEO card still finds it');
-	pg_assert_same(84, pg_connections_count(), 'the figure stays');
+	pg_assert_same(85, pg_connections_count(), 'the figure stays');
 
 	$anchors = pg_settings_legacy_anchors();
 	pg_assert_same(array('seo', 'pgset-seo'), $anchors['indexnow_key'], 'an old link to the field lands on the SEO card');

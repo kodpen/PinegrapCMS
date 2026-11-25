@@ -22,6 +22,6 @@ module: mailchimp_settings
 
 ## Where do old links go?
 - `pg_settings_anchors_to_connections()` (`includes/settings/registry.php`): `pgset-mailchimp`, `mailchimp_row`, `mailchimp_key` → service `mailchimp`. `modal.php` prints it as `data-pgaway`; `backend.src.js` opens the page from `open()`, `fromHash()` and an old `smtp_settings.php#…` link. They are no longer in `pg_settings_legacy_anchors()`.
-- Registry row: `place` `connections.php`, `found_at` `#settings/email/pgset-mail-campaign`; no service was added (`pg_connections_count()` 84).
+- Registry row: `place` `connections.php`, `found_at` `#settings/email/pgset-mail-campaign`; no service was added (`pg_connections_count()` unchanged).
 
 Tests: `tests/connections_mailchimp_test.php`, `tests/smtp_settings_layout_test.php`, `tests/mailchimp_key_test.php`.

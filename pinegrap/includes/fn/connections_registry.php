@@ -501,6 +501,7 @@ function pg_connections_transfer_fields()
         'stopforumspam' => array('GB', array('contact', 'ip_cookie')),
 
         'github' => array('US', $none),
+        'figma' => array('US', $none),
         'activitypub' => array('*', array('identity', 'messages')),
         'frankfurter' => array('*', $none),
         'hexarate' => array('*', $none),
@@ -794,6 +795,10 @@ function pg_connections_registry()
             'state' => array('kind' => 'reader', 'function' => 'pg_form_spam_enabled')),
 
         // Other.
+        // A personal access token pasted on its page (includes/fn/figma.php);
+        // the New design window reads files with it.
+        'figma' => array('name' => 'Figma', 'group' => 'other', 'place' => 'connections.php', 'uses' => 'Page designer: start from a Figma file',
+            'state' => array('kind' => 'service', 'key' => 'figma')),
         'github' => array('name' => 'GitHub', 'group' => 'other', 'place' => 'connections.php', 'uses' => 'Repository events into a channel',
             'state' => array('kind' => 'account', 'provider' => 'github', 'purpose' => 'channel_links', 'attention' => true),
             'covers' => array('connect' => array('github'), 'purpose' => array('channel_links'))),

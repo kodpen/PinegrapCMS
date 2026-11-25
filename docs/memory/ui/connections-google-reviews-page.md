@@ -22,6 +22,6 @@ module: google_reviews, connections_screen
 - Application API and Uploads & Logs: the site's own API, nothing typed for an outside service. Related screens stays.
 
 ## Registry?
-- `place` `connections.php`, `found_at` `#settings/api/pgset-google-reviews`, state `pg_grev_configured()`; no service added (84). No data step, table or column: the sealed `google_reviews` service entry is unchanged.
+- `place` `connections.php`, `found_at` `#settings/api/pgset-google-reviews`, state `pg_grev_configured()`; no service added. No data step, table or column: the sealed `google_reviews` service entry is unchanged.
 
 Tests: `tests/connections_google_reviews_test.php`, `tests/settings_integrations_test.php`.
