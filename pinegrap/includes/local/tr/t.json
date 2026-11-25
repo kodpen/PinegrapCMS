@@ -4264,7 +4264,9 @@
     "The file has no lines.": "Dosyada satır yok.",
     "The file has no name column. Add a column with the heading name for the product ID (SKU).": "Dosyada name sütunu yok. Ürün kodu (SKU) için başlığı name olan bir sütun ekleyin.",
     "The file has no rows.": "Dosyada satır yok.",
+    "The file holds 1 token.": "Dosyada 1 token var.",
     "The file holds no line with a date and an amount. Take in the statement the bank gave you.": "Dosyada tarihi ve tutarı olan bir satır yok. Bankanın verdiği ekstreyi içeri alın.",
+    "The file holds {var} tokens.": "Dosyada {var} token var.",
     "The file is a design file (1 or empty)": "Dosya bir tasarım dosyası (1 veya boş)",
     "The file is a {var:1}, which this site cannot read yet.": "Dosya bir {var:1}; bu site bunu henüz okuyamıyor.",
     "The file is being saved by someone else. Try again in a moment.": "Dosya şu anda başka biri tarafından kaydediliyor. Birazdan yeniden deneyin.",
@@ -12640,6 +12642,7 @@
     "to read and write": "okuyup yazmak için",
     "to read only": "yalnız okumak için",
     "to rename": "adını değiştir",
+    "to {var}, in the Design Tokens format.": "{var} dosyasına, Design Tokens biçiminde.",
     "today": "bugün",
     "today's date": "bugünün tarihi",
     "todays-shows": "bugunun-gosterileri",
@@ -12690,6 +12693,7 @@
     "transfer, ticket, colleague, name change": "devir, bilet, iş arkadaşı, isim değişikliği",
     "transit, cities": "ulaşım, şehirler",
     "transit, downtown, city budget": "ulaşım, şehir merkezi, belediye bütçesi",
+    "transition": "geçiş efekti",
     "translated": "çevrildi",
     "translation states were changed through the API ({var:1}, {var:2}, {var:3} text(s))": "API üzerinden çeviri durumları değiştirildi ({var:1}, {var:2}, {var:3} metin)",
     "translations were cleared ({var:1}, {var:2}, {var:3} text(s))": "çeviriler temizlendi ({var:1}, {var:2}, {var:3} metin)",
@@ -12736,6 +12740,7 @@
     "type": "tür",
     "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}.",
     "type must be one of: {var:1}": "type şunlardan biri olmalıdır: {var:1}",
+    "type style": "yazı stili",
     "typed rate": "girilen oran",
     "types goes with name, a new table.": "types, name ile, yani yeni bir tabloyla gönderilir."
 }

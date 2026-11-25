@@ -7846,6 +7846,18 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-vars-foot { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .sd-vars-used { font-size: 11.5px; color: #c9d1d9; white-space: nowrap; }
 .sd-vars-used.is-none { color: #8b949e; }
+/* Export and Import: the result line under the tab row and the question of what a file changes. */
+.sd-vars-note { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 7px 10px; border-radius: 8px; font-size: 12px; }
+.sd-vars-note.is-ok { color: #5eead4; background: rgba(45, 212, 191, .1); border: 1px solid rgba(45, 212, 191, .35); }
+.sd-vars-note.is-bad { color: #ffa198; background: rgba(248, 81, 73, .1); border: 1px solid rgba(248, 81, 73, .4); }
+.sd-vars-note-text { flex: 1; min-width: 0; }
+.sd-vars-note b { color: #e6edf3; }
+.sd-vars-ask { padding: 12px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; color: #c9d1d9; font-size: 12px; }
+.sd-vars-ask-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; color: #8b949e; }
+.sd-vars-ask-head b, .sd-vars-eff b { color: #e6edf3; }
+.sd-vars-eff { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.sd-vars-eff li { display: flex; gap: 8px; }
+.sd-vars-ask-foot { display: flex; justify-content: flex-end; gap: 6px; }
 
 /* A colour or size control of Options that offers the design's variables
    (_sdVarCtl()): the quiet "Variables" button, the chip of a bound control,
