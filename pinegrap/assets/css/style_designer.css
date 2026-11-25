@@ -4957,6 +4957,19 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-co-rename { flex: 1 1 auto; min-width: 0; }
 .sd-co-more { border: 0; background: none; color: var(--sd-label); padding: 2px 4px; border-radius: 3px; cursor: pointer; }
 .sd-co-more:hover, .sd-co-more:focus-visible { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+/* "This place": a place's own values of a component's open fields. */
+.sd-co-shown { margin-left: 6px; font-size: .7rem; color: var(--sd-text-muted); }
+.sd-co-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    margin-top: 6px; font-size: .68rem; color: var(--sd-text-muted);
+}
+.sd-co-partof {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    margin: 8px 10px; font-size: .7rem; color: var(--sd-text-muted);
+}
+.sd-rcol-narrow .sd-co-prow { flex-direction: column; align-items: stretch; }
+.sd-rcol-narrow .sd-co-prow > .sd-prop-control { width: 100%; }
+.sd-rcol-narrow .sd-co-foot { flex-direction: column; align-items: flex-start; }
 .sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .7rem; }
 .sd-co-result .pg-result-line { flex: 1 1 auto; }
 
