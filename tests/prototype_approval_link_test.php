@@ -273,3 +273,83 @@ function test_prototype_approval_link_viewer_bar_line()
 	pg_assert_same(0, $status);
 	pg_assert_same(array('', 'A d', 'R d', 'C', ''), json_decode(implode("\n", $out), true));
 }
+
+// A verdict is sealed to the draft the guest saw: the viewer is drawn with
+// the draft's fingerprint and posts it back; a draft changed since is
+// refused, so an approval never stands for a version the guest never saw.
+function test_prototype_approval_link_verdict_names_the_draft_it_saw()
+{
+	$fp = str_repeat('a', 40);
+	$data = pg_proto_viewer_review_data(prototype_approval_link_test_row(), 'Home', null, $fp);
+	pg_assert_same($fp, $data['fingerprint'], 'the viewer knows the draft it draws');
+
+	pg_assert_true(pg_proto_verdict_seen_ok($fp, $fp), 'the same draft');
+	pg_assert_false(pg_proto_verdict_seen_ok(str_repeat('b', 40), $fp), 'the draft changed since');
+	pg_assert_false(pg_proto_verdict_seen_ok('', $fp), 'nothing named');
+	pg_assert_false(pg_proto_verdict_seen_ok(null, $fp), 'no field');
+	pg_assert_false(pg_proto_verdict_seen_ok(array($fp), $fp), 'not a string');
+	pg_assert_false(pg_proto_verdict_seen_ok($fp, ''), 'the draft is gone');
+
+	pg_assert_same(409, pg_proto_comment_error_status('changed'));
+	pg_assert_true(pg_proto_comment_error_message('changed') !== lang('Sorry, we could not accept your request.'), 'changed has its sentence');
+
+	$take = prototype_approval_link_test_body('includes/fn/prototype_verdicts.php', 'pg_proto_verdict_take');
+	$seen = strpos($take, 'pg_proto_verdict_seen_ok(');
+	$save = strpos($take, 'pg_proto_verdict_save(');
+	pg_assert_true($seen !== false && $save !== false && $seen < $save, 'the seen draft is checked before the verdict is written');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_proto_comments.js');
+	pg_assert_contains("data.append('seen', String(R.fingerprint || ''));", $js, 'the viewer posts the draft it drew');
+}
+
+// The body of a named function in a file under pinegrap/.
+function prototype_approval_link_test_body($file, $name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	$start = strpos($source, 'function ' . $name . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$next = strpos($source, "\nfunction ", $start + 10);
+
+	return ($next === false) ? substr($source, $start) : substr($source, $start, $next - $start);
+}
+
+// The same verdict sent again (a second tab, a page drawn again) is the one
+// that stands: no second row, so no second bell line, receipt or event.
+function test_prototype_approval_link_same_verdict_twice_is_one()
+{
+	$fp = str_repeat('a', 40);
+	$standing = array('id' => 3, 'verdict' => 'approved', 'author_name' => 'Ada', 'note' => '', 'fingerprint' => $fp, 'created_at' => 50);
+	$checked = array('error' => '', 'verdict' => 'approved', 'name' => 'Ada', 'note' => '');
+
+	pg_assert_true(pg_proto_verdict_repeats($standing, $checked, $fp), 'the same verdict on the same draft');
+	pg_assert_false(pg_proto_verdict_repeats(null, $checked, $fp), 'nothing stands yet');
+	pg_assert_false(pg_proto_verdict_repeats($standing, array('verdict' => 'changes_requested', 'name' => 'Ada', 'note' => 'Bigger') + $checked, $fp), 'another verdict');
+	pg_assert_false(pg_proto_verdict_repeats($standing, array('note' => 'Fine') + $checked, $fp), 'another note');
+	pg_assert_false(pg_proto_verdict_repeats($standing, array('name' => 'Bob') + $checked, $fp), 'another name');
+	pg_assert_false(pg_proto_verdict_repeats($standing, $checked, str_repeat('b', 40)), 'the draft changed since');
+
+	$take = prototype_approval_link_test_body('includes/fn/prototype_verdicts.php', 'pg_proto_verdict_take');
+	$repeat = strpos($take, 'pg_proto_verdict_repeats(');
+	$save = strpos($take, 'pg_proto_verdict_save(');
+	pg_assert_true($repeat !== false && $save !== false && $repeat < $save, 'a repeat is answered before anything is written');
+}
+
+// "Approved n of m pages" and the viewer's page marks count only the pages
+// the link shows, as the hold and the reminder do: a link for anyone never
+// shows a draft going live behind a sign-in, so that page could never be
+// approved and the count never reached m of m.
+function test_prototype_approval_link_review_counts_the_pages_it_shows()
+{
+	$access = array(4 => 'public', 5 => 'private', 6 => 'guest', 7 => 'registration');
+
+	pg_assert_same(array(4, 6), pg_proto_review_pages_shown(array(4, 5, 6, 7), 'anyone', $access));
+	pg_assert_same(array(4, 5, 6, 7), pg_proto_review_pages_shown(array(4, 5, 6, 7), 'team', $access), 'a team link shows every draft');
+	pg_assert_same(array(), pg_proto_review_pages_shown(array(8), 'anyone', $access), 'a page of unknown access is not shown');
+
+	pg_assert_contains('pg_proto_review_pages_shown(', prototype_approval_link_test_body('includes/fn/prototype_verdicts.php', 'pg_proto_link_review_states'), 'the viewer marks');
+	pg_assert_contains('pg_proto_review_pages_shown(', prototype_approval_link_test_body('includes/fn/prototype_links.php', 'pg_proto_links_panel'), 'the dialog count');
+}

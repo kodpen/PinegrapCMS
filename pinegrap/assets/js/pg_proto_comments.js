@@ -704,6 +704,7 @@
                     data.append('verdict', picked);
                     data.append('name', n);
                     data.append('note', t);
+                    data.append('seen', String(R.fingerprint || ''));
                     sending = true;
                     go.disabled = true;
                     fetch(cfg.door, { method: 'POST', body: data, credentials: 'same-origin', headers: { Accept: 'application/json' } })
