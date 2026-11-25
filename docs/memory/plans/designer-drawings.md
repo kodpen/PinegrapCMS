@@ -1,6 +1,6 @@
 ---
 name: designer-drawings
-description: Plan (owner 2026-11-24): the designer plans' screens are drawn first by the design session, DD1 to DD11; a screen step waits for its drawing's merge, never for a yes
+description: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 priority: 8
 ---
 
@@ -8,8 +8,8 @@ priority: 8
 - Owner (2026-11-24): "planlar çizimleri de önce tasarlansın"; drawn, with nobody waiting for his approval, for the seven new plans and the screen steps not yet started of the plans before them (`workflow/decisions-made-product-106.md`).
 
 ## Who draws, and where is a drawing kept?
-- The design session (@tasarim in the agent channel), one step and one docs-only PR at a time; a green one lands alone.
-- No step is a coordinator's: the design session holds this plan and marks lines `free` for a worker; none is marked.
+- The design session, or the architect while none runs (`workflow/design-work-session.md`): one step and one docs-only PR at a time; a green one lands alone.
+- No step is a coordinator's: whoever draws marks lines `free` for a worker; none is marked.
 - In `docs/memory/designer/<plan>-drawing/`: one HTML sheet of boards with a light and a dark picture of each sheet, as the Flows editor's sheets are kept in the workspace folder.
 
 ## What does a sheet hold?
@@ -25,14 +25,14 @@ priority: 8
 - A step with no screen (a pure model, a server step, a census, a close-out) waits for no drawing.
 
 ## Which steps, in this order?
-- DD1 (M) Done (#11508). `designer-variables.md`: the Variables tab with its four groups, the Options chip with "Detach", "Used in n places", the start questions, Export and Import. Holds DV2 to DV5.
+- DD1 (M) Done (#11508). `designer-variables.md`: the Variables tab, the Options chip, the start questions, Export and Import. Holds DV2 to DV5.
 - DD2 (M) Done (#11526). `designer-sketch.md`: "Build the page" and "Build again", "Page details", the two AI actions, the reference picture. Holds SK4 to SK7.
 - DD3 (M) Done (#11525). `designer-start-import.md`: Figma on Connections, the frame list, the report; Canva's form, reference pictures and brand. Holds ST3, ST5, ST6.
 - DD5 (S) Done (#11538). `designer-preview-as.md`: the "Preview as" bar, its three choosers, the "Check all cases" list. Holds PW3, PW4.
-- DD6 (M) `designer-component-overrides.md`: marking a field open, the component's list, "This place" with the dot and reset, variants. Holds CO3 to CO5.
-- DD7 (M) `designer-publish-check.md`: the sheet's results, the five groups, a finding with Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
-- DD8 (M) `designer-canvas-guides.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
-- DD9 (M) `designer-my-library.md`: the save window, "My library" in Blocks, "Manage library", Export and Import. Holds ML2 to ML4.
+- DD6 (M) Done (#11547). `designer-component-overrides.md`: marking a field open, the component's list, "This place" with the dot and reset, variants. Holds CO3 to CO5.
+- DD7 (M) Done (#11547). `designer-publish-check.md`: the sheet's results, the five groups, a finding with Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
+- DD8 (M) Done (#11550). `designer-canvas-guides.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
+- DD9 (M) Done (#11559). `designer-my-library.md`: the save window, "My library" in Blocks, "Manage library", Export and Import. Holds ML2 to ML4.
 - DD10 (S) `designer-image-focus.md`: the Focus control with its three frames, "Set focus" on the canvas. Holds IF2, IF3.
 - DD11 (S) `designer-phone-preview.md`: the window with the QR code, the phone's view with its thin line, the signed-in case. Holds PP2, PP3.
 - DD4 (M) after SK2 and ST2 have landed: the Sketch tool and the New design window as they should look.

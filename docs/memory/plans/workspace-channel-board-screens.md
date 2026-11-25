@@ -38,3 +38,6 @@ description: How the screens of plan workspace-channel-board are put together: t
 - "Your own rule": one dashed row "Build your own flow", opening the Flows quick setup with this channel chosen.
 - At the foot the last runs, from the flows' own record: time, task, what was done. No message pops up after a move: a flow runs a moment later, and the drawer and the channel show it.
 - Turning a rule on makes and publishes its flow; off pauses it, never deletes it.
+
+## Where is the drawing?
+- `workspace/workspace-channel-board-drawing.md`: the sheet, which board belongs to which step, and what is new beside the Design examples. Where this file and the sheet differ, the sheet wins.

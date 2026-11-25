@@ -23,7 +23,7 @@ priority: 5
 - The reading is worked out when "Read" is pressed, on the server for a file and in the browser for a paste; nothing runs while typing.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- FD1 (M) The reader, pure: paragraphs with their styles in, sections with kinds and unsure marks out.
+- FD1 (M) The reader, pure: paragraphs with their styles in, sections with kinds and unsure marks out. Done (#11533, `designer/document-reader.md`; kinds intro, text, cards, questions, figures, testimonial, table, prices, contact, picture, gallery: FD3 maps them to SK3 starters).
 - FD2 (S) A .docx, .md or .txt to paragraphs through the own reader; pictures taken out.
 - FD3 (M) after FD1, FD2, SK3, ST2 and DD19: the start's form, the rows, "Build the page".
 - FD4 (S) after FD3: "Sort it for me".
