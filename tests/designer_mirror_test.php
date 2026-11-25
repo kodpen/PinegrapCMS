@@ -261,3 +261,61 @@ function test_mirror_size_list()
 	pg_assert_same(array(375, 768), $out['canvas'], 'the canvas\'s width is refused');
 	pg_assert_same('a b', $out['outline'], 'Outline and the grid are not drawn in a mirror');
 }
+
+// The chosen element is followed: a class change that adds or takes off
+// the selection mark counts, any other does not.
+function test_mirror_selection_moved()
+{
+	$out = mirror_test_node("out = ["
+		. "M.selectionMoved({ type: 'attributes', name: 'class', old: 'sd-wrap', now: 'sd-wrap sd-selected' }),"
+		. "M.selectionMoved({ type: 'attributes', name: 'class', old: 'sd-wrap sd-selected', now: 'sd-wrap' }),"
+		. "M.selectionMoved({ type: 'attributes', name: 'class', old: 'sd-wrap sd-selected', now: 'sd-wrap sd-selected sd-tb-below' }),"
+		. "M.selectionMoved({ type: 'attributes', name: 'style', old: '', now: 'color:red' }),"
+		. "M.selectionMoved({ type: 'childList', nodes: ['sd-selected'] }),"
+		. "M.selectionMoved(null)"
+		. "];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, false, false, false, false), $out, 'only the selection mark moving counts');
+}
+
+// A mirror scrolls only when the element is out of its view, and then
+// brings it a third of the way down; a hidden element moves nothing.
+function test_mirror_follow_scroll()
+{
+	$out = mirror_test_node("out = ["
+		. "M.follow(100, 200, 600, 0),"
+		. "M.follow(700, 800, 600, 0),"
+		. "M.follow(-300, -200, 600, 900),"
+		. "M.follow(550, 650, 600, 0),"
+		. "M.follow(50, 100, 600, 10),"
+		. "M.follow(0, 0, 600, 0)"
+		. "];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(null, 500, 400, 350, null, null), $out, 'scroll only when out of view, to a third');
+}
+
+// "Edit at this size": the canvas takes the mirror's width and the mirror
+// the canvas's; Full width hands over 1200; pressed again it swaps back.
+function test_mirror_swap()
+{
+	$out = mirror_test_node("var a = M.swap([375, 768], 0, 1200), b = M.swap(a.widths, 0, a.canvas);"
+		. "out = [a, b, M.swap([375, 768], 1, 0), M.swap([375, 1200], 0, 0), M.swap([375, 768], 5, 1200)];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('widths' => array(1200, 768), 'canvas' => 375), $out[0], 'the phone mirror swaps with a 1200 canvas');
+	pg_assert_same(array('widths' => array(375, 768), 'canvas' => 1200), $out[1], 'pressed again it swaps back');
+	pg_assert_same(array('widths' => array(375, 1200), 'canvas' => 768), $out[2], 'Full width hands over 1200');
+	pg_assert_same(array('widths' => array(1200, 576), 'canvas' => 375), $out[3], 'the other mirror never shows the same width');
+	pg_assert_same(null, $out[4], 'no such mirror');
+}
