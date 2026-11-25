@@ -6244,6 +6244,26 @@ const StyleDesigner = (function () {
             }).join(' ');
         });
     }
+    // The parents in which a canvas wrapper is drawn display:contents (it
+    // has no box, so an outline on it shows nowhere): a shared component's
+    // or system widget's frame goes on its child there.
+    var _SD_PART_BOXLESS = ['.btn-group', '.btn-group-vertical', '.input-group', '.nav', '.navbar-nav', '.list-group',
+        '.accordion', '.progress', '.ratio', '.carousel', '.carousel-inner', '.placeholder-glow', '.placeholder-wave'];
+    // One rule for every boxless parent: `prefix parent suffix { decl }`.
+    function _sdPartBoxless(suffix, decl, prefix) {
+        return _SD_PART_BOXLESS.map(function (c) { return (prefix || '') + c + suffix; }).join(', ') + ' { ' + decl + ' }';
+    }
+    // A part's frame in the given states (selector suffixes of
+    // .sd-wrap.sd-shared-wrap), on the wrapper and, in a boxless parent,
+    // on its child.
+    function _sdPartFrameRule(states, decl) {
+        var sel = [];
+        states.forEach(function (st) {
+            sel.push('.sd-wrap.sd-shared-wrap' + st);
+            _SD_PART_BOXLESS.forEach(function (c) { sel.push(c + ' > .sd-wrap.sd-shared-wrap' + st + ' > :not(.sd-tb)'); });
+        });
+        return sel.join(', ') + ' { ' + decl + ' }';
+    }
     /* @pg-site-output */
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
@@ -6947,37 +6967,41 @@ const StyleDesigner = (function () {
         // no delete. The toolbar still names the element — being able to see
         // what something is has nothing to do with being allowed to move it.
         '.sd-content-locked > .sd-tb > .sd-tb-btns > .sd-drag-handle { display:none !important; }',
-        // Shared component wrapper — Emerald #10b981
-        // Uses box-shadow (outside + inset) instead of outline so the ring is always visible
-        // above nested .sd-wrap children that render the cached shared tree.
-        // Child-fallback: when .sd-wrap has display:contents (btn-group/input-group/nav/list-group/
-        // accordion/carousel/progress/ratio/navbar/form-input/sticky contexts) the wrapper's box is
-        // absent, so box-shadow cannot render. Apply the same ring to the direct child so it survives.
-        '.sd-shared-wrap { position:relative !important; box-shadow:0 0 0 3px rgba(16,185,129,.7), inset 0 0 0 3px rgba(16,185,129,.2) !important; border-radius:2px !important; }',
-        '.sd-shared-wrap:hover { box-shadow:0 0 0 3px rgba(16,185,129,.95), inset 0 0 0 3px rgba(16,185,129,.25) !important; }',
-        '.sd-shared-wrap.sd-selected { box-shadow:0 0 0 3px rgba(16,185,129,1), inset 0 0 0 3px rgba(16,185,129,.35) !important; }',
-        '.sd-shared-wrap > *:not(.sd-tb) { box-shadow:0 0 0 3px rgba(16,185,129,.7), inset 0 0 0 3px rgba(16,185,129,.2) !important; border-radius:2px !important; }',
-        '.sd-shared-wrap:hover > *:not(.sd-tb) { box-shadow:0 0 0 3px rgba(16,185,129,.95), inset 0 0 0 3px rgba(16,185,129,.25) !important; }',
-        '.sd-shared-wrap.sd-selected > *:not(.sd-tb) { box-shadow:0 0 0 3px rgba(16,185,129,1), inset 0 0 0 3px rgba(16,185,129,.35) !important; }',
+        // Shared component (green #10b981) and system widget (indigo
+        // #6366f1, a system widget is also .sd-shared-wrap): nothing is drawn
+        // at rest, so the canvas has the site's sizes. Under the pointer the
+        // innermost part gets a 1.5px frame and its name tag; a part the
+        // pointer is deeper inside of, or one round a chosen element, a 1px
+        // line; chosen, a 2px frame and the tag with the grip. Frames are
+        // outlines drawn inward: they take no room and paint over the
+        // part's own content. A wrapper without a box of its own
+        // (display:contents in a button group, a menu, an input group...)
+        // puts the frame on its child instead (_sdPartBoxless()).
+        '.sd-wrap.sd-shared-wrap { --sd-part:16,185,129; position:relative !important; box-shadow:none !important; background:none !important; outline:0 solid transparent; outline-offset:0; }',
+        '.sd-wrap.sd-system-wrap { --sd-part:99,102,241; }',
+        _sdPartFrameRule([':hover', ':has(.sd-wrap.sd-selected)'], 'outline:1px solid rgba(var(--sd-part),.6) !important; outline-offset:-1px !important;'),
+        _sdPartFrameRule([':hover:not(:has(.sd-shared-wrap:hover))'], 'outline:1.5px solid rgb(var(--sd-part)) !important; outline-offset:-1.5px !important;'),
+        _sdPartFrameRule(['.sd-selected.sd-selected'], 'outline:2px solid rgb(var(--sd-part)) !important; outline-offset:-2px !important;'),
+        // The name tag: "Header · Shared", the kind lighter. Shown on the
+        // innermost part under the pointer and on a chosen one, in the
+        // part's colour; the grip only while chosen. The tree root inside
+        // a part keeps its blue tag to itself while the part's tag shows.
+        '.sd-shared-wrap:hover:not(:has(.sd-shared-wrap:hover)) > .sd-tb, .sd-wrap.sd-shared-wrap.sd-selected > .sd-tb { display:flex !important; background:rgb(var(--sd-part)) !important; pointer-events:auto; }',
+        '.sd-shared-wrap:hover:not(:has(.sd-shared-wrap:hover)) > .sd-tb > .sd-tb-name.sd-part-tag, .sd-wrap.sd-shared-wrap.sd-selected > .sd-tb > .sd-tb-name.sd-part-tag { display:flex !important; }',
+        '.sd-wrap.sd-shared-wrap:not(.sd-selected) > .sd-tb > .sd-tb-btns { display:none !important; }',
+        '.sd-shared-wrap:hover:not(:has(.sd-shared-wrap:hover)) .sd-shared-inner > .sd-wrap[data-sd-type="root"]:not(.sd-selected) > .sd-tb { display:none !important; }',
+        '.sd-part-tag { gap:4px; text-transform:none !important; letter-spacing:0 !important; font-size:10px !important; font-weight:600 !important; }',
+        '.sd-part-kind { font-weight:400; opacity:.75; }',
+        // "Shared parts" of the View menu (body.sd-parts-lit, Design mode's
+        // canvas only): every part a soft wash and a 1px line, a shared
+        // component its tag inside its top left corner; a system widget's
+        // tag stays for the pointer. The Q2 frames above still apply.
+        'body.sd-parts-lit .sd-wrap.sd-shared-wrap::after { content:""; position:absolute; inset:0; z-index:30; pointer-events:none; border-radius:2px; background:rgba(var(--sd-part),.06); box-shadow:inset 0 0 0 1px rgba(var(--sd-part),.55); }',
+        'body.sd-parts-lit .sd-wrap.sd-shared-wrap:not(.sd-system-wrap):not(.sd-selected):not(:hover) > .sd-tb { display:flex !important; top:0 !important; left:0 !important; right:auto !important; border-radius:0 0 4px 0 !important; background:rgb(var(--sd-part)) !important; }',
+        'body.sd-parts-lit .sd-wrap.sd-shared-wrap:not(.sd-system-wrap):not(.sd-selected):not(:hover) > .sd-tb > .sd-tb-name.sd-part-tag { display:flex !important; }',
+        _sdPartBoxless(' > .sd-wrap.sd-shared-wrap::after', 'display:none !important;'),
+        _sdPartBoxless(' > .sd-wrap.sd-shared-wrap > :not(.sd-tb)', 'outline:1px solid rgba(var(--sd-part),.55) !important; outline-offset:-1px !important; background-color:rgba(var(--sd-part),.06);', 'body.sd-parts-lit '),
         '.sd-shared-placeholder { padding:.5rem .75rem; font-size:.8rem; color:#10b981; opacity:.9; font-style:italic; border:1px dashed rgba(16,185,129,.5); border-radius:.25rem; text-align:center; }',
-        '.sd-shared-tb-name { font-size:.68rem; color:#10b981; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; padding:0 .25rem; pointer-events:none; }',
-        // System widget — Indigo #6366f1 (distinct from shared-ref green and custom-php cyan)
-        //
-        // CONSISTENT 4-side ring. Use `border` (not outline / box-shadow) because:
-        //   - outline can be clipped at corners by `overflow:hidden` on ancestors
-        //   - stacked box-shadows can render unevenly across browsers
-        //   - border is laid out as part of the box → guaranteed identical on all 4 sides
-        // `box-sizing:border-box` keeps content width unchanged when the border appears.
-        // Both .sd-wrap.sd-selected (global blue inset shadow, line 1383) and
-        // .sd-shared-wrap (green box-shadow ring) are explicitly cancelled here so the
-        // system widget never picks up a competing visual treatment in any state.
-        '.sd-system-wrap { box-shadow:none !important; outline:none !important; border:2px solid rgba(99,102,241,.55) !important; border-radius:4px !important; box-sizing:border-box !important; }',
-        '.sd-system-wrap:hover { border-color:rgba(99,102,241,.85) !important; box-shadow:none !important; }',
-        '.sd-system-wrap.sd-selected { border-color:rgba(99,102,241,1) !important; box-shadow:none !important; outline:none !important; background:rgba(99,102,241,.04) !important; }',
-        // Neutralize the shared-wrap inner-shadow rules that would otherwise paint a green
-        // or blue ring on non-.sd-tb children — sd-system-wrap overrides are on the wrapper
-        // only, so we explicitly flatten descendants here.
-        '.sd-system-wrap > *:not(.sd-tb) { box-shadow:none !important; outline:none !important; }',
         // On the page _render_system_widget_express_order() draws the widget
         // inside `.container.py-4.pg-eo-wrap`, whose side padding takes in the
         // negative margins of the starter's top-level `.row` (-8px with g-3).
@@ -6987,16 +7011,15 @@ const StyleDesigner = (function () {
         // its max-width and py-4 stay page-only.
         _SD_BX + '.sd-system-wrap[data-sd-sys-type="express_order"] > .sd-shared-inner { padding-left:.75rem; padding-right:.75rem; }',
         '.sd-system-placeholder { padding:.75rem 1rem; font-size:.8rem; color:#6366f1; border:2px dashed rgba(99,102,241,.45); border-radius:.35rem; text-align:center; background:rgba(99,102,241,.04); min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; }',
-        '.sd-system-tb-name { font-size:.68rem; color:#6366f1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; padding:0 .25rem; pointer-events:none; }',
-        // The widget's name tag hangs above its frame, out of the layout, and
-        // shows only while the widget is hovered or selected: in the flow it
-        // made a small widget (a cart link, a login region in a navbar) many
-        // times taller and wider than the page draws it. sd-band-below (set
-        // after render) hangs it under a widget at the top of the canvas.
-        '.sd-system-template-band { position:absolute; left:-2px; bottom:calc(100% + 2px); z-index:40; display:none; align-items:center; white-space:nowrap; font-size:.62rem; font-weight:700; line-height:1.5; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; padding:1px 7px; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; user-select:none; box-shadow:0 1px 4px rgba(15,23,42,.18); }',
-        '.sd-system-wrap:hover > .sd-shared-inner > .sd-system-template-band, .sd-system-wrap.sd-selected > .sd-shared-inner > .sd-system-template-band { display:inline-flex; }',
-        '.sd-system-wrap.sd-band-below > .sd-shared-inner > .sd-system-template-band { bottom:auto; top:calc(100% + 2px); border-radius:0 0 4px 4px; }',
-        '.sd-system-wrap.sd-band-right > .sd-shared-inner > .sd-system-template-band { left:auto; right:-2px; }',
+        // The widget's band of state switches (a login region's Signed out /
+        // Signed in, a comments widget's states, value conditions) shows
+        // while the widget is chosen, hung under its frame out of the
+        // layout; its name is the part's tag above the frame. Under a tag
+        // that itself hangs below (sd-tb-below), it goes one tag lower.
+        '.sd-system-template-band { position:absolute; left:0; top:calc(100% + 2px); z-index:40; display:none; align-items:center; white-space:nowrap; font-size:.62rem; font-weight:700; line-height:1.5; color:#fff; background:#6366f1; border-radius:0 0 4px 4px; padding:1px 7px; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; user-select:none; box-shadow:0 1px 4px rgba(15,23,42,.18); }',
+        '.sd-system-wrap.sd-selected > .sd-shared-inner > .sd-system-template-band:has(.sd-session-chips) { display:inline-flex; }',
+        '.sd-system-wrap.sd-tb-below > .sd-shared-inner > .sd-system-template-band { top:calc(100% + 24px); }',
+        '.sd-system-wrap.sd-band-right > .sd-shared-inner > .sd-system-template-band { left:auto; right:0; }',
         '.sd-system-template-band .sd-session-chip { border-color:rgba(255,255,255,.7); }',
         '.sd-system-template-band .sd-session-chip.is-on { background:#312e81; border-color:#fff; color:#fff; }',
         // ─── LOOP AREA ────────────────────────────────────────────────────
@@ -7468,6 +7491,9 @@ const StyleDesigner = (function () {
         viewMenu.innerHTML =
             '<div class="sd-vb-menu-title" aria-hidden="true">' + esc(_sdT('Canvas view')) + '</div>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-outline" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid-3x3"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Outline')) + '</span><kbd class="sd-vb-kbd">O</kbd><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            // Shared parts: every shared component and system widget lit at
+            // once (_sdPartsLit()), off unless this browser turned it on.
+            '<button type="button" class="sd-vb-row" id="sd-vb-parts" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-puzzle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Shared parts')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
@@ -7590,6 +7616,13 @@ const StyleDesigner = (function () {
                 if (canvasDoc && canvasDoc.body) canvasDoc.body.classList.toggle('sd-grid-overlay', canvasGridSnap);
                 try { localStorage.setItem('pinegrap_designer_grid_snap', canvasGridSnap ? '1' : '0'); } catch(e) {}
             });
+        }
+
+        // Shared parts switch, kept per browser.
+        var partsBtn = document.getElementById('sd-vb-parts');
+        if (partsBtn) {
+            partsBtn.classList.toggle('active', _sdPartsLit());
+            partsBtn.addEventListener('click', function () { _sdPartsLitSet(!_sdPartsLit()); });
         }
 
         // Canvas guides switch, kept per browser.
@@ -7764,7 +7797,7 @@ const StyleDesigner = (function () {
         var bar = document.getElementById('sd-bp-bar');
         if (!bar) return;
         var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
-        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-guides'].map(function (id) {
+        var sw = ['sd-vb-outline', 'sd-vb-parts', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-guides'].map(function (id) {
             var el = document.getElementById(id);
             var on = !!(el && el.classList.contains('active'));
             setA(el, 'aria-checked', on ? 'true' : 'false');
@@ -8023,6 +8056,7 @@ const StyleDesigner = (function () {
         var _bodyCls = [];
         if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
         if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
+        if (_sdPartsLit()) _bodyCls.push('sd-parts-lit');
         // The canvas opens in the design's colour mode, once per editor:
         // after that the toolbar's view is the editor's own.
         if (!_sdColorModeOpened) {
@@ -8078,6 +8112,10 @@ const StyleDesigner = (function () {
                 }
                 _sdTbFlip(w);
                 _sdPlaceWrapChrome(w);
+                // The innermost shared component or system widget shows its
+                // tag too (the canvas styles' part marks).
+                var part = w.closest('.sd-shared-wrap');
+                if (part && part !== w) { _sdTbFlip(part); _sdPlaceWrapChrome(part); }
             }
         });
         var _sdChromeRaf = 0;
@@ -11921,7 +11959,7 @@ const StyleDesigner = (function () {
         // after toggling Grid/Outline turned them off and the user had to
         // manually re-toggle. They're re-added below from the captured
         // snapshot. (`sd-dark-theme` was removed — see applyCanvasTheme.)
-        var _EDITOR_STATE_CLASSES = ['sd-grid-overlay', 'sd-outline-grid', 'sd-motion-paused', 'sd-motion-hold'];
+        var _EDITOR_STATE_CLASSES = ['sd-grid-overlay', 'sd-outline-grid', 'sd-parts-lit', 'sd-motion-paused', 'sd-motion-hold'];
         var _preservedClasses = _EDITOR_STATE_CLASSES.filter(function (c) {
             return canvasDoc.body.classList.contains(c);
         });
@@ -12644,6 +12682,12 @@ const StyleDesigner = (function () {
             _sdSessionPreview, _sdSetSessionPreview, '');
     }
 
+    // A shared component's or system widget's name tag: its name and its
+    // kind ("Header · Shared", "Cart · System").
+    function _sdPartTag(name, sys) {
+        return { name: String(name || '?'), kind: sys ? _sdT('System') : _sdT('Shared') };
+    }
+
     function buildSharedRefEl(node) {
         var doc    = canvasDoc;
         var sid    = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
@@ -12685,18 +12729,15 @@ const StyleDesigner = (function () {
         // and with wrapper=draggable the user could grab the shared_ref body instead of
         // the inner element. Drag is driven entirely by the grip handle in the toolbar.
 
-        // Toolbar: hover label + shared-name badge + drag handle
+        // Toolbar: the part's name tag ("Header · Shared") + drag handle
         var tb     = doc.createElement('div');
         tb.className = 'sd-tb';
+        var _tag = _sdPartTag(scName, _isSysWidget);
         var tbName = doc.createElement('span');
-        tbName.className = 'sd-tb-name';
-        tbName.textContent = (_isSysWidget ? _sdT('[System] ') : _sdT('[Shared] ')) + (scName || '?');
+        tbName.className = 'sd-tb-name sd-part-tag';
+        tbName.innerHTML = '<span class="bi ' + (_isSysWidget ? 'bi-cpu' : 'bi-puzzle-fill') + '" aria-hidden="true"></span>' +
+            esc(_tag.name) + '<span class="sd-part-kind">· ' + esc(_tag.kind) + '</span>';
         tb.appendChild(tbName);
-
-        var sharedBadge = doc.createElement('span');
-        sharedBadge.className = _isSysWidget ? 'sd-system-tb-name' : 'sd-shared-tb-name';
-        sharedBadge.innerHTML = '<span class="bi ' + (_isSysWidget ? 'bi-cpu' : 'bi-puzzle-fill') + '"></span> ' + esc(scName || '?');
-        tb.appendChild(sharedBadge);
 
         var tbBtns = doc.createElement('div');
         tbBtns.className = 'sd-tb-btns';
@@ -12971,19 +13012,14 @@ const StyleDesigner = (function () {
             _sdSelectRender();
         });
 
-        // A widget at the very top of the canvas has no room above it for its
-        // name tag: the tag hangs below it instead. Measured once laid out
-        // and again whenever the pointer comes in (the tag shows then; the
-        // layout may have moved since).
+        // A widget near the right edge of the canvas: its band of state
+        // switches is lined up with its right side so it stays on the
+        // canvas. Measured once laid out and again whenever the pointer
+        // comes in (the layout may have moved since).
         if (_isSysWidget) {
-            var _bandWin = doc.defaultView;
             var _bandCheck = function () {
                 if (!wrapper.isConnected) return;
-                var top = wrapper.getBoundingClientRect().top + (_bandWin ? (_bandWin.scrollY || 0) : 0);
-                wrapper.classList.toggle('sd-band-below', top < 24);
-                // Near the right edge the tag runs off the canvas: it is
-                // lined up with the widget's right side instead. Measurable
-                // only while it shows (hovered or selected).
+                // Measurable only while it shows (chosen).
                 var band = wrapper.querySelector(':scope > .sd-shared-inner > .sd-system-template-band');
                 if (band) {
                     wrapper.classList.remove('sd-band-right');
@@ -17963,7 +17999,8 @@ const StyleDesigner = (function () {
                 var _snSid = (node.props && node.props.sharedId)   ? parseInt(node.props.sharedId, 10) : 0;
                 var _snCached = _snSid > 0 ? _sharedCache[_snSid] : null;
                 var _snIsSys  = !!(_snCached && _snCached.system_region_config);
-                return (_snIsSys ? _sdT('[System] ') : _sdT('[Shared] ')) + _sn;
+                var _snTag = _sdPartTag(_sn, _snIsSys);
+                return _snTag.name + ' · ' + _snTag.kind;
             }
             default: return node.type;
         }
@@ -90071,6 +90108,7 @@ const StyleDesigner = (function () {
             }},
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
+            { id: 'act_parts', label: _sdPartsLit() ? _sdT('Hide shared parts') : _sdT('Show shared parts'), icon: 'bi-puzzle', action: function() { _sdPartsLitSet(!_sdPartsLit()); } },
             { id: 'act_guides', label: _sdT('Toggle Canvas guides'), icon: 'bi-rulers', action: function() { _sdGuidesSet(_sdGuidesOff()); } },
             { id: 'act_layout_lines', label: _sdT('Toggle Layout lines'), icon: 'bi-layout-three-columns', hint: 'Shift+G', action: function() { if (!_sdGuidesOff() && canvasDoc) _sdLinesShow(!_sdLines.on); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
@@ -96167,6 +96205,25 @@ const StyleDesigner = (function () {
     // gutters over the whole canvas until pressed again (or Escape), drawn by
     // the part 'guides'; nothing runs for them while they are off.
     var _SD_GUIDES_KEY = 'pinegrap_designer_canvas_guides';
+
+    // ── Shared parts: the View switch that lights every shared component
+    // and system widget on Design mode's canvas (body.sd-parts-lit, the
+    // canvas styles' part marks). Off unless this browser turned it on.
+    var _SD_PARTS_KEY = 'pinegrap_designer_shared_parts';
+
+    function _sdPartsLit() {
+        try { return localStorage.getItem(_SD_PARTS_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function _sdPartsLitSet(on) {
+        try {
+            if (on) localStorage.setItem(_SD_PARTS_KEY, '1');
+            else localStorage.removeItem(_SD_PARTS_KEY);
+        } catch (e) { /* kept for this page only */ }
+        var btn = document.getElementById('sd-vb-parts');
+        if (btn) btn.classList.toggle('active', !!on);
+        if (canvasDoc && canvasDoc.body) canvasDoc.body.classList.toggle('sd-parts-lit', !!on);
+    }
     var _sdLines = { on: false };
 
     function _sdGuidesOff() {
