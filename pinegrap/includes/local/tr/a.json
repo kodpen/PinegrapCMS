@@ -7460,6 +7460,7 @@
     "Approve with how many arrived, or reject when the delivery has not arrived.": "Kaç adet geldiğini yazarak onaylayın; teslimat gelmediyse reddedin.",
     "Approve with this answer? It is given to the flow that asked.": "Bu cevapla onaylansın mı? Cevap, soran akışa verilir.",
     "Approve {var:1} as an affiliate? The affiliate code is created if there is none yet, and a welcome e-mail is sent to the contact.": "{var:1} ortak olarak onaylansın mı? Henüz yoksa ortaklık kodu oluşturulur ve kişiye bir hoş geldin e-postası gönderilir.",
+    "Approve: {{record_title}}": "Onay: {{record_title}}",
     "Approved": "Onaylı",
     "Approved by": "Onaylayan",
     "Approved hours": "Onaylı saat",
