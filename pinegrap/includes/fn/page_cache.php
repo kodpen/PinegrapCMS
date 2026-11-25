@@ -1794,7 +1794,7 @@ function pg_page_cache_panel_sub_actions()
                 'design_targets', 'selectable_pages', 'page_load', 'import_fragment', 'seo_check',
                 'widget_ghosts', 'preview_widgets', 'legacy_region_preview', 'page_regions_import', 'template_prepare', 'template_from_design',
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
-                'theme_look_css', 'theme_palette_css',
+                'theme_look_css', 'theme_palette_css', 'library_export', 'library_import',
                 'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',
                 'proto_comments', 'proto_comment_answer', 'proto_comment_resolve', 'proto_comment_delete', 'proto_comment_task',
                 'page_clicks',

@@ -8189,6 +8189,8 @@ function pg_js_bundles()
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // My library's Export and Import, run from the command palette.
+        'assets/js/style_designer_library.min.js'  => array('assets/js/style_designer_library.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8286,6 +8288,9 @@ function pg_designer_parts()
         // The "Clicks" layer: badges and tenth lines over the canvas and
         // its panel, handed only with sdDesign.clicks (who may open Visitors).
         'clicks' => 'assets/js/style_designer_clicks.min.js',
+        // My library's Export (a download of every item) and Import (a
+        // file read and sent for the checks), handed to designers only.
+        'library' => 'assets/js/style_designer_library.min.js',
     );
 }
 

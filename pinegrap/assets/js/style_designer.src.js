@@ -88049,6 +88049,17 @@ const StyleDesigner = (function () {
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];
 
+        // My library's file, for the designers it is handed to: the part
+        // 'library' runs on the first choice.
+        if (_sdPartUrls('library')) {
+            items.push({ id: 'act_library_export', label: _sdT('Export my library'), icon: 'bi-box-arrow-up', action: function () {
+                _sdPartCall('library', 'exportAll', []).catch(_sdPartFailed);
+            }});
+            items.push({ id: 'act_library_import', label: _sdT('Import into my library'), icon: 'bi-box-arrow-in-down', action: function () {
+                _sdPartCall('library', 'importFile', []).catch(_sdPartFailed);
+            }});
+        }
+
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
             items.splice(items.findIndex(function (it) { return it.id === 'act_save'; }) + 1, 0,

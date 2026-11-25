@@ -34,6 +34,10 @@ define('PG_LIBRARY_VERSION', 1);
 define('PG_LIBRARY_ITEM_MAX', 1048576);
 // The longest name and group the item keeps.
 define('PG_LIBRARY_NAME_MAX', 60);
+// An export file: its format line, its size and the items it may hold.
+define('PG_LIBRARY_EXPORT_FORMAT', 'pinegrap-library');
+define('PG_LIBRARY_EXPORT_MAX', 16777216);
+define('PG_LIBRARY_EXPORT_ITEMS', 200);
 
 // ── Rights ─────────────────────────────────────────────────────────────
 
@@ -778,6 +782,328 @@ function pg_library_file_slug($name)
     return PG_LIBRARY_PREFIX . substr($slug, 0, 60);
 }
 
+// ── Export and import (pure) ───────────────────────────────────────────
+
+/**
+ * Whether an address is of a kind an imported item may carry: a path on
+ * the site (no scheme: "/x", "x.html", "#id", "?q", "//host" too), http,
+ * https, mailto, tel, sms, or a data: picture of a raster kind. A
+ * {{token}} of a widget's record has no scheme, so it is kept. Entities
+ * and the blanks and control characters a browser skips are taken out
+ * first, so "java&#115;cript:" or "java\tscript:" is read as it would run.
+ */
+function pg_library_address_ok($url)
+{
+    $u = html_entity_decode((string)$url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $u = preg_replace('/[\x00-\x20\x7f]+/', '', $u);
+    if ($u === '' || !preg_match('/^([a-zA-Z][a-zA-Z0-9+.\-]*):/', $u, $m)) return true;
+    $scheme = strtolower($m[1]);
+    if (in_array($scheme, array('http', 'https', 'mailto', 'tel', 'sms'), true)) return true;
+    if ($scheme === 'data') return (bool)preg_match('#^data:image/(png|jpe?g|gif|webp|avif)[;,]#i', $u);
+    return false;
+}
+
+// The attribute and prop names that hold an address.
+function pg_library_address_key($name)
+{
+    $name = strtolower((string)$name);
+    return in_array($name, array('href', 'src', 'action', 'formaction', 'poster', 'xlink:href', 'data', 'cite',
+                                 'background', 'url', 'link', 'data-src', 'data-bg', 'data-background',
+                                 'srcset', 'data-srcset', 'imagesrcset'), true);
+}
+
+// The addresses of a srcset value: the first word of each candidate.
+function _pg_library_srcset_urls($value)
+{
+    $out = array();
+    foreach (explode(',', (string)$value) as $part) {
+        $words = preg_split('/\s+/', trim($part), -1, PREG_SPLIT_NO_EMPTY);
+        if ($words) $out[] = $words[0];
+    }
+    return $out;
+}
+
+/**
+ * What is wrong with one text of an item ('' when nothing): a script, an
+ * event attribute, or an address of a kind not allowed. Reads the text as
+ * markup when it holds a tag and as a style when it holds url( or
+ * expression(; $key names the prop or attribute it came from, so an address
+ * field is checked whatever its text.
+ */
+function pg_library_text_problem($text, $key = '')
+{
+    if (!is_string($text) || $text === '') return '';
+    if ($key !== '' && pg_library_address_key($key)) {
+        $urls = (stripos($key, 'srcset') !== false) ? _pg_library_srcset_urls($text) : array($text);
+        foreach ($urls as $u) {
+            if (!pg_library_address_ok($u)) return 'address';
+        }
+    }
+    $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    // A string that starts with a scheme that runs, whatever its key.
+    if (preg_match('/^[\x00-\x20]*(javascript|vbscript|livescript)\s*:/i', $decoded)) return 'address';
+    if (strpos($text, '<') !== false) {
+        if (preg_match('/<\s*\/?\s*script\b/i', $text)) return 'script';
+        if (preg_match_all('/<[a-zA-Z][^>]*>/', $text, $tags)) {
+            foreach ($tags[0] as $tag) {
+                if (preg_match('/[\s\/"\']on[a-zA-Z]+\s*=/', $tag)) return 'event';
+                if (preg_match('/[\s\/"\']srcdoc\s*=/i', $tag)) return 'script';
+                if (preg_match_all('/[\s\/"\']([a-zA-Z:-]+)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/', $tag, $attrs, PREG_SET_ORDER)) {
+                    foreach ($attrs as $a) {
+                        if (!pg_library_address_key($a[1])) continue;
+                        $value = isset($a[5]) && $a[5] !== '' ? $a[5] : (isset($a[4]) && $a[4] !== '' ? $a[4] : $a[3]);
+                        $urls = (stripos($a[1], 'srcset') !== false) ? _pg_library_srcset_urls($value) : array($value);
+                        foreach ($urls as $u) {
+                            if (!pg_library_address_ok($u)) return 'address';
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return pg_library_css_problem($decoded);
+}
+
+// What is wrong with a style text ('' when nothing): a CSS expression, a
+// binding, an @import, or a url() of a kind not allowed.
+function pg_library_css_problem($css)
+{
+    $css = (string)$css;
+    if ($css === '') return '';
+    $flat = preg_replace('/\\\\|\/\*.*?\*\//s', '', $css);
+    if (preg_match('/expression\s*\(|-moz-binding|behavior\s*:|@import/i', $flat)) return 'script';
+    if (preg_match_all('/url\(\s*(["\']?)([^"\')]*)\1\s*\)/i', $flat, $m)) {
+        foreach ($m[2] as $u) {
+            if (!pg_library_address_ok($u)) return 'address';
+        }
+    }
+    return '';
+}
+
+// Calls $fn($key, $string) on every string of an array, nested ones
+// included; $key is the nearest named key. Stops at the first answer that
+// is not ''.
+function _pg_library_strings_problem($value, $fn, $key = '', $depth = 0)
+{
+    if ($depth > 40) return 'deep';
+    if (is_string($value)) return $fn($key, $value);
+    if (!is_array($value)) return '';
+    foreach ($value as $k => $v) {
+        $r = _pg_library_strings_problem($v, $fn, is_int($k) ? $key : (string)$k, $depth + 1);
+        if ($r !== '') return $r;
+    }
+    return '';
+}
+
+/**
+ * What an item read from a file carries that an import refuses, as the
+ * HTML and ZIP import refuses it: 'script' (a script element or node, a
+ * srcdoc frame, a CSS expression or binding), 'event' (an on… attribute),
+ * 'address' (an address outside the allowed kinds, pg_library_address_ok()),
+ * 'deep' (a tree nested past what the editor draws); '' when nothing.
+ */
+function pg_library_item_problem($item)
+{
+    if (!is_array($item)) return 'deep';
+    $problem = '';
+    $text_check = function ($key, $s) {
+        return pg_library_text_problem($s, $key);
+    };
+    $node_check = function (&$n) use (&$problem, $text_check) {
+        if ($problem !== '') return;
+        $type = isset($n['type']) ? strtolower((string)$n['type']) : '';
+        $tag = isset($n['props']['tag']) && is_string($n['props']['tag']) ? strtolower($n['props']['tag']) : '';
+        if ($type === 'script' || $tag === 'script') {
+            $problem = 'script';
+            return;
+        }
+        if (!isset($n['props']) || !is_array($n['props'])) return;
+        $props = $n['props'];
+        if (isset($props['_attrs']) && is_array($props['_attrs'])) {
+            foreach ($props['_attrs'] as $a) {
+                if (!is_array($a) || !isset($a['name'])) continue;
+                $name = strtolower(trim((string)$a['name']));
+                if (strpos($name, 'on') === 0) {
+                    $problem = 'event';
+                    return;
+                }
+                if ($name === 'srcdoc') {
+                    $problem = 'script';
+                    return;
+                }
+                $r = pg_library_text_problem(isset($a['value']) ? (string)$a['value'] : '', $name);
+                if ($r !== '') {
+                    $problem = $r;
+                    return;
+                }
+            }
+            unset($props['_attrs']);
+        }
+        $problem = _pg_library_strings_problem($props, $text_check);
+    };
+    _pg_library_each_tree($item, $node_check);
+    if ($problem !== '') return $problem;
+    // A tree deeper than the walk reads is refused rather than half read.
+    $deep = function ($node, $d) use (&$deep) {
+        if ($d > 80) return true;
+        if (isset($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $c) {
+                if (is_array($c) && $deep($c, $d + 1)) return true;
+            }
+        }
+        return false;
+    };
+    if (isset($item['tree']) && $deep($item['tree'], 0)) return 'deep';
+    foreach (array('widgets', 'shared') as $bucket) {
+        foreach ((isset($item[$bucket]) && is_array($item[$bucket]) ? $item[$bucket] : array()) as $entry) {
+            if (!is_array($entry)) continue;
+            if (isset($entry['tree']) && is_array($entry['tree']) && $deep($entry['tree'], 0)) return 'deep';
+            if (isset($entry['config'])) {
+                $r = _pg_library_strings_problem($entry['config'], $text_check);
+                if ($r !== '') return $r;
+            }
+        }
+    }
+    foreach ((isset($item['rules']) ? $item['rules'] : array()) as $rule) {
+        $r = pg_library_css_problem($rule['selector'] . '{' . $rule['body'] . '}');
+        if ($r !== '') return $r;
+    }
+    foreach ((isset($item['variables']) ? $item['variables'] : array()) as $value) {
+        $r = pg_library_css_problem((string)$value);
+        if ($r !== '') return $r;
+    }
+    return '';
+}
+
+/**
+ * The text of an export file: the chosen items, each as its own file holds
+ * it (without the site's row id, file name and order), under one format
+ * line. $at is the date it is written (Y-m-d).
+ */
+function pg_library_export_text($items, $at)
+{
+    $list = array();
+    foreach ((array)$items as $item) {
+        if (!is_array($item)) continue;
+        unset($item['dropped'], $item['id'], $item['file'], $item['order']);
+        $list[] = $item;
+    }
+    $doc = array('format' => PG_LIBRARY_EXPORT_FORMAT, 'version' => PG_LIBRARY_VERSION,
+                 'exported' => (string)$at, 'items' => $list);
+    return json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
+}
+
+// The name an export file is offered under.
+function pg_library_export_file_name($at)
+{
+    $at = preg_replace('/[^0-9-]/', '', (string)$at);
+    return 'my-library' . ($at !== '' ? '-' . $at : '') . '.json';
+}
+
+/**
+ * The items of an import file: an export file (format pinegrap-library) or
+ * one item's own file. Every item passes pg_library_item_decode() and
+ * pg_library_item_problem(); one that does not refuses the whole file.
+ *
+ * Returns array('items' => list) or array('error' => code, 'item' => the
+ * name of the item refused, '' for the file). Codes: empty, too_large,
+ * not_a_library, version, too_many, none, and the codes of
+ * pg_library_item_decode() and pg_library_item_problem().
+ */
+function pg_library_import_read($text)
+{
+    if (!is_string($text) || trim($text) === '') return array('error' => 'empty', 'item' => '');
+    if (strlen($text) > PG_LIBRARY_EXPORT_MAX) return array('error' => 'too_large', 'item' => '');
+    $doc = json_decode($text, true);
+    if (!is_array($doc) || !isset($doc['format'])) return array('error' => 'not_a_library', 'item' => '');
+    if ($doc['format'] === PG_LIBRARY_FORMAT) {
+        $raw = array($doc);
+    } elseif ($doc['format'] === PG_LIBRARY_EXPORT_FORMAT) {
+        if (!isset($doc['version']) || (int)$doc['version'] < 1 || (int)$doc['version'] > PG_LIBRARY_VERSION) {
+            return array('error' => 'version', 'item' => '');
+        }
+        $raw = isset($doc['items']) && is_array($doc['items']) ? array_values($doc['items']) : array();
+    } else {
+        return array('error' => 'not_a_library', 'item' => '');
+    }
+    if (!$raw) return array('error' => 'none', 'item' => '');
+    if (count($raw) > PG_LIBRARY_EXPORT_ITEMS) return array('error' => 'too_many', 'item' => '');
+    $items = array();
+    foreach ($raw as $i => $one) {
+        $label = is_array($one) && isset($one['name']) ? pg_library_clean_label($one['name']) : '';
+        if ($label === '') $label = '#' . ($i + 1);
+        $json = is_array($one) ? json_encode($one, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '';
+        $item = pg_library_item_decode(is_string($json) ? $json : '');
+        if (!is_array($item)) return array('error' => $item, 'item' => $label);
+        $problem = pg_library_item_problem($item);
+        if ($problem !== '') return array('error' => $problem, 'item' => $label);
+        unset($item['id'], $item['file'], $item['dropped']);
+        $items[] = $item;
+    }
+    return array('items' => $items);
+}
+
+/**
+ * The names the imported items are kept under: a name the library has in
+ * the same group, or one taken earlier in the same file, gets " (2)", " (3)"
+ * and so on, so an import never seems to replace an item. The order of the
+ * imported items follows the library's last.
+ */
+function pg_library_import_names($items, $existing)
+{
+    $taken = array();
+    $last = 0;
+    foreach ((array)$existing as $e) {
+        $taken[_pg_library_name_key($e)] = true;
+        if (isset($e['order']) && (int)$e['order'] > $last) $last = (int)$e['order'];
+    }
+    foreach ($items as $i => $item) {
+        $base = $item['name'];
+        for ($n = 2; isset($taken[_pg_library_name_key($item)]) && $n < 1000; $n++) {
+            $suffix = ' (' . $n . ')';
+            $cut = PG_LIBRARY_NAME_MAX - strlen($suffix);
+            $item['name'] = (function_exists('mb_substr') ? mb_substr($base, 0, $cut, 'UTF-8') : substr($base, 0, $cut)) . $suffix;
+        }
+        $taken[_pg_library_name_key($item)] = true;
+        $item['order'] = ++$last;
+        $items[$i] = $item;
+    }
+    return $items;
+}
+
+function _pg_library_name_key($item)
+{
+    $name = isset($item['name']) ? (string)$item['name'] : '';
+    $group = isset($item['group']) ? (string)$item['group'] : '';
+    $fold = function ($s) {
+        return function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s);
+    };
+    return $fold($group) . "\n" . $fold($name);
+}
+
+/**
+ * The sentence an import refusal shows: why, and which item.
+ */
+function pg_library_import_message($error, $item_name)
+{
+    switch ((string)$error) {
+        case 'empty':     $why = lang('The file is empty.'); break;
+        case 'too_large': $why = lang('The file is too large.'); break;
+        case 'version':   $why = lang('The file was written by a newer version of Pinegrap.'); break;
+        case 'too_many':  $why = lang('The file holds too many items.'); break;
+        case 'none':      $why = lang('The file holds no item.'); break;
+        case 'no_tree':   $why = lang('An item of the file has no content.'); break;
+        case 'no_name':   $why = lang('An item of the file has no name.'); break;
+        case 'script':    $why = lang('An item of the file holds a script.'); break;
+        case 'event':     $why = lang('An item of the file holds an event attribute (on…).'); break;
+        case 'address':   $why = lang('An item of the file holds an address of a kind that is not allowed.'); break;
+        case 'deep':      $why = lang('An item of the file is nested too deeply.'); break;
+        default:          $why = lang('This is not a library file.');
+    }
+    if ((string)$item_name === '') return $why;
+    return $why . ' ' . lang(array('string' => 'Item: {var:1}', 'vars' => (string)$item_name));
+}
+
 // ── The store (files) ──────────────────────────────────────────────────
 
 // The SQL condition that picks the library's files.
@@ -893,6 +1219,24 @@ function pg_library_delete($id)
     }
     db("DELETE FROM files WHERE id = '" . (int)$current['id'] . "'");
     return true;
+}
+
+/**
+ * Keeps the items of an import file (pg_library_import_read()) as items of
+ * the library, each under a free name (pg_library_import_names()). Returns
+ * the number kept, or a string error message; an item that could not be
+ * written stops the import and the ones written before it stay.
+ */
+function pg_library_import_save($items, $user_id)
+{
+    $items = pg_library_import_names($items, pg_library_list());
+    $kept = 0;
+    foreach ($items as $item) {
+        $saved = pg_library_save($item, $user_id);
+        if (!is_array($saved)) return $saved;
+        $kept++;
+    }
+    return $kept;
 }
 
 /**

@@ -1165,6 +1165,40 @@ function pg_panel_designer($request, $action)
             respond(array('status' => 'success', 'id' => $theme_id, 'name' => $file_name));
             break;
 
+        // My library's file (includes/fn/designer_library.php). Export
+        // answers with the text of one file holding every item; the editor
+        // offers it as a download. Import takes the text of such a file
+        // (read in the browser, as api.php reads JSON only), refuses it with
+        // the reason when one item fails the checks, and keeps the items
+        // under free names. Both are the designer roles' (pg_library_may()).
+        case 'library_export':
+            if (!pg_library_may('export', $user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            $items = pg_library_list();
+            $at = date('Y-m-d');
+            respond(array('status' => 'success', 'count' => count($items),
+                          'name' => pg_library_export_file_name($at),
+                          'text' => $items ? pg_library_export_text($items, $at) : ''));
+            break;
+
+        case 'library_import':
+            if (!pg_library_may('import', $user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            $read = pg_library_import_read(isset($request['text']) ? (string)$request['text'] : '');
+            if (isset($read['error'])) {
+                respond(array('status' => 'error', 'code' => $read['error'],
+                              'message' => pg_library_import_message($read['error'], $read['item'])));
+            }
+            $kept = pg_library_import_save($read['items'], $user['id']);
+            if (!is_int($kept)) {
+                respond(array('status' => 'error', 'message' => $kept));
+            }
+            log_activity(lang(array('string' => '{var:1} item(s) were imported into My library', 'vars' => $kept)), $_SESSION['sessionusername']);
+            respond(array('status' => 'success', 'count' => $kept));
+            break;
+
         // The look builder and the palette builder of Settings > Design >
         // Theme (includes/fn/design_themes.php). They send choices - a
         // base look and a few picks, or two colours - never CSS; the
