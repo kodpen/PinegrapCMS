@@ -418,7 +418,7 @@
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
 - designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
 - designer-home-screen.md: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
-- designer-image-focus-drawing.md: The drawing of the image focus (plans/designer-image-focus.md, IF2 and IF3): the sheet, its four boards, what each step builds from it and what the sheet settles
+- designer-image-focus-drawing.md: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its four boards, what each step builds from it and what the sheet settles
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
@@ -605,6 +605,7 @@
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
 - image-focus-control.md: The Focus control (IF2): where it shows in an Image's and a background picture's options, what it draws and writes per screen, the part 'focus' and its host, what is not built yet
 - image-focus-mode.md: "Set focus" on the canvas (IF3): the toolbar button, the mode that drags a picture under its frame, its keys, what it writes, how it is loaded, tested and measured
+- image-focus-overview.md: A picture's focus point ("Focus" in the options, "Set focus" on the canvas): why, what binds it, which file holds what [decision: decisions-made-product-106.md, decisions-made-product-110.md]
 - image-focus-value.md: A picture's focus point as a value: the pair of percentages, word pairs read, a value per screen size, how the Image element and a background picture write it, the pg-focus rule
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
 - image-size-props.md: How the Image element's size is written: whole-number width/height as attributes, a unit as a style, the Sizing panel's style; in a ratio box the box takes the style, the img its attributes
