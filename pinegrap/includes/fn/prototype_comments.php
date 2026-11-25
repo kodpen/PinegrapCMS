@@ -1353,7 +1353,9 @@ function pg_proto_comment_task_words($text)
 {
     $text = str_replace(array('<', '>'), array('‹', '›'), (string) $text);
 
-    return trim(preg_replace('/^[ \t]*(?::::|```)/mu', '', $text));
+    // Every block start at a line's head is taken, so a doubled one
+    // ("::::::", a fence of six) leaves none behind.
+    return trim(preg_replace('/^[ \t]*(?:(?::::|```)[ \t]*)+/mu', '', $text));
 }
 
 /**
