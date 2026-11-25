@@ -567,7 +567,7 @@
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
 - designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts" [decision: decisions-made-product-111.md]
-- designer-side-by-side.md: "Side by side" in the designer's View menu (SS2): the switch, the row of the canvas and two mirrors, its room (928 px, 636 for an e-mail design), the heads and their size lists
+- designer-side-by-side.md: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size
 - designer-size-per-screen.md: A length per screen size (DO2): the size chooser on Size and display and Text, @media rules on the pgs- class, what moves to the base rule, the canvas at the size, the dot
 - designer-sketch-drawing-ai.md: The Sketch tool's two AI actions as drawn (ai-and-picture.html, boards E1 to E3 and E6): the "Describe the page" window, the sketch being drawn, "Write the texts" and its messages
 - designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone [decision: here]
@@ -821,6 +821,7 @@
 - prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part [decision: decisions-made-product-57.md]
 - prototype-viewer-missed-click.md: The prototype viewer's missed click (PX6): a click on nothing clickable flashes the page's links in the frame; when it does not; Play's start page and its title [decision: here]
 - prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom [decision: here]
+- record-edit-in-place-preview.md: "Edit content here" in the designer's Preview (RE3, #11677): the part recordedit, the switch, how frames find elements, the controls in place, the foot bar, a field changed meanwhile
 - record-edit-in-place-server.md: Server of a collection item's fields corrected in place from the designer's Preview (RE1, #11551): controls, rights, approval, changed-meanwhile check, write order, panel actions
 - record-edit-in-place-spots.md: Which bound elements of a page the Preview lets a person correct in place for one collection item, and with which control (RE2, #11583): PGRecordEditSpots, scopes, tokens, properties
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
