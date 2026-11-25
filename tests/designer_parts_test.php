@@ -123,7 +123,7 @@ function test_designer_parts_files_describe_every_part()
 // editor, 'off' ones never, the others while their condition is true.
 function test_designer_parts_for_follow_their_condition()
 {
-	$every = array('bands', 'code', 'focus', 'fonts', 'guides', 'import', 'interactions', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'tour', 'treesearch', 'variables');
+	$every = array('bands', 'code', 'focus', 'fonts', 'grid', 'guides', 'import', 'interactions', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'tour', 'treesearch', 'variables');
 	pg_assert_same($every, pg_designer_parts_for(array()), 'nothing holds: the parts of every editor');
 	pg_assert_same($every, pg_designer_parts_for(array('always' => false, 'off' => true, 'nope' => true)), 'always and off cannot be turned');
 

@@ -3841,5 +3841,6 @@
     "published {var:1}": "{var:1} sayfasını yayımladı",
     "published {var:1} with a release bundle": "{var:1} sayfasını bir yayın paketiyle yayımladı",
     "purchase, restore, subscription, refund": "satın alma, geri yükleme, abonelik, iade",
-    "purchase_order_line is only taken on a purchase invoice draft made from a purchase order.": "purchase_order_line yalnızca satın alma siparişinden oluşturulmuş alış faturası taslağında kabul edilir."
+    "purchase_order_line is only taken on a purchase invoice draft made from a purchase order.": "purchase_order_line yalnızca satın alma siparişinden oluşturulmuş alış faturası taslağında kabul edilir.",
+    "put {var:1} on the site": "{var:1} sayfasını sitede yayınladı"
 }

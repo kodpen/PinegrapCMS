@@ -4795,6 +4795,8 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $read = pg_comments_rows($page_id, $read_thread, $viewer, $read_options);
+    // The Preview's case "Empty": a thread nobody has written in yet.
+    if (pg_preview_as_flag('empty')) $read = array('rows' => array(), 'count' => 0) + $read;
 
     // A product's reviews come newest first and are never pinned or filtered
     // by featured, whatever the widget's order and featured settings say:

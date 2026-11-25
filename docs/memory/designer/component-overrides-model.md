@@ -12,7 +12,7 @@ module: component_overrides
 - `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values. An id met twice in a tree keeps its first node.
 
 ## Which functions are there?
-- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), bundled first in the designer part `overrides` (`component-overrides-fields.md`).
+- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), bundled first in the designer part `overrides` (`component-overrides-fields.md`; drawing: `component-overrides-render.md`).
 - `pg_co_open_fields($tree)` / `openFields`: `{id, kind, label, nodeId, value}`, `value` the component's own (a picture `{src, alt}`, shown `true`), `nodeId` the node's `_id` (the designer's) else `id`. A `shared_ref` inside the component is not entered.
 - Order: the ids of the root's `props._openOrder` first, in its order (ids naming no field skipped), then the rest in document order (`pg_co_order_fields()`). It is the order of the component's settings list and of "This place" (#11597).
 - `pg_co_apply($tree, $values)` / `apply`: the tree as drawn at a place; a copy, the given tree unchanged. Nothing to apply (no values, no open field, only unfit values) gives the tree back as given (JS: the same object), so a component with no open field draws byte for byte as before. The root is never left out.
@@ -21,7 +21,7 @@ module: component_overrides
 - `pg_co_place_values($ref)` / `placeValues`: `props._place` or nothing.
 
 ## What does the model not do?
-- No check of a link or picture address and no escaping: the field's own checks run where the value is saved and drawn (CO2, CO4).
+- `pg_co_apply()` checks no address and escapes nothing: drawing runs `pg_co_safe_values()` first (`component-overrides-render.md`); the save checks are CO4's.
 
 ## Tests?
 - `tests/component_overrides_test.php`: the PHP functions, and the twin run in Node on the same cases with the answers compared (skipped without Node). CO1, #11520.

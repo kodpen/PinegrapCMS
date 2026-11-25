@@ -10,9 +10,12 @@
  *   revision  page_revisions: a page's version (publish, restore, import,
  *             assistant, release bundle); an applied content change names
  *             its editor from design_proposals (pg_page_revisions_editor())
- *   audit     audit_log: a page moved to the Recycle Bin, brought back or
- *             deleted for good (type page); a design file made, saved or
- *             deleted (type file)
+ *   audit     audit_log: a page moved to the Recycle Bin, brought back,
+ *             deleted for good, taken off the site or put on it (type
+ *             page); a design file made, saved or deleted (type file); the
+ *             design saved, renamed, duplicated, binned or deleted (type
+ *             style); a shared component made, saved, renamed, set or
+ *             deleted (type shared_component)
  *   link      prototype_links: a share link made
  *   revoke    prototype_links: a share link revoked
  *   verdict   prototype_verdicts: the customer approved a page or asked
@@ -247,6 +250,32 @@ function pg_designer_activity_sentence($action, $name)
             return lang(array('string' => 'changed the design file {var:1}', 'vars' => array($name)));
         case 'file_delete':
             return lang(array('string' => 'deleted the design file {var:1}', 'vars' => array($name)));
+        case 'page_unpublish':
+            return lang(array('string' => 'took {var:1} off the site', 'vars' => array($name)));
+        case 'page_publish':
+            return lang(array('string' => 'put {var:1} on the site', 'vars' => array($name)));
+        case 'style_save':
+            return lang(array('string' => 'saved the design {var:1}', 'vars' => array($name)));
+        case 'style_rename':
+            return lang(array('string' => 'renamed the design to {var:1}', 'vars' => array($name)));
+        case 'style_create':
+            return lang(array('string' => 'made the design {var:1}', 'vars' => array($name)));
+        case 'style_copy':
+            return lang(array('string' => 'duplicated the design as {var:1}', 'vars' => array($name)));
+        case 'style_recycle':
+            return lang(array('string' => 'moved the design {var:1} to the Recycle Bin', 'vars' => array($name)));
+        case 'style_delete':
+            return lang(array('string' => 'deleted the design {var:1}', 'vars' => array($name)));
+        case 'component_create':
+            return lang(array('string' => 'made the shared component {var:1}', 'vars' => array($name)));
+        case 'component_save':
+            return lang(array('string' => 'saved the shared component {var:1}', 'vars' => array($name)));
+        case 'component_rename':
+            return lang(array('string' => 'renamed a shared component to {var:1}', 'vars' => array($name)));
+        case 'component_settings':
+            return lang(array('string' => 'changed the settings of the shared component {var:1}', 'vars' => array($name)));
+        case 'component_delete':
+            return lang(array('string' => 'deleted the shared component {var:1}', 'vars' => array($name)));
     }
 
     return '';
@@ -347,26 +376,174 @@ function _pg_designer_activity_line_field($json, $field)
 }
 
 /**
- * An audit trail line of a page or a design file; null for a line the
- * list does not show. Pure.
+ * The names of the fields an audit line changed, from both stored sides.
+ * A side too large to keep holds only those names (`fields`). Pure.
+ *
+ * @param string|null $before_json
+ * @param string|null $after_json
+ * @return string[] sorted
+ */
+function pg_designer_activity_line_fields($before_json, $after_json)
+{
+    $names = array();
+
+    foreach (array($before_json, $after_json) as $json) {
+        $side = json_decode((string) $json, true);
+
+        if (!is_array($side)) {
+            continue;
+        }
+
+        if (!empty($side['truncated']) && isset($side['fields']) && is_array($side['fields'])) {
+            $side = array_flip(array_map('strval', $side['fields']));
+        }
+
+        foreach (array_keys($side) as $name) {
+            $names[(string) $name] = true;
+        }
+    }
+
+    $names = array_keys($names);
+    sort($names);
+
+    return $names;
+}
+
+/**
+ * The action of a page's `update` line that took it off the site or put it
+ * on (into the drafts folder or out of it); '' for any other edit. Pure.
+ *
+ * @param array $row          before_json, after_json
+ * @param int   $draft_folder the drafts folder's id, 0 when there is none
+ * @return string page_unpublish | page_publish | ''
+ */
+function _pg_designer_activity_page_move($row, $draft_folder)
+{
+    $draft_folder = (int) $draft_folder;
+    $was = _pg_designer_activity_line_field($row['before_json'], 'page_folder');
+    $now = _pg_designer_activity_line_field($row['after_json'], 'page_folder');
+
+    if ($draft_folder <= 0 || $was === null || $now === null) {
+        return '';
+    }
+
+    if ((int) $now === $draft_folder && (int) $was !== $draft_folder) {
+        return 'page_unpublish';
+    }
+
+    if ((int) $was === $draft_folder && (int) $now !== $draft_folder) {
+        return 'page_publish';
+    }
+
+    return '';
+}
+
+/**
+ * The action of a design's line, in the list of `$style_id`: its own
+ * lines, and the line of a copy made from it. '' for a line of another
+ * design. Pure.
+ *
+ * @param array $row      action, entity_id, before_json, after_json
+ * @param int   $style_id the design whose list is read
+ * @return string
+ */
+function _pg_designer_activity_style_action($row, $style_id)
+{
+    $action = (string) $row['action'];
+
+    if ((int) $row['entity_id'] !== (int) $style_id) {
+        $from = _pg_designer_activity_line_field($row['after_json'], 'copied_from');
+
+        return ($action === 'create' && $from !== null && (int) $from === (int) $style_id) ? 'style_copy' : '';
+    }
+
+    if ($action === 'update') {
+        $fields = pg_designer_activity_line_fields($row['before_json'], $row['after_json']);
+
+        return ($fields === array('style_name')) ? 'style_rename' : 'style_save';
+    }
+
+    return in_array($action, array('create', 'recycle', 'delete'), true) ? 'style_' . $action : '';
+}
+
+/**
+ * The action of a shared component's line. Pure.
+ *
+ * @param array $row action, before_json, after_json
+ * @return string
+ */
+function _pg_designer_activity_component_action($row)
+{
+    $action = (string) $row['action'];
+
+    if ($action !== 'update') {
+        return in_array($action, array('create', 'delete'), true) ? 'component_' . $action : '';
+    }
+
+    $fields = pg_designer_activity_line_fields($row['before_json'], $row['after_json']);
+
+    if (in_array('tree_json', $fields, true)) {
+        return 'component_save';
+    }
+
+    return ($fields === array('name')) ? 'component_rename' : 'component_settings';
+}
+
+/**
+ * An audit trail line of a page, a design file, the design or a shared
+ * component; null for a line the list does not show. Pure.
  *
  * The page's folder is the one the page was in: before the bin for a
- * recycle or a delete (read from the line), the page's own for a restore.
+ * recycle or a delete (read from the line), the page's own for a restore
+ * or a move on or off the site. A line the scheduled job wrote names no
+ * person: the list says the schedule did it.
  *
- * @param array $row id, created_at, user_id, user_username, source, action, entity_type,
- *                   entity_id, label, before_json, after_json, page_folder (the live page's)
+ * @param array $row     id, created_at, user_id, user_username, source, action, entity_type,
+ *                       entity_id, label, before_json, after_json, page_folder (the live page's)
+ * @param array $context style_id (the design whose list is read), draft_folder (the
+ *                       drafts folder's id, 0 for none)
  * @return array|null
  */
-function pg_designer_activity_from_audit($row)
+function pg_designer_activity_from_audit($row, $context = array())
 {
     $type   = (string) $row['entity_type'];
     $action = (string) $row['action'];
     $fields = array(
         'at'      => (int) $row['created_at'],
         'user_id' => (int) $row['user_id'],
-        'who'     => pg_designer_activity_who($row['user_id'], $row['user_username']),
+        'who'     => ((string) ($row['source'] ?? '') === 'job') ? lang('The schedule')
+                         : pg_designer_activity_who($row['user_id'], $row['user_username']),
         'name'    => (string) $row['label'],
     );
+
+    if ($type === 'page' && $action === 'update') {
+        $move = _pg_designer_activity_page_move($row, (int) ($context['draft_folder'] ?? 0));
+
+        return ($move === '') ? null : _pg_designer_activity_event('audit', $row['id'], $fields + array(
+            'kind'      => 'page',
+            'action'    => $move,
+            'page_id'   => (int) $row['entity_id'],
+            'folder_id' => (int) $row['page_folder'],
+        ));
+    }
+
+    if ($type === 'style') {
+        $style_action = _pg_designer_activity_style_action($row, (int) ($context['style_id'] ?? 0));
+
+        return ($style_action === '') ? null : _pg_designer_activity_event('audit', $row['id'], $fields + array(
+            'kind'   => 'design',
+            'action' => $style_action,
+        ));
+    }
+
+    if ($type === 'shared_component') {
+        $component_action = _pg_designer_activity_component_action($row);
+
+        return ($component_action === '') ? null : _pg_designer_activity_event('audit', $row['id'], $fields + array(
+            'kind'   => 'component',
+            'action' => $component_action,
+        ));
+    }
 
     if ($type === 'page' && in_array($action, array('recycle', 'restore', 'delete'), true)) {
         $folder = ($action === 'restore')
@@ -696,12 +873,16 @@ function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $pa
 }
 
 /**
- * The audit trail's lines of the design: its pages binned, brought back or
- * deleted for good, and, for the designer roles, the design files.
+ * The audit trail's lines of the design: its pages binned, brought back,
+ * deleted for good, taken off the site or put on it, and, for the designer
+ * roles, the design's own lines, the lines of copies made from it, the
+ * design files and the shared components.
  *
  * A deleted page has no row any more; its line is found by the design kept
- * in the line's stored row. Design files are the site's (`files.design`),
- * so their lines are in every design's list.
+ * in the line's stored row. Design files (`files.design`) and shared
+ * components are the site's, not one design's, so their lines are in every
+ * design's list. A page's other edits are not read: only an `update` line
+ * that names the drafts folder on one side is a move on or off the site.
  *
  * @return array events
  */
@@ -719,15 +900,30 @@ function _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, 
     $none   = 'NULL AS before_json, NULL AS after_json';
     $style  = '%"page_style":"' . $style_id . '"%';
 
+    $sides  = 'a.before_json, a.after_json';
+    $draft  = pg_page_draft_ready() ? (int) pg_page_draft_folder_id(false) : 0;
+    $folder = '%"page_folder":"' . $draft . '"%';
+
     $queries = array(
         sprintf($select, $json, "a.entity_type = 'page' AND a.entity_id IN ($all_in) AND a.action IN ('recycle', 'restore')"),
         sprintf($select, $json, "a.entity_type = 'page' AND a.action = 'delete' AND a.before_json LIKE '" . e($style) . "'"),
     );
 
+    if ($draft > 0) {
+        $queries[] = sprintf($select, $sides, "a.entity_type = 'page' AND a.entity_id IN ($all_in) AND a.action = 'update'
+                                               AND (a.after_json LIKE '" . e($folder) . "' OR a.before_json LIKE '" . e($folder) . "')");
+    }
+
     if ($full) {
         $queries[] = sprintf($select, $none, "a.entity_type = 'file' AND a.entity_id IN (SELECT id FROM files WHERE design = 1)");
         $queries[] = sprintf($select, $none, "a.entity_type = 'file' AND a.action = 'delete' AND a.before_json LIKE '%\"design\":\"1\"%'");
+        $queries[] = sprintf($select, $sides, "a.entity_type = 'style' AND a.entity_id = '" . (int) $style_id . "'");
+        $queries[] = sprintf($select, $sides, "a.entity_type = 'style' AND a.action = 'create' AND a.after_json LIKE '"
+                                              . e('%"copied_from":"' . (int) $style_id . '"%') . "'");
+        $queries[] = sprintf($select, $sides, "a.entity_type = 'shared_component'");
     }
+
+    $context = array('style_id' => (int) $style_id, 'draft_folder' => $draft);
 
     $events = array();
 
@@ -736,7 +932,7 @@ function _pg_designer_activity_audit($style_id, $all_in, $full, $cursor, $over, 
             $page_id = (int) $row['entity_id'];
             $row['page_folder'] = ($row['entity_type'] === 'page') ? (int) $page_of($page_id, 'page_folder') : 0;
 
-            $event = pg_designer_activity_from_audit($row);
+            $event = pg_designer_activity_from_audit($row, $context);
 
             if ($event) {
                 $events[] = $event;

@@ -18,7 +18,7 @@ description: Working rules (2026-10-25) for every session: why, one open PR, no 
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.
 
 ## How big is a PR?
-- About 1,000 product lines or fewer: changed lines in files under `pinegrap/`, `.min.js` bundles and language files not counted; tests, tools and memory never count. A plan's steps are cut to it when the plan is written. A finished PR over it still lands, in a train of its own; the split is asked of the next step.
+- About 1,000 product lines or fewer: changed lines in files under `pinegrap/`, `.min.js` bundles and language files not counted; tests, tools and memory never count. A plan's steps are cut to it when the plan is written. A finished PR over it still lands, at most one in a train; the split is asked of the next step.
 
 ## When may nobody start a task?
 - While more than 25 PRs are open, drafts and `merge-train/*` PRs not counted (command: `CLAUDE.md`, Working mode 8). Checked before the claiming draft PR; finished work is still marked ready.

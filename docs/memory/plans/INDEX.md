@@ -13,7 +13,6 @@
 - addon-hook-system-site.md: Add-on hook system, the owner's additions of 2026-11-14: the start in two parts, UI slots on core screens, a site's own add-on that updates never touch, an add-on prepared from the panel
 - addon-hook-system-steps.md: Steps of plans/addon-hook-system.md, started 2026-11-15: AH1 the census, AH2 the design note, AH3 to AH8 the part before the release (one door, registry, hooks, slots)
 - addon-hook-system.md: Plan (approved 2026-10-19; started 2026-11-15 with the census, addon-hook-system-steps.md): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
-- agent-brief-who-wakes.md: Plan (owner 2026-11-25): an agent's brief says who wakes how in the request's channel or discussion, the instructions say when to name an agent; one step, WW1
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
@@ -25,10 +24,6 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
-- channel-info-agents-parts.md: Plan channel-info-agents, step CI1: every part Channel info's Info and Activity tabs have today and where each stands after the agents block (stays, moves, goes)
-- channel-info-agents-row.md: Plan channel-info-agents, step CI1: the agents block's markup, what a row's second line says in each state, the facts of an opened row in their order, the head
-- channel-info-agents-true.md: Plan channel-info-agents, step CI1: the read's new fields, the new texts, what must be true with a test for each line, what does not change, what is looked at before ready
-- channel-info-agents.md: Plan (owner 2026-11-25): Channel info's two agent lists become one calm block, the same under both tabs, a row opening for its detail; one step, CI1, built board by board from the drawing
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-examples-patterns-mail.md: Step DX2b of the Design examples plan: the parts of the approved e-mail settings drawing as patterns (tabs with a state, choice cards, provider sign-in, effects confirm), before EM1
@@ -38,7 +33,6 @@
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-accessibility-view.md: Plan (owner 2026-11-24, level 2): the canvas shown as a keyboard, a screen reader and a colour-blind eye meet it: tab order, headings, names, sight filters; steps AV1 to AV4
 - designer-activity.md: Plan (owner 2026-11-24, level 3): an Activity tab in the designer's History: who published, restored, imported or shared what in a design, from rows that exist; steps AC1 to AC4
-- designer-canvas-guides.md: Plan (owner 2026-11-24): on the designer's canvas, distances measured with a key, spacing dragged by its bands, columns dragged over the grid, equal gaps marked; client only; steps CG1 to CG6
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
 - designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
@@ -90,6 +84,7 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
+- parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - security-scan.md: Plan: Security Scan, a rule-based scan of files, stored content, accounts and settings joined to the firewall's screen and card, with quarantine, a manual run, an API and MCP read; SC1 to SC9

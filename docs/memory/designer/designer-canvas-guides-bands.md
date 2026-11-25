@@ -11,7 +11,7 @@ description: The spacing bands and handles over the designer canvas (CG3 #11568,
 
 ## When are there no bands?
 - Nothing or several selected, the root, Prototype open, an element being dragged (the part hides on the canvas's `dragstart`), a design without Bootstrap, view mode, or a node `_sdPanelLockReason()` refuses (a content editor's closed parts, a closed shared component): the frame only.
-- No bar button and no menu row yet: CG5's "Canvas guides" switch turns them off.
+- "Canvas guides" off in the View menu (`_sdGuidesOff()`, `designer-canvas-guides-lines.md`): no bands, no handles.
 
 ## What does a change write?
 - What the Spacing box writes: `PGSpacingBox.write()` with `B.sides(side, shift, alt)`, through `_sdSpBoxHost()`'s commit (one `saveState()`, `_sdRenderNode()`), one undo step per drag or key change.

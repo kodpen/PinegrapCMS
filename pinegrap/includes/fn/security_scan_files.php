@@ -229,9 +229,10 @@ function pg_security_php_shipped_outside_reference()
 
 /**
  * Is a PHP place outside the reference's scope one this software puts there:
- * a file the release ships (pg_security_php_shipped_outside_reference()) or
+ * a file the release ships (pg_security_php_shipped_outside_reference()),
  * the compiled language cache, data/temp/lang_<code>.php
- * (pg_lang_cache_path())?
+ * (pg_lang_cache_path()), or the new config.php while it is written,
+ * data/config.tmp<uniqid>.php (pg_write_config_file()).
  *
  * @param string $place
  * @return bool
@@ -239,7 +240,8 @@ function pg_security_php_shipped_outside_reference()
 function pg_security_php_known_outside_reference($place)
 {
     return in_array((string) $place, pg_security_php_shipped_outside_reference(), true)
-        || (preg_match('#^data/temp/lang_[A-Za-z0-9_-]{1,32}\.php$#', (string) $place) === 1);
+        || (preg_match('#^data/temp/lang_[A-Za-z0-9_-]{1,32}\.php$#', (string) $place) === 1)
+        || (preg_match('#^data/config\.tmp[0-9a-f]{13}\.php$#', (string) $place) === 1);
 }
 
 /**
@@ -347,6 +349,51 @@ function pg_security_config_verdict($baseline, $place, $digest)
 }
 
 /**
+ * Does a server settings file only shut its folder to the web? An .htaccess
+ * of nothing but "deny from all", "Require all denied", their "Order" and
+ * "<IfModule>" lines, "Options -Indexes", comments and blank lines can only
+ * take access away. This software writes such a file into every folder it
+ * makes for private data (data/, includes/, a backup or mailbox folder), so
+ * one that is new or changed is no finding.
+ *
+ * @param string $place
+ * @param string $text The file's content
+ * @return bool
+ */
+function pg_security_config_denies_only($place, $text)
+{
+    if (pg_security_file_name($place) !== '.htaccess') {
+        return false;
+    }
+
+    $denies = false;
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $text) as $line) {
+        $line = strtolower(preg_replace('/\s+/', ' ', trim($line)));
+
+        if (($line === '') || ($line[0] === '#')) {
+            continue;
+        }
+
+        if (in_array($line, array('deny from all', 'require all denied'), true)) {
+            $denies = true;
+            continue;
+        }
+
+        if (
+            in_array($line, array('order deny,allow', 'order allow,deny', 'options -indexes', '</ifmodule>'), true)
+            || (preg_match('/^<ifmodule !?[a-z0-9_.]+>$/', $line) === 1)
+        ) {
+            continue;
+        }
+
+        return false;
+    }
+
+    return $denies;
+}
+
+/**
  * The content checks a file needs: 'shell' (shell marks), 'php_tag' (a
  * picture in the upload folders), 'digest' (a server settings file).
  *
@@ -403,10 +450,12 @@ function pg_security_file_sightings($place, $in_reference, array $facts)
             $found['file_upload_executable'] = '.' . $extension;
         }
     } elseif ($area === 'layouts') {
-        // A custom layout is the page's id with .php: data/layouts/12.php.
+        // A custom layout is the page's id with .php: data/layouts/12.php;
+        // the 2017.2.2 password pages step kept the earlier one as 12.bak.php
+        // (includes/migrations/legacy.php).
         $extension = pg_security_name_executable($place);
 
-        if (($extension !== '') && (preg_match('#^data/layouts/[1-9][0-9]*\.php$#', $place) !== 1)) {
+        if (($extension !== '') && (preg_match('#^data/layouts/[1-9][0-9]*(?:\.bak)?\.php$#', $place) !== 1)) {
             $found['file_upload_executable'] = '.' . $extension;
         }
     } elseif (pg_security_name_is_php($place)) {
@@ -717,11 +766,17 @@ function pg_security_files_walk($folder, $prefix, $cursor)
  */
 function pg_security_files_read($path, array $reads)
 {
-    $facts = array('shell' => '', 'php_tag' => false, 'digest' => '');
+    $facts = array('shell' => '', 'php_tag' => false, 'digest' => '', 'denies_only' => false);
 
     if (in_array('digest', $reads, true)) {
         $digest = @sha1_file($path);
         $facts['digest'] = is_string($digest) ? $digest : '';
+
+        // A server settings file is a few lines; one over 64 KB is never
+        // only a deny.
+        if (($facts['digest'] !== '') && (@filesize($path) <= 65536)) {
+            $facts['denies_only'] = pg_security_config_denies_only($path, (string) @file_get_contents($path));
+        }
     }
 
     $shell = in_array('shell', $reads, true);
@@ -768,6 +823,74 @@ function pg_security_files_read($path, array $reads)
     fclose($handle);
 
     return $facts;
+}
+
+/**
+ * Check one file: the reads its place needs, then its sightings. A server
+ * settings file also gives its digest for the run's baseline.
+ *
+ * @param string $place
+ * @param string $path
+ * @param bool|null $in_reference As for pg_security_file_reads()
+ * @param array|null $baseline The last finished run's server settings digests
+ * @return array digest (string), sightings (array[])
+ */
+function pg_security_files_check($place, $path, $in_reference, $baseline)
+{
+    $reads = pg_security_file_reads($place, $in_reference);
+    $facts = empty($reads) ? array('shell' => '', 'php_tag' => false, 'digest' => '', 'denies_only' => false) : pg_security_files_read($path, $reads);
+
+    if ($facts['digest'] !== '') {
+        $facts['config'] = $facts['denies_only'] ? '' : pg_security_config_verdict($baseline, $place, $facts['digest']);
+    }
+
+    return array('digest' => (string) $facts['digest'], 'sightings' => pg_security_file_sightings($place, $in_reference, $facts));
+}
+
+/**
+ * Walk on from the state's root and cursor, checking each file, until every
+ * root is done or $stop answers true before a file. The state comes back
+ * with the place to go on from, so the next call resumes there.
+ *
+ * @param array $state From pg_security_files_state()
+ * @param array<string, string> $roots From pg_security_files_roots()
+ * @param array|null $places The reference's places (place => true), null when the run has none
+ * @param callable $stop Asked before each file
+ * @param callable $found Given each sighting
+ * @return array state, stopped (bool), files (checked this call)
+ */
+function pg_security_files_advance(array $state, array $roots, $places, callable $stop, callable $found)
+{
+    $folders = array_values($roots);
+    $prefixes = array_keys($roots);
+    $files = 0;
+
+    for ($root = (int) $state['root']; $root < count($folders); $root++) {
+        foreach (pg_security_files_walk($folders[$root], $prefixes[$root], (string) $state['cursor']) as $place => $path) {
+            if ($stop()) {
+                return array('state' => $state, 'stopped' => true, 'files' => $files);
+            }
+
+            $check = pg_security_files_check($place, $path, is_array($places) ? isset($places[$place]) : null, $state['baseline']);
+
+            if ($check['digest'] !== '') {
+                $state['configs'][$place] = $check['digest'];
+            }
+
+            foreach ($check['sightings'] as $sighting) {
+                $found($sighting);
+            }
+
+            $state['cursor'] = $place;
+            $state['files']++;
+            $files++;
+        }
+
+        $state['root'] = $root + 1;
+        $state['cursor'] = '';
+    }
+
+    return array('state' => $state, 'stopped' => false, 'files' => $files);
 }
 
 /**
@@ -861,41 +984,22 @@ function pg_security_files_run($budget)
     // A pass that started without a reference, or lost it on the way, does
     // not judge by one: its unknown-PHP and shell findings are not marked
     // gone either (pg_security_files_judged_kinds()).
-    $places = $reference['places'];
     $has_reference = ($reference['source'] !== '') && ($state['reference'] !== '');
-    $roots = array_values(pg_security_files_roots());
-    $prefixes = array_keys(pg_security_files_roots());
-    $stopped = false;
-
-    for ($root = (int) $state['root']; $root < count($roots); $root++) {
-        foreach (pg_security_files_walk($roots[$root], $prefixes[$root], (string) $state['cursor']) as $place => $path) {
-            if (microtime(true) >= $deadline) {
-                $stopped = true;
-                break 2;
-            }
-
-            $in_reference = $has_reference ? isset($places[$place]) : null;
-            $reads = pg_security_file_reads($place, $in_reference);
-            $facts = empty($reads) ? array('shell' => '', 'php_tag' => false, 'digest' => '') : pg_security_files_read($path, $reads);
-
-            if ($facts['digest'] !== '') {
-                $state['configs'][$place] = $facts['digest'];
-                $facts['config'] = pg_security_config_verdict($state['baseline'], $place, $facts['digest']);
-            }
-
-            foreach (pg_security_file_sightings($place, $in_reference, $facts) as $sighting) {
-                pg_security_finding_record($sighting, $now);
-                $result['findings']++;
-            }
-
-            $state['cursor'] = $place;
-            $state['files']++;
-            $result['files']++;
+    $walk = pg_security_files_advance(
+        $state,
+        pg_security_files_roots(),
+        $has_reference ? $reference['places'] : null,
+        function () use ($deadline) {
+            return microtime(true) >= $deadline;
+        },
+        function (array $sighting) use ($now, &$result) {
+            pg_security_finding_record($sighting, $now);
+            $result['findings']++;
         }
-
-        $state['root'] = $root + 1;
-        $state['cursor'] = '';
-    }
+    );
+    $state = $walk['state'];
+    $stopped = $walk['stopped'];
+    $result['files'] = $walk['files'];
 
     if (!$stopped) {
         pg_security_files_close((int) $state['started'], $has_reference ? $state['reference'] : '', $now);

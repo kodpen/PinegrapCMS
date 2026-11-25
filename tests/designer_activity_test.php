@@ -150,6 +150,19 @@ function test_designer_activity_sentences()
 	pg_assert_same('changed the design file site.css', pg_designer_activity_sentence('file_update', 'site.css'));
 	pg_assert_same('deleted the design file site.css', pg_designer_activity_sentence('file_delete', 'site.css'));
 	// An action the reader does not know is never shown as another one.
+	pg_assert_same('took Home off the site', pg_designer_activity_sentence('page_unpublish', 'Home'));
+	pg_assert_same('put Home on the site', pg_designer_activity_sentence('page_publish', 'Home'));
+	pg_assert_same('saved the design Shop', pg_designer_activity_sentence('style_save', 'Shop'));
+	pg_assert_same('renamed the design to Shop', pg_designer_activity_sentence('style_rename', 'Shop'));
+	pg_assert_same('made the design Shop', pg_designer_activity_sentence('style_create', 'Shop'));
+	pg_assert_same('duplicated the design as Shop', pg_designer_activity_sentence('style_copy', 'Shop'));
+	pg_assert_same('moved the design Shop to the Recycle Bin', pg_designer_activity_sentence('style_recycle', 'Shop'));
+	pg_assert_same('deleted the design Shop', pg_designer_activity_sentence('style_delete', 'Shop'));
+	pg_assert_same('made the shared component Footer', pg_designer_activity_sentence('component_create', 'Footer'));
+	pg_assert_same('saved the shared component Footer', pg_designer_activity_sentence('component_save', 'Footer'));
+	pg_assert_same('renamed a shared component to Footer', pg_designer_activity_sentence('component_rename', 'Footer'));
+	pg_assert_same('changed the settings of the shared component Footer', pg_designer_activity_sentence('component_settings', 'Footer'));
+	pg_assert_same('deleted the shared component Footer', pg_designer_activity_sentence('component_delete', 'Footer'));
 	pg_assert_same('', pg_designer_activity_sentence('dance', 'Home'));
 }
 
@@ -259,6 +272,139 @@ function test_designer_activity_audit_unknown_line_is_dropped()
 		'action' => 'rotate', 'entity_type' => 'page', 'entity_id' => 30, 'label' => 'x',
 		'before_json' => null, 'after_json' => null, 'page_folder' => null,
 	)));
+}
+
+// An audit line of the trail as the reader selects it.
+function _designer_activity_test_line(array $fields)
+{
+	return array_merge(array(
+		'id' => 80, 'created_at' => 2200, 'user_id' => 3, 'user_username' => 'can', 'source' => 'panel',
+		'action' => 'update', 'entity_type' => 'page', 'entity_id' => 4, 'label' => 'Prices',
+		'before_json' => null, 'after_json' => null, 'page_folder' => 12,
+	), $fields);
+}
+
+function test_designer_activity_audit_page_on_and_off_the_site()
+{
+	$context = array('style_id' => 6, 'draft_folder' => 40);
+
+	$off = pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'before_json' => '{"page_folder":"12"}', 'after_json' => '{"page_folder":"40"}', 'page_folder' => 40,
+	)), $context);
+	pg_assert_same('page', $off['kind']);
+	pg_assert_same('page_unpublish', $off['action']);
+	pg_assert_same(4, $off['page_id']);
+	pg_assert_same('took Prices off the site', $off['sentence']);
+
+	$on = pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'before_json' => '{"page_folder":"40"}', 'after_json' => '{"page_folder":"12","publish_at":"0"}',
+	)), $context);
+	pg_assert_same('page_publish', $on['action']);
+	pg_assert_same(12, $on['folder_id']);
+	pg_assert_same('put Prices on the site', $on['sentence']);
+
+	// The scheduled job names no person; the list says the schedule did it.
+	$job = pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'user_id' => 0, 'user_username' => null, 'source' => 'job',
+		'before_json' => '{"page_folder":"40"}', 'after_json' => '{"page_folder":"12"}',
+	)), $context);
+	pg_assert_same(0, $job['user_id']);
+	pg_assert_same('The schedule', $job['who']);
+
+	// Any other edit of the page, or a move between two other folders, is
+	// not an event of the list: its version or the trail screen keeps it.
+	pg_assert_same(null, pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'before_json' => '{"page_folder":"12"}', 'after_json' => '{"page_folder":"13"}',
+	)), $context));
+	pg_assert_same(null, pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'before_json' => '{"page_title":"A"}', 'after_json' => '{"page_title":"B"}',
+	)), $context));
+	// No drafts folder on the site: no line is a move on or off it.
+	pg_assert_same(null, pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'before_json' => '{"page_folder":"12"}', 'after_json' => '{"page_folder":"0"}',
+	)), array('style_id' => 6, 'draft_folder' => 0)));
+}
+
+function test_designer_activity_audit_design_events()
+{
+	$context = array('style_id' => 6, 'draft_folder' => 40);
+	$line = array('entity_type' => 'style', 'entity_id' => 6, 'label' => 'Shop', 'page_folder' => null);
+
+	$save = pg_designer_activity_from_audit(_designer_activity_test_line($line + array(
+		'before_json' => '{"style_custom_css":"a"}', 'after_json' => '{"style_custom_css":"b","style_palette":"sea"}',
+	)), $context);
+	pg_assert_same('design', $save['kind']);
+	pg_assert_same('style_save', $save['action']);
+	pg_assert_same(0, $save['page_id']);
+	pg_assert_same('saved the design Shop', $save['sentence']);
+
+	$rename = pg_designer_activity_from_audit(_designer_activity_test_line($line + array(
+		'before_json' => '{"style_name":"Old"}', 'after_json' => '{"style_name":"Shop"}',
+	)), $context);
+	pg_assert_same('style_rename', $rename['action']);
+	pg_assert_same('renamed the design to Shop', $rename['sentence']);
+
+	$made = pg_designer_activity_from_audit(_designer_activity_test_line($line + array(
+		'action' => 'create', 'after_json' => '{"style_name":"Shop"}',
+	)), $context);
+	pg_assert_same('style_create', $made['action']);
+	pg_assert_same('made the design Shop', $made['sentence']);
+
+	// A copy's line in the list of the design it was made from.
+	$copy = pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'action' => 'create', 'entity_type' => 'style', 'entity_id' => 9, 'label' => 'Shop (2)', 'page_folder' => null,
+		'after_json' => '{"style_name":"Shop (2)","copied_from":"6"}',
+	)), $context);
+	pg_assert_same('style_copy', $copy['action']);
+	pg_assert_same('duplicated the design as Shop (2)', $copy['sentence']);
+
+	// ... and in the copy's own list: made, as any new design.
+	$own = pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'action' => 'create', 'entity_type' => 'style', 'entity_id' => 9, 'label' => 'Shop (2)', 'page_folder' => null,
+		'after_json' => '{"style_name":"Shop (2)","copied_from":"6"}',
+	)), array('style_id' => 9, 'draft_folder' => 40));
+	pg_assert_same('style_create', $own['action']);
+
+	$binned = pg_designer_activity_from_audit(_designer_activity_test_line($line + array('action' => 'recycle')), $context);
+	pg_assert_same('moved the design Shop to the Recycle Bin', $binned['sentence']);
+	$gone = pg_designer_activity_from_audit(_designer_activity_test_line($line + array('action' => 'delete')), $context);
+	pg_assert_same('deleted the design Shop', $gone['sentence']);
+
+	// Another design's line is not this list's.
+	pg_assert_same(null, pg_designer_activity_from_audit(_designer_activity_test_line(array(
+		'entity_type' => 'style', 'entity_id' => 7, 'label' => 'Blog', 'after_json' => '{"style_name":"Blog"}',
+	)), $context));
+}
+
+function test_designer_activity_audit_shared_component_events()
+{
+	$context = array('style_id' => 6, 'draft_folder' => 40);
+	$line = array('entity_type' => 'shared_component', 'entity_id' => 15, 'label' => 'Footer', 'page_folder' => null);
+	$event = function (array $fields) use ($line, $context) {
+		return pg_designer_activity_from_audit(_designer_activity_test_line($line + $fields), $context);
+	};
+
+	$saved = $event(array('after_json' => '{"tree_json":{"truncated":true,"length":9000,"sha1":"x","start":"{"},"tree_hash":"b"}'));
+	pg_assert_same('component', $saved['kind']);
+	pg_assert_same('component_save', $saved['action']);
+	pg_assert_same('saved the shared component Footer', $saved['sentence']);
+
+	pg_assert_same('renamed a shared component to Footer', $event(array('after_json' => '{"name":"Footer"}'))['sentence']);
+	pg_assert_same('changed the settings of the shared component Footer', $event(array('after_json' => '{"content_editable":"1"}'))['sentence']);
+	pg_assert_same('made the shared component Footer', $event(array('action' => 'create', 'after_json' => '{"name":"Footer"}'))['sentence']);
+	pg_assert_same('deleted the shared component Footer', $event(array('action' => 'delete', 'before_json' => '{"name":"Footer"}'))['sentence']);
+
+	// A side too large to keep lists the names of its fields.
+	$cut = $event(array('after_json' => '{"truncated":true,"fields":["tree_json","tree_hash"]}'));
+	pg_assert_same('component_save', $cut['action']);
+}
+
+function test_designer_activity_audit_changed_fields()
+{
+	pg_assert_same(array('page_folder'), pg_designer_activity_line_fields('{"page_folder":"1"}', null));
+	pg_assert_same(array('name', 'tree_json'), pg_designer_activity_line_fields('{"name":"a"}', '{"tree_json":"b"}'));
+	pg_assert_same(array('tree_json'), pg_designer_activity_line_fields(null, '{"truncated":true,"fields":["tree_json"]}'));
+	pg_assert_same(array(), pg_designer_activity_line_fields(null, 'not json'));
 }
 
 function test_designer_activity_link_events()

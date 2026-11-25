@@ -13,7 +13,7 @@ module: designer_activity
 - `audit`: `audit_log` type `page` `recycle`, `restore` (by the design's page ids) and `delete` (found by `"page_style":"<id>"` in `before_json`, the page row being gone); kind `page`, actions `page_recycle`, `page_restore`, `page_delete`. Type `file` of a design file (`files.design = 1`, or a delete line whose row had it): kind `file`, `file_create`, `file_update`, `file_delete`. Design files are the site's, so they show in every design's list. Name: the line's `label`.
 - `link` / `revoke`: `prototype_links` made (`created_at`, `created_by`) and revoked (`revoked_at`, `revoked_by`); kind `share`, named by the start page.
 - `verdict`: `prototype_verdicts`, `approved` or `changes_requested`; `comment`: the first comment of a thread (`parent_id = 0`). Kind `share`.
-- Not read: the Site Log (`designer-activity-writers.md`). The design-level writers missing from the trail come with AC5 and need their sentences there.
+- Also from `audit_log` since AC5: a page taken off the site or put on it, the design's own lines and a copy's, shared components (`designer-activity-audit-trail.md`). Not read: the Site Log (`designer-activity-writers.md`).
 
 ## What does an event hold?
 - `key`, `at`, `kind`, `action`, `sentence`, `name`, `who`, `user_id`, `page_id`, `revision_no`, `editor`. Never the values before and after.

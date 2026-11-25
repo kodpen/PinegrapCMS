@@ -167,6 +167,7 @@ function pg_panel_shared_component($request, $action)
                     VALUES ('" . e($sc_name) . "', '" . e($sc_desc) . "', '" . e($sc_tree) . "',
                             $sc_cfg_sql, '" . e($sc_cat) . "', '" . (int)$user['id'] . "', '$sc_now', '$sc_now')");
             $sc_new_id = mysqli_insert_id(db::$con);
+            pg_audit_record('create', 'shared_components', $sc_new_id);
             respond(array('status' => 'success', 'id' => $sc_new_id, 'name' => $sc_name));
             break;
 
@@ -203,9 +204,11 @@ function pg_panel_shared_component($request, $action)
                     ? ', system_region_config = NULL'
                     : ", system_region_config = '" . e($sc_src_cfg) . "'";
             }
+            $sc_before = pg_audit_fetch('shared_components', $sc_id);
             db("UPDATE shared_components
                     SET tree_json = '" . e($sc_tree) . "'" . $sc_cfg_clause . ", updated_at = " . time() . "
                     WHERE id = '$sc_id' LIMIT 1");
+            pg_audit_record('update', 'shared_components', $sc_id, $sc_before);
             if (function_exists('pg_tr_owner_saved')) {
                 pg_tr_owner_saved('shared', $sc_id);
             }
@@ -237,9 +240,11 @@ function pg_panel_shared_component($request, $action)
                 respond(array('status' => 'error', 'message' => lang('Not found.')));
             }
             $sc_merged = pg_designer_tree_encode(pg_designer_merge_restricted_tree($sc_stored, $sc_tree));
+            $sc_before = pg_audit_fetch('shared_components', $sc_id);
             db("UPDATE shared_components
                     SET tree_json = '" . e($sc_merged) . "', updated_at = " . time() . "
                     WHERE id = '$sc_id' LIMIT 1");
+            pg_audit_record('update', 'shared_components', $sc_id, $sc_before);
             if (function_exists('pg_tr_owner_saved')) {
                 pg_tr_owner_saved('shared', $sc_id);
             }
@@ -306,7 +311,9 @@ function pg_panel_shared_component($request, $action)
             if ($sc_on && !empty($sc_row['is_widget'])) {
                 respond(array('status' => 'error', 'message' => lang('A system widget cannot be opened to content editors.')));
             }
+            $sc_before = pg_audit_fetch('shared_components', $sc_id);
             db("UPDATE shared_components SET content_editable = '$sc_on' WHERE id = '$sc_id' LIMIT 1");
+            pg_audit_record('update', 'shared_components', $sc_id, $sc_before);
             log_activity($sc_on
                 ? lang(array('string' => 'shared component ({var:1}) was opened to content editors', 'vars' => (string)$sc_row['name']))
                 : lang(array('string' => 'shared component ({var:1}) was closed to content editors', 'vars' => (string)$sc_row['name'])),
@@ -330,9 +337,11 @@ function pg_panel_shared_component($request, $action)
                 respond(array('status' => 'error', 'message' => pg_shared_component_gone_message()));
             }
             $sc_cfg_val = ($sc_src_cfg === null) ? 'NULL' : "'" . e($sc_src_cfg) . "'";
+            $sc_before = pg_audit_fetch('shared_components', $sc_id);
             db("UPDATE shared_components
                     SET system_region_config = $sc_cfg_val, updated_at = " . time() . "
                     WHERE id = '$sc_id' LIMIT 1");
+            pg_audit_record('update', 'shared_components', $sc_id, $sc_before);
             respond(array('status' => 'success'));
             break;
 
@@ -354,9 +363,11 @@ function pg_panel_shared_component($request, $action)
             if ($sc_current !== $sc_name) {
                 $sc_name = _sc_unique_name($sc_name);
             }
+            $sc_before = pg_audit_fetch('shared_components', $sc_id);
             db("UPDATE shared_components
                     SET name = '" . e($sc_name) . "', updated_at = " . time() . "
                     WHERE id = '$sc_id' LIMIT 1");
+            pg_audit_record('update', 'shared_components', $sc_id, $sc_before);
             respond(array('status' => 'success', 'name' => $sc_name));
             break;
 
@@ -373,7 +384,9 @@ function pg_panel_shared_component($request, $action)
             if ($sc_name === null) {
                 respond(array('status' => 'success'));
             }
+            $sc_before = pg_audit_fetch('shared_components', $sc_id);
             db("DELETE FROM shared_components WHERE id = '$sc_id' LIMIT 1");
+            pg_audit_record('delete', 'shared_components', $sc_id, $sc_before);
             _sc_delete_grants(array($sc_id));
             log_activity(lang(array(
                 'string' => '{var:1} shared components and system widgets were deleted: {var:2}',
@@ -420,7 +433,9 @@ function pg_panel_shared_component($request, $action)
             $sc_kept    = $sc_split['kept'];
             if (!empty($sc_deleted)) {
                 foreach (pg_shared_component_id_slices($sc_deleted) as $sc_in) {
+                    $sc_before = pg_audit_fetch_many('shared_components', explode(',', $sc_in));
                     db("DELETE FROM shared_components WHERE id IN (" . $sc_in . ")");
+                    pg_audit_record_many('delete', 'shared_components', $sc_before);
                 }
                 _sc_delete_grants($sc_deleted);
                 $sc_list = array();

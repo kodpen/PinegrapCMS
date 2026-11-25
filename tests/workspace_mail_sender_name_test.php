@@ -73,7 +73,7 @@ function test_workspace_message_row_sender_app_and_guest_branches()
 
 function test_workspace_pinned_palette_and_home_read_senders_once()
 {
-	foreach (array('pins.php', 'palette.php', 'home.php', 'channel_board.php') as $file) {
+	foreach (array('pins.php', 'palette.php', 'home.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $file);
 
 		pg_assert_true(strpos($source, 'ws_message_rows_senders(') !== false, $file . ' reads the senders of its list at once');

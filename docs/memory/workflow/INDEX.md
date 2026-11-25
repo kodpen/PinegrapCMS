@@ -395,7 +395,7 @@
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's [decision: here]
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
-- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 3,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
+- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, at most one oversized PR at the head, small PRs longest-waiting first, 3,000 lines in all
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward), --wait; what it leaves to the merging session
 - merge-train-wait.md: tools/merge_train.php --wait (#11186), the merging session's waiter: what it reads, when it exits, the --since key, its interval and timeout, failed gh calls, its GitHub calls
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
@@ -425,6 +425,7 @@
 - static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro): phpcs:ignore marker or baseline entry; libxml_disable_entity_loader gone; the brace-less foreach false positive [decision: decisions-made-product-3.md]
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - test-coordinator.md: Test coordinator (2026-10-31): starts no workers, tests and opens `bug` issues, which coordinators give to workers like plan steps; the merging session closes a fixed one
+- tools-git-without-shell.md: Why tools/free_work.php and its test run git through free_work_git() (proc_open, no shell) and never with >/dev/null, inline GIT_* variables or rm -rf; the Windows push that it unblocked (#11616)
 - trial-merge-check.md: Checking whether a branch or an open PR still merges into development without touching a checkout: git merge-tree --write-tree lists the conflicts; the merged tree's memory index from an export
 - unit-test-database-exit.md: A unit test statement that reaches db() ends the whole tools/test.php run with exit code 0 through output_error(); make it throw with pg_error_throws(true), or keep the tested part free of queries
 - unit-test-runner.md: tools/test.php: what it loads, which errors fail a test, other PHP versions, code behind a database probe, PHP in its own process (Windows quoting, peak memory), JavaScript under Node

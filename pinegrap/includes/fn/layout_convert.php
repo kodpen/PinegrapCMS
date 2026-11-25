@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method');
 }
 
 /**
@@ -734,8 +734,8 @@ function pg_layout_convert_types()
  * only, before the bare key. 'flag' may list flags: each nested in the
  * one before. 'section' (a block the widget fills with its own markup:
  * the node bound to that section stands in its place, what the block
- * holds is the widget's; 'wrap' => markup holding it at '%s', 'flag' as
- * for 'token'). 'token' (a block the widget prints whole as the
+ * holds is the widget's; 'wrap' => markup holding it at '%s', 'inner' the
+ * same inside its flags, 'flag' as for 'token'). 'token' (a block the widget prints whole as the
  * value 'token': an element holding it stands in its place, under 'flag'
  * when one is given).
  *
@@ -827,6 +827,15 @@ function pg_layout_piece_map($type)
 
         case 'express order':
             return _pg_lc_express_order_map($none);
+
+        case 'billing information':
+            return _pg_lc_billing_map($none);
+
+        case 'shipping address and arrival':
+            return _pg_lc_shipping_address_map($none);
+
+        case 'shipping method':
+            return _pg_lc_shipping_method_map($none);
 
         case 'form item view':
             return array(
@@ -1324,6 +1333,140 @@ function _pg_lc_express_order_map($none)
     return $map;
 }
 
+// The billing information step (widgets_billing_information.php): one
+// record, its controls by the classic page's names, each optional part
+// under pg_bi_flags(); the widget draws its own form around the tree.
+function _pg_lc_billing_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    return array(
+        'echo' => $none + array(
+            '$edit_start' => 'none',
+            '$edit_end' => 'none',
+            'h($custom_field_1_label)' => 'token:__custom_field_1_label',
+            'h($custom_field_2_label)' => 'token:__custom_field_2_label',
+            'h($opt_in_label)' => 'token:__opt_in_label',
+            'h($tax_exempt_label)' => 'token:__tax_exempt_label',
+            'h($submit_button_label)' => 'state:submit_button_label',
+        ),
+        'if' => array(
+            '$custom_field_1 OR $custom_field_2' => $flag('has_custom_fields'),
+            '$custom_field_1' => $flag('has_custom_field_1'),
+            '$custom_field_2' => $flag('has_custom_field_2'),
+            // The required mark: the page's setting, as the widget's own.
+            '$custom_field_1_required' => array('becomes' => 'keep', 'state' => array('custom_field_1_required')),
+            '$custom_field_2_required' => array('becomes' => 'keep', 'state' => array('custom_field_2_required')),
+            '$opt_in' => $flag('shows_opt_in'),
+            '$opt_in_sms' => $flag('shows_opt_in_sms'),
+            '$update_contact' => $flag('can_update_contact'),
+            '$po_number' => $flag('has_po_number'),
+            '$referral_source' => $flag('has_referral_sources'),
+            '$tax_exempt' => $flag('has_tax_exempt'),
+            '$custom_billing_form' => array('becomes' => 'section', 'section' => 'custom_billing_form', 'flag' => array('has_custom_form'),
+                'inner' => '<h2>^^__custom_form_title^^</h2>%s'),
+        ),
+        'else' => array(),
+        'loop' => array(),
+        'forms' => 'strip',
+        'record' => true,
+    );
+}
+
+// The shipping address and arrival step (widgets_shipping_address.php):
+// the recipient's address by the classic page's control names, the arrival
+// dates the widget's list (a custom day's row under arrival_is_custom), the
+// rest under pg_sa_flags().
+function _pg_lc_shipping_address_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    return array(
+        'echo' => $none + array(
+            '$edit_start' => 'none',
+            '$edit_end' => 'none',
+            'h($ship_to_name)' => 'token:__recipient_name',
+            'h($address_type_url)' => 'token:__address_type_url',
+            "\$arrival_date['id']" => 'token:__arrival_date_id',
+            "h(\$arrival_date['name'])" => 'token:__arrival_date_name',
+            "\$arrival_date['description']" => 'token:__arrival_date_description',
+            'h($submit_button_label)' => 'state:submit_button_label',
+        ),
+        'if' => array(
+            "ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'" => $flag('is_multi_recipient'),
+            '$address_type' => $flag('has_address_type'),
+            // A link bound to the address goes when there is none.
+            '$address_type_url' => array('becomes' => 'keep'),
+            '$shipping_same_as_billing' => $flag('offers_same_as_billing'),
+            // The page's custom shipping form, its fields drawn by the widget.
+            '$custom_shipping_form' => array('becomes' => 'section', 'section' => 'custom_shipping_form', 'flag' => array('has_custom_form'),
+                'inner' => '<strong>^^__custom_form_title^^</strong>%s'),
+            '$arrival_dates' => $flag('has_arrival_dates'),
+            "!\$arrival_date['custom']" => $flag('arrival_is_standard'),
+            "\$arrival_date['custom']" => $flag('arrival_is_custom'),
+        ),
+        'else' => array("\$arrival_date['custom']" => 'arrival_is_standard'),
+        'loop' => array('$arrival_dates as $arrival_date' => 'list'),
+        'forms' => 'strip',
+        'flag_list' => true,
+        // The custom day's box, renamed per row by the widget.
+        'controls' => array('custom_arrival_date_^^__arrival_date_id^^' => 'custom_arrival_date'),
+    );
+}
+
+// The shipping method step (widgets_shipping_method.php): the recipient's
+// address by its parts, the recipient's items the widget's section, the
+// methods the widget's list, the rest under pg_sm_flags().
+function _pg_lc_shipping_method_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $echo = array(
+        '$currency_attributes' => 'none',
+        '$currency_system' => 'none',
+        'h($ship_to_name)' => 'token:__recipient_name',
+        'h($update_url)' => 'token:__change_address_url',
+        "\$arrival_date['date_info']" => 'token:__requested_arrival_date',
+        "h(\$arrival_date['name'])" => 'token:__requested_arrival_date',
+        'h($no_shipping_methods_message)' => 'token:__no_shipping_methods_message',
+        // The widget sets each row's radio value.
+        "\$shipping_method['id']" => 'none',
+        "h(\$shipping_method['name'])" => 'token:__shipping_method_name',
+        "\$shipping_method['cost_info']" => 'token:__shipping_method_cost',
+        "h(\$shipping_method['description'])" => 'token:__shipping_method_description',
+        'h($submit_button_label)' => 'state:submit_button_label',
+    );
+    foreach (array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'country') as $part) {
+        $echo['h($' . $part . ')'] = 'token:__recipient_' . $part;
+    }
+    $echo['h($zip_code)'] = 'token:__recipient_zip';
+    return array(
+        'echo' => $none + $echo,
+        'if' => array(
+            "ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'" => $flag('is_multi_recipient'),
+            '$arrival_date' => $flag('has_arrival_date'),
+            // A custom day or a named date: the widget's one value.
+            "\$arrival_date['custom']" => array('becomes' => 'keep'),
+            '$company' => $flag('recipient_has_company'),
+            '$address_2' => $flag('recipient_has_address_2'),
+            '$number_of_shipping_methods > 1' => $flag('has_several_shipping_methods'),
+            '!$shipping_methods' => $flag('no_shipping_methods'),
+            // A method only some members get: the widget lists it as any.
+            "\$shipping_method['protected']" => array('becomes' => 'widget'),
+            '$currency' => $flag('has_currency_choice'),
+        ),
+        'else' => array(
+            "\$arrival_date['custom']" => 'widget',
+            '!$shipping_methods' => 'has_shipping_methods',
+            "\$shipping_method['protected']" => 'keep',
+        ),
+        'loop' => array(
+            // The recipient's items: the widget's list of them, whole.
+            '$items as $item' => 'section:recipient_items',
+            '$shipping_methods as $shipping_method' => 'list',
+        ),
+        'forms' => 'strip',
+        'flag_list' => true,
+    );
+}
+
 /**
  * A widget starter's row template: what its first loop area holds, or the
  * content of the loop area's one column (the layout's own loop body lays
@@ -1406,8 +1549,11 @@ function pg_layout_convert($type, $code, $ctx = array())
         foreach ($stack as $fr) if ($fr['mode'] === 'skip') return false;
         return true;
     };
-    $in_tag = function () use (&$html) {
-        return strrpos($html, '<') !== false && strrpos($html, '<') > (int)strrpos($html, '>');
+    $in_tag = function () use (&$html, &$stack) {
+        // The text written so far: a flagged branch's is held until it ends.
+        $text = $html;
+        foreach ($stack as $fr) if (isset($fr['buf'])) $text .= $fr['buf'];
+        return strrpos($text, '<') !== false && strrpos($text, '<') > (int)strrpos($text, '>');
     };
     // What a condition's branch becomes: an array of the frame's mode and
     // what to write at its start and end.
@@ -1450,6 +1596,7 @@ function pg_layout_convert($type, $code, $ctx = array())
                 // the block holds is the widget's, never read.
                 if ($in_tag()) break;
                 $lead = '<pg-section data-section="' . h($p['section']) . '"></pg-section>';
+                if (isset($p['inner'])) $lead = sprintf((string)$p['inner'], $lead);
                 foreach (array_reverse((array)($p['flag'] ?? array())) as $f) $lead = '<pg-vis data-flag="' . h($f) . '">' . $lead . '</pg-vis>';
                 if (isset($p['wrap'])) $lead = sprintf((string)$p['wrap'], $lead);
                 return array('mode' => 'skip', 'key' => $p['key'], 'lead' => $lead);
@@ -1465,7 +1612,7 @@ function pg_layout_convert($type, $code, $ctx = array())
     };
     $write = function ($text) use (&$stack, &$html) {
         for ($i = count($stack) - 1; $i >= 0; $i--) {
-            if ($stack[$i]['mode'] === 'capture') { $stack[$i]['buf'] .= $text; return; }
+            if (isset($stack[$i]['buf'])) { $stack[$i]['buf'] .= $text; return; }
         }
         $html .= $text;
     };
@@ -1494,7 +1641,8 @@ function pg_layout_convert($type, $code, $ctx = array())
             $fr = $branch($m[1], $at);
             $fr['chain'] = array($fr);
             if (isset($fr['lead'])) $write($fr['lead']);
-            if (isset($fr['open'])) $write($fr['open']);
+            if (($fr['mode'] ?? '') === 'flag') $fr['buf'] = '';
+            elseif (isset($fr['open'])) $write($fr['open']);
             $stack[] = $fr;
             continue;
         }
@@ -1502,7 +1650,7 @@ function pg_layout_convert($type, $code, $ctx = array())
             if (!$stack) { if ($open_kept) $drop($src, $at, 'code'); continue; }
             $top = array_pop($stack);
             $outer = $kept();
-            if (isset($top['close']) && $outer) $write($top['close']);
+            if (isset($top['close']) && $outer) $write(($top['mode'] ?? '') === 'flag' ? $top['open'] . $top['buf'] . $top['close'] : $top['close']);
             if (($top['mode'] ?? '') === 'capture' && $outer) $out['cfg']['empty_message'] = _pg_lc_words($top['buf']);
             $chain = isset($top['chain']) ? $top['chain'] : array();
             if (!$outer || !$chain) { $stack[] = array('mode' => 'skip'); continue; }
@@ -1517,7 +1665,8 @@ function pg_layout_convert($type, $code, $ctx = array())
             }
             $fr['chain'] = array_merge($chain, array($fr));
             if (isset($fr['lead'])) $write($fr['lead']);
-            if (isset($fr['open'])) $write($fr['open']);
+            if (($fr['mode'] ?? '') === 'flag') $fr['buf'] = '';
+            elseif (isset($fr['open'])) $write($fr['open']);
             $stack[] = $fr;
             continue;
         }
@@ -1556,7 +1705,7 @@ function pg_layout_convert($type, $code, $ctx = array())
             if (!$stack) { if ($open_kept) $drop($src, $at, 'code'); continue; }
             $top = array_pop($stack);
             if ($kept()) {
-                if (isset($top['close'])) $write($top['close']);
+                if (isset($top['close'])) $write(($top['mode'] ?? '') === 'flag' ? _pg_lc_flag_wrap($top['buf'], $top['open'], $top['close'], count($top['chain'] ?? array()) === 1) : $top['close']);
                 if (($top['mode'] ?? '') === 'capture') $out['cfg']['empty_message'] = _pg_lc_words($top['buf']);
             }
             continue;
@@ -1565,6 +1714,11 @@ function pg_layout_convert($type, $code, $ctx = array())
         // later "case …:" opens none: endswitch closes the switch once.
         if ($open_kept) $drop($src, $at, 'code');
         if (preg_match('/(:|\{)$/', $src) && !preg_match('/^(case\b.*|default\s*):$/s', $src)) $stack[] = array('mode' => 'skip');
+    }
+    // A flagged branch the layout never closed: what it holds, flagged.
+    while ($stack) {
+        $top = array_pop($stack);
+        if (($top['mode'] ?? '') === 'flag' && isset($top['buf']) && $kept()) $write($top['open'] . $top['buf'] . $top['close']);
     }
 
     if (($map['forms'] ?? '') === 'strip') $html = preg_replace('~<form\b[^>]*>|</form\s*>~i', '', $html);
@@ -1692,6 +1846,46 @@ function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
     return '';
 }
 
+// A flagged branch's text in its flag's markers. A lone branch (an "if"
+// with no "else": $alone) that only opens wrappers (its other half closes them in a later branch on the same
+// condition) keeps them, drawn always; one that first closes wrappers
+// opened before it has those closing tags, and the ones it closes beyond
+// what it opens, put outside its markers, so the flag covers what it adds.
+function _pg_lc_flag_wrap($text, $open, $close, $alone = true)
+{
+    $text = (string)$text;
+    if (!$alone) return $open . $text . $close;
+    $lead = $trail = '';
+    if (preg_match('~^(\s*(?:</[a-z][a-z0-9-]*\s*>\s*)+)~i', $text, $m)) {
+        $lead = $m[1];
+        $text = (string)substr($text, strlen($lead));
+    }
+    $net = _pg_lc_tag_balance($text);
+    if ($lead === '' && $net === 0) return $open . $text . $close;
+    if ($net > 0 && trim(strip_tags($text)) === '') return $lead . $text;
+    while ($net < 0 && preg_match('~(</[a-z][a-z0-9-]*\s*>\s*)$~i', $text, $m)) {
+        $trail = $m[1] . $trail;
+        $text = (string)substr($text, 0, -strlen($m[1]));
+        $net++;
+    }
+    return $lead . $open . $text . $close . $trail;
+}
+
+// Opening tags less closing tags in $text (void elements and comments not
+// counted).
+function _pg_lc_tag_balance($text)
+{
+    $text = preg_replace('~<!--.*?-->~s', '', (string)$text);
+    $void = array('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr');
+    $net = 0;
+    preg_match_all('~<(/?)([a-z][a-z0-9-]*)\b[^>]*?(/?)>~i', $text, $m, PREG_SET_ORDER);
+    foreach ($m as $t) {
+        if ($t[3] === '/' || in_array(strtolower($t[2]), $void, true)) continue;
+        $net += ($t[1] === '/') ? -1 : 1;
+    }
+    return $net;
+}
+
 // The plain words of a captured branch.
 function _pg_lc_words($html)
 {
@@ -1757,10 +1951,12 @@ function _pg_lc_finish($nodes, $row, $map = array())
             $out[] = _pg_lc_bind(pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', 'text' => '^^__cross_sell_html^^')));
             continue;
         }
-        if (in_array($tag, array('ul', 'ol', 'table', 'tbody'), true) && count($kids) === 1 && !empty($kids[0]['props']['_list'])) {
-            // The list the loop filled is the widget's: its node instead.
-            unset($kids[0]['props']['_list']);
-            $out[] = $kids[0];
+        $listed = in_array($tag, array('ul', 'ol', 'table', 'tbody'), true) ? _pg_lc_listed($kids) : null;
+        if ($listed !== null) {
+            // The list the loop filled is the widget's: its node instead
+            // (a table's heading row goes with it).
+            unset($listed['props']['_list']);
+            $out[] = $listed;
             continue;
         }
         $form = ($tag === 'form') ? _pg_lfc_attr($n, 'data-pg-form') : null;
@@ -1793,13 +1989,27 @@ function _pg_lc_finish($nodes, $row, $map = array())
     return $out;
 }
 
+// The widget's list node a list's children are, beside a table's heading
+// rows (a row of heading cells only), or null.
+function _pg_lc_listed($kids)
+{
+    $list = null;
+    foreach ($kids as $k) {
+        if (!empty($k['props']['_list']) && $list === null) { $list = $k; continue; }
+        $cells = (array)($k['children'] ?? array());
+        if (_pg_lfc_tag($k) !== 'tr' || !$cells) return null;
+        foreach ($cells as $c) if (_pg_lfc_tag($c) !== 'th') return null;
+    }
+    return $list;
+}
+
 // Words under a flag inside a line of text ("product<pg-vis>s</pg-vis>
 // containing <strong>…</strong>"): the element twice, with the words under
 // the flag and without them under its opposite ($map 'opposite'); with no
 // opposite, the line in spans, the flagged words' span under the flag.
 function _pg_lc_text_flags($n, $map)
 {
-    $text = (string)$n['props']['text'];
+    $text = preg_replace('~%5[eE]%5[eE](__[a-z0-9_]+)%5[eE]%5[eE]~', '^^$1^^', (string)$n['props']['text']);
     $re = '~<pg-vis data-flag="([a-z0-9_]+)">(.*?)</pg-vis>~s';
     preg_match_all($re, $text, $m);
     $flags = array_values(array_unique($m[1]));
@@ -1845,6 +2055,10 @@ function _pg_lc_flag($n, $flag, $on_list = false)
 
 function _pg_lc_bind($n, $map = array())
 {
+    // A token the markup reader percent-encoded in a link inside a text.
+    if (isset($n['props']['text']) && is_string($n['props']['text']) && stripos($n['props']['text'], '%5E%5E') !== false) {
+        $n['props']['text'] = preg_replace('~%5[eE]%5[eE](__[a-z0-9_]+)%5[eE]%5[eE]~', '^^$1^^', $n['props']['text']);
+    }
     foreach (array('href', 'text', 'src') as $prop) {
         if (isset($n['props'][$prop]) && is_string($n['props'][$prop]) && preg_match('/^\s*\^\^(__[a-z0-9_]+)\^\^\s*$/', $n['props'][$prop], $m)) {
             $n['props']['_bindings'][$prop] = $m[1];
