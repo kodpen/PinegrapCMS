@@ -9,7 +9,7 @@ module: designer_preview_render
 - Empty: form list and catalog listing by their statements; search results (nothing searched), calendar, gallery, folder view, comments, recent comments, shopping cart and express order (no order) by their rows. Long: form list (most `form_data` characters), catalog (name plus full description), search, calendar, gallery, folder view, cart lines. Sold out: the catalog listing puts unbuyable products first.
 - Error: `pg_preview_as_form_error($lf, <liveform>)` marks the first required field of login, forgot password, sign-up, affiliate sign-up, billing and shipping with their handlers' message; `pg_preview_as_custom_form_error()` the custom form's first required field a visitor fills in (`pg_cf_required_message()`). The mark is in the session, put back after the widget.
 - Not read: Long on comments (a thread keeps its order), order preview (draws nothing in a background render), the order form (no plain required field).
-- The cart's recurring defaults (`UPDATE order_items`) are not written in a background render (PW2b, #PRNUM); before, the Preview wrote them to the operator's own cart.
+- The cart's recurring defaults (`UPDATE order_items`) are not written in a background render (PW2b, #11632); before, the Preview wrote them to the operator's own cart.
 
 ## Is the visitor read?
 - Not yet. Renderers read the `USER_LOGGED_IN` family of constants, which an `api.php` call sets for the operator, and the sample account has no user row; how a widget is drawn signed in, member or returning is with the architect (plan step PW2c).
