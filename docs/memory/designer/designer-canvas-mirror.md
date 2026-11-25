@@ -4,7 +4,7 @@ description: The canvas mirror, designer part 'mirror' (SS1 #11535): a frame fil
 ---
 
 ## What is a mirror?
-- A picture of the draft at another width (plan `designer-screens-side-by-side.md`): an `iframe.sd-mirror-frame` with `sandbox="allow-same-origin"` (no script, form or navigation), its document written once in standards mode; clicks, submits and drags in it are stopped.
+- A picture of the draft at another width (`designer-side-by-side.md`): an `iframe.sd-mirror-frame` with `sandbox="allow-same-origin"` (no script, form or navigation), its document written once in standards mode; clicks, submits and drags in it are stopped.
 - Filled from the canvas document itself: `<html>` attributes (colour mode, language; the canvas zoom dropped), the head (styles, `<base>`, links) when it changed, the body cloned. So it draws the canvas's samples and colour mode with no visitor script and no call to the site.
 - Taken out of the clone: `script`, the Outline lines and the snap grid (`sd-outline-grid`, `sd-grid-overlay` on the body), the editor's chrome (`.sd-tb`, `.sd-persistent-note`, `.sd-issue-badge`, `.sd-chip-row`, `.sd-dz`, `.sd-align-guide`), its state classes (`sd-selected`, `sd-drop-hl`, `sd-tb-below`…), `contenteditable`, `draggable`, `spellcheck`, every `on*` attribute; an embedded `iframe` / `object` / `embed` gets `about:blank`, media loses `autoplay`.
 
@@ -20,7 +20,10 @@ description: The canvas mirror, designer part 'mirror' (SS1 #11535): a frame fil
 - The row, its heads and lists: `designer-side-by-side.md`.
 
 ## What was measured?
-- Core `style_designer.min.js`: 3,002,363 to 3,002,460 bytes (786,640 to 786,697 gzip) at SS1; the part's bundle 19.9 KB (7.6 KB gzip) after SS3 (#11676), loaded on first use only.
+- Core `style_designer.min.js`, loaded at open, grew 4,860 bytes in all: +97 (SS1 #11535), +3,288 (SS2 #11647, the menu row, the room, the switch), +475 (SS3 #11676, `_sdSideSelect()`, `_sdSideSwap()`). Switched off, an edit runs one `_sdPartLoaded()` check per canvas document write and nothing else.
+- The part's bundle `style_designer_mirror.min.js`, first use only: 9.3 KB (3.9 KB gzip) at SS1, 15.9 KB at SS2, 19.9 KB (7.6 KB gzip) at SS3.
 - Node 22, 4 cores: `step()` + `due()` 30 ns, `matters()` 0.31 µs per mutation record.
 - Sandbox Chromium, a 1,539-element canvas body, two mirrors (375, 768): one redraw median 13.6 ms, worst 30.9 ms of 25, paid only at rest; 100 canvas text changes with the observer on 0.10 ms.
+- Framing the chosen element in both mirrors (SS3): median 0.9 ms, worst 5.5 ms of 25, in one animation frame; typing unchanged.
+- Not measured: the `?sd_perf=1` probe in the full designer (no running instance in any step).
 - Tests: `tests/designer_mirror_test.php` (scheduling, the widths, the room, the size list).

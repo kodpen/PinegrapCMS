@@ -3,6 +3,10 @@ name: designer-side-by-side
 description: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size
 ---
 
+## Why is it there, and what must it keep?
+- Asked by the owner on 2026-11-24 (`workflow/decisions-made-product-108.md`): a change seen on a phone and a tablet while the desktop canvas is edited. Built by SS1 #11535, SS2 #11647, SS3 #11676; bound by `designer-light-and-simple.md`.
+- Editing happens on the canvas only: a mirror takes no typing and no drag. Off, the frames leave the page and nothing of it runs. A mirror draws what the canvas draws at its width. No table or column.
+
 ## How is "Side by side" turned on?
 - The View menu's last switch row, `#sd-vb-side` ("Side by side", `bi-layout-three-columns`) under a line; the badge counts it; the command palette has it as `act_side`. Kept per browser: `pg_sd_side`, the mirrors' widths `pg_sd_side_w` (default 375,768).
 - On: the part runs (first use only), the canvas is fitted as Fit does, a screen reader hears "Side by side on: phone and tablet.". Off gives back the zoom (and Fit) from before.
@@ -22,6 +26,5 @@ description: "Side by side" in the designer's View menu (SS2, SS3): the switch, 
 
 ## What does "Edit at this size" do?
 - The head's icon button `.sd-side-swap` (`bi-arrow-left-right`) after the width: `PGMirrorSchedule.swap()` gives the canvas the mirror's width and the mirror the canvas's (Full width hands over 1200; another mirror on that width takes the first free one); the core (`_sdSideSwap()`) presses the bar's width button, stores the widths, says "Editing at {var:1} px.". Again swaps back. An e-mail design's head has no swap.
-- Measured: framing two mirrors on a 1,539-element body 0.9 ms median, 5.5 ms worst; typing unchanged (0.1-0.2 ms per 100 text changes).
 
-Related: docs/memory/designer/designer-canvas-mirror.md, docs/memory/designer/designer-screens-side-by-side-drawing.md
+Related: docs/memory/designer/designer-canvas-mirror.md (numbers measured), docs/memory/designer/designer-screens-side-by-side-drawing.md

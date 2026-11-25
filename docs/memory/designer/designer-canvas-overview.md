@@ -19,6 +19,7 @@ description: Start file for the designer-canvas-* files: the canvas, its width b
 - The context bar (`#sd-ctx-bar`: Dropdown, Navbar, Nav, Accordion, Modal actions), the element toolbar above, below or inside, the page root's name tag, the size badge: `designer-canvas-chrome-placement.md`.
 - Buttons, toggles and scrollers that work on the canvas as on the page (`_SD_CANVAS_CONTROLS`): `designer-canvas-controls.md`. Links never navigate; the editor opens dropdowns itself: `designer-canvas-links.md`.
 - An open modal, offcanvas or dropdown menu is canvas state only: `designer-canvas-open-state.md`.
+- Side by side, a phone and a tablet mirror beside the canvas: `designer-side-by-side.md`, the mirror itself `designer-canvas-mirror.md`.
 
 ## Which file holds the machinery?
 - Which call redraws what (`render()`, `_sdSelectRender()`, the scroll pass, toolbars filled on first need, writes by difference): `designer-canvas-redraw-paths.md`.
