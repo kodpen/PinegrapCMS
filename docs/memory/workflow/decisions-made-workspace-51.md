@@ -18,7 +18,7 @@ description: Decisions made, workspace part 51 (2026-11-24 on): a channel's Task
 
 ## How should the board look? (owner, same day)
 - His words: "panolar bu gün kanalların tema yapısıyla uygun ancak görsel açıdan zayıf ve ne işe yaradığını anlamak zor."
-- It keeps the channel's theme and gets the look he saw drawn: four figures over the board saying what it holds, clearer columns and cards. In words: the plan's screens file.
+- It keeps the channel's theme and gets the look he saw drawn: four figures over the board saying what it holds, clearer columns and cards. As built: `workspace/workspace-channel-board-look.md`.
 
 ## Do automations come to the board? (owner, same day)
 - Yes, to the board for now. His words: "panoda otomasyon entegrasyonlarımızda yok, otomasyonları ufaktan sistem geneline yaymayada başlayabiliriz"; and on the drawing: "şimdilik pano için yapalım ileride genişleteceğimiz notu düşülsün."
@@ -26,4 +26,4 @@ description: Decisions made, workspace part 51 (2026-11-24 on): a channel's Task
 - The note he asked for: the same drawer is meant for other screens later (orders, forms, contacts) as "this screen's automations". That is a plan of its own, written when he opens it; nothing of it is built now.
 
 ## Where is the work?
-- The plan workspace-channel-board, steps BM1 to BM6, priority 6.
+- Built in BM1 to BM6 (#11555, #11641, #11670, #11567, #11696 and the close-out); the plan is closed. Memory: `workspace/workspace-channel-board-tab.md`, `-look.md`, `-rules.md`, `-automations.md`, `-drawing.md`.
