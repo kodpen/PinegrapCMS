@@ -14,7 +14,7 @@ description: Why "Write with AI" is built the way it is (decided 2026-10-19/20):
 - UI: a small button beside the label opening a panel between label and field (not a popover: it works the same in a modal, on a phone and with a rich text editor); draft, "Use", "Try again", tone.
 - Labelling: an accepted draft marks the field (`products.ai_fields`, `page.ai_fields`, schema approved 2026-10-20); a hand edit removes the mark (2026-10-20); sites that must disclose print the note `__ai_generated` (docs/memory/ui/ai-write-note.md).
 - Translation stays with the Translations module; drafts are in the pages' language.
-- Alt text needs a model that reads images: the browser's (docs/memory/ui/ai-write-alt-text.md). A Pinegrap AI path waits until its connection can say its model reads images.
+- Alt text needs a model that reads images: the browser's (docs/memory/ui/ai-write-alt-text.md). A Pinegrap AI path waits until its connection can say its model reads images, and until the owner says Pinegrap AI is good enough (`workflow/decisions-made-product-111.md`): the Sketch tool's "Read the picture" uses the browser's model too.
 
 ## What is still open?
 - Which widget would print a page's own marks (`page.ai_fields`): none does; the marked page texts (title, meta description) are not in the page body.
