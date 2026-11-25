@@ -27,7 +27,7 @@ priority: 7
 - CO2 (M) Done (#11595). Site render, canvas and Preview apply them; translation; the cache test (`designer/component-overrides-render.md`).
 - CO3 (M) Done (#11597). marking fields open in the component, the list in its settings.
 - CO4 (M) Done (#11663). "This place", the dot and reset, in-place text, content roles (`designer/component-overrides-this-place.md`).
-- CO5 (M) after CO4: variants.
+- CO5 (M) Done (#11687). Variants (`designer/component-overrides-variants.md`).
 - CO6 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?

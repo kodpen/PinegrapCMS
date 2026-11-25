@@ -5,7 +5,7 @@ module: component_overrides
 ---
 
 ## When is "This place" drawn?
-- For a selected `shared_ref` whose component (not a system widget) has an open field: `_sdCoPlaceSect()` puts it before "Shared Component", so it is the panel's own section, first in Content. The part `overrides` fills it (`fillPlace()`); a component with no open field keeps today's panel.
+- For a selected `shared_ref` whose component (not a system widget) has an open field or a variant: `_sdCoPlaceSect()` puts it before "Shared Component", so it is the panel's own section, first in Content. The part `overrides` fills it (`fillPlace()`), the "Variant" row first (`component-overrides-variants.md`); a component with neither keeps today's panel.
 
 ## What does a row do?
 - Values live on the placing node, `props._place` (id => value), written by the part (`placeSet()` / `placeReset()`, one `saveState()` step, `render()`); Save sends the page.

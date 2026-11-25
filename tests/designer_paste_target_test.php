@@ -339,7 +339,7 @@ function designer_paste_target_test_run($cases, $history = false)
 				. 'function _dragIndexDrop() {} function _sdEditableInvalidate() {} function scheduleAutosave() {} function updateUndoRedoState() {}'
 				. 'function _snapshotAssetFields() { return null; } function _restoreAssetFields() {}'
 				. 'function _sdMayEdit() { return true; } function _blockDuplicateWithToast() { return false; }'
-				. 'var _sdLgState = null, _sdLgDrawing = false; function _sdLgKeep() {} function _sdLgCancel() { return false; }'
+				. 'var _sdLgState = null, _sdLgDrawing = false, _sdCoVar = null; function _sdLgKeep() {} function _sdLgCancel() { return false; }'
 				. 'var document = { getElementById: function () { return null; } };'
 			: 'var saves = 0; function saveState() { saves++; }')
 		. 'var nodeIdCounter = 100; function gid() { return "sd_" + (++nodeIdCounter); }'
