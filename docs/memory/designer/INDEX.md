@@ -535,6 +535,8 @@
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
 - designer-publish-weight-seo-check.md: The weight seo_check measures for the Publish check (PC5): when it is asked, the files whose sizes it reads, the design's own stylesheet and the other pages' names, the answer, its time
 - designer-publish-weight.md: The Publish check's weight measure (includes/fn/publish_weight.php): what it counts on the rendered draft, the budget and its grades, the findings it gives, how it joins the finding shape
+- designer-record-edit-drawing-save.md: Drawing of record edit in place, boards R4 to R6: the foot bar with "Save to the record" and "Discard", a field changed meanwhile, the canvas menu's row, the narrow window
+- designer-record-edit-drawing.md: Drawing of record edit in place, boards R1 to R3: the switch "Edit content here" of the "Preview as" bar, the dashed frames and their five states, each field's control in place
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
 - designer-regions-api-missing-fields.md: api.php get_designer_regions reads missing content and search fields as not sent, so the LiveSite migration's request gets clean JSON (#4722)
