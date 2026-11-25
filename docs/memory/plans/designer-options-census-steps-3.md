@@ -8,7 +8,7 @@ priority: 7
 - The frame of `designer-options-census.md`. What Bootstrap Studio has and ours lacks: `designer/options-panel-census-bss.md`. "Check for issues" is `designer-publish-check.md` and a designer's own options on a component are `designer-component-overrides.md`: neither is built here.
 
 ## Which steps add page components and the rest? (line "page and site")
-- DO21 (S) Two palette components: "Back to top", a button shown once the page is scrolled, and "Scroll progress", a thin bar at the page's top. Their site script is printed only on a page that holds one.
+- DO21 (S) Done (#11564). Two palette components: "Back to top", a button shown once the page is scrolled, and "Scroll progress", a thin bar at the page's top. Their site script is printed only on a page that holds one.
 - DO22 (S) after DO21: on a menu, "Mark the section in view" for a one-page menu (Bootstrap's scrollspy, `data-bs-spy`) and "After scrolling": a distance and what changes (background, shadow, height), the navbar's scrolled state.
 - DO23 (M) after DO22 and DD26: "New collection with pages", a row of the Pages window and of the command palette: it asks the collection's name and fields, or takes a collection that is there, and makes the collection, its list page and its detail page with the form list and detail widgets bound.
   - By `designer/collections-decisions.md`; it ends with a line naming what it made, each with its link. Nothing is made until "Create".
@@ -20,7 +20,7 @@ priority: 7
 
 ## Which sheets are drawn first, and by whom?
 - By the architect, who is the designer too since 2026-11-25 (`workflow/design-work-session.md`), by the rules of `designer-drawings.md`: a sheet with a light and a dark picture in a folder under `docs/memory/designer/`.
-- DD22, folder `designer-options-states-drawing`: the State row, a section's dot, "Reset this state", the dimmed sections, Transition, Transform. Holds DO10.
+- DD22, folder `designer-options-states-drawing`: the State row, a section's dot, "Reset this state", the dimmed sections, Transition, Transform. Holds DO10. Drawn (#11573).
 - DD23, `designer-options-grid-drawing`: Columns and Rows, a child's rows, the areas grid. Holds DO6.
 - DD24, `designer-options-layers-drawing`: the layer list with a gradient's stops, Clip shape and Mask. Holds DO13.
 - DD25, `designer-options-curve-drawing`: the curve editor, "Page transition". Holds DO19.

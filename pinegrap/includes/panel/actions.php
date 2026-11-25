@@ -246,6 +246,11 @@ function pg_panel_actions()
         // A page's custom layout from the visual designer's code tab; the
         // general gate (role 1 or better) is the classic layout editor's right.
         'layout_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_layout_code', 'exempt' => false, 'token' => true, 'write' => true),
+        // A collection item's fields corrected in place from the Preview
+        // (includes/fn/record_edit.php). Every role reaches the handler; it
+        // admits whoever the item's edit screen lets save it.
+        'record_edit_read' => array('file' => 'record_edit.php', 'handler' => 'pg_panel_record_edit_read', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'record_edit_save' => array('file' => 'record_edit.php', 'handler' => 'pg_panel_record_edit_save', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),

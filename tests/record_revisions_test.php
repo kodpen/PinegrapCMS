@@ -96,7 +96,8 @@ function test_record_revisions_fits()
 
 function test_record_revisions_source_labels()
 {
-	pg_assert_same(array('edit', 'restore', 'api', 'workspace'), pg_record_revision_sources());
+	pg_assert_same(array('edit', 'restore', 'api', 'workspace', 'designer'), pg_record_revision_sources());
+	pg_assert_same('designer', pg_record_revision_source('designer'), 'the Page Design Studio writes as itself');
 	pg_assert_same('api', pg_record_revision_source(' API '));
 	pg_assert_same('edit', pg_record_revision_source('publish'), 'an unknown label is edit');
 	pg_assert_true(strlen(PG_RECORD_REVISION_SOURCES) > 0 && max(array_map('strlen', pg_record_revision_sources())) <= 16, 'fits VARCHAR(16)');

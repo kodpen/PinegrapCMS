@@ -249,8 +249,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         && pg_lbs_layout_output_applies($style_layout, $pg_design_fw['key'], $email);
     // The design's look and colour palette (2026.4.5): stylesheets loaded
     // right after the framework's, so everything the design adds still wins.
+    // Its variables file, when it saved one, comes last of them.
     $pg_theme_links = ($style_layout === 'visual_designer' && function_exists('pg_design_theme_links'))
-        ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '')
+        ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '',
+            pg_design_variables_url($style_id))
         : '';
     // The design's colour mode (2026.11.0, 11.0.186): light, dark or the
     // visitor's system on <html>; '' (and a database before the column)
@@ -673,6 +675,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // everything is drawn in. Not in an e-mail.
     if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
         $content = pg_scroller_inject($content);
+    }
+
+    // ── Back to top and Scroll progress ─────────────────────────────────────────
+    // Both carry a marker and no script; the page brings it
+    // (pg_page_scroll_inject()), checked once everything is drawn in. Not in
+    // an e-mail.
+    if (!$email && stripos($content, 'data-pg-') !== false && function_exists('pg_page_scroll_inject')) {
+        $content = pg_page_scroll_inject($content);
     }
 
     // ── Listen ──────────────────────────────────────────────────────────────────

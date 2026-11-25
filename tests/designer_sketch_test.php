@@ -54,6 +54,7 @@ function designer_sketch_test_node($script)
 	$parts = (($at === false) ? '' : substr($js, $at, strpos($js, "\n", $at + 1) - $at))
 		. designer_sketch_test_js('var SD_SKETCH_KINDS = [', "    ];\n")
 		. designer_sketch_test_js('function _sdSketchKind(')
+		. designer_sketch_test_js('function _sdSketchPicSrc(')
 		. designer_sketch_test_js('function _sdSketchClean(')
 		. designer_sketch_test_js('function _sdSketchBodyH(')
 		. designer_sketch_test_js('function _sdSketchRect(');
@@ -176,4 +177,60 @@ JS
 	pg_assert_same(array(0, 400), array($result['west']['x'], $result['west']['w']), 'a left side stops at the frame');
 	pg_assert_same(array(104, 352, 96, 48), array($result['draw']['x'], $result['draw']['y'], $result['draw']['w'], $result['draw']['h']), 'drawn up and to the left, on the grid');
 	pg_assert_same(320, $result['zoomed']['x'], 'a drag on a zoomed map moves the box by the map\'s units');
+}
+
+// A reference picture kept with a sketch page: only an address of this
+// site or of the web, its height whole and bounded, hidden or not; the
+// body grows as tall as a shown picture and not for a hidden one.
+function test_designer_sketch_reference_picture()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var out = {};
+out.src = ['/files/a.jpg', 'https://images.example.com/p.jpg', 'http://x.test/y.png', '//evil.test/a.jpg', 'javascript:alert(1)', 'data:image/png;base64,AA', 'files/a.jpg', '/a b.jpg', '/a".jpg', '', null].map(_sdSketchPicSrc);
+var data = _sdSketchClean({ pages: [
+    { id: 1, pic: { src: '/files/ref.jpg', h: 1200.4, off: 0 }, boxes: [] },
+    { id: 2, pic: { src: 'javascript:x', h: 900 }, boxes: [] },
+    { id: 3, pic: { src: '/files/tall.jpg', h: 1e9, off: 1 }, boxes: [] },
+    { id: 4, pic: { src: '/files/short.jpg', h: 'x' }, boxes: [] }
+] });
+out.pages = data.pages;
+out.bodyShown = _sdSketchBodyH(data.pages[0]);
+out.bodyHidden = _sdSketchBodyH(data.pages[2]);
+out.bodyShort = _sdSketchBodyH({ boxes: [], pic: { src: '/a.jpg', h: 100, off: false } });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('/files/a.jpg', 'https://images.example.com/p.jpg', 'http://x.test/y.png', '', '', '', '', '', '', '', ''), $result['src'], 'a site or web address only');
+	pg_assert_same(array('src' => '/files/ref.jpg', 'h' => 1200, 'off' => false), $result['pages'][0]['pic'], 'a kept picture');
+	pg_assert_true(!isset($result['pages'][1]['pic']), 'a script address is dropped');
+	pg_assert_same(array('src' => '/files/tall.jpg', 'h' => 20000, 'off' => true), $result['pages'][2]['pic'], 'a bounded height, hidden');
+	pg_assert_same(640, $result['pages'][3]['pic']['h'], 'a height that is no number is the least body');
+	pg_assert_same(1200, $result['bodyShown'], 'the body as tall as the picture');
+	pg_assert_same(640, $result['bodyHidden'], 'a hidden picture does not grow it');
+	pg_assert_same(640, $result['bodyShort'], 'a short picture keeps the least body');
+}
+
+// "More" in a sketch page's head holds the picture's rows: one row
+// without a picture, three under their caption with one; the picture
+// lies under the boxes and takes no pointer.
+function test_designer_sketch_more_rows()
+{
+	$rows = designer_sketch_test_js('function _sdSketchMoreRows(');
+	$fill = designer_sketch_test_js('function _sdSketchFill(');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("text: _sdT('Reference picture'), run: function () { _sdSketchPicChoose(frameId); }", $rows, 'one row without a picture');
+	pg_assert_contains("rows.push({ caption: _sdT('Reference picture') });", $rows, 'the caption with a picture');
+	pg_assert_contains("_sdT('Show the picture') : _sdT('Hide the picture')", $rows, 'hide and show');
+	pg_assert_contains("_sdT('Change the picture')", $rows, 'change');
+	pg_assert_contains("_sdT('Remove the picture')", $rows, 'remove');
+	pg_assert_contains('if (on) head.appendChild(_sdSketchMoreBtn());', $fill, '"More" while the switch is on');
+	pg_assert_true(strpos($fill, '_sdSketchPicEl(page.pic)') < strpos($fill, '_sdSketchBoxEl(b, picked, on)'), 'the picture under the boxes');
+	pg_assert_contains('opacity: .33; pointer-events: none;', $css, 'dimmed, no pointer');
+	pg_assert_contains('.sd-sketch-mode .pgc-selected .sd-sketch-more { display: inline-flex; }', $css, 'on the selected page only');
 }

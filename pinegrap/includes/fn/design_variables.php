@@ -404,3 +404,65 @@ function pg_design_variables_contrast($model)
     }
     return $rows;
 }
+
+// A model carried over to another look or palette: a built-in value still
+// equal to what $old_defaults gave takes what $new_defaults gives, so a
+// brand colour never chosen follows the new palette, while a value the
+// designer changed stays. The look and palette become the new ones.
+function pg_design_variables_rebase($model, $old_defaults, $new_defaults)
+{
+    $old = pg_design_variables_normalize($old_defaults, null);
+    $new = pg_design_variables_normalize($new_defaults, null);
+    $m = pg_design_variables_normalize($model, $old);
+    foreach ($m['values'] as $key => $v) {
+        if ($v === $old['values'][$key]) $m['values'][$key] = $new['values'][$key];
+    }
+    $m['look'] = $new['look'];
+    $m['palette'] = $new['palette'];
+    return pg_design_variables_normalize($m, $new);
+}
+
+// What the Variables tab draws and the canvas tries on, for a model ($model
+// null: the defaults) on the design's current look and palette: the model
+// rebased when it was made from another choice, the defaults, the
+// stylesheet and the contrast rows.
+function pg_design_variables_state($model, $look, $palette)
+{
+    $defaults = pg_design_variables_defaults($look, $palette);
+    if (!is_array($model)) {
+        $m = $defaults;
+    } else {
+        $m_look    = pg_design_look_key(isset($model['look']) ? $model['look'] : '');
+        $m_palette = pg_design_palette_key(isset($model['palette']) ? $model['palette'] : '');
+        $m = ($m_look === $defaults['look'] && $m_palette === $defaults['palette'])
+            ? pg_design_variables_normalize($model, $defaults)
+            : pg_design_variables_rebase($model, pg_design_variables_defaults($m_look, $m_palette), $defaults);
+    }
+    return array(
+        'model'    => $m,
+        'defaults' => $defaults,
+        'css'      => pg_design_variables_css($m, $defaults),
+        'contrast' => pg_design_variables_contrast($m),
+    );
+}
+
+// The rows of the Variables tab, for the editor: key, group, label, kind,
+// the bounds of a length or number and the options of a choice, in order.
+function pg_design_variables_client_list()
+{
+    $rows = array();
+    foreach (pg_design_variable_list() as $key => $def) {
+        $row = array('key' => $key, 'group' => $def['group'], 'label' => $def['label'], 'kind' => $def['kind']);
+        foreach (array('rem', 'px', 'min', 'max') as $k) {
+            if (isset($def[$k])) $row[$k] = $def[$k];
+        }
+        if (isset($def['options'])) {
+            $row['options'] = array();
+            foreach ($def['options'] as $value => $label) $row['options'][] = array('value' => (string)$value, 'label' => $label);
+        }
+        $rows[] = $row;
+    }
+    $groups = array();
+    foreach (pg_design_variable_groups() as $key => $label) $groups[] = array('key' => $key, 'label' => $label);
+    return array('groups' => $groups, 'rows' => $rows);
+}

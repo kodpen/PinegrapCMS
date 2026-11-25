@@ -5,7 +5,7 @@ module: design_variables
 ---
 
 ## Where is the model?
-- `includes/fn/design_variables.php`, pure (no database, no request); tests in `tests/design_variables_test.php`. No screen yet: the Variables tab is DV2 of `plans/designer-variables.md`.
+- `includes/fn/design_variables.php`, pure (no database, no request); tests in `tests/design_variables_test.php`. The tab, the file and its loading: `design-variables-tab.md`.
 - A model is an array: `name`, `look`, `palette` (the choice the defaults came from), `values` (key => value, a colour is `array('light','dark')`), `custom` (the designer's own colours and sizes).
 
 ## Which variables are there?
@@ -21,7 +21,7 @@ module: design_variables
 - Every variable writes its own `--pg-var-<key>` token (custom ones `--pg-var-c-<key>`). Only a value that differs from `$defaults` also writes the theme tokens it drives: colour roles through `_pg_theme_role()` (brand = primary, accent = secondary), surface `--bs-body-bg`, text `--bs-body-color`, neutral `--bs-secondary-color`, fonts, size, weights, line height, line width, the radius ladder, the shadow preset. So a file of untouched defaults changes nothing a page reads.
 - A changed brand or accent also resets the role's `-line` tokens and the primary's check marks, or a pale palette's would outlive it.
 - Scale, base unit and section rhythm drive no theme token yet: only `--pg-var-*` (read by bound nodes from DV3).
-- The head stays under `PG_DESIGN_VARIABLES_HEAD_MAX` (8192 bytes); `pg_design_theme_read_header()` reads only 4096 and knows only `look` and `palette`, so DV2 reads a variables file with `pg_design_variables_read()` over the start of the file.
+- The head stays under `PG_DESIGN_VARIABLES_HEAD_MAX` (8192 bytes); `pg_design_theme_read_header()` reads only 4096 and knows only `look` and `palette`, so a variables file is read by `pg_design_variables_stored()` (`design_themes.php`) over its first 8256 bytes.
 
 ## How is a file read back?
 - `pg_design_variables_read($css, $defaults)`: the head's JSON with `kind: variables`, normalized against `$defaults`; null for any other file. Writing what was read gives the same bytes.

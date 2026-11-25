@@ -1056,7 +1056,9 @@ const StyleDesigner = (function () {
         var page = u.page_name || u.style_name || ('#' + (u.page_id || u.style_id));
         if (u.binned) page += ' — ' + _sdT('Recycle Bin');
         var mine = _design && parseInt(_design.styleId, 10) === parseInt(u.style_id, 10);
-        return (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
+        var text = (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
+        // Drawn by a converted common region's tag, not placed.
+        return u.common_region ? (text + ' — ' + _sdT('common region tag "{var:1}"', [u.common_region])) : text;
     }
     function _sharedUsageTip(usage) {
         return usage.length
@@ -24953,6 +24955,32 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
+                // Back to top and Scroll progress: fixed to the window, no
+                // script in the markup. The data-pg-to-top and
+                // data-pg-scroll-progress markers bring assets/js/pg_page_scroll.js
+                // to the page and the Preview (pg_page_scroll_inject()); the
+                // canvas does not load it, so both stay in view to be selected.
+                // Without the script the button still leads to the top (#top)
+                // and is always shown.
+                if (ctype === 'back-to-top') {
+                    return createNode('semantic', { tag: 'a', cssClass: 'btn btn-primary rounded-circle shadow position-fixed bottom-0 end-0 m-4 p-0 d-inline-flex align-items-center justify-content-center pg-to-top',
+                        href: '#top', target: '', customName: _sdT('Back to top'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Back to top') }, { name: 'data-pg-to-top', value: '' }] }, [
+                        createNode('content', { contentType: 'icon', iconName: 'bi-arrow-up', cssClass: '', fontSize: '' })
+                    ]);
+                }
+
+                // The bar is decoration: a reader knows where it is on the
+                // page, so the bar is hidden from it. Its width is the one
+                // inline value, written by the script as Bootstrap's own data.
+                if (ctype === 'scroll-progress') {
+                    return createNode('semantic', { tag: 'div', cssClass: 'progress position-fixed top-0 start-0 w-100 rounded-0 bg-transparent pg-scroll-progress', customName: _sdT('Scroll progress'),
+                        _attrs: [{ name: 'aria-hidden', value: 'true' }, { name: 'data-pg-scroll-progress', value: '' }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar', customName: _sdT('Progress Bar'),
+                            _attrs: [{ name: 'style', value: 'width:0%' }] })
+                    ]);
+                }
+
                 if (ctype === 'carousel') {
                     var crId = 'cr_' + Math.random().toString(36).substr(2, 6);
                     // 3 slides with distinct gradient hero backgrounds + title/desc/button — _crId lets
@@ -26553,7 +26581,9 @@ const StyleDesigner = (function () {
                 { label: _sdT('Figure'),          type: 'component', icon: 'bi-image',                extra: { componentType: 'figure' } },
                 { label: _sdT('Vertical Rule'),   type: 'component', icon: 'bi-vr',                   extra: { componentType: 'vr' } },
                 { label: _sdT('Horizontal Stack'), type: 'component', icon: 'bi-layout-three-columns', extra: { componentType: 'hstack' } },
-                { label: _sdT('Vertical Stack'),  type: 'component', icon: 'bi-layout-sidebar-reverse', extra: { componentType: 'vstack' } }
+                { label: _sdT('Vertical Stack'),  type: 'component', icon: 'bi-layout-sidebar-reverse', extra: { componentType: 'vstack' } },
+                { label: _sdT('Back to top'),     type: 'component', icon: 'bi-arrow-up-circle',      extra: { componentType: 'back-to-top' } },
+                { label: _sdT('Scroll progress'), type: 'component', icon: 'bi-hr',                   extra: { componentType: 'scroll-progress' } }
             ])},
             { title: _sdT('Content'), icon: 'bi-fonts', items: Object.keys(CONTENT).filter(function (k) {
                 // 'text' is a legacy/safety-net contentType used by older add-row/add-col
@@ -27201,9 +27231,13 @@ const StyleDesigner = (function () {
                                     var _u = _sharedUsage[sid] || [];
                                     var _msg;
                                     if (_u.length) {
+                                        // A converted common region comes back on the pages
+                                        // printing its tag: nothing breaks there.
+                                        var _region = _u.filter(function (x) { return !!x.common_region; }).length;
                                         _msg = _sdT('"{var:1}" is used on {var:2} pages:', [sname, _u.length]) + '\n\n' +
                                                _u.map(function(x){ return '• ' + _sharedUsageText(x); }).join('\n') +
-                                               '\n\n' + _sdT('Deleting it breaks the references on those pages. Are you sure?');
+                                               '\n\n' + (_region ? _sdT('It draws the common region wherever its tag stands; deleting it brings back the region\'s earlier content on those pages.') + '\n' : '') +
+                                               (_region === _u.length ? _sdT('Delete it?') : _sdT('Deleting it breaks the references on those pages. Are you sure?'));
                                     } else {
                                         _msg = _sdT('Delete "{var}"?', sname) + '\n' + _sdT('(It is not used on any page.)');
                                     }
@@ -35218,7 +35252,7 @@ const StyleDesigner = (function () {
             if (!s) return;
             el.addEventListener('change', function () {
                 if (el.getAttribute('data-sd-len')) {
-                    var why = _sdLenCheck('len', el.value);
+                    var why = _sdLenCheck(el.getAttribute('data-sd-len'), el.value);
                     _sdFieldInvalid(el, why);
                     if (why) return;
                 }
@@ -57111,6 +57145,13 @@ const StyleDesigner = (function () {
             { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, _sdT('e.g. 0')), val: p.bottom },
             { label: _sdT('Left'),   ctrl: lenInp('left', p.left, _sdT('e.g. 0')), val: p.left   }
         ];
+        // Presets of the four offsets (_sdPosPreset()), applied by
+        // _sdPosPresetApply(); the one the element matches stands on.
+        var _posOn = _sdPosPresetOf(p, cls);
+        _posSubRows.unshift({ label: _sdT('Preset'), val: '', ctrl: '<div class="sd-seg-grp" role="group">' +
+            [['fill', _sdT('Fill the parent')], ['centre', _sdT('Centre')]].map(function (o) {
+                return '<button type="button" class="sd-seg' + (_posOn === o[0] ? ' sd-seg-on' : '') + '" data-sd-pos-preset="' + o[0] + '" aria-pressed="' + (_posOn === o[0] ? 'true' : 'false') + '">' + esc(o[1]) + '</button>';
+            }).join('') + '</div>' });
         var _posHasSub = _posSubRows.some(function(sr) { return !!sr.val; });
         var _posRow = '<div class="sd-sp-row">' +
             '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel +
@@ -57157,34 +57198,23 @@ const StyleDesigner = (function () {
             }
         }
 
-        // Z-Index dropdown: common stacking values + auto. Custom values can still be
-        // typed manually via the Attrs panel's style attribute if needed.
-        var _zIndexOpts = [
-            ['',     _sdT('Default')],
-            ['auto', 'auto'],
-            ['0',    '0'],
-            ['1',    '1'],
-            ['2',    '2'],
-            ['3',    '3'],
-            ['10',   '10'],
-            ['20',   '20'],
-            ['50',   '50'],
-            ['100',  '100'],
-            ['1000', '1000'],
-            ['1050', '1050 (modal-backdrop)'],
-            ['1055', '1055 (modal)'],
-            ['1080', '1080 (toast)']
-        ];
-        var _zCur = (p.zIndex == null) ? '' : String(p.zIndex);
-        var _zIdxSel = '<select class="form-control form-control-sm" data-prop="zIndex">' +
-            _zIndexOpts.map(function(o) {
-                return '<option value="' + o[0] + '"' + (o[0] === _zCur ? ' selected' : '') + '>' + o[1] + '</option>';
-            }).join('') +
-            '</select>';
+        // Z Index: a typed whole number or auto (checked as kind 'z'), and
+        // Bootstrap's layers by name beside it (_SD_Z_LAYERS); a layer picked
+        // fills the field, which writes (_sdControlsInit()).
+        var _zCur = (p.zIndex == null || p.zIndex === 0) ? '' : String(p.zIndex);
+        var _zOn = _sdZLayerOf(_zCur);
         var _zIdxRow = '<div class="sd-sp-row">' +
             '<span class="sd-sp-toggle-spacer"></span>' +
             '<span class="sd-sp-label">' + esc(_sdT('Z Index')) + '</span>' +
-            _zIdxSel +
+            '<div class="input-group input-group-sm">' +
+            '<input type="text" inputmode="numeric" class="form-control form-control-sm" data-prop="zIndex" data-sd-len="z" value="' + esc(_zCur) + '" placeholder="' + esc(_sdT('auto')) + '">' +
+            '<select class="form-control form-control-sm" data-sd-zlayer aria-label="' + esc(_sdT('Layer')) + '">' +
+            '<option value="">' + esc(_sdT('Layer')) + '</option>' +
+            _SD_Z_LAYERS.map(function (l) {
+                var name = { Dropdown: _sdT('Dropdown'), Sticky: _sdT('Sticky'), Fixed: _sdT('Fixed'), Modal: _sdT('Modal') }[l[1]] || l[1];
+                return '<option value="' + l[0] + '"' + (l[0] === _zOn ? ' selected' : '') + '>' + esc(name) + ' (' + l[0] + ')</option>';
+            }).join('') +
+            '</select></div>' +
         '</div>';
 
         var _dsBody = '<div class="sd-sp-section">' +
@@ -64285,11 +64315,67 @@ const StyleDesigner = (function () {
         return opts.length ? { attrs: ' ' + head.replace(/\s*\bclass="[^"]*"/, '').trim(), opts: opts } : null;
     }
 
+    // ── Position presets and layers: pure helpers ──
+    // Bootstrap 5.3's layers by name: its $zindex-* numbers live in its Sass
+    // only (no --bs-* variable holds them), so the list carries them.
+    var _SD_Z_LAYERS = [['1000', 'Dropdown'], ['1020', 'Sticky'], ['1030', 'Fixed'], ['1055', 'Modal']];
+
+    // Whether a typed z-index is written: a whole number or auto, as
+    // getNodeExtraStyle() and _pg_node_sizing_decls() write it. Empty is valid.
+    function _sdZValid(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        return s === '' || /^(?:-?\d+|auto)$/i.test(s);
+    }
+
+    // The layer of _SD_Z_LAYERS a z-index value names, '' for any other.
+    function _sdZLayerOf(v) {
+        var s = String(v == null ? '' : v).trim();
+        for (var i = 0; i < _SD_Z_LAYERS.length; i++) if (_SD_Z_LAYERS[i][0] === s) return s;
+        return '';
+    }
+
+    // A Position preset ('fill' or 'centre') as the four offsets and the
+    // class list `cls` it leaves: Fill sets every offset to 0; Centre puts
+    // the top left corner at 50% / 50% and Bootstrap's translate-middle
+    // pulls the element back by half its size, Bootstrap's own way to
+    // centre a positioned element. Offsets act on a positioned element only,
+    // so one without a Position (or Static) becomes Absolute. Null for an
+    // unknown name.
+    function _sdPosPreset(name, cls) {
+        var off;
+        if (name === 'fill') off = { top: '0', right: '0', bottom: '0', left: '0' };
+        else if (name === 'centre') off = { top: '50%', right: '', bottom: '', left: '50%' };
+        else return null;
+        var list = String(cls || '').split(/\s+/).filter(function (c) { return c && c !== 'translate-middle'; });
+        if (name === 'centre') list.push('translate-middle');
+        var placed = list.some(function (c) { return /^position-(?:(?:sm|md|lg|xl|xxl)-)?(?:relative|absolute|fixed|sticky)$/.test(c); });
+        if (!placed) {
+            list = list.filter(function (c) { return c !== 'position-static'; });
+            list.push('position-absolute');
+        }
+        off.cls = list.join(' ');
+        return off;
+    }
+
+    // The preset an element's offsets and classes match, '' for none.
+    function _sdPosPresetOf(props, cls) {
+        var p = props || {};
+        var v = function (k) { var x = p[k]; return (x === undefined || x === null) ? '' : String(x).trim(); };
+        var zero = function (k) { return /^0(?:px)?$/.test(v(k)); };
+        var mid = (' ' + String(cls || '') + ' ').indexOf(' translate-middle ') !== -1;
+        if (zero('top') && zero('right') && zero('bottom') && zero('left') && !mid) return 'fill';
+        if (v('top') === '50%' && v('left') === '50%' && v('right') === '' && v('bottom') === '' && mid) return 'centre';
+        return '';
+    }
+    // ── end of position presets and layers ──
+
     // Why a length typed into the Sizing rows is not written, '' when it is
     // valid (kind 'len'): a CSS length, a bare number (pixels, _sdCssLen()),
     // a keyword or a CSS function with its brackets closed. Empty is valid.
+    // Kind 'z' is a z-index: a whole number or auto (_sdZValid()).
     function _sdLenCheck(kind, raw) {
         var s = String(raw == null ? '' : raw).trim();
+        if (kind === 'z') return _sdZValid(s) ? '' : _sdT('Use a whole number or auto.');
         if (s === '') return '';
         var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
         var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
@@ -65106,6 +65192,26 @@ const StyleDesigner = (function () {
         _sdRenderNode(nodes[0], render);
     }
 
+    // A Position preset clicked ('fill' or 'centre'): the selected element,
+    // or every selected one, takes its offsets and classes (_sdPosPreset())
+    // as one undo step.
+    function _sdPosPresetApply(name) {
+        if (!_sdPosPreset(name, '')) return;
+        var several = selectedNodes.length > 1;
+        var nodes = (several ? selectedNodes.slice() : [selectedNode]).filter(function (n) { return n && n.props; });
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!nodes.length || _sdPanelLockReason(nodes)) return;
+        var write = function (n) {
+            var r = _sdPosPreset(name, n.props.cssClass);
+            ['top', 'right', 'bottom', 'left'].forEach(function (k) { n.props[k] = r[k]; });
+            n.props.cssClass = r.cls;
+        };
+        if (several) { _sdMcCommit(nodes, write); return; }
+        saveState();
+        write(nodes[0]);
+        _sdRenderNode(nodes[0], render);
+    }
+
     // Installed once on #sd-properties: the segments' clicks, the reset
     // button's and "Make it a container", whatever part of the panel was
     // drawn later.
@@ -65115,6 +65221,8 @@ const StyleDesigner = (function () {
         panel.addEventListener('click', function (e) {
             var t = e.target;
             if (!t || !t.closest) return;
+            var pre = t.closest('[data-sd-pos-preset]');
+            if (pre && panel.contains(pre)) { _sdPosPresetApply(pre.getAttribute('data-sd-pos-preset')); return; }
             var seg = t.closest('.sd-seg');
             if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
             var mk = t.closest('[data-sd-lay-make]');
@@ -65126,6 +65234,17 @@ const StyleDesigner = (function () {
             // Several elements: the row back to its default in all of them.
             if (lbl.dataset.mcReset) { _sdMcRowReset(lbl); return; }
             _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
+        });
+        // A layer picked beside Z Index fills the field, whose own listener
+        // writes: 'input' for one element, 'change' for several.
+        panel.addEventListener('change', function (e) {
+            var sel = e.target;
+            if (!sel || !sel.hasAttribute || !sel.hasAttribute('data-sd-zlayer') || sel.value === '') return;
+            var inp = sel.parentNode ? sel.parentNode.querySelector('input[data-prop="zIndex"]') : null;
+            if (!inp || inp.disabled) return;
+            inp.value = sel.value;
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
         });
     }
 
@@ -75619,7 +75738,8 @@ const StyleDesigner = (function () {
     // The look builder and the palette builder send choices to the server
     // and try the stylesheet it answers with on the canvas; saving writes it
     // to the file manager, where every design can pick it.
-    var _sdThemeTry = { look: '', palette: '' };   // builder output being tried on the canvas
+    var _sdThemeTry = { look: '', palette: '', variables: '' };   // builder output being tried on the canvas
+    var _sdThemePaneTab = 'look';                  // the Theme pane's tab: look or variables
     var _sdColorModeOpened = false;                // the canvas took the design's mode once
     var _sdThemeTryTimer = { look: 0, palette: 0 };
     var _sdThemeTrySeq = { look: 0, palette: 0 };
@@ -75678,14 +75798,20 @@ const StyleDesigner = (function () {
         var look = _sdThemeFind('look', _sdThemeValue('look'));
         var pal  = _sdThemeFind('palette', _sdThemeValue('palette'));
         var lookCss = _sdThemeTry.look, palCss = _sdThemeTry.palette;
-        if (!look && !pal && !lookCss && !palCss) return out;
+        // The design's variables: the tab's model being tried, else the
+        // saved file (sdDesign.themes.variables, '' for none).
+        var varCss = _sdThemeTry.variables, varUrl = varCss ? '' : (th.variables || '');
+        if (!look && !pal && !lookCss && !palCss && !varCss && !varUrl) return out;
         out.push({ id: 'pg-theme-bridge', url: th.bridge });
+        if (lookCss || look || varCss || varUrl) out.push({ id: 'pg-theme-base', url: th.base });
         if (lookCss || look) {
-            out.push({ id: 'pg-theme-base', url: th.base });
             out.push(lookCss ? { id: 'pg-theme-look', css: lookCss } : { id: 'pg-theme-look', url: look.url });
         }
         if (palCss || pal) {
             out.push(palCss ? { id: 'pg-theme-palette', css: palCss } : { id: 'pg-theme-palette', url: pal.url });
+        }
+        if (varCss || varUrl) {
+            out.push(varCss ? { id: 'pg-theme-variables', css: varCss } : { id: 'pg-theme-variables', url: varUrl });
         }
         return out;
     }
@@ -75886,9 +76012,23 @@ const StyleDesigner = (function () {
             host.innerHTML = '<p class="form-text small mb-0">' + esc(_sdT('This design is built without a framework. Looks and colour palettes dress the Bootstrap components, so they are not offered here.')) + '</p>';
             return;
         }
+        // Two tabs: the look and palette cards, and the design's variables
+        // (the part 'variables', loaded the first time its tab is shown).
+        var tabs = '<div class="btn-group btn-group-sm mb-3" role="tablist" aria-label="' + _thAttr(_sdT('Theme')) + '">';
+        [['look', _sdT('Look and colours')], ['variables', _sdT('Variables')]].forEach(function (t) {
+            var on = _sdThemePaneTab === t[0];
+            tabs += '<button type="button" class="btn ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') + '" role="tab" aria-selected="' + on + '" data-th-tab="' + t[0] + '">' + esc(t[1]) + '</button>';
+        });
+        tabs += '</div>';
+        if (_sdThemePaneTab === 'variables') {
+            host.innerHTML = tabs + '<div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
+            _sdThemeBindTabs(host);
+            _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
+            return;
+        }
         var look = _sdThemeValue('look'), pal = _sdThemeValue('palette');
         var colors = _sdThemeColors();
-        var h = '';
+        var h = tabs;
         if (!th.ready) {
             h += '<div class="sd-th-warn"><span class="bi bi-exclamation-triangle me-1"></span>' +
                  esc(_sdT('The database has not been updated yet: you can try a look and a palette on the canvas, but the choice is saved once the 2026.4.5 update has run.')) + '</div>';
@@ -76071,7 +76211,47 @@ const StyleDesigner = (function () {
         });
     }
 
+    function _sdThemeBindTabs(host) {
+        host.querySelectorAll('[data-th-tab]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (_sdThemePaneTab === b.getAttribute('data-th-tab')) return;
+                _sdThemePaneTab = b.getAttribute('data-th-tab');
+                _sdThemeRender();
+            });
+        });
+    }
+
+    // What the part 'variables' reaches of the editor: the pane it draws in,
+    // the look and palette of the moment, the stored file, the hidden input
+    // the save posts and the try-on of its stylesheet on the canvas.
+    function _sdVarsHost(el) {
+        var th = _sdThemes() || {};
+        var input = document.getElementById('sd-style-variables');
+        return {
+            el: el,
+            styleId: (_design && _design.styleId) ? _design.styleId : 0,
+            stored: !!th.variables,
+            look: function () { return _sdThemeValue('look'); },
+            palette: function () { return _sdThemeValue('palette'); },
+            model: function () {
+                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+            },
+            setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
+            tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); }
+        };
+    }
+
+    // A changed look or palette carries the variables along (the untouched
+    // colours follow the new palette): the part works the stylesheet out
+    // again, once it has run or when the design has a saved file.
+    function _sdVarsFollowTheme() {
+        var th = _sdThemes();
+        if (!th || (!th.variables && !_sdPartLoaded('variables'))) return;
+        _sdPartCall('variables', 'refresh', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(function () {});
+    }
+
     function _sdThemeBind(host) {
+        _sdThemeBindTabs(host);
         host.querySelectorAll('[data-th-mode]').forEach(function (b) {
             b.addEventListener('click', function () { _sdColorModeChoose(b.getAttribute('data-th-mode')); });
         });
@@ -76441,13 +76621,15 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
-    // and pg_fx_inject() (pg_fx_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern()),
+    // pg_page_scroll_inject() (pg_page_scroll_pattern()) and pg_fx_inject()
+    // (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
@@ -77170,7 +77352,7 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input',
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -77288,6 +77470,8 @@ const StyleDesigner = (function () {
         ui.boxes.addEventListener('click', function (event) {
             var chip = event.target.closest ? event.target.closest('.sd-sketch-chip') : null;
             if (chip) _sdSketchChipMenu(chip);
+            var more = event.target.closest ? event.target.closest('.sd-sketch-more') : null;
+            if (more) _sdSketchMoreMenu(more);
         });
         ui.boxes.addEventListener('dblclick', function (event) {
             var boxEl = (_sdProto.sketchOn && event.target.closest) ? event.target.closest('.sd-sketch-box') : null;
@@ -77813,7 +77997,7 @@ const StyleDesigner = (function () {
     // under its lowest box, the grid, the snapping reach (screen pixels),
     // the smallest box, the first box's size; how many pages, boxes and
     // heading characters are kept.
-    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80 };
+    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000 };
 
     // What a box can be. A box without a kind chosen is read from the
     // sketch; until the reader runs its chip says so.
@@ -77853,6 +78037,8 @@ const StyleDesigner = (function () {
             if (!id || used['p' + id]) return;
             used['p' + id] = true;
             var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            var src = _sdSketchPicSrc(p.pic && p.pic.src);
+            if (src) page.pic = { src: src, h: num(p.pic.h, SD_SKETCH.min, SD_SKETCH.picH, SD_SKETCH.minH), off: !!p.pic.off };
             (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
                 var bid = num(b && b.id, 0, 1e9, 0);
                 if (!bid || used['b' + bid]) return;
@@ -77936,7 +78122,7 @@ const StyleDesigner = (function () {
     function _sdSketchBodyH(page) {
         var low = 0;
         page.boxes.forEach(function (b) { low = Math.max(low, b.y + b.h); });
-        return Math.max(SD_SKETCH.minH, low + SD_SKETCH.pad);
+        return Math.max(SD_SKETCH.minH, low + SD_SKETCH.pad, (page.pic && !page.pic.off) ? page.pic.h : 0);
     }
 
     function _sdSketchItem(page) {
@@ -77988,10 +78174,12 @@ const StyleDesigner = (function () {
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', item.name));
         head.appendChild(_sdProtoEl('span', 'sd-proto-meta', page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length)));
+        if (on) head.appendChild(_sdSketchMoreBtn());
         node.appendChild(head);
         node.setAttribute('aria-label', _sdT('Sketch') + ': ' + item.name);
         var body = _sdProtoEl('div', 'sd-sketch-body');
         body.style.height = (item.h - SD_SKETCH.head) + 'px';
+        if (page.pic && !page.pic.off) body.appendChild(_sdSketchPicEl(page.pic));
         if (!page.boxes.length) body.appendChild(_sdProtoEl('p', 'sd-sketch-hint', on ? _sdT('Drag here to draw a box') : _sdT('Turn on Sketch to draw boxes')));
         var sel = _sdProto.sk.sel;
         page.boxes.forEach(function (b) {
@@ -78433,6 +78621,160 @@ const StyleDesigner = (function () {
         el.style.left = place.left + 'px';
         el.style.top = place.top + 'px';
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    // ── The reference picture ──
+    // A picture of the site can lie under a sketch page, dimmed, to draw
+    // over: it fills the frame's width from the top and the frame grows as
+    // tall as it. It takes no pointer, is kept with the sketch and is never
+    // built into the page. "More" in the selected sketch page's head holds
+    // its rows; Ctrl+Z takes a change back.
+
+    // A picture's address kept with a sketch: one of this site ("/…") or
+    // of the web (http, https), else ''.
+    function _sdSketchPicSrc(raw) {
+        var src = String(raw || '').trim();
+        if (!src || src.length > 2000 || /[\s"'<>\\]/.test(src)) return '';
+        return (/^\/(?!\/)/.test(src) || /^https?:\/\/[^\/]/i.test(src)) ? src : '';
+    }
+
+    function _sdSketchPicEl(pic) {
+        var img = _sdProtoEl('img', 'sd-sketch-pic');
+        img.alt = '';
+        img.draggable = false;
+        img.decoding = 'async';
+        img.src = pic.src;
+        img.style.height = pic.h + 'px';
+        return img;
+    }
+
+    // "More" in a sketch page's head: shown on the selected page while the
+    // switch is on.
+    function _sdSketchMoreBtn() {
+        var btn = _sdProtoEl('button', 'sd-sketch-more');
+        btn.type = 'button';
+        btn.title = _sdT('More');
+        btn.setAttribute('aria-label', _sdT('More'));
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.innerHTML = '<span class="bi bi-three-dots" aria-hidden="true"></span>';
+        return btn;
+    }
+
+    // The rows of "More" for a sketch page: [{ caption } | { icon, text, key, run }].
+    function _sdSketchMoreRows(page) {
+        var frameId = 'k:' + page.id;
+        var rows = [];
+        if (!page.pic) {
+            rows.push({ icon: 'bi-image', text: _sdT('Reference picture'), run: function () { _sdSketchPicChoose(frameId); } });
+        } else {
+            rows.push({ caption: _sdT('Reference picture') });
+            rows.push({ icon: page.pic.off ? 'bi-eye' : 'bi-eye-slash', text: page.pic.off ? _sdT('Show the picture') : _sdT('Hide the picture'), run: function () {
+                page.pic.off = !page.pic.off;
+                _sdSketchChanged(false, page.pic.off ? _sdT('Picture hidden') : _sdT('Picture shown'));
+            } });
+            rows.push({ icon: 'bi-arrow-repeat', text: _sdT('Change the picture'), run: function () { _sdSketchPicChoose(frameId); } });
+            rows.push({ icon: 'bi-x-lg', text: _sdT('Remove the picture'), run: function () {
+                delete page.pic;
+                _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
+            } });
+        }
+        rows.push({ sep: true });
+        rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
+        return rows;
+    }
+
+    // A sketch page taken out, as Delete on a selected frame does.
+    function _sdSketchDropPage(page) {
+        var data = _sdSketchData();
+        data.pages = data.pages.filter(function (p) { return p !== page; });
+        _sdProto.sk.sel = null;
+        _sdSketchChanged(false, _sdT('Sketch page deleted. Ctrl+Z brings it back.'));
+        if (_sdProto.ui) _sdProto.ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The picture chooser of the designer; the picture's height is read
+    // before it is kept, so the frame grows to it at once.
+    function _sdSketchPicChoose(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page || !_sdPickerReady()) return;
+        window.pgEditorPicker.image(page.pic ? page.pic.src : '').then(function (url) {
+            var src = _sdSketchPicSrc(url);
+            if (!url) return;
+            if (!src) { sdToast(esc(_sdT('This picture cannot be used under a sketch.')), 'warning', 4000); return; }
+            var img = new Image();
+            img.onload = function () {
+                var now = _sdSketchPage(frameId);
+                if (!now || !img.naturalWidth) return;
+                now.pic = { src: src, h: Math.max(SD_SKETCH.min, Math.min(SD_SKETCH.picH, Math.round(SD_SKETCH.w * img.naturalHeight / img.naturalWidth))), off: false };
+                _sdSketchChanged(false, _sdT('Reference picture placed under the sketch'));
+            };
+            img.onerror = function () { sdToast(esc(_sdT('The picture could not be loaded.')), 'warning', 4000); };
+            img.src = src;
+        });
+    }
+
+    // The menu of "More", by its button; a second press closes it.
+    function _sdSketchMoreMenu(btn) {
+        var frame = btn.closest('.sd-sketch-frame[data-node]');
+        var frameId = frame ? frame.getAttribute('data-node') : '';
+        var page = _sdSketchPage(frameId);
+        if (!page) return;
+        var reopen = _sdProto.menu && _sdProto.menu.chip === 'more:' + frameId;
+        _sdProtoMenuClose(false);
+        if (reopen) return;
+        var ui = _sdProto.ui;
+        var el = _sdProtoEl('div', 'sd-proto-menu sd-sketch-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('More'));
+        _sdSketchMoreRows(page).forEach(function (row) {
+            if (row.sep) { el.appendChild(_sdProtoEl('hr', 'sd-sketch-menu-sep')); return; }
+            if (row.caption) {
+                var head = _sdProtoEl('div', 'sd-proto-menu-head', row.caption);
+                head.setAttribute('role', 'presentation');
+                el.appendChild(head);
+                return;
+            }
+            var item = _sdProtoEl('button', 'sd-proto-menu-item');
+            item.type = 'button';
+            item.tabIndex = -1;
+            item.setAttribute('role', 'menuitem');
+            item.innerHTML = '<span class="bi ' + row.icon + ' sd-proto-icon" aria-hidden="true"></span>';
+            item.appendChild(_sdProtoEl('span', 'sd-proto-label', row.text));
+            if (row.key) {
+                item.appendChild(_sdProtoEl('kbd', 'sd-sketch-menu-key', row.key));
+                item.setAttribute('aria-keyshortcuts', 'Delete');
+            }
+            item.addEventListener('click', function () {
+                _sdProtoMenuClose(true);
+                row.run();
+            });
+            el.appendChild(item);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); _sdProtoMenuClose(true); return; }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) { event.preventDefault(); items[go].focus(); }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: btn, chip: 'more:' + frameId };
+        var r = btn.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var c = ui.stage.getBoundingClientRect();
+        var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var place = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = place.left + 'px';
+        el.style.top = place.top + 'px';
+        var first = el.querySelector('.sd-proto-menu-item');
         if (first) first.focus({ preventScroll: true });
     }
 
@@ -80910,6 +81252,7 @@ const StyleDesigner = (function () {
     }
 
     document.addEventListener('pg-design-theme-change', function () { _sdLivePreviewSchedule(); });
+    document.addEventListener('pg-design-theme-change', function () { _sdVarsFollowTheme(); });
 
     // ========================= AUTOSAVE =========================
     // One entry per design and page in the browser's storage (_autosaveKey()),
@@ -82481,7 +82824,7 @@ const StyleDesigner = (function () {
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
                      'style_custom_css', 'style_custom_js', 'style_custom_fonts',
-                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags'];
+                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags', 'style_variables'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');
@@ -89125,7 +89468,14 @@ const StyleDesigner = (function () {
                            '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-label { outline: 2px dashed var(--bs-emphasis-color); outline-offset: 3px; }\n' +
                            '@media (prefers-reduced-motion: reduce) { .pg-variant.pg-variant .pg-variant-shot { animation: none; } }',
 
-        'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
+        'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }',
+
+        // Back to top and Scroll progress sit above a fixed navbar (1030)
+        // and below an offcanvas or a dialog (1045, 1055).
+        'pg-to-top':          '.pg-to-top { width: 3rem; height: 3rem; z-index: 1035; transition: opacity .2s ease, visibility .2s ease; }\n' +
+                              '@media (prefers-reduced-motion: reduce) { .pg-to-top { transition: none; } }',
+        'pg-scroll-progress': '.pg-scroll-progress { --bs-progress-height: .25rem; z-index: 1035; }\n' +
+                              '.pg-scroll-progress .progress-bar { transition: none; }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
     // block is one line in each, and a block that needs nothing says nothing.
@@ -89142,6 +89492,8 @@ const StyleDesigner = (function () {
         'blog-list':            ['pg-thumb-200'],
         'stats-progress':       ['pg-progress-8'],
         'progress':             ['pg-progress-18'],
+        'back-to-top':          ['pg-to-top'],
+        'scroll-progress':      ['pg-scroll-progress'],
         'faq-categorized':      ['pg-sticky-1'],
         'timeline-horizontal':  ['pg-circle-60'],
         'alert-success-toast':  ['pg-circle-40'],
@@ -89293,6 +89645,10 @@ const StyleDesigner = (function () {
                                     d: _sdT('One feature: an icon with a title and a short explanation.') },
             'c:progress':         { v: 'progress', h: '<div class="progress">', k: 'progress bar percent',
                                     d: _sdT('A bar that shows how far something has got.') },
+            'c:back-to-top':      { v: 'to-top', h: '<a href="#top" data-pg-to-top>', k: 'back to top scroll top up arrow button go up',
+                                    d: _sdT('A round button in the corner that appears once the page is scrolled and takes the visitor back to the top.') },
+            'c:scroll-progress':  { v: 'scroll-progress', h: '<div class="progress" data-pg-scroll-progress>', k: 'scroll progress reading bar indicator top',
+                                    d: _sdT('A thin bar along the top of the window that fills as the visitor scrolls down the page.') },
             'c:modal':            { v: 'modal', h: '<div class="modal">', k: 'modal dialog popup window lightbox',
                                     d: _sdT('A dialog window that opens over the page, for example when a button is clicked.') },
             'c:dropdown':         { v: 'dropdown', h: '<div class="dropdown">', k: 'dropdown menu toggle button',
@@ -89890,6 +90246,14 @@ const StyleDesigner = (function () {
             },
             'progress': function () {
                 return R(0, 0, 200, 110, W) + L(20, 36, 54, S) + R(20, 50, 160, 14, G, 7) + R(20, 50, 104, 14, P, 7) + Tx(72, 60, '65%', 9, W, 'middle');
+            },
+            'to-top': function () {
+                return R(0, 0, 200, 110, W) + Hd(14, 12, 70) + L(14, 26, 150) + L(14, 34, 160) + L(14, 42, 130) + L(14, 56, 150) + L(14, 64, 110) +
+                    C(176, 88, 12, P) + Pa('M176 94v-12M171 87l5 -5 5 5', W, 1.6);
+            },
+            'scroll-progress': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 4, G) + R(0, 0, 120, 4, P) + Hd(14, 16, 70) + L(14, 30, 150) + L(14, 38, 160) +
+                    L(14, 46, 130) + L(14, 60, 150) + L(14, 68, 110) + L(14, 82, 140) + R(192, 14, 3, 90, G, 1.5) + R(192, 50, 3, 24, S, 1.5);
             },
             'modal': function () {
                 return R(0, 0, 200, 110, W) + L(10, 10, 120) + L(10, 20, 150) + L(10, 30, 100) + R(0, 0, 200, 110, '#000', 0, '', DIM) +
