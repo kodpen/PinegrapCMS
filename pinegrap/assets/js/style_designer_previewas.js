@@ -205,6 +205,8 @@ StyleDesigner.definePart('previewas', function (K) {
         if (!isDefault(c) && !S.narrow) {
             h += '<button type="button" class="pg-pva-b" data-pva-act="reset">' + svg(IC.reset, 13) + esc(_sdT('Reset')) + '</button>';
         }
+        // "Edit content here" (part 'recordedit'): the last thing of the bar.
+        if (!S.narrow) h += K._sdRecEditHtml('bar');
         return h + '</span></div>';
     }
 
@@ -321,6 +323,7 @@ StyleDesigner.definePart('previewas', function (K) {
         if (o.record) h += row('record', _sdT('Record'), recordValue(c), recordSet(c));
         if (o.visitor) h += row('visitor', _sdT('Visitor'), visitorValue(c), false);
         if (o.case) h += row('case', _sdT('Case'), caseNames()[c.case][0], false);
+        h += K._sdRecEditHtml('row');
         if (!isDefault(c)) {
             h += '<div class="pg-pva-rule"></div><button type="button" class="pg-pva-row" data-pva-act="reset"><span class="pg-pva-tk">' + svg(IC.reset, 13) + '</span><span>' + esc(_sdT('Reset')) + '</span></button>';
         }
@@ -397,10 +400,12 @@ StyleDesigner.definePart('previewas', function (K) {
                 if (caret !== null && el.setSelectionRange) { try { el.setSelectionRange(caret, caret); } catch (e) {} }
             }
         }
+        // The document and the answer for "Edit content here".
+        K._sdRecEditSync(d, S.win, S.setups);
     }
 
     function focusKey(el) {
-        var names = ['data-pva-q', 'data-pva-open', 'data-pva-rec', 'data-pva-who', 'data-pva-visit', 'data-pva-case', 'data-pva-widget', 'data-pva-sheet', 'data-pva-act'];
+        var names = ['data-pva-q', 'data-re-act', 'data-pva-open', 'data-pva-rec', 'data-pva-who', 'data-pva-visit', 'data-pva-case', 'data-pva-widget', 'data-pva-sheet', 'data-pva-act'];
         for (var i = 0; i < names.length; i++) {
             if (el.hasAttribute(names[i])) {
                 var v = el.getAttribute(names[i]);
@@ -689,5 +694,11 @@ StyleDesigner.definePart('previewas', function (K) {
         render();
     }
 
-    return { answer: answer, attach: attach, failed: failed, inject: inject };
+    // The line under the bar, from "Edit content here" (null clears it).
+    function note(line) {
+        S.line = line || null;
+        render();
+    }
+
+    return { answer: answer, attach: attach, failed: failed, inject: inject, note: note, redraw: render };
 });

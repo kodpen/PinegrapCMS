@@ -405,6 +405,7 @@ function pg_rec_edit_record_out($record, $fields)
 {
     return array(
         'id' => (int) $record['id'],
+        'form_page_id' => (int) ($record['page_id'] ?? 0),
         'reference_code' => (string) $record['reference_code'],
         'address_name' => (string) $record['address_name'],
         'title' => pg_rec_edit_title($record, $fields),
