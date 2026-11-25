@@ -17,7 +17,7 @@ description: The New design window (#sdStartModal) on the Page Design Studio hom
 ## How is a new start added (Sketch it, Figma, Canva, Describe it)?
 - One entry in `pg_designer_start_kinds()` at its place in the plan's order (Blank, Template, Sketch it, Figma, Canva, ZIP file, Pasted markup, Describe it), its drawing kind in `pg_designer_home_drawing()`, and a case in `pg_designer_start_pane()`.
 - The foot's button reads the pane's `data-go` words and the checked radio's `data-href`; a pane with no such radio hides it.
-- The start questions (`plans/designer-variables.md`, DV4) come after a start's own form, before the design opens.
+- The start questions come after a Bootstrap 5 start's own form, before the design opens (`design-variables-questions.md`).
 
 ## Where is the script?
 - `assets/js/designer_home.js`: tab choice, Up/Down/Home/End, the foot's button, `?start=`. After "Turn into a template" the gallery printed with the page is stale: choosing the Template start reloads `?start=template`.

@@ -502,6 +502,13 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // "Page details" of a sketch page in the Prototype view: the menus,
+        // or who has an address already. Read-only, design-level like
+        // adding a page.
+        case 'sketch_details':
+            respond(pg_designer_sketch_details($request));
+            break;
+
         // Pages the "Select Page" picker may offer: every visual-designer
         // page not already on this design, with the design it belongs to
         // now so the picker can say what attaching it will change.
@@ -1297,8 +1304,9 @@ function pg_panel_designer($request, $action)
         // (includes/fn/design_variables.php): the model it sends - or, the
         // first time, the design's stored one - on the look and palette of
         // the moment, with the defaults, the stylesheet the canvas tries on,
-        // the contrast rows and the tab's rows. Nothing is written: the
-        // design's save writes the file.
+        // the contrast rows and the tab's rows; with `questions` also the
+        // start questions' data. Nothing is written: the design's save
+        // writes the file.
         case 'variables_state':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
             $look    = isset($request['look']) ? (string)$request['look'] : '';
@@ -1310,9 +1318,15 @@ function pg_panel_designer($request, $action)
                 $model = pg_design_variables_stored((int)$request['style_id']);
             }
             $state = pg_design_variables_state($model, $look, $palette);
+            // "Ask me again": the answers replace the four groups' values.
+            if (isset($request['answers'])) {
+                $state = pg_design_variables_state(pg_design_variables_from_answers($state['model'],
+                    pg_design_variables_answers($request['answers']), $state['defaults']), $look, $palette);
+            }
             respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
                 'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
-                'list' => pg_design_variables_client_list()));
+                'list' => pg_design_variables_client_list())
+                + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
             break;
 
         // ── MY LIBRARY'S FILE ────────────────────────────────────────

@@ -466,3 +466,176 @@ function pg_design_variables_client_list()
     foreach (pg_design_variable_groups() as $key => $label) $groups[] = array('key' => $key, 'label' => $label);
     return array('groups' => $groups, 'rows' => $rows);
 }
+
+// ── The start questions ─────────────────────────────────────────────────
+//
+// Five questions, each can be skipped: the brand colour, a second colour (or
+// "choose for me"), the feel (a look), the type feel and roomy or compact.
+// Asked by the New design window after a start's own form and again from
+// the Variables tab's "Ask me again" (assets/js/designer_questions.js). The
+// answers only fill the model: a skipped one keeps the look's and the
+// palette's default, so skipping all five opens the design as before.
+
+// What the questions part draws: the words, the swatches, the looks (the
+// Theme pane's names and lines, the first `shown` on show), the type feels
+// with the variables each sets, and the two rooms.
+function pg_design_variables_questions()
+{
+    $c = pg_design_look_controls();
+    $font = function ($group, $key) use ($c) { return $c[$group]['options'][$key]['value']; };
+    $looks = array();
+    foreach (pg_design_looks() as $key => $l) {
+        $p = $l['preview'];
+        $looks[] = array('key' => $key, 'name' => $l['name'], 'line' => $l['description'],
+            'radius' => (int)$p['btn_radius'], 'caps' => !empty($p['caps']));
+    }
+    return array(
+        'steps' => array(
+            'brand'  => array('label' => lang('Brand colour'), 'ask' => lang('What is your brand colour?'),
+                              'why' => lang('Buttons, links and highlights take it. A logo\'s main colour is a good answer.')),
+            'accent' => array('label' => lang('Second colour'), 'ask' => lang('A second colour?'),
+                              'why' => lang('It carries the quieter buttons and the accents beside the brand colour.')),
+            'look'   => array('label' => lang('Feel'), 'ask' => lang('How should it feel?'),
+                              'why' => lang('The feel sets the look: corners, shadows, lines and how buttons behave.')),
+            'type'   => array('label' => lang('Fonts'), 'ask' => lang('Which type feel?'),
+                              'why' => lang('It chooses the heading and text fonts from the fonts the site ships, and their weights.')),
+            'room'   => array('label' => lang('Space'), 'ask' => lang('Roomy or compact?'),
+                              'why' => lang('It sets the base unit and the distance between sections.')),
+        ),
+        'swatches' => array('#2563eb', '#0f766e', '#047857', '#4d7c0f', '#c2410c', '#e11d48', '#7c3aed', '#1e40af', '#be123c', '#d97706'),
+        'looks' => $looks,
+        'shown' => 6,
+        'types' => array(
+            'clean'     => array('name' => lang('Clean'), 'line' => lang('One sans serif for headings and text.'),
+                                 'values' => array('font_heading' => $font('font_heading', 'modern'), 'font_body' => $font('font_body', 'modern'), 'weight_heading' => '700', 'size_base' => '1rem')),
+            'classic'   => array('name' => lang('Classic'), 'line' => lang('Serif headings over a sans serif text.'),
+                                 'values' => array('font_heading' => $font('font_heading', 'serif'), 'font_body' => $font('font_body', 'system'), 'weight_heading' => '600', 'size_base' => '1rem')),
+            'friendly'  => array('name' => lang('Friendly'), 'line' => lang('Round letters, a little larger.'),
+                                 'values' => array('font_heading' => $font('font_heading', 'rounded-4'), 'font_body' => $font('font_body', 'rounded-4'), 'weight_heading' => '800', 'size_base' => '1.0625rem')),
+            'technical' => array('name' => lang('Technical'), 'line' => lang('Narrow headings, figures in one width.'),
+                                 'values' => array('font_heading' => $font('font_heading', 'grotesk'), 'font_body' => $font('font_body', 'system'), 'weight_heading' => '600', 'size_base' => '0.9375rem')),
+        ),
+        'rooms' => array(
+            'roomy'   => array('name' => lang('Roomy'), 'line' => lang('More air around every block. Good for a brand or a story.'),
+                               'values' => array('space_unit' => '1.25rem', 'space_section' => '6rem')),
+            'compact' => array('name' => lang('Compact'), 'line' => lang('More on one screen. Good for a catalogue or a lot to read.'),
+                               'values' => array('space_unit' => '0.75rem', 'space_section' => '2.5rem')),
+        ),
+        't' => array(
+            'pick'      => lang('Pick a colour'),
+            'auto'      => lang('Choose for me'),
+            'autoLine'  => lang('A colour that sits well beside {var:1} is worked out.'),
+            'own'       => lang('I will pick'),
+            'ownLine'   => lang('Choose it as you chose the brand colour.'),
+            'allLooks'  => lang(array('string' => 'Show all {var:1} looks', 'vars' => count($looks))),
+            'button'    => lang('Button'),
+            'link'      => lang('A link'),
+            'highlight' => lang('Highlight'),
+            'back'      => lang('Back'),
+            'skip'      => lang('Skip'),
+            'next'      => lang('Next'),
+            'cancel'    => lang('Cancel'),
+            'create'    => lang('Create design'),
+            'use'       => lang('Use these answers'),
+            'hint'      => lang('Every answer can be changed later in Settings, Theme, Variables.'),
+            'replace'   => lang('Your answers replace the values of the four groups. Your own variables and every bound control stay.'),
+            'colour'    => lang('Brand colour'),
+        ),
+    );
+}
+
+// The answers of a request (an array or its JSON), each checked: a brand
+// and a picked second colour are hex colours, the second colour may be
+// 'auto', the look a built-in look, the type and room their keys. A refused
+// or missing answer reads as '' (skipped).
+function pg_design_variables_answers($raw)
+{
+    if (is_string($raw)) $raw = json_decode($raw, true);
+    $raw = is_array($raw) ? $raw : array();
+    $get = function ($k) use ($raw) { return (isset($raw[$k]) && is_string($raw[$k])) ? trim($raw[$k]) : ''; };
+    $hex = function ($v) { return preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? strtolower($v) : ''; };
+    $q = pg_design_variables_questions();
+    $looks = pg_design_looks();
+    $accent = $get('accent');
+    return array(
+        'brand'  => $hex($get('brand')),
+        'accent' => ($accent === 'auto') ? 'auto' : $hex($accent),
+        'look'   => isset($looks[$get('look')]) ? $get('look') : '',
+        'type'   => isset($q['types'][$get('type')]) ? $get('type') : '',
+        'room'   => isset($q['rooms'][$get('room')]) ? $get('room') : '',
+    );
+}
+
+// A colour that sits beside $hex: its hue turned by 40 degrees, the
+// saturation kept within a range a button can carry, the lightness kept.
+function pg_design_variables_companion($hex)
+{
+    $rgb = _pg_theme_rgb($hex);
+    if (!$rgb) return '#6c757d';
+    list($r, $g, $b) = array($rgb[0] / 255, $rgb[1] / 255, $rgb[2] / 255);
+    $max = max($r, $g, $b);
+    $min = min($r, $g, $b);
+    $l = ($max + $min) / 2;
+    $d = $max - $min;
+    $h = 0.0;
+    $s = 0.0;
+    if ($d > 0) {
+        $s = $d / (1 - abs(2 * $l - 1));
+        if ($max === $r)     $h = fmod(($g - $b) / $d, 6);
+        elseif ($max === $g) $h = ($b - $r) / $d + 2;
+        else                 $h = ($r - $g) / $d + 4;
+        $h *= 60;
+    }
+    $h = fmod($h + 40 + 360, 360);
+    $s = min(0.85, max(0.35, $s));
+    $l = min(0.55, max(0.3, $l));
+    $c = (1 - abs(2 * $l - 1)) * $s;
+    $x = $c * (1 - abs(fmod($h / 60, 2) - 1));
+    $m = $l - $c / 2;
+    $seg = array(array($c, $x, 0), array($x, $c, 0), array(0, $c, $x), array(0, $x, $c), array($x, 0, $c), array($c, 0, $x));
+    $p = $seg[(int)floor($h / 60) % 6];
+    return _pg_theme_hex(array((int)round(($p[0] + $m) * 255), (int)round(($p[1] + $m) * 255), (int)round(($p[2] + $m) * 255)));
+}
+
+// The model the answers give: $model (null: the defaults) with the four
+// groups set back to $defaults, then each answered question's variables
+// set. The designer's own variables stay.
+function pg_design_variables_from_answers($model, $answers, $defaults)
+{
+    $m = pg_design_variables_normalize(is_array($model) ? $model : $defaults, $defaults);
+    $m['values'] = $defaults['values'];
+    $q = pg_design_variables_questions();
+    if ($answers['brand'] !== '') {
+        $m['values']['brand'] = array('light' => $answers['brand'], 'dark' => $answers['brand']);
+    }
+    $accent = $answers['accent'];
+    if ($accent === 'auto') {
+        $accent = pg_design_variables_companion($answers['brand'] !== '' ? $answers['brand'] : $m['values']['brand']['light']);
+    }
+    if ($accent !== '') {
+        $m['values']['accent'] = array('light' => $accent, 'dark' => $accent);
+    }
+    if ($answers['type'] !== '') {
+        $m['values'] = array_merge($m['values'], $q['types'][$answers['type']]['values']);
+    }
+    if ($answers['room'] !== '') {
+        $m['values'] = array_merge($m['values'], $q['rooms'][$answers['room']]['values']);
+    }
+    return pg_design_variables_normalize($m, $defaults);
+}
+
+// A new design started from the answers ($raw: the window's JSON): the look
+// the feel chose ($look when it was skipped), and, when a variable was
+// answered, the model and the stylesheet the editor tries on and its first
+// save writes. Nothing answered: the design opens as before.
+function pg_design_variables_start($raw, $look, $palette)
+{
+    $a = pg_design_variables_answers($raw);
+    $look = ($a['look'] !== '') ? $a['look'] : $look;
+    if ($a['brand'] === '' && $a['accent'] === '' && $a['type'] === '' && $a['room'] === '') {
+        return array('look' => $look, 'model' => null, 'css' => '');
+    }
+    $defaults = pg_design_variables_defaults($look, $palette);
+    $model = pg_design_variables_from_answers(null, $a, $defaults);
+    return array('look' => $look, 'model' => $model, 'css' => pg_design_variables_css($model, $defaults));
+}

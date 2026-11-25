@@ -1494,6 +1494,7 @@
     "Drag the edges and corners: the artwork stays, the canvas slides over it. Shift keeps the ratio, Alt sizes from the center.": "Kenar ve köşelerden sürükleyin: içerik yerinde kalır, tuval üzerinden kayar. Shift oranı korur, Alt ortadan boyutlandırır.",
     "Drag the layer; letting go stops the recording.": "Katmanı sürükleyin; bıraktığınızda kayıt durur.",
     "Drag the mesh points on the picture to shape it.": "Biçim vermek için resim üzerindeki ağ noktalarını sürükleyin.",
+    "Drag the picture under its frame. Arrows move it by 1%.": "Resmi çerçevesinin altında sürükleyin. Oklar onu %1 kaydırır.",
     "Drag the point onto what must stay in view.": "Noktayı görünür kalması gereken yere sürükleyin.",
     "Drag the repeated template here (card, col, heading\\2026)": "Yinelenen şablonu buraya sürükleyin (card, col, heading\\2026)",
     "Drag the repeated template here (tr, td…)": "Yinelenen şablonu buraya sürükleyin (tr, td…)",

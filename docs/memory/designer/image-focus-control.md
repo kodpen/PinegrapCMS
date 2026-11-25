@@ -7,7 +7,7 @@ module: image_focus
 ## Where does "Focus" show?
 - Content › Image, under "Object Fit", in place of the "Object Pos" list, while the Image has a picture (`_sdFocusTakes(n, 'image')`). No picture: the list as before.
 - Style › Color and background › Bg Image, in place of "Bg Pos", while the background picture is cut: size "Cover", or "No Repeat" at its own size (default or Auto). A pattern or no picture keeps the list. Several selected elements keep both lists.
-- No bar button; the toolbar's "Set focus" is IF3 (`plans/designer-image-focus.md`).
+- No bar button. "Set focus" in the selected element's toolbar drags the picture on the canvas (`image-focus-mode.md`); while it runs, this control's point follows.
 
 ## What does it draw?
 - Head: "Focus", the value read out (`70% · 32%`, aria-live), then "Reset" (removes every screen's value) or, for a screen's own value, a chip "Phone" / "Tablet".

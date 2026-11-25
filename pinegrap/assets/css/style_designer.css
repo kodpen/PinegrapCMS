@@ -4881,6 +4881,58 @@ body.sd-resizing * { cursor: col-resize !important; }
     margin-left: 5px; flex-shrink: 0; line-height: 1;
 }
 
+/* "Can change per place" (the part 'overrides'): the green two-arrow mark of
+   an open field after an Options row's label and at an Overview row's right
+   edge, the list of an element's fields, and the open fields listed in the
+   "Shared Component" section. The mark is a shape with a tip, never colour
+   alone. */
+.sd-tree-open-badge {
+    font-size: .66rem; color: var(--sd-success);
+    margin-left: auto; padding-left: 5px; flex-shrink: 0; line-height: 1;
+}
+.sd-co-mark {
+    border: 0; background: none; padding: 0 0 0 4px;
+    font-size: .66rem; color: var(--sd-success); line-height: 1; cursor: pointer;
+}
+.sd-co-mark:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; border-radius: 3px; }
+.sd-ctx-car { margin-left: auto; font-size: .66rem; opacity: .7; }
+.sd-co-pop {
+    position: fixed; z-index: 99999; width: 300px; max-width: calc(100vw - 16px);
+    background: var(--sd-raised-bg-2); border: 1px solid var(--sd-panel-border);
+    border-radius: 6px; padding: 10px 12px;
+    box-shadow: 0 6px 22px color-mix(in srgb, var(--sd-shadow) 65%, transparent);
+    font-size: .74rem; color: var(--sd-text);
+}
+.sd-co-ph, .sd-co-sub { margin: 0 0 6px; font-size: .68rem; font-weight: 600; color: var(--sd-label); }
+.sd-co-sub { margin: 8px 0 4px; }
+.sd-co-por { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.sd-co-por small { display: block; font-size: .66rem; color: var(--sd-text-muted); }
+.sd-co-dis .sd-co-pname { opacity: .6; }
+.sd-co-pol { display: flex; align-items: center; gap: 8px; padding: 0 0 6px 12px; }
+.sd-co-pol > span { flex: 0 0 44px; color: var(--sd-label); font-size: .68rem; }
+.sd-co-first {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sd-panel-border);
+    color: var(--sd-text-muted); font-size: .7rem; line-height: 1.4;
+}
+.sd-co-none { margin: 0 0 6px; font-size: .68rem; line-height: 1.4; color: var(--sd-text-muted); }
+.sd-co-rows { margin-bottom: 6px; }
+.sd-co-row {
+    display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 2px;
+    border-radius: 4px; font-size: .72rem;
+}
+.sd-co-row:hover, .sd-co-row:focus-visible { background: rgba(var(--sd-accent-rgb), .08); outline: none; }
+.sd-co-row:focus-visible { box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-co-row.sd-co-dragging { opacity: .6; }
+.sd-co-grip { cursor: grab; color: var(--sd-text-muted); touch-action: none; }
+.sd-co-ki { color: var(--sd-label); }
+.sd-co-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.sd-co-rename { flex: 1 1 auto; min-width: 0; }
+.sd-co-more { border: 0; background: none; color: var(--sd-label); padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.sd-co-more:hover, .sd-co-more:focus-visible { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .7rem; }
+.sd-co-result .pg-result-line { flex: 1 1 auto; }
+
 /* ========================= SHARED COMPONENTS PALETTE TAB ========================= */
 .sd-shared-tab-loading, .sd-shared-tab-empty {
     padding: .75rem 1rem; font-size: .78rem; color: var(--sd-text-muted, #8b9ab0); text-align: center;
@@ -8464,6 +8516,37 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-sketch-menu-key { margin-left: auto; padding: 0 4px; background: none; color: var(--sd-text-muted); font-size: .68rem; }
 .sd-sketch-guide-x { width: 1px; }
 .sd-sketch-guide-y { height: 1px; }
+/* "Page details" of a sketch page (assets/js/style_designer_sketchdetails.js):
+   one window over the dimmed map, its rows the Settings window's .sd-set;
+   on a phone it takes the full screen and each control goes under its
+   sentence. */
+.sd-skd-back { position: fixed; inset: 0; z-index: 1066; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.5); }
+.sd-skd { display: flex; flex-direction: column; width: min(620px, 100%); max-height: min(90vh, 820px);
+    background: var(--sd-panel-bg); color: var(--sd-text); border: 1px solid var(--sd-panel-border); border-radius: 12px; box-shadow: var(--sd-shadow); }
+.sd-skd-head { display: flex; align-items: baseline; gap: .6rem; padding: .85rem 1rem .6rem; border-bottom: 1px solid var(--sd-panel-border); }
+.sd-skd-title { font-size: .95rem; font-weight: 600; }
+.sd-skd-sub { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-skd-x { align-self: center; border: 0; background: transparent; color: var(--sd-text-muted); padding: .2rem .35rem; border-radius: 6px; cursor: pointer; }
+.sd-skd-x:hover { color: var(--sd-text); background: rgba(255,255,255,.08); }
+.sd-skd-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 1rem; }
+.sd-skd .sd-set:not(.sd-set-wide):not(.sd-set-switch) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 1.5rem; }
+.sd-skd-two { display: flex; gap: .5rem; }
+.sd-skd-two > * { flex: 1; min-width: 0; }
+.sd-skd-two > [hidden] { display: none; }
+.sd-skd .sd-skd-bad { border-color: var(--sd-danger); box-shadow: 0 0 0 1px var(--sd-danger); }
+.sd-skd-foot { display: flex; align-items: center; gap: .5rem; padding: .7rem 1rem; border-top: 1px solid var(--sd-panel-border); }
+.sd-skd-note { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); }
+.sd-skd-spin { display: inline-block; width: .8rem; height: .8rem; margin-right: .4rem; vertical-align: -.1rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sd-skd-spin .7s linear infinite; }
+@keyframes sd-skd-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sd-skd-spin { animation-duration: 2s; } }
+@media (max-width: 575.98px) {
+    .sd-skd-back { padding: 0; }
+    .sd-skd { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; }
+    .sd-skd .sd-set:not(.sd-set-wide):not(.sd-set-switch) { grid-template-columns: minmax(0, 1fr); }
+    .sd-skd-two { flex-direction: column; }
+    .sd-skd-note { display: none; }
+    .sd-skd-foot { justify-content: flex-end; }
+}
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
