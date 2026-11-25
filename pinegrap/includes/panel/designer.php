@@ -502,6 +502,13 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // "Page details" of a sketch page in the Prototype view: the menus,
+        // or who has an address already. Read-only, design-level like
+        // adding a page.
+        case 'sketch_details':
+            respond(pg_designer_sketch_details($request));
+            break;
+
         // Pages the "Select Page" picker may offer: every visual-designer
         // page not already on this design, with the design it belongs to
         // now so the picker can say what attaching it will change.

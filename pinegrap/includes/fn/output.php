@@ -8187,6 +8187,9 @@ function pg_js_bundles()
         // a state and writes it.
         'assets/js/style_designer_states.min.js' => array('assets/js/pg_option_states.js', 'assets/js/style_designer_states.js'),
         'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
+        // "Page details" of a sketch page: its pure values and checks
+        // (window.PGSketchDetails), then the part that draws the window.
+        'assets/js/style_designer_sketchdetails.min.js' => array('assets/js/pg_sketch_details.js', 'assets/js/style_designer_sketchdetails.js'),
         'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
@@ -8304,6 +8307,9 @@ function pg_designer_parts()
         // The prototype comments of the design: the pins on the canvas and
         // the Comments list, for designers.
         'comments' => 'assets/js/style_designer_comments.min.js',
+        // "Page details" of a sketch page in the Prototype view; read-only
+        // for a content-level operator.
+        'sketchdetails' => 'assets/js/style_designer_sketchdetails.min.js',
         // The spacing box of Style › Spacing and the size chooser in its
         // head (also on Size and display and Text), drawn when the section
         // is first shown.

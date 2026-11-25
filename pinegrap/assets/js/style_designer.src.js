@@ -78468,6 +78468,9 @@ const StyleDesigner = (function () {
             },
             key: function (event) {
                 if (_sdSketchKey(event)) return true;
+                // The command palette, whose rows act on the selected
+                // sketch page too ("Page details").
+                if ((event.ctrlKey || event.metaKey) && event.shiftKey && String(event.key || '').toLowerCase() === 'p') { openCommandPalette(); return true; }
                 // Esc clears the path (or the wait for its page), else goes
                 // back from a frame zoomed to, else closes the view.
                 if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }
@@ -79092,6 +79095,8 @@ const StyleDesigner = (function () {
             if (!id || used['p' + id]) return;
             used['p' + id] = true;
             var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            var details = _sdSketchDetailsKeep(p.details);
+            if (details) page.details = details;
             var src = _sdSketchPicSrc(p.pic && p.pic.src);
             if (src) page.pic = { src: src, h: num(p.pic.h, SD_SKETCH.min, SD_SKETCH.picH, SD_SKETCH.minH), off: !!p.pic.off };
             (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
@@ -79110,6 +79115,19 @@ const StyleDesigner = (function () {
             out.n = Math.max(out.n, id + 1);
             out.pages.push(page);
         });
+        return out;
+    }
+
+    // A sketch page's "Page details" as kept (style_designer_sketchdetails.js
+    // writes them): the known keys only, texts short, numbers whole; null
+    // when the window never saved any. The part reads them through
+    // PGSketchDetails.keep(), which knows the values.
+    function _sdSketchDetailsKeep(raw) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+        var out = {};
+        ['address', 'type', 'menuName', 'afterName', 'title', 'description'].forEach(function (k) { out[k] = String(raw[k] == null ? '' : raw[k]).slice(0, 255); });
+        ['menu', 'after', 'folder'].forEach(function (k) { var n = Number(raw[k]); out[k] = isFinite(n) && n > 0 ? Math.floor(n) : 0; });
+        out.typed = !!raw.typed;
         return out;
     }
 
@@ -79741,6 +79759,8 @@ const StyleDesigner = (function () {
             }
         }
         rows.push({ sep: true });
+        rows.push({ icon: 'bi-card-list', text: _sdT('Page details'), run: function () { _sdSketchDetails(frameId); } });
+        rows.push({ sep: true });
         rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
         return rows;
     }
@@ -79811,6 +79831,13 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The sketch frame selected on the open Prototype view, or ''.
+    function _sdSketchSelected() {
+        if (!_sdProto.open || !_sdProto.canvas) return '';
+        var id = _sdProto.canvas.focused();
+        return (id !== null && /^k:\d+$/.test(String(id)) && _sdSketchPage(id)) ? String(id) : '';
+    }
+
     // The menu of "More", by its button; a second press closes it.
     function _sdSketchMoreMenu(btn) {
         var frame = btn.closest('.sd-sketch-frame[data-node]');
@@ -79873,6 +79900,59 @@ const StyleDesigner = (function () {
         el.style.top = place.top + 'px';
         var first = el.querySelector('.sd-proto-menu-item');
         if (first) first.focus({ preventScroll: true });
+    }
+
+    // "Page details" of a sketch page: a designer part
+    // (style_designer_sketchdetails.js), run the first time it is asked for.
+    function _sdSketchDetails(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page) return;
+        _sdSketchPick(null, null, false);
+        _sdPartCall('sketchdetails', 'open', [_sdSketchDetailsHost(frameId, page)]).catch(_sdPartFailed);
+    }
+
+    // What the window reads and writes of the editor: the page as the
+    // sketch keeps it, the folders of the Settings window's list (with who
+    // may open each), the addresses the design's pages and the other sketch
+    // pages have, and the save, kept and a step of the sketch's undo.
+    function _sdSketchDetailsHost(frameId, page) {
+        var item = _sdSketchItem(page);
+        var sel = document.getElementById('pg_page_folder');
+        var active = _pgActivePage() || {};
+        var folders = sel ? Array.prototype.map.call(sel.options, function (o) {
+            return { id: Number(o.value) || 0, label: String(o.textContent || '').replace(/\s+/g, ' ').trim(), access: o.getAttribute('data-access') || 'public' };
+        }).filter(function (f) { return f.id > 0; }) : [];
+        var site = (_design && _design.site && _design.site.url) ? String(_design.site.url) : (location.origin + (window.OUTPUT_PATH || '/'));
+        return {
+            page: page,
+            fallback: item.name,
+            mayEdit: !_sdIsContentLevel() && _collab.mayEdit !== false,
+            site: site,
+            folder: Number(active.page_folder) || (folders[0] ? folders[0].id : 0),
+            folders: function () { return folders; },
+            others: function () {
+                var out = _pages.map(function (p) { return { name: String(p.page_name || ''), address: String(p.page_name || '') }; });
+                _sdSketchData().pages.forEach(function (p) {
+                    if (p === page) return;
+                    var name = p.name || _sdT('Page {var:1}', p.id);
+                    var addr = (p.details && p.details.address) ? p.details.address : (window.PGSketchDetails ? window.PGSketchDetails.address(name) : '');
+                    out.push({ name: name, address: addr });
+                });
+                return out.filter(function (o) { return o.address; });
+            },
+            post: function (sub, extra) { return _pgApiPost(sub, extra); },
+            save: function (kept) {
+                var now = _sdSketchPage(frameId);
+                if (!now) return;
+                now.name = kept.name;
+                now.details = kept.details;
+                _sdSketchChanged(false, _sdT('Page details saved'));
+            },
+            closed: function () {
+                var node = _sdProto.ui ? _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]') : null;
+                if (node) node.focus({ preventScroll: true });
+            }
+        };
     }
 
     // ── The shortest click path ──
@@ -89724,6 +89804,9 @@ const StyleDesigner = (function () {
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ].filter(Boolean);
 
+        // A sketch page selected in the Prototype view: its "Page details".
+        var sketchId = _sdSketchSelected();
+        if (sketchId) items.unshift({ id: 'act_sketch_details', label: _sdT('Page details'), icon: 'bi-card-list', action: function () { _sdSketchDetails(sketchId); } });
         // My library's Import, for the designers its part is handed to: the
         // part runs on the first choice.
         if (_sdPartUrls('libraryfile')) {
