@@ -240,6 +240,7 @@
 - order-export-filter-joins.md: Order exports of view_orders.php select DISTINCT while a product name or shipping filter joins order_items or ship_tos, so no row is written twice (PR #5210)
 - order-form-posted-quantity.md: The order form's drop-down layout refuses quantity 0; a donation falls back to the default quantity
 - order-gift-card-owed.md: The gift card part an order owes back is what the cards gave (applied_gift_cards.amount) less gift card returns, never gift_card_discount; pg_order_gift_card_owed*() and the ERP settlement (#10260)
+- order-invoice-print.md: The customer's printed invoice (order_invoice_print.php): who may print it, one answer for a guessed id, totals rows, lines charged later apart, address lines, browser print and the dompdf exception
 - order-legal-documents-writers.md: Which order completions keep legal document copies (checkout, payment message) and which keep none (subscription renewal #10666, API, counter, marketplaces); the NULL legal_acceptance limit
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card [decision: decisions-made-product-83.md]
 - order-oversold-warning.md: Oversold warning (#10682): a sale line short of stock with back orders off raises one oversold bell line per order; the order screen notes "Taken from stock: a of b"
@@ -283,7 +284,7 @@
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
 - order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-surcharge-row.md: The order view's card surcharge row shows only when the order has a surcharge: has_surcharge on the starter row and stamped on saved trees
-- order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge stages.
+- order-view-timeline-invoice-card.md: Order view timeline events/sources, readonly form/gift-card blocks, masked card number, status badge stages.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-list-amount-column.md: Orders list amount cell: an incomplete order shows its cart total (muted, titled "Cart total"), never added to the filter totals; one GROUP BY query per page

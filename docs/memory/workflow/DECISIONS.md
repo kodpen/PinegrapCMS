@@ -1355,6 +1355,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/place-list-near.md: Near me and the typed-address box of the Map of places block (#10613): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept
 - platform/place-list.md: The "Map of places" block's list (#10062, #10535): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
 - platform/proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
+- platform/record-rename-address.md: A renamed record (post, category) keeps its old pretty address: form_old_address (11.0.279), the 301 from /<page>/<old name>, ?category=<old name>, live names first, 20 a record (#11439)
 - platform/search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
 - platform/secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
 - platform/share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out

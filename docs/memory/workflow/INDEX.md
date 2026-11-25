@@ -59,6 +59,7 @@
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
+- bug-hunt-areas-invoices-pdf-documents.md: The bug hunt of order documents made as PDF or print pages (area 38, #11434, 2026-11-24): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
 - bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question

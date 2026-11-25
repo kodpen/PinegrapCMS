@@ -360,6 +360,7 @@
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
+- designer-canvas-guides-bands.md: The spacing bands and handles over the designer canvas (CG3 #11568, part bands): when they show, what a drag or arrow writes, the core's stub and host, the first-use line, the numbers measured
 - designer-canvas-guides-drawing.md: The drawing of plan designer-canvas-guides (DD8): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
 - designer-canvas-guides-geometry.md: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
 - designer-canvas-guides-measure.md: Measure on the designer canvas (CG2 #11570): Alt held with one element selected draws the distances to the element pointed at, in the part guides, outside the page
@@ -471,6 +472,7 @@
 - designer-phone-preview-drawing-window.md: The window "Preview on a phone" as drawn (phone-preview.html, boards H1 to H4, step PP2): the QR code, its lines and buttons, its states, a page for signed-in visitors, the team link
 - designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (plans/designer-phone-preview.md, PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 - designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
+- designer-phone-preview-window.md: The "Preview on a phone" window as built (PP2, #11578): its row in the Preview menu and the command palette, the part phone, its states, what it asks the server, the cost
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-position-presets.md: Options panel Size and display: Position's "Fill the parent" and "Centre" presets of the four offsets, Z Index as a typed number with Bootstrap's layers by name (DO7, #11566)
 - designer-preview-as-cases.md: The Preview's case model (PW1): the cases each widget kind has, the visitors a page offers, the choice read back from the browser, what a case sets per widget (record, visitor, flags)
@@ -479,7 +481,7 @@
 - designer-preview-as-drawing-choosers.md: The "Record", "Visitor" and "Case" menus of the "Preview as" bar as drawn (boards P2 to P4 of designer-preview-as-drawing): rows, labels, states, what a case sets
 - designer-preview-as-drawing.md: The drawing of the "Preview as" bar (plans/designer-preview-as.md, PW3 and PW4): the sheet, where each part is described, which board belongs to which step
 - designer-preview-as-server.md: "Preview as" on the server (PW2): preview_widgets with a choice and a case per widget, the record each pick draws, the preview_records search and rights, the scope that writes nothing
-- designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244): its four rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
+- designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244; phone row #11578): its five rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
 - designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
@@ -505,6 +507,7 @@
 - designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state [decision: here]
 - designer-save-shortcut.md: Ctrl+S in the visual editor: the one save of the whole design without the Publish sheet, its two listeners, the dialogs that keep their own, and toolbar hints via _sdSetButtonTitle()
 - designer-screen-messages.md: The visual designer screen shows liveform errors, warnings and notices as its own toasts, never as the panel's alert boxes (#4892) [decision: decisions-made-panel-2.md]
+- designer-scroll-snap.md: Advanced › Layout's Scroll snap on a flex or grid box and Snap to on its children (DO8): classes, rules joining User Styles on first use, the scroller kept apart
 - designer-scroller-controls.md: Previous/next buttons of the scroller-cards block: the row marker, pg_scroller.js and where it is added (page, preview, canvas), one-card step, ends, reduced motion, RTL.
 - designer-scroller-wide-slides.md: The Wide slides option of a scroller row (pg-snap-wide): one large slide per stop, 85vw, centred; the Scroller section, its helper and rule
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
@@ -596,6 +599,8 @@
 - layout-type-converter-catalog-detail.md: A catalog detail page's layout file into the Catalog Detail widget (LE8c, #11436): each piece, the record and cross_sell options, the widget's new flags, tokens, sections and sidebar forms
 - layout-type-converter-catalog.md: A catalog page's layout file into the Catalog widget's design elements (LE8b): each piece, the map options it brought, the listing's new flags and tokens, the run's settings order, the starting sites
 - layout-type-converter-editor.md: LE6b: a file page's System region in the editor, the dropped pieces listed in the Region panel, Convert to design elements from the layout file (layout_code convert_type)
+- layout-type-converter-express-order-render.md: What the Express Order widget gives a converted classic layout (LE9b, #11486): tokens, row values, flags, the type row's state, known differences, starting sites
+- layout-type-converter-express-order.md: An express order page's layout file into the Express Order widget (LE9b, #11486): the cart's map, the theme's billing markup, the widget's sections, controls
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
@@ -648,6 +653,7 @@
 - member-widgets-open-slots.md: Sign-in and sign-up widgets' slots opened (CB7, #9895): password rules and the three links as elements, the sign-in buttons drawn true (settings only)
 - member-widgets-rendering.md: Membership widget render rules: closed feature = no output, canvas twin _sdMemberBindingOff, Messages node stamping, always render own tree, signed-in state.
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box. [decision: decisions-made-product-13.md]
+- menu-scroll-rows.md: A menu's "Mark the section in view" (Bootstrap scrollspy) and "After scrolling" rows (DO22): the attributes they write, what pg_page_scroll.js does with them, defaults, lists, bytes
 - menu-sequence-widget.md: Menu Sequence widget (menu_sequence_region, #1817): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.
 - menu-widget.md: Menu widget (menu_region, #1781): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
 - messages-node-settings.md: The Messages node's settings (Alert look, Dismiss button) and its sample error on the designer canvas; PHP and JS twins, placeholder form, defaults that keep a published page's output (CB5, #9723)
@@ -750,6 +756,7 @@
 - prototype-viewer-missed-click.md: The prototype viewer's missed click (PX6): a click on nothing clickable flashes the page's links in the frame; when it does not; Play's start page and its title [decision: here]
 - prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom [decision: here]
 - record-edit-in-place-server.md: Server of a collection item's fields corrected in place from the designer's Preview (RE1, #11551): controls, rights, approval, changed-meanwhile check, write order, panel actions
+- record-edit-in-place-spots.md: Which bound elements of a page the Preview lets a person correct in place for one collection item, and with which control (RE2, #11583): PGRecordEditSpots, scopes, tokens, properties
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
