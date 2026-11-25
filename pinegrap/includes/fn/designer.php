@@ -10293,6 +10293,8 @@ function pg_designer_preview_override_rows($widgets)
         $overrides[$sid] = array(
             'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
             'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+            // The Preview's case for this widget alone ("Check all cases").
+            'case'      => (isset($w['case']) && is_string($w['case'])) ? $w['case'] : '',
         );
     }
     return $overrides;
@@ -10320,16 +10322,29 @@ function pg_designer_preview_override_rows($widgets)
  * or not: pg_comments_preview_page()). A page not saved yet has no thread:
  * the widget draws nothing.
  *
- * @param int   $page_id          the page, 0 when it has not been saved
- * @param array $widgets          [{id, tree_json, system_region_config}]
- * @param array $comment_settings the page's comment settings as the editor
- *                                holds them (pg_comment_editor_keys())
+ * "Preview as" ($preview_as, with the operator in $user): the page's
+ * choice of record, visitor and case (pg_preview_as_choice()), a widget
+ * row's own 'case' over the page's. Each widget is drawn with its setup
+ * (pg_preview_as_setup()) held for its renderers in pg_preview_as_while(),
+ * which also puts the session back after it; a single-record widget draws
+ * the record of its pick (pg_preview_as_record_target()), within what the
+ * operator may open. With no operator the default pick is drawn, as before.
+ * $setups, when given, receives sid => {case, record} of what was drawn.
+ *
+ * @param int        $page_id          the page, 0 when it has not been saved
+ * @param array      $widgets          [{id, tree_json, system_region_config, case}]
+ * @param array      $comment_settings the page's comment settings as the editor
+ *                                     holds them (pg_comment_editor_keys())
+ * @param mixed      $preview_as       {record, visitor, case, page: {access_rules, audience}}
+ * @param array|null $user             validate_user(), null for no operator
+ * @param array|null $setups           out: sid => {case, record}
  * @return array sid => html
  */
-function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
+function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array(), $preview_as = null, $user = null, &$setups = null)
 {
     $page_id   = (int)$page_id;
     $overrides = pg_designer_preview_override_rows($widgets);
+    $setups    = array();
     if (empty($overrides)) return array();
 
     $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';
@@ -10355,51 +10370,63 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
         $saved_preview = pg_comments_preview_page(array('page_id' => $page_id, 'columns' => pg_comment_editor_columns($comment_settings)));
     }
     try {
+        // The settings of every widget first: the page's choice is read
+        // back against the kinds the page holds.
+        $cfgs = array();
         foreach ($overrides as $sid => $ov) {
-            $_GET = array();
-            if ($page_name !== '') $_GET['page'] = $page_name;
-
             $cfg = $ov['cfg'];
             if (!is_array($cfg)) {
                 $cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
             }
+            $cfgs[$sid] = $cfg;
+        }
+        $kinds = array();
+        foreach ($cfgs as $cfg) $kinds[] = pg_sw_widget_kind($cfg);
+        $pa     = is_array($preview_as) ? $preview_as : array();
+        $choice = pg_preview_as_choice($pa, $kinds, (isset($pa['page']) && is_array($pa['page'])) ? $pa['page'] : array());
+
+        foreach ($overrides as $sid => $ov) {
+            $_GET = array();
+            if ($page_name !== '') $_GET['page'] = $page_name;
+
+            $cfg = $cfgs[$sid];
             // The kind: a list of recent comments reads its own source
             // pages and takes no record of this page.
             $type = pg_sw_widget_kind($cfg);
+            $own  = $choice;
+            if ($ov['case'] !== '') $own['case'] = $ov['case'];
+            $setup = pg_preview_as_setup($type, $own);
 
-            if ($type === 'form_item_view') {
-                $code = _pg_preview_newest_record_code($cfg, $page_id);
-                if ($code !== '') $_GET['r'] = $code;
+            $target = array('get' => array(), 'address' => '', 'id' => 0);
+            if ($type === 'form_item_view' || $type === 'calendar_event_view') {
+                $target = pg_preview_as_record_target($setup, $cfg, $page_id, $user);
             } elseif ($type === 'comments' && $page_id > 0) {
-                // A record page's thread is the shown record's: the newest
-                // one of the page's stored record widget, as that widget
-                // shows it here.
+                // A record page's thread is the shown record's: the record
+                // the page's stored record widget draws here.
                 $fiv = pg_sw_page_widget($page_id, 'form_item_view');
                 if ($fiv) {
-                    $code = _pg_preview_newest_record_code($fiv['cfg'], $page_id);
-                    if ($code !== '') $_GET['r'] = $code;
+                    $target = pg_preview_as_record_target(pg_preview_as_setup('form_item_view', $choice), $fiv['cfg'], $page_id, $user);
+                    $target['id'] = 0;
                 }
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {
-                $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);
-                $address = ($group > 0)
-                    ? (string)db_value("SELECT products.address_name FROM products
-                                        INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
-                                        WHERE products_groups_xref.product_group = '" . $group . "'
-                                          AND products.enabled = '1' AND products.address_name != ''
-                                        ORDER BY products.id ASC LIMIT 1")
-                    : (string)db_value("SELECT address_name FROM products WHERE enabled = '1' AND address_name != '' ORDER BY id ASC LIMIT 1");
-                if ($address !== '') $_GET['page'] = $page_name . '/' . $address;
+                $target = pg_preview_as_record_target($setup, $cfg, $page_id, $user);
+                if ($target['address'] !== '') $_GET['page'] = $page_name . '/' . $target['address'];
             }
+            foreach ($target['get'] as $k => $v) $_GET[$k] = $v;
+            $setups[(int)$sid] = array('case' => $setup['case'], 'record' => (int)$target['id']);
 
-            ob_start();
-            try {
-                $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
-                // What the widget's own layout places (nested components).
-                $html = pg_expand_nested_components($html, 'preview');
-            } catch (Throwable $t) {
-                $html = '';
-            }
-            ob_end_clean();
+            $html = pg_preview_as_while($setup, function () use ($sid) {
+                ob_start();
+                try {
+                    $html = _expand_system_widgets('<!--pg-system-widget:' . (int)$sid . '-->', 'preview');
+                    // What the widget's own layout places (nested components).
+                    $html = pg_expand_nested_components($html, 'preview');
+                } catch (Throwable $t) {
+                    $html = '';
+                }
+                ob_end_clean();
+                return $html;
+            });
             $out[(int)$sid] = pg_designer_resolve_output_placeholders((string)$html);
         }
     } finally {
@@ -10415,29 +10442,6 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
         }
     }
     return $out;
-}
-
-/**
- * The reference code of the newest record a form_item_view widget's form
- * holds and its filters let through, as the Preview shows one ('' for none).
- *
- * @param array $cfg     the widget's settings
- * @param int   $page_id the page it is drawn on
- * @return string
- */
-function _pg_preview_newest_record_code($cfg, $page_id)
-{
-    if (!is_array($cfg)) return '';
-    $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
-    if ($form_pid <= 0) return '';
-    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), (int)$page_id, true);
-    return (string)db_value(
-        "SELECT forms.reference_code FROM forms
-         {$clause['join']}
-         WHERE forms.page_id = '" . $form_pid . "'
-           {$clause['where']}
-         ORDER BY forms.id DESC
-         LIMIT 1");
 }
 
 /**
