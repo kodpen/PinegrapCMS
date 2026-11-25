@@ -28,4 +28,4 @@ priority: 7
 - SE3 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
-- No table or column. The drawing: `designer-drawings-levels.md`. Claim as `[plan:designer-select-similar] <step> — <topic>`.
+- No table or column. The drawing: `designer/designer-select-similar-drawing.md`; it decides where the two differ (`workflow/screen-follows-drawing.md`). Claim as `[plan:designer-select-similar] <step> — <topic>`.
