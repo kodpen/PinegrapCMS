@@ -5,8 +5,8 @@ module: figma
 ---
 
 ## When is the Figma start listed?
-- `pg_designer_start_kinds($has_templates, $figma)` puts it after Template; `pg_designer_figma_start_on()` lists it only once `pg_figma_import_start()` exists (the import of ST5), so "Next" never leads nowhere. Until then `?start=figma` falls back to Blank; the Connections page works already.
-- ST5 defines `pg_figma_import_start()` and listens to the pane's `sd-figma-frames` event (`detail`: `link`, `key`, `ids` of the ticked frames).
+- `pg_designer_start_kinds($has_templates, $figma)` puts it after Template; `pg_designer_figma_start_on()` lists it once `pg_figma_import_start()` exists, which it does since #11643 (`figma-start-import.md`).
+- "Next" fires the pane's `sd-figma-frames` event (`detail`: `link`, `key`, `ids` of the ticked frames); the import listens to it.
 
 ## What does the pane show?
 - `pg_designer_figma_pane($connection, $manager)`: not connected, an empty state with "Connect in Connections" (or "Ask a manager of the site to connect Figma."); connected, the account line with "Manage in Connections", the amber line when the token is refused, the field "Figma file link", its help and the seat line.

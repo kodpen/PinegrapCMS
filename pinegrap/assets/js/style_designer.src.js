@@ -87724,6 +87724,19 @@ const StyleDesigner = (function () {
         if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
     }
 
+    // add_system_style.php?start=figma&import=<id>: the pages a Figma import
+    // made in the New design window (pg_figma_import_ready()) open as
+    // unsaved tabs the way a template's do. Its shared components are rows
+    // already; leaving without publishing removes them (category import:).
+    function _pgFigmaOpen(res) {
+        var tries = 0;
+        (function wait() {
+            if (!(canvasDoc && iframeReady) && tries++ < 100) { setTimeout(wait, 60); return; }
+            _pgTemplateApply(res);
+            sdToast(esc(_sdT('The Figma frames are open as tabs. Change what you like, then press Publish.')), 'success', 8000);
+        })();
+    }
+
     /**
      * "Paste HTML content" — a design started from markup on the clipboard.
      *
@@ -89248,6 +89261,9 @@ const StyleDesigner = (function () {
         // the template is about to replace.
         if (design && design.template && design.template.id) {
             _pgTemplateOpen(design.template);
+        }
+        if (design && design.figma && Array.isArray(design.figma.pages)) {
+            _pgFigmaOpen(design.figma);
         }
 
         // The editor has laid itself out and the canvas has painted: the

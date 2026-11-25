@@ -519,3 +519,7 @@ function pg_figma_refusal($error)
 
     return array('status' => 'error', 'code' => $kind, 'message' => $message);
 }
+
+// The import that turns the ticked frames into pages: its being loaded is
+// what lists the Figma start in the New design window.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
