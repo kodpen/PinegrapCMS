@@ -9006,3 +9006,62 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
     font-size: .72rem; line-height: 1.4;
     background: rgba(245, 158, 11, .14); color: #f59e0b;
 }
+
+/* ── The first tour (part 'tour', style_designer_tour.js) ──
+   The card "New here?", the ring round a stop's control and the bubble
+   beside it. Over the editor, under a dialog; nothing is dimmed. */
+.sd-tour-card, .sd-tour-bubble {
+    position: fixed; z-index: 1042; box-sizing: border-box;
+    background: var(--sd-raised-bg); color: var(--sd-label);
+    border-radius: 12px; box-shadow: inset 0 0 0 1px var(--sd-border-strong), 0 14px 34px rgba(0, 0, 0, .55);
+    font-size: 13px; line-height: 1.45;
+}
+.sd-tour-card { right: 16px; bottom: 40px; width: 320px; display: flex; gap: 12px; padding: 14px 16px; }
+.sd-tour-card.is-fading { opacity: 0; transform: translateY(8px); transition: opacity .16s ease, transform .16s ease; }
+.sd-tour-card.is-fading.is-in { opacity: 1; transform: none; }
+.sd-tour-card-ic {
+    flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+    font-size: 17px; color: var(--sd-accent); background: var(--sd-accent-soft);
+}
+.sd-tour-card-title { font-size: 14px; font-weight: 650; color: var(--sd-text); }
+.sd-tour-card-line { margin: 2px 0 11px; font-size: 12px; }
+.sd-tour-btns { display: flex; align-items: center; gap: 8px; }
+.sd-tour-btns .sd-btn { font-size: 13px; padding: 5px 12px; border-radius: 7px; }
+.sd-tour-space { flex: 1; }
+.sd-tour-skip { background: none; border-color: transparent; color: var(--sd-text-muted); }
+
+.sd-tour-ring {
+    position: fixed; z-index: 1041; pointer-events: none; box-sizing: border-box;
+    border: 2px solid var(--sd-accent); border-radius: 8px;
+    box-shadow: 0 0 0 7px rgba(var(--sd-accent-rgb), .22);
+}
+.sd-tour-ring.is-gliding { transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease; }
+
+.sd-tour-bubble { width: 320px; padding: 13px 16px 12px; }
+.sd-tour-count {
+    display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 650;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--sd-text-muted);
+}
+.sd-tour-dots { display: inline-flex; gap: 4px; margin-left: auto; }
+.sd-tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--sd-border-strong); }
+.sd-tour-dots i.is-on { background: var(--sd-accent); }
+.sd-tour-text { margin: 7px 0 13px; font-size: 13px; line-height: 1.5; color: var(--sd-text); }
+.sd-tour-text b { font-weight: 650; }
+.sd-tour-said { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sd-tour-arrow {
+    position: absolute; display: none; width: 12px; height: 12px;
+    background: var(--sd-raised-bg); box-shadow: inset 1px 1px 0 var(--sd-border-strong);
+}
+.sd-tour-bubble.at-left .sd-tour-arrow { display: block; left: -6px; transform: rotate(-45deg); }
+.sd-tour-bubble.at-right .sd-tour-arrow { display: block; right: -6px; transform: rotate(135deg); }
+.sd-tour-bubble.at-top .sd-tour-arrow { display: block; top: -6px; transform: rotate(45deg); }
+.sd-tour-bubble.at-bottom .sd-tour-arrow { display: block; bottom: -6px; transform: rotate(225deg); }
+
+/* Under 576 px: a sheet across the window's foot, or its top. */
+.sd-tour-card.is-sheet, .sd-tour-bubble.is-sheet {
+    left: 0; right: 0; bottom: 0; width: auto; border-radius: 14px 14px 0 0;
+}
+.sd-tour-bubble.is-sheet.is-top { bottom: auto; border-radius: 0 0 14px 14px; }
+@media (prefers-reduced-motion: reduce) {
+    .sd-tour-card.is-fading, .sd-tour-ring.is-gliding { transition: none; }
+}

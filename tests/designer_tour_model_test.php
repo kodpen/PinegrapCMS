@@ -253,3 +253,27 @@ JS
 	pg_assert_true(!$res['badName'], 'a name outside the plain letters is never due');
 	pg_assert_same(array(), $res['badSeen'], 'and never stored');
 }
+
+function test_designer_tour_part_has_a_sentence_for_every_stop()
+{
+	$part = PG_FUNCTIONS_DIR . '/assets/js/style_designer_tour.js';
+	pg_assert_true(is_file($part), 'the tour part exists');
+	$src = (string) @file_get_contents($part);
+
+	$got = designer_tour_test_node('out = T.stops("full").concat(T.stops("content")).map(function (s) { return s.id; });');
+
+	if ($got === null) {
+		return;
+	}
+
+	foreach ($got as $id) {
+		pg_assert_true(
+			(bool) preg_match("/case '" . preg_quote($id, '/') . "': return \\[_sdT\\('[^']+'\\), _sdT\\('[^']+'\\)\\];/", $src),
+			"stop $id has its bold words and sentence in the part"
+		);
+	}
+
+	// The part's first source is the model, so the part may use it.
+	$def = include PG_FUNCTIONS_DIR . '/includes/designer_parts/tour.php';
+	pg_assert_same('assets/js/pg_designer_tour.js', $def['sources'][0], 'the model loads first');
+}
