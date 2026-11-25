@@ -1383,9 +1383,23 @@ function pg_panel_designer($request, $action)
                 $state = pg_design_variables_state(pg_design_variables_from_answers($state['model'],
                     pg_design_variables_answers($request['answers']), $state['defaults']), $look, $palette);
             }
+            // Export: the model as a Design Tokens file the editor offers
+            // as a download. Import: the text of a file, read in the
+            // browser since api.php reads JSON only, answered with the
+            // model it gives and what it would change, or the reason it is
+            // refused; the tab asks before it uses the model.
+            $extra = array();
+            if (!empty($request['export'])) {
+                $extra['export'] = array('text' => pg_design_variables_tokens_text($state['model']),
+                    'count' => pg_design_variables_tokens_export($state['model'])['count'],
+                    'name' => pg_design_variables_tokens_file_name(isset($request['name']) ? (string)$request['name'] : ''));
+            }
+            if (isset($request['tokens']) && is_string($request['tokens'])) {
+                $extra['import'] = pg_design_variables_tokens_import($request['tokens'], $state['model'], $state['defaults']);
+            }
             respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
                 'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
-                'list' => pg_design_variables_client_list())
+                'list' => pg_design_variables_client_list()) + $extra
                 + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
             break;
 

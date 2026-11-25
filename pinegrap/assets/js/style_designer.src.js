@@ -77745,10 +77745,22 @@ const StyleDesigner = (function () {
             // its menu, never buttons of their own.
             var more = '<details class="sd-vars-more ms-auto position-relative">' +
                 '<summary class="btn btn-sm btn-link theme-secondary"><span class="bi bi-three-dots me-1" aria-hidden="true"></span>' + esc(_sdT('More')) + '</summary>' +
-                '<div class="dropdown-menu show end-0" role="menu"><button type="button" class="dropdown-item" role="menuitem" data-th-ask>' + esc(_sdT('Ask me again')) + '</button></div></details>';
+                '<div class="dropdown-menu show end-0" role="menu"><button type="button" class="dropdown-item" role="menuitem" data-th-ask>' + esc(_sdT('Ask me again')) + '</button>' +
+                '<button type="button" class="dropdown-item" role="menuitem" data-th-file="importTokens">' + esc(_sdT('Import')) + '</button>' +
+                // Grey while the design has no variables yet.
+                '<button type="button" class="dropdown-item" role="menuitem" data-th-file="exportTokens"' + (_sdVarsHost(null).hasCss() ? '' : ' disabled') + '>' + esc(_sdT('Export')) + '</button></div></details>';
             host.innerHTML = '<div class="d-flex align-items-start gap-2">' + tabs + more + '</div><div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
             _sdThemeBindTabs(host);
             host.querySelector('[data-th-ask]').addEventListener('click', _sdVarsAskAgain);
+            host.querySelectorAll('[data-th-file]').forEach(function (b) {
+                b.addEventListener('click', function () { _sdVarsFile(b.getAttribute('data-th-file')); });
+            });
+            // A first change in the tab gives the design variables: the
+            // menu asks again each time it opens.
+            host.querySelector('.sd-vars-more').addEventListener('toggle', function () {
+                var ex = host.querySelector('[data-th-file="exportTokens"]');
+                if (ex && this.open) ex.disabled = !_sdVarsHost(null).hasCss();
+            });
             _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
             return;
         }
@@ -77985,6 +77997,21 @@ const StyleDesigner = (function () {
         // No filled button here: the window's Publish is the filled one.
         host.btn = { fill: 'btn btn-sm btn-outline theme-primary', quiet: 'btn btn-sm btn-outline theme-secondary', ghost: 'btn btn-sm btn-link theme-secondary' };
         _sdPartCall('questions', 'ask', [host]).catch(_sdPartFailed);
+    }
+
+    // "Export" and "Import" of the More menu: the part writes or reads a
+    // Design Tokens file; a file read is asked about before it is used.
+    function _sdVarsFile(method) {
+        var pane = document.getElementById('sd-vars-pane');
+        if (!pane) return;
+        var more = document.querySelector('.sd-vars-more');
+        if (more) more.open = false;
+        var host = _sdVarsHost(pane);
+        host.name = function () {
+            var n = document.querySelector('[name="name"]');
+            return n ? n.value.trim() : '';
+        };
+        _sdPartCall('variables', method, [host]).catch(_sdPartFailed);
     }
 
     // A changed look or palette carries the variables along (the untouched
