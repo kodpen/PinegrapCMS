@@ -5,7 +5,7 @@ description: The Publish check in the Publish sheet (PC4): pages checked, a row'
 
 ## Where does it run?
 - The part `publishcheck` (`assets/js/style_designer_publishcheck.js`, bundle with `pg_publish_findings.js` and `pg_publish_content.js`), handed with the Publish sheet (full access, drafts ready, not a component alone). `_pgPublishSheet()` gives the sheet `bridge.check(keys, done)` and `bridge.findings(key, retry)`. No bar button; nothing runs while editing.
-- Built in #11577 (PC4 of `plans/designer-publish-check.md`).
+- Built in #11577; Fix and Ignore in #11607.
 
 ## Which pages are checked, and when?
 - The ticked pages when the sheet opens, a page when it is ticked, all with "Select all". An unticked page has no result.
@@ -29,7 +29,8 @@ description: The Publish check in the Publish sheet (PC4): pages checked, a row'
 - `plan()` gives the reasons as `checks` (apart from the approval `reasons`); the editor sends `publish_check_reason` with the page; the save logs "page (…) was published with a blocking Publish check finding: …" when the page ends on the site (`pg_designer_publish_check_reason()`). Anyone who may publish may do it; the server checks nothing more.
 
 ## What is not wired yet?
-- Component field leftovers (`leftovers`) and `unreached` are not asked: no editor source gives them.
+- Component field leftovers, open work: `read()` takes `sources.leftovers`, blocks on them and Fix exists, but the sheet never asks. Source: `PGComponentOverrides.leftovers` per placed component (`component-overrides-model.md`); no plan step names it yet.
+- `unreached` (no link leads to the page) is not asked either: no editor source gives it.
 
 ## What does it cost?
 - At opening: core +0.9 KB, `pg_designer_publish.js` +8.4 KB (+2 KB gzip); the part, 19 KB (7 KB gzip), at the first check.

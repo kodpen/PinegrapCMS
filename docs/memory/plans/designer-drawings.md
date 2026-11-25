@@ -30,7 +30,7 @@ priority: 8
 - DD3 (M) Done (#11525). `designer-start-import.md`: Figma on Connections, the frame list, the report; Canva's form, reference pictures and brand. Holds ST3, ST5, ST6.
 - DD5 (S) Done (#11538). `designer-preview-as.md`: the "Preview as" bar, its three choosers, the "Check all cases" list. Holds PW3, PW4.
 - DD6 (M) Done (#11547). `designer-component-overrides.md`: marking a field open, the component's list, "This place" with the dot and reset, variants. Holds CO3 to CO5.
-- DD7 (M) Done (#11547). `designer-publish-check.md`: the sheet's results, the five groups, a finding with Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
+- DD7 (M) Done (#11547). `designer-publish-check-drawing.md`: the results, the five groups, Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
 - DD8 (M) Done (#11550). `designer-canvas-guides.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
 - DD9 (M) Done (#11559). `designer-my-library-drawing.md`: the save window, "My library" in Blocks, "Manage library", Export, Import. Holds ML2 to ML4.
 - DD10 (S) Done (#11561). `designer/designer-image-focus-drawing.md`: the Focus control, "Set focus". IF2, IF3 built.

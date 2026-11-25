@@ -11,7 +11,7 @@ description: Decisions made, product part 110 (2026-11-25 on): all eleven packag
 - Placing and sizing: a value per screen size (width, height, position, font size, "hide on", sticky from a size); grid columns, rows, spans and named areas; the small layout rows (inset presets, a typed layer order, scroll snap, aspect ratio with no wrapper, object fit on video).
 - Dressing and moving: hover, focus and pressed states with a transition; the small effects (filters, background blur, blend, text shadow, letter spacing, a line limit, gradient stops from the palette, cursor); background layers and transforms; masks, clip shapes and more entrance motions.
 - From the Bootstrap Studio comparison: the page components (back to top, scroll progress, scrollspy, the navbar's scrolled state); a collection made with its list and detail pages in one action; page transitions and a drawn easing curve; favourites in the palette, find and replace on other pages and in code files, a Markdown component.
-- Not asked, because other plans hold them: one "Check for issues" window (`plans/designer-publish-check.md`) and a designer's own options on a component (`plans/designer-component-overrides.md`).
+- Not asked, because other plans hold them: one "Check for issues" window (the Publish check, `designer/designer-publish-overview.md`) and a designer's own options on a component (`plans/designer-component-overrides.md`).
 - The steps: `plans/designer-options-census.md`, DO2 to DO27.
 
 ## What is the architect's reading, not his words?
