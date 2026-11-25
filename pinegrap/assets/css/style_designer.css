@@ -8141,6 +8141,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-vars-summary { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #e6edf3; cursor: pointer; }
 .sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
 .sd-vars-row .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
+.sd-vars-row.is-marked { background: rgba(88, 166, 255, .12); box-shadow: inset 3px 0 0 #58a6ff; }
 .sd-vars-swatch { width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .15); }
 .sd-vars-sample { font-size: 13px; color: #8b949e; text-align: center; }
 .sd-vars-pair { display: flex; gap: 6px; }

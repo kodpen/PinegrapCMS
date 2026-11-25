@@ -141,7 +141,7 @@ StyleDesigner.definePart('variables', function (K) {
                 '<input type="color" class="sd-vars-color" data-custom="' + i + '" data-mode="dark" value="' + attr(c.dark) + '" aria-label="' + attr(c.name) + ', ' + attr(_sdT('Dark')) + '" title="' + attr(_sdT('Dark')) + '">' +
               '</span>'
             : '<input type="text" class="form-control form-control-sm sd-vars-input" data-custom="' + i + '" value="' + attr(c.value) + '" aria-label="' + attr(c.name) + '" spellcheck="false">';
-        return '<div class="sd-vars-row">' +
+        return '<div class="sd-vars-row" data-var-row="' + attr(c.key) + '">' +
             (c.kind === 'color' ? '<span class="sd-vars-swatch" style="background:' + attr(c.light) + '" aria-hidden="true"></span>' : '<span class="sd-vars-sample" aria-hidden="true"></span>') +
             '<input type="text" class="form-control form-control-sm sd-vars-name" data-custom-name="' + i + '" value="' + attr(c.name) + '" maxlength="40" aria-label="' + attr(_sdT('Name')) + '">' +
             value + usedHtml(used || {}, tokenOf(c.key, true)) +
@@ -176,7 +176,7 @@ StyleDesigner.definePart('variables', function (K) {
             S.list.rows.forEach(function (vr) {
                 if (vr.group !== g.key) return;
                 var v = m.values[vr.key];
-                h += '<div class="sd-vars-row">' + sample(vr, v) +
+                h += '<div class="sd-vars-row" data-var-row="' + attr(vr.key) + '">' + sample(vr, v) +
                      '<span class="sd-vars-label">' + esc(vr.label) + '</span>' + field(vr, v) + usedHtml(used, tokenOf(vr.key, false)) + '</div>';
             });
             h += '</details>';
@@ -452,6 +452,26 @@ StyleDesigner.definePart('variables', function (K) {
         return ask(current()).then(function (res) { if (res) draw(); });
     }
 
+    // One variable shown: its fold opened, its row marked and scrolled to,
+    // its field focused. The Style guide's names lead here.
+    function reveal(host, key) {
+        return Promise.resolve(render(host)).then(function () {
+            if (!shown() || !S) return;
+            var group = 'custom';
+            (S.list.rows || []).forEach(function (vr) { if (vr.key === key) group = vr.group; });
+            if (!open[group]) { open[group] = true; draw(); }
+            var row = Array.prototype.filter.call(H.el.querySelectorAll('[data-var-row]'), function (r) {
+                return r.getAttribute('data-var-row') === key;
+            })[0];
+            if (!row) return;
+            Array.prototype.forEach.call(H.el.querySelectorAll('.sd-vars-row.is-marked'), function (r) { r.classList.remove('is-marked'); });
+            row.classList.add('is-marked');
+            row.scrollIntoView({ block: 'center' });
+            var f = row.querySelector('input, select');
+            if (f) f.focus({ preventScroll: true });
+        });
+    }
+
     // The look or palette changed: the stylesheet is worked out again for
     // the new choice. The hidden input is written only when the tab changed
     // the model already: the save carries a stored file over by itself.
@@ -683,5 +703,5 @@ StyleDesigner.definePart('variables', function (K) {
         });
     }
 
-    return { render: render, refresh: refresh, pick: pick, detach: detach, exportTokens: exportTokens, importTokens: importTokens };
+    return { render: render, refresh: refresh, reveal: reveal, pick: pick, detach: detach, exportTokens: exportTokens, importTokens: importTokens };
 });

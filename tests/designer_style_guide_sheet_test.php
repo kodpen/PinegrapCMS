@@ -53,3 +53,29 @@ function test_style_guide_sheet_read_is_for_designers_and_clean()
 	$subs = pg_page_cache_panel_sub_actions();
 	pg_assert_true(in_array('style_guide', $subs['designer']['clean'], true), 'it changes no stored page');
 }
+
+function test_style_guide_sheet_prints_the_sheet_alone()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_styleguide.js');
+	pg_assert_true(strpos($part, "_sdT('Print or save as PDF')") !== false, 'the head carries Print or save as PDF');
+	pg_assert_true(strpos($part, "_sdT('Getting it ready…')") !== false, 'the button says it is getting ready');
+	pg_assert_true(strpos($part, 'var win = W.frame.contentWindow;') !== false && strpos($part, 'win.print()') !== false, 'the frame prints, not the editor');
+	pg_assert_true(strpos($part, '@page{') !== false, 'every page carries its head and foot');
+	pg_assert_true(strpos($part, 'counter(pages)') !== false, 'the foot counts the pages');
+	pg_assert_true(strpos($part, 'print-color-adjust:exact') !== false, 'colours print as colours');
+	pg_assert_true(strpos($part, 'break-inside:avoid') !== false, 'a row or card is never split');
+}
+
+function test_style_guide_names_open_their_variable_or_component()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_styleguide.js');
+	pg_assert_true(strpos($part, "_sdT('Open in Variables')") !== false, 'a variable name says where it leads');
+	pg_assert_true(strpos($part, "_sdT('Open the component')") !== false, 'a component name says where it leads');
+	pg_assert_true(strpos($part, 'host.openVariable') !== false && strpos($part, 'host.openComponent') !== false, 'the host opens them');
+	$vars = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_variables.js');
+	pg_assert_true(strpos($vars, 'reveal: reveal') !== false, 'the Variables part opens one variable');
+	pg_assert_true(strpos($vars, 'data-var-row=') !== false, 'each row names its variable');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_true(strpos($js, "_sdPartCall('variables', 'reveal'") !== false, 'the core hands the key to the Variables part');
+	pg_assert_true(strpos($js, "edit_system_style.php?component=") !== false, 'a component opens on its own');
+}
