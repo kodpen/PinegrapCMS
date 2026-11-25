@@ -22,6 +22,15 @@
  *                          null when it did not run (it returns whether the
  *                          sheet showed the result, see outcome())
  *   takeOff(keys)          keep these pages off the site (asks first)
+ *   check(keys, done)      optional, the Publish check: checks these pages
+ *                          and calls done(key, summary) for each, the
+ *                          summary of PgPublishFindings.summary(), or
+ *                          { state: 'failed' } when the check did not run
+ *   findings(key, retry)   the element listing a checked page's findings,
+ *                          drawn under its row; retry() checks it again
+ * With check(), a ticked page gets its result at the end of its row; a
+ * blocking page goes on the site only with "Publish anyway" and a reason
+ * (publish()'s fifth argument: key => reason), as a held row does.
  * The markup (#sdPublishSheet) and its texts (data-sdp-text, from lang())
  * are printed by includes/designer_screen.php.
  *
@@ -33,13 +42,19 @@
 var PgDesignerPublish = (function () {
     'use strict';
 
+    function has(map, key) {
+        return !!map && Object.prototype.hasOwnProperty.call(map, key);
+    }
+
     // A row the sheet can check: not locked to this user, not held (an
     // experiment's variant, a bundle's draft, a draft waiting for approval)
-    // unless an administrator chose "Publish anyway" for it (`anyway`: key =>
-    // the reason typed so far).
-    function selectable(r, anyway) {
+    // unless an administrator chose "Publish anyway" for it, and not
+    // blocked by the Publish check unless "Publish anyway" was chosen for
+    // it (`anyway`: key => the reason typed so far; `blocked`: key => true).
+    function selectable(r, anyway, blocked) {
         if (!r || r.locked) return false;
-        return r.state !== 'held' || !!(r.override && anyway && Object.prototype.hasOwnProperty.call(anyway, r.key));
+        if (has(blocked, r.key) && !has(anyway, r.key)) return false;
+        return r.state !== 'held' || !!(r.override && has(anyway, r.key));
     }
 
     // The keys checked when the sheet opens: every draft (a page waiting
@@ -48,9 +63,10 @@ var PgDesignerPublish = (function () {
     // { key, name, state: 'draft'|'scheduled'|'live'|'held', label, note, changed,
     //   locked, home, active, override }; `override`: a held draft this
     //   person may publish anyway with a reason.
-    function defaults(rows) {
+    function defaults(rows, check) {
+        var blocked = (check && check.blocked) || null;
         return (rows || []).filter(function (r) {
-            return selectable(r) && (r.state === 'draft' || (r.state === 'live' && r.changed));
+            return selectable(r, null, blocked) && (r.state === 'draft' || (r.state === 'live' && r.changed));
         }).map(function (r) { return r.key; });
     }
 
@@ -60,16 +76,30 @@ var PgDesignerPublish = (function () {
     // draft is saved as it is, off the site. A held draft checked with
     // "Publish anyway" is published with its reason (`reasons`); without
     // one, `missing` keeps the button off.
-    function plan(rows, keys, anyway) {
+    // `check` is the Publish check's state: `pending` the ticked pages still
+    // being checked (`waiting` keeps the button off), `blocked` the pages
+    // with a blocking finding: one goes only with "Publish anyway" and its
+    // reason (`checks`: key => reason); left out, a page on the site that
+    // changed is held out of the save and a draft stays a draft.
+    function plan(rows, keys, anyway, check) {
         var on = {};
         (keys || []).forEach(function (k) { on[k] = true; });
-        var out = { publish: [], hold: [], save: false, reasons: {}, missing: false };
+        var blocked = (check && check.blocked) || null;
+        var pending = (check && check.pending) || null;
+        var out = { publish: [], hold: [], save: false, reasons: {}, checks: {}, missing: false, waiting: false };
         (rows || []).forEach(function (r) {
-            if (!selectable(r, anyway)) return;
+            if (!selectable(r, anyway, blocked)) {
+                if (r && !r.locked && has(blocked, r.key) && r.state === 'live' && r.changed) out.hold.push(r.key);
+                return;
+            }
+            if (on[r.key] && has(pending, r.key)) out.waiting = true;
+            var why = String((anyway && anyway[r.key]) || '').trim();
+            if (on[r.key] && (r.state === 'held' || has(blocked, r.key))) {
+                if (!why) { out.missing = true; return; }
+                if (has(blocked, r.key)) out.checks[r.key] = why;
+            }
             if (r.state === 'held') {
                 if (!on[r.key]) return;
-                var why = String(anyway[r.key] || '').trim();
-                if (!why) { out.missing = true; return; }
                 out.publish.push(r.key);
                 out.reasons[r.key] = why;
                 out.save = true;
@@ -104,11 +134,56 @@ var PgDesignerPublish = (function () {
         return out;
     }
 
+    // What a row's result says, from its summary: `kind` its look (run, ok,
+    // warn, bad, none), `text` its data-sdp-text key, `n` the count it
+    // names. A page being checked is `run`; a page not ticked has none. A
+    // page with blocking findings says "n blocking"; its others are listed
+    // inside.
+    function result(sum, busy) {
+        if (busy) return { kind: 'run', text: 'checking', n: 0 };
+        if (!sum) return null;
+        if (sum.state === 'block') return { kind: 'bad', text: 'result-block', n: sum.block || 0 };
+        if (sum.state === 'look') return { kind: 'warn', text: 'result-look', n: sum.look || 0 };
+        if (sum.state === 'ready') return { kind: 'ok', text: 'result-ready', n: 0 };
+        return { kind: 'none', text: 'result-failed', n: 0 };
+    }
+
     var bridge = null;
     var current = [];   // the rows read when the sheet opened
     var checked = {};
-    var anyway = {};    // held rows an administrator publishes anyway: key => reason
+    var anyway = {};    // held or blocking rows published anyway: key => reason
     var saving = false;
+    var results = {};   // the Publish check: key => summary
+    var pending = {};   // key => true while the page is checked
+    var openKey = '';   // the row whose findings are shown
+    var round = 0;      // answers of an earlier opening are dropped
+
+    function blockedKeys() {
+        var out = {};
+        Object.keys(results).forEach(function (k) { if (results[k] && results[k].state === 'block') out[k] = true; });
+        return out;
+    }
+
+    function checkState() {
+        return { blocked: blockedKeys(), pending: pending };
+    }
+
+    // Checks the ticked pages that have no result yet.
+    function ask(keys) {
+        if (!bridge || typeof bridge.check !== 'function') return;
+        var todo = (keys || []).filter(function (k) { return !has(results, k) && !has(pending, k); });
+        if (!todo.length) return;
+        todo.forEach(function (k) { pending[k] = true; });
+        var mine = round;
+        bridge.check(todo, function (key, sum) {
+            if (mine !== round || !has(pending, key)) return;
+            delete pending[key];
+            results[key] = sum || { state: 'failed' };
+            // A blocking page is unticked until "Publish anyway".
+            if (results[key].state === 'block' && !has(anyway, key)) delete checked[key];
+            if (!saving) draw();
+        });
+    }
 
     function el() { return document.getElementById('sdPublishSheet'); }
 
@@ -125,16 +200,20 @@ var PgDesignerPublish = (function () {
         var box = document.createElement('input');
         box.type = 'checkbox';
         box.className = 'check m-0 flex-shrink-0';
+        var blocked = blockedKeys();
         box.checked = !!checked[r.key];
-        box.disabled = !selectable(r, anyway);
+        box.disabled = !selectable(r, anyway, blocked);
         box.addEventListener('change', function () {
             if (box.checked) checked[r.key] = true; else delete checked[r.key];
             // Unchecked, a draft published anyway is held again.
-            if (!box.checked && Object.prototype.hasOwnProperty.call(anyway, r.key)) { delete anyway[r.key]; draw(); return; }
+            if (!box.checked && has(anyway, r.key)) { delete anyway[r.key]; draw(); return; }
+            // Ticked, a page is checked.
+            if (box.checked && !has(results, r.key)) { ask([r.key]); draw(); return; }
             sync();
         });
         var name = document.createElement('span');
-        name.className = 'flex-grow-1 text-truncate';
+        name.className = 'flex-grow-1 text-truncate sd-publish-name';
+        if (has(blocked, r.key) && !has(anyway, r.key)) name.classList.add('sd-publish-dim');
         name.textContent = r.name;
         if (r.active) name.classList.add('fw-semibold');
         var state = document.createElement('span');
@@ -158,7 +237,15 @@ var PgDesignerPublish = (function () {
             item.appendChild(lk);
         }
         item.appendChild(state);
-        if (r.state === 'held' && r.override && !Object.prototype.hasOwnProperty.call(anyway, r.key)) {
+        var res = resultEl(r);
+        if (res) {
+            // On a narrow sheet the result goes to a second line.
+            var brk = document.createElement('span');
+            brk.className = 'sd-publish-brk';
+            item.appendChild(brk);
+            item.appendChild(res);
+        }
+        if (((r.state === 'held' && r.override) || has(blocked, r.key)) && !has(anyway, r.key)) {
             var any = document.createElement('button');
             any.type = 'button';
             any.className = 'pg-button pg-button-quiet pg-button-sm text-nowrap';
@@ -176,7 +263,64 @@ var PgDesignerPublish = (function () {
         return item;
     }
 
-    // The reason asked under a held row published anyway.
+    // The result at the end of a checked row: "Checking…" while it runs,
+    // then a button that opens the page's findings under the row.
+    function resultEl(r) {
+        if (!bridge || typeof bridge.check !== 'function' || (!checked[r.key] && !has(results, r.key))) return null;
+        var how = result(results[r.key], has(pending, r.key));
+        if (!how) return null;
+        var label = text(how.text).replace('{n}', String(how.n));
+        var ICON = { ok: 'bi-check-circle-fill', warn: 'bi-exclamation-triangle-fill', bad: 'bi-sign-stop-fill', none: 'bi-dash-circle' };
+        if (how.kind === 'run') {
+            var run = document.createElement('span');
+            run.className = 'sd-publish-result is-run';
+            var sp = document.createElement('span');
+            sp.className = 'spinner-border spinner-border-sm';
+            sp.setAttribute('aria-hidden', 'true');
+            run.appendChild(sp);
+            run.appendChild(document.createTextNode(label));
+            return run;
+        }
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sd-publish-result is-' + how.kind + (openKey === r.key ? ' is-open' : '');
+        b.setAttribute('aria-expanded', openKey === r.key ? 'true' : 'false');
+        b.setAttribute('data-sdp-result-key', r.key);
+        var ic = document.createElement('span');
+        ic.className = 'bi ' + ICON[how.kind];
+        ic.setAttribute('aria-hidden', 'true');
+        var ch = document.createElement('span');
+        ch.className = 'bi ' + (openKey === r.key ? 'bi-chevron-up' : 'bi-chevron-down');
+        ch.setAttribute('aria-hidden', 'true');
+        b.appendChild(ic);
+        b.appendChild(document.createTextNode(label));
+        b.appendChild(ch);
+        b.addEventListener('click', function (e) {
+            e.preventDefault();
+            openKey = (openKey === r.key) ? '' : r.key;
+            draw();
+            var again = el() && el().querySelector('[data-sdp-result-key="' + r.key + '"]');
+            if (again) again.focus();
+        });
+        return b;
+    }
+
+    // The findings of the open row, drawn by the check.
+    function findingsEl(r) {
+        if (openKey !== r.key || !has(results, r.key) || !bridge || typeof bridge.findings !== 'function') return null;
+        var box = bridge.findings(r.key, function () {
+            delete results[r.key];
+            ask([r.key]);
+            draw();
+        });
+        if (!box) return null;
+        var wrap = document.createElement('div');
+        wrap.className = 'sd-publish-findings';
+        wrap.appendChild(box);
+        return wrap;
+    }
+
+    // The reason asked under a held or blocking row published anyway.
     function reasonEl(r) {
         var wrap = document.createElement('div');
         wrap.className = 'list-group-item bg-transparent pt-0 sd-publish-reason';
@@ -184,7 +328,7 @@ var PgDesignerPublish = (function () {
         var lab = document.createElement('label');
         lab.className = 'form-label small fg-warning mb-1';
         lab.setAttribute('for', id);
-        lab.textContent = text('anyway-reason');
+        lab.textContent = text(has(blockedKeys(), r.key) ? 'anyway-check' : 'anyway-reason');
         var input = document.createElement('input');
         input.type = 'text';
         input.id = id;
@@ -203,9 +347,16 @@ var PgDesignerPublish = (function () {
         var root = el();
         if (!root || !bridge) return;
         var rows = current;
-        var p = plan(rows, Object.keys(checked), anyway);
+        var p = plan(rows, Object.keys(checked), anyway, checkState());
         var go = root.querySelector('[data-sdp-act="publish"]');
-        if (go) go.disabled = !p.save || p.missing;
+        if (go) go.disabled = !p.save || p.missing || p.waiting;
+        var busyN = Object.keys(pending).length;
+        var wait = root.querySelector('[data-sdp-checking]');
+        if (wait) {
+            wait.classList.toggle('d-none', !busyN);
+            var wt = wait.querySelector('[data-sdp-checking-text]');
+            if (wt) wt.textContent = text('checking-n').replace('{n}', String(busyN));
+        }
         var note = root.querySelector('[data-sdp-hold-note]');
         if (note) note.classList.toggle('d-none', !p.hold.length);
         var active = null;
@@ -225,7 +376,9 @@ var PgDesignerPublish = (function () {
         list.textContent = '';
         current.forEach(function (r) {
             list.appendChild(rowEl(r));
-            if (Object.prototype.hasOwnProperty.call(anyway, r.key)) list.appendChild(reasonEl(r));
+            if (has(anyway, r.key)) list.appendChild(reasonEl(r));
+            var f = findingsEl(r);
+            if (f) list.appendChild(f);
         });
         sync();
     }
@@ -247,7 +400,12 @@ var PgDesignerPublish = (function () {
         if (go && !result) go.classList.remove('d-none');
         var done = q('[data-sdp-act="done"]');
         if (done) done.classList.toggle('d-none', !result);
-        if (result) { var n = q('[data-sdp-hold-note]'); if (n) n.classList.add('d-none'); }
+        if (result) {
+            var n = q('[data-sdp-hold-note]');
+            if (n) n.classList.add('d-none');
+            var w = q('[data-sdp-checking]');
+            if (w) w.classList.add('d-none');
+        }
     }
 
     // The save in flight: the Publish button turns into a progress label,
@@ -320,14 +478,15 @@ var PgDesignerPublish = (function () {
             var act = b.getAttribute('data-sdp-act');
             var rows = current;
             if (act === 'all') {
-                var all = rows.filter(function (r) { return selectable(r, anyway); }).map(function (r) { return r.key; });
+                var all = rows.filter(function (r) { return selectable(r, anyway, blockedKeys()); }).map(function (r) { return r.key; });
                 var every = all.every(function (k) { return checked[k]; });
                 checked = {};
                 if (!every) all.forEach(function (k) { checked[k] = true; });
+                ask(Object.keys(checked));
                 draw();
             } else if (act === 'publish') {
-                var p = plan(rows, Object.keys(checked), anyway);
-                if (!p.save || p.missing || saving) return;
+                var p = plan(rows, Object.keys(checked), anyway, checkState());
+                if (!p.save || p.missing || p.waiting || saving) return;
                 // The sheet stays open: the button shows the save, then the
                 // sheet lists where the pages went. A save that did not run
                 // (its reason is shown by the editor) gives the pick back.
@@ -341,7 +500,7 @@ var PgDesignerPublish = (function () {
                     return !!(root && root.open);
                 };
                 busy(true);
-                bridge.publish(p.publish, p.hold, report, p.reasons);
+                bridge.publish(p.publish, p.hold, report, p.reasons, p.checks);
             } else if (act === 'done') {
                 closeThen(function () {});
             } else if (act === 'page-draft') {
@@ -353,6 +512,7 @@ var PgDesignerPublish = (function () {
         });
     }
 
+    // `b.reopen`: the row whose findings are open again ("Back to Publish").
     function open(b) {
         var root = el();
         if (!root || !b) return false;
@@ -362,12 +522,25 @@ var PgDesignerPublish = (function () {
         current = bridge.rows() || [];
         checked = {};
         anyway = {};
+        results = {};
+        pending = {};
+        round++;
+        openKey = b.reopen ? String(b.reopen) : '';
         defaults(current).forEach(function (k) { checked[k] = true; });
+        if (openKey) checked[openKey] = true;
         bind(root);
+        ask(Object.keys(checked));
         draw();
         if (window.pgUI) pgUI.dialog.show(root);
         return true;
     }
 
-    return { defaults: defaults, plan: plan, outcome: outcome, open: open };
+    // Closes the sheet: a press on a finding's path selects its element.
+    function close() {
+        var root = el();
+        if (root && window.pgUI && root.open) return pgUI.dialog.hide(root);
+        return Promise.resolve();
+    }
+
+    return { defaults: defaults, plan: plan, outcome: outcome, result: result, open: open, close: close };
 })();

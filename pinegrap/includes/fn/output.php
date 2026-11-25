@@ -8208,6 +8208,10 @@ function pg_js_bundles()
         'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // The Publish check: its pure finding shape (window.PgPublishFindings)
+        // and Content check (window.PgPublishContent), then the part that
+        // checks the Publish sheet's pages and lists their findings.
+        'assets/js/style_designer_publishcheck.min.js' => array('assets/js/pg_publish_findings.js', 'assets/js/pg_publish_content.js', 'assets/js/style_designer_publishcheck.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8330,6 +8334,9 @@ function pg_designer_parts()
         // My library: "Save to my library" and the library's group of the
         // palette, its hover card and the copy it adds.
         'mylibrary' => 'assets/js/style_designer_mylibrary.min.js',
+        // The Publish check: each ticked page's result in the Publish sheet,
+        // its findings in five groups, a finding's element selected.
+        'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
     );
 }
 
