@@ -80,8 +80,8 @@ StyleDesigner.definePart('focus', function (K) {
                     ' style="left:' + v.xy[0] + '%;top:' + v.xy[1] + '%"></span>' +
             '</div>';
         var frames = '<p class="sd-fc-cap">' + esc(lay.one ? _sdT('On every screen') : _sdT('On each screen')) + '</p>' +
-            '<div class="sd-fc-frames">' + lay.rows.map(function (row) {
-                return '<div class="sd-fc-frames-row">' + row.map(function (f) { return frameHtml(f, v, host.src, nm); }).join('') + '</div>';
+            '<div class="sd-fc-frames">' + lay.rows.map(function (frs) {
+                return '<div class="sd-fc-frames-row">' + frs.map(function (f) { return frameHtml(f, v, host.src, nm); }).join('') + '</div>';
             }).join('') + '</div>';
         var foot = '';
         if (v.own) {
