@@ -2082,6 +2082,7 @@
     "{var:1} rule(s) had no place in the file and were left out.": "{var:1} kural dosyada yerini bulamadı ve eklenmedi.",
     "{var:1} rule(s) were added to {var:2}.": "{var:2} dosyasına {var:1} kural eklendi.",
     "{var:1} rules": "{var:1} kural",
+    "{var:1} rules are on": "{var:1} kural açık",
     "{var:1} rules. An entry that fails one is marked not eligible and gets no reviewers; it is still saved.": "{var:1} kural. Birini karşılamayan başvuru uygun değil olarak işaretlenir ve değerlendirici almaz; yine de kaydedilir.",
     "{var:1} running": "{var:1} çalışıyor",
     "{var:1} running low": "{var:1} ürün azalıyor",

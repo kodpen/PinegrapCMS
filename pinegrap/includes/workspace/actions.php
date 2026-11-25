@@ -955,7 +955,9 @@ function ws_handle_action($action, $request)
                 }
             }
 
-            $rules = ws_board_rules_for($viewer, $channel);
+            // The drawer asks for the week's counts and the last runs; the
+            // board alone for the count on its button and the rule lines.
+            $rules = ws_board_rules_for($viewer, $channel, !empty($request['runs']) || ($action === 'ws_channel_board_rule_set'));
 
             if (!$rules['ok']) {
                 return ws_action_error($rules['error']);
@@ -4945,7 +4947,8 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('This channel has no board.'));
             }
 
-            return ws_action_ok(ws_channel_board($viewer, $channel, array(
+            // Whether the toolbar offers "Automations" (channel_board_rules.php).
+            return ws_action_ok(array('automations' => ws_board_rules_gate($viewer, $channel)) + ws_channel_board($viewer, $channel, array(
                 'group_by'  => (string) ($request['group_by'] ?? 'status'),
                 'priority'  => (string) ($request['priority'] ?? ''),
                 'person'    => (int) ($request['person'] ?? 0),
