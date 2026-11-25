@@ -301,18 +301,35 @@ function test_free_work_landed_steps_from_the_log()
 }
 
 // A git command run in $dir with a fixed identity and, when given, a fixed
-// commit date; false when it fails.
-function pg_free_work_git($dir, $args, $date = '')
+// commit date; false when it fails. $args is a list of arguments, no shell.
+function pg_free_work_git($dir, array $args, $date = '')
 {
-	$env = ($date !== '') ? 'GIT_AUTHOR_DATE=' . escapeshellarg($date) . ' GIT_COMMITTER_DATE=' . escapeshellarg($date) . ' ' : '';
-	exec($env . 'git -C ' . escapeshellarg($dir) . ' -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false ' . $args . ' >/dev/null 2>&1', $out, $code);
+	$env = ($date !== '') ? array('GIT_AUTHOR_DATE' => $date, 'GIT_COMMITTER_DATE' => $date) : array();
 
-	return $code === 0;
+	return free_work_git(array_merge(array('-C', $dir, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false'), $args), $env) !== null;
 }
 
+// Removes $dir and everything in it, git's read-only object files included.
 function pg_free_work_rmdir($dir)
 {
-	exec('rm -rf ' . escapeshellarg($dir));
+	if (is_link($dir) || is_file($dir)) {
+		@chmod($dir, 0666);
+		@unlink($dir);
+
+		return;
+	}
+
+	if (!is_dir($dir)) {
+		return;
+	}
+
+	foreach ((array) scandir($dir) as $name) {
+		if ($name !== '.' && $name !== '..') {
+			pg_free_work_rmdir($dir . DIRECTORY_SEPARATOR . $name);
+		}
+	}
+
+	@rmdir($dir);
 }
 
 function test_free_work_landed_pr_older_than_sixty_days_counts()
@@ -324,9 +341,9 @@ function test_free_work_landed_pr_older_than_sixty_days_counts()
 	mkdir($source);
 
 	$old = gmdate('Y-m-d\TH:i:s\Z', time() - 200 * 86400);
-	$made = pg_free_work_git($source, 'init -q -b development')
-		&& pg_free_work_git($source, 'commit -q --allow-empty -m ' . escapeshellarg('[plan:old-plan] OP1 — first step (#9001)'), $old)
-		&& pg_free_work_git($source, 'commit -q --allow-empty -m ' . escapeshellarg('Merge train 20261120-2105'));
+	$made = pg_free_work_git($source, array('init', '-q', '-b', 'development'))
+		&& pg_free_work_git($source, array('commit', '-q', '--allow-empty', '-m', '[plan:old-plan] OP1 — first step (#9001)'), $old)
+		&& pg_free_work_git($source, array('commit', '-q', '--allow-empty', '-m', 'Merge train 20261120-2105'));
 
 	if (!$made) {
 		pg_free_work_rmdir($source);
@@ -341,12 +358,12 @@ function test_free_work_landed_pr_older_than_sixty_days_counts()
 	pg_assert_same(0, free_work_holder('old-plan', 'OP2', $landed));
 
 	// The commits-only mirror: made, then brought up to date.
-	$ref = free_work_history_mirror('file://' . $source, $mirror);
+	$ref = free_work_history_mirror(free_work_file_url($source), $mirror);
 	pg_assert_same('refs/heads/development', $ref);
 	pg_assert_same(9001, free_work_holder('old-plan', 'OP1', free_work_landed((array) free_work_log_subjects($mirror, (string) $ref))));
 
-	pg_free_work_git($source, 'commit -q --allow-empty -m ' . escapeshellarg('[plan:old-plan] OP2 — second step (#9002)'));
-	pg_assert_same('refs/heads/development', free_work_history_mirror('file://' . $source, $mirror));
+	pg_free_work_git($source, array('commit', '-q', '--allow-empty', '-m', '[plan:old-plan] OP2 — second step (#9002)'));
+	pg_assert_same('refs/heads/development', free_work_history_mirror(free_work_file_url($source), $mirror));
 	$landed = free_work_landed((array) free_work_log_subjects($mirror, 'refs/heads/development'));
 	pg_assert_same(9001, free_work_holder('old-plan', 'OP1', $landed));
 	pg_assert_same(9002, free_work_holder('old-plan', 'OP2', $landed));
@@ -355,6 +372,31 @@ function test_free_work_landed_pr_older_than_sixty_days_counts()
 
 	pg_free_work_rmdir($source);
 	pg_free_work_rmdir($mirror);
+}
+
+// The git command line is started without a shell, so it carries nothing
+// only a POSIX shell or only cmd.exe understands.
+function test_free_work_git_command_has_no_shell_syntax()
+{
+	$args = array('-C', 'C:\\Users\\Test User\\AppData\\Local\\Temp\\pg-src', 'log', '--format=%s', 'say "hi" 100% !now', '--');
+
+	pg_assert_same('git \'-C\' \'log\'', free_work_git_command(array('-C', 'log'), false));
+	pg_assert_same('git "-C" "C:\\Users\\Test User\\AppData\\Local\\Temp\\pg-src" "log" "--format=%s" "say \\"hi\\" 100% !now" "--"', free_work_git_command($args, true));
+	pg_assert_same('"a\\\\"', free_work_windows_arg('a\\'));
+
+	foreach (array(false, true) as $windows) {
+		$command = free_work_git_command($args, $windows);
+
+		foreach (array('/dev/null', '>', '2>', '&&', 'GIT_', ' cd ') as $posix) {
+			pg_assert_false(strpos($command, $posix) !== false, $posix);
+		}
+	}
+}
+
+function test_free_work_file_url()
+{
+	pg_assert_same('file:///tmp/pg-src', free_work_file_url('/tmp/pg-src'));
+	pg_assert_same('file:///C:/Users/Test User/Temp/pg-src', free_work_file_url('C:\\Users\\Test User\\Temp\\pg-src'));
 }
 
 function test_free_work_steps_skip_notes_on_a_step()
