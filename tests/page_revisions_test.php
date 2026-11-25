@@ -299,17 +299,24 @@ function test_page_revisions_seed_then_identical_save()
 // drawn, as loading a tree does.
 function test_page_revisions_compare_fetches_the_revision_shared_components()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-	$from = strpos($source, 'function _sdRevisionOpenCompare(');
-	$section = ($from === false) ? '' : substr($source, $from, strpos($source, 'function _sdRevisionShowCompare(', $from) - $from);
+	// The Compare window is the designer part `compare`.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_compare.js');
+	$from = strpos($source, 'function prefetch(');
+	$section = ($from === false) ? '' : substr($source, $from, strpos($source, 'function markupOf(', $from) - $from);
 
-	$collect = strpos($section, 'collectSharedIds(rev.tree, sids);');
-	$fetch = strpos($section, 'prefetchShared(missing, function () {');
-	$draw = strpos($section, 'generateHTML(styleName, addBc, rev.tree)');
+	$collect = strpos($section, 'K.collectSharedIds(t, ids);');
+	$fetch = strpos($section, 'K.prefetchShared(missing, function () {');
 
-	pg_assert_true(($collect !== false) && ($fetch !== false) && ($draw !== false), 'collect, fetch and draw are there');
-	pg_assert_true(($collect < $fetch) && ($fetch < $draw), 'the revision is drawn after its components are fetched');
-	pg_assert_contains('!_sharedCache[id]', $section, 'only what the cache does not hold');
+	pg_assert_true(($collect !== false) && ($fetch !== false), 'collect and fetch are there');
+	pg_assert_true($collect < $fetch, 'collected before they are fetched');
+	pg_assert_contains('!cache[id]', $section, 'only what the cache does not hold');
+
+	// Both sides are drawn and read only after their components are fetched.
+	$load = strpos($source, 'function load()');
+	$body = ($load === false) ? '' : substr($source, $load, strpos($source, 'function drawSides()', $load) - $load);
+	$wait = strpos($body, 'return prefetch(trees).then(');
+	$read = strpos($body, 'w.read = C.read(');
+	pg_assert_true(($wait !== false) && ($read !== false) && ($wait < $read), 'the sides are read after their components are fetched');
 }
 
 // Two writes of one page at the same moment fail on each other's locks more
