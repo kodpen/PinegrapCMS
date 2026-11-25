@@ -12,7 +12,7 @@ priority: 7
 - DO10 (M) after DD22, done (#11588): States. A "State" row, first in the Style tab's body, never in the panel's head: Normal (the default), Hover, Focus, Pressed.
   - Under a state, Color and background, Border and corner and Shadow and effect write `:hover`, `:focus-visible` and `:active` rules on the element's class in User Styles; the other sections are dimmed with one line saying why.
   - The canvas shows the chosen state on the selected element only; choosing another element goes back to Normal. A section holding a state's value shows a dot; "Reset this state" clears the state.
-- DO11 (S) after DO10: "Transition" in Shadow and effect: what changes (Colours, Shadow, Size and place, All), Duration and Easing, starting from `--pg-duration` and `--pg-ease`; nothing moves under reduced motion.
+- DO11 (S) done #11634: "Transition" in Shadow and effect: what changes (Colours, Shadow, Size and place, All), Duration and Easing, starting from `--pg-duration` and `--pg-ease`; nothing moves under reduced motion.
 - DO12 (M) after DO11: "Transform": Rotate, Scale, Move X and Y, Skew and Origin, in every state; composed with an Interactions effect's own transform (`pgFxBase` keeps the node's), never overwriting it.
 - DO13 (M) after DO12 and DD24: background layers: a list of layers (colour, gradient, picture) in order, each with its own rows; a gradient linear, radial or conic with three or more stops, a stop chosen from the palette so a palette change follows.
   - An element with one background reads as one layer and is written back unchanged until it is changed.

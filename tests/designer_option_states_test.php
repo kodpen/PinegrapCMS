@@ -184,3 +184,45 @@ function test_designer_option_states_for()
 	$all = array('hover', 'focus', 'pressed');
 	pg_assert_same(array($all, $all, array('hover'), $all, $all, array('hover')), $r, 'Focus and Pressed only where a visitor can focus and press');
 }
+
+// The element's Transition: one rule on the custom style class inside
+// @media (prefers-reduced-motion: no-preference), read back, the look's
+// duration and easing until chosen, taken out with its block.
+function test_designer_option_states_transition()
+{
+	$r = designer_option_states_run(
+		'var base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.transWrite(base, "pgs-abc123", { what: "colors" });'
+		. 'var b = S.transWrite(a, "pgs-abc123", { what: "shadow", ms: "320", ease: "ease-out" });'
+		. 'var c = S.transWrite(b, "pgs-abc123", { what: "shadow", ms: 5000, ease: "bounce" });'
+		. 'var own = b.replace("transition-timing-function: ease-out;", "transition-timing-function: ease-out;\n    will-change: box-shadow;");'
+		. 'var custom = b.replace("transition-property: box-shadow", "transition-property: opacity");'
+		. 'console.log(JSON.stringify({ a: a, readA: S.transRead(a, "pgs-abc123"), b: b, readB: S.transRead(b, "pgs-abc123"),'
+		. ' readC: S.transRead(c, "pgs-abc123"), none: S.transRead(base, "pgs-abc123"), other: S.transRead(b, "pgs-zzz999"),'
+		. ' out: S.transWrite(b, "pgs-abc123", { what: "" }), ownOut: S.transWrite(own, "pgs-abc123", { what: "" }),'
+		. ' custom: S.transRead(custom, "pgs-abc123"), customKept: S.transRead(S.transWrite(custom, "pgs-abc123", { what: "custom", ms: 100 }), "pgs-abc123"),'
+		. ' bad: S.transWrite(base, "foo", { what: "all" }) === base, badWhat: S.transWrite(base, "pgs-abc123", { what: "spin" }) === base,'
+		. ' maybe: [S.transMaybe(a, "pgs-abc123"), S.transMaybe(base, "pgs-abc123")] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true(strpos($r['a'], "@media (prefers-reduced-motion: no-preference) {\n  .pgs-abc123 {\n    transition-property: color, background-color, border-color;\n    transition-duration: var(--pg-duration, 0.15s);\n    transition-timing-function: var(--pg-ease, ease-in-out);\n  }\n}\n") !== false, 'the rule sits in the no-preference block and follows the look');
+	pg_assert_true(strpos($r['a'], ".pgs-abc123 {\n  color: red;\n}") === 0, 'the base rule stays');
+	pg_assert_same(array('what' => 'colors', 'ms' => '', 'ease' => '', 'raw' => ''), $r['readA']);
+	pg_assert_same(array('what' => 'shadow', 'ms' => 320, 'ease' => 'ease-out', 'raw' => ''), $r['readB']);
+	pg_assert_same(1, substr_count($r['b'], '@media'), 'a change rewrites the one block');
+	pg_assert_same(array('what' => 'shadow', 'ms' => 1000, 'ease' => '', 'raw' => ''), $r['readC'], 'Duration runs to 1,000 ms; an unknown easing follows the look');
+	pg_assert_same('', $r['none']['what']);
+	pg_assert_same('', $r['other']['what'], 'another class holds none');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n}\n", $r['out'], 'None takes the rule and its block out');
+	pg_assert_true(strpos($r['ownOut'], 'will-change: box-shadow;') !== false && strpos($r['ownOut'], 'transition-') === false, 'a declaration no row writes stays');
+	pg_assert_same(array('what' => 'custom', 'ms' => 320, 'ease' => 'ease-out', 'raw' => 'opacity'), $r['custom']);
+	pg_assert_same('opacity', $r['customKept']['raw'], 'a property list no row writes is kept');
+	pg_assert_same(100, $r['customKept']['ms']);
+	pg_assert_true($r['bad'], 'only a pgs- class');
+	pg_assert_true($r['badWhat'], 'only the four choices');
+	pg_assert_same(array(true, false), $r['maybe']);
+}
