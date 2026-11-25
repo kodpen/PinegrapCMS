@@ -8452,3 +8452,35 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-clicks-missing li { border-color: var(--sd-panel-border) !important; }
 .sd-clicks-missing li > span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
 @media (max-width: 575.98px) { .sd-clicks-btn-txt { display: none; } }
+
+/* My library (style_designer_mylibrary.js): the group at the top of the
+   Blocks list, its own group names, its first-use line; the save window's
+   group offers; the line of a copy whose binding the site lacked. */
+.sd-lib-cat .sd-category-header { gap: .4rem; }
+.sd-lib-count {
+    margin-left: auto; padding: 0 .4rem; border-radius: 1rem;
+    font-size: .62rem; font-weight: 600; letter-spacing: 0;
+    background: rgba(var(--sd-accent-rgb), .14); color: var(--sd-text);
+}
+.sd-lib-group {
+    padding: .35rem .45rem .15rem; font-size: .64rem; font-weight: 600;
+    color: var(--sd-text-muted);
+}
+.sd-lib-group[hidden] { display: none; }
+.sd-lib-empty { margin: .2rem .45rem .45rem; font-size: .72rem; line-height: 1.45; color: var(--sd-text-muted); }
+.sd-lib-combo { position: relative; }
+.sd-lib-offers {
+    position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px);
+    max-height: 180px; overflow: auto; margin: 0; padding: 4px 0; list-style: none;
+    border: 1px solid var(--bs-border-color, #d0d7de); border-radius: 6px;
+    background: var(--bs-body-bg, #fff); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.sd-lib-offers[hidden] { display: none; }
+.sd-lib-offers li { padding: 5px 10px; cursor: pointer; }
+.sd-lib-offers li:hover,
+.sd-lib-offers li.active { background: rgba(13, 110, 253, .12); }
+.sd-lib-unbound-line {
+    margin: 0 14px 10px; padding: 7px 10px; border-radius: 6px;
+    font-size: .72rem; line-height: 1.4;
+    background: rgba(245, 158, 11, .14); color: #f59e0b;
+}
