@@ -482,8 +482,9 @@
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-phone-preview-drawing-phone.md: The phone's view of "Preview on a phone" as drawn (phone-preview.html, boards V1 and V2, step PP3): the thin line, a redraw, the page list, Paused, and the phone's messages
 - designer-phone-preview-drawing-window.md: The window "Preview on a phone" as drawn (phone-preview.html, boards H1 to H4, step PP2): the QR code, its lines and buttons, its states, a page for signed-in visitors, the team link
-- designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (plans/designer-phone-preview.md, PP2 and PP3): the sheet, its six boards, which step builds which, what is new
+- designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (steps PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 - designer-phone-preview-phone.md: "Preview on a phone" on the phone (PP3): the page a phone link opens, its 32 px line, the page list, the asking and its stop rules, the redraw after a save keeping the scroll
+- designer-phone-preview-rules.md: "Preview on a phone": why it exists, the rules every change keeps (QR code a secret, bounded asking, Share prototype rights), which file holds which part [decision: decisions-made-product-106.md]
 - designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
 - designer-phone-preview-window.md: The "Preview on a phone" window as built (PP2, #11578): its row in the Preview menu and the command palette, the part phone, its states, what it asks the server, the cost
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.

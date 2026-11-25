@@ -53,7 +53,6 @@
 - designer-options-census-steps.md: Plan designer-options-census, DO2 to DO9: a value per screen size, grid columns, rows, spans and areas, the small layout rows (inset presets, layer order, scroll snap, aspect ratio, object fit)
 - designer-options-census.md: Plan (owner 2026-11-24, 2026-11-25): the eleven packages he picked from the Options panel census as DO2 to DO27 in three steps files; how an option enters the panel, the lines, what a step keeps
 - designer-parts-registry.md: Plan (owner 2026-11-25): each designer part described in a file of its own, so a step adding a part edits no shared list; step PR1
-- designer-phone-preview.md: Plan (owner 2026-11-24): "Preview on a phone" in the designer: a QR code of a short-lived share link, the phone redrawing after each save; steps PP1 to PP4
 - designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
 - designer-publish-check.md: Plan (owner 2026-11-24): one check in the Publish sheet over links, accessibility, search engines, page weight and left sample content, with Fix and Ignore; steps PC1 to PC6
 - designer-record-edit-in-place.md: Plan (owner 2026-11-24, level 3): a collection item's words and pictures corrected in place in the designer's Preview, saved to the record by its own writer, apart from the design; steps RE1 to RE5
