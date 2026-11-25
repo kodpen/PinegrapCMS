@@ -216,6 +216,18 @@ function parasut_token_in_use($token, $renewed = null)
  */
 function _parasut_token_after_401($token)
 {
+    $connection = parasut_devhub_connection();
+
+    if (parasut_token_choice($connection) === 'connection') {
+        $fresh = parasut_devhub_token($connection, true);
+
+        if (empty($fresh['success']) || ((string) $fresh['token'] === (string) $token)) {
+            return '';
+        }
+
+        return (string) parasut_token_in_use($token, (string) $fresh['token']);
+    }
+
     $step = parasut_unauthorized_step($token, _parasut_token_cache_read());
 
     if ($step === 'none') {
@@ -955,6 +967,14 @@ function _parasut_token_exchange($body, $credentials)
  */
 function parasut_get_token()
 {
+    // A client from the Developer Portal is a connected account: its token
+    // is renewed under the connection's own lock (pg_connect_access_token()).
+    $connection = parasut_devhub_connection();
+
+    if (parasut_token_choice($connection) === 'connection') {
+        return parasut_devhub_token($connection, false);
+    }
+
     // Keep a 60-second buffer: a token that expires mid-request is no use.
     $cache = _parasut_token_cache_read();
     if (!empty($cache['access_token']) && !empty($cache['expires_at']) && (time() < ($cache['expires_at'] - 60))) {
@@ -1077,6 +1097,16 @@ function parasut_get_token()
  */
 function parasut_token_forget()
 {
+    // A connection's token is renewed at once; the next parasut_get_token()
+    // reads the renewed one.
+    $connection = parasut_devhub_connection();
+
+    if (parasut_token_choice($connection) === 'connection') {
+        parasut_devhub_token($connection, true);
+
+        return;
+    }
+
     $cache = _parasut_token_cache_read();
 
     if (empty($cache)) {
@@ -1407,6 +1437,16 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
  */
 function parasut_connection_status($owner = null)
 {
+    // The site's connection from the Developer Portal, when there is one,
+    // is the connection; an owner stamp names a token of the older way.
+    if ($owner === null) {
+        $connection = parasut_devhub_connection();
+
+        if (parasut_token_choice($connection) === 'connection') {
+            return parasut_devhub_status($connection, pg_connect_service_get('parasut_devhub'));
+        }
+    }
+
     $cache = _parasut_token_cache_read($owner);
     $credentials = _parasut_credentials();
 
@@ -1436,13 +1476,23 @@ function parasut_connection_line($status)
 {
     $status = (array) $status;
 
+    $grant = (string) ($status['grant'] ?? '');
+
     if (empty($status['connected'])) {
+        if ($grant === 'devhub') {
+            return ['text' => lang(array('string' => 'Paraşüt has to be connected again: {var:1}', 'vars' => ((string) ($status['error'] ?? '') !== '') ? (string) $status['error'] : lang('The account has to be connected again.'))), 'tone' => 'secondary'];
+        }
+
         return ['text' => lang('Not connected to Paraşüt yet.'), 'tone' => 'secondary'];
     }
 
-    $parts = [((string) ($status['grant'] ?? '') === 'code')
-        ? lang('Connected with an authorization code')
-        : lang('Connected with the user name and password')];
+    if ($grant === 'devhub') {
+        $parts = [lang('Paraşüt is connected.')];
+    } else {
+        $parts = [($grant === 'code')
+            ? lang('Connected with an authorization code')
+            : lang('Connected with the user name and password')];
+    }
 
     foreach (['email', 'company_name'] as $key) {
         if (trim((string) ($status[$key] ?? '')) !== '') {
@@ -1476,12 +1526,15 @@ function parasut_company_id_for_save($posted, $stored)
 }
 
 /**
- * The boxes of Paraşüt's page of Connections ("Connection details"): the
- * three connect steps (client id and secret, the authorization page, the
- * code and Connect), then Advanced (company number, the user name and
- * password grant), then Save. The secret and the password are never drawn
- * back: an empty box keeps what is stored. Connect is the backend.src.js
- * handler of button.pg-edoc-test, posting the parasut_* boxes of its form to
+ * The older way's form on Paraşüt's page of Connections ("Connection
+ * details", under the Developer Portal application): the fold "A client from
+ * before the Developer Portal" with the three connect steps (client id and
+ * secret, the authorization page, the code and Connect) and the user name
+ * and password grant, open only while the site's token is of that kind
+ * (parasut_page_legacy_open()); then Advanced (the company number), then
+ * Save. The secret and the password are never drawn back: an empty box
+ * keeps what is stored. Connect is the backend.src.js handler of
+ * button.pg-edoc-test, posting the parasut_* boxes of its form to
  * parasut_connect.php.
  *
  * @return string HTML
@@ -1491,7 +1544,7 @@ function parasut_page_fields_html()
     $config = (array) db_item("SELECT parasut_client_id, parasut_username, parasut_company_id, parasut_credentials_enc FROM config LIMIT 1");
     $client_id = (string) ($config['parasut_client_id'] ?? '');
     $boxes = parasut_credential_boxes(parasut_credentials_decode((string) ($config['parasut_credentials_enc'] ?? '')));
-    $connected = !empty(parasut_connection_status()['connected']);
+    $open = parasut_page_legacy_open(parasut_devhub_connection(), parasut_connection_status());
     $authorize = parasut_authorize_url($client_id);
 
     $box = function ($name, $label, $value, $type, $help, $placeholder = '') {
@@ -1504,9 +1557,10 @@ function parasut_page_fields_html()
     };
 
     return '
-				<details class="pg-parasut-steps"' . ($connected ? '' : ' open') . '>
-					<summary class="pg-field-label mb-3">' . h($connected ? lang('Authorize again or connect another account') : lang('Connect in three steps')) . '</summary>
+				<details class="pg-parasut-steps"' . ($open ? ' open' : '') . '>
+					<summary class="pg-field-label mb-3">' . h(lang('A client from before the Developer Portal')) . '</summary>
 					<div class="d-flex flex-column gap-5">
+						<p class="pg-text-meta mb-0">' . h(lang('For a client Paraşüt support issued by e-mail before the Developer Portal. A client from the portal is connected above.')) . '</p>
 						<p class="pg-text-meta mb-0">' . h(lang('1. Enter the client id and secret of the API application; Paraşüt support issues them for your account.')) . '</p>'
         . $box('parasut_client_id', lang('Client ID'), $client_id, 'text', '')
         . $box('parasut_client_secret', lang('Client Secret'), '', 'password', $boxes['secret']['help'], $boxes['secret']['placeholder']) . '
@@ -1523,16 +1577,16 @@ function parasut_page_fields_html()
 							<div class="pg-field-help">' . h(lang('A code works once and for a few minutes. Saving the page with a code in the box connects too. No Paraşüt password is stored this way.')) . '</div>
 							<div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
 						</div>
-					</div>
-				</details>
-				<details>
-					<summary class="pg-field-label mb-3">' . h(lang('Advanced: company number, user name and password')) . '</summary>
-					<div class="d-flex flex-column gap-5">'
-        . $box('parasut_company_id', lang('Company ID') . ' (' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')', (string) ($config['parasut_company_id'] ?? ''), 'text',
-            lang('Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.')) . '
 						<p class="pg-text-meta mb-0">' . h(lang('The older way: the Paraşüt account\'s e-mail and password are stored encrypted and used whenever the token has to be renewed. Not needed once Pinegrap is authorized with a code.')) . '</p>'
         . $box('parasut_username', lang('Username') . ' (' . lang('Email') . ')', (string) ($config['parasut_username'] ?? ''), 'text', '')
         . $box('parasut_password', lang('Password'), '', 'password', $boxes['password']['help'], $boxes['password']['placeholder']) . '
+					</div>
+				</details>
+				<details>
+					<summary class="pg-field-label mb-3">' . h(lang('Advanced')) . '</summary>
+					<div class="d-flex flex-column gap-5">'
+        . $box('parasut_company_id', lang('Company ID') . ' (' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')', (string) ($config['parasut_company_id'] ?? ''), 'text',
+            lang('Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.')) . '
 					</div>
 				</details>
 				<div class="d-flex flex-wrap align-items-center gap-3">
@@ -1603,9 +1657,182 @@ function parasut_page_save($post)
  */
 function parasut_disconnect()
 {
+    $connection = parasut_devhub_connection();
+
+    if (is_array($connection)) {
+        pg_connect_disconnect((int) $connection['id']);
+        pg_connect_service_delete('parasut_devhub');
+    }
+
     _parasut_token_cache_write(array());
 
     return _parasut_credentials_store(array('client_secret' => '', 'password' => ''));
+}
+
+/* ---------------------------------------------------------------------------
+   A client from the Developer Portal (a connected account)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The site's Paraşüt connection made with a client from the Developer Portal
+ * (provider parasut of the connected accounts), or null.
+ *
+ * @return array|null  pg_connect_accounts() row
+ */
+function parasut_devhub_connection()
+{
+    if (!function_exists('pg_connect_accounts')) {
+        return null;
+    }
+
+    $accounts = pg_connect_accounts(array('provider' => 'parasut', 'user_id' => 0));
+
+    return $accounts ? $accounts[0] : null;
+}
+
+/**
+ * Which token the requests to Paraşüt go with: the site's connection when
+ * there is one, in whatever state (a connection that has to be made again
+ * says so rather than falling back on a token of the older way), else the
+ * older way's token (pasted code, or user name and password). Pure.
+ *
+ * @param array|null $connection  parasut_devhub_connection()
+ * @return string  'connection' | 'legacy'
+ */
+function parasut_token_choice($connection)
+{
+    return (is_array($connection) && ((int) ($connection['id'] ?? 0) > 0)) ? 'connection' : 'legacy';
+}
+
+/**
+ * The connection's access token in the shape of parasut_get_token().
+ *
+ * @param array $connection
+ * @param bool  $force  renew it even while the cached one is still valid
+ * @return array ['success' => bool, 'token' => string|null, 'error' => string]
+ */
+function parasut_devhub_token($connection, $force)
+{
+    $token = pg_connect_access_token((int) $connection['id'], array(), (bool) $force);
+
+    if (!empty($token['ok'])) {
+        return ['success' => true, 'token' => (string) $token['token'], 'error' => ''];
+    }
+
+    return [
+        'success' => false,
+        'token' => null,
+        'error' => lang(array('string' => 'Paraşüt has to be connected again: {var:1}', 'vars' => (string) $token['error'])),
+    ];
+}
+
+/**
+ * The connection's state in the shape of parasut_connection_status(), with
+ * the e-mail and the company read when it was made
+ * (parasut_devhub_after_connect()). Pure.
+ *
+ * @param array $connection  parasut_devhub_connection()
+ * @param array $details     pg_connect_service_get('parasut_devhub')
+ * @return array
+ */
+function parasut_devhub_status($connection, $details)
+{
+    $connection = (array) $connection;
+    $details = (array) $details;
+    $active = ((string) ($connection['status'] ?? '') === 'active');
+
+    // What was read for another connection (one made and ended before) does
+    // not describe this one.
+    if ((int) ($details['connection_id'] ?? 0) !== (int) ($connection['id'] ?? 0)) {
+        $details = array();
+    }
+
+    return [
+        'connected' => $active,
+        'grant' => 'devhub',
+        'email' => (string) ($details['email'] ?? ''),
+        'company_name' => (string) ($details['company_name'] ?? ''),
+        'expires_at' => 0,
+        'connected_at' => (int) ($details['connected_at'] ?? ($connection['created_timestamp'] ?? 0)),
+        'renewable' => $active,
+        'error' => $active ? '' : (string) ($connection['last_error'] ?? ''),
+    ];
+}
+
+/**
+ * Once the browser is back from Paraşüt's sign-in: asks the connection's
+ * account which companies it may use (GET /v4/me?include=companies), takes
+ * the company as a pasted code does (parasut_connect_company(), from the
+ * saved number), writes its number into the config row and keeps the
+ * e-mail and the company name for the status line.
+ *
+ * @param int $connection_id
+ * @return array ['notices' => list, 'warnings' => list, 'log' => string]
+ */
+function parasut_devhub_after_connect($connection_id)
+{
+    $answer = array('notices' => array(), 'warnings' => array(), 'log' => '');
+    $token = pg_connect_access_token((int) $connection_id);
+
+    if (empty($token['ok'])) {
+        $answer['warnings'][] = lang(array('string' => 'Paraşüt has to be connected again: {var:1}', 'vars' => (string) $token['error']));
+
+        return $answer;
+    }
+
+    $me = parasut_me((string) $token['token']);
+
+    if (!$me['success']) {
+        $answer['warnings'][] = lang(array('string' => 'Paraşüt gave a token but would not say whose it is: {var:1}', 'vars' => $me['error']));
+
+        return $answer;
+    }
+
+    $saved = defined('PARASUT_COMPANY_ID') ? (string) PARASUT_COMPANY_ID : (string) db_value("SELECT parasut_company_id FROM config LIMIT 1");
+    $company = parasut_connect_company('', $saved, $me['companies']);
+    $company_id = ($company['error'] === '') ? $company['company_id'] : '';
+    $company_name = ($company_id !== '') ? trim((string) ($me['companies'][$company_id] ?? '')) : '';
+
+    pg_connect_service_put('parasut_devhub', 'Paraşüt', array(
+        'connection_id' => (int) $connection_id,
+        'email' => $me['email'],
+        'company_name' => $company_name,
+        'connected_at' => time(),
+    ));
+
+    if ($company['error'] !== '') {
+        // Several companies and none saved: the number is written under
+        // Advanced.
+        $answer['warnings'][] = $company['error'];
+
+        return $answer;
+    }
+
+    db("UPDATE config SET parasut_company_id = '" . escape($company_id) . "'");
+
+    return parasut_connect_report(array(
+        'company_id' => $company_id,
+        'company_name' => $company_name,
+        'email' => $me['email'],
+        'replaced_company_id' => $company['replaced'],
+    ));
+}
+
+/**
+ * Whether the fold of the older way ("A client from before the Developer
+ * Portal") is drawn open: only while the site's token is of that kind. Pure.
+ *
+ * @param array|null $connection  parasut_devhub_connection()
+ * @param array      $status      parasut_connection_status()
+ * @return bool
+ */
+function parasut_page_legacy_open($connection, $status)
+{
+    if (parasut_token_choice($connection) === 'connection') {
+        return false;
+    }
+
+    return in_array((string) ($status['grant'] ?? ''), array('code', 'password'), true) && !empty($status['connected']);
 }
 
 /**
@@ -1661,10 +1888,18 @@ function _parasut_order_documents_in_erp($erp_enabled, $provider_on)
  */
 function parasut_order_buttons_on()
 {
+    $client_id = defined('PARASUT_CLIENT_ID') ? (string) PARASUT_CLIENT_ID : '';
+
+    // A client from the Developer Portal is kept with the connected
+    // accounts' applications, not in the config row.
+    if (($client_id === '') && defined('ENABLE_PARASUT') && (int) ENABLE_PARASUT && is_array(parasut_devhub_connection())) {
+        $client_id = 'connection';
+    }
+
     return _parasut_order_buttons_on(
         defined('ENABLE_PARASUT') ? ENABLE_PARASUT : 0,
         defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '',
-        defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : ''
+        $client_id
     );
 }
 

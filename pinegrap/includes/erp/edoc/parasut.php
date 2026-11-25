@@ -92,7 +92,7 @@ function erp_edoc_parasut_info()
         'description' => lang('Cloud pre-accounting by Mikrogrup. e-Invoice and e-Archive through the Paraşüt API; the store needs a Paraşüt subscription with API access.'),
         'docs_url' => 'https://apidocs.parasut.com/',
         'capabilities' => array('einvoice', 'earchive', 'accounts'),
-        'settings_note' => lang('Paraşüt support issues the client id and secret of the API application; authorize Pinegrap with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password under Advanced.'),
+        'settings_note' => lang('Get a client on Paraşüt\'s Developer Portal, save its id and secret and press Connect; a client Paraşüt support issued before the portal is connected in its own fold below.'),
     );
 }
 
