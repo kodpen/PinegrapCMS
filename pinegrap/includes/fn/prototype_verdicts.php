@@ -651,6 +651,14 @@ function pg_proto_verdict_take($link, $page_id, $post, $now)
         return $refuse('rate');
     }
 
+    // The same verdict again (a second tab, a page drawn again): the one
+    // that stands answers, and nobody hears of it twice.
+    $standing = $draft ? pg_proto_verdict_standing((int) $link['id'], (int) $page_id) : null;
+
+    if (pg_proto_verdict_repeats($standing, $checked, $fingerprint)) {
+        return array('status' => 201, 'error' => '', 'verdict' => pg_proto_verdict_public($standing, $fingerprint));
+    }
+
     $row = $draft ? pg_proto_verdict_row($checked, $link, $page_id, $fingerprint, pg_proto_node_fingerprints((string) $draft['page_tree_json'])) : null;
     $id = $row ? pg_proto_verdict_save($row, $now) : 0;
     $saved = ($id > 0) ? db_item("SELECT * FROM prototype_verdicts WHERE id = '" . (int) $id . "'") : null;

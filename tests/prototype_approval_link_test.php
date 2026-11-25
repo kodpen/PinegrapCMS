@@ -316,3 +316,24 @@ function prototype_approval_link_test_body($file, $name)
 
 	return ($next === false) ? substr($source, $start) : substr($source, $start, $next - $start);
 }
+
+// The same verdict sent again (a second tab, a page drawn again) is the one
+// that stands: no second row, so no second bell line, receipt or event.
+function test_prototype_approval_link_same_verdict_twice_is_one()
+{
+	$fp = str_repeat('a', 40);
+	$standing = array('id' => 3, 'verdict' => 'approved', 'author_name' => 'Ada', 'note' => '', 'fingerprint' => $fp, 'created_at' => 50);
+	$checked = array('error' => '', 'verdict' => 'approved', 'name' => 'Ada', 'note' => '');
+
+	pg_assert_true(pg_proto_verdict_repeats($standing, $checked, $fp), 'the same verdict on the same draft');
+	pg_assert_false(pg_proto_verdict_repeats(null, $checked, $fp), 'nothing stands yet');
+	pg_assert_false(pg_proto_verdict_repeats($standing, array('verdict' => 'changes_requested', 'name' => 'Ada', 'note' => 'Bigger') + $checked, $fp), 'another verdict');
+	pg_assert_false(pg_proto_verdict_repeats($standing, array('note' => 'Fine') + $checked, $fp), 'another note');
+	pg_assert_false(pg_proto_verdict_repeats($standing, array('name' => 'Bob') + $checked, $fp), 'another name');
+	pg_assert_false(pg_proto_verdict_repeats($standing, $checked, str_repeat('b', 40)), 'the draft changed since');
+
+	$take = prototype_approval_link_test_body('includes/fn/prototype_verdicts.php', 'pg_proto_verdict_take');
+	$repeat = strpos($take, 'pg_proto_verdict_repeats(');
+	$save = strpos($take, 'pg_proto_verdict_save(');
+	pg_assert_true($repeat !== false && $save !== false && $repeat < $save, 'a repeat is answered before anything is written');
+}

@@ -286,6 +286,32 @@ function pg_proto_verdict_seen_ok($seen, $fingerprint)
 }
 
 /**
+ * Whether a checked verdict repeats the one that stands: the same verdict,
+ * name and note on the same draft. A repeat is answered with the standing
+ * verdict and writes nothing, so the link's maker, the approver's receipt and
+ * the event hear of it once.
+ *
+ * @param array|null $standing    the standing prototype_verdicts row
+ * @param array      $checked     pg_proto_verdict_check()'s answer
+ * @param string     $fingerprint the draft's fingerprint now
+ * @return bool
+ */
+function pg_proto_verdict_repeats($standing, $checked, $fingerprint)
+{
+    if (!is_array($standing) || !is_array($checked)) {
+        return false;
+    }
+
+    foreach (array('verdict' => 'verdict', 'author_name' => 'name', 'note' => 'note') as $column => $key) {
+        if (!isset($standing[$column], $checked[$key]) || ((string) $standing[$column] !== (string) $checked[$key])) {
+            return false;
+        }
+    }
+
+    return isset($standing['fingerprint']) && ((string) $fingerprint !== '') && ((string) $standing['fingerprint'] === (string) $fingerprint);
+}
+
+/**
  * The verdict that stands on each page: the newest of the given rows of one
  * link (by created_at, then id). Rows without a page are skipped.
  *
