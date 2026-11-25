@@ -7630,6 +7630,7 @@
     "Arrival date ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Varış tarihi ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından değiştirildi.",
     "Arrival date ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Varış tarihi ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından oluşturuldu.",
     "Arrival date ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Varış tarihi ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından silindi.",
+    "Arrival date ID": "Varış tarihi kimliği",
     "Arrival date description": "Varış tarihi açıklaması",
     "Arrival date name": "Varış tarihi adı",
     "Arrival days to check": "Gözden geçirilecek varış günleri",
