@@ -60,8 +60,8 @@ function pg_cleanup_class_is_state($class)
 {
     static $states = array(
         'active' => 1, 'show' => 1, 'showing' => 1, 'hiding' => 1, 'fade' => 1,
-        'collapse' => 1, 'collapsing' => 1, 'collapsed' => 1, 'disabled' => 1,
-        'was-validated' => 1, 'is-valid' => 1, 'is-invalid' => 1, 'bi' => 1,
+        'collapse' => 1, 'collapsing' => 1, 'collapsed' => 1, 'disabled' => 1, 'bi' => 1,
+        'was-validated' => 1, 'is-valid' => 1, 'is-invalid' => 1, /* @pg-site-output */
     );
     if (isset($states[$class])) {
         return true;
