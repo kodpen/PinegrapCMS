@@ -45,7 +45,6 @@
 - designer-options-census.md: Plan (owner 2026-11-24, 2026-11-25): the eleven packages he picked from the Options panel census as DO2 to DO27 in three steps files; how an option enters the panel, the lines, what a step keeps
 - designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
 - designer-record-edit-in-place.md: Plan (owner 2026-11-24, level 3): a collection item's words and pictures corrected in place in the designer's Preview, saved to the record by its own writer, apart from the design; steps RE1 to RE5
-- designer-screens-side-by-side.md: Plan (owner 2026-11-24, level 1): the designer's canvas with a phone and a tablet mirror beside it, redrawn when the hand rests, a click choosing the element; steps SS1 to SS4
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - designer-style-guide.md: Plan (owner 2026-11-24, level 2): a style guide sheet drawn from a design's variables, text styles, controls and shared components, always current, printable; steps SG1 to SG4
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
@@ -79,10 +78,10 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
+- owner-notes-2026-11-25.md: Plan (owner 2026-11-25, after trying the dev site): larger frames in the designer's Focus control, a sketch built with what the site knows, a picture text's fit floor by its size; steps ON1 to ON3
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- security-scan.md: Plan: Security Scan, a rule-based scan of files, stored content, accounts and settings joined to the firewall's screen and card, with quarantine, a manual run, an API and MCP read; SC1 to SC9
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line

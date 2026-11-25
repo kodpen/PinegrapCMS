@@ -445,7 +445,8 @@
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
 - designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
 - designer-home-screen.md: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
-- designer-image-focus-drawing.md: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its four boards, what each step builds from it and what the sheet settles
+- designer-image-focus-drawing-frames.md: Board F5 of the image focus drawing (2026-11-25): the Focus control's phone, tablet and desktop frames stand under the whole picture, large, with their names; one frame when all three are the same [decision: here]
+- designer-image-focus-drawing.md: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its five boards, what each step builds from it and what the sheet settles
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
@@ -559,7 +560,7 @@
 - designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state [decision: here]
 - designer-save-shortcut.md: Ctrl+S in the visual editor: the one save of the whole design without the Publish sheet, its two listeners, the dialogs that keep their own, and toolbar hints via _sdSetButtonTitle()
 - designer-screen-messages.md: The visual designer screen shows liveform errors, warnings and notices as its own toasts, never as the panel's alert boxes (#4892) [decision: decisions-made-panel-2.md]
-- designer-screens-side-by-side-drawing.md: The drawing of "Side by side" (plans/designer-screens-side-by-side.md, SS2 and SS3): the sheet, its six boards, which step builds which, the measures and the texts it fixes
+- designer-screens-side-by-side-drawing.md: The drawing of "Side by side" (SS2 #11647, SS3 #11676; what was built: designer-side-by-side.md): the sheet, its six boards, which step builds which, the measures and the texts it fixes
 - designer-scroll-snap.md: Advanced › Layout's Scroll snap on a flex or grid box and Snap to on its children (DO8): classes, rules joining User Styles on first use, the scroller kept apart
 - designer-scroller-controls.md: Previous/next buttons of the scroller-cards block: the row marker, pg_scroller.js and where it is added (page, preview, canvas), one-card step, ends, reduced motion, RTL.
 - designer-scroller-wide-slides.md: The Wide slides option of a scroller row (pg-snap-wide): one large slide per stop, 85vw, centred; the Scroller section, its helper and rule
@@ -570,7 +571,7 @@
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
 - designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts" [decision: decisions-made-product-111.md]
-- designer-side-by-side.md: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size
+- designer-side-by-side.md: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size [decision: decisions-made-product-108.md]
 - designer-size-per-screen.md: A length per screen size (DO2): the size chooser on Size and display and Text, @media rules on the pgs- class, what moves to the base rule, the canvas at the size, the dot
 - designer-sketch-drawing-ai.md: The Sketch tool's two AI actions as drawn (ai-and-picture.html, boards E1 to E3 and E6): the "Describe the page" window, the sketch being drawn, "Write the texts" and its messages
 - designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone [decision: here]

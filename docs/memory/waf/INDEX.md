@@ -10,6 +10,7 @@
 - security-scan-card.md: Security Scan part of the new dashboard Firewall card (last scan, open findings by severity, Scan now) and the daily ops alert security_finding for a critical or high finding
 - security-scan-file-scan.md: Security Scan file scan - the six file rules, retired release files, what each reads, the release reference it judges by, the resumable walk, the server-config baseline, the job and its state row.
 - security-scan-findings.md: Security Scan findings - the security_finding table (11.0.277), the pure finding model, fingerprint, severities, states and which moves a scan or a person may make.
+- security-scan-overview.md: Security Scan as a whole: rule-based self-scan in Firewall and HTTPS settings and the Firewall card; binding rules, parts, which file holds what, how to add a rule [decision: decisions-made-product-102.md, decisions-made-schema-51.md]
 - security-scan-retired-files.md: Security Scan retired release files - file_php_retired from the Cleanup tool's shared list, the list completed from the release tags, the check_pr.php rule [decision: here]
 - security-scan-section.md: Security Scan row of Site Settings › Firewall and HTTPS: the joined run and its state row, the findings list, Quarantine and Restore (data/quarantine), Ignore with a note, Scan now through api.php
 - security-scan-stored-content.md: Security Scan stored content: script, hidden frame or redirect from an unknown host in pages, regions, styles, settings; known hosts; the resumable pass
