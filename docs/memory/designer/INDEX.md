@@ -557,6 +557,7 @@
 - designer-scroller-wide-slides.md: The Wide slides option of a scroller row (pg-snap-wide): one large slide per stop, 85vw, centred; the Scroller section, its helper and rule
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-select-similar-drawing.md: The drawing of "Select similar" (sheet DD13, step SE2): boards E1 to E4, where the row sits, the line above the Options panel with its two lists, what it settles, the new texts and the key
+- designer-select-similar-part.md: "Select similar" in the designer: the menu rows, the S key, the palette row, the `similar` part and the line above the Options panel with its two lists; what ends the line
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
 - designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts" [decision: decisions-made-product-111.md]
@@ -579,6 +580,7 @@
 - designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
 - designer-style-guide-blocks-drawing.md: The drawing of the Style guide's blocks Type, Spacing, Shape, Controls and Components, a name's click through to its variable or component, and the print sheet (boards G2 to G4, G6)
 - designer-style-guide-drawing.md: The drawing of the designer's Style guide: the Preview menu row, the window with its head and strip, the Colours block, dark, a design with no variables, a phone's width (boards G1, G5, G7)
+- designer-style-guide-sheet.md: The Style guide sheet of the Preview menu (SG2, #11656): the part 'styleguide', its window and frame, forced control states, components drawn as scrolled to, the style_guide read
 - designer-tab-anchor.md: A link or search result to an element inside a Bootstrap tab not shown opens that tab and scrolls to it: pg_bs_tips.js on load and hashchange, pg_search_highlight.js reveal() (#4823).
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout): shape, own endpoint apart from Save, twin normalisers, colours, the open group, the fitting strip, drag.
 - designer-tab-states.md: A designer page tab's states beside its name (D49): changed dot, lock of a page another person edits, home icon, draft pill, end mark; order, tip, narrow form
@@ -856,6 +858,8 @@
 - site-search-translated.md: What the site search reads on a page served in another language (pages, products and groups, form records, a list's own search box), the words and ı/i, the order, the fences, and what it leaves out [decision: decisions-made-product-50.md]
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
+- sketch-build-again.md: "Build again" of a built sketch page (SK4): which sections stay, are built again, added or removed, when it asks, the History snapshot first, what was not done
+- sketch-build.md: "Build the page" of a Prototype view sketch page (SK4): the part sketchbuild, the chip marks, the list of boxes to check, the draft tab built, the sketch kept in props._sketch
 - sketch-builder.md: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): sections to header, body and footer trees from palette starters, columns, heading, the section rhythm variable
 - sketch-page-details.md: "Page details" of a Prototype view sketch page (SK5): the More menu and palette row, the seven rows and defaults, checks, the sketch_details endpoint, where values are kept [decision: here]
 - sketch-read-picture.md: "Read the picture" of the Sketch tool (SK7b): the reference picture read into proposed boxes by the browser's model, nothing sent; row, first use, busy, Keep, Discard [decision: here]
