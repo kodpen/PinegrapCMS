@@ -150,3 +150,18 @@ function test_figma_import_path_is_the_sessions()
 	pg_assert_same('', pg_figma_import_path('../etc'), 'only an import id');
 	pg_assert_contains('/data/temp/figma_', pg_figma_import_path('0123456789abcdef'));
 }
+
+// A frame step that ends after "Stop" removed the work file does not write
+// it back: the import stays stopped and leaves no file in data/temp.
+function test_figma_frame_step_after_stop_keeps_nothing()
+{
+	$id = 'f1a2b3c4d5e6f7a8';
+	$path = pg_figma_import_path($id);
+	@unlink($path);
+	pg_assert_same(false, pg_figma_import_keep_step($id, array('frames' => array()), array()), 'stopped: not kept');
+	pg_assert_same(false, is_file($path), 'no work file written back');
+	pg_assert_true(pg_figma_import_keep($id, array('frames' => array())), 'a running import');
+	pg_assert_same(true, pg_figma_import_keep_step($id, array('frames' => array(1)), array()), 'running: kept');
+	pg_assert_same(array(1), pg_figma_import_load($id)['frames'], 'the step is written');
+	@unlink($path);
+}
