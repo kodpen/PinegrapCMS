@@ -1,6 +1,6 @@
 ---
 name: merge-train-order
-description: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 3,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
+description: Which eligible PRs form the next train (merge_train_order()): docs-only alone, at most one oversized PR at the head, small PRs longest-waiting first, 3,000 lines in all
 ---
 
 ## Which PRs make the next train?
@@ -16,10 +16,11 @@ description: Which eligible PRs form the next train (merge_train_order()): docs-
 - Keeping steps that touch the same plan file out of one train stays a suggestion, not a rule; settling such conflicts by hand is fine.
 
 ## When does a PR over the size limit ride?
-- Always in a train of its own, so a red train is easy to blame. It is the train when no small PR waits, or once it has been eligible for an hour or more (`MERGE_TRAIN_OVERSIZED_WAIT_SECONDS`): then it goes ahead of the small PRs, which take the next train, stacked with `--start --stack` ([[merger-wake]]) so no wall time is lost. Of several overdue ones the longest-waiting goes first, equal waits the smaller first.
+- In the next train, at its head, one a train: the longest-waiting oversized PR (equal waits the smaller first); the small PRs fill the rest within 3,000 lines in all, and the other oversized PRs wait. One above 3,000 lines itself rides alone.
 
-## Why the hour?
-- Before #7889 an oversized PR rode only when no small PR waited. Small PRs arrive all day, so on 2026-11-07 #7646, #7650 and #7651 (ready, green since 00:03 UTC), #7727 (since 02:19), #7838 and #7847 were still in "a later train" at 14:00, and their plans' next steps were blocked.
+## Why not a train of its own?
+- Until 2026-11-25 an oversized PR rode alone, so a red train was easy to blame, at the latest an hour after it became eligible (before #7889 only when no small PR waited, and on 2026-11-07 six of them were still waiting at 14:00).
+- On 2026-11-25 four oversized PRs (#11617, #11635, #11642, #11643, 1,100 to 1,374 lines) each needed a full CI round of their own while about 40 PRs came in against 29 landed; the queue went over 20 with one coordinator. Since then an oversized PR rides with small ones, at most one a train.
 
 ## From when is a PR eligible?
 - `merge_train_eligible_since()`, from the check runs of its head: a `ready` PR from its last run's finish (the label's own time is not read, so a label put on later counts from the green checks), a quiet one an hour after its first run's start. Tested in `tests/merge_train_test.php`.

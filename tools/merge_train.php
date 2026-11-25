@@ -82,7 +82,6 @@ define('MERGE_TRAIN_SIZE_LIMIT', 1000);
 define('MERGE_TRAIN_MAX_PRS', 12);
 define('MERGE_TRAIN_TOTAL_LIMIT', 3000);
 define('MERGE_TRAIN_QUIET_SECONDS', 3600);
-define('MERGE_TRAIN_OVERSIZED_WAIT_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');
 define('MERGE_TRAIN_SECURITY_LINE', '[SECURITY] Implemented various security fixes.');
 define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
@@ -378,17 +377,16 @@ function merge_train_eligible_since(array $runs, $ready)
 
 // The train order of eligible PRs, each array('number', 'product_lines',
 // 'docs_only', optional 'eligible_since'): 'alone' the docs-only PRs,
-// 'train' the others within the size limit, longest-waiting first (equal
-// waits smaller first) up to MERGE_TRAIN_MAX_PRS and, together, within
-// MERGE_TRAIN_TOTAL_LIMIT product lines, 'later' the rest: one that does not
+// 'train' the next train, 'later' the rest. A train carries at most one PR
+// over the size limit, the longest-waiting of them (equal waits smaller
+// first), at its head; the PRs within the limit fill it longest-waiting
+// first (equal waits smaller first) up to MERGE_TRAIN_MAX_PRS and, together
+// with it, within MERGE_TRAIN_TOTAL_LIMIT product lines. One that does not
 // fit waits at the head of the next train while a smaller one behind it
-// rides. A PR over the limit rides only a train of its
-// own, so a red train is easy to blame: it is the train when no PR within
-// the limit waits, or, given $now, when it has been eligible for
-// MERGE_TRAIN_OVERSIZED_WAIT_SECONDS or more (the longest-waiting one, ahead
-// of the small PRs, which take the next train). Small PRs arrive all day, so
-// without the wait an oversized PR would never ride.
-function merge_train_order(array $prs, $now = null)
+// rides. An oversized PR above MERGE_TRAIN_TOTAL_LIMIT itself rides alone.
+// A train of its own for every oversized PR cost a full CI round each and
+// let the queue grow faster than it landed.
+function merge_train_order(array $prs)
 {
 	$alone = array();
 	$small = array();
@@ -422,8 +420,9 @@ function merge_train_order(array $prs, $now = null)
 	};
 
 	// Longest-waiting first: by size alone, small PRs that keep arriving
-	// would starve the larger ones under the limit. Equal waits fall back to
-	// the size order; an unknown wait goes after the known ones.
+	// would starve the larger ones. Equal waits fall back to the size order
+	// (usort() is not stable before PHP 8); an unknown wait goes after the
+	// known ones.
 	$by_wait = function ($a, $b) use ($by_size) {
 		$a_since = isset($a['eligible_since']) ? $a['eligible_since'] : null;
 		$b_since = isset($b['eligible_since']) ? $b['eligible_since'] : null;
@@ -445,58 +444,28 @@ function merge_train_order(array $prs, $now = null)
 
 	usort($alone, $by_size);
 	usort($small, $by_wait);
-	usort($large, $by_size);
+	usort($large, $by_wait);
 
-	$overdue = array();
+	$train = array();
+	$later = array();
+	$lines = 0;
 
-	if ($now !== null) {
-		foreach ($large as $pr) {
-			if (isset($pr['eligible_since']) && (($now - $pr['eligible_since']) >= MERGE_TRAIN_OVERSIZED_WAIT_SECONDS)) {
-				$overdue[] = $pr;
-			}
-		}
-
-		// usort() is not stable before PHP 8, so equal waits fall back to
-		// the size order explicitly.
-		usort($overdue, function ($a, $b) use ($by_size) {
-			if ($a['eligible_since'] !== $b['eligible_since']) {
-				return ($a['eligible_since'] < $b['eligible_since']) ? -1 : 1;
-			}
-
-			return $by_size($a, $b);
-		});
+	if ($large) {
+		$lead = array_shift($large);
+		$train[] = $lead;
+		$lines = $lead['product_lines'];
 	}
 
-	if ($overdue) {
-		$train = array($overdue[0]);
-		$rest = array();
-
-		foreach ($large as $pr) {
-			if ($pr['number'] !== $overdue[0]['number']) {
-				$rest[] = $pr;
-			}
+	foreach ($small as $pr) {
+		if (($lines <= MERGE_TRAIN_TOTAL_LIMIT) && (count($train) < MERGE_TRAIN_MAX_PRS) && (($lines + $pr['product_lines']) <= MERGE_TRAIN_TOTAL_LIMIT)) {
+			$train[] = $pr;
+			$lines += $pr['product_lines'];
+		} else {
+			$later[] = $pr;
 		}
-
-		$later = array_merge($small, $rest);
-	} elseif ($small) {
-		$train = array();
-		$later = array();
-		$lines = 0;
-
-		foreach ($small as $pr) {
-			if ((count($train) < MERGE_TRAIN_MAX_PRS) && (($lines + $pr['product_lines']) <= MERGE_TRAIN_TOTAL_LIMIT)) {
-				$train[] = $pr;
-				$lines += $pr['product_lines'];
-			} else {
-				$later[] = $pr;
-			}
-		}
-
-		$later = array_merge($later, $large);
-	} else {
-		$train = array_slice($large, 0, 1);
-		$later = array_slice($large, 1);
 	}
+
+	$later = array_merge($later, $large);
 
 	return array('alone' => $numbers($alone), 'train' => $numbers($train), 'later' => $numbers($later));
 }
@@ -1027,7 +996,7 @@ function merge_train_list()
 		$by_number[$pr['number']] = $pr;
 	}
 
-	$order = merge_train_order($candidates, time());
+	$order = merge_train_order($candidates);
 	$headings = array('alone' => 'Land alone (docs, CLAUDE.md, .github only)', 'train' => 'Train', 'later' => 'A later train');
 
 	foreach ($headings as $group => $heading) {
@@ -1238,7 +1207,7 @@ function merge_train_build(array $numbers, array $options)
 	$branch = merge_train_require_train_branch();
 
 	if (!$numbers) {
-		$order = merge_train_order(merge_train_candidates(), time());
+		$order = merge_train_order(merge_train_candidates());
 		$numbers = $order['train'];
 
 		if (!$numbers) {
