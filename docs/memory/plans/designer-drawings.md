@@ -34,7 +34,7 @@ priority: 8
 - DD8 (M) Done (#11550). `designer-canvas-guides.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
 - DD9 (M) Done (#11559). `designer-my-library.md`: the save window, "My library" in Blocks, "Manage library", Export and Import. Holds ML2 to ML4.
 - DD10 (S) Done (#11561). `designer-image-focus.md`: the Focus control with its three frames, "Set focus" on the canvas. Holds IF2, IF3.
-- DD11 (S) Done (#11565). `designer-phone-preview.md`: the window with the QR code, the phone's view with its thin line, the signed-in case. Holds PP2, PP3.
+- DD11 (S) Done (#11565). `designer-phone-preview-drawing.md`: the QR code window, the phone's thin line, the signed-in case. Holds PP2, PP3.
 - DD4 (M) after SK2 and ST2 have landed: the Sketch tool and the New design window as they should look.
 
 ## What does every step keep?

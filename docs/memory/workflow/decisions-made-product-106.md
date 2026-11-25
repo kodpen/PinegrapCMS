@@ -14,7 +14,7 @@ description: Decisions made, product part 106 (2026-11-24 on): seven more design
 - Distances, spacing and columns handled on the canvas: `plans/designer-canvas-guides.md`.
 - A section saved to the site's own library, exported and imported: `plans/designer-my-library.md`.
 - A picture's focus point set by dragging: `plans/designer-image-focus.md`.
-- The draft on a real phone by a QR code: `plans/designer-phone-preview.md`.
+- The draft on a real phone by a QR code: done (#11541, #11578, #11582), `designer/designer-phone-preview-rules.md`.
 
 ## Are the screens drawn first? (owner, 2026-11-24, two choices)
 - Asked how "çizimleri de önce tasarlansın" sits with his rule of 2026-11-20 that no step waits for a drawing, he chose "Çizilsin, onay beklemesin": the design session draws a plan's screens first and the sheet is the step's model; nobody waits for his yes, and no screenshot is sent to him or the architect to approve.
