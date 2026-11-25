@@ -70,6 +70,25 @@ function test_canva_colors_from_pixels()
 	pg_assert_same(array(), pg_canva_colors_from_pixels(array()), 'no pixels');
 }
 
+// A picture the upload cap shrank on its way in is measured whole: the
+// size given is the one before the shrink, the stored file is smaller.
+function test_canva_measure_reads_the_stored_size()
+{
+	if (!function_exists('imagecreatetruecolor') || !function_exists('imagepng')) {
+		return;
+	}
+	$path = @tempnam(sys_get_temp_dir(), 'pgcvm');
+	$img = imagecreatetruecolor(128, 64);
+	imagefilledrectangle($img, 0, 0, 63, 63, 0x2563EB);
+	imagefilledrectangle($img, 64, 0, 127, 63, 0xF59E0B);
+	imagepng($img, $path);
+	imagedestroy($img);
+	$colors = pg_canva_measure($path, 'png', 256, 128);
+	@unlink($path);
+	pg_assert_same(2, count($colors), 'both halves are measured');
+	pg_assert_true($colors[0]['w'] > 0.45 && $colors[1]['w'] > 0.45, 'each half is half of the picture');
+}
+
 // Every picture counts the same; close colours join the more used one.
 function test_canva_pick_colors()
 {
