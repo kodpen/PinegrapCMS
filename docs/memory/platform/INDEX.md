@@ -118,7 +118,7 @@
 - import-media.md: Content import pages and media (2026.11.0): page items as draft designer pages, attachments and body pictures fetched into Files, body addresses rewritten, notes in the report
 - import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long names cut before the uniqueness check; missing URL parts read as empty; the backup of an existing file
 - import-records.md: Content import record and comment writers (2026.11.0): a post as a record of the mapped form, field kinds, categories and tags, author account, late featured image, comment threads, undo paths
-- import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo
+- import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo [decision: decisions-made-schema-52.md]
 - import-screen.md: import.php screen rules: menu entry, picker choices (no Recycle Bin or Workspace, path labels), field rows by type, dry run refusals, discard and 7-day sweep, undo answers
 - import-shopify.md: Shopify products and customers CSV import (2026.11.0, #6236): rows grouped by handle, product items as WooCommerce, the contact writer, consent line, tag groups, undo
 - import-woocommerce.md: WooCommerce products CSV import (2026.11.0, #6206): reader, item shape, variable products as variant sets, categories as groups, the product writer and its undo
@@ -167,6 +167,7 @@
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
+- office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells, rows, columns and paragraphs, .pptx and .xls only shown, no .doc/.ppt, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: decisions-made-workspace-45.md]

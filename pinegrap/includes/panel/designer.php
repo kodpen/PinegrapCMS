@@ -224,7 +224,7 @@ function pg_panel_designer($request, $action)
     if (!pg_designer_is_full($user)) {
         $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
                             'page_load', 'seo_check', 'import_fragment',
-                            'form_fields', 'preview_widgets', 'widget_ghosts', 'legacy_region_preview',
+                            'form_fields', 'preview_widgets', 'preview_records', 'widget_ghosts', 'legacy_region_preview',
                             'revisions_list', 'revision_get', 'prototype_map');
         // The "Clicks" layer's figures: the sub action asks the Visitors
         // right itself.
@@ -935,13 +935,41 @@ function pg_panel_designer($request, $action)
                 isset($request['comment_settings']) ? $request['comment_settings'] : null,
                 ($pv_page > 0) ? pg_designer_page_access($pv_page, $user) : 'edit'
             );
+            // "Preview as": the page's record, visitor and case, read back
+            // against the page's widgets; a record only the user may open.
+            $pv_setups = array();
+            $pv_html   = pg_designer_preview_widgets(
+                $pv['page_id'],
+                (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
+                $pv['comment_settings'],
+                (isset($request['preview_as']) && is_array($request['preview_as'])) ? $request['preview_as'] : null,
+                $user,
+                $pv_setups
+            );
             respond(array(
                 'status' => 'success',
-                'html'   => pg_designer_preview_widgets(
-                    $pv['page_id'],
-                    (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
-                    $pv['comment_settings']
-                ),
+                'html'   => $pv_html,
+                'setups' => $pv_setups,
+            ));
+            break;
+
+        // The "Preview as" record chooser: the records of a single-record
+        // widget's own source the user may open on its panel screen,
+        // matching the search text (pg_preview_as_record_search()). A page
+        // the user may not know filters as an unsaved one.
+        case 'preview_records':
+            $pr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ($pr_page > 0 && pg_designer_page_access($pr_page, $user) === 'hidden') $pr_page = 0;
+            $pr_widget = (isset($request['widget']) && is_array($request['widget'])) ? $request['widget'] : array();
+            $pr_rows   = pg_designer_preview_override_rows(array($pr_widget));
+            $pr_sid    = isset($pr_widget['id']) ? (int)$pr_widget['id'] : 0;
+            $pr_cfg    = isset($pr_rows[$pr_sid]) ? $pr_rows[$pr_sid]['cfg'] : null;
+            if (!is_array($pr_cfg) && $pr_sid > 0) {
+                $pr_cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . $pr_sid . "' LIMIT 1"), true);
+            }
+            respond(array(
+                'status' => 'success',
+                'rows'   => pg_preview_as_record_search(is_array($pr_cfg) ? $pr_cfg : array(), $pr_page, isset($request['q']) ? $request['q'] : '', $user),
             ));
             break;
 
@@ -1220,6 +1248,28 @@ function pg_panel_designer($request, $action)
                 'primary' => $p, 'secondary' => $s));
             break;
 
+        // The Variables tab of Settings > Theme
+        // (includes/fn/design_variables.php): the model it sends - or, the
+        // first time, the design's stored one - on the look and palette of
+        // the moment, with the defaults, the stylesheet the canvas tries on,
+        // the contrast rows and the tab's rows. Nothing is written: the
+        // design's save writes the file.
+        case 'variables_state':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+            $look    = isset($request['look']) ? (string)$request['look'] : '';
+            $palette = isset($request['palette']) ? (string)$request['palette'] : '';
+            $model   = null;
+            if (isset($request['model']) && is_array($request['model'])) {
+                $model = $request['model'];
+            } elseif (isset($request['style_id']) && (int)$request['style_id'] > 0) {
+                $model = pg_design_variables_stored((int)$request['style_id']);
+            }
+            $state = pg_design_variables_state($model, $look, $palette);
+            respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
+                'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
+                'list' => pg_design_variables_client_list()));
+            break;
+
         // ── PROTOTYPE SHARE LINKS ────────────────────────────────────
         // The Share prototype dialog (includes/fn/prototype_links.php): a
         // design's links, a new one, a link's address shown again, and
@@ -1241,6 +1291,17 @@ function pg_panel_designer($request, $action)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
             respond(pg_proto_links_panel($sub, $request, $user));
+            break;
+
+        // "Preview on a phone" (includes/fn/prototype_phone.php): the
+        // person's phone link of the design found again or made, and ended.
+        // Designers only, like the share links above.
+        case 'prototype_phone':
+        case 'prototype_phone_end':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+            respond(pg_proto_phone_panel($sub, $request, $user));
             break;
 
         // The figures of the "Clicks" layer (assets/js/style_designer_clicks.js):
@@ -1280,6 +1341,14 @@ function pg_panel_designer($request, $action)
         default:
             respond(array('status' => 'error', 'message' => lang('Unknown action.')));
     }
+}
+
+// Whether the file of this stored name is a document the ERP module keeps
+// (an issued invoice's PDF, a receipt's scan): get_file.php serves it only
+// with the ERP right, and nothing outside that module writes or deletes it.
+function pg_panel_designer_file_erp_refused($name)
+{
+    return pg_files_include_erp_document(db_values("SELECT id FROM files WHERE name = '" . e((string) $name) . "'"));
 }
 
 function pg_panel_designer_file($request, $action)
@@ -1430,6 +1499,9 @@ function pg_panel_designer_file($request, $action)
             if (!$df_row && $df_row !== '0') {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
             }
+            if (pg_panel_designer_file_erp_refused($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('ERP documents are read-only in the file manager.')));
+            }
             // The key that signs the site's mail never leaves the server
             // and only the SMTP settings write it.
             if (pg_file_withheld($df_name_safe)) {
@@ -1468,6 +1540,9 @@ function pg_panel_designer_file($request, $action)
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
             }
             $df_row = mysqli_fetch_assoc($df_row_q);
+            if (pg_panel_designer_file_erp_refused($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('ERP documents are read-only in the file manager.')));
+            }
             // Role-3 (contributor) needs explicit access to the file's folder.
             if ((int)$user['role'] === 3) {
                 $df_acl = get_folders_that_user_has_access_to($user['id']);
@@ -1501,6 +1576,9 @@ function pg_panel_designer_file($request, $action)
             $df_exists = db_value("SELECT COUNT(*) FROM files WHERE name = '" . e($df_name_safe) . "'");
             if (!$df_exists) {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
+            }
+            if (pg_panel_designer_file_erp_refused($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('ERP documents are read-only in the file manager.')));
             }
             // The key that signs the site's mail never leaves the server
             // and only the SMTP settings write it.

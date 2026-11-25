@@ -738,7 +738,7 @@ function test_proto_hotspots_view_draws_arrows()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
-	pg_assert_contains('canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; }', $source, 'the core asks the view where an arrow may end');
+	pg_assert_contains("canConnect: function (from, to, port) { return !!to && to.kind !== 'sketch' && _sdProtoArrowHref(from, to, port) !== null; }", $source, 'the core asks the view where an arrow may end (never a sketch page)');
 	pg_assert_contains('connected: function (from, to, port) { _sdProtoConnect(from, to, port); }', $source, 'a drawn arrow writes the link');
 	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto, .sd-bp-bar.sd-bp-proto')) return;", $source, 'the document shortcuts leave the view and its controls in the canvas bar alone');
 	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href, to) : null;', $source, 'the node gets the collector\'s patch');
@@ -2604,7 +2604,7 @@ function test_proto_hotspots_view_badge_lists_links_without_a_target()
 
 	pg_assert_contains("amber.setAttribute('aria-haspopup', 'dialog');", $source, 'the count says it opens a list');
 	pg_assert_contains('if (!again) _sdProtoProblemsOpen(amber, item.id);', $source, 'a press opens the frame\'s list, a second closes it');
-	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty',", $source, 'the canvas leaves it its clicks and keys');
+	pg_assert_contains("ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',", $source, 'the canvas leaves it its clicks and keys');
 	pg_assert_contains('var only = (frameId && issues) ? window.PGProtoHotspots.emptyOf(issues, frameId) : null;', $source, 'only the frame\'s links without a target');
 	pg_assert_contains('go: function () { _sdProtoEmptyGo(one.frame, one.port); }', $source, 'a row goes to the link in the panel');
 	pg_assert_contains("if (!ui.root.classList.contains('sd-proto-list-open') || _sdProto.side !== 'links') _sdProtoSide('links', true, false);", $source, 'the panel opens at its Links tab, not kept as a choice');

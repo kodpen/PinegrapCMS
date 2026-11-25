@@ -142,6 +142,7 @@
 - api-walk-in-queue-routes.md: Walk-in queue API routes (WQ8): places, a day's numbers, kiosk join, Call next at a desk, Finish; scope queue, role-3 rows, 409 codes, the link given once
 - api-webhook-dispatch-run.md: One run of the webhook dispatcher: a receiver that failed is left for the rest of the run, and a delivery's answer never switches a disabled subscription back on
 - api-webhook-event-payloads.md: Fields and samples of webhook events (api_webhook_event_payloads()), GET /webhooks/events, POST /webhooks/{id}/test with event, the test that reads the announcing code
+- api-webhook-event-scopes.md: Webhook events follow the read scope of their data: the event → scope map, the 403 on create/change/sample, the skip at enqueue, the Events tab line and the one bell row per subscription [decision: here]
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
@@ -179,7 +180,7 @@
 - figma-api-sign-in.md: Figma REST sign-in (read 2026-11-24): OAuth app (draft, private, public with review), personal and plan access tokens, scopes, PKCE, token lifetimes
 - figma-api-styles-variables.md: Figma styles and variables over REST (read 2026-11-24): style endpoints give published metadata only, values come from the node; Variables API (file_variables:read) is Enterprise only
 - figma-api-terms.md: Figma Developer Terms as far as readable (2026-11-24): licence to build an integration, no credential sharing, privacy policy, delete on termination
-- figma-canva-census.md: Figma and Canva API census for the designer's Figma and Canva starts (read 2026-11-24): what each gives, where it differs from plans/designer-start-import.md, and which file holds each topic
+- figma-canva-census.md: Figma and Canva API census for the designer's Figma and Canva starts (read 2026-11-24): what each gives, where it differs from plans/designer-start-import.md, and which file holds each topic [decision: decisions-made-product-107.md]
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
 - ga4-mp-facts.md: GA4 Measurement Protocol as Google's own documents say it (read 2026-11-20): addresses, secret, body, client id, consent, 72-hour limit, user data hashing, validation endpoint, answers
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]

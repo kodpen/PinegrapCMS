@@ -1180,6 +1180,117 @@
         }).map(function (item) { return String(item.id); });
     }
 
+    // A box ({ x, y, w, h }) being moved or resized among others, lined up:
+    // on each axis the dragged edge, or for a move the nearest of its
+    // edges and its middle, goes to the nearest edge or middle of another
+    // box within opts.reach; an axis with nothing that near falls to
+    // opts.grid. opts.sides names the sides a resize drags ('n', 'e', 's',
+    // 'w', or two of them; none for a move); opts.min is the smallest
+    // width and height; opts.free (Alt held) keeps only whole units.
+    // Answers the box and its guides, [{ axis, at, from, to }]: a line at
+    // x = at (axis 'x') or y = at from the first to the last of the boxes
+    // that line up on it.
+    function snapRect(rect, others, opts) {
+        opts = opts || {};
+
+        var sides = String(opts.sides || '');
+        var min = opts.min || 1;
+        var out = { x: rect.x, y: rect.y, w: rect.w, h: rect.h, guides: [] };
+        var axes = [
+            { axis: 'x', pos: 'x', size: 'w', lo: 'w', hi: 'e', cross: 'y', crossSize: 'h' },
+            { axis: 'y', pos: 'y', size: 'h', lo: 'n', hi: 's', cross: 'x', crossSize: 'w' }
+        ];
+
+        function linesOf(box, a) {
+            return [box[a.pos], box[a.pos] + box[a.size] / 2, box[a.pos] + box[a.size]];
+        }
+
+        axes.forEach(function (a) {
+            var lo = sides.indexOf(a.lo) !== -1;
+            var hi = sides.indexOf(a.hi) !== -1;
+            var moving = !sides;
+
+            if (!moving && !lo && !hi) {
+                return;
+            }
+
+            // The lines of the box that move, with what each moves.
+            var mine = linesOf(out, a).map(function (at, i) { return { at: at, i: i }; }).filter(function (line) {
+                return moving || (lo && line.i === 0) || (hi && line.i === 2);
+            });
+            var best = null;
+
+            if (!opts.free && opts.reach) {
+                (others || []).forEach(function (other) {
+                    linesOf(other, a).forEach(function (to) {
+                        mine.forEach(function (line) {
+                            var d = to - line.at;
+
+                            if ((Math.abs(d) <= opts.reach) && (!best || Math.abs(d) < Math.abs(best.d))) {
+                                best = { d: d, at: to, i: line.i };
+                            }
+                        });
+                    });
+                });
+            }
+
+            var d = 0;
+
+            if (best) {
+                d = best.d;
+            } else if (opts.grid && !opts.free) {
+                var line = mine[0];
+
+                d = Math.round(line.at / opts.grid) * opts.grid - line.at;
+            }
+
+            if (moving) {
+                out[a.pos] += d;
+            } else if (lo) {
+                out[a.pos] += d;
+                out[a.size] -= d;
+            } else {
+                out[a.size] += d;
+            }
+
+            out[a.pos] = Math.round(out[a.pos]);
+            out[a.size] = Math.round(out[a.size]);
+
+            if (out[a.size] < min) {
+                if (lo && !moving) {
+                    out[a.pos] -= min - out[a.size];
+                }
+
+                out[a.size] = min;
+            }
+
+            a.best = best;
+        });
+
+        // The guides once both axes have settled.
+        axes.forEach(function (a) {
+            var best = a.best;
+
+            if (!best) {
+                return;
+            }
+
+            var from = out[a.cross];
+            var to = out[a.cross] + out[a.crossSize];
+
+            (others || []).forEach(function (other) {
+                if (linesOf(other, a).some(function (at) { return Math.abs(at - best.at) < 0.5; })) {
+                    from = Math.min(from, other[a.cross]);
+                    to = Math.max(to, other[a.cross] + other[a.crossSize]);
+                }
+            });
+
+            out.guides.push({ axis: a.axis, at: Math.round(best.at), from: Math.round(from), to: Math.round(to) });
+        });
+
+        return out;
+    }
+
     // A list of ids with one added, or taken out when it is there.
     function toggle(ids, id) {
         return (ids.indexOf(id) === -1) ? ids.concat([id]) : ids.filter(function (one) { return one !== id; });
@@ -2938,6 +3049,7 @@
         lanes: lanes,
         freeId: freeId,
         inRect: inRect,
+        snapRect: snapRect,
         toggle: toggle,
         typing: typing,
         bytes: bytes,

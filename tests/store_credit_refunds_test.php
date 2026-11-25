@@ -146,3 +146,16 @@ function test_store_credit_refund_cancel_mail_names_the_credit()
 	pg_assert_true(strpos($body, '110.00') !== false, 'the credit amount is named');
 	pg_assert_true(strpos($body, '<script') === false, 'escaped');
 }
+
+// A cancelled order's refund given as store credit records its gift card part
+// as a return_gift_card row, as a return's refund does: the payment money row
+// alone was counted as given back, so after a restore a return or a second
+// cancellation gave the gift card part as credit once more.
+function test_store_credit_refund_cancel_rows_split_the_gift_card_part()
+{
+	pg_assert_same(array(array(7000, 'credit'), array(3000, 'return_gift_card')), pg_credit_refund_cancel_rows(10000, 7000), 'payment money and the gift card part');
+	pg_assert_same(array(array(10000, 'credit')), pg_credit_refund_cancel_rows(10000, 10000), 'payment money only');
+	pg_assert_same(array(array(4500, 'return_gift_card')), pg_credit_refund_cancel_rows(4500, 0), 'paid by gift cards alone');
+	pg_assert_same(array(array(500, 'credit')), pg_credit_refund_cancel_rows(500, 900), 'never more payment than the refund');
+	pg_assert_same(array(), pg_credit_refund_cancel_rows(0, 0), 'nothing refunded');
+}

@@ -1,10 +1,10 @@
 ---
 name: common-region-component-scripts
-description: The block scripts (theme switcher, scroller, Listen, map, interactions…) run a second time after a converted common region or a designed pop-up is drawn
+description: The block scripts (theme switcher, scroller, back to top, Listen, map, interactions…) run a second time after a converted common region or a designed pop-up is drawn
 ---
 
 ## Why do the block scripts run twice?
-- The blocks carry a marker and no script; `get_page_content.php` adds each file in one pass per script (`pg_theme_switcher_inject()`, `pg_scroller_inject()`, `pg_listen_inject()`, `pg_place_list_inject()`, `pg_course_blocks_inject()`, `pg_site_push_block_inject()`, `pg_fx_inject()`, `pg_bs_tips_inject()`, `pg_ai_summary_inject()`, `pg_wishlist_inject()`, `pg_booking_widget_inject()`, `pg_cf_rich_text_inject()`).
+- The blocks carry a marker and no script; `get_page_content.php` adds each file in one pass per script (`pg_theme_switcher_inject()`, `pg_scroller_inject()`, `pg_page_scroll_inject()`, `pg_listen_inject()`, `pg_place_list_inject()`, `pg_course_blocks_inject()`, `pg_site_push_block_inject()`, `pg_fx_inject()`, `pg_bs_tips_inject()`, `pg_ai_summary_inject()`, `pg_wishlist_inject()`, `pg_booking_widget_inject()`, `pg_cf_rich_text_inject()`).
 - Those passes run once the page's components and widgets are drawn, but a common region made a shared component is drawn later, by the common region pass (`pg_common_region_component_html()`), and a designed pop-up's `<template>` later still. Before PR #11510 their blocks showed with no script: the switcher, the row buttons, Listen, the map and the interactions did nothing.
 
 ## How does it work now?

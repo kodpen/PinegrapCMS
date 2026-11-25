@@ -1686,3 +1686,42 @@ JS
 	pg_assert_same(array(), $result['plain'], 'a plain press on a box not chosen lets the set go');
 	pg_assert_same(array(array(), array('select b')), $result['without'], 'without several() Shift+click selects one box, Ctrl+A nothing');
 }
+
+// snapRect(): a box moved or resized among others lines up with their
+// edges and middles within reach, the guide spanning what lines up; on an
+// axis nothing is near it falls to the grid; a resize moves only the
+// dragged sides and keeps the smallest size; free (Alt held) changes
+// nothing but whole units.
+function test_graph_canvas_snap_rect()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+var others = [{ x: 0, y: 0, w: 400, h: 600 }, { x: 40, y: 40, w: 120, h: 80 }];
+out.edge = G.snapRect({ x: 43, y: 203, w: 100, h: 50 }, others, { reach: 6, grid: 8 });
+out.middle = G.snapRect({ x: 147, y: 301, w: 106, h: 40 }, others, { reach: 6, grid: 8 });
+out.far = G.snapRect({ x: 250, y: 251, w: 50, h: 50 }, [{ x: 0, y: 0, w: 10, h: 10 }], { reach: 6, grid: 8 });
+out.right = G.snapRect({ x: 40, y: 200, w: 118, h: 50 }, others, { reach: 6, grid: 8, sides: 'e' });
+out.left = G.snapRect({ x: 3, y: 200, w: 100, h: 50 }, others, { reach: 6, grid: 8, sides: 'w' });
+out.small = G.snapRect({ x: 100, y: 100, w: 3, h: -20 }, [], { reach: 6, grid: 8, sides: 'se', min: 16 });
+out.free = G.snapRect({ x: 43.4, y: 203.6, w: 100, h: 50 }, others, { reach: 6, grid: 8, free: true });
+out.none = G.snapRect({ x: 43, y: 21, w: 10, h: 10 }, [], {});
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(40, 200, 100, 50), array($result['edge']['x'], $result['edge']['y'], $result['edge']['w'], $result['edge']['h']), 'the left edge lines up with a box, the top falls to the grid');
+	pg_assert_same(array(array('axis' => 'x', 'at' => 40, 'from' => 40, 'to' => 250)), $result['edge']['guides'], 'one guide from the top of what lines up to the bottom of the box');
+	pg_assert_same(array(147, 300), array($result['middle']['x'], $result['middle']['y']), 'the middle lines up with the frame\'s middle (200)');
+	pg_assert_same('x', $result['middle']['guides'][0]['axis'], 'a guide down the middle');
+	pg_assert_same(200, $result['middle']['guides'][0]['at'], 'at the frame\'s middle');
+	pg_assert_same(array(248, 248, array()), array($result['far']['x'], $result['far']['y'], $result['far']['guides']), 'nothing near: the grid, no guide');
+	pg_assert_same(array(40, 120), array($result['right']['x'], $result['right']['w']), 'a right side dragged lines up with the box\'s right edge, the left stays');
+	pg_assert_same(array(0, 103), array($result['left']['x'], $result['left']['w']), 'a left side dragged lines up with the frame, the right edge stays');
+	pg_assert_same(array(16, 16), array($result['small']['w'], $result['small']['h']), 'never smaller than the smallest size');
+	pg_assert_same(array(43, 204, array()), array($result['free']['x'], $result['free']['y'], $result['free']['guides']), 'free: whole units only');
+	pg_assert_same(array(43, 21), array($result['none']['x'], $result['none']['y']), 'no reach and no grid change nothing');
+}

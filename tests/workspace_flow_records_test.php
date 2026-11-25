@@ -61,7 +61,7 @@ function test_workspace_flow_records_feed_pick_unchanged()
 	$source = workspace_flow_records_test_source('pg_sw_form_feed_parts');
 	pg_assert_contains('pg_sw_form_feed_pick($page_id, $page_name, $feed)', $source, 'the feed calls the pick with no extras');
 	pg_assert_false(strpos($source, 'SELECT forms.id') !== false, 'the feed has no query of its own');
-	pg_assert_contains('<pubDate>\' . date(\'r\', (int)$record[\'submitted_timestamp\'])', $source, 'an item is dated as before');
+	pg_assert_contains('\'pubDate\'     => date(\'r\', (int)$record[\'submitted_timestamp\'])', $source, 'an item is dated as before');
 
 	// The box's extras widen the select and the condition, never the feed's.
 	$extra = pg_sw_form_feed_pick_sql(7, $clause, array('select' => ', forms.last_modified_timestamp', 'join' => ' LEFT JOIN y ON 1', 'where' => ' AND 1', 'limit' => 500));

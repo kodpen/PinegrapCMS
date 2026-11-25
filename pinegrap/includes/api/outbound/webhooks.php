@@ -335,6 +335,222 @@ function api_webhook_core_events() {
 
 }
 
+// The scope that may read each event's data, beside the catalogue: an
+// application is told of an event only while it holds that scope, as it may
+// read the same data through the API only then (api_webhook_hook_blocked()).
+// A write scope gives its read. A module maps its own events through its
+// seam (api_module_contributions('webhook_event_scopes')); an event that
+// carries no data of the site, as webhook.test, needs no entry, and a test
+// refuses a catalogue event without one.
+function api_webhook_event_scopes() {
+
+	require_once(dirname(__FILE__) . '/../modules.php');
+
+	return api_webhook_core_event_scopes() + api_module_contributions('webhook_event_scopes');
+
+}
+
+// The core's own events and the read scope of their data.
+function api_webhook_core_event_scopes() {
+
+	return array(
+		// The orders, their returns, packs and parcels, marketplace packages and
+		// cart quotes: read under orders, as GET /orders, /returns,
+		// /shipments/problems and /cart-quotes are.
+		'order.created'                  => 'orders:read',
+		'order.status_changed'           => 'orders:read',
+		'order.shipped'                  => 'orders:read',
+		'order.delivered'                => 'orders:read',
+		'order.cancelled'                => 'orders:read',
+		'order.packed'                   => 'orders:read',
+		'order.pack_short'               => 'orders:read',
+		'order.return.requested'         => 'orders:read',
+		'order.return.approved'          => 'orders:read',
+		'order.return.received'          => 'orders:read',
+		'order.return.refunded'          => 'orders:read',
+		'marketplace.order.imported'     => 'orders:read',
+		'marketplace.order.cancelled'    => 'orders:read',
+		'marketplace.order.shipped'      => 'orders:read',
+		'shipment.problem'               => 'orders:read',
+		'shipment.problem_resolved'      => 'orders:read',
+		'cart_quote.created'             => 'orders:read',
+		'cart_quote.applied'             => 'orders:read',
+		'cart_quote.ordered'             => 'orders:read',
+		'cart_quote.cancelled'           => 'orders:read',
+		'ticket.checked_in'              => 'orders:read',
+		'zone.created'                   => 'orders:read',
+		'zone.updated'                   => 'orders:read',
+		'zone.deleted'                   => 'orders:read',
+		'tax_zone.created'               => 'orders:read',
+		'tax_zone.updated'               => 'orders:read',
+		'tax_zone.deleted'               => 'orders:read',
+		'shipping_method.created'        => 'orders:read',
+		'shipping_method.updated'        => 'orders:read',
+		'shipping_method.deleted'        => 'orders:read',
+		'currency.created'               => 'orders:read',
+		'currency.updated'               => 'orders:read',
+		'currency.deleted'               => 'orders:read',
+
+		// A person's own data: contacts, their consents, subscriptions, surveys,
+		// volunteering, courses, the mail and messages they sent; GET /customers,
+		// /subscriptions, /feedback and /volunteer read it under customers.
+		'customer.created'               => 'customers:read',
+		'customer.updated'               => 'customers:read',
+		'customer.deleted'               => 'customers:read',
+		'customer.consent_changed'       => 'customers:read',
+		'customer.rhythm_stage_changed'  => 'customers:read',
+		'customer.hot'                   => 'customers:read',
+		'customer.returned'              => 'customers:read',
+		'customer.reorder_due'           => 'customers:read',
+		'subscription.renewed'           => 'customers:read',
+		'subscription.failed'            => 'customers:read',
+		'subscription.cancelled'         => 'customers:read',
+		'subscription.paused'            => 'customers:read',
+		'subscription.resumed'           => 'customers:read',
+		'affiliate.approved'             => 'customers:read',
+		'mail.bounced'                   => 'customers:read',
+		'mail.complained'                => 'customers:read',
+		'whatsapp.received'              => 'customers:read',
+		'course.completed'               => 'customers:read',
+		'feedback.received'              => 'customers:read',
+		'feedback.detractor'             => 'customers:read',
+		'volunteer.applied'              => 'customers:read',
+		'volunteer.approved'             => 'customers:read',
+		'shift.signed_up'                => 'customers:read',
+		'shift.unfilled'                 => 'customers:read',
+		'volunteer.checked_in'           => 'customers:read',
+		'volunteer.hours_approved'       => 'customers:read',
+
+		// Store credit is a spendable card (GET /customers/{id}/credit).
+		'credit.issued'                  => 'gift_cards:read',
+		'credit.used'                    => 'gift_cards:read',
+		'credit.expired'                 => 'gift_cards:read',
+		'referral.rewarded'              => 'gift_cards:read',
+
+		'commission.status_changed'      => 'commissions:read',
+
+		// Products, their groups and stock (GET /products, /product-groups,
+		// /inventory).
+		'product.created'                => 'products:read',
+		'product.updated'                => 'products:read',
+		'product.deleted'                => 'products:read',
+		'inventory.changed'              => 'products:read',
+		'stock.low'                      => 'products:read',
+		'product_group.created'          => 'products:read',
+		'product_group.updated'          => 'products:read',
+		'product_group.deleted'          => 'products:read',
+
+		// A review is a comment on a product (GET /products/{id}/reviews).
+		'product.review.created'         => 'comments:read',
+
+		'booking.created'                => 'bookings:read',
+		'booking.confirmed'              => 'bookings:read',
+		'booking.rescheduled'            => 'bookings:read',
+		'booking.cancelled'              => 'bookings:read',
+		'booking.completed'              => 'bookings:read',
+
+		'queue.joined'                   => 'queue:read',
+		'queue.called'                   => 'queue:read',
+		'queue.served'                   => 'queue:read',
+		'queue.no_show'                  => 'queue:read',
+
+		'user.created'                   => 'users:read',
+		'user.updated'                   => 'users:read',
+		'user.deleted'                   => 'users:read',
+
+		'contact_group.members_changed'  => 'contact_groups:read',
+
+		'page.created'                   => 'pages:read',
+		'page.updated'                   => 'pages:read',
+
+		'experiment.started'             => 'experiments:read',
+		'experiment.ended'               => 'experiments:read',
+
+		// A prototype is a design's drafts shared by a link (GET
+		// /design/designs/{id}/prototype-comments).
+		'prototype.approved'             => 'design:read',
+		'prototype.changes_requested'    => 'design:read',
+		'prototype.commented'            => 'design:read',
+
+		'content.review_due'             => 'content_review:read',
+
+		'offer.created'                  => 'offers:read',
+		'offer.updated'                  => 'offers:read',
+		'offer.deleted'                  => 'offers:read',
+
+		'file.created'                   => 'files:read',
+
+		// Submissions, and the application programmes built on forms (GET /forms,
+		// /application-programs).
+		'form.submitted'                 => 'forms:read',
+		'form.paid'                      => 'forms:read',
+		'form.submission.deleted'        => 'forms:read',
+		'application.scored'             => 'forms:read',
+		'application.decided'            => 'forms:read',
+
+		'calendar_event.reserved'        => 'calendars:read',
+
+		'campaign.sent'                  => 'campaigns:read'
+	);
+
+}
+
+// Whether $granted (an application's scopes as stored or as in force) holds
+// $needed: the scope itself, or for a read the write of the same group, which
+// gives it (api_scopes_expand()). Written here as well because queueing runs
+// on every screen, where the API's scope list is not loaded. Pure.
+function api_webhook_scope_held($granted, $needed) {
+
+	$needed = (string)$needed;
+
+	if ($needed === '') {
+
+		return true;
+
+	}
+
+	if (!is_array($granted)) {
+
+		return false;
+
+	}
+
+	if (in_array($needed, $granted, true)) {
+
+		return true;
+
+	}
+
+	return (substr($needed, -5) === ':read') && in_array(substr($needed, 0, -5) . ':write', $granted, true);
+
+}
+
+// The scopes $granted lacks for the events of a subscription, each with the
+// events it keeps away: scope => event names, in the order the events are
+// listed. Empty when every event may be delivered. $map is
+// api_webhook_event_scopes(). Pure.
+function api_webhook_hook_blocked($events, $granted, $map) {
+
+	$blocked = array();
+
+	foreach ((array)$events as $event) {
+
+		$event = (string)$event;
+
+		$scope = isset($map[$event]) ? (string)$map[$event] : '';
+
+		if (!api_webhook_scope_held($granted, $scope)) {
+
+			$blocked[$scope][] = $event;
+
+		}
+
+	}
+
+	return $blocked;
+
+}
+
 function api_webhook_event_is_valid($event) {
 
 	$events = api_webhook_events();
@@ -397,7 +613,7 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 
 	// A failing subscription is still told: its events are kept until the
 	// operator fixes the address and retries (api_webhook_queue_hold()).
-	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.events, api_webhooks.status"
+	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.events, api_webhooks.status, api_apps.scopes AS app_scopes"
 		. ($narrowed ? ", api_webhooks.channel_group_id" : "") . "
 		FROM api_webhooks
 		INNER JOIN api_apps ON api_apps.id = api_webhooks.app_id
@@ -423,6 +639,12 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	// subscriptions and only when there is one.
 	$groups = null;
 
+	// The scope that may read the event's data: an application lacking it is
+	// sent nothing of it, as GET would refuse it the same data.
+	$scopes = api_webhook_event_scopes();
+
+	$needed = isset($scopes[$event]) ? (string)$scopes[$event] : '';
+
 	foreach ($hooks as $hook) {
 
 		$events = json_decode((string)$hook['events'], true);
@@ -434,6 +656,14 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 		}
 
 		if (($addressed > 0) && ((int)$hook['app_id'] !== $addressed)) {
+
+			continue;
+
+		}
+
+		if (!api_webhook_scope_held(json_decode((string)$hook['app_scopes'], true), $needed)) {
+
+			api_webhook_scope_skip_note((int)$hook['id'], (int)$hook['app_id'], $needed);
 
 			continue;
 
@@ -473,6 +703,40 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	}
 
 	return $queued;
+
+}
+
+// One bell line to the administrators the first time a subscription is
+// skipped for a scope its application lacks: once per subscription, kept
+// while its bell row is (action webhook_scope, form_id the subscription,
+// order_id the application, title the scope). The Events tab says the same
+// on the subscription for as long as it lasts.
+function api_webhook_scope_skip_note($webhook_id, $app_id, $scope) {
+
+	static $told = array();
+
+	if (isset($told[$webhook_id]) || !function_exists('create_notification')) {
+
+		return;
+
+	}
+
+	$told[$webhook_id] = true;
+
+	if (db_value("SELECT id FROM notifications WHERE action = 'webhook_scope' AND form_id = '" . (int)$webhook_id . "' LIMIT 1")) {
+
+		return;
+
+	}
+
+	create_notification(array(
+		'action'   => 'webhook_scope',
+		'type'     => 'warning',
+		'title'    => $scope,
+		'form_id'  => (int)$webhook_id,
+		'order_id' => (int)$app_id,
+		'user'     => 'system'
+	));
 
 }
 

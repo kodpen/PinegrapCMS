@@ -1502,6 +1502,7 @@ function pg_office_docx_state($zip, &$refused = null)
     // A style that is itself a list (List Bullet, List Number): paragraphs
     // in it carry no numbering of their own.
     $styles = array();
+    $heads = array();
     $style_sheet = pg_office_xml($zip, 'word/styles.xml', $status);
     pg_office_refuse($refused, $status);
 
@@ -1511,6 +1512,15 @@ function pg_office_docx_state($zip, &$refused = null)
 
             if ($id === '') {
                 continue;
+            }
+
+            // A heading by its built-in name, which Word writes in English
+            // whatever the id and the name it shows ("Balk 1", "a1").
+            foreach ($style->childNodes as $name) {
+                if (($name instanceof DOMElement) && ($name->localName === 'name')
+                    && preg_match('/^heading ([1-9])$/', strtolower(trim(pg_office_attr($name, 'val'))), $level_match)) {
+                    $heads[$id] = (int) $level_match[1];
+                }
             }
 
             $entry = array('list' => '', 'level' => 0);
@@ -1539,6 +1549,7 @@ function pg_office_docx_state($zip, &$refused = null)
         'rels'        => $rels,
         'lists'       => $lists,
         'styles'      => $styles,
+        'heads'       => $heads,
         'images'      => 0,
         'images_lost' => 0,
         'size'        => 0,
@@ -1989,6 +2000,12 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                     $props['list'] = '';
                 }
 
+                // The kind the editor's paragraph style choice starts from
+                // (includes/fn/office_docx_kind.php).
+                if (isset($state['edit']) && function_exists('pg_office_docx_kind_mark')) {
+                    pg_office_docx_kind_mark($state, $child, $props);
+                }
+
                 if ($props['list'] !== '') {
                     $format = $state['lists'][$props['list']][$props['level']] ?? 'ul';
 
@@ -2011,7 +2028,7 @@ function pg_office_docx_blocks(&$state, $container, &$html)
 
                 $close_list();
 
-                $tag = pg_office_docx_block_tag($props['style']);
+                $tag = isset($state['heads'][$props['style']]) ? 'h' . min(6, $state['heads'][$props['style']]) : pg_office_docx_block_tag($props['style']);
                 $style = ($props['align'] !== '') ? ' style="text-align:' . $props['align'] . '"' : '';
 
                 $html .= '<' . $tag . $style . $mark . '>' . (($inner === '') ? '&nbsp;' : $inner) . '</' . $tag . '>';
@@ -2169,7 +2186,7 @@ function pg_office_docx_read($path, $edit = false)
     }
 
     if ($edit && ($refusal === '')) {
-        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array());
+        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array());
 
         foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
             $state['edit']['index'][$paragraph->getNodePath()] = $position;
@@ -2188,7 +2205,7 @@ function pg_office_docx_read($path, $edit = false)
     if ($edit) {
         $out['edit'] = ($refusal !== '')
             ? array('ok' => false, 'why' => $refusal)
-            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks']);
+            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks'], 'kinds' => (object) $state['edit']['kinds']);
         $out['version'] = $version;
     }
 
@@ -3567,6 +3584,14 @@ function pg_office_view_strings()
         'doc_format_bar'    => lang('Format of the selected text'),
         'doc_underline'     => lang('Underline'),
         'doc_format_select' => lang('Select text in a paragraph to format it.'),
+        'doc_kind'          => lang('Paragraph style'),
+        'kind_normal'       => lang('Normal text'),
+        'kind_heading1'     => lang('Heading 1'),
+        'kind_heading2'     => lang('Heading 2'),
+        'kind_heading3'     => lang('Heading 3'),
+        'kind_bullet'       => lang('Bulleted list'),
+        'kind_number'       => lang('Numbered list'),
+        'kind_other'        => lang('Other style'),
         'doc_editor'        => lang('Text of the paragraph'),
         'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),

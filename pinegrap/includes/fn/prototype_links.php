@@ -88,6 +88,45 @@ function pg_proto_link_durations()
 }
 
 /**
+ * How long a phone preview's link lives, in seconds: eight hours. None of
+ * the durations "Share prototype" offers (pg_proto_link_durations()) is this
+ * long, so the span between a link's making and its expiry is what marks it
+ * as the phone link (pg_proto_link_is_phone()); the table keeps no column
+ * for it.
+ *
+ * @return int
+ */
+function pg_proto_link_phone_seconds()
+{
+    return 28800;
+}
+
+/**
+ * Is this link a phone preview's ("Preview on a phone",
+ * includes/fn/prototype_phone.php)? A design's link without a password,
+ * comments or approval, living exactly pg_proto_link_phone_seconds() from
+ * its making. Pure.
+ *
+ * @param array|null $row prototype_links row
+ * @return bool
+ */
+function pg_proto_link_is_phone($row)
+{
+    if (!is_array($row) || ((int) (isset($row['style_id']) ? $row['style_id'] : 0) <= 0) || !empty($row['bundle_id'])) {
+        return false;
+    }
+
+    if ((isset($row['password_hash']) && ((string) $row['password_hash'] !== '')) || !empty($row['allow_comments']) || !empty($row['approval'])) {
+        return false;
+    }
+
+    $expires = (int) (isset($row['expires_at']) ? $row['expires_at'] : 0);
+    $created = (int) (isset($row['created_at']) ? $row['created_at'] : 0);
+
+    return ($expires > 0) && ($created > 0) && (($expires - $created) === pg_proto_link_phone_seconds());
+}
+
+/**
  * How many wrong passwords in a row lock a link's password.
  *
  * @return int
@@ -1296,7 +1335,7 @@ function pg_proto_link_owner_name($row)
  *
  * @param int    $style_id 0 for a bundle's link
  * @param array  $link     audience, start_page_id, expires_at, password,
- *                         bundle_id (optional)
+ *                         bundle_id (optional), created_at (optional, now)
  * @param int    $user_id  who made it
  * @param string $username for the Site Log
  * @param string $via      appended to the log line (the API application)
@@ -1347,6 +1386,10 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
             . e((string) $link['approver_email']) . "', " . (((string) $link['answer_by'] !== '') ? "'" . e((string) $link['answer_by']) . "'" : 'NULL');
     }
 
+    // A phone link's expiry is counted from the same second as its making
+    // (pg_proto_link_is_phone()).
+    $created = isset($link['created_at']) ? (int) $link['created_at'] : time();
+
     db("INSERT INTO prototype_links
             (style_id, start_page_id, token_hash, token_secret, token_hint, audience, password_hash, expires_at, created_by, created_at" . ($comments ? ', allow_comments' : '') . (($bundle_id > 0) ? ', bundle_id' : '') . $approval_cols . ")
         VALUES (
@@ -1359,7 +1402,7 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
             " . (($hash === null) ? 'NULL' : "'" . e($hash) . "'") . ",
             '" . (int) $link['expires_at'] . "',
             '" . (int) $user_id . "',
-            '" . time() . "'" . ($comments ? ", '1'" : '') . (($bundle_id > 0) ? ", '" . $bundle_id . "'" : '') . $approval_vals . ")");
+            '" . $created . "'" . ($comments ? ", '1'" : '') . (($bundle_id > 0) ? ", '" . $bundle_id . "'" : '') . $approval_vals . ")");
 
     $row = pg_proto_link_get((int) mysqli_insert_id(db::$con));
 
@@ -1882,6 +1925,8 @@ function pg_proto_links_panel_rows($rows, $pages, $now)
         $item['start_first'] = !$own;
         $item['created_by_name'] = isset($makers[$item['created_by']]) ? $makers[$item['created_by']] : '';
         $item['can_show'] = ((string) $row['token_secret'] !== '');
+        // Listed as the phone preview ("Preview on a phone").
+        $item['phone'] = pg_proto_link_is_phone($row);
         $out[] = $item;
     }
 

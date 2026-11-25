@@ -29,7 +29,7 @@ function test_common_region_scripts_passes_in_one_closure()
 	$end = strpos($src, '$content = $pg_block_scripts($content);');
 	pg_assert_true($start !== false && $end !== false && $start < $end, 'the passes are one closure, run once in place');
 	$body = ($start !== false && $end !== false) ? substr($src, $start, $end - $start) : '';
-	foreach (array('pg_theme_switcher_inject', 'pg_scroller_inject', 'pg_listen_inject', 'pg_place_list_inject',
+	foreach (array('pg_theme_switcher_inject', 'pg_scroller_inject', 'pg_page_scroll_inject', 'pg_listen_inject', 'pg_place_list_inject',
 		'pg_course_blocks_inject', 'pg_site_push_block_inject', 'pg_fx_inject', 'pg_bs_tips_inject',
 		'pg_ai_summary_inject', 'pg_wishlist_inject', 'pg_booking_widget_inject', 'pg_cf_rich_text_inject') as $fn) {
 		pg_assert_contains($fn . '(', $body, $fn . ' runs in both runs');

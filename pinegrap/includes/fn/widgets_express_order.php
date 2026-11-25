@@ -195,21 +195,16 @@ function _eo_restore_cart_from_reference_code()
     $new_oid  = (int)$row['id'];
     $_SESSION['ecommerce']['order_id'] = $new_oid;
 
-    // The link of a message sent to the left cart was followed.
     if ($prev_oid !== $new_oid) {
+        // The link of a message sent to the left cart was followed.
         pg_cart_recovery_restored($new_oid);
-    }
 
-    // Ownership transfer: initialize_order() ALREADY updates orders.user_id
-    // and contact_id to the current visitor when they\'re logged in (see
-    // functions.php:6335-6351). So once we swap order_id here, the next
-    // initialize_order() call rebinds the cart to the link clicker — the
-    // cart is assigned to whoever uses the link, which is the intended
-    // behavior.
-    //
-    // For GUEST visitors we leave user_id as-is (the original owner). A
-    // guest can\'t take ownership because they don\'t have an account; if
-    // they later log in, initialize_order() picks up the transfer.
+        // The order belongs to whoever completes it: the signed-in opener, or
+        // no account for a guest. Opening the link again in the same session
+        // writes nothing, and a builder who completes the cart in their own
+        // session gets it back through initialize_order()'s rebinding.
+        pg_cart_link_take_over($new_oid);
+    }
 
     // Surface a one-shot notice so the visitor knows the cart was restored.
     // liveform notice is the channel cart/express-order widgets render via
