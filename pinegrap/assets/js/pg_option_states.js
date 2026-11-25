@@ -23,6 +23,10 @@
  *   PGOptionStates.tfRead(text, cls, st)        // { tx, ty, s, r, skx, sky, o }: the transform ('' st: Normal)
  *   PGOptionStates.tfWrite(text, cls, st, key, v) // the new text with one transform value set
  *   PGOptionStates.tfMaybe(text, cls)           // whether the text may hold one (no parse)
+ *   PGOptionStates.fxRead(text, cls, st)        // { blur, bright, contrast, gray, sat, sepia, hue, bdblur, blend, bgblend }
+ *   PGOptionStates.fxWrite(text, cls, st, key, v) // the new text with one effect value set
+ *   PGOptionStates.fxFilter(vals)               // the filter value of a set of Filter values
+ *   PGOptionStates.fxMaybe(text, cls)           // whether the text may hold one (no parse)
  *
  * The declarations carry !important: the Bootstrap utilities they stand in
  * for carry it too, so a state's value wins over Normal's class.
@@ -65,7 +69,13 @@
         { sect: 'styling', props: ['scale'] },
         { sect: 'styling', props: ['rotate'] },
         { sect: 'styling', props: ['transform'] },
-        { sect: 'styling', props: ['transform-origin'] }
+        { sect: 'styling', props: ['transform-origin'] },
+        // Effects: Filter, Background blur (with its prefixed twin), Blend
+        // and Background blend (fxWrite()).
+        { sect: 'styling', props: ['filter'] },
+        { sect: 'styling', props: ['backdrop-filter', '-webkit-backdrop-filter'] },
+        { sect: 'styling', props: ['mix-blend-mode'] },
+        { sect: 'styling', props: ['background-blend-mode'] }
     ];
 
     // The order the declarations are written in: a shorthand before its
@@ -572,6 +582,159 @@
         return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:translate|rotate|scale|transform|transform-origin)\s*:/.test(text);
     }
 
+    // ── Effects: Filter, Background blur, Blend ──
+    // Filter's seven sliders are one `filter` declaration, written in a fixed
+    // order with Normal's defaults left out; a state's rule holds the whole
+    // list (a state's `filter` replaces Normal's), and a value of it equal
+    // to Normal's reads as not set. Background blur is `backdrop-filter:
+    // blur()` with its -webkit- twin (Safari before 18); Blend and
+    // Background blend are mix-blend-mode and background-blend-mode. A
+    // filter no row reads (a drop-shadow, a url()) is left as it is.
+    var FX_FILTER = [
+        // key, CSS function, unit, default, lowest, highest
+        ['blur', 'blur', 'px', 0, 0, 100],
+        ['bright', 'brightness', '%', 100, 0, 300],
+        ['contrast', 'contrast', '%', 100, 0, 300],
+        ['gray', 'grayscale', '%', 0, 0, 100],
+        ['sat', 'saturate', '%', 100, 0, 300],
+        ['sepia', 'sepia', '%', 0, 0, 100],
+        ['hue', 'hue-rotate', 'deg', 0, -180, 180]
+    ];
+    var BLENDS = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn',
+        'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'];
+    var FX_NONE = function () {
+        return { blur: '', bright: '', contrast: '', gray: '', sat: '', sepia: '', hue: '', bdblur: '', blend: '', bgblend: '' };
+    };
+
+    function fxSpec(key) {
+        for (var i = 0; i < FX_FILTER.length; i++) if (FX_FILTER[i][0] === key) return FX_FILTER[i];
+        return null;
+    }
+
+    // { key: number } of a filter value, or null when a function in it is
+    // not one of the seven (or not in the unit the row writes).
+    function fxParse(v) {
+        var out = {}, rest = String(v || '').trim();
+        if (rest === '' || rest === 'none') return out;
+        var re = /^([a-z-]+)\(\s*(-?(?:\d+\.?\d*|\.\d+))(px|%|deg)?\s*\)\s*/i, m;
+        while (rest !== '') {
+            if (!(m = re.exec(rest))) return null;
+            var spec = null;
+            FX_FILTER.forEach(function (f) { if (f[1] === m[1].toLowerCase()) spec = f; });
+            var unit = (m[3] || '').toLowerCase();
+            if (!spec || (unit !== spec[2] && !(unit === '' && m[2] === '0'))) return null;
+            out[spec[0]] = Number(m[2]);
+            rest = rest.slice(m[0].length);
+        }
+        return out;
+    }
+
+    // The filter value of a set of Filter values ('' leaves one out).
+    function fxFilter(vals) {
+        return FX_FILTER.filter(function (f) { return vals[f[0]] !== '' && vals[f[0]] !== undefined && vals[f[0]] !== null; })
+            .map(function (f) { return f[1] + '(' + vals[f[0]] + f[2] + ')'; }).join(' ');
+    }
+
+    // The values the rule of st holds, none taken from Normal.
+    function fxOwn(text, cls, st) {
+        var out = FX_NONE();
+        var map = tfDecls(tfRule(text, cls, st));
+        var f = map.filter ? fxParse(map.filter) : null;
+        if (f) Object.keys(f).forEach(function (k) { out[k] = f[k]; });
+        var m = /^blur\(\s*(\d+\.?\d*|\.\d+)px\s*\)$/i.exec(map['backdrop-filter'] || '');
+        if (m) out.bdblur = Number(m[1]);
+        if (BLENDS.indexOf(map['mix-blend-mode']) !== -1) out.blend = map['mix-blend-mode'];
+        if (BLENDS.indexOf(map['background-blend-mode']) !== -1) out.bgblend = map['background-blend-mode'];
+        return out;
+    }
+
+    // { blur … bgblend }: numbers, a blend's name, '' where not set. Under a
+    // state a Filter value equal to Normal's (or its default) reads as ''.
+    function fxRead(text, cls, st) {
+        var out = fxOwn(text, cls, st);
+        if (!st) return out;
+        var base = fxOwn(text, cls, '');
+        FX_FILTER.forEach(function (f) {
+            var b = base[f[0]] === '' ? f[3] : base[f[0]];
+            if (out[f[0]] === b) out[f[0]] = '';
+        });
+        return out;
+    }
+
+    // The filter of the state st from its values and Normal's: the whole
+    // list under a state, '' when it equals Normal's.
+    function fxFilterOf(own, base, st) {
+        if (!st) {
+            var n = {};
+            FX_FILTER.forEach(function (f) { n[f[0]] = own[f[0]] === f[3] ? '' : own[f[0]]; });
+            return fxFilter(n);
+        }
+        var all = {}, same = true;
+        FX_FILTER.forEach(function (f) {
+            var b = base[f[0]] === '' ? f[3] : base[f[0]];
+            var v = own[f[0]] === '' ? b : own[f[0]];
+            if (v !== b) same = false;
+            all[f[0]] = (v === f[3] && own[f[0]] === '' && base[f[0]] === '') ? '' : v;
+        });
+        return same ? '' : fxFilter(all);
+    }
+
+    // The text with one effect value of the state st ('' Normal) set: a
+    // Filter key (a number, kept to its row's ends), bdblur (0 to 100 px),
+    // blend or bgblend (a blend's name); '' takes the value out.
+    function fxWrite(text, cls, st, key, value) {
+        text = String(text || '');
+        if (!U() || !CLASS_RE.test(cls) || (st && !PSEUDO[st])) return text;
+        var spec = fxSpec(key), v = value === null || value === undefined ? '' : String(value).trim();
+        if (spec || key === 'bdblur') {
+            if (v !== '') {
+                v = spec ? numClean(v, spec[4], spec[5], 2) : numClean(v, 0, 100, 2);
+                if (v === '') return text;
+            }
+        } else if (key === 'blend' || key === 'bgblend') {
+            v = v.toLowerCase();
+            if (v !== '' && BLENDS.indexOf(v) === -1) return text;
+        } else {
+            return text;
+        }
+        if (key === 'blend' || key === 'bgblend') {
+            var prop = key === 'blend' ? 'mix-blend-mode' : 'background-blend-mode';
+            return tfPut(text, cls, st, prop, (!st && v === 'normal') ? '' : v);
+        }
+        if (key === 'bdblur') {
+            var bd = v === '' || (!st && v === 0) ? '' : 'blur(' + v + 'px)';
+            return tfPut(tfPut(text, cls, st, 'backdrop-filter', bd), cls, st, '-webkit-backdrop-filter', bd);
+        }
+        var map = tfDecls(tfRule(text, cls, st));
+        var baseMap = st ? tfDecls(tfRule(text, cls, '')) : map;
+        if ((map.filter && !fxParse(map.filter)) || (baseMap.filter && !fxParse(baseMap.filter))) return text;
+        var base = fxOwn(text, cls, '');
+        var own = fxRead(text, cls, st);
+        own[key] = v;
+        var out = tfPut(text, cls, st, 'filter', fxFilterOf(own, base, st));
+        // A state's values taken from Normal keep following it.
+        if (!st) {
+            var now = fxOwn(out, cls, '');
+            STATES.forEach(function (s2) {
+                var sm = tfDecls(tfRule(out, cls, s2));
+                if (!sm.filter || !fxParse(sm.filter)) return;
+                var mine = fxOwn(out, cls, s2);
+                FX_FILTER.forEach(function (f) {
+                    var b = base[f[0]] === '' ? f[3] : base[f[0]];
+                    if (mine[f[0]] === '' || mine[f[0]] === b) mine[f[0]] = '';
+                });
+                out = tfPut(out, cls, s2, 'filter', fxFilterOf(mine, now, s2));
+            });
+        }
+        return out;
+    }
+
+    // Whether the text may hold an effect for cls: a look, no parse.
+    function fxMaybe(text, cls) {
+        text = String(text || '');
+        return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:filter|backdrop-filter|mix-blend-mode|background-blend-mode)\s*:/.test(text);
+    }
+
     var api = {
         STATES: STATES,
         PSEUDO: PSEUDO,
@@ -592,7 +755,13 @@
         ORIGINS: ORIGINS,
         tfRead: tfRead,
         tfWrite: tfWrite,
-        tfMaybe: tfMaybe
+        tfMaybe: tfMaybe,
+        FX_FILTER: FX_FILTER,
+        BLENDS: BLENDS,
+        fxRead: fxRead,
+        fxWrite: fxWrite,
+        fxFilter: fxFilter,
+        fxMaybe: fxMaybe
     };
 
     root.PGOptionStates = api;

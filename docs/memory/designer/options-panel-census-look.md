@@ -16,7 +16,7 @@ description: Options panel census, part 3: gaps to dress and move an element (ho
 - The gradient colours are typed hex values, not theme colours. Missing: stops chosen from the palette (`var(--bs-primary)`), so a palette change follows. S. Reads `--bs-*` theme colours.
 
 ## Filters and blend?
-- Opacity has five steps; nothing else. Missing: Filter (blur, brightness, contrast, grayscale, saturate, sepia, hue) with sliders (S), Backdrop blur for glass panels (S), Blend mode (mix-blend-mode, background-blend-mode) (S). Reads none; backdrop blur may read `--pg-radius-*` for its corner.
+- Built by DO15 (#11700): Filter's seven sliders, Background blur and both Blend modes under Shadow and effect's "More" (`designer-options-effects.md`). Opacity keeps its five steps.
 
 ## Transforms?
 - Only through Interactions' start states. Missing: Rotate, Scale, Move X and Y, Skew and Origin on the element, combined with Interactions' own transform (`pgFxBase` keeps the node's). M (composition with pg_fx and per state). Reads none.

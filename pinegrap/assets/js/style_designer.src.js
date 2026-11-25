@@ -26459,9 +26459,11 @@ const StyleDesigner = (function () {
 
     // The rows: v the values of the shown state, inh the ones shown in grey
     // until set (Normal's under a state, the defaults on Normal).
-    function _sdTfRowsHtml(node, v, inh) {
+    function _sdTfRowsHtml(node, v, inh, fv, finh) {
         v = v || _sdTfOf(node, '');
         inh = inh || _SD_TF_NONE;
+        fv = fv || _sdEffOf(node, '');
+        finh = finh || _SD_EFF_NONE;
         var shown = function (k, dflt) { return v[k] !== '' ? v[k] : inh[k] !== '' ? inh[k] : dflt; };
         var field = function (key, unit, axis, dflt) {
             var ph = String(inh[key] !== '' ? inh[key] : dflt).replace(/px$/, '');
@@ -26481,7 +26483,8 @@ const StyleDesigner = (function () {
         var tfRow = function (keys, label, ctrl) {
             return '<div class="sd-prop-row" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
         };
-        var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; });
+        var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; }) ||
+            Object.keys(_SD_EFF_NONE).some(function (k) { return fv[k] !== '' || finh[k] !== ''; });
         var h = '<div class="sd-tf" data-sd-tf-box>' +
             '<div class="sd-trans-sub">' + esc(_sdT('Transform')) + '</div>' +
             tfRow('tx,ty', _sdT('Move'), '<div class="sd-tf-pair">' + field('tx', 'px', 'X', '0') + field('ty', 'px', 'Y', '0') + '</div>') +
@@ -26501,7 +26504,8 @@ const StyleDesigner = (function () {
             }).join('');
             h += tfRow('skx,sky', _sdT('Skew'), '<div class="sd-tf-pair">' + field('skx', '°', 'X', '0') + field('sky', '°', 'Y', '0') + '</div>') +
                 tfRow('o', _sdT('Origin'), '<div class="sd-tf-og' + (v.o === '' ? ' sd-trans-inh' : '') + '"><div class="sd-tf-grid" role="radiogroup" aria-label="' + esc(_sdT('Origin')) + '">' + cells + '</div>' +
-                    '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>');
+                    '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>') +
+                _sdEffRowsHtml(fv, finh);
         }
         h += '<button type="button" class="sd-tf-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
             esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
@@ -26509,14 +26513,16 @@ const StyleDesigner = (function () {
     }
 
     // The changed dot on a Transform row whose own value is set.
+    // The same for an effect row (Filter, Background blur, Blend).
     function _sdTfMark(root) {
-        root.querySelectorAll('[data-sd-tf-keys]').forEach(function (r) {
+        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys]').forEach(function (r) {
             var lbl = r.querySelector('.sd-prop-label');
+            var fx = r.hasAttribute('data-sd-fx-keys');
             var set = r.querySelector('.sd-tf-og:not(.sd-trans-inh)') ||
-                Array.prototype.some.call(r.querySelectorAll('[data-sd-tf]'), function (i) { return i.value !== ''; });
+                Array.prototype.some.call(r.querySelectorAll(fx ? 'input[data-sd-fx], select[data-sd-fx]' : '[data-sd-tf]'), function (i) { return i.value !== ''; });
             if (!lbl || !set) return;
             lbl.classList.add('sd-prop-modified');
-            lbl.dataset.resetKind = 'tf';
+            lbl.dataset.resetKind = fx ? 'fx' : 'tf';
         });
     }
 
@@ -26604,6 +26610,149 @@ const StyleDesigner = (function () {
             e.preventDefault();
             var c = t.parentNode.querySelector('[data-sd-tf-o="' + to + '"]');
             if (c && c !== t) c.focus();
+        });
+    }
+
+    // ── Options: the element's effects (Shadow and effect › More) ──
+    // "Filter" (seven sliders), "Background blur" (a glass panel), "Blend"
+    // and "Background blend", under the section's "More" after Skew and
+    // Origin. Every row can differ in a state: written by the part
+    // 'states' (PGOptionStates.fxWrite()) as filter, backdrop-filter and
+    // the two blend modes on the element's custom style class or the
+    // state's rule. Nothing is parsed or loaded while the User Styles hold
+    // no effect for the element.
+    var _SD_EFF_NONE = { blur: '', bright: '', contrast: '', gray: '', sat: '', sepia: '', hue: '', bdblur: '', blend: '', bgblend: '' };
+    // key, lowest, highest, step, unit, default; the Filter order.
+    var _SD_EFF_SLIDERS = [
+        ['blur', 0, 20, 0.5, 'px', 0], ['bright', 0, 200, 1, '%', 100], ['contrast', 0, 200, 1, '%', 100],
+        ['gray', 0, 100, 1, '%', 0], ['sat', 0, 200, 1, '%', 100], ['sepia', 0, 100, 1, '%', 0], ['hue', -180, 180, 1, '°', 0]
+    ];
+    var _sdEffDragged = null;
+
+    // The element's effects in the state st ('' Normal).
+    function _sdEffOf(node, st) {
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('.' + cls) === -1 || !/(?:^|[\s;{])(?:filter|backdrop-filter|mix-blend-mode|background-blend-mode)\s*:/.test(text)) return _SD_EFF_NONE;
+        if (_sdPartLoaded('states') && window.PGOptionStates) return window.PGOptionStates.fxRead(text, cls, st || '');
+        if (!_sdTfLoading) {
+            _sdTfLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTfLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTfLoading = false; _sdPartFailed(); });
+        }
+        return _SD_EFF_NONE;
+    }
+
+    // The rows: v the values of the shown state, inh the ones shown in grey.
+    function _sdEffRowsHtml(v, inh) {
+        var row = function (key, label, ctrl) {
+            return '<div class="sd-prop-row" data-sd-fx-keys="' + key + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+        };
+        var slider = function (key, name, lo, hi, step, unit, dflt) {
+            var val = v[key] !== '' ? v[key] : inh[key] !== '' ? inh[key] : dflt;
+            return row(key, name, '<div class="sd-trans-ms' + (v[key] === '' ? ' sd-trans-inh' : '') + '">' +
+                '<input type="range" class="form-range-input" min="' + lo + '" max="' + hi + '" step="' + step + '" value="' + Math.min(hi, Math.max(lo, val)) + '" data-sd-fx-range="' + key + '" data-sd-fx-dflt="' + dflt + '" aria-label="' + esc(name) + '">' +
+                '<div class="input-group input-group-sm"><input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-fx="' + key + '" value="' + esc(String(v[key])) + '" placeholder="' + esc(String(inh[key] !== '' ? inh[key] : dflt)) + '" aria-label="' + esc(name) + '">' +
+                '<span class="input-group-text">' + unit + '</span></div></div>');
+        };
+        var names = { blur: _sdT('Blur'), bright: _sdT('Brightness'), contrast: _sdT('Contrast'), gray: _sdT('Grayscale'),
+            sat: _sdT('Saturate'), sepia: _sdT('Sepia'), hue: _sdT('Hue') };
+        var blendNames = { normal: _sdT('Normal'), multiply: _sdT('Multiply'), screen: _sdT('Screen'), overlay: _sdT('Overlay'),
+            darken: _sdT('Darken'), lighten: _sdT('Lighten'), 'color-dodge': _sdT('Color dodge'), 'color-burn': _sdT('Color burn'),
+            'hard-light': _sdT('Hard light'), 'soft-light': _sdT('Soft light'), difference: _sdT('Difference'), exclusion: _sdT('Exclusion'),
+            hue: _sdT('Hue'), saturation: _sdT('Saturation'), color: _sdT('Color'), luminosity: _sdT('Luminosity') };
+        var blend = function (key, name) {
+            var first = inh[key] !== '' ? blendNames[inh[key]] || inh[key] : _sdT('Normal');
+            return row(key, name, '<select class="form-select form-select-sm' + (v[key] === '' ? ' sd-trans-inh' : '') + '" data-sd-fx="' + key + '" aria-label="' + esc(name) + '">' +
+                '<option value="">' + esc(first) + '</option>' +
+                Object.keys(blendNames).filter(function (b) { return b !== 'normal' || inh[key] !== ''; }).map(function (b) {
+                    return '<option value="' + b + '"' + (v[key] === b ? ' selected' : '') + '>' + esc(blendNames[b]) + '</option>';
+                }).join('') + '</select>');
+        };
+        var h = '<div class="sd-trans-sub">' + esc(_sdT('Filter')) + '</div>' +
+            _SD_EFF_SLIDERS.map(function (f) { return slider(f[0], names[f[0]], f[1], f[2], f[3], f[4], f[5]); }).join('') +
+            '<div class="sd-trans-sub">' + esc(_sdT('Blend')) + '</div>' +
+            slider('bdblur', _sdT('Background blur'), 0, 40, 1, 'px', 0);
+        if (v.bdblur !== '' || inh.bdblur !== '') {
+            h += '<div class="sd-tf-fx"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' +
+                esc(_sdT('Blurs what is behind the element. Give it a see-through background to make a glass panel.')) + '</span></div>';
+        }
+        return h + blend('blend', _sdT('Blend')) + blend('bgblend', _sdT('Background blend'));
+    }
+
+    // Values written in the chosen state, { key: value } ('' takes one
+    // out), as one undo step.
+    function _sdEffSet(vals) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var st = _sdOptState;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) {
+                Object.keys(vals).forEach(function (k) { text = S.fxWrite(text, cls, st, k, vals[k]); });
+                return text;
+            });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // While a slider is dragged the canvas element shows the value at once
+    // (inline, !important); dropped when let go. Nothing of it is saved.
+    function _sdEffPreview(panel, key) {
+        var el = _sdCanvasInnerOf(selectedNode);
+        if (!el || !el.style) return;
+        var prop = key === 'bdblur' ? 'backdrop-filter' : 'filter';
+        var val;
+        if (key === 'bdblur') {
+            var b = panel.querySelector('[data-sd-fx-range="bdblur"]');
+            val = 'blur(' + (b ? b.value : 0) + 'px)';
+        } else {
+            val = _SD_EFF_SLIDERS.map(function (f) {
+                var r = panel.querySelector('[data-sd-fx-range="' + f[0] + '"]');
+                var n = r ? Number(r.value) : f[5];
+                return n === f[5] ? '' : ({ blur: 'blur', bright: 'brightness', contrast: 'contrast', gray: 'grayscale', sat: 'saturate', sepia: 'sepia', hue: 'hue-rotate' })[f[0]] +
+                    '(' + n + (f[4] === '°' ? 'deg' : f[4]) + ')';
+            }).filter(Boolean).join(' ') || 'none';
+        }
+        _sdEffDrop();
+        el.style.setProperty(prop, val, 'important');
+        _sdEffDragged = { el: el, prop: prop };
+    }
+
+    function _sdEffDrop() {
+        if (!_sdEffDragged) return;
+        _sdEffDragged.el.style.removeProperty(_sdEffDragged.prop);
+        _sdEffDragged = null;
+    }
+
+    // Once per panel: a slider shows its number and the canvas while
+    // dragged and writes when let go; a field or a list writes on change.
+    function _sdEffBind(panel) {
+        if (!panel || panel._sdEff || !panel.querySelector('[data-sd-tf-box]')) return;
+        panel._sdEff = true;
+        panel.addEventListener('input', function (e) {
+            var t = e.target, k = t && t.getAttribute ? t.getAttribute('data-sd-fx-range') : null;
+            if (!k) return;
+            var box = t.closest('.sd-trans-ms');
+            var num = box ? box.querySelector('[data-sd-fx="' + k + '"]') : null;
+            if (num) num.value = t.value;
+            if (box) box.classList.remove('sd-trans-inh');
+            _sdEffPreview(panel, k);
+        });
+        panel.addEventListener('change', function (e) {
+            var t = e.target, k = t && t.getAttribute ? (t.getAttribute('data-sd-fx') || t.getAttribute('data-sd-fx-range')) : null;
+            if (!k) return;
+            _sdEffDrop();
+            var o = {};
+            o[k] = t.value.trim();
+            _sdEffSet(o);
+        });
+        panel.addEventListener('focusout', function (e) {
+            if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-sd-fx-range')) _sdEffDrop();
         });
     }
 
@@ -38222,6 +38371,7 @@ const StyleDesigner = (function () {
         _sdStateAfter(panel);
         _sdTransBind(panel);
         _sdTfBind(panel);
+        _sdEffBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -67283,6 +67433,12 @@ const StyleDesigner = (function () {
             var _tv = {};
             String(propRow.getAttribute('data-sd-tf-keys') || '').split(',').forEach(function (k) { if (k) _tv[k] = ''; });
             _sdTfSet(_tv);
+            return;
+        }
+        // An effect row: its value out, in the chosen state.
+        if (kind === 'fx') {
+            var _fk = propRow.getAttribute('data-sd-fx-keys');
+            if (_fk) { var _fv = {}; _fv[_fk] = ''; _sdEffSet(_fv); }
             return;
         }
 
