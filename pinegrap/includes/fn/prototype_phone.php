@@ -429,8 +429,9 @@ function pg_proto_phone_panel($sub, $request, $user)
     }
 
     $draft_ids = array();
+    $pages = pg_proto_design_pages($style_id);
 
-    foreach (pg_proto_design_pages($style_id) as $page) {
+    foreach ($pages as $page) {
         $draft_ids[] = (int) $page['id'];
     }
 
@@ -471,5 +472,53 @@ function pg_proto_phone_panel($sub, $request, $user)
         $token = $made['token'];
     }
 
-    return array('status' => 'success', 'link' => pg_proto_phone_summary($row, $now), 'url' => pg_proto_link_url($token));
+    $url = pg_proto_link_url($token);
+    $link = pg_proto_phone_summary($row, $now);
+    $link['start_page'] = pg_proto_phone_start_name($pages, $link['start_page_id']);
+
+    // The code is drawn here as inline SVG: the address it holds opens the
+    // prototype, so it never goes to an image address or another service.
+    return array(
+        'status' => 'success',
+        'link' => $link,
+        'url' => $url,
+        'qr' => pg_qr_svg($url, 0, array('label' => lang('QR code of the phone preview link'))),
+    );
+}
+
+/**
+ * The name the phone window gives the link's start page: the page's title,
+ * else its name; the first draft when the link starts there (0) or on a
+ * page no longer among the drafts. Pure.
+ *
+ * @param array[] $pages         the design's drafts (pg_proto_design_pages())
+ * @param int     $start_page_id
+ * @return string '' for a design with no drafts
+ */
+function pg_proto_phone_start_name($pages, $start_page_id)
+{
+    $first = null;
+
+    foreach ((array) $pages as $page) {
+        if (!is_array($page) || !isset($page['id'])) {
+            continue;
+        }
+
+        if ($first === null) {
+            $first = $page;
+        }
+
+        if ((int) $page['id'] === (int) $start_page_id) {
+            $first = $page;
+            break;
+        }
+    }
+
+    if ($first === null) {
+        return '';
+    }
+
+    $title = isset($first['title']) ? trim((string) $first['title']) : '';
+
+    return ($title !== '') ? $title : (isset($first['name']) ? (string) $first['name'] : '');
 }
