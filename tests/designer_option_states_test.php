@@ -329,3 +329,48 @@ function test_designer_option_states_effects()
 	pg_assert_same('blur(2px) brightness(120%) hue-rotate(30deg)', $r['css']);
 	pg_assert_same(array(true, true, false), $r['maybe']);
 }
+
+// Text › More (txWrite()/txRead()): Normal's rule only, a row's values
+// written and read back, a value no row writes kept and read as 'own',
+// the line limit's own display and overflow taken out with it.
+function test_designer_option_states_text()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.txWrite(base, c, "shadow", "soft");'
+		. 'a = S.txWrite(a, c, "track", "0.05");'
+		. 'a = S.txWrite(a, c, "font", "heading");'
+		. 'a = S.txWrite(a, c, "lines", "3");'
+		. 'a = S.txWrite(a, c, "grad", "primary-info");'
+		. 'a = S.txWrite(a, c, "strokec", "primary");'
+		. 'var out = a; ["shadow", "track", "font", "lines", "grad", "stroke"].forEach(function (k) { out = S.txWrite(out, c, k, ""); });'
+		. 'var own = base.replace("color: red;", "color: red;\n  display: flex;\n  text-shadow: 1px 1px 0 blue;\n  letter-spacing: 2px;\n  -webkit-line-clamp: 2;");'
+		. 'var ownLines = S.txWrite(own, c, "lines", "");'
+		. 'console.log(JSON.stringify({ a: a, read: S.txRead(a, c), out: out, own: S.txRead(own, c), ownLines: ownLines,'
+		. ' noState: S.txRead(a.replace(".pgs-abc123 {", ".pgs-abc123:hover {"), c).shadow,'
+		. ' bad: [S.txWrite(base, c, "shadow", "huge") === base, S.txWrite(base, c, "font", "Arial") === base, S.txWrite(base, c, "track", "wide") === base, S.txWrite(base, c, "strokec", "pink") === base],'
+		. ' clamp: [S.txRead(S.txWrite(base, c, "lines", "40"), c).lines, S.txRead(S.txWrite(base, c, "track", "-3"), c).track],'
+		. ' width: S.txWrite(base, c, "stroke", "1.5"), zero: S.txWrite(S.txWrite(base, c, "stroke", "2"), c, "stroke", "0"),'
+		. ' maybe: [S.txMaybe(a, c), S.txMaybe(base, c)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$base_text = ".pgs-abc123 {\n  color: red;\n}\n";
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  text-shadow: 0 1px 2px rgb(0 0 0 / .25);\n  letter-spacing: 0.05em;\n  font-family: var(--pg-font-heading);\n"
+		. "  display: -webkit-box;\n  -webkit-box-orient: vertical;\n  overflow: hidden;\n  -webkit-line-clamp: 3;\n  line-clamp: 3;\n"
+		. "  background-image: linear-gradient(90deg, var(--bs-primary), var(--bs-info));\n  -webkit-background-clip: text;\n  background-clip: text;\n"
+		. "  -webkit-text-fill-color: transparent;\n  -webkit-text-stroke: 1px var(--bs-primary);\n  paint-order: stroke fill;\n}\n", $r['a'], 'every row written on the class rule');
+	pg_assert_same(array('shadow' => 'soft', 'track' => 0.05, 'font' => 'heading', 'lines' => 3, 'grad' => 'primary-info', 'stroke' => 1, 'strokec' => 'primary'), $r['read']);
+	pg_assert_same($base_text, $r['out'], 'every row taken out leaves the rule as it was');
+	pg_assert_same(array('shadow' => 'own', 'track' => 'own', 'font' => '', 'lines' => 2, 'grad' => '', 'stroke' => '', 'strokec' => ''), $r['own'], 'a value no row writes reads as own');
+	pg_assert_true(strpos($r['ownLines'], 'display: flex;') !== false && strpos($r['ownLines'], 'line-clamp') === false, 'a display of its own stays when the limit goes');
+	pg_assert_same('', $r['noState'], 'a state\'s rule is not read');
+	pg_assert_same(array(true, true, true, true), $r['bad'], 'an unknown value writes nothing');
+	pg_assert_same(array(10, -0.5), $r['clamp'], 'lines and letter spacing kept to their ends');
+	pg_assert_true(strpos($r['width'], '-webkit-text-stroke: 1.5px currentcolor;') !== false, 'an outline without a colour takes the text\'s');
+	pg_assert_same($base_text, $r['zero'], 'a width of 0 takes the outline out');
+	pg_assert_same(array(true, false), $r['maybe']);
+}
