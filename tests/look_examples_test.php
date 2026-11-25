@@ -196,9 +196,9 @@ function test_look_examples_phone_pane()
 function test_look_examples_mail_patterns_in_order()
 {
 	$ids = array_column(pg_look_examples_patterns('light'), 'id');
-	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm', 'pattern-switch');
+	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm', 'pattern-confirm-go', 'pattern-switch');
 
-	pg_assert_same($mail, array_slice($ids, -8), 'the e-mail drawing\'s seven parts, then the switch rows, close the Patterns group');
+	pg_assert_same($mail, array_slice($ids, -9), 'the e-mail drawing\'s seven parts, the confirm History takes back, then the switch rows, close the Patterns group');
 	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the settings pane, the form drawer, the choice cards and the step line');
 	pg_assert_contains('Look A: tabs with a state, value rows, choice cards, step line, provider', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'), 'the recipes in their own block');
 }
@@ -357,4 +357,16 @@ function test_look_examples_flow_box()
 	$value = substr($html, (int) strpos($html, 'wsf-card wsf-group-values'));
 	pg_assert_same(0, substr_count(substr($value, 0, (int) strpos($value, '<p ')), 'pgc-port'), 'a value box, the last, has no port');
 	pg_assert_contains('id="dark-flow-arrow"', $html, 'the arrowhead is the pane\'s own');
+}
+
+// The confirm History takes back: blue tile, filled button, the History
+// note, no danger button.
+function test_look_examples_confirm_undone_by_history()
+{
+	$html = array_column(pg_look_examples_patterns('light'), 'html', 'id')['pattern-confirm-go'];
+
+	pg_assert_contains('pg-icon-tile-lg pg-tone-blue', $html, 'a blue tile');
+	pg_assert_contains('pg-button pg-button-fill', $html, 'a filled button');
+	pg_assert_contains(h(lang('History keeps the page as it is now.')), $html, 'the History note');
+	pg_assert_false(strpos($html, 'pg-button-danger') !== false, 'no danger button');
 }
