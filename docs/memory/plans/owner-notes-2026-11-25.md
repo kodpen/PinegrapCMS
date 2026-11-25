@@ -9,7 +9,7 @@ priority: 7
 - His fourth note, the channel's Board tab not looking like its drawing, needs no step: the look (BM3, #11670) landed on 2026-11-25 at 18:57 UTC and the dev site's scripts were from 18:42 UTC.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- ON1 (S) after DO9 (#11681) has landed, which changes the same two scripts: the Focus control's frames, as board F5 of the image focus drawing draws them (`designer/designer-image-focus-drawing-frames.md`; the drawing wins, `workflow/screen-follows-drawing.md`). The sizes come from a pure function beside `PGImageFocus.shapes()` (rows, heights, the one-frame case), tested; `style_designer_focus.js` and the `.sd-fc-*` rules draw them.
+- ON1 (S) — done, #11724 — after DO9 (#11681) has landed, which changes the same two scripts: the Focus control's frames, as board F5 of the image focus drawing draws them (`designer/designer-image-focus-drawing-frames.md`; the drawing wins, `workflow/screen-follows-drawing.md`). The sizes come from a pure function beside `PGImageFocus.shapes()` (rows, heights, the one-frame case), tested; `style_designer_focus.js` and the `.sd-fc-*` rules draw them.
   - The PR body carries the board's columns: what was built for each, what differs and why. `designer/image-focus-control.md` is corrected to what is built.
 - ON2 (M) "Build the page" says what the site knows, with Pinegrap AI off too (`designer/sketch-build.md`, `sketch-builder.md`):
   - A new shared "Header": the site's name as the brand, and as its links the Prototype view's pages in their order, by name, to their addresses from "Page details", at most six. A new "Footer": the site's name, the year, the same links. A design's own header and footer are used untouched, as today.

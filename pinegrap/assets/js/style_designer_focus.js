@@ -3,9 +3,10 @@
  *
  * Visual Page Editor - the Focus control part: "Focus" in an Image's
  * Options (Content › Image, under the fit) and in a background picture's
- * (Style › Color and background). The whole picture small with one point
- * on what must stay in view, and beside it the cut on a phone, a tablet and
- * a desktop. A press on the picture puts the point there, a drag moves it;
+ * (Style › Color and background). The whole picture across the control
+ * with one point on what must stay in view, and under it the cut on a
+ * phone, a tablet and a desktop, large enough to judge (one frame when the
+ * three would be the same picture). A press on the picture puts the point there, a drag moves it;
  * the canvas and the three frames follow, and the whole move is one undo
  * step. With the point focused the arrows move it by 1 % and Home puts it
  * in the middle. "Reset" removes the focus; a focus set while the canvas
@@ -32,14 +33,14 @@ StyleDesigner.definePart('focus', function (K) {
     // The control drawn again after a commit gives the focus back to its
     // point (the panel is drawn anew by every change).
     var refocus = false;
-    var ICONS = { phone: 'bi-phone', tablet: 'bi-tablet', desktop: 'bi-laptop' };
+    var ICONS = { phone: 'bi-phone', tablet: 'bi-tablet', desktop: 'bi-laptop', every: 'bi-aspect-ratio' };
     // The control drawn last (its element and its show()), which the mode
     // moves with the picture; the mode on now, ended by a second start.
     var shown = null;
     var active = null;
 
     function names() {
-        return { phone: _sdT('Phone'), tablet: _sdT('Tablet'), desktop: _sdT('Desktop') };
+        return { phone: _sdT('Phone'), tablet: _sdT('Tablet'), desktop: _sdT('Desktop'), every: _sdT('Every screen') };
     }
 
     function valueText(xy) {
@@ -50,19 +51,20 @@ StyleDesigner.definePart('focus', function (K) {
         return 'url("' + String(src).replace(/["\\\n\r]/g, function (c) { return '\\' + c.charCodeAt(0).toString(16) + ' '; }) + '")';
     }
 
-    function frameHtml(s, v, shape, src, screen, nm) {
-        var f = v.frames[s];
-        var h = s === 'desktop' ? 34 : 40;
-        return '<div class="sd-fc-fr sd-fc-fr-' + s + (s === screen ? ' is-cur' : '') + (f.own ? ' is-own' : '') + '" data-fc-frame="' + s + '" title="' + esc(nm[s]) + '">' +
-            '<div class="sd-fc-fr-pic" style="height:' + h + 'px;width:' + Math.round(h * shape[s]) + 'px;background-image:' + esc(cssUrl(src)) +
-                ';background-position:' + f.xy[0] + '% ' + f.xy[1] + '%"></div>' +
-            '<span class="bi ' + ICONS[s] + ' sd-fc-fr-ic" aria-hidden="true"></span>' +
+    // One frame under the picture: the cut at its screen's point, then its
+    // icon and name. 'every' stands for the three when they are one picture.
+    function frameHtml(f, v, src, nm) {
+        var s = f.s, fr = v.frames[s === 'every' ? 'desktop' : s];
+        return '<div class="sd-fc-fr' + (s === v.screen ? ' is-cur' : '') + (fr.own ? ' is-own' : '') + '" data-fc-frame="' + s + '">' +
+            '<div class="sd-fc-fr-pic" style="width:' + f.w + 'px;height:' + f.h + 'px;background-image:' + esc(cssUrl(src)) +
+                ';background-position:' + fr.xy[0] + '% ' + fr.xy[1] + '%"></div>' +
+            '<span class="sd-fc-fr-name"><span class="bi ' + ICONS[s] + '" aria-hidden="true"></span>' + esc(nm[s]) + '</span>' +
         '</div>';
     }
 
-    function html(host, M, v) {
+    function html(host, M, v, width) {
         var nm = names();
-        var shape = M.shapes(host.ratio, v.screen, host.measured);
+        var lay = M.sizes(width, M.shapes(host.ratio, v.screen, host.measured), v.frames);
         var head = '<div class="sd-fc-head">' +
                 '<span class="sd-fc-title">' + esc(_sdT('Focus')) + '</span>' +
                 '<span class="sd-fc-val" aria-live="polite">' + (v.set ? esc(valueText(v.xy)) : '') + '</span>' +
@@ -77,10 +79,10 @@ StyleDesigner.definePart('focus', function (K) {
                     (host.locked ? ' aria-disabled="true"' : '') +
                     ' style="left:' + v.xy[0] + '%;top:' + v.xy[1] + '%"></span>' +
             '</div>';
-        var frames = '<div class="sd-fc-frames">' +
-                '<div class="sd-fc-frames-row">' + frameHtml('phone', v, shape, host.src, v.screen, nm) + frameHtml('tablet', v, shape, host.src, v.screen, nm) + '</div>' +
-                frameHtml('desktop', v, shape, host.src, v.screen, nm) +
-            '</div>';
+        var frames = '<p class="sd-fc-cap">' + esc(lay.one ? _sdT('On every screen') : _sdT('On each screen')) + '</p>' +
+            '<div class="sd-fc-frames">' + lay.rows.map(function (row) {
+                return '<div class="sd-fc-frames-row">' + row.map(function (f) { return frameHtml(f, v, host.src, nm); }).join('') + '</div>';
+            }).join('') + '</div>';
         var foot = '';
         if (v.own) {
             var keep = v.wider ? valueText(v.wider) : _sdT('the middle');
@@ -107,8 +109,17 @@ StyleDesigner.definePart('focus', function (K) {
         var M = window.PGImageFocus(host.F);
         var values = host.values;
         var v = M.view(values, host.screen);
-        el.innerHTML = html(host, M, v);
+        var width = el.clientWidth;
+        el.innerHTML = html(host, M, v, width);
         var pic = el.querySelector('[data-fc-pic]');
+        // The whole picture across the control, at most 200 px tall and
+        // centred, once its size is known; the point sits on it.
+        var img = pic.querySelector('img');
+        var fit = function () {
+            var size = M.whole(width || el.clientWidth, img.naturalWidth, img.naturalHeight);
+            if (size) { pic.style.width = size.w + 'px'; pic.style.height = size.h + 'px'; }
+        };
+        if (img.complete) fit(); else img.addEventListener('load', fit, { once: true });
         var pt = el.querySelector('[data-fc-pt]');
         var val = el.querySelector('.sd-fc-val');
         var pending = null, raf = 0, keyTimer = 0;
@@ -127,9 +138,10 @@ StyleDesigner.definePart('focus', function (K) {
                 pt.setAttribute('aria-valuetext', valueText(w.xy));
                 if (val) val.textContent = valueText(w.xy);
                 pic.classList.remove('is-none');
-                ['phone', 'tablet', 'desktop'].forEach(function (s) {
+                ['phone', 'tablet', 'desktop', 'every'].forEach(function (s) {
                     var fr = el.querySelector('[data-fc-frame="' + s + '"] .sd-fc-fr-pic');
-                    if (fr) fr.style.backgroundPosition = w.frames[s].xy[0] + '% ' + w.frames[s].xy[1] + '%';
+                    var xy = w.frames[s === 'every' ? 'desktop' : s].xy;
+                    if (fr) fr.style.backgroundPosition = xy[0] + '% ' + xy[1] + '%';
                 });
                 host.live(pending);
             });
