@@ -10085,6 +10085,159 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
 }
 
 /**
+ * Where the converted common regions among $sids are drawn: a component made
+ * from a common region (category common_region:<id>) is drawn by the
+ * region's <cregion> tag, so it is used on every page printing that tag. The
+ * tag counts in a style's code (desktop or mobile style of the page), in a
+ * page region, in a designer region that embeds it (one level, as
+ * get_page_content.php expands them), and as a common region node of a
+ * page's designer tree. Only the row that draws the region counts (the
+ * lowest id, pg_common_region_components_read()); deleting it brings the
+ * region's earlier content back on those pages.
+ *
+ * @param int[]    $sids   shared component ids
+ * @param array    $trees  page rows with page_id and tree_json, as
+ *                         pg_shared_component_usage() read them
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return array sid => list of {page_id, page_name, page_folder, style_id,
+ *               style_name, common_region}; only the sids with pages
+ */
+function pg_shared_component_region_usage_read(array $sids, array $trees, $fetch)
+{
+    $ids = array();
+    foreach ($sids as $sid) {
+        if ((int)$sid > 0) $ids[(int)$sid] = (int)$sid;
+    }
+    if (!$ids) return array();
+
+    $rows = call_user_func($fetch,
+        "SELECT id, category FROM shared_components
+         WHERE id IN (" . implode(',', $ids) . ")
+           AND category LIKE 'common\\_region:%'
+           AND ((system_region_config IS NULL) OR (system_region_config = ''))");
+    $region_of = array();
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $rid = pg_common_region_ids_from_categories(array((string)$row['category']));
+        if ($rid) $region_of[(int)$row['id']] = $rid[0];
+    }
+    if (!$region_of) return array();
+
+    // A second row made from the same region draws nothing.
+    $read = array();
+    $drawn_by = pg_common_region_components_read($read, array_values(array_unique($region_of)), $fetch);
+    foreach ($region_of as $sid => $rid) {
+        if ($drawn_by[$rid] !== $sid) unset($region_of[$sid]);
+    }
+    if (!$region_of) return array();
+
+    // Region name => the component drawing it.
+    $sid_of = array();
+    $rows = call_user_func($fetch,
+        "SELECT cregion_id, cregion_name FROM cregion WHERE cregion_id IN (" . implode(',', array_unique($region_of)) . ")");
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $sid = array_search((int)$row['cregion_id'], $region_of, true);
+        if ($sid !== false) $sid_of[(string)$row['cregion_name']] = array('sid' => $sid, 'region' => (string)$row['cregion_name']);
+    }
+    if (!$sid_of) return array();
+
+    $like = function (array $names, $column) {
+        $parts = array();
+        foreach ($names as $name) {
+            $parts[] = $column . " LIKE '%" . e(escape_like('<cregion>' . $name . '</cregion>')) . "%'";
+        }
+        return '(' . implode(' OR ', $parts) . ')';
+    };
+    $tagged = function ($html) use (&$sid_of) {
+        $found = array();
+        foreach ($sid_of as $name => $to) {
+            if (stripos((string)$html, '<cregion>' . $name . '</cregion>') !== false) $found[] = $to;
+        }
+        return $found;
+    };
+
+    // A designer region printing the tag prints the component too.
+    $rows = call_user_func($fetch,
+        "SELECT cregion_name, cregion_content FROM cregion
+         WHERE cregion_designer_type = 'yes' AND " . $like(array_keys($sid_of), 'cregion_content'));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $outer = (string)$row['cregion_name'];
+        if (isset($sid_of[$outer])) continue;
+        $inner = $tagged($row['cregion_content']);
+        if ($inner) $sid_of[$outer] = $inner[0];
+    }
+
+    // page id => sid => region name
+    $pages = array();
+    $styles = array();
+    $rows = call_user_func($fetch,
+        "SELECT style_id, style_code FROM style WHERE " . $like(array_keys($sid_of), 'style_code'));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        foreach ($tagged($row['style_code']) as $to) $styles[(int)$row['style_id']][$to['sid']] = $to['region'];
+    }
+    $rows = call_user_func($fetch,
+        "SELECT pregion_page, pregion_content FROM pregion WHERE " . $like(array_keys($sid_of), 'pregion_content'));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        foreach ($tagged($row['pregion_content']) as $to) $pages[(int)$row['pregion_page']][$to['sid']] = $to['region'];
+    }
+    foreach ($trees as $row) {
+        $json = (string)$row['tree_json'];
+        if (strpos($json, '"regionName"') === false) continue;
+        $tree = json_decode($json, true);
+        if (!is_array($tree)) continue;
+        $stack = array($tree);
+        while ($stack) {
+            $node = array_pop($stack);
+            if (!is_array($node)) continue;
+            $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+            if (isset($node['type'], $props['regionType'], $props['regionName']) && $node['type'] === 'region'
+                && in_array($props['regionType'], array('common', 'designer'), true)
+                && isset($sid_of[(string)$props['regionName']])) {
+                $to = $sid_of[(string)$props['regionName']];
+                $pages[(int)$row['page_id']][$to['sid']] = $to['region'];
+            }
+            if (!empty($node['children']) && is_array($node['children'])) {
+                foreach ($node['children'] as $child) $stack[] = $child;
+            }
+        }
+    }
+
+    $where = array();
+    if ($styles) {
+        $in = implode(',', array_keys($styles));
+        $where[] = "page.page_style IN ($in) OR page.mobile_style_id IN ($in)";
+    }
+    if ($pages) $where[] = 'page.page_id IN (' . implode(',', array_keys($pages)) . ')';
+    if (!$where) return array();
+
+    $usage = array();
+    $rows = call_user_func($fetch,
+        "SELECT page.page_id, page.page_name, page.page_folder, page.page_style AS style_id, page.mobile_style_id,
+                style.style_name
+         FROM page
+         LEFT JOIN style ON page.page_style = style.style_id
+         WHERE " . implode(' OR ', $where));
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $page_id = (int)$row['page_id'];
+        $found = isset($pages[$page_id]) ? $pages[$page_id] : array();
+        foreach (array('style_id', 'mobile_style_id') as $col) {
+            $style = isset($row[$col]) ? (int)$row[$col] : 0;
+            if (isset($styles[$style])) $found += $styles[$style];
+        }
+        foreach ($found as $sid => $region) {
+            $usage[$sid][] = array(
+                'page_id'       => $page_id,
+                'page_name'     => (string)$row['page_name'],
+                'page_folder'   => (int)$row['page_folder'],
+                'style_id'      => (int)$row['style_id'],
+                'style_name'    => (string)$row['style_name'],
+                'common_region' => $region,
+            );
+        }
+    }
+    return $usage;
+}
+
+/**
  * Where shared components and system widgets are placed.
  *
  * sid → the pages whose tree references it, each with the design it belongs
@@ -10155,6 +10308,22 @@ function pg_shared_component_usage($ids = null)
                 'style_name' => (string)$row['style_name'],
                 'binned'     => $binned,
             );
+        }
+    }
+
+    // A converted common region is drawn by its tag (#11502): the pages
+    // printing the tag use the component that draws it.
+    $region_usage = pg_shared_component_region_usage_read(array_keys($usage), is_array($trees) ? $trees : array(), 'db_items');
+    foreach ($region_usage as $sid => $places) {
+        foreach ($places as $u) {
+            $binned = isset($bin_folders[$u['page_folder']]);
+            if ($binned) {
+                $original = pg_recycle_parked_original($u['page_name'], $u['page_id']);
+                if ($original !== '') $u['page_name'] = $original;
+            }
+            $u['binned'] = $binned;
+            unset($u['page_folder']);
+            $direct[$sid][] = $u;
         }
     }
 
