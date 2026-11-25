@@ -17,18 +17,10 @@
  * Scroll progress: the bar's width follows how far the page is scrolled, as
  * a percentage of what can be scrolled.
  *
- * A menu's "After scrolling" (data-pg-scrolled="<px>" with
- * data-pg-scrolled-class="<Bootstrap classes>"): once the page is scrolled
- * that far, the menu takes those classes, and the classes of the same kind
- * it was drawn with (its background, shadow, vertical padding, navbar
- * theme) step aside until the page is back above that point.
- *
- * A menu's "Mark the section in view" (data-pg-spy): the first such menu
- * becomes the target of Bootstrap's own scrollspy on the body
- * (data-bs-spy="scroll"), which marks the link of the section on screen
- * active. Bootstrap starts it when the page has loaded; this file only
- * writes the two attributes before that, and gives the menu an id when it
- * has none.
+ * A menu's "After scrolling" (data-pg-scrolled="<px>"): past that point
+ * it takes data-pg-scrolled-class, and its drawn classes of the same kind
+ * step aside. "Mark the section in view" (data-pg-spy): the first such menu
+ * becomes the target of Bootstrap's scrollspy on the body.
  *
  * One passive scroll listener for the page, its work done once a frame.
  * Plain ES5 and no jQuery: it has to work whatever the design loads.
@@ -67,8 +59,7 @@
         el.classList.toggle('opacity-0', off);
     }
 
-    // The kind of a class that "After scrolling" may swap: two classes of
-    // one kind fight over the same property, so the drawn one steps aside.
+    // Two classes of one kind fight over one property.
     function kind(c) {
         if (/^bg-(?!opacity|gradient)/.test(c)) {
             return 'bg';
@@ -85,8 +76,7 @@
         return '';
     }
 
-    // The class list a menu shows, scrolled or not: `drawn` is the list it
-    // was printed with, `add` the scrolled classes. Pure, so it is tested.
+    // The menu's class list, scrolled or not. Pure, so it is tested.
     function scrolledClasses(drawn, add, on) {
         var own = String(drawn || '').split(/\s+/).filter(Boolean);
         if (!on) {
@@ -138,7 +128,7 @@
         }
         body.setAttribute('data-bs-spy', 'scroll');
         body.setAttribute('data-bs-target', '#' + nav.id);
-        // Bootstrap's data API has already run when the page loaded first.
+        // Bootstrap's data API runs on load; later, start it here.
         if (document.readyState === 'complete' && window.bootstrap && window.bootstrap.ScrollSpy) {
             window.bootstrap.ScrollSpy.getOrCreateInstance(body);
         }
