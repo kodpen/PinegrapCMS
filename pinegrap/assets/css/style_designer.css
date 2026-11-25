@@ -991,6 +991,13 @@ body.sd-email-design .sd-bp-bar .sd-bp-zsep-mode { display:none; }
 .sd-vb-menu .sd-vb-row:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
 .sd-vb-menu .sd-vb-row .bi { color:var(--sd-text-muted); }
 .sd-vb-menu .sd-vb-row-lbl { flex:1; }
+/* "Canvas guides": a line above the switch, the keys under it as plain lines, dimmed while it is off. */
+.sd-vb-menu .sd-vb-sep { height:1px; margin:6px 0; background:var(--sd-panel-border); }
+.sd-vb-menu .sd-vb-keyrow {
+    display:flex; align-items:center; gap:10px; min-height:26px; padding:0 8px 0 34px;
+    font-size:.74rem; color:var(--sd-text-muted);
+}
+.sd-vb-menu #sd-vb-guides:not(.active) ~ .sd-vb-keyrow { opacity:.5; }
 .sd-vb-menu .sd-vb-kbd {
     padding:0 5px; border:1px solid var(--sd-input-border); border-radius:4px;
     background:none; color:var(--sd-text-muted); font-size:.66rem; font-family:inherit;
@@ -1754,6 +1761,11 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    frame with its name on white, and the distances are rose lines with a
    short cap at each end and their number in page pixels. The layer covers
    the part of the canvas frame in view and takes no pointer. */
+/* Layout lines (Shift+G): the page's container edges and its columns' content, gutters between them; under Measure's layer. */
+.sd-gl-layer { position: absolute; z-index: 20; overflow: hidden; pointer-events: none; }
+.sd-gl-layer > * { position: absolute; top: 0; bottom: 0; }
+.sd-gl-col { box-sizing: border-box; background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line); border-width: 0 1px; }
+.sd-gl-edge { width: 0; border-left: 1px dashed var(--sd-accent); }
 .sd-gm-layer { position: absolute; z-index: 21; overflow: hidden; pointer-events: none; }
 .sd-gm-layer > * { position: absolute; }
 .sd-gm-hov { outline: 1.5px dashed var(--sd-accent); outline-offset: 0; }
@@ -2139,6 +2151,21 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-spb-b { bottom: 2px; left: 50%; transform: translateX(-50%); }
 .sd-spb-s { left: 4px; top: 50%; transform: translateY(-50%); }
 .sd-spb-e { right: 4px; top: 50%; transform: translateY(-50%); }
+/* A design variable on a side (one element, a design with themes): the
+   "Variables" button beside the typed field, a bound side's braces, a typed
+   value, and the chips of the bound sides under the box. */
+.sd-spb-varbtn { position: absolute; z-index: 2; opacity: 1; background: var(--sd-panel-bg); }
+.sd-spb-vb-t { top: 0; left: calc(50% + 20px); }
+.sd-spb-vb-b { bottom: 0; left: calc(50% + 20px); }
+.sd-spb-vb-s { left: 2px; top: calc(50% + 12px); }
+.sd-spb-vb-e { right: 2px; top: calc(50% + 12px); }
+.sd-spb-vb-all { left: calc(50% + 20px); top: 50%; transform: translateY(-50%); }
+.sd-spb-v.is-lit { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 19px; }
+.sd-spb-v.is-var { cursor: pointer; }
+.sd-spb-vars { display: grid; gap: 6px; margin-top: 8px; }
+.sd-spb-var { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 8px; }
+.sd-spb-var-lab { font-size: 12px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-spb-slot { height: 0; }
 /* Under a 300 px panel the box keeps its drawing with side paddings of 27. */
 .sd-spb-host { container-type: inline-size; }
 @container (max-width: 230px) {

@@ -273,6 +273,14 @@ function pg_tr_walk_tree($node, &$segments, &$refs, &$position, $path = '0')
 
         if ($shared_id > 0) {
             $refs['shared'][$shared_id] = true;
+
+            // A place's own texts of the component's open fields are the
+            // page's texts, stored with it beside the component's own.
+            $place = pg_co_place_values($node);
+
+            if (!empty($place)) {
+                $segments = array_merge($segments, pg_tr_place_segments(pg_tr_shared_tree($shared_id), $place, $node_id, $position));
+            }
         }
     } elseif ($type === 'region') {
         $region_type = isset($props['regionType']) ? (string) $props['regionType'] : '';
@@ -305,6 +313,71 @@ function pg_tr_walk_tree($node, &$segments, &$refs, &$position, $path = '0')
             pg_tr_walk_tree($child, $segments, $refs, $position, $path . '.' . $i);
         }
     }
+}
+
+/**
+ * The texts a place gives a shared component's open text fields, as
+ * extraction stores them: each under the placing node's id and the field's
+ * id, so a translation follows the place, not the component.
+ *
+ * @param array|null $tree      the component's tree (null: none)
+ * @param array      $values    the place's values (props._place)
+ * @param string     $node_id   the placing node's id
+ * @param int        $position  running counter
+ * @return array segments shaped as pg_tr_walk_tree() writes them
+ */
+function pg_tr_place_segments($tree, $values, $node_id, &$position)
+{
+    if (!is_array($tree)) {
+        return array();
+    }
+
+    $segments = array();
+
+    foreach (pg_co_place_texts($tree, $values) as $place) {
+        $node = $place['node'];
+        $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+
+        foreach (pg_tr_node_texts(isset($node['type']) ? (string) $node['type'] : '', $props) as $text) {
+            list($field, $normalized, $format) = $text;
+
+            if ($field !== 'text') {
+                continue;
+            }
+
+            $segments[] = array(
+                'hash'     => pg_tr_hash($normalized, $format),
+                'text'     => $normalized,
+                'format'   => $format,
+                'node_id'  => substr($node_id . '.' . $place['id'], 0, 64),
+                'field'    => 'text',
+                'position' => $position++,
+            );
+        }
+    }
+
+    return $segments;
+}
+
+/**
+ * A shared component's stored tree, read once per request; null when the
+ * row is gone or its tree does not read.
+ *
+ * @param int $shared_id
+ * @return array|null
+ */
+function pg_tr_shared_tree($shared_id)
+{
+    static $trees = array();
+    $shared_id = (int) $shared_id;
+
+    if (!array_key_exists($shared_id, $trees)) {
+        $json = db_value("SELECT tree_json FROM shared_components WHERE id = '$shared_id' LIMIT 1");
+        $tree = ($json !== null && $json !== '') ? json_decode((string) $json, true) : null;
+        $trees[$shared_id] = is_array($tree) ? $tree : null;
+    }
+
+    return $trees[$shared_id];
 }
 
 /**

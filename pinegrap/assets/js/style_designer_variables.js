@@ -12,8 +12,10 @@
  * save writes the file.
  *
  * The same part draws the list a colour or size control of Options opens
- * (_sdVarCtl() in the core): the variables of the control's kind, the
- * designer's own, the type scale's steps, then the way out to a typed value;
+ * (_sdVarCtl() in the core) or a side of the spacing box and the corners
+ * (part 'spacing'): the variables of the control's kind, the designer's
+ * own, the type scale's steps or the base unit's multiples, then the way
+ * out to a typed value;
  * and Detach, which puts the value of that moment in the control's place.
  *
  * Not needed to open a page: the core runs this file the first time the tab
@@ -363,6 +365,18 @@ StyleDesigner.definePart('variables', function (K) {
                 var v = m.values[vr.key];
                 vars.push({ expr: host.expr({ token: tokenOf(vr.key, false) }), name: vr.label, value: v.light, color: v.light });
             });
+        } else if (host.kind === 'space') {
+            ['space_unit', 'space_section'].forEach(function (k) {
+                vars.push({ expr: host.expr({ token: tokenOf(k, false) }), name: labelOf(k), value: pxText(px(m.values[k])) });
+            });
+            var unit = px(m.values.space_unit);
+            if (unit != null) {
+                (host.units || []).forEach(function (n) {
+                    computed.push({ expr: host.expr({ units: n }), name: _sdT('{var} units', n), value: pxText(unit * n) });
+                });
+            }
+        } else if (host.kind === 'radius') {
+            vars.push({ expr: host.expr({ token: 'radius' }), name: labelOf('radius'), value: pxText(px(m.values.radius)) });
         } else {
             vars.push({ expr: host.expr({ token: 'size-base' }), name: labelOf('size_base'), value: pxText(px(m.values.size_base)) });
             var base = px(m.values.size_base), scale = parseFloat(m.values.scale);
@@ -380,7 +394,7 @@ StyleDesigner.definePart('variables', function (K) {
         return [
             { head: _sdT('Variables'), items: vars },
             { head: _sdT('Your own'), items: own },
-            { head: _sdT('Type scale'), items: computed }
+            { head: host.kind === 'space' ? _sdT('Units') : _sdT('Type scale'), items: computed }
         ].filter(function (g) { return g.items.length; });
     }
 
@@ -419,7 +433,7 @@ StyleDesigner.definePart('variables', function (K) {
                 var on = r.expr === now;
                 h += '<button type="button" class="sd-var-row' + (on ? ' is-on' : '') + '" role="option" aria-selected="' + on + '" data-vl-expr="' + attr(r.expr) + '">' +
                      (r.color ? '<span class="sd-var-sw" style="background:' + attr(r.color) + '" aria-hidden="true"></span>'
-                              : '<span class="bi ' + (host.kind === 'color' ? 'bi-palette' : 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>') +
+                              : '<span class="bi ' + (host.icon || (host.kind === 'color' ? 'bi-palette' : 'bi-fonts')) + ' sd-var-ic" aria-hidden="true"></span>') +
                      '<span class="sd-var-name">' + esc(r.name) + '</span><span class="sd-var-val">' + esc(r.value) + '</span>' +
                      '<span class="bi bi-check2 sd-var-tick" aria-hidden="true"></span></button>';
             });

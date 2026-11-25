@@ -352,6 +352,10 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
     $limit  = max(1, (int) $limit);
     $binned = pg_designer_not_binned_sql('page_folder');
 
+    // Each page moved on or off the site leaves one `update` line, written
+    // as the job's: the run may ride on whichever request started job.php.
+    $was_job = pg_audit_as_job(true);
+
     // A page of a design with a custom layout is due like any other; a
     // system-layout page that left its design keeps the time it was given.
     // Publish first: a page whose two times have both come goes on and then
@@ -372,9 +376,11 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
             if (mysqli_affected_rows(db::$con) !== 1) continue;
 
             $draft = pg_page_is_draft($r['page_folder']);
+            $audit_before = pg_audit_fetch('page', $page_id);
 
             if ($column === 'publish_at') {
                 if ($draft && pg_page_draft_move($page_id, false, (int) $r['page_folder'], null)) {
+                    pg_audit_record('update', 'page', $page_id, $audit_before);
                     $out['published'][] = (string) $r['page_name'];
                 } elseif ($draft && function_exists('pg_proto_approval_hold') && pg_proto_approval_hold($page_id)) {
                     // A prototype link holds the draft until it is approved:
@@ -386,12 +392,15 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
             } elseif ((string) $r['page_home'] === 'yes') {
                 $out['home'][] = (string) $r['page_name'];
             } elseif (!$draft && pg_page_draft_move($page_id, true, (int) $r['page_folder'], null)) {
+                pg_audit_record('update', 'page', $page_id, $audit_before);
                 $out['unpublished'][] = (string) $r['page_name'];
             } else {
                 $out['cleared']++;
             }
         }
     }
+
+    pg_audit_as_job($was_job);
 
     // A page that came on or went off the site changes menus and lists on
     // other pages: every page the page cache keeps is made old.

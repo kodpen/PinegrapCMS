@@ -30,7 +30,7 @@ priority: 7
 - CG2 (M) done (#11570). Measure.
 - CG3 (M) done (#11568). The spacing bands and handles (`designer/designer-canvas-guides-bands.md`).
 - CG4 (M) done (#11603). The column handles, the grid over the row, equal gaps (`designer/designer-canvas-guides-columns.md`).
-- CG5 (S) after CG2: layout lines, the View menu's switch, the keys shown.
+- CG5 (S) done (#11623). Layout lines, the View menu's switch, the keys shown (`designer/designer-canvas-guides-lines.md`).
 - CG6 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?

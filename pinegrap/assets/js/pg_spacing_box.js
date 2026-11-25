@@ -21,6 +21,9 @@
  * - write(): a class list with sides set or cleared at one size; every other
  *   class stays in its place and the new ones go to the end, as today's
  *   rows add them.
+ * - styleProp(), clearSide(): the inline property a side bound to a design
+ *   variable writes, and the list with that side's classes gone at every
+ *   size, so the inline value is not beaten by an !important class.
  *
  * Nothing runs at load but the definition of window.PGSpacingBox. It is the
  * first source of the designer part 'spacing'
@@ -167,6 +170,23 @@
         return scale[Math.max(0, Math.min(scale.length - 1, i + delta))];
     }
 
+    // The inline style property a side binds to a design variable: the
+    // logical property, as the side's classes are (me-* is the end side in
+    // both directions).
+    var PROPS = {
+        m: { t: 'margin-top', e: 'margin-inline-end', b: 'margin-bottom', s: 'margin-inline-start' },
+        p: { t: 'padding-top', e: 'padding-inline-end', b: 'padding-bottom', s: 'padding-inline-start' }
+    };
+    function styleProp(kind, side) {
+        return PROPS[kind] && PROPS[kind][side] ? PROPS[kind][side] : '';
+    }
+
+    // The list with the side cleared at every size: a class of Bootstrap's
+    // is !important and would beat the side's inline value.
+    function clearSide(list, kind, side) {
+        return SIZES.reduce(function (c, size) { return write(c, kind, size, [side], '', false); }, String(list == null ? '' : list));
+    }
+
     window.PGSpacingBox = {
         SIZES: SIZES,
         SIDES: SIDES,
@@ -177,6 +197,8 @@
         held: held,
         sides: sides,
         write: write,
-        step: step
+        step: step,
+        styleProp: styleProp,
+        clearSide: clearSide
     };
 })();

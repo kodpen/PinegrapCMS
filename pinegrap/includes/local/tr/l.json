@@ -412,6 +412,7 @@
     "Layout Type": "Düzen Türü",
     "Layout and style": "Yerleşim ve stil",
     "Layout could not be found.": "Düzen bulunamadı.",
+    "Layout lines": "Düzen çizgileri",
     "Layout of fields in advanced search{var:1}": "{var:1}Gelişmiş aramada alanların düzeni",
     "Layout shift (CLS)": "Düzen kayması (CLS)",
     "Layout type override: {var:1}": "Düzen türü üzerine yazma: {var:1}",

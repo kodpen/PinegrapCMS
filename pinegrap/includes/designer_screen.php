@@ -3548,6 +3548,9 @@ function pg_designer_screen_post($ctx)
         $style_data['style_tree_json'] = (string)$pages[0]['tree_json'];
     }
     if ($can_write_design) {
+        // One trail line per save that changed the design's row; a save of
+        // pages alone leaves the row as it was and writes none.
+        $audit_before = ($style_id > 0) ? pg_audit_fetch('style', $style_id) : array();
         $style_id = (int)save_system_style($style_data);
         // A failed INSERT returns 0 (queries do not throw). Writing the
         // pages against style 0 would leave them on no design at all and
@@ -3555,6 +3558,7 @@ function pg_designer_screen_post($ctx)
         if ($style_id <= 0) {
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
+        pg_audit_record($audit_before ? 'update' : 'create', 'style', $style_id, $audit_before);
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
         // The design's variables (Settings, Theme, Variables): the model the
         // tab posts, or, when the tab was not used, the stored one carried

@@ -23,9 +23,9 @@ priority: 6
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - CU1 (M) The finder, pure: the classes in use gathered from trees, components, interactions, conditions and the words in scripts; a stylesheet's rules matched against them; the "cannot tell" cases. Done #11560 (`designer/design-cleanup-finder.md`).
-- CU2 (M) after CU1, PC2 and DD18: the window with its four lists, "Show".
-- CU3 (S) after CU2: removal with the snapshot and its closing line.
+- CU2 (M) after CU1: the window with its four lists, "Show", what opens it and its states; boards U1 to U4 of the drawing. The PR body carries a table of the boards: what was built for each, what differs and why.
+- CU3 (S) after CU2: removal with the snapshot and its closing line; the foot of board U3, the closing line and the row that stayed of U4. The PR body carries a table of the boards: what was built for each, what differs and why.
 - CU4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
-- No table or column. The drawing: `designer-drawings-levels.md`. Claim as `[plan:designer-cleanup] <step> — <topic>`.
+- No table or column. The drawing: `designer/designer-cleanup-drawing.md` and `designer-cleanup-states-drawing.md`; it decides where the two differ (`workflow/screen-follows-drawing.md`). Claim as `[plan:designer-cleanup] <step> — <topic>`.

@@ -251,3 +251,44 @@ function test_spacing_box_is_a_part()
 	pg_assert_contains('_sdSpBoxBind([selectedNode]);', $core, 'the single element\'s panel binds it');
 	pg_assert_contains('_sdSpBoxBind(nodes);', $core, 'the several-element panel binds it');
 }
+
+// A side bound to a design variable: its inline property, logical as the
+// side's classes are, and the list with that side's classes gone at every
+// size (they are !important and would beat the inline value).
+function test_spacing_box_side_bound_to_a_variable()
+{
+	$res = spacing_box_test_node('out = ['
+		. ' B.styleProp("p", "t"), B.styleProp("m", "e"), B.styleProp("p", "s"), B.styleProp("x", "t"), B.styleProp("m", "all"),'
+		. ' B.clearSide("hero pt-3 pt-md-5 pb-2", "p", "t"),'
+		. ' B.clearSide("hero p-3 p-lg-4", "p", "t"),'
+		. ' B.clearSide("hero my-2", "m", "b"),'
+		. ' B.clearSide("hero mt-2", "p", "t"),'
+		. ' B.clearSide("", "p", "t")'
+		. '];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('padding-top', 'margin-inline-end', 'padding-inline-start', '', ''), array_slice($res, 0, 5), 'the inline property of a side');
+	pg_assert_same('hero pb-2', $res[5], 'the side goes at every size, the other side stays');
+	pg_assert_same('hero pe-3 pb-3 ps-3 pe-lg-4 pb-lg-4 ps-lg-4', $res[6], 'all-sides classes keep the three other sides at each size');
+	pg_assert_same('hero mt-2', $res[7], 'the axis class keeps the opposite side');
+	pg_assert_same('hero mt-2', $res[8], 'a margin stays when the padding is bound');
+	pg_assert_same('', $res[9], 'an empty list stays empty');
+}
+
+// The box and the corners offer the list of the part 'variables' on one
+// element of a design with themes: the core's host says so and the part
+// hangs the list from a place of kind 'space' or 'radius'.
+function test_spacing_box_offers_variables()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_spacing.js');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$vars = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_variables.js');
+	pg_assert_contains("vars: !!one && !!_sdThemes() && _sdUsesBootstrap(),", $core, 'one element of a design with themes');
+	pg_assert_contains("ctl.setAttribute('data-sd-var', kind === 'r' ? 'radius' : 'space');", $part, 'the list of a side is a spacing or a corner list');
+	pg_assert_contains("h.set = function (v) { _sdVarSet(node, prop, v, ctl._sdVarClean); };", $core, 'a binding drops the side\'s classes in the same step');
+	pg_assert_contains("host.kind === 'space'", $vars, 'the list offers the spacing variables and the units');
+	pg_assert_contains("host.kind === 'radius'", $vars, 'the list offers Corners');
+}

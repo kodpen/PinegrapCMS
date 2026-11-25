@@ -116,6 +116,7 @@
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused [decision: decisions-made-product-109.md, decisions-made-product-20.md, decisions-made-product-3.md, decisions-made.md]
 - component-overrides-fields.md: Opening a shared component's field "Can change per place" in the designer (CO3): the menu and palette row, the list, labels, the marks, the settings list with order, Rename and Close the field
 - component-overrides-model.md: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
+- component-overrides-render.md: How a place's values of a shared component reach the site, the canvas and the Preview (CO2, #11595): the place marker, the per-call render and the cache rule, the draw checks, translation
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
 - content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
 - content-proposals-deleted-page.md: An editor's waiting change whose page is deleted or in the Recycle Bin: stale and told on Apply, or refused and still waiting; the count skips a gone page; "Deleted page" in the list (#10219)
@@ -285,11 +286,13 @@
 - design-variables-model.md: A design's variables (DV1, 2026.11.0): the list, defaults from look and palette, the variables stylesheet with its pg-theme head, the reader, the text-on-surface contrast check
 - design-variables-options.md: Options controls offering a design's variables (DV3): which rows, the list, the chip and Detach, the expression a bound control holds, "Used in n places"
 - design-variables-questions.md: The design variables' five start questions (DV4, #11593): one part for the New design window and the Variables tab's "Ask me again", the answers, the model they give, how a new design carries them
+- design-variables-spacing.md: The spacing box's sides and the corners offering a design's variables (DV3b): how a side is bound, what it writes, the chip rows under the box, the classes it drops
 - design-variables-tab.md: The Variables tab of Settings, Theme (DV2): the part 'variables', the file design-variables-<style id>.css found by its name, the save, the canvas, Preview and site loading it after the palette
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-accessibility-view-drawing.md: The drawing of the designer's accessibility view (plan designer-accessibility-view, AV2 and AV3): boards V1 the View row and the card, V2 Tab order, V6 folded, nothing found, narrow
 - designer-accessibility-view-marks-drawing.md: The drawing of the accessibility view's Headings and Names marks, a fault's card and the "See as" sight filters: boards V3, V4 and V5 of the accessibility view sheet
-- designer-activity-audit-trail.md: The Activity tab's design events that leave no page version are kept in the audit trail (audit_log), no new table or column: the lines there today, the writers to add, what the tab shows [decision: here]
+- designer-activity-audit-lines.md: How the Activity tab's reader turns the audit trail's design, shared component and page-move lines into sentences (AC5), and who sees them
+- designer-activity-audit-trail.md: The designer's events that leave no page version go to the audit trail (audit_log), no new table or column: the record types and the writers AC5 added [decision: here]
 - designer-activity-reader.md: The reader behind the designer's History "Activity" tab (AC2, #11599): which rows become events, their sentences, the cursor and pages of fifty, who sees which event, the panel action
 - designer-activity-writers.md: Census for the designer's History "Activity" tab (AC1): every writer that changes a visual design, the row it leaves with who and when, the ones that leave none, and the open store question [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
@@ -371,6 +374,7 @@
 - designer-canvas-guides-columns.md: Column handles and equal gaps on the designer canvas (CG4 #11603, part bands): the end-edge handle and twelve-column grid, what it writes, equal gaps, why two parts, the numbers
 - designer-canvas-guides-drawing.md: The drawing of plan designer-canvas-guides (DD8): where the sheet is, which board belongs to which step (CG2 to CG5), what is drawn over the canvas and in which colour, the readings it settles
 - designer-canvas-guides-geometry.md: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
+- designer-canvas-guides-lines.md: Layout lines (Shift+G) and the "Canvas guides" switch of the View menu (CG5 #11623, part guides): what they draw, what the switch turns off, where kept, the key, the numbers
 - designer-canvas-guides-measure.md: Measure on the designer canvas (CG2 #11570): Alt held with one element selected draws the distances to the element pointed at, in the part guides, outside the page
 - designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 - designer-canvas-mirror.md: The canvas mirror as the designer part 'mirror' (SS1, #11535): a frame filled from the canvas's markup without the editor, redrawn when the hand rests; its pure scheduling PGMirrorSchedule
@@ -385,6 +389,8 @@
 - designer-chrome-measures.md: The Page Design Studio chrome's sizes beside its colour tokens: type, heights, gaps, corners, shadows, focus ring, changed dot, the Options panel's parts in order and each control's states [decision: here]
 - designer-chrome-tokens.md: The Page Design Studio chrome's --sd-* colour tokens in style_designer.css: which token is for what, the measured ratios, the four areas that read tokens only, and the test that checks them
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
+- designer-cleanup-drawing.md: The drawing of the designer's "Clean up" window (plan designer-cleanup, CU2 and CU3): boards U1 what opens it and U2 the window with its four lists and rows
+- designer-cleanup-states-drawing.md: The drawing of the designer's "Clean up" window, boards U3 and U4: "Show", ticked rows and the foot, what is not listed, the closing line after "Remove", the states [decision: here]
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
@@ -397,6 +403,8 @@
 - designer-collab-view-mode.md: Designer view mode when another person holds the lock: _sdMayEdit, _sdGuardItem, hidden panels, one-item context menu, chat bubble, avatars and the narrow note_save exception.
 - designer-collapse-open-state.md: Open state an accordion item (.collapse) saves and publishes: the one its toggle is written with, not the item last clicked on the canvas; modal, offcanvas, dropdown-menu always close.
 - designer-compare-changes.md: Compare's change reader (pg_compare_changes.js, PgCompareChanges): two designer trees in, plain-words changes with their place out; matching, kinds, order, rows, texts
+- designer-compare-live-drawing.md: The drawing of "Compare with the live page" (plan designer-compare-live, CL2 and CL3): boards L1 what opens it, L2 the Look tab's slider, L3 side by side and phone, L6 from History [decision: here]
+- designer-compare-live-list-drawing.md: The drawing of Compare's "What changed" list joined to the two pictures, the window's states and its narrow form: boards L4, L5 and L6 of the compare-live sheet
 - designer-component-overrides-drawing-fields.md: Boards C1 and C2 of the component overrides drawing (step CO3): the "Can change per place" menu row and list, the label, the mark, Overview, the list in the component's settings
 - designer-component-overrides-drawing-this-place.md: Boards C3 to C5 of the component overrides drawing (step CO4): the "This place" section, the dot and "Reset to the component", typing in place, "Edit the component", content editors, the narrow panel
 - designer-component-overrides-drawing-variants.md: Boards C6 and C7 of the component overrides drawing (step CO5): the "Variants" list in the component's settings, adding, editing and deleting a variant, the "Variant" row of a place
@@ -415,6 +423,7 @@
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
+- designer-grid-columns-rows.md: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (Default, Equal, Fixed sizes, As many as fit, Custom), the CSS each writes, per screen size, the part 'grid', Gap kept
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about

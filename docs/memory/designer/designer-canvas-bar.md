@@ -10,7 +10,7 @@ description: The canvas bar above the Page Design Studio's canvas (DP22, #10205)
 - Zone 3, `.sd-bp-tools`: "Canvas view" (`#sd-vb-view`) opens the View menu; Find & Replace (`#sd-vb-find`, Ctrl+F) and History (`#sd-vb-snapshots`) as icon buttons.
 
 ## What does the View menu hold?
-- `#sd-vb-view-menu`, on `pgUI.overlayHost()` (a menu inside the folding bar would be cut). Switch rows named by what they do: Outline (`#sd-vb-outline`, key O), Snap to grid (8 px) (`#sd-vb-grid`), Dark canvas (`#sd-vb-theme`), Play animations (`#sd-vb-motion`), and Prototype comments when that part is on.
+- `#sd-vb-view-menu`, on `pgUI.overlayHost()` (a menu inside the folding bar would be cut). Switch rows named by what they do: Outline (`#sd-vb-outline`, key O), Snap to grid (8 px) (`#sd-vb-grid`), Dark canvas (`#sd-vb-theme`), Play animations (`#sd-vb-motion`); after a line, Canvas guides (`#sd-vb-guides`, on by default) with two plain key lines under it (`.sd-vb-keyrow`: Measure Alt, Layout lines Shift+G, `designer-canvas-guides-lines.md`); and Prototype comments when that part is on.
 - A state is never written as a name: the old "Light" button with the tip "Dark canvas" became the switch "Dark canvas".
 - The menu button's badge counts the switches that are on and shown (`_sdCanvasBarBadge()`, `_sdCanvasBarSync()`).
 - Preview, Open on the site, Play as a prototype and Share are not here: they are the Preview menu beside Publish (`designer-preview-menu.md`).

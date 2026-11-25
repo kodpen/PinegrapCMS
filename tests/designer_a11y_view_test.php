@@ -176,7 +176,7 @@ function test_designer_a11y_view_core_hooks()
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($core, 'id="sd-vb-a11y" role="menuitemcheckbox"') !== false, 'a switch row of the View menu');
-	pg_assert_true(strpos($core, "'sd-vb-motion', 'sd-vb-a11y']") !== false, 'counted in the View button\'s badge');
+	pg_assert_true(strpos($core, "'sd-vb-motion', 'sd-vb-a11y'") !== false, 'counted in the View button\'s badge');
 	pg_assert_true(strpos($core, "_sdT('Show accessibility view')") !== false && strpos($core, "_sdT('Hide accessibility view')") !== false, 'a row of the command palette');
 	pg_assert_true(strpos($core, "_sdPartCall('accessview', 'show'") !== false, 'the switch runs the part');
 	pg_assert_same(3, substr_count($core, "        _sdA11ySync();\n"), 'a draw, the mode switch and the switch keep the view in step');

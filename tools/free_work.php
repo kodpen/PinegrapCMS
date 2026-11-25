@@ -453,15 +453,73 @@ function free_work_cut($text, $width = FREE_WORK_LINE)
 	return $text;
 }
 
+// One argument quoted for a Windows command line that starts a program
+// without cmd.exe, as the program's C runtime splits the line back into
+// arguments: in double quotes, with a double quote escaped by a backslash and
+// the backslashes before it, or before the closing quote, doubled.
+// escapeshellarg() is written for cmd.exe and turns %, ! and " into spaces.
+function free_work_windows_arg($arg)
+{
+	return '"' . preg_replace_callback('/(\\\\*)("|\z)/', function ($match) {
+		return $match[1] . $match[1] . (($match[2] === '"') ? '\\"' : '');
+	}, (string) $arg) . '"';
+}
+
+// The command line that runs git with $args, started without a shell: no
+// redirection, no inline environment and no cd, so the same line works on
+// Windows and POSIX. $windows picks the quoting.
+function free_work_git_command(array $args, $windows)
+{
+	return 'git ' . implode(' ', array_map($windows ? 'free_work_windows_arg' : 'escapeshellarg', $args));
+}
+
+// Runs git with $args, $env added to this process's environment. Returns its
+// stdout lines, or null when it fails; stderr is read and dropped. On Windows
+// git starts without cmd.exe (bypass_shell), which would print "the system
+// cannot find the path specified" for a 2>/dev/null; the argument list form
+// of proc_open() that needs no quoting at all needs PHP 7.4.
+function free_work_git(array $args, array $env = array())
+{
+	$windows = (DIRECTORY_SEPARATOR === '\\');
+	$environment = ($env === array()) ? null : array_merge(getenv(), $env);
+	$process = proc_open(free_work_git_command($args, $windows), array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, null, $environment, array('bypass_shell' => true));
+
+	if (!is_resource($process)) {
+		return null;
+	}
+
+	fclose($pipes[0]);
+	// git writes little to stderr here; reading stdout to the end first is safe.
+	$out = (string) stream_get_contents($pipes[1]);
+	fclose($pipes[1]);
+	stream_get_contents($pipes[2]);
+	fclose($pipes[2]);
+
+	if (proc_close($process) !== 0) {
+		return null;
+	}
+
+	$lines = preg_split('/\r?\n/', rtrim($out, "\r\n"));
+
+	return ($out === '') ? array() : $lines;
+}
+
+// A file:// URL git reads for a local $path: forward slashes, and the third
+// slash before a Windows drive letter (file:///C:/...).
+function free_work_file_url($path)
+{
+	$path = str_replace('\\', '/', (string) $path);
+
+	return 'file://' . ((substr($path, 0, 1) === '/') ? '' : '/') . $path;
+}
+
 // The subjects of every commit reachable from $ref in the repository at
 // $git_dir, as free_work_landed() reads them. The whole history is read, no
 // date window: a step whose PR landed long ago is still done. null when git
 // fails.
 function free_work_log_subjects($git_dir, $ref)
 {
-	exec('git -C ' . escapeshellarg((string) $git_dir) . ' log --format=%s ' . escapeshellarg((string) $ref) . ' -- 2>/dev/null', $out, $code);
-
-	return ($code === 0) ? $out : null;
+	return free_work_git(array('-C', (string) $git_dir, 'log', '--format=%s', (string) $ref, '--'));
 }
 
 // A bare, commits-only copy of $url's development branch at $dir, made on
@@ -472,15 +530,14 @@ function free_work_log_subjects($git_dir, $ref)
 function free_work_history_mirror($url, $dir)
 {
 	$dir = (string) $dir;
-	$quiet = ' >/dev/null 2>&1';
 
 	if (!is_file($dir . '/HEAD')) {
-		exec('git clone -q --bare --filter=tree:0 --single-branch --branch development ' . escapeshellarg((string) $url) . ' ' . escapeshellarg($dir) . $quiet, $out, $code);
+		$out = free_work_git(array('clone', '-q', '--bare', '--filter=tree:0', '--single-branch', '--branch', 'development', (string) $url, $dir));
 	} else {
-		exec('git -C ' . escapeshellarg($dir) . ' fetch -q origin +refs/heads/development:refs/heads/development' . $quiet, $out, $code);
+		$out = free_work_git(array('-C', $dir, 'fetch', '-q', 'origin', '+refs/heads/development:refs/heads/development'));
 	}
 
-	return ($code === 0) ? 'refs/heads/development' : null;
+	return ($out === null) ? null : 'refs/heads/development';
 }
 
 // The test runner loads this file for the functions above.

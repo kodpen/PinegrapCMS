@@ -655,6 +655,8 @@ function pg_audit_tables()
         'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user'), 'skip_prefix' => array()),
         'contacts' => array('type' => 'contact', 'id' => 'id', 'label' => array('email_address', 'last_name', 'first_name', 'company'), 'skip' => array('user'), 'skip_prefix' => array()),
         'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip'), 'skip_prefix' => array()),
+        'style'    => array('type' => 'style', 'id' => 'style_id', 'label' => array('style_name'), 'skip' => array('style_user'), 'skip_prefix' => array()),
+        'shared_components' => array('type' => 'shared_component', 'id' => 'id', 'label' => array('name'), 'skip' => array('updated_at'), 'skip_prefix' => array()),
     );
 }
 
