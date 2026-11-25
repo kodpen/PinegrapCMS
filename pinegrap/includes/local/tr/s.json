@@ -46,6 +46,7 @@
     "SMS campaign consent (drawn while SMS is on and a mobile number is asked)": "SMS kampanya izni (SMS açıkken ve cep telefonu sorulduğunda çizilir)",
     "SMS campaign queued: {var:1} messages, {var:2} numbers refused by the SMS checks": "SMS kampanyası kuyruğa alındı: {var:1} mesaj, SMS denetimlerinin reddettiği {var:2} numara",
     "SMS campaign saved: {var:1}": "SMS kampanyası kaydedildi: {var:1}",
+    "SMS consent label (site setting)": "SMS izin etiketi (site ayarı)",
     "SMS is not set up on this site.": "Bu sitede SMS kurulu değil.",
     "SMS is not set up.": "SMS ayarlanmamış.",
     "SMS is not set up: a campaign is kept, but every number is refused until a provider is set up under Settings, Communication.": "SMS kurulmadı: kampanya saklanır, ancak Ayarlar, İletişim altında bir sağlayıcı kurulana dek her numara reddedilir.",

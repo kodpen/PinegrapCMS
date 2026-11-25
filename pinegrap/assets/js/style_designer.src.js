@@ -16466,6 +16466,7 @@ const StyleDesigner = (function () {
         '__requested_url': '/old-page',
         '__group_name': _sdT('Newsletter'),
         '__group_description': _sdT('News and campaigns, once a month.'),
+        '__opt_in_sms_label': _sdT('Yes, you may send me text messages.'),
         '__recipient_full_name': _sdT('Jane Doe'),
         '__recipient_address': _sdT('Sample Street 1, 34000 Istanbul, Türkiye'),
         '__recipient_phone': '+90 555 000 00 00',
@@ -46206,7 +46207,9 @@ const StyleDesigner = (function () {
     var SW_EMAIL_PREFERENCES_TOKEN_GROUPS = [
         { label: _sdT('Account'), tokens: [
             ['__site_name',         _sdT('Site name')],
-            ['__email_address',     _sdT('Email whose preferences these are')]
+            ['__email_address',     _sdT('Email whose preferences these are')],
+            ['__opt_in_label',      _sdT('Campaign consent label (site setting)')],
+            ['__opt_in_sms_label',  _sdT('SMS consent label (site setting)')]
         ]},
         { label: _sdT('Mailing List (loop_area)'), tokens: [
             ['__group_id',          _sdT('List ID')],
@@ -51175,6 +51178,10 @@ const StyleDesigner = (function () {
             ['can_edit',               _sdT('The visitor may edit the record')],
             ['has_ai_links',           _sdT('The AI assistants\' links are filled (a record anybody may open)')]
         ],
+        login_form: [
+            ['shows_remember_me',        _sdT('The "Remember Me" box is offered')],
+            ['has_forgot_password_link', _sdT('A forgot password link is offered')]
+        ],
         logout: [
             ['is_signed_in',    _sdT('The visitor is signed in')],
             ['is_signed_out',   _sdT('The visitor is signed out')],
@@ -51200,7 +51207,9 @@ const StyleDesigner = (function () {
             ['is_signed_in',       _sdT('The visitor is signed in')],
             ['is_signed_out',      _sdT('The visitor is signed out and has no campaign link')],
             ['has_contact_groups', _sdT('There are mailing lists to choose')],
-            ['no_contact_groups',  _sdT('There are no mailing lists to choose')]
+            ['no_contact_groups',  _sdT('There are no mailing lists to choose')],
+            ['shows_opt_in_sms',   _sdT('The SMS box is offered (SMS is on and the contact has a mobile number)')],
+            ['group_has_description', _sdT('Row: the mailing list has a description')]
         ],
         address_book: [
             ['is_signed_in',   _sdT('The visitor is signed in')],

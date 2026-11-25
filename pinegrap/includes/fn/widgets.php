@@ -5093,8 +5093,9 @@ function pg_member_widget_register_opts($widget_id, $form, $type = 'registration
 // Tokens: ^^__site_name^^, ^^__redirect_url^^, ^^__forgot_password_url^^,
 // ^^__register_url^^, ^^__google_signin_url^^. Sections: google_signin
 // (every sign-in button that is on: Google, Microsoft, Apple),
-// forgot_password_link, register_link. Errors: liveform 'login', printed by
-// the Messages node.
+// forgot_password_link, register_link. Visibility: shows_remember_me,
+// has_forgot_password_link. Errors: liveform 'login', printed by the
+// Messages node.
 //
 // cfg: redirect_page_id (after sign-in), show_remember_me (default on),
 // forgot_password_page_id, register_page_id (a page carrying the matching
@@ -5178,6 +5179,13 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
         $legacy = get_page_type_url('registration entrance');
         if ($legacy !== false && $legacy !== '') $register_url = (string)$legacy;
     }
+
+    // A converted classic layout shows its remember box (whose label holds
+    // words of its own) and its forgot-password link under these flags.
+    _eo_apply_visibility_bindings($tree, array(
+        'shows_remember_me'        => $remember_ok,
+        'has_forgot_password_link' => $forgot_url !== '',
+    ));
 
     // Google, Microsoft, Apple: sign-in only from here (the staff login does
     // the same); an identity nobody matches is refused, not registered.
