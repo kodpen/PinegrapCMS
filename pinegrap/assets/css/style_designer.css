@@ -2042,6 +2042,21 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-spb-b { bottom: 2px; left: 50%; transform: translateX(-50%); }
 .sd-spb-s { left: 4px; top: 50%; transform: translateY(-50%); }
 .sd-spb-e { right: 4px; top: 50%; transform: translateY(-50%); }
+/* A design variable on a side (one element, a design with themes): the
+   "Variables" button beside the typed field, a bound side's braces, a typed
+   value, and the chips of the bound sides under the box. */
+.sd-spb-varbtn { position: absolute; z-index: 2; opacity: 1; background: var(--sd-panel-bg); }
+.sd-spb-vb-t { top: 0; left: calc(50% + 20px); }
+.sd-spb-vb-b { bottom: 0; left: calc(50% + 20px); }
+.sd-spb-vb-s { left: 2px; top: calc(50% + 12px); }
+.sd-spb-vb-e { right: 2px; top: calc(50% + 12px); }
+.sd-spb-vb-all { left: calc(50% + 20px); top: 50%; transform: translateY(-50%); }
+.sd-spb-v.is-lit { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 19px; }
+.sd-spb-v.is-var { cursor: pointer; }
+.sd-spb-vars { display: grid; gap: 6px; margin-top: 8px; }
+.sd-spb-var { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 8px; }
+.sd-spb-var-lab { font-size: 12px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-spb-slot { height: 0; }
 /* Under a 300 px panel the box keeps its drawing with side paddings of 27. */
 .sd-spb-host { container-type: inline-size; }
 @container (max-width: 230px) {
