@@ -456,7 +456,7 @@ function pg_designer_screen_render($ctx)
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
-        'themes'        => pg_design_theme_catalog(),
+        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.
@@ -563,6 +563,8 @@ function pg_designer_screen_render($ctx)
                 <input type="hidden" name="style_palette" id="sd-style-palette" value="' . h(isset($style['palette']) ? pg_design_palette_key($style['palette']) : '') . '">
                 <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
                 <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
+                <!-- The variables model the Variables tab changed (JSON); empty: unchanged. -->
+                <input type="hidden" name="style_variables" id="sd-style-variables" value="">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -3417,6 +3419,14 @@ function pg_designer_screen_post($ctx)
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        // The design's variables (Settings, Theme, Variables): the model the
+        // tab posts, or, when the tab was not used, the stored one carried
+        // over to the look and palette just saved. No file, no change.
+        $sd_vars_post = isset($_POST['style_variables']) ? trim((string)$_POST['style_variables']) : '';
+        $sd_vars_model = ($sd_vars_post !== '') ? json_decode($sd_vars_post, true) : null;
+        $sd_vars_saved = pg_design_variables_save($style_id, is_array($sd_vars_model) ? $sd_vars_model : null,
+            $style_data['look'], $style_data['palette'], $user['id']);
+        if ($sd_vars_saved !== true) $warnings[] = $sd_vars_saved;
         // An update never changes a design's framework; a converted style
         // takes the one the editor opened it with (custom: the theme keeps
         // its own Bootstrap and scripts).

@@ -1220,6 +1220,28 @@ function pg_panel_designer($request, $action)
                 'primary' => $p, 'secondary' => $s));
             break;
 
+        // The Variables tab of Settings > Theme
+        // (includes/fn/design_variables.php): the model it sends - or, the
+        // first time, the design's stored one - on the look and palette of
+        // the moment, with the defaults, the stylesheet the canvas tries on,
+        // the contrast rows and the tab's rows. Nothing is written: the
+        // design's save writes the file.
+        case 'variables_state':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+            $look    = isset($request['look']) ? (string)$request['look'] : '';
+            $palette = isset($request['palette']) ? (string)$request['palette'] : '';
+            $model   = null;
+            if (isset($request['model']) && is_array($request['model'])) {
+                $model = $request['model'];
+            } elseif (isset($request['style_id']) && (int)$request['style_id'] > 0) {
+                $model = pg_design_variables_stored((int)$request['style_id']);
+            }
+            $state = pg_design_variables_state($model, $look, $palette);
+            respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
+                'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
+                'list' => pg_design_variables_client_list()));
+            break;
+
         // ── PROTOTYPE SHARE LINKS ────────────────────────────────────
         // The Share prototype dialog (includes/fn/prototype_links.php): a
         // design's links, a new one, a link's address shown again, and
