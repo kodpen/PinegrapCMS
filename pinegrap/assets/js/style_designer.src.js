@@ -79209,6 +79209,9 @@ const StyleDesigner = (function () {
             if (details) page.details = details;
             var src = _sdSketchPicSrc(p.pic && p.pic.src);
             if (src) page.pic = { src: src, h: num(p.pic.h, SD_SKETCH.min, SD_SKETCH.picH, SD_SKETCH.minH), off: !!p.pic.off };
+            // The draft page built from it (style_designer_sketchbuild.js):
+            // the uid its root keeps in props._sketch, the boxes' signature.
+            if (p.built && /^[a-z0-9]{4,40}$/.test(String(p.built.uid || ''))) page.built = { uid: String(p.built.uid), sig: String(p.built.sig || '').slice(0, 40) };
             (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
                 var bid = num(b && b.id, 0, 1e9, 0);
                 if (!bid || used['b' + bid]) return;
@@ -79250,11 +79253,41 @@ const StyleDesigner = (function () {
             var raw = null;
             try { raw = JSON.parse(window.localStorage.getItem(key) || 'null'); } catch (e) { raw = null; }
             sk.key = key;
-            sk.data = _sdSketchClean(raw);
+            sk.data = _sdSketchKept(_sdSketchClean(raw));
             sk.hist = window.PGGraphCanvas.historyOf('sketch', JSON.stringify(sk.data));
             sk.sel = null;
         }
         return sk.data;
+    }
+
+    // A page built from a sketch keeps it in its tree's root
+    // (props._sketch): a sketch page this browser lacks comes back from it,
+    // its box ids kept where they are free.
+    function _sdSketchKept(data) {
+        var have = {};
+        var used = {};
+        data.pages.forEach(function (p) {
+            if (p.built) have[p.built.uid] = true;
+            used['p' + p.id] = true;
+            p.boxes.forEach(function (b) { used['b' + b.id] = true; });
+        });
+        (typeof _pages !== 'undefined' ? _pages : []).forEach(function (pg) {
+            var t = _pgTreeOf(pg);
+            var m = (t && t.props && t.props._sketch) || null;
+            if (!m || !m.page || have[m.uid] || data.pages.length >= SD_SKETCH.pages) return;
+            var one = _sdSketchClean({ pages: [m.page] }).pages[0];
+            if (!one) return;
+            have[m.uid] = true;
+            var next = Math.max(data.n, one.boxes.reduce(function (n, b) { return Math.max(n, b.id + 1); }, one.id + 1));
+            if (used['p' + one.id]) one.id = next++;
+            one.boxes.forEach(function (b) { if (used['b' + b.id]) b.id = next++; });
+            one.built = { uid: String(m.uid), sig: String(m.sig || '').slice(0, 40) };
+            used['p' + one.id] = true;
+            one.boxes.forEach(function (b) { used['b' + b.id] = true; });
+            data.n = next;
+            data.pages.push(one);
+        });
+        return data;
     }
 
     function _sdSketchWrite() {
@@ -79283,7 +79316,11 @@ const StyleDesigner = (function () {
             if (_sdProto.canvas) _sdProto.canvas.announce(back ? _sdT('Nothing to undo') : _sdT('Nothing to redo'));
             return true;
         }
+        // What a page was built into is the draft's, not a step to undo.
+        var builtOf = {};
+        sk.data.pages.forEach(function (p) { if (p.built) builtOf[p.id] = p.built; });
         sk.data = _sdSketchClean(JSON.parse(was));
+        sk.data.pages.forEach(function (p) { if (builtOf[p.id]) p.built = builtOf[p.id]; });
         _sdSketchWrite();
         if (sk.sel && !_sdSketchBox(sk.sel.frame, sk.sel.box)) sk.sel = null;
         _sdSketchMount(true);
@@ -79371,6 +79408,7 @@ const StyleDesigner = (function () {
         });
         node.appendChild(body);
         if (_sdPartLoaded('sketchread') && _sdPartApis.sketchread) _sdPartApis.sketchread.fill(item.id, node, head, body);
+        if (_sdPartLoaded('sketchbuild') && _sdPartApis.sketchbuild && _sdPartApis.sketchbuild.fill) _sdPartApis.sketchbuild.fill(_sdSketchBuildHost(), item.id, node, head, body);
     }
 
     function _sdSketchBoxName(b) {
@@ -79441,6 +79479,11 @@ const StyleDesigner = (function () {
         _sdProto.sketchOn = !!on;
         if (!on) _sdProto.sk.sel = null;
         if (on) _sdSketchReadReady();
+        // "Build the page" and the reader's marks: the part runs the first
+        // time the switch goes on.
+        if (on && !_sdPartLoaded('sketchbuild') && _sdPartUrls('sketchbuild')) {
+            _sdPartLoad('sketchbuild').then(function () { _sdSketchMount(false); }, function () {});
+        }
         if (ui) {
             ui.sketchBtn.classList.toggle('active', !!on);
             ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -79652,6 +79695,7 @@ const StyleDesigner = (function () {
     function _sdSketchKey(event) {
         if (!_sdProto.sketchOn) return false;
         if (event.key === 'Escape' && _sdPartLoaded('sketchread') && _sdPartApis.sketchread && _sdPartApis.sketchread.escape()) return true;
+        if (event.key === 'Escape' && _sdPartLoaded('sketchbuild') && _sdPartApis.sketchbuild && _sdPartApis.sketchbuild.escape()) return true;
         var name = String(event.key || '');
         var ctrl = event.ctrlKey || event.metaKey;
         if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
@@ -79764,12 +79808,27 @@ const StyleDesigner = (function () {
         head.setAttribute('role', 'presentation');
         el.appendChild(head);
         var choices = [{ key: '', icon: 'bi-magic', text: function () { return _sdT('Read from the sketch'); } }].concat(SD_SKETCH_KINDS);
+        // A box the reader is not sure of: the kinds it hesitates between
+        // first, its best reading ticked; picking one settles the box.
+        var rd = (_sdPartLoaded('sketchbuild') && _sdPartApis.sketchbuild && _sdPartApis.sketchbuild.reading) ? _sdPartApis.sketchbuild.reading(_sdSketchBuildHost(), frameId, b.id) : null;
+        if (rd && rd.unsure && rd.options.length) {
+            choices = [{ caption: _sdT('It could be') }].concat(rd.options.map(function (key) {
+                var k = _sdSketchKind(key);
+                return k ? { key: key, icon: k.icon, text: k.text, best: key === rd.kind } : null;
+            }).filter(Boolean), [{ caption: _sdT('Something else') }], choices);
+        }
         choices.forEach(function (k) {
+            if (k.caption) {
+                var cap = _sdProtoEl('div', 'sd-proto-menu-head', k.caption);
+                cap.setAttribute('role', 'presentation');
+                el.appendChild(cap);
+                return;
+            }
             var item = _sdProtoEl('button', 'sd-proto-menu-item');
             item.type = 'button';
             item.tabIndex = -1;
             item.setAttribute('role', 'menuitemradio');
-            item.setAttribute('aria-checked', k.key === b.kind ? 'true' : 'false');
+            item.setAttribute('aria-checked', (k.best || (k.key === b.kind && !rd)) ? 'true' : 'false');
             item.innerHTML = '<span class="bi ' + k.icon + ' sd-proto-icon" aria-hidden="true"></span>';
             item.appendChild(_sdProtoEl('span', 'sd-proto-label', k.text()));
             item.addEventListener('click', function () {
@@ -79907,6 +79966,196 @@ const StyleDesigner = (function () {
                 });
                 _sdProto.sk.sel = null;
                 _sdSketchChanged(false, page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length));
+            }
+        };
+    }
+
+    // "Build the page" or "Build again" of a sketch page: the part
+    // 'sketchbuild', run the first time it is asked for.
+    function _sdSketchBuild(frameId) {
+        if (!_sdSketchPage(frameId)) return;
+        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
+        _sdPartCall('sketchbuild', 'start', [_sdSketchBuildHost(), frameId]).catch(_sdPartFailed);
+    }
+
+    // The draft page a sketch was built into: the tab whose root keeps its
+    // uid; null when none (deleted, or not in this design).
+    function _sdSketchBuiltPage(uid) {
+        if (!uid) return null;
+        return _pages.filter(function (p) {
+            var t = _pgTreeOf(p);
+            return !!(t && t.props && t.props._sketch && t.props._sketch.uid === uid);
+        })[0] || null;
+    }
+
+    // A shared component row made for a built page (a header, a footer, a
+    // system widget): resolves its id and name, rejects when the server
+    // does not make it. The cache takes the tree at once.
+    function _sdSketchMakeRow(name, treeIn, cfg) {
+        var body = { action: 'shared_component', sub_action: 'create', name: name, tree_json: JSON.stringify(treeIn), token: _swToken() };
+        if (cfg) body.system_region_config = JSON.stringify(cfg);
+        return fetch(_swApiBase(), {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+            var id = resp && resp.status === 'success' ? parseInt(resp.id, 10) : 0;
+            if (!id) throw new Error((resp && resp.message) || 'not created');
+            var entry = { name: resp.name || name, tree: treeIn };
+            if (cfg) { entry.system_region_config = JSON.stringify(cfg); entry.autoNamed = _swIsAutoName(entry.name); }
+            _sharedCache[id] = entry;
+            return { id: id, name: entry.name };
+        });
+    }
+
+    // The design's own header (first child of a page) or footer (last
+    // child): a shared component other pages place, not a system widget.
+    function _sdSketchDesignShared(kind) {
+        var hit = null;
+        _pages.forEach(function (p) {
+            var t = _pgTreeOf(p);
+            var kids = (t && t.children) || [];
+            var n = kind === 'header' ? kids[0] : kids[kids.length - 1];
+            var sid = (n && n.type === 'shared_ref' && n.props) ? (parseInt(n.props.sharedId, 10) || 0) : 0;
+            var c = sid ? _sharedCache[sid] : null;
+            if (!hit && c && !c.system_region_config && !(t.props && t.props._sketch)) hit = { id: sid, name: c.name || n.props.sharedName || '' };
+        });
+        return hit;
+    }
+
+    function _sdSketchRef(sid, name) {
+        return { _id: gid(), type: 'shared_ref', props: { sharedId: sid, sharedName: name }, children: [] };
+    }
+
+    // What "Build the page" (the part 'sketchbuild') reads and writes of
+    // the editor: the sketch, the starters, the shared components and
+    // widgets it places, the new draft tab and the History entry before a
+    // page is built again.
+    function _sdSketchBuildHost() {
+        var SW = { catalog: 'catalog_listing', blog: 'form_list_view', booking: 'booking' };
+        return {
+            page: _sdSketchPage,
+            on: function () { return _sdProto.sketchOn; },
+            name: function (page) { return _sdSketchItem(page).name; },
+            limits: function () { return { w: SD_SKETCH.w }; },
+            kinds: function () { return SD_SKETCH_KINDS; },
+            kindLabel: function (key) { var k = _sdSketchKind(key); return k ? k.text() : key; },
+            el: _sdProtoEl,
+            root: function () { return _sdProto.ui ? _sdProto.ui.root : document.body; },
+            frameEl: function (frameId) { return _sdProto.ui ? _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]') : null; },
+            focusFrame: function (frameId) {
+                var node = _sdProto.ui ? _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]') : null;
+                if (node) node.focus({ preventScroll: true });
+            },
+            // Beside the frame, inside the map's stage.
+            place: function (el, frameId) {
+                var ui = _sdProto.ui;
+                var frame = ui ? ui.boxes.querySelector('[data-node="' + frameId + '"]') : null;
+                if (!frame) return;
+                var r = frame.getBoundingClientRect();
+                var o = ui.root.getBoundingClientRect();
+                var c = ui.stage.getBoundingClientRect();
+                var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+                el.style.maxHeight = Math.max(160, area.bottom - area.top - 16) + 'px';
+                var w = el.offsetWidth;
+                var left = r.right - o.left + 12;
+                if (left + w > area.right - 8) left = Math.max(area.left + 8, r.left - o.left - w - 12);
+                el.style.left = left + 'px';
+                el.style.top = Math.max(area.top + 8, Math.min(area.bottom - el.offsetHeight - 8, r.top - o.top)) + 'px';
+            },
+            announce: function (text) { if (_sdProto.canvas) _sdProto.canvas.announce(text); },
+            redraw: function () { _sdSketchMount(false); },
+            changed: function (say) { _sdSketchChanged(false, say); },
+            pick: function (frameId, boxId) { _sdSketchPick(frameId, boxId, true); },
+            mayBuild: function () { return !_sdIsContentLevel() && _collab.mayEdit !== false && !_sdComponentOnly(); },
+            make: function (type) { try { return createFromPalette(type) || null; } catch (e) { return null; } },
+            node: createNode,
+            words: function () {
+                return {
+                    heading: _sdT('Your heading here'),
+                    paragraph: _sdT('Say here what this section is about. This sample text is yours to change.'),
+                    alt: _sdT('Picture')
+                };
+            },
+            pageOf: _sdSketchBuiltPage,
+            treeOf: _pgTreeOf,
+            // The design's header or footer when it has one, else a new
+            // shared component of the built tree.
+            shared: function (kind, built) {
+                var have = _sdSketchDesignShared(kind);
+                if (have) return Promise.resolve(_sdSketchRef(have.id, have.name));
+                if (!built) return Promise.reject(new Error('no ' + kind));
+                return _sdSketchMakeRow(kind === 'header' ? _sdT('Header') : _sdT('Footer'), built).then(function (row) {
+                    if (typeof _refreshSharedPalette === 'function') _refreshSharedPalette();
+                    return _sdSketchRef(row.id, row.name);
+                });
+            },
+            // A new system widget of the kind with its starter layout.
+            widget: function (kind) {
+                var type = SW[kind];
+                if (!type) return Promise.reject(new Error('no widget ' + kind));
+                var cfg = _swTypeDefaults({}, type);
+                return _sdSketchMakeRow(_swAutoName(type, null, null), _buildStarterTree(type), cfg).then(function (row) {
+                    if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                    return _sdSketchRef(row.id, row.name);
+                });
+            },
+            // A new draft tab of the design with the built children and the
+            // sketch in its root, its settings from "Page details"; not
+            // opened, not saved: Save keeps it.
+            addPage: function (page, name, children, meta) {
+                var d = page.details || {};
+                var active = _pgActivePage() || {};
+                _pgTabsPersistActive();
+                _pgNewTabSeq++;
+                var p = {
+                    key: 'new' + Date.now() + '_' + _pgNewTabSeq,
+                    page_id: 0, page_name: d.address || _swSlug(name) || _swSlug(_sdT('page')), page_folder: d.folder || Number(active.page_folder) || 0,
+                    page_title: d.title || '', page_meta_description: d.description || '', page_meta_tags: '', page_custom_jsonld: '',
+                    page_canonical_url: '', page_noarchive: 0, page_max_snippet: '',
+                    page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
+                    page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
+                    pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+                    pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
+                    tree: { _id: 'root', type: 'root', props: { _sketch: meta }, children: children },
+                    undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false, formSettings: {}
+                };
+                p.nodeIdCounter = reindex(p.tree);
+                p.baseline = _pgBaselineOf(p);
+                _pgTabsInsertAfterActive(p);
+                _pgTabsRender();
+                return p.key;
+            },
+            // A History entry of the page as it is now, on the page's own
+            // tab; false when it could not be written.
+            history: function (p, name) {
+                if (p.key !== _activeKey) _pgTabsSwitch(p.key);
+                if (p.key !== _activeKey) return false;
+                var id = 'snap_' + Date.now();
+                var snaps = _loadSnapshots();
+                var nameEl = document.querySelector('[name="name"]');
+                snaps.push({ id: id, name: _sdT('Before “Build again” of {var:1}', name), tree: cloneTree(tree), assets: _snapshotAssetFields(), shared: _snapshotShared(), v: 2, timestamp: Date.now(), styleName: nameEl ? nameEl.value.trim() : '' });
+                while (snaps.length > MAX_SNAPSHOTS) snaps.shift();
+                _saveSnapshots(snaps);
+                return _loadSnapshots().some(function (one) { return one.id === id; });
+            },
+            // The built page's children and kept sketch, one undo step.
+            setChildren: function (p, children, meta) {
+                if (p.key !== _activeKey) return false;
+                saveState();
+                tree.children = children;
+                tree.props = tree.props || {};
+                tree.props._sketch = meta;
+                nodeIdCounter = Math.max(nodeIdCounter, reindex(tree));
+                render();
+                return true;
+            },
+            // "Open the page": Design on the built page.
+            open: function (uid) {
+                var p = _sdSketchBuiltPage(uid);
+                if (!p) return;
+                _sdProtoClose();
+                if (p.key !== _activeKey) _pgTabsSwitch(p.key);
             }
         };
     }
@@ -89946,6 +90195,10 @@ const StyleDesigner = (function () {
         // A sketch page selected in the Prototype view: its "Page details".
         var sketchId = _sdSketchSelected();
         if (sketchId) items.unshift({ id: 'act_sketch_details', label: _sdT('Page details'), icon: 'bi-card-list', action: function () { _sdSketchDetails(sketchId); } });
+        if (sketchId) {
+            var skBuilt = !!(_sdSketchPage(sketchId) || {}).built;
+            items.unshift({ id: 'act_sketch_build', label: skBuilt ? _sdT('Build again') : _sdT('Build the page'), icon: 'bi-hammer', action: function () { _sdSketchBuild(sketchId); } });
+        }
         // My library's Import, for the designers its part is handed to: the
         // part runs on the first choice.
         if (_sdPartUrls('libraryfile')) {

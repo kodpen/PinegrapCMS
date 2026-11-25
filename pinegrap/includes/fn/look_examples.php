@@ -759,6 +759,27 @@ function pg_look_examples_mail_patterns($p)
             . '</div><p class="pg-text-meta">' . h(lang('From Mailboxes › Remove mailbox: what stays green, what goes rose, what stays connected blue; the counts are read when the dialog opens.')) . '</p>',
     );
 
+    // The same confirm for a change that History can take back: the tile
+    // blue and the button filled, not the danger button.
+    $patterns[] = array(
+        'id'      => 'pattern-confirm-go',
+        'title'   => lang('Confirm with its effects, undone by History'),
+        'classes' => array('role="dialog"', '.pg-card-sheet', '.pg-icon-tile-lg', '.pg-tone-blue', '.pg-card-sub', '.pg-card-inner', '.pg-effects', '.pg-effect-keep', '.pg-effect-info', '.pg-effect-go', '.pg-effect-line', '.pg-button-quiet', '.pg-button-fill'),
+        'html'    => '<div class="pg-card pg-card-sheet overflow-hidden" role="dialog" aria-labelledby="' . $p . '_look_confirm_go_title" style="max-width:470px">'
+            . '<div class="d-flex align-items-start gap-3 p-5 pb-0"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-arrow-repeat"></i></span>'
+            . '<div class="min-w-0"><div class="pg-title-section" id="' . $p . '_look_confirm_go_title">' . h(lang(array('string' => 'Build “{var:1}” again?', 'vars' => array('Page 7')))) . '</div>'
+            . '<p class="pg-card-sub">' . h(lang('The sketch changed since the page was built.')) . '</p></div></div>'
+            . '<div class="p-5"><ul class="pg-card-inner pg-effects">'
+            . $effect('keep', 'bi-check-circle-fill', lang(array('string' => '{var:1} sections stay as they are', 'vars' => array(5))), 'Header, Intro, Cards, Blog list, Footer')
+            . $effect('info', 'bi-info-circle-fill', lang(array('string' => '{var:1} is built again', 'vars' => array(lang('Features')))), lang(array('string' => 'It has {var:1} columns now and was not edited.', 'vars' => array(4))))
+            . $effect('go', 'bi-x-circle-fill', lang(array('string' => '{var:1} is removed', 'vars' => array(lang('Text')))), lang('Its box was deleted in the sketch; what was written in it goes with it.'))
+            . '</ul></div>'
+            . '<div class="border-top p-5 d-flex align-items-center justify-content-end gap-3"><span class="pg-text-meta me-auto">' . h(lang('History keeps the page as it is now.')) . '</span>'
+            . '<button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button>'
+            . '<button type="button" class="pg-button pg-button-fill">' . h(lang('Build again')) . '</button></div>'
+            . '</div><p class="pg-text-meta">' . h(lang('From the Sketch tool › Build again: History takes the change back, so the tile is blue and the button filled; rose and the danger button stay for what cannot be undone.')) . '</p>',
+    );
+
     // The Features settings board (plans/features-switchboard-design.md):
     // a module a row, the switch at its end, its name the switch's label and
     // its line the switch's description. Settings opens the module's folded
