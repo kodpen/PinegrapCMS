@@ -19,6 +19,7 @@ priority: 5
 - In a discussion the block names the agent the discussion follows (`ws_thread_follow_agent()`): a person's message there reaches it with no name; the reader's own words still wake only by a name.
 - A request from a person: one line that the answer itself tells the asker, so the person is not named again.
 - The instructions' writing lines (`ws_agent_instructions_writing_lines()`) get the rule once: name an agent only in a question or an order to it, or in an answer it must read; a note that asks nothing names nobody with the mark; an answer under a message wakes nobody by itself.
+- The instructions' request lines (`ws_agent_instructions_request_lines()`) say at step 1 why the claim comes first: the channel shows an agent as working only from its claim to the close, so no work on a request starts before its claim; the progress line turns from "you may" into the rule for work longer than a few minutes. Owner (2026-11-25, request 2951): only the architect showed as working, the other agents did not know.
 
 ## What must it keep?
 - No schema, no setting, no new route: text in the brief and the instructions only. The wake rules do not change (`workspace/agent-doors.md`).
@@ -26,5 +27,5 @@ priority: 5
 - What a person sees in the channel does not change.
 
 ## Which step? (S under 400 product lines; tests red first)
-- WW1 (S): the block as a pure function over the reach rows, the followed agent and the reader; the instructions' lines; tests for each rule, a discussion, a paused agent and the cut at twelve. Memory in `workspace/` (the brief in `agent-wakes.md`, `agent-instructions.md`), `workflow/agent-channel-language.md` pointing to it, and this file deleted in the same PR.
+- WW1 (S): the block as a pure function over the reach rows, the followed agent and the reader; the instructions' lines (writing, claim first, progress); tests for each rule, a discussion, a paused agent and the cut at twelve. Memory in `workspace/` (the brief in `agent-wakes.md`, `agent-instructions.md`), `workflow/agent-channel-language.md` pointing to it, and this file deleted in the same PR.
 - Claim as `[plan:agent-brief-who-wakes] WW1 — who wakes here`.

@@ -8185,6 +8185,7 @@ function pg_js_bundles()
         // "Page details" of a sketch page: its pure values and checks
         // (window.PGSketchDetails), then the part that draws the window.
         'assets/js/style_designer_sketchdetails.min.js' => array('assets/js/pg_sketch_details.js', 'assets/js/style_designer_sketchdetails.js'),
+        'assets/js/style_designer_sketchread.min.js' => array('assets/js/style_designer_sketchread.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The spacing box of Style › Spacing and the corner box of Style ›
         // Border and corner, and a length per screen size: their pure
@@ -8201,6 +8202,7 @@ function pg_js_bundles()
         // with the part 'spacing', which the core loads first.
         'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
         'assets/js/style_designer_phone.min.js'    => array('assets/js/style_designer_phone.js'),
+        'assets/js/style_designer_mylibrary.min.js' => array('assets/js/style_designer_mylibrary.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8209,6 +8211,10 @@ function pg_js_bundles()
         'assets/js/style_designer_focus.min.js'    => array('assets/js/pg_image_focus.js', 'assets/js/style_designer_focus.js'),
         // The "Clicks" layer over the canvas, from the visitors' counts.
         'assets/js/style_designer_clicks.min.js'   => array('assets/js/style_designer_clicks.js'),
+        // The Publish check: its pure finding shape (window.PgPublishFindings)
+        // and Content check (window.PgPublishContent), then the part that
+        // checks the Publish sheet's pages and lists their findings.
+        'assets/js/style_designer_publishcheck.min.js' => array('assets/js/pg_publish_findings.js', 'assets/js/pg_publish_content.js', 'assets/js/style_designer_publishcheck.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8328,6 +8334,15 @@ function pg_designer_parts()
         // The "Preview on a phone" window: the QR code of the person's
         // phone link, its time left, "Copy link" and "End now".
         'phone' => 'assets/js/style_designer_phone.min.js',
+        // "Read the picture" of a sketch page: its reference picture read
+        // by the browser's built-in model into proposed boxes.
+        'sketchread' => 'assets/js/style_designer_sketchread.min.js',
+        // My library: "Save to my library" and the library's group of the
+        // palette, its hover card and the copy it adds.
+        'mylibrary' => 'assets/js/style_designer_mylibrary.min.js',
+        // The Publish check: each ticked page's result in the Publish sheet,
+        // its findings in five groups, a finding's element selected.
+        'publishcheck' => 'assets/js/style_designer_publishcheck.min.js',
     );
 }
 

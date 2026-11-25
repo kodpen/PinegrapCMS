@@ -1196,9 +1196,15 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . 'clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.remove("pg-proto-toast-on"); }, 2600);'
         . '}'
         . ($comments ? 'var pgComment = { on: false };document.addEventListener("click", function (e) { if (pgComment.on && pgComment.click) pgComment.click(e); }, true);' : '')
+        // The viewer switches the hotspots; a phone's viewer asks where the
+        // page is scrolled to before it draws it again after a save, and
+        // hands the place back to the new drawing.
         . 'window.addEventListener("message", function (e) {'
-        . 'if (e.source !== window.parent || !e.data || e.data.pgPrototype !== "hotspots") return;'
-        . 'root.classList.toggle("pg-proto-hotspots", !!e.data.on);'
+        . 'if (e.source !== window.parent || !e.data) return;'
+        . 'var kind = e.data.pgPrototype;'
+        . 'if (kind === "hotspots") { root.classList.toggle("pg-proto-hotspots", !!e.data.on); }'
+        . 'else if (kind === "where") { window.parent.postMessage({ pgPrototype: "where", y: Math.round(window.pageYOffset || root.scrollTop || 0) }, "*"); }'
+        . 'else if (kind === "scroll") { var y = +e.data.y; if (y > 0 && isFinite(y)) window.scrollTo(0, y); }'
         . '});'
         // A click that lands on nothing clickable flashes the links of the
         // page, so a reviewer sees where the prototype goes on. Not while

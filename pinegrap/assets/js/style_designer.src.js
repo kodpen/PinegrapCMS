@@ -7217,6 +7217,8 @@ const StyleDesigner = (function () {
         // Placed AFTER semantic wraps so amber dominates when a node is both locked AND
         // shared/custom-html/custom-php. Child-fallback mirrors the pattern above to survive
         // display:contents contexts.
+        // A copy from My library whose binding the site lacked (amber, solid).
+        '.sd-wrap.sd-lib-unbound > *:not(.sd-tb):not(.sd-chip-row) { outline:2px solid #f59e0b !important; outline-offset:-2px !important; }',
         '.sd-wrap.sd-locked-root { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         '.sd-wrap.sd-locked-root > *:not(.sd-tb):not(.sd-chip-row) { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         // Form inputs: sd-wrap must be layout-transparent when wrapping input/textarea/select so
@@ -12594,6 +12596,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, cached)) wrapper.classList.add('sd-lib-unbound');
 
         // Detect if this is a system widget shared_ref (has system_region_config)
         var _isSysWidget = !!(cached && cached.system_region_config);
@@ -14705,6 +14708,7 @@ const StyleDesigner = (function () {
         } else if (hasLockedAncestor(node)) {
             wrapper.classList.add('sd-wrap-locked-desc');
         }
+        if (_sdLibUnbound(node, null)) wrapper.classList.add('sd-lib-unbound');
         // Custom content types get their own semantic outline color.
         if (node.type === 'content' && node.props.contentType === 'custom_html') wrapper.classList.add('sd-custom-html-wrap');
         else if (node.type === 'content' && node.props.contentType === 'custom_php') wrapper.classList.add('sd-custom-php-wrap');
@@ -19530,6 +19534,8 @@ const StyleDesigner = (function () {
     /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
+            // An item of My library: its copy (part 'mylibrary').
+            case 'library': return _sdLibNode(extra);
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
             case 'container-fluid': return createNode('container', { fluid: true, cssClass: '' }, []);
             case 'row': return createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [createNode('col', colProps('col'), [])]);
@@ -26688,6 +26694,9 @@ const StyleDesigner = (function () {
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
         _sdPalSwitchWire(compOuter);
+        // My library leads the Blocks list, or the Components list in a
+        // design without Bootstrap.
+        _sdLibInit(blockList || compList, !blockList);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -36481,7 +36490,11 @@ const StyleDesigner = (function () {
                 (path ? '<div class="sd-id-path" title="' + esc(fullPath) + '">' + path + '</div>' : '') +
             '</div>' +
             (node.type !== 'root' ? '<button type="button" class="sd-id-more bi bi-three-dots" id="sd-id-more" title="' + esc(_sdT('More actions')) + '" aria-label="' + esc(_sdT('More actions')) + '" aria-haspopup="menu"></button>' : '') +
-        '</div>';
+        '</div>' +
+        (_sdLibUnbound(node, node.type === 'shared_ref' ? _sharedCache[node.props.sharedId] : null)
+            ? '<div class="sd-lib-unbound-line" role="note"><span class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></span>' +
+                esc(_sdT('This copy came from the library and this site lacks what it was bound to. Choose a form, collection or group for it.')) + '</div>'
+            : '');
     }
 
     function _sdIdentityBind(panel, node) {
@@ -36505,8 +36518,9 @@ const StyleDesigner = (function () {
                 _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
                 _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
                 { sep: true },
-                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
-            ]));
+                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } },
+                (_sdLibOffered(node) ? { icon: 'bi-bookmark-plus', label: _sdT('Save to my library'), handler: function () { _sdLibSave(node); } } : null)
+            ].filter(Boolean)));
         });
     }
 
@@ -77841,7 +77855,8 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
+            // The buttons of "Read the picture" (its foot, "Stop") too.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more, .sd-sketch-act',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -78694,6 +78709,7 @@ const StyleDesigner = (function () {
             body.appendChild(_sdSketchBoxEl(b, picked, on));
         });
         node.appendChild(body);
+        if (_sdPartLoaded('sketchread') && _sdPartApis.sketchread) _sdPartApis.sketchread.fill(item.id, node, head, body);
     }
 
     function _sdSketchBoxName(b) {
@@ -78763,6 +78779,7 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProto.sketchOn = !!on;
         if (!on) _sdProto.sk.sel = null;
+        if (on) _sdSketchReadReady();
         if (ui) {
             ui.sketchBtn.classList.toggle('active', !!on);
             ui.sketchBtn.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -78973,6 +78990,7 @@ const StyleDesigner = (function () {
     // switch is on; Delete on a sketch frame takes the page out.
     function _sdSketchKey(event) {
         if (!_sdProto.sketchOn) return false;
+        if (event.key === 'Escape' && _sdPartLoaded('sketchread') && _sdPartApis.sketchread && _sdPartApis.sketchread.escape()) return true;
         var name = String(event.key || '');
         var ctrl = event.ctrlKey || event.metaKey;
         if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
@@ -79185,12 +79203,51 @@ const StyleDesigner = (function () {
                 delete page.pic;
                 _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
             } });
+            if (!page.pic.off && _sdProto.sk.reads === true) {
+                rows.push({ icon: 'bi-magic', text: _sdT('Read the picture'), run: function () { _sdPartCall('sketchread', 'start', [_sdSketchReadHost(), frameId]).catch(_sdPartFailed); } });
+            }
         }
         rows.push({ sep: true });
         rows.push({ icon: 'bi-card-list', text: _sdT('Page details'), run: function () { _sdSketchDetails(frameId); } });
         rows.push({ sep: true });
         rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
         return rows;
+    }
+
+    // Whether the browser's built-in model reads pictures, asked once when
+    // the switch first goes on (PinegrapAiWrite.imageReady(), the same
+    // check as the alt text's button): "Read the picture" is shown only
+    // then. Without "Write with AI" on the screen there is no such check
+    // and no row.
+    function _sdSketchReadReady() {
+        var sk = _sdProto.sk;
+        var ai = window.PinegrapAiWrite;
+        if (sk.reads !== undefined) return;
+        sk.reads = false;
+        if (!ai || typeof ai.imageReady !== 'function' || typeof ai.readImage !== 'function') return;
+        ai.imageReady().then(function (reads) { sk.reads = !!reads; }, function () { sk.reads = false; });
+    }
+
+    // What "Read the picture" (the part 'sketchread') reads the sketch
+    // through, and how its proposal becomes the page's boxes: one step of
+    // the sketch's history, the boxes there before replaced.
+    function _sdSketchReadHost() {
+        return {
+            page: _sdSketchPage,
+            redraw: function () { _sdSketchMount(false); },
+            announce: function (text) { if (_sdProto.canvas) _sdProto.canvas.announce(text); },
+            root: function () { return _sdProto.ui ? _sdProto.ui.root : document; },
+            el: _sdProtoEl,
+            limits: function () { return { w: SD_SKETCH.w, grid: SD_SKETCH.grid, min: SD_SKETCH.min, text: SD_SKETCH.text, boxes: SD_SKETCH.boxes }; },
+            keep: function (page, boxes) {
+                var data = _sdSketchData();
+                page.boxes = boxes.map(function (b) {
+                    return { id: data.n++, x: b.x, y: b.y, w: b.w, h: b.h, kind: '', text: b.text };
+                });
+                _sdProto.sk.sel = null;
+                _sdSketchChanged(false, page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length));
+            }
+        };
     }
 
     // A sketch page taken out, as Delete on a selected frame does.
@@ -87124,6 +87181,9 @@ const StyleDesigner = (function () {
             // An administrator's reason for publishing a draft that waits
             // for a prototype link's approval (pg_proto_approval_override_reason()).
             if (!rec.unchanged && p._approvalOverride) rec.approval_override = p._approvalOverride;
+            // The reason a page with a blocking Publish check finding goes on
+            // the site (pg_designer_publish_check_reason()).
+            if (!rec.unchanged && p._publishCheckReason) rec.publish_check_reason = p._publishCheckReason;
             // What only the browser measures on the canvas (contrast, target
             // size) goes with the page on the canvas, for the accessibility
             // report (pg_a11y_store_measured()).
@@ -88237,24 +88297,58 @@ const StyleDesigner = (function () {
             return;
         }
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
-        window.PgDesignerPublish.open({
+        var bridge = {
             rows: _pgPublishRows,
-            publish: function (keys, hold, report, reasons) {
-                // The reasons ride on the pages for this one save only.
+            reopen: opts.reopen || '',
+            publish: function (keys, hold, report, reasons, checks) {
+                // The reasons ride on the pages for this one save only: a
+                // held draft's approval reason, a blocking page's reason.
                 var over = [];
-                Object.keys(reasons || {}).forEach(function (k) {
-                    var p = _pgPageByKey(k);
-                    if (p) { p._approvalOverride = String(reasons[k]); over.push(p); }
+                [[reasons, '_approvalOverride'], [checks, '_publishCheckReason']].forEach(function (pair) {
+                    Object.keys(pair[0] || {}).forEach(function (k) {
+                        var p = _pgPageByKey(k);
+                        if (p) { p[pair[1]] = String(pair[0][k]); over.push(p); }
+                    });
                 });
                 if (over.length) {
                     var _report = report;
-                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; }); return _report(reply); };
+                    report = function (reply) { over.forEach(function (p) { delete p._approvalOverride; delete p._publishCheckReason; }); return _report(reply); };
                 }
                 if (keys.length) _pgSetDraft(keys, false, hold, report);
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); }
-        });
+        };
+        // The Publish check (the part 'publishcheck'): the ticked pages'
+        // results and findings, loaded the first time the sheet checks one.
+        if (_sdPartUrls('publishcheck')) {
+            bridge.check = function (keys, done) {
+                _sdPartCall('publishcheck', 'check', [keys, done]).catch(function () {
+                    keys.forEach(function (k) { done(k, { state: 'failed' }); });
+                });
+            };
+            bridge.findings = function (key, retry) {
+                var api = _sdPartLoaded('publishcheck') ? _sdPartApis.publishcheck : null;
+                return (api && typeof api.findings === 'function') ? api.findings(key, retry) : null;
+            };
+        }
+        window.PgDesignerPublish.open(bridge);
+    }
+
+    // A Publish check finding's path: the page's tab opened, its element
+    // selected and shown. False when the element is gone.
+    function _sdSelectFound(key, nodeId, sharedId) {
+        if (key && key !== _activeKey) _pgTabsSwitch(key);
+        if (key && key !== _activeKey) return false;
+        var cached = sharedId ? _sharedCache[sharedId] : null;
+        var root = sharedId ? (cached && cached.tree) : tree;
+        var node = (root && nodeId) ? findNodeById(nodeId, root) : null;
+        if (!node) return false;
+        _sdTextInnerSelect(node, null);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        scrollCanvasToNode(node);
+        return true;
     }
 
     // The main button: Save on a draft (it stays off the site), the Publish
@@ -89145,6 +89239,10 @@ const StyleDesigner = (function () {
             { id: 'act_to_shared', label: _sdT('Convert to Shared Component'), icon: 'bi-puzzle-fill', action: function() {
                 if (selectedNode && selectedNode.type !== 'root' && selectedNode.type !== 'shared_ref') convertToShared(selectedNode);
             }},
+            (_sdLibMaySave() ? { id: 'act_library_save', label: _sdT('Save to my library'), icon: 'bi-bookmark-plus', action: function() {
+                // One item is one element with what is inside it.
+                _sdLibSave(selectedNodes.length > 1 ? null : selectedNode);
+            }} : null),
             // ── Settings / Modals ───────────────────────────────────
             { id: 'act_settings', label: _sdT('Open Settings'), icon: 'bi-gear', hint: 'Ctrl+,', action: function() {
                 var b = document.querySelector('[data-bs-target="#styleSettingsModal"]');
@@ -89153,7 +89251,7 @@ const StyleDesigner = (function () {
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
-        ];
+        ].filter(Boolean);
 
         // A sketch page selected in the Prototype view: its "Page details".
         var sketchId = _sdSketchSelected();
@@ -89363,6 +89461,9 @@ const StyleDesigner = (function () {
     function _trackRecentComp(type, extra, hintLabel, hintIcon) {
         // A widget's part or value is offered only while its widget is selected.
         if (type === 'widget_part') return;
+        // An item of My library may be renamed or deleted: it stays in its
+        // own group.
+        if (type === 'library') return;
         try {
             var id = type +
                 (extra && extra.componentType ? ':' + extra.componentType : '') +
@@ -92150,6 +92251,7 @@ const StyleDesigner = (function () {
     var _sdPalTip = { el: null, item: null, mute: null, timer: 0, closedAt: 0 };
 
     function _sdPalTipHTML(item) {
+        if (item.dataset.type === 'library') return _sdLibTip(item);
         var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
         try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
         var info = _sdPalInfo()[_sdPalKey(it)];
@@ -92415,6 +92517,7 @@ const StyleDesigner = (function () {
             if (pane) pane.hidden = !on;
         });
         if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (which === 'blocks') _sdLibMount();
         if (store) {
             try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
         }
@@ -93892,27 +93995,33 @@ const StyleDesigner = (function () {
         if (_seoCheckCache) { draw(_seoCheckCache); return; }
         var p = _pgActivePage() || {};
         _pgReadFieldsIntoPage(p);
+        _pgApiPost('seo_check', _sdSeoCheckBody(p, tree)).then(function (res) { _seoCheckCache = res; draw(res); })
+            .catch(function () { draw(null); });
+    }
+
+    // What designer/seo_check is sent for page `p` with tree `t` (the open
+    // page's, or another tab's for the Publish check).
+    function _sdSeoCheckBody(p, t) {
         var body = {
             style_id: (_design && _design.styleId) || 0,
             page_id: p.page_id || 0, page_name: p.page_name || '', page_folder: p.page_folder || 0,
             page_title: p.page_title || '', page_meta_description: p.page_meta_description || '',
             page_search_keywords: p.page_search_keywords || '', page_search: p.page_search ? 1 : 0,
             page_sitemap: p.page_sitemap ? 1 : 0, page_noindex: p.page_noindex ? 1 : 0,
-            html: (typeof generateHTML === 'function') ? generateHTML() : ''
+            html: t ? generateHTML(undefined, undefined, t) : ''
         };
         // A saved page's draft is rendered by the server as a whole page
         // (head, shared components, system widgets): its tree and the
         // system widgets it shows, as the Preview sends them. The markup
         // above is the fallback the server judges as a fragment.
-        if (body.page_id && tree) {
-            body.tree_json = JSON.stringify(tree);
+        if (body.page_id && t) {
+            body.tree_json = JSON.stringify(t);
             var wp = null;
             _sdPreviewWidgetMarkers = true;
-            try { wp = _sdPreviewWidgetPayload(generateHTML()); } finally { _sdPreviewWidgetMarkers = false; }
+            try { wp = _sdPreviewWidgetPayload(generateHTML(undefined, undefined, t)); } finally { _sdPreviewWidgetMarkers = false; }
             body.widgets = wp ? wp.widgets : [];
         }
-        _pgApiPost('seo_check', body).then(function (res) { _seoCheckCache = res; draw(res); })
-            .catch(function () { draw(null); });
+        return body;
     }
 
     // ========================= ELEMENT LOCK (inherited model) =========================
@@ -95007,7 +95116,24 @@ const StyleDesigner = (function () {
             getNodeExtraStyle: getNodeExtraStyle,
             hasLockedAncestor: hasLockedAncestor,
             render: render,
-            saveState: saveState
+            saveState: saveState,
+            createNode: createNode,
+            _findNodeAnywhereById: _findNodeAnywhereById,
+            _sdAccess: _sdAccess,
+            _sdBlockSketch: _sdBlockSketch,
+            _sdPalSwitchShow: _sdPalSwitchShow,
+            _sdPaletteItemHTML: _sdPaletteItemHTML,
+            _sdWirePaletteItems: _sdWirePaletteItems,
+            _userStylesGet: _userStylesGet,
+            _userStylesSet: _userStylesSet,
+            COMPONENTS: COMPONENTS,
+            validateTree: validateTree,
+            _pgPageByKey: _pgPageByKey,
+            _pgPublishSheet: _pgPublishSheet,
+            _sdBlockFamilies: _sdBlockFamilies,
+            _sdProtoTabs: _sdProtoTabs,
+            _sdSelectFound: _sdSelectFound,
+            _sdSeoCheckBody: _sdSeoCheckBody
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
@@ -95031,6 +95157,82 @@ const StyleDesigner = (function () {
         if (!_sdPartLoaded('mirror')) return;
         var api = _sdPartApis.mirror;
         if (api && typeof api.rebind === 'function') api.rebind();
+    }
+
+    // ── My library ────────────────────────────────────────────────────────
+    // The part 'mylibrary' (assets/js/style_designer_mylibrary.js): "Save to
+    // my library" and the library's group in the palette. The group is
+    // drawn the first time its list is shown (at open only when that list
+    // is the one showing, once the editor has settled).
+    var _sdLib = { host: null };
+
+    function _sdLibApi() {
+        return _sdPartLoaded('mylibrary') ? (_sdPartApis.mylibrary || null) : null;
+    }
+
+    function _sdLibMaySave() {
+        return _sdAccess() === 'full' && !!_sdPartUrls('mylibrary');
+    }
+
+    // A section, a row, a card or a group: an element holding others.
+    function _sdLibOffered(node) {
+        return _sdLibMaySave() && selectedNodes.length < 2 && !!(node && node.type !== 'root' && node.type !== 'shared_ref'
+            && node.children && node.children.length);
+    }
+
+    function _sdLibSave(node) {
+        _sdPartCall('mylibrary', 'save', [node]).catch(_sdPartFailed);
+    }
+
+    function _sdLibInit(host, shown) {
+        if (!host || !_sdPartUrls('mylibrary')) return;
+        _sdLib.host = host;
+        var pane = host.closest('.sd-pal-list');
+        if (shown || (pane && !pane.hidden)) setTimeout(_sdLibMount, 1500);
+    }
+
+    function _sdLibMount() {
+        if (!_sdLib.host) return;
+        _sdPartCall('mylibrary', 'mount', [_sdLib.host]).catch(function () { /* the next showing asks again */ });
+    }
+
+    // The copy a row of the group adds (createFromPalette()); the rows are
+    // drawn by the part, so it has run when one is dragged.
+    function _sdLibNode(extra) {
+        var api = _sdLibApi();
+        return api ? api.node(extra || {}, _sdPaletteDry) : null;
+    }
+
+    function _sdLibTip(item) {
+        var api = _sdLibApi();
+        return api ? api.tip(item) : '';
+    }
+
+    // A copy whose binding the site lacked keeps its amber mark until a
+    // record of each kind cleared is chosen again (in its props, or in the
+    // widget's settings for a widget's placement).
+    function _sdLibUnbound(node, cached) {
+        var kinds = node && node.props && node.props._libraryUnbound;
+        if (!Array.isArray(kinds) || !kinds.length) return false;
+        var settings = node.props;
+        if (node.type === 'shared_ref') {
+            if (!cached || !cached.system_region_config) return true;
+            try { settings = JSON.parse(cached.system_region_config) || {}; } catch (e) { return true; }
+        }
+        var empty = false, seen = false;
+        Object.keys(settings).forEach(function (k) {
+            var kind = (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
+                : k.indexOf('folder_id') !== -1 ? 'folder'
+                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page' : '';
+            if (!kind || kinds.indexOf(kind) === -1) return;
+            seen = true;
+            if (!settings[k] || settings[k] === '0') empty = true;
+        });
+        if (seen && !empty) {
+            delete node.props._libraryUnbound;
+            return false;
+        }
+        return true;
     }
 
     // The assistant panel is the part 'ai', handed over only to the designers
