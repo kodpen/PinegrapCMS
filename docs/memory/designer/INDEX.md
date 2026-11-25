@@ -510,6 +510,7 @@
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
+- designer-size-per-screen.md: A length per screen size (DO2): the size chooser on Size and display and Text, @media rules on the pgs- class, what moves to the base rule, the canvas at the size, the dot
 - designer-sketch-drawing-ai.md: The Sketch tool's two AI actions as drawn (ai-and-picture.html, boards E1 to E3 and E6): the "Describe the page" window, the sketch being drawn, "Write the texts" and its messages
 - designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone [decision: here]
 - designer-sketch-drawing-build.md: "Build the page" as drawn (build.html, boards B1 to B5): the two actions in the sketch page's head, the "More" menu, the palette rows, the unsure boxes marked, busy and the built page
@@ -579,6 +580,7 @@
 - header-menu-stacking.md: The account menu (login region) and language list of a template's account bar come down over a sticky header: pg_sw_lift_header_menus(), the 1025 level, the covered first rows it fixed
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
+- image-focus-control.md: The Focus control (IF2): where it shows in an Image's and a background picture's options, what it draws and writes per screen, the part 'focus' and its host, what is not built yet
 - image-focus-value.md: A picture's focus point as a value: the pair of percentages, word pairs read, a value per screen size, how the Image element and a background picture write it, the pg-focus rule
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
 - image-size-props.md: How the Image element's size is written: whole-number width/height as attributes, a unit as a style, the Sizing panel's style; in a ratio box the box takes the style, the img its attributes
