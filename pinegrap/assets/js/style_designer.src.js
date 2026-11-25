@@ -77156,7 +77156,7 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input',
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input, .sd-sketch-more',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -77274,6 +77274,8 @@ const StyleDesigner = (function () {
         ui.boxes.addEventListener('click', function (event) {
             var chip = event.target.closest ? event.target.closest('.sd-sketch-chip') : null;
             if (chip) _sdSketchChipMenu(chip);
+            var more = event.target.closest ? event.target.closest('.sd-sketch-more') : null;
+            if (more) _sdSketchMoreMenu(more);
         });
         ui.boxes.addEventListener('dblclick', function (event) {
             var boxEl = (_sdProto.sketchOn && event.target.closest) ? event.target.closest('.sd-sketch-box') : null;
@@ -77799,7 +77801,7 @@ const StyleDesigner = (function () {
     // under its lowest box, the grid, the snapping reach (screen pixels),
     // the smallest box, the first box's size; how many pages, boxes and
     // heading characters are kept.
-    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80 };
+    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000 };
 
     // What a box can be. A box without a kind chosen is read from the
     // sketch; until the reader runs its chip says so.
@@ -77839,6 +77841,8 @@ const StyleDesigner = (function () {
             if (!id || used['p' + id]) return;
             used['p' + id] = true;
             var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            var src = _sdSketchPicSrc(p.pic && p.pic.src);
+            if (src) page.pic = { src: src, h: num(p.pic.h, SD_SKETCH.min, SD_SKETCH.picH, SD_SKETCH.minH), off: !!p.pic.off };
             (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
                 var bid = num(b && b.id, 0, 1e9, 0);
                 if (!bid || used['b' + bid]) return;
@@ -77922,7 +77926,7 @@ const StyleDesigner = (function () {
     function _sdSketchBodyH(page) {
         var low = 0;
         page.boxes.forEach(function (b) { low = Math.max(low, b.y + b.h); });
-        return Math.max(SD_SKETCH.minH, low + SD_SKETCH.pad);
+        return Math.max(SD_SKETCH.minH, low + SD_SKETCH.pad, (page.pic && !page.pic.off) ? page.pic.h : 0);
     }
 
     function _sdSketchItem(page) {
@@ -77974,10 +77978,12 @@ const StyleDesigner = (function () {
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', item.name));
         head.appendChild(_sdProtoEl('span', 'sd-proto-meta', page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length)));
+        if (on) head.appendChild(_sdSketchMoreBtn());
         node.appendChild(head);
         node.setAttribute('aria-label', _sdT('Sketch') + ': ' + item.name);
         var body = _sdProtoEl('div', 'sd-sketch-body');
         body.style.height = (item.h - SD_SKETCH.head) + 'px';
+        if (page.pic && !page.pic.off) body.appendChild(_sdSketchPicEl(page.pic));
         if (!page.boxes.length) body.appendChild(_sdProtoEl('p', 'sd-sketch-hint', on ? _sdT('Drag here to draw a box') : _sdT('Turn on Sketch to draw boxes')));
         var sel = _sdProto.sk.sel;
         page.boxes.forEach(function (b) {
@@ -78419,6 +78425,160 @@ const StyleDesigner = (function () {
         el.style.left = place.left + 'px';
         el.style.top = place.top + 'px';
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    // ── The reference picture ──
+    // A picture of the site can lie under a sketch page, dimmed, to draw
+    // over: it fills the frame's width from the top and the frame grows as
+    // tall as it. It takes no pointer, is kept with the sketch and is never
+    // built into the page. "More" in the selected sketch page's head holds
+    // its rows; Ctrl+Z takes a change back.
+
+    // A picture's address kept with a sketch: one of this site ("/…") or
+    // of the web (http, https), else ''.
+    function _sdSketchPicSrc(raw) {
+        var src = String(raw || '').trim();
+        if (!src || src.length > 2000 || /[\s"'<>\\]/.test(src)) return '';
+        return (/^\/(?!\/)/.test(src) || /^https?:\/\/[^\/]/i.test(src)) ? src : '';
+    }
+
+    function _sdSketchPicEl(pic) {
+        var img = _sdProtoEl('img', 'sd-sketch-pic');
+        img.alt = '';
+        img.draggable = false;
+        img.decoding = 'async';
+        img.src = pic.src;
+        img.style.height = pic.h + 'px';
+        return img;
+    }
+
+    // "More" in a sketch page's head: shown on the selected page while the
+    // switch is on.
+    function _sdSketchMoreBtn() {
+        var btn = _sdProtoEl('button', 'sd-sketch-more');
+        btn.type = 'button';
+        btn.title = _sdT('More');
+        btn.setAttribute('aria-label', _sdT('More'));
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.innerHTML = '<span class="bi bi-three-dots" aria-hidden="true"></span>';
+        return btn;
+    }
+
+    // The rows of "More" for a sketch page: [{ caption } | { icon, text, key, run }].
+    function _sdSketchMoreRows(page) {
+        var frameId = 'k:' + page.id;
+        var rows = [];
+        if (!page.pic) {
+            rows.push({ icon: 'bi-image', text: _sdT('Reference picture'), run: function () { _sdSketchPicChoose(frameId); } });
+        } else {
+            rows.push({ caption: _sdT('Reference picture') });
+            rows.push({ icon: page.pic.off ? 'bi-eye' : 'bi-eye-slash', text: page.pic.off ? _sdT('Show the picture') : _sdT('Hide the picture'), run: function () {
+                page.pic.off = !page.pic.off;
+                _sdSketchChanged(false, page.pic.off ? _sdT('Picture hidden') : _sdT('Picture shown'));
+            } });
+            rows.push({ icon: 'bi-arrow-repeat', text: _sdT('Change the picture'), run: function () { _sdSketchPicChoose(frameId); } });
+            rows.push({ icon: 'bi-x-lg', text: _sdT('Remove the picture'), run: function () {
+                delete page.pic;
+                _sdSketchChanged(false, _sdT('Picture removed. Ctrl+Z brings it back.'));
+            } });
+        }
+        rows.push({ sep: true });
+        rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
+        return rows;
+    }
+
+    // A sketch page taken out, as Delete on a selected frame does.
+    function _sdSketchDropPage(page) {
+        var data = _sdSketchData();
+        data.pages = data.pages.filter(function (p) { return p !== page; });
+        _sdProto.sk.sel = null;
+        _sdSketchChanged(false, _sdT('Sketch page deleted. Ctrl+Z brings it back.'));
+        if (_sdProto.ui) _sdProto.ui.viewport.focus({ preventScroll: true });
+    }
+
+    // The picture chooser of the designer; the picture's height is read
+    // before it is kept, so the frame grows to it at once.
+    function _sdSketchPicChoose(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page || !_sdPickerReady()) return;
+        window.pgEditorPicker.image(page.pic ? page.pic.src : '').then(function (url) {
+            var src = _sdSketchPicSrc(url);
+            if (!url) return;
+            if (!src) { sdToast(esc(_sdT('This picture cannot be used under a sketch.')), 'warning', 4000); return; }
+            var img = new Image();
+            img.onload = function () {
+                var now = _sdSketchPage(frameId);
+                if (!now || !img.naturalWidth) return;
+                now.pic = { src: src, h: Math.max(SD_SKETCH.min, Math.min(SD_SKETCH.picH, Math.round(SD_SKETCH.w * img.naturalHeight / img.naturalWidth))), off: false };
+                _sdSketchChanged(false, _sdT('Reference picture placed under the sketch'));
+            };
+            img.onerror = function () { sdToast(esc(_sdT('The picture could not be loaded.')), 'warning', 4000); };
+            img.src = src;
+        });
+    }
+
+    // The menu of "More", by its button; a second press closes it.
+    function _sdSketchMoreMenu(btn) {
+        var frame = btn.closest('.sd-sketch-frame[data-node]');
+        var frameId = frame ? frame.getAttribute('data-node') : '';
+        var page = _sdSketchPage(frameId);
+        if (!page) return;
+        var reopen = _sdProto.menu && _sdProto.menu.chip === 'more:' + frameId;
+        _sdProtoMenuClose(false);
+        if (reopen) return;
+        var ui = _sdProto.ui;
+        var el = _sdProtoEl('div', 'sd-proto-menu sd-sketch-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('More'));
+        _sdSketchMoreRows(page).forEach(function (row) {
+            if (row.sep) { el.appendChild(_sdProtoEl('hr', 'sd-sketch-menu-sep')); return; }
+            if (row.caption) {
+                var head = _sdProtoEl('div', 'sd-proto-menu-head', row.caption);
+                head.setAttribute('role', 'presentation');
+                el.appendChild(head);
+                return;
+            }
+            var item = _sdProtoEl('button', 'sd-proto-menu-item');
+            item.type = 'button';
+            item.tabIndex = -1;
+            item.setAttribute('role', 'menuitem');
+            item.innerHTML = '<span class="bi ' + row.icon + ' sd-proto-icon" aria-hidden="true"></span>';
+            item.appendChild(_sdProtoEl('span', 'sd-proto-label', row.text));
+            if (row.key) {
+                item.appendChild(_sdProtoEl('kbd', 'sd-sketch-menu-key', row.key));
+                item.setAttribute('aria-keyshortcuts', 'Delete');
+            }
+            item.addEventListener('click', function () {
+                _sdProtoMenuClose(true);
+                row.run();
+            });
+            el.appendChild(item);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); _sdProtoMenuClose(true); return; }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) { event.preventDefault(); items[go].focus(); }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: btn, chip: 'more:' + frameId };
+        var r = btn.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var c = ui.stage.getBoundingClientRect();
+        var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var place = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = place.left + 'px';
+        el.style.top = place.top + 'px';
+        var first = el.querySelector('.sd-proto-menu-item');
         if (first) first.focus({ preventScroll: true });
     }
 
