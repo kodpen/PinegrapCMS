@@ -107,14 +107,39 @@
                     id: entry.id,
                     kind: entry.kind,
                     label: entry.label,
-                    nodeId: node.id === undefined || node.id === null ? '' : String(node.id),
+                    nodeId: nodeId(node),
                     value: defaultValue(node, entry.kind)
                 });
             });
             if (node.type === 'shared_ref') return;
             if (Array.isArray(node.children)) node.children.forEach(walk);
         })(tree);
-        return fields;
+        return orderFields(fields, isObject(tree) && isObject(tree.props) ? tree.props._openOrder : null);
+    }
+
+    // A node's id: the designer's `_id`, else `id`, else ''.
+    function nodeId(node) {
+        var keys = ['_id', 'id'];
+        for (var i = 0; i < keys.length; i++) {
+            var v = node[keys[i]];
+            if (typeof v === 'string' || (typeof v === 'number' && Math.floor(v) === v)) return String(v);
+        }
+        return '';
+    }
+
+    // The fields in the stored order: ids in `order` first, then the rest
+    // as given; entries naming no field are skipped.
+    function orderFields(fields, order) {
+        if (!Array.isArray(order) || !order.length || !fields.length) return fields;
+        var byId = {}, used = {}, out = [];
+        fields.forEach(function (f, i) { byId[f.id] = i; });
+        order.forEach(function (id) {
+            if (typeof id !== 'string' || !has(byId, id) || has(used, id)) return;
+            used[id] = true;
+            out.push(fields[byId[id]]);
+        });
+        fields.forEach(function (f) { if (!has(used, f.id)) out.push(f); });
+        return out;
     }
 
     function cleanValue(kind, value) {
