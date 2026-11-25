@@ -34266,6 +34266,10 @@ const StyleDesigner = (function () {
             ? '<span class="sd-tree-editable-badge bi bi-pencil-fill" title="' +
               esc(_sdT('Editable area')) + '"></span>'
             : '';
+        var _coOpen = _sdIsContentLevel() ? [] : _sdCoEntries(node);
+        var openBadge = _coOpen.length
+            ? '<span class="sd-tree-open-badge bi bi-arrows-angle-expand" role="img" title="' + esc(_sdCoTip(_coOpen)) + '" aria-label="' + esc(_sdCoTip(_coOpen)) + '"></span>'
+            : '';
         var foldBadge = _sdTreeFolded(node)
             ? '<span class="sd-tree-fold-badge" title="' + esc(_sdT('Edited in the Options panel')) + '">' +
               esc(_sdT('{var} options', (node.children || []).length)) + '</span>'
@@ -34286,7 +34290,7 @@ const StyleDesigner = (function () {
             var _cnt = _sdTreeNodeCount(_sharedRefTree || node);
             if (_cnt) sectCount = '<span class="sd-tree-sect-count" title="' + esc(_sdT('{var} elements inside', _cnt)) + '">' + _cnt + '</span>';
         }
-        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
+        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + openBadge + addBtn + sectCount;
         if (node.type === 'shared_ref') li.classList.add('sd-tree-shared');
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
@@ -36502,8 +36506,112 @@ const StyleDesigner = (function () {
                 _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
                 { sep: true },
                 { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
-            ]));
+            ].concat(_sdCoMayOpen(node) ? [{ sep: true }, {
+                icon: 'bi-arrows-angle-expand',
+                label: esc(_sdT('Can change per place')) + '<i class="bi bi-chevron-right sd-ctx-car" aria-hidden="true"></i>',
+                handler: function () { _sdCoOpen(node, r); }
+            }] : [])));
         });
+    }
+
+    // ── Can change per place (the part 'overrides') ──────────────────────
+    // A node of a shared component may open fields to the places that use
+    // the component: props._open on the node (the model is
+    // includes/fn/component_overrides.php and its twin). The core keeps the
+    // marks and the entry points; the list and the settings rows are the
+    // part, loaded the first time one is asked for.
+
+    // The node's open entries, or [].
+    function _sdCoEntries(node) {
+        var l = node && node.props && node.props._open;
+        return Array.isArray(l) ? l.filter(function (e) { return e && typeof e.id === 'string' && typeof e.kind === 'string'; }) : [];
+    }
+
+    // Whether this operator may open a field of `node`: a node inside an
+    // ordinary shared component (not the placing node, not a system
+    // widget), for the roles that edit any component.
+    function _sdCoMayOpen(node) {
+        if (!node || node.type === 'shared_ref' || node.type === 'root' || !_collab.mayEdit || _sdIsContentLevel()) return false;
+        var sid = _resolveSharedSid(node);
+        return sid > 0 && !_isInsideSystemWidget(node) && !!(_sharedCache[sid] && _sharedCache[sid].tree);
+    }
+
+    function _sdCoOpen(node, rect) {
+        _sdPartCall('overrides', 'openFor', [node, rect || null]).catch(_sdPartFailed);
+    }
+
+    // The tip of an open field's mark: its labels.
+    function _sdCoTip(entries) {
+        return _sdT('Can change per place: {var}', entries.map(function (e) { return e.label || e.kind; }).join(', '));
+    }
+
+    // Whether a component's tree has an open field (a placed component
+    // inside it is not entered).
+    function _sdCoHas(n) {
+        if (!n || typeof n !== 'object') return false;
+        if (_sdCoEntries(n).length) return true;
+        if (n.type === 'shared_ref') return false;
+        return (n.children || []).some(_sdCoHas);
+    }
+
+    // The "Can change per place" rows of the "Shared Component" section:
+    // the holder the part fills, or the empty line while nothing is open
+    // and the part has not run.
+    function _sdCoSectHtml(sid, ctree) {
+        var head = '<p class="sd-co-sub">' + esc(_sdT('Can change per place')) + '</p>';
+        if (!_sdCoHas(ctree) && !_sdPartLoaded('overrides')) {
+            return head + '<p class="sd-co-none">' + esc(_sdT('No field yet. Select a text, picture, link or icon in the component and choose “Can change per place” in its menu.')) + '</p>';
+        }
+        return head + '<div class="sd-co-list" data-sd-co-sid="' + sid + '"></div>';
+    }
+
+    // After the Options panel is drawn: the mark after the label of each
+    // open field's row (an element's "Shown" after its name) and the
+    // settings list filled by the part.
+    var _SD_CO_PROP = { text: 'text', picture: 'src', link: 'href', icon: 'iconName' };
+    function _sdCoAfter(panel, node) {
+        var list = panel.querySelector('.sd-co-list[data-sd-co-sid]');
+        if (list) _sdPartCall('overrides', 'fillList', [list, parseInt(list.getAttribute('data-sd-co-sid'), 10) || 0]).catch(_sdPartFailed);
+        var entries = _sdIsContentLevel() ? [] : _sdCoEntries(node);
+        if (!entries.length) return;
+        var mark = function (holder, e) {
+            if (!holder || holder.querySelector('.sd-co-mark')) return;
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sd-co-mark bi bi-arrows-angle-expand';
+            b.title = _sdCoTip([e]);
+            b.setAttribute('aria-label', b.title);
+            b.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (_sdCoMayOpen(node)) _sdCoOpen(node, b.getBoundingClientRect());
+            });
+            holder.appendChild(b);
+        };
+        entries.forEach(function (e) {
+            if (e.kind === 'shown') {
+                mark(document.querySelector('#sd-props-head .sd-id-line'), e);
+                return;
+            }
+            var prop = _SD_CO_PROP[e.kind];
+            var ctrl = prop ? panel.querySelector('[data-prop="' + prop + '"]') : null;
+            var row = ctrl ? ctrl.closest('.sd-prop-row') : null;
+            mark(row ? row.querySelector('.sd-prop-label') : null, e);
+        });
+    }
+
+    // One change to component `sid` made by the part: its row's snapshot
+    // kept from before (never after a change, or Save skips it), an undo
+    // step, the change, the component marked changed, the editor drawn.
+    function _sdCoWrite(sid, fn) {
+        if (!_sharedSnapshots[sid] && !_sharedDirty[sid]) {
+            var c = _sharedCache[sid];
+            _sharedSnapshots[sid] = _sdSharedTreeJSON(c && c.tree);
+        }
+        saveState();
+        fn();
+        _sharedDirty[sid] = true;
+        render();
     }
 
     // A held-back body put into a detached copy, with the bodies of the
@@ -36937,6 +37045,7 @@ const StyleDesigner = (function () {
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
         _sdTrLoad(selectedNode);
         _sdPropsHead(selectedNode, _shown, _counts);
+        _sdCoAfter(panel, selectedNode);
         _sdQuickDraw(panel, [selectedNode]);
         _sdReviewAfter(_counts);
         panel.scrollTop = _keepScroll;
@@ -40840,6 +40949,7 @@ const StyleDesigner = (function () {
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
                 row(_sdT('Status'), statusHtml) +
                 contentHtml +
+                ((!_cfg && sid > 0 && cached && cached.tree && !_sdIsContentLevel()) ? _sdCoSectHtml(sid, cached.tree) : '') +
                 usageHtml +
                 actionHtml
             );
@@ -88738,6 +88848,9 @@ const StyleDesigner = (function () {
             { id: 'act_redo', label: _sdT('Redo'), icon: 'bi-arrow-clockwise', hint: 'Ctrl+Y', action: function() { redo(); } },
             { id: 'act_delete', label: _sdT('Delete'), icon: 'bi-trash', hint: 'Del', action: function() { if (selectedNode && selectedNode.type !== 'root' && !selectedNode.props._locked && !hasLockedAncestor(selectedNode)) onDelete(selectedNode); } },
             { id: 'act_duplicate', label: _sdT('Duplicate'), icon: 'bi-copy', hint: 'Ctrl+D', action: function() { if (selectedNode) onDuplicate(selectedNode); } },
+        ].concat(_sdCoMayOpen(selectedNode) ? [
+            { id: 'act_open_field', label: _sdT('Can change per place'), icon: 'bi-arrows-angle-expand', hint: getNodeLabel(selectedNode), action: function() { if (_sdCoMayOpen(selectedNode)) _sdCoOpen(selectedNode, null); } }
+        ] : []).concat([
             { id: 'act_copy', label: _sdT('Copy'), icon: 'bi-clipboard', hint: 'Ctrl+C', action: function() {
                 var _tc = selectedNodes.length > 1 ? selectedNodes.slice() : (selectedNode ? [selectedNode] : []);
                 if (_tc.length) clipboardNodes = _tc.map(function(n) { return cloneTree(n); });
@@ -88769,7 +88882,7 @@ const StyleDesigner = (function () {
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
-        ];
+        ]);
 
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {
@@ -94598,7 +94711,11 @@ const StyleDesigner = (function () {
             getNodeExtraStyle: getNodeExtraStyle,
             hasLockedAncestor: hasLockedAncestor,
             render: render,
-            saveState: saveState
+            saveState: saveState,
+            showCtxMenu: showCtxMenu,
+            scrollTreeToNode: scrollTreeToNode,
+            renderProperties: renderProperties,
+            _sdCoWrite: _sdCoWrite
         };
         Object.defineProperties(kit, {
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },

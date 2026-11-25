@@ -4757,6 +4757,58 @@ body.sd-resizing * { cursor: col-resize !important; }
     margin-left: 5px; flex-shrink: 0; line-height: 1;
 }
 
+/* "Can change per place" (the part 'overrides'): the green two-arrow mark of
+   an open field after an Options row's label and at an Overview row's right
+   edge, the list of an element's fields, and the open fields listed in the
+   "Shared Component" section. The mark is a shape with a tip, never colour
+   alone. */
+.sd-tree-open-badge {
+    font-size: .66rem; color: var(--sd-success);
+    margin-left: auto; padding-left: 5px; flex-shrink: 0; line-height: 1;
+}
+.sd-co-mark {
+    border: 0; background: none; padding: 0 0 0 4px;
+    font-size: .66rem; color: var(--sd-success); line-height: 1; cursor: pointer;
+}
+.sd-co-mark:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; border-radius: 3px; }
+.sd-ctx-car { margin-left: auto; font-size: .66rem; opacity: .7; }
+.sd-co-pop {
+    position: fixed; z-index: 99999; width: 300px; max-width: calc(100vw - 16px);
+    background: var(--sd-raised-bg-2); border: 1px solid var(--sd-panel-border);
+    border-radius: 6px; padding: 10px 12px;
+    box-shadow: 0 6px 22px color-mix(in srgb, var(--sd-shadow) 65%, transparent);
+    font-size: .74rem; color: var(--sd-text);
+}
+.sd-co-ph, .sd-co-sub { margin: 0 0 6px; font-size: .68rem; font-weight: 600; color: var(--sd-label); }
+.sd-co-sub { margin: 8px 0 4px; }
+.sd-co-por { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.sd-co-por small { display: block; font-size: .66rem; color: var(--sd-text-muted); }
+.sd-co-dis .sd-co-pname { opacity: .6; }
+.sd-co-pol { display: flex; align-items: center; gap: 8px; padding: 0 0 6px 12px; }
+.sd-co-pol > span { flex: 0 0 44px; color: var(--sd-label); font-size: .68rem; }
+.sd-co-first {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sd-panel-border);
+    color: var(--sd-text-muted); font-size: .7rem; line-height: 1.4;
+}
+.sd-co-none { margin: 0 0 6px; font-size: .68rem; line-height: 1.4; color: var(--sd-text-muted); }
+.sd-co-rows { margin-bottom: 6px; }
+.sd-co-row {
+    display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 2px;
+    border-radius: 4px; font-size: .72rem;
+}
+.sd-co-row:hover, .sd-co-row:focus-visible { background: rgba(var(--sd-accent-rgb), .08); outline: none; }
+.sd-co-row:focus-visible { box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-co-row.sd-co-dragging { opacity: .6; }
+.sd-co-grip { cursor: grab; color: var(--sd-text-muted); touch-action: none; }
+.sd-co-ki { color: var(--sd-label); }
+.sd-co-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.sd-co-rename { flex: 1 1 auto; min-width: 0; }
+.sd-co-more { border: 0; background: none; color: var(--sd-label); padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.sd-co-more:hover, .sd-co-more:focus-visible { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .7rem; }
+.sd-co-result .pg-result-line { flex: 1 1 auto; }
+
 /* ========================= SHARED COMPONENTS PALETTE TAB ========================= */
 .sd-shared-tab-loading, .sd-shared-tab-empty {
     padding: .75rem 1rem; font-size: .78rem; color: var(--sd-text-muted, #8b9ab0); text-align: center;

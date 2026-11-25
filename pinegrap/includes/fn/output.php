@@ -8192,6 +8192,10 @@ function pg_js_bundles()
         // The canvas guides: their pure geometry (window.PGCanvasGuides),
         // then the part that draws Measure over the canvas.
         'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
+        // "Can change per place": the per-place model of a shared component
+        // (window.PGComponentOverrides), then the part that opens a field
+        // and lists them in the component's settings.
+        'assets/js/style_designer_overrides.min.js' => array('assets/js/pg_component_overrides.js', 'assets/js/style_designer_overrides.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
@@ -8307,6 +8311,9 @@ function pg_designer_parts()
         // The canvas guides: Measure, the distances drawn while Alt is held
         // with one element selected.
         'guides' => 'assets/js/style_designer_guides.min.js',
+        // "Can change per place": an element's open fields and the list of
+        // a shared component's open fields in its settings.
+        'overrides' => 'assets/js/style_designer_overrides.min.js',
         // The Focus control: a picture's focus point dragged on the whole
         // picture, with the cut on each screen, drawn when first shown.
         'focus' => 'assets/js/style_designer_focus.min.js',
