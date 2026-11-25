@@ -408,3 +408,166 @@ function pg_preview_as_record_target($setup, $cfg, $page_id, $user)
     }
     return $out;
 }
+
+// ---------------------------------------------------------------------------
+// What a renderer reads of the case it is drawn in. Outside a Preview widget
+// no flag is held, so each of these gives back what the renderer had: a live
+// visitor sees exactly what they saw before.
+// ---------------------------------------------------------------------------
+
+/**
+ * The condition a list's statements add for the case "Empty": no record
+ * matches, so the list draws its own "no record" state, count and pages
+ * from nothing. '' outside that case.
+ *
+ * @return string
+ */
+function pg_preview_as_empty_where()
+{
+    return pg_preview_as_flag('empty') ? ' AND (TRUE = FALSE) ' : '';
+}
+
+/**
+ * The ORDER BY head a list's statement puts first while the widget is
+ * drawn with $flag: the rows whose $expr is greatest come first ("Long":
+ * the most characters, "Sold out": the products that cannot be bought).
+ * '' outside that case. $expr is the renderer's own SQL, never input.
+ *
+ * @param string $flag 'long' | 'sold_out'
+ * @param string $expr an SQL expression over the list's tables
+ * @return string "<expr> DESC, " or ''
+ */
+function pg_preview_as_order($flag, $expr)
+{
+    return ($expr !== '' && pg_preview_as_flag($flag)) ? '(' . $expr . ') DESC, ' : '';
+}
+
+/**
+ * The characters of a row's text: its string values, or those named in
+ * $keys. Pure.
+ *
+ * @param mixed    $row
+ * @param string[] $keys empty: every string value
+ * @return int
+ */
+function pg_preview_as_row_length($row, $keys = array())
+{
+    if (!is_array($row)) return 0;
+    $len = 0;
+    foreach ($keys ? $keys : array_keys($row) as $key) {
+        if (!isset($row[$key]) || !is_string($row[$key])) continue;
+        $len += function_exists('mb_strlen') ? mb_strlen(strip_tags($row[$key]), 'UTF-8') : strlen(strip_tags($row[$key]));
+    }
+    return $len;
+}
+
+/**
+ * Rows a renderer has already read, as the case draws them: none for
+ * "Empty"; for "Long" the rows with the most characters first (stable, so
+ * equal rows keep their order); as they are otherwise. Pure but for the
+ * held setup.
+ *
+ * @param array    $rows
+ * @param string[] $keys the text keys measured for "Long" (empty: all)
+ * @return array
+ */
+function pg_preview_as_rows($rows, $keys = array())
+{
+    if (!is_array($rows)) return $rows;
+    if (pg_preview_as_flag('empty')) return array();
+    if (!pg_preview_as_flag('long') || count($rows) < 2) return $rows;
+    $order = array();
+    $i = 0;
+    foreach ($rows as $k => $row) {
+        $order[] = array(pg_preview_as_row_length($row, $keys), $i++, $k);
+    }
+    usort($order, function ($a, $b) {
+        if ($a[0] !== $b[0]) return ($a[0] > $b[0]) ? -1 : 1;
+        return ($a[1] < $b[1]) ? -1 : 1;
+    });
+    $list = array_keys($rows) === range(0, count($rows) - 1);
+    $out  = array();
+    foreach ($order as $o) {
+        if ($list) {
+            $out[] = $rows[$o[2]];
+        } else {
+            $out[$o[2]] = $rows[$o[2]];
+        }
+    }
+    return $out;
+}
+
+/**
+ * The field a built-in form marks for the case "Error" and the message
+ * its own handler gives when that required field is left empty; null for
+ * a form with no such field. Pure.
+ *
+ * @param string $form the liveform name
+ * @return array|null {field, message}
+ */
+function pg_preview_as_form_error_field($form)
+{
+    switch ((string)$form) {
+        case 'login':
+            return array('field' => 'email', 'message' => lang('Email or username is required.'));
+        case 'forgot_password':
+            return array('field' => 'email', 'message' => lang(array('string' => '{var:1} is required.', 'vars' => lang('Email'))));
+        case 'register':
+        case 'affiliate_sign_up_form':
+        case 'shipping_address_and_arrival':
+            return array('field' => 'first_name', 'message' => lang('First Name is required.'));
+        case 'billing_information':
+            return array('field' => 'billing_first_name', 'message' => lang('First Name is required.'));
+    }
+    return null;
+}
+
+/**
+ * For the case "Error": the form drawn as after a submission with its
+ * first required field left empty. The mark is written to the form's
+ * liveform in the session, which pg_preview_as_while() puts back after the
+ * widget. Nothing outside that case.
+ *
+ * @param mixed  $lf   the widget's liveform
+ * @param string $form the liveform name
+ * @return void
+ */
+function pg_preview_as_form_error($lf, $form)
+{
+    if (!is_object($lf) || !pg_preview_as_flag('form_error')) return;
+    $mark = pg_preview_as_form_error_field($form);
+    if ($mark !== null) $lf->mark_error($mark['field'], $mark['message']);
+}
+
+/**
+ * The field of a custom form the case "Error" marks: the first required
+ * one a visitor fills in (office use only is left out). Pure.
+ *
+ * @param array $field_map pg_cf_field_map()
+ * @return array|null the form_fields row
+ */
+function pg_preview_as_custom_form_required($field_map)
+{
+    foreach (is_array($field_map) ? $field_map : array() as $row) {
+        if (!is_array($row) || empty($row['required']) || !empty($row['office_use_only'])) continue;
+        return $row;
+    }
+    return null;
+}
+
+/**
+ * For the case "Error" on a custom form: its first required field marked
+ * with the message custom_form.php gives it (pg_cf_required_message()).
+ *
+ * @param mixed $lf        the form's liveform
+ * @param array $field_map pg_cf_field_map()
+ * @return void
+ */
+function pg_preview_as_custom_form_error($lf, $field_map)
+{
+    if (!is_object($lf) || !pg_preview_as_flag('form_error')) return;
+    $row = pg_preview_as_custom_form_required($field_map);
+    if ($row === null) return;
+    $label = function_exists('pg_tr_label') ? pg_tr_label((string)$row['label']) : (string)$row['label'];
+    $lf->mark_error($row['id'], pg_cf_required_message((string)$row['type'], $label, 0));
+}

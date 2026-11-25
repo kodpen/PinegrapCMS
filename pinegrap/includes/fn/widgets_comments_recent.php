@@ -1488,6 +1488,8 @@ function _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode = 
 
     $sources = pg_comments_recent_sources($options['page_ids'], $options['show'], $viewer, 'db_items', $options['filters']);
     $read = pg_comments_recent_read($sources, $options, $viewer);
+    // The Preview's case "Empty": no recent comment.
+    if (pg_preview_as_flag('empty')) $read = array('entries' => array(), 'more' => false) + $read;
     $audience_sql = pg_comments_recent_audience_sql($options['show'], $viewer['signed_in'] ? $user_id : 0, $since);
     $ids = array();
 
