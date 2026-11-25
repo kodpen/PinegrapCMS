@@ -194,7 +194,7 @@ function test_canvas_bands_are_a_part()
 	pg_assert_same('assets/js/style_designer_bands.min.js', isset($parts['bands']) ? $parts['bands'] : null, 'bands is a part');
 	$files = $bundles['assets/js/style_designer_bands.min.js'];
 	pg_assert_true(in_array('assets/js/pg_canvas_bands.js', $files, true), 'the band module is in it');
-	pg_assert_true(in_array('assets/js/pg_spacing_box.js', $files, true), 'what the Spacing box writes is in it');
+	pg_assert_false(in_array('assets/js/pg_spacing_box.js', $files, true), 'what the Spacing box writes comes with its own part');
 	pg_assert_same('assets/js/style_designer_bands.js', end($files), 'the part last');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
@@ -202,5 +202,6 @@ function test_canvas_bands_are_a_part()
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdPartCall('bands', 'draw', [_sdBandsHost(node)])", $core, 'the core draws through the part');
+	pg_assert_contains("_sdPartLoad('spacing').then(", $core, 'after the Spacing box\'s part, which brings PGSpacingBox');
 	pg_assert_contains("_sdPartApis.bands.hide()", $core, 'and hides it once loaded');
 }

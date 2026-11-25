@@ -20,8 +20,8 @@ description: The spacing bands and handles over the designer canvas (CG3 #11568,
 
 ## How is it built?
 - Pure: `assets/js/pg_canvas_bands.js` (`window.PGCanvasBands`): `layout(box, margin, padding, k, rtl)` bands and handles, `growth()`, `keyStep()`, `reach()`, `labelAt()` (flips at the layer's edge), `sizeFor()`; tests `tests/designer_canvas_bands_test.php`.
-- Part `bands`: `assets/js/style_designer_bands.js`, bundle `style_designer_bands.min.js` = `pg_canvas_guides.js`, `pg_canvas_bands.js`, `pg_spacing_box.js`, `pg_designer_tour.js`, the part. Handed to every editor (`designer_screen.php`).
-- Core (`// ── Spacing bands` in `style_designer.src.js`): `_positionSizeBadge()` (selection, render, canvas scroll) calls `_sdBandsSoon()`, one rAF, then `_sdBandsDraw()`: `_sdPartCall('bands', 'draw', [_sdBandsHost(node)])` or, once loaded, `_sdPartApis.bands.hide()`. `_sdBandsGeo()` gives the layer's place as the link marks read it.
+- Part `bands`: `assets/js/style_designer_bands.js`, bundle `style_designer_bands.min.js` = `pg_canvas_guides.js`, `pg_canvas_bands.js`, `pg_designer_tour.js`, the part. A source sits in one bundle only (`tests/js_bundles_test.php`): `PGSpacingBox` comes with the part `spacing`, loaded first (`_sdPartLoad('spacing').then(…)`); a later guide's part that needs `PGCanvasGuides` loads `bands` first the same way. Handed to every editor (`designer_screen.php`).
+- Core (`// ── Spacing bands` in `style_designer.src.js`): `_positionSizeBadge()` (selection, render, canvas scroll) calls `_sdBandsSoon()`, one rAF, then `_sdBandsDraw()`: the `spacing` part, then `_sdPartCall('bands', 'draw', [_sdBandsHost(node)])` or, once loaded, `_sdPartApis.bands.hide()`. `_sdBandsGeo()` gives the layer's place as the link marks read it.
 - The layer `.sd-cgb-layer` sits in `.sd-canvas-wrapper` (z-index 21, clicks pass through but on handles). While hidden the part holds no listener; shown, only the canvas area's scroll and the canvas's `dragstart`.
 
 ## What was measured?

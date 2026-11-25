@@ -60151,7 +60151,11 @@ const StyleDesigner = (function () {
             _collab.mayEdit && !_sdProto.open && !dragData && _sdUsesBootstrap() &&
             !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
         if (show) {
-            _sdPartCall('bands', 'draw', [_sdBandsHost(node)]).catch(_sdPartFailed);
+            // The part writes through window.PGSpacingBox, which comes with
+            // the Spacing box's part: loaded first, once.
+            _sdPartLoad('spacing').then(function () {
+                return _sdPartCall('bands', 'draw', [_sdBandsHost(node)]);
+            }).catch(_sdPartFailed);
         } else if (_sdPartLoaded('bands') && _sdPartApis.bands) {
             _sdPartApis.bands.hide();
         }

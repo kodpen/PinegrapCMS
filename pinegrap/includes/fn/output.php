@@ -8188,10 +8188,11 @@ function pg_js_bundles()
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The spacing bands over the canvas: the guides' and the bands'
-        // geometry (window.PGCanvasGuides, window.PGCanvasBands), what the
-        // Spacing box writes (window.PGSpacingBox), the first-use tips' state
-        // (window.PGDesignerTour), then the part that draws them.
-        'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_guides.js', 'assets/js/pg_canvas_bands.js', 'assets/js/pg_spacing_box.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
+        // geometry (window.PGCanvasGuides, window.PGCanvasBands), the
+        // first-use tips' state (window.PGDesignerTour), then the part that
+        // draws them. What the Spacing box writes (window.PGSpacingBox) comes
+        // with the part 'spacing', which the core loads first.
+        'assets/js/style_designer_bands.min.js'    => array('assets/js/pg_canvas_guides.js', 'assets/js/pg_canvas_bands.js', 'assets/js/pg_designer_tour.js', 'assets/js/style_designer_bands.js'),
         // The canvas mirrors: when they are drawn again (window.PGMirrorSchedule),
         // then the part that fills their frames from the canvas.
         'assets/js/style_designer_mirror.min.js'   => array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'),
