@@ -52420,8 +52420,66 @@ const StyleDesigner = (function () {
             row(_sdT('Sticky position'), posH) +
             row(_sdT('Theme'), themeH) +
             row(_sdT('Expand at'), expH) +
-            _sdSmartActiveRows(n)
+            _sdSmartActiveRows(n) +
+            _sdNavScrollRows(n)
         );
+    }
+
+    // A menu's two scroll rows. Both write attributes only (props._attrs),
+    // printed by both renderers as they are; each marker brings
+    // assets/js/pg_page_scroll.js to the page (pg_page_scroll_pattern()).
+    // "Mark the section in view" is data-pg-spy: the script makes the menu
+    // the target of Bootstrap's scrollspy on the body. "After scrolling" is
+    // data-pg-scrolled="<px>" with data-pg-scrolled-class, the Bootstrap
+    // classes the menu takes past that distance. Off writes nothing.
+    var _SD_NAV_SCROLLED_AT = 80;
+    var _SD_NAV_SCROLLED_DEFAULT = 'shadow py-1';
+    // The kind of a scrolled class: its own list in the panel.
+    function _sdNavScrolledKind(c) {
+        if (/^bg-(?!opacity|gradient)/.test(c) || /^navbar-(?:dark|light)$/.test(c)) return 'bg';
+        if (/^shadow(?:-|$)/.test(c)) return 'shadow';
+        if (/^p[ytb]-/.test(c)) return 'height';
+        return '';
+    }
+    // The class list split into its three lists; what fits none is dropped.
+    function _sdNavScrolledParts(cls) {
+        var out = { bg: [], shadow: [], height: [] };
+        String(cls || '').split(/\s+/).forEach(function (c) {
+            var k = c ? _sdNavScrolledKind(c) : '';
+            if (k && out[k].indexOf(c) === -1) out[k].push(c);
+        });
+        return { bg: out.bg.join(' '), shadow: out.shadow.join(' '), height: out.height.join(' ') };
+    }
+    // The one writer of data-pg-scrolled-class: one list's value changed.
+    function _sdNavScrolledClass(cls, part, value) {
+        var p = _sdNavScrolledParts(cls);
+        if (Object.prototype.hasOwnProperty.call(p, part)) p[part] = String(value || '').trim();
+        return [p.bg, p.shadow, p.height].filter(Boolean).join(' ');
+    }
+    function _sdNavScrollRows(n) {
+        var hint = function (t) { return '<div style="font-size:.66rem;color:#888;margin:-2px 0 4px">' + esc(t) + '</div>'; };
+        var h = row(_sdT('Mark the section in view'), swAttr('data-nav-spy', _sdAttr(n, 'data-pg-spy') !== null)) +
+            hint(_sdT('For a one-page menu: the link of the section on screen is marked active.'));
+        var at = _sdAttr(n, 'data-pg-scrolled');
+        h += row(_sdT('After scrolling'), swAttr('data-nav-scrolled', at !== null));
+        if (at === null) return h + hint(_sdT('Changes the menu once the page is scrolled down.'));
+        var parts = _sdNavScrolledParts(_sdAttr(n, 'data-pg-scrolled-class'));
+        var list = function (part, opts) {
+            var v = parts[part], known = opts.some(function (o) { return o[0] === v; });
+            if (!known) opts = opts.concat([[v, v]]);
+            return '<select class="form-control form-control-sm" data-nav-scrolled-part="' + part + '">' +
+                opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                '</select>';
+        };
+        var px = parseInt(at, 10);
+        h += row(_sdT('Distance'), '<input type="number" class="form-control form-control-sm" min="0" max="5000" step="10" data-nav-scrolled-at value="' +
+            (isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.max(0, px)) + '" aria-label="' + esc(_sdT('Distance in pixels')) + '">');
+        h += row(_sdT('Background'), list('bg', [['', _sdT('Unchanged')], ['bg-body', _sdT('Page colour')], ['bg-body-tertiary', _sdT('Light')],
+            ['bg-dark navbar-dark', _sdT('Dark')], ['bg-primary navbar-dark', _sdT('Primary')]]));
+        h += row(_sdT('Shadow'), list('shadow', [['', _sdT('Unchanged')], ['shadow-none', _sdT('None')], ['shadow-sm', _sdT('Small')],
+            ['shadow', _sdT('Regular')], ['shadow-lg', _sdT('Large')]]));
+        h += row(_sdT('Height'), list('height', [['', _sdT('Unchanged')], ['py-1', _sdT('Smaller')], ['py-0', _sdT('Smallest')]]));
+        return h;
     }
 
     // Smart active state (props.smartActive): an opt-in switch on navigation
@@ -59832,6 +59890,47 @@ const StyleDesigner = (function () {
                 if (this.checked) selectedNode.props.smartActive = true;
                 else delete selectedNode.props.smartActive;
                 render();
+            });
+        });
+
+        // A menu's scroll rows (_sdNavScrollRows()): attributes only.
+        function navScrollWrite(fn) {
+            if (!selectedNode) return;
+            saveState();
+            var owner = _sdAnyParent(selectedNode);
+            if (owner && owner.sid) _sharedDirty[owner.sid] = true;
+            fn(selectedNode);
+            render();
+        }
+        document.querySelectorAll('#sd-properties input[data-nav-spy]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-spy', on ? '' : null); });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var on = this.checked;
+                navScrollWrite(function (n) {
+                    _sdSetAttrOn(n, 'data-pg-scrolled', on ? String(_SD_NAV_SCROLLED_AT) : null);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', on ? _SD_NAV_SCROLLED_DEFAULT : null);
+                });
+            });
+        });
+        document.querySelectorAll('#sd-properties input[data-nav-scrolled-at]').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var px = parseInt(this.value, 10);
+                px = isNaN(px) ? _SD_NAV_SCROLLED_AT : Math.min(5000, Math.max(0, px));
+                navScrollWrite(function (n) { _sdSetAttrOn(n, 'data-pg-scrolled', String(px)); });
+            });
+        });
+        document.querySelectorAll('#sd-properties select[data-nav-scrolled-part]').forEach(function (sl) {
+            sl.addEventListener('change', function () {
+                var part = this.getAttribute('data-nav-scrolled-part'), val = this.value;
+                navScrollWrite(function (n) {
+                    var cls = _sdNavScrolledClass(_sdAttr(n, 'data-pg-scrolled-class'), part, val);
+                    _sdSetAttrOn(n, 'data-pg-scrolled-class', cls);
+                });
             });
         });
 
@@ -77019,7 +77118,7 @@ const StyleDesigner = (function () {
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
-        { test: /\sdata-pg-(?:to-top|scroll-progress)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
+        { test: /\sdata-pg-(?:to-top|scroll-progress|scrolled|spy)(?=[\s=>\/])/i, file: 'assets/js/pg_page_scroll.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },

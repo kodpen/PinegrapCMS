@@ -17,6 +17,11 @@
  * Scroll progress: the bar's width follows how far the page is scrolled, as
  * a percentage of what can be scrolled.
  *
+ * A menu's "After scrolling" (data-pg-scrolled="<px>"): past that point
+ * it takes data-pg-scrolled-class, and its drawn classes of the same kind
+ * step aside. "Mark the section in view" (data-pg-spy): the first such menu
+ * becomes the target of Bootstrap's scrollspy on the body.
+ *
  * One passive scroll listener for the page, its work done once a frame.
  * Plain ES5 and no jQuery: it has to work whatever the design loads.
  *
@@ -54,6 +59,81 @@
         el.classList.toggle('opacity-0', off);
     }
 
+    // Two classes of one kind fight over one property.
+    function kind(c) {
+        if (/^bg-(?!opacity|gradient)/.test(c)) {
+            return 'bg';
+        }
+        if (/^shadow(?:-|$)/.test(c)) {
+            return 'shadow';
+        }
+        if (/^p[ytb]-/.test(c)) {
+            return 'py';
+        }
+        if (/^navbar-(?:dark|light)$/.test(c)) {
+            return 'theme';
+        }
+        return '';
+    }
+
+    // The menu's class list, scrolled or not. Pure, so it is tested.
+    function scrolledClasses(drawn, add, on) {
+        var own = String(drawn || '').split(/\s+/).filter(Boolean);
+        if (!on) {
+            return own.join(' ');
+        }
+        var extra = String(add || '').split(/\s+/).filter(Boolean);
+        var kinds = {};
+        var i;
+        for (i = 0; i < extra.length; i++) {
+            kinds[kind(extra[i])] = true;
+        }
+        var out = [];
+        for (i = 0; i < own.length; i++) {
+            var k = kind(own[i]);
+            if (k === '' || !kinds[k]) {
+                out.push(own[i]);
+            }
+        }
+        for (i = 0; i < extra.length; i++) {
+            if (out.indexOf(extra[i]) === -1) {
+                out.push(extra[i]);
+            }
+        }
+        return out.join(' ');
+    }
+
+    function setScrolled(el, top) {
+        var at = parseInt(el.getAttribute('data-pg-scrolled'), 10);
+        var on = top >= (isNaN(at) ? 80 : Math.max(0, at));
+        if (el.pgScrolledOn === on) {
+            return;
+        }
+        if (el.pgScrolledDrawn === undefined) {
+            el.pgScrolledDrawn = el.className;
+        }
+        el.pgScrolledOn = on;
+        el.className = scrolledClasses(el.pgScrolledDrawn, el.getAttribute('data-pg-scrolled-class'), on);
+        el.classList.toggle('pg-scrolled', on);
+    }
+
+    function spy() {
+        var nav = document.querySelector('[data-pg-spy]');
+        var body = document.body;
+        if (!nav || !body || body.hasAttribute('data-bs-spy')) {
+            return;
+        }
+        if (!nav.id) {
+            nav.id = 'pg-spy-menu';
+        }
+        body.setAttribute('data-bs-spy', 'scroll');
+        body.setAttribute('data-bs-target', '#' + nav.id);
+        // Bootstrap's data API runs on load; later, start it here.
+        if (document.readyState === 'complete' && window.bootstrap && window.bootstrap.ScrollSpy) {
+            window.bootstrap.ScrollSpy.getOrCreateInstance(body);
+        }
+    }
+
     function update() {
         queued = false;
 
@@ -73,6 +153,11 @@
         for (i = 0; i < bars.length; i++) {
             var bar = bars[i].querySelector('.progress-bar') || bars[i];
             bar.style.width = pct + '%';
+        }
+
+        var menus = document.querySelectorAll('[data-pg-scrolled]');
+        for (i = 0; i < menus.length; i++) {
+            setScrolled(menus[i], top);
         }
     }
 
@@ -113,8 +198,12 @@
     window.addEventListener('load', later);
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', update);
+        document.addEventListener('DOMContentLoaded', function () {
+            spy();
+            update();
+        });
     } else {
+        spy();
         update();
     }
 })();

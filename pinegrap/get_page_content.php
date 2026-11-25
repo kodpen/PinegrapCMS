@@ -678,7 +678,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     }
 
     // ── Back to top and Scroll progress ─────────────────────────────────────────
-    // Both carry a marker and no script; the page brings it
+    // Both, and a menu's scroll rows, carry a marker and no script; the page brings it
     // (pg_page_scroll_inject()), checked once everything is drawn in. Not in
     // an e-mail.
     if (!$email && stripos($content, 'data-pg-') !== false && function_exists('pg_page_scroll_inject')) {
