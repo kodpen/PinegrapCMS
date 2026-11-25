@@ -27,7 +27,7 @@ priority: 5
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - RE1 (M) Server: one item's fields written through its own writer with rights, rules, history and the changed-meanwhile check; tests. Done (#11551): `designer/record-edit-in-place-server.md`. A role 2/3 change while approval is on is refused (`waits`), not held, and stays so (the architect's line above).
-- RE2 (S) Pure: which bound elements of a page can be edited and with which control.
+- RE2 (S) Pure: which bound elements of a page can be edited and with which control. Done (#11583): `designer/record-edit-in-place-spots.md`; RE3 bundles `pg_record_edit_spots.js` into its part.
 - RE3 (M) after RE1, RE2, PW3 of the preview-as plan and DD20: the switch, the frames, the controls in place, the foot bar. With `waits: true`: no new control, only RE4's "Open the record" link where the switch would be.
 - RE4 (S) after RE3: "Open the record" for other kinds, the canvas menu's row.
 - RE5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
