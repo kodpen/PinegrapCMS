@@ -2846,10 +2846,11 @@ function _eo_render_saved_cart_link($cart_label)
 // tree and simply collapses.
 function _eo_render_saved_address_select($target = 'billing', $rid = 0)
 {
-    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) return '';
+    $viewer = pg_preview_as_viewer();
+    if (!$viewer['signed_in']) return '';
     if (!empty($_SESSION['software']['ghost'])) return '';
-    $user_id = defined('USER_ID') ? (int)USER_ID : 0;
-    if ($user_id <= 0) return '';
+    $user_id = $viewer['id'];
+    if ($user_id <= 0 && !$viewer['sample']) return '';
     $rid = (int)$rid;
     if ($target === 'shipping' && $rid <= 0) return '';
     $prefix = ($target === 'shipping') ? 'shipping_' . $rid . '_' : 'billing_';
@@ -2871,7 +2872,8 @@ function _eo_render_saved_address_select($target = 'billing', $rid = 0)
         return implode(', ', array_filter(array_map('trim', $parts), 'strlen'));
     };
 
-    $book = db_items(
+    // The sample account of a Preview: its own saved recipients.
+    $book = $viewer['sample'] ? pg_preview_as_sample_account()['recipients'] : db_items(
         "SELECT ship_to_name, first_name, last_name, company, address_1, address_2,
                 city, state, zip_code, country, phone_number
          FROM address_book
@@ -2898,7 +2900,7 @@ function _eo_render_saved_address_select($target = 'billing', $rid = 0)
     }
 
     if ($target === 'billing') {
-        $contact_id = defined('USER_CONTACT_ID') ? (int)USER_CONTACT_ID : 0;
+        $contact_id = $viewer['contact_id'];
         $rows = ($contact_id > 0) ? db_items(
             "SELECT billing_first_name, billing_last_name, billing_company,
                     billing_address_1, billing_address_2, billing_city, billing_state,
@@ -3649,8 +3651,9 @@ function _eo_sms_box_shown($ghost)
 {
     if (!function_exists('pg_consent_sms_checkout_shown')) return false;
     $contact = array();
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && defined('USER_CONTACT_ID') && USER_CONTACT_ID > 0) {
-        $contact = db_item("SELECT id, email_address FROM contacts WHERE id = '" . (int)USER_CONTACT_ID . "' LIMIT 1");
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['signed_in'] && !$ghost && $viewer['contact_id'] > 0) {
+        $contact = db_item("SELECT id, email_address FROM contacts WHERE id = '" . $viewer['contact_id'] . "' LIMIT 1");
     }
     return pg_consent_sms_checkout_shown($contact);
 }
@@ -3674,14 +3677,18 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     // Pull contact row when logged in & not ghosting. `contacts` schema uses
     // `business_*` for address fields — they map to billing_* here.
     $contact = array();
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && defined('USER_CONTACT_ID') && USER_CONTACT_ID > 0) {
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['signed_in'] && !$ghost && $viewer['sample']) {
+        // The sample account of a Preview has no contact row.
+        $contact = pg_preview_as_sample_account()['contact'];
+    } elseif ($viewer['signed_in'] && !$ghost && $viewer['contact_id'] > 0) {
         $contact = db_item(
             "SELECT salutation, first_name, last_name, company,
                     business_address_1, business_address_2, business_city,
                     business_state, business_zip_code, business_country,
                     business_phone, business_fax, email_address,
                     lead_source, opt_in, tax_number, tax_office
-             FROM contacts WHERE id = '" . (int)USER_CONTACT_ID . "' LIMIT 1"
+             FROM contacts WHERE id = '" . $viewer['contact_id'] . "' LIMIT 1"
         );
         if (!is_array($contact)) $contact = array();
     }
@@ -3790,14 +3797,18 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
 
     // Try address_book first (logged-in user matching this ship_to_name).
     $address_book = array();
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && defined('USER_ID') && USER_ID > 0
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['signed_in'] && !$ghost && $viewer['sample'] && !empty($recipient['ship_to_name'])) {
+        // The sample account of a Preview: its own saved recipients.
+        $address_book = (array)pg_preview_as_sample_recipient((string)$recipient['ship_to_name']);
+    } elseif ($viewer['signed_in'] && !$ghost && $viewer['id'] > 0
         && !empty($recipient['ship_to_name'])) {
         $address_book = db_item(
             "SELECT salutation, first_name, last_name, company,
                     address_1, address_2, city, state, zip_code, country,
                     address_type, phone_number
              FROM address_book
-             WHERE user = '" . (int)USER_ID . "'
+             WHERE user = '" . $viewer['id'] . "'
                AND ship_to_name = '" . e((string)$recipient['ship_to_name']) . "'
              LIMIT 1"
         );

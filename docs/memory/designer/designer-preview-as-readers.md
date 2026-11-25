@@ -12,5 +12,4 @@ module: designer_preview_render
 - The cart's recurring defaults (`UPDATE order_items`) are not written in a background render (PW2b, #11632); before, the Preview wrote them to the operator's own cart.
 
 ## Is the visitor read?
-- Not until step PW2c lands. How it is read is decided: one viewer reader in place of the `USER_LOGGED_IN` family of constants, the sample account with no user row (`designer-preview-as-visitor.md`).
-
+- Yes, since PW2c (#11728): through `pg_preview_as_viewer()`, as `designer-preview-as-viewer.md` says.

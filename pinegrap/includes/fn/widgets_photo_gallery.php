@@ -412,7 +412,7 @@ function _pg_gal_read($folder_id)
     $albums = array();
     foreach ((array)db_items("SELECT folder_id AS id, folder_name AS name FROM folder WHERE folder_parent = '" . $folder_id . "' ORDER BY folder_order, folder_name") as $f) {
         if ($bin_id > 0 && (int)$f['id'] === $bin_id) continue;
-        if (!check_view_access($f['id'])) continue;
+        if (!pg_preview_as_view_access($f['id'])) continue;
         $f['photos'] = (int)db_value("SELECT COUNT(*) FROM files WHERE " . pg_gal_photo_sql($f['id']));
         $f['photo'] = $f['photos'] ? (string)db_value("SELECT name FROM files WHERE " . pg_gal_photo_sql($f['id']) . " ORDER BY name LIMIT 1") : '';
         $albums[] = $f;
@@ -459,11 +459,11 @@ function _render_system_widget_photo_gallery($tree_json, $widget_id, $cfg = arra
     $bin_id = (int)pg_recycle_bin_folder_id();
     $chosen = pg_gal_folder_setting($cfg);
     $root_id = pg_gal_top_folder($chosen, $page_folder, '_pg_gal_parent_or_null', $bin_id);
-    if ($chosen > 0 && $root_id > 0 && !check_view_access($root_id)) $root_id = 0;
+    if ($chosen > 0 && $root_id > 0 && !pg_preview_as_view_access($root_id)) $root_id = 0;
     $folder_id = $root_id;
     if ($root_id > 0 && $mode !== 'background') {
         $folder_id = pg_gal_folder_shown($root_id, isset($_GET['folder_id']) ? $_GET['folder_id'] : null, $parent_of, $bin_id);
-        if ($folder_id !== $root_id && !check_view_access($folder_id)) $folder_id = $root_id;
+        if ($folder_id !== $root_id && !pg_preview_as_view_access($folder_id)) $folder_id = $root_id;
     }
     $rows = array();
     if ($folder_id > 0) {
