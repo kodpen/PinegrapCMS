@@ -1,0 +1,318 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The page built from a document's rows (window.PGDocumentPage), for the
+ * designer's "From a document" start (style_designer_document.js). Pure: it
+ * builds only through the functions it is handed and changes none of its
+ * input.
+ *
+ * build(rows, opts): the body's sections, in the rows' order. Intro, text,
+ * cards, picture and gallery go through the sketch builder
+ * (window.PGSketchBuilder: hero-centered, a text section, services-icon-cards,
+ * a wide picture, image-grid); figures and questions are the stats-counter
+ * and faq-twocol starters; a testimonial, a table, prices and contact are
+ * plain Bootstrap 5 sections. Every section wears the design's section
+ * rhythm (var(--pg-var-space_section)), as the sketch builder's do.
+ *
+ * The words go in as they were written: each item's words fill a starter's
+ * column, and what the starter brought as sample words (headings,
+ * paragraphs, links) is taken out. Texts are HTML-escaped, as a heading's
+ * and a paragraph's `text` is HTML.
+ *
+ * opts.make(type): a starter tree (createFromPalette()); opts.node(type,
+ * props, children): a new node (createNode()); opts.src(src): a picture's
+ * address, '' to leave the picture out (a document's picture:<n> stored in
+ * the file manager, a pasted text's own address).
+ *
+ * tests/document_start_test.php runs it in Node.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+(function () {
+    'use strict';
+
+    var RHYTHM = 'padding-top: var(--pg-var-space_section, 3rem); padding-bottom: var(--pg-var-space_section, 3rem)';
+    var WIDTHS = {1: '12', 2: '6', 3: '4', 4: '3'};
+    var SAMPLE = {heading: true, paragraph: true, link: true, span: true};
+    // A kind the sketch builder makes, as the builder's own kind.
+    var SKETCH = {intro: 'intro', text: 'text', cards: 'cards', picture: 'picture', gallery: 'gallery'};
+
+    function escapeText(text) {
+        return String(text == null ? '' : text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function walk(node, fn, parent) {
+        if (fn(node, parent) === false) {
+            return;
+        }
+        (node.children || []).slice().forEach(function (child) { walk(child, fn, node); });
+    }
+
+    function contentOf(node, kind) {
+        var hit = null;
+        walk(node, function (n) {
+            if (hit) {
+                return false;
+            }
+            if (n.type === 'content' && n.props && n.props.contentType === kind && !n._filled) {
+                hit = n;
+                return false;
+            }
+        });
+        return hit;
+    }
+
+    function put(node, kind, text) {
+        var n = contentOf(node, kind);
+        if (n && text) {
+            n.props.text = escapeText(text);
+            n._filled = true;
+        }
+        return n;
+    }
+
+    // Takes out the starter's sample words left unfilled, then the marks.
+    function clean(root) {
+        walk(root, function (n) {
+            n.children = (n.children || []).filter(function (c) {
+                return !(c.type === 'content' && c.props && SAMPLE[c.props.contentType] && !c._filled);
+            });
+        });
+        walk(root, function (n) { delete n._filled; });
+        return root;
+    }
+
+    function copyTree(node, make) {
+        return make(node.type, JSON.parse(JSON.stringify(node.props || {})), (node.children || []).map(function (c) { return copyTree(c, make); }));
+    }
+
+    function itemRow(root) {
+        var hit = null;
+        walk(root, function (n) {
+            if (hit) {
+                return false;
+            }
+            if (n.type === 'row' && (n.children || []).length >= 2 && n.children.every(function (c) { return c.type === 'col'; })) {
+                hit = n;
+                return false;
+            }
+        });
+        return hit;
+    }
+
+    // One column of the starter's row for each item, filled by `fill(col, item)`.
+    function fillColumns(root, items, make, fill) {
+        var row = itemRow(root);
+        if (!row) {
+            return;
+        }
+        var first = row.children[0];
+        var width = WIDTHS[Math.min(items.length, 4)];
+        row.children = items.map(function (item) {
+            var col = copyTree(first, make);
+            ['lg', 'md'].forEach(function (bp) {
+                if (col.props[bp]) {
+                    col.props[bp] = width;
+                }
+            });
+            fill(col, item);
+            return col;
+        });
+    }
+
+    function withRhythm(root) {
+        var p = root.props = root.props || {};
+        if (p.inlineStyle === undefined || String(p.inlineStyle).indexOf('--pg-var-space_section') === -1) {
+            var own = p.inlineStyle ? String(p.inlineStyle).replace(/[;\s]+$/, '') : '';
+            p.inlineStyle = own ? own + '; ' + RHYTHM : RHYTHM;
+        }
+        return root;
+    }
+
+    function texts(row) {
+        return row.items.filter(function (i) { return i.text && !i.rows && !i.src; });
+    }
+
+    // A plain section: the heading, then the given children.
+    function plain(row, node, kids, name) {
+        var inner = row.heading ? [node('content', {contentType: 'heading', tag: 'h2', text: escapeText(row.heading), cssClass: 'fw-bold mb-4'})] : [];
+        return node('semantic', {tag: 'section', cssClass: '', customName: row.heading || name}, [node('container', {fluid: false, cssClass: ''}, inner.concat(kids))]);
+    }
+
+    function table(rows, node, prices) {
+        var body = rows.map(function (cells, r) {
+            return node('semantic', {tag: 'tr'}, cells.map(function (cell, c) {
+                var head = !prices && r === 0 && rows.length > 1;
+                var end = prices && c === cells.length - 1 && c > 0;
+                return node('semantic', {tag: head ? 'th' : 'td', cssClass: end ? 'text-end fw-semibold' : ''}, [node('content', {contentType: 'heading', tag: 'span', text: escapeText(cell), cssClass: ''})]);
+            }));
+        });
+        return node('semantic', {tag: 'div', cssClass: 'table-responsive'}, [node('semantic', {tag: 'table', cssClass: 'table mb-0'}, [node('semantic', {tag: 'tbody'}, body)])]);
+    }
+
+    function own(row, node) {
+        switch (row.kind) {
+            case 'testimonial':
+                return plain(row, node, row.items.map(function (q) {
+                    return node('semantic', {tag: 'figure', cssClass: 'text-center mb-5'}, [
+                        node('semantic', {tag: 'blockquote', cssClass: 'blockquote'}, [node('content', {contentType: 'paragraph', text: escapeText(q.quote), cssClass: 'fs-4'})]),
+                        node('semantic', {tag: 'figcaption', cssClass: 'blockquote-footer mt-2'}, [node('content', {contentType: 'span', text: escapeText(q.name + (q.role ? ', ' + q.role : '')), cssClass: ''})])
+                    ]);
+                }), 'Testimonial');
+            case 'table':
+            case 'prices':
+                return plain(row, node, row.items.map(function (t) { return table(t.rows || [], node, row.kind === 'prices'); }), 'Table');
+            case 'contact':
+                return plain(row, node, [node('semantic', {tag: 'ul', cssClass: 'list-unstyled fs-5 mb-0'}, row.items.map(function (c) {
+                    var href = c.type === 'email' ? 'mailto:' + c.value : (c.type === 'phone' ? 'tel:' + String(c.value).replace(/[^\d+]/g, '') : '');
+                    return node('semantic', {tag: 'li', cssClass: 'mb-2'}, [href
+                        ? node('content', {contentType: 'link', text: escapeText(c.value), href: href, cssClass: ''})
+                        : node('content', {contentType: 'span', text: escapeText(c.value), cssClass: ''})]);
+                }))], 'Contact');
+        }
+        return null;
+    }
+
+    // Text items as paragraphs and subheadings; a table among them as a table.
+    function textBody(row, node) {
+        return row.items.map(function (i) {
+            if (i.rows) {
+                return table(i.rows, node, false);
+            }
+            if (i.type === 'heading') {
+                return node('content', {contentType: 'heading', tag: 'h3', text: escapeText(i.text), cssClass: 'h5 fw-semibold mt-4'});
+            }
+            return i.text ? node('content', {contentType: 'paragraph', text: escapeText((i.type === 'item' ? '• ' : '') + i.text), cssClass: i.type === 'quote' ? 'fst-italic border-start ps-3' : ''}) : null;
+        }).filter(Boolean);
+    }
+
+    function section(row, o) {
+        var node = o.node;
+        var pictures = row.items.filter(function (i) { return i.src; }).map(function (i) { return {src: o.src(i.src), alt: i.alt || ''}; }).filter(function (p) { return p.src; });
+        var built = own(row, node);
+        if (built) {
+            return built;
+        }
+        if (row.kind === 'figures' || row.kind === 'questions') {
+            var root = o.make(row.kind === 'figures' ? 'stats-counter' : 'faq-twocol');
+            if (!root) {
+                return null;
+            }
+            root = copyTree(root, node);
+            if (row.heading) {
+                put(root, 'heading', row.heading);
+            }
+            if (row.kind === 'figures') {
+                fillColumns(root, row.items, node, function (col, f) {
+                    put(col, 'heading', f.value);
+                    put(col, 'paragraph', f.label);
+                });
+            } else {
+                var faq = itemRow(root);
+                var block = faq && faq.children[0].children[0];
+                if (faq && block) {
+                    var half = Math.ceil(row.items.length / 2);
+                    faq.children.forEach(function (col, c) {
+                        col.children = row.items.slice(c * half, (c + 1) * half).map(function (q) {
+                            var b = copyTree(block, node);
+                            put(b, 'heading', q.question);
+                            put(b, 'paragraph', q.answer);
+                            return b;
+                        });
+                    });
+                }
+            }
+            return clean(root);
+        }
+        if ((row.kind === 'picture' || row.kind === 'gallery') && !pictures.length) {
+            return null;
+        }
+        var kind = SKETCH[row.kind] || 'text';
+        var sketch = {id: row.id, kind: kind, heading: row.heading, picture: kind !== 'picture' && kind !== 'gallery' && pictures.length > 0};
+        if (kind === 'intro' && sketch.picture) {
+            sketch.picture = false;
+        }
+        var part = window.PGSketchBuilder.build([sketch], {make: o.make, node: node, words: {}}).body[0];
+        var out = part && part.node;
+        if (!out) {
+            return null;
+        }
+        walk(out, function (n) {
+            if (n.type === 'content' && n.props && n.props.contentType === 'heading' && row.heading && n.props.text === escapeText(row.heading)) {
+                n._filled = true;
+                return false;
+            }
+        });
+        if (kind === 'cards') {
+            fillColumns(out, row.items, node, function (col, c) {
+                put(col, 'heading', c.title);
+                put(col, 'paragraph', c.text);
+            });
+        } else if (kind === 'gallery' || kind === 'picture') {
+            var image = contentOf(out, 'image');
+            if (kind === 'gallery') {
+                fillColumns(out, pictures, node, function (col, p) {
+                    var img = contentOf(col, 'image');
+                    if (img) {
+                        img.props.src = p.src;
+                        img.props.alt = p.alt;
+                    }
+                });
+            } else if (image) {
+                image.props.src = pictures[0].src;
+                image.props.alt = pictures[0].alt;
+            }
+        } else {
+            var para = contentOf(out, 'paragraph');
+            if (kind === 'intro') {
+                var lead = texts(row).map(function (i) { return i.text; });
+                if (para && lead.length) {
+                    put(out, 'paragraph', lead.join(' '));
+                }
+            } else if (para) {
+                var parent = null;
+                walk(out, function (n) {
+                    if ((n.children || []).indexOf(para) !== -1) {
+                        parent = n;
+                    }
+                });
+                if (parent) {
+                    var at = parent.children.indexOf(para);
+                    var body = textBody(row, node);
+                    body.forEach(function (n) { n._filled = true; });
+                    parent.children.splice.apply(parent.children, [at, 1].concat(body));
+                }
+            }
+        }
+        delete out.props._sketchId;
+        return clean(out);
+    }
+
+    function plainMaker() {
+        var n = 0;
+        return function (type, props, children) {
+            n++;
+            return {_id: 'doc_' + n, type: type, props: props || {}, children: children || []};
+        };
+    }
+
+    function build(rows, opts) {
+        var o = {
+            make: (opts && opts.make) || function () { return null; },
+            node: (opts && opts.node) || plainMaker(),
+            src: (opts && opts.src) || function (src) { return /^(https?:\/\/|\/)/.test(String(src)) ? String(src) : ''; }
+        };
+        return (rows || []).filter(function (r) { return r && !r.out; }).map(function (row) {
+            var root = section(row, o);
+            return root ? withRhythm(root) : null;
+        }).filter(Boolean);
+    }
+
+    window.PGDocumentPage = {
+        build: build
+    };
+})();

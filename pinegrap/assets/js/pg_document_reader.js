@@ -771,8 +771,55 @@
         return out;
     }
 
+    // Every kind a section's words can fill, with its items: the section's
+    // own kind first, the other readings of its body (the heading left
+    // out), then text, which any words fill. The rows' kind list offers
+    // these and nothing else.
+    var fitsMemo = {paragraphs: null, entries: []};
+
+    function fits(paragraphs, sec) {
+        if (!sec || !Array.isArray(sec.paragraphs)) {
+            return [];
+        }
+
+        var at = {}, out = [], seen = {};
+
+        sec.paragraphs.forEach(function (i) {
+            at[i] = true;
+        });
+
+        // The paragraphs are prepared once for all the sections of a reading.
+        if (fitsMemo.paragraphs !== paragraphs) {
+            fitsMemo = {paragraphs: paragraphs, entries: prepare(paragraphs, [])};
+        }
+
+        var body = fitsMemo.entries.filter(function (e) {
+            return at[e.i];
+        });
+
+        if (sec.heading && body.length && body[0].type === 'heading') {
+            body.shift();
+        }
+
+        var add = function (kind, items) {
+            if (!seen[kind]) {
+                seen[kind] = true;
+                out.push({kind: kind, items: section(kind, null, [], items, false).items});
+            }
+        };
+
+        add(sec.kind, sec.items || []);
+        (sec.kind === 'intro' ? [] : readingsOf(body)).forEach(function (r) {
+            add(r.kind, r.items);
+        });
+        add('text', textItems(body));
+
+        return out;
+    }
+
     window.PGDocumentReader = {
         KINDS: KINDS.slice(),
+        fits: fits,
         fold: fold,
         wordKinds: wordKinds,
         paragraphs: paragraphsOf,

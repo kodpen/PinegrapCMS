@@ -90087,6 +90087,36 @@ const StyleDesigner = (function () {
         window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
     }
 
+    // "Page from a document" (the `document` part): offered on an empty
+    // page of a design-level editor, the part handed (role and screen).
+    function _sdDocumentReady() {
+        return !!(tree && tree.type === 'root' && !(tree.children || []).length && _sdAccess() === 'full' && _sdPartUrls('document'));
+    }
+
+    function _sdDocumentOpen() {
+        if (!_sdDocumentReady()) return;
+        _sdPartCall('document', 'open', [_sdDocumentHost()]).catch(_sdPartFailed);
+    }
+
+    // What the document part builds through: a starter block, whether the
+    // page is still empty, and the sections put on it as one step of undo.
+    function _sdDocumentHost() {
+        return {
+            make: function (type) { return createFromPalette('component', { componentType: type }); },
+            // The sketch builder (window.PGSketchBuilder) is the part 'sketchbuild''s.
+            builder: function () { return window.PGSketchBuilder ? Promise.resolve() : _sdPartLoad('sketchbuild'); },
+            empty: function () { return !!(tree && !(tree.children || []).length); },
+            insert: function (nodes) {
+                if (!tree || !nodes.length) return;
+                saveState();
+                tree.children = (tree.children || []).concat(nodes);
+                selectedNode = nodes[0];
+                selectedNodes = [];
+                render();
+            }
+        };
+    }
+
     // "Style guide" (the `styleguide` part, designers only): the design's
     // colours, type, spacing, shape, controls and shared components on one
     // sheet, drawn with the canvas's own stylesheets. Reads only.
@@ -90907,6 +90937,9 @@ const StyleDesigner = (function () {
                 if (lp && lp.page_id === design.openLayout) _sdLayoutCodeOpen(lp, false);
             }, 400);
         }
+        if (design && design.startDocument && _sdPartUrls('document')) {
+            setTimeout(function () { _sdPartCall('document', 'auto', [_sdDocumentHost()]).catch(_sdPartFailed); }, 400);
+        }
         if (design && design.autoPasteHtml) {
             setTimeout(function () { if (typeof _pgPasteHtmlOpen === 'function') _pgPasteHtmlOpen(''); }, 400);
         }
@@ -91614,6 +91647,11 @@ const StyleDesigner = (function () {
                     var a = _pgActivePage();
                     if (a) _pgSetDraft([a.key], false);
                 }});
+        }
+
+        // "Page from a document", listed only while the page is empty.
+        if (_sdDocumentReady()) {
+            items.push({ id: 'act_document', label: _sdT('Page from a document'), icon: 'bi-file-earmark-text', action: function () { _sdDocumentOpen(); } });
         }
 
         // Preview on a phone, where the Preview menu offers it.

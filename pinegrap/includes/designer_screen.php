@@ -432,6 +432,9 @@ function pg_designer_screen_render($ctx)
         // The Canva start: the Prototype view opens with the Sketch switch on.
         'autoSketch'    => !empty($ctx['auto_sketch']),
         'autoPasteHtml' => !empty($ctx['auto_paste']),
+        // ?start=document: the page is built from the rows the New design
+        // window left in this tab's sessionStorage (style_designer_document.js).
+        'startDocument' => !empty($ctx['start_document']),
         // What the design is built on (pg_design_frameworks()). The editor
         // loads the framework's files into the canvas and offers the
         // Bootstrap palette only when the framework is Bootstrap.
@@ -1143,7 +1146,7 @@ function pg_designer_list_theme_label($d)
  * dash dashed ink stroke, cursor; the accent only as a (fill) and as (its
  * subtle surface).
  *
- * @param string $kind      blank | import | paste | template
+ * @param string $kind      blank | import | document | paste | template
  * @param array  $templates pg_design_templates(), for the template card
  * @return string
  */
@@ -1222,6 +1225,18 @@ function pg_designer_home_drawing($kind, $templates = array())
                  . '<rect x="120" y="30" width="94" height="20" rx="4" class="as"/><rect x="128" y="36" width="40" height="4" rx="2" class="a"/>'
                  . '<rect x="120" y="55" width="44" height="22" rx="3" class="g"/><rect x="170" y="55" width="44" height="22" rx="3" class="g"/>';
             break;
+        case 'document':
+            // A document's headings and lines become a page's sections.
+            $art = '<path d="M22 10 h31 l13 13 v59 a4 4 0 0 1 -4 4 h-40 a4 4 0 0 1 -4 -4 v-68 a4 4 0 0 1 4 -4 z" class="p s"/>'
+                 . '<path d="M53 10 v9 a4 4 0 0 0 4 4 h9" class="s"/>'
+                 . '<rect x="27" y="28" width="26" height="5" rx="2" class="k"/>'
+                 . '<rect x="27" y="38" width="32" height="3.5" rx="1.75" class="l"/><rect x="27" y="45" width="26" height="3.5" rx="1.75" class="l"/>'
+                 . '<rect x="27" y="56" width="20" height="5" rx="2" class="k"/>'
+                 . '<rect x="27" y="66" width="32" height="3.5" rx="1.75" class="l"/><rect x="27" y="73" width="22" height="3.5" rx="1.75" class="l"/>'
+                 . $arrow
+                 . $window(110, 114)
+                 . '<rect x="120" y="30" width="94" height="18" rx="4" class="as"/><rect x="128" y="36" width="40" height="4" rx="2" class="a"/>'
+                 . '<rect x="120" y="53" width="28" height="24" rx="3" class="g"/><rect x="153" y="53" width="28" height="24" rx="3" class="g"/><rect x="186" y="53" width="28" height="24" rx="3" class="g"/>';
         case 'canva':
             // Pictures of pages laid under sketch frames, one a page.
             $art = '<rect x="14" y="18" width="46" height="60" rx="6" class="p s"/><rect x="26" y="10" width="46" height="60" rx="6" class="p s"/>'
@@ -1894,6 +1909,9 @@ function pg_designer_start_kinds($has_templates, $figma = false)
               'line' => lang('A ready-made design to change as you like.'),
               'drawing' => 'template-none', 'go' => '', 'disabled' => !$has_templates),
     ), $figma ? array($figma_row) : array(), array($canva_row), array(
+        array('key' => 'document', 'icon' => 'bi-file-earmark-text', 'title' => lang('From a document'),
+              'line' => lang('A text or a Word file'), 'heading' => lang('Start from a document'),
+              'drawing' => 'document', 'go' => '', 'disabled' => false),
         array('key' => 'import', 'icon' => 'bi-file-earmark-zip', 'title' => lang('ZIP file'),
               'line' => lang('An HTML page or a project archive; its pages become tabs.'),
               'drawing' => 'import', 'go' => lang('Continue'), 'disabled' => false),
@@ -1928,7 +1946,7 @@ function pg_designer_figma_start_on()
  */
 function pg_designer_start_part_attrs($key)
 {
-    if (!in_array($key, array('figma', 'canva'), true)) {
+    if (!in_array($key, array('figma', 'canva', 'document'), true)) {
         return '';
     }
     return ' data-part="' . $key . '" data-part-stamp="' . h(pg_designer_asset_stamp('assets/js/designer_' . $key . '.js')) . '"';
@@ -2140,7 +2158,7 @@ function pg_designer_start_go_href($key, $framework, $from_pages)
 {
     if ($key === 'template') return '';
     $href = 'add_system_style.php?framework=' . ($framework === 'custom' ? 'custom' : 'bootstrap5');
-    if ($key === 'import' || $key === 'paste' || $key === 'canva') $href .= '&start=' . $key;
+    if ($key === 'import' || $key === 'paste' || $key === 'canva' || $key === 'document') $href .= '&start=' . $key;
     return $href . ($from_pages ? '&from=pages' : '');
 }
 
@@ -2191,6 +2209,12 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
             // The window is a designer's (role 1 or 0), who may open
             // Connections (a manager's screen) too.
             return pg_designer_figma_pane(pg_figma_connection(), true);
+        case 'document':
+            // The form and the rows are drawn by assets/js/pg_document_rows.js,
+            // loaded the first time the start is chosen.
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_start.php');
+            return '<div class="sd-doc" data-texts="' . h(json_encode(pg_document_start_texts(), JSON_UNESCAPED_UNICODE)) . '"'
+                . ' data-href="' . h(pg_designer_start_go_href('document', 'bootstrap5', $from_pages)) . '"></div>';
         case 'canva':
             return pg_designer_canva_pane($from_pages);
         case 'paste':
@@ -2251,7 +2275,9 @@ function pg_designer_start_window($templates, $from_pages)
                 <span class="sd-ns-part-foot d-contents" hidden></span>
                 <a href="' . h(pg_designer_start_go_href('blank', 'bootstrap5', $from_pages)) . '" class="pg-button pg-button-fill" id="sd-ns-go">' . h(lang('Create design')) . '</a>
             </div>
-        </dialog>';
+        </dialog>'
+        // The document start's "From the file manager".
+        . (function_exists('pg_picker_script') ? pg_picker_script() : '');
 }
 
 /**

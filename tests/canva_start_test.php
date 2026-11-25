@@ -90,7 +90,7 @@ function test_canva_start_row_and_pane()
 {
 	$kinds = pg_designer_start_kinds(true, true);
 	$keys = array_map(function ($k) { return $k['key']; }, $kinds);
-	pg_assert_same(array('blank', 'template', 'figma', 'canva', 'import', 'paste'), $keys, 'the plan\'s order');
+	pg_assert_same(array('blank', 'template', 'figma', 'canva', 'document', 'import', 'paste'), $keys, 'the plan\'s order');
 	pg_assert_same('add_system_style.php?framework=bootstrap5&start=canva', pg_designer_start_go_href('canva', 'bootstrap5', false), 'opens a Bootstrap 5 design in the Sketch tool');
 
 	$html = pg_designer_start_window(array(), false);

@@ -252,3 +252,23 @@ function test_document_reader_kinds_and_words()
 	pg_assert_same(array('contact'), $result[2], 'dotted capital I folded');
 	pg_assert_same(array(), $result[3], 'a heading that names no kind');
 }
+
+// fits(): every kind a section's words can fill, with the items each
+// would carry: its own reading first, the other readings, then text,
+// which any words fill. The intro offers intro and text.
+function test_document_reader_fits()
+{
+	$result = document_reader_test_node('var p = R.paragraphs("# Spa\n\nRest by the lake.\n\n## Treatments\n\n- **Massage** 60 minutes, 900 TL\n- **Sauna** 30 minutes\n");'
+		. 'var s = R.read(p).sections; out = [R.fits(p, s[0]).map(function (f) { return f.kind; }), R.fits(p, s[1]), R.fits(p, null)];');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('intro', 'text'), $result[0], 'the intro offers intro and text');
+	pg_assert_same('cards', $result[1][0]['kind'], 'its own reading first');
+	pg_assert_same(array('title' => 'Massage', 'text' => '60 minutes, 900 TL'), $result[1][0]['items'][0], 'with its items');
+	pg_assert_same('text', $result[1][count($result[1]) - 1]['kind'], 'text last');
+	pg_assert_same('item', $result[1][count($result[1]) - 1]['items'][0]['type'], 'text keeps the paragraphs');
+	pg_assert_same(array(), $result[2], 'no section fills nothing');
+}
