@@ -304,6 +304,7 @@
 - designer-activity-drawing-choosers.md: Drawing of the designer's History "Activity" tab, boards A3 to A5: the three choosers person, page and kind, the row that opens Compare on two versions, more rows, an empty design, narrow [decision: here]
 - designer-activity-drawing.md: Drawing of the designer's History "Activity" tab, boards A1 and A2: the two tabs "This page" and "Activity", a day's rows, the count of changes on a version's row, the marks [decision: here]
 - designer-activity-reader.md: The reader behind the designer's History "Activity" tab (AC2, #11599): which rows become events, their sentences, the cursor and pages of fifty, who sees which event, the panel action
+- designer-activity-tab.md: History's Activity tab as built (AC3, #11715): the two tabs, the part activity, the rows and their count, the three choosers, the row that opens Compare
 - designer-activity-writers.md: Census for the designer's History "Activity" tab (AC1): every writer that changes a visual design, the row it leaves with who and when, the ones that leave none, and the open store question [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-aspect-ratio-object-fit.md: Aspect Ratio as CSS aspect-ratio on any element (DO9): the prop, presets, per size, today's ratio box kept until changed; Object Fit and Focus on a video
@@ -418,6 +419,7 @@
 - designer-compare-live-drawing.md: The drawing of "Compare with the live page" (plan designer-compare-live, CL2 and CL3): boards L1 what opens it, L2 the Look tab's slider, L3 side by side and phone, L6 from History [decision: here]
 - designer-compare-live-list-drawing.md: The drawing of Compare's "What changed" list joined to the two pictures, the window's states and its narrow form: boards L4, L5 and L6 of the compare-live sheet
 - designer-compare-look-tab.md: Compare's Look tab (part compare, CL2): its sides, the pictures drawn by compare_render, the slider, Side by side, the width, the states, History's choosers
+- designer-compare-what-changed.md: Compare's "What changed" column joined to the pictures (CL3, #11707), and the three rows that open Compare with the live page: tab menu, command palette, Publish sheet icon
 - designer-component-overrides-drawing-fields.md: Boards C1 and C2 of the component overrides drawing (step CO3): the "Can change per place" menu row and list, the label, the mark, Overview, the list in the component's settings
 - designer-component-overrides-drawing-this-place.md: Boards C3 to C5 of the component overrides drawing (step CO4): the "This place" section, the dot and "Reset to the component", typing in place, "Edit the component", content editors, the narrow panel
 - designer-component-overrides-drawing-variants.md: Boards C6 and C7 of the component overrides drawing (step CO5): the "Variants" list in the component's settings, adding, editing and deleting a variant, the "Variant" row of a place
@@ -673,6 +675,7 @@
 - layout-editor-classic.md: The layout editor screen edit_page_layout.php (L5a, #3084) for a page not on a visual design: who reaches it, the layout_code action, hosted sites, where Edit Layout goes [decision: decisions-made-product-2.md]
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
+- layout-type-converter-account-forms.md: Login, forgot/set/change password, profile and e-mail preferences layout files into their widgets (LE10a, #11710): maps, new flags and tokens, differences, starting sites
 - layout-type-converter-cart.md: A shopping cart page's layout file into the Cart widget (LE9a, #11466): two tables as one list, row and layout flags, blocks printed whole, the type row's seed and state
 - layout-type-converter-catalog-detail.md: A catalog detail page's layout file into the Catalog Detail widget (LE8c, #11436): each piece, the record and cross_sell options, the widget's new flags, tokens, sections and sidebar forms
 - layout-type-converter-catalog.md: A catalog page's layout file into the Catalog widget's design elements (LE8b): each piece, the map options it brought, the listing's new flags and tokens, the run's settings order, the starting sites
@@ -685,7 +688,7 @@
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
 - layout-type-converter-view-order.md: View order layout files into the order view widget (LE9e, #11688): its map, the widget's new flags and tokens, what is reported, the known differences
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
-- layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10): what the converter is, the rules kept, which file holds each type's map [decision: here]
+- layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10d): what the converter is, the rules kept, which file holds each type's map [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
