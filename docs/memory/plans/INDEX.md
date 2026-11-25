@@ -13,6 +13,7 @@
 - addon-hook-system-site.md: Add-on hook system, the owner's additions of 2026-11-14: the start in two parts, UI slots on core screens, a site's own add-on that updates never touch, an add-on prepared from the panel
 - addon-hook-system-steps.md: Steps of plans/addon-hook-system.md, started 2026-11-15: AH1 the census, AH2 the design note, AH3 to AH8 the part before the release (one door, registry, hooks, slots)
 - addon-hook-system.md: Plan (approved 2026-10-19; started 2026-11-15 with the census, addon-hook-system-steps.md): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
+- agent-brief-who-wakes.md: Plan (owner 2026-11-25): an agent's brief says who wakes how in the request's channel or discussion, the instructions say when to name an agent; one step, WW1
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
