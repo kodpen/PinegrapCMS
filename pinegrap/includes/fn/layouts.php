@@ -740,6 +740,10 @@ function pg_layout_convert_state($type, $row)
             'multi_recipient'  => !empty($row['multi_recipient']),
         );
     }
+    if ((string)$type === 'view order') {
+        // The page has no description setting: the short one is drawn.
+        return array('full_description' => false, 'multi_recipient' => !empty($row['multi_recipient']));
+    }
     if ((string)$type === 'express order') {
         // The cart's two, the extras the page asks for and the parts the
         // widget has not (a quick add box, the page's own billing form).
@@ -987,7 +991,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
             $row = is_array($found) ? $found : array();
         }
 
-        if ($type === 'shopping cart' || $type === 'express order') {
+        if ($type === 'shopping cart' || $type === 'express order' || $type === 'view order') {
             // A heading per recipient: only a site that ships to several.
             $row['multi_recipient'] = (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING)
                 && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient';

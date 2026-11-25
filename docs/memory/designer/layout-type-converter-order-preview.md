@@ -1,6 +1,6 @@
 ---
 name: layout-type-converter-order-preview
-description: Order preview layout files into the order preview widget (LE9d, #11667): its map, the new flags and tokens, the converter rules it added, differences, starting sites; view order moved to LE9e
+description: Order preview layout files into the order preview widget (LE9d, #11667): its map, the new flags and tokens, the converter rules it added, differences, starting sites
 module: layout_convert
 ---
 
@@ -29,6 +29,6 @@ module: layout_convert
 - `tests/layout_convert_test.php`, `tests/order_preview_layout_test.php`.
 
 ## And view order?
-- Split to step LE9e: the `order_view` widget's lists (`order.shipments`, `order.items`, `order.parcels`, `order.item_gift_cards`, `order.item_forms`) lack the row parts the layout's items read (today and recurring items apart, an event, a recurring schedule, a donation, shipped quantities). No starting-site page has a view order file.
+- Its own map since LE9e: [[layout-type-converter-view-order]].
 
 Related: docs/memory/designer/layout-type-overview.md

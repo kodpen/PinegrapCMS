@@ -47022,6 +47022,8 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Order history / document'), tokens: [
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
+            ['__reorder_url',           _sdT('Reorder link')],
+            ['__my_account_url',        _sdT('My Account')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
             ['__legal_kvkk_url',        _sdT('Personal Data Notice copy URL (kept with the order)')],
@@ -50833,7 +50835,16 @@ const StyleDesigner = (function () {
             ['show_returns',            _sdT('There is a return to follow, or one can be requested')],
             ['show_returns_card',       _sdT('Returns are on, and there is a return to follow or one can be requested')],
             ['can_request_return',      _sdT('A return can be requested')],
-            ['has_returns',             _sdT('The order has return requests')]
+            ['has_returns',             _sdT('The order has return requests')],
+            ['has_gift_card_discount',  _sdT('Gift cards pay part of the order')],
+            ['has_po_number',           _sdT('A PO number was given')],
+            ['is_tax_exempt',           _sdT('The order is tax-exempt')],
+            ['shows_custom_field_1',    _sdT('Custom field 1 has a label and a value')],
+            ['shows_custom_field_2',    _sdT('Custom field 2 has a label and a value')],
+            ['billing_has_company',     _sdT('The billing address has a company')],
+            ['billing_has_address_2',   _sdT('The billing address has a second line')],
+            ['billing_has_fax',         _sdT('The billing address has a fax number')],
+            ['shows_shipped_quantity',  _sdT('A line of the order shows its shipped quantity')]
         ],
         express_order: [
             ['has_shipping',         _sdT('The cart has a shippable product')],

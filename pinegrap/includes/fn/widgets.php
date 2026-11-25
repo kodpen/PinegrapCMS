@@ -7560,6 +7560,40 @@ function pg_ov_stamp_surcharge_row(&$node)
     unset($child);
 }
 
+// The order view's flags a classic view order layout reads once it is
+// converted (layout_convert.php): the billing address's optional lines,
+// the PO number, tax exemption, gift card discount and custom fields of
+// $order (the orders row with the columns of pg_sw_entity_order_read()
+// merged in), and whether a line shows its shipped quantity ($shipped).
+// Pure.
+function pg_ov_layout_flags(array $order, $shipped)
+{
+    $text = function ($key) use ($order) {
+        return isset($order[$key]) && is_scalar($order[$key]) ? trim((string)$order[$key]) : '';
+    };
+    return array(
+        'billing_has_company'    => $text('billing_company') !== '',
+        'billing_has_address_2'  => $text('billing_address_2') !== '',
+        'billing_has_fax'        => $text('billing_fax_number') !== '',
+        'has_po_number'          => $text('po_number') !== '',
+        'is_tax_exempt'          => !empty($order['tax_exempt']),
+        'has_gift_card_discount' => (int)$text('gift_card_discount') > 0,
+        'shows_custom_field_1'   => $text('custom_field_1_label') !== '' && $text('custom_field_1') !== '',
+        'shows_custom_field_2'   => $text('custom_field_2_label') !== '' && $text('custom_field_2') !== '',
+        'shows_shipped_quantity' => (bool)$shipped,
+    );
+}
+
+// Whether the widget tree's JSON names a flag of pg_ov_layout_flags() (its
+// extra reads are made only then).
+function pg_ov_layout_flags_named($tree_json)
+{
+    foreach (array_keys(pg_ov_layout_flags(array(), false)) as $flag) {
+        if (strpos((string)$tree_json, '"' . $flag . '"') !== false) return true;
+    }
+    return false;
+}
+
 // Render an 'order_view' system widget. Reads a single completed order via
 // $_GET['order_id'] (or ?oid=) and iterates order_items in loop_area.
 // Security: order must belong to the currently logged-in user (orders.user).
@@ -8484,7 +8518,27 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'withdrawal_deadline_firm'      => $withdrawal_date !== '' && !$withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
+        // A converted classic layout's flags (pg_ov_layout_flags()), set
+        // below when the tree names one.
+        'billing_has_company'    => false,
+        'billing_has_address_2'  => false,
+        'billing_has_fax'        => false,
+        'has_po_number'          => false,
+        'is_tax_exempt'          => false,
+        'has_gift_card_discount' => false,
+        'shows_custom_field_1'   => false,
+        'shows_custom_field_2'   => false,
+        'shows_shipped_quantity' => false,
     );
+    // A converted classic layout's flags: the order's further columns and
+    // the shipped quantities read only when the tree names one.
+    $_ov_tree_json = json_encode($tree_decoded);
+    if (pg_ov_layout_flags_named($_ov_tree_json)) {
+        $_ov_more = pg_sw_entity_order_read((int)$order['id']);
+        $_ov_shipped = strpos($_ov_tree_json, '"shows_shipped_quantity"') !== false
+            && (int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . (int)$order['id'] . "' AND show_shipped_quantity = '1'") > 0;
+        $_ov_vis_ctx = array_merge($_ov_vis_ctx, pg_ov_layout_flags(array_merge($order, is_array($_ov_more) ? $_ov_more : array()), $_ov_shipped));
+    }
     pg_ov_stamp_surcharge_row($tree_decoded);
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
@@ -8724,6 +8778,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // URL to the customer-facing printable invoice endpoint. Owner
         // check is enforced server-side; this token only builds the link.
         '__order_invoice_pdf_url'   => h($invoice_print_url),
+        // The classic page's buttons: order again (the handler checks the
+        // owner and the token) and back to My Account. None in an e-mail.
+        '__reorder_url'             => empty($sw_ctx['email']) && defined('OUTPUT_PATH') && strpos($_ov_tree_json, '__reorder_url') !== false
+            ? OUTPUT_PATH . SOFTWARE_DIRECTORY . '/order_history_reorder.php?id=' . (int)$order['id'] . get_token_query_string_field() : '',
+        '__my_account_url'          => (empty($sw_ctx['email']) && strpos($_ov_tree_json, '__my_account_url') !== false && function_exists('_pg_acct_page_url')) ? h(_pg_acct_page_url(0, 'my account')) : '',
 
         // ── Legal documents ────────────────────────────────────────────
         // The copies kept with the order, the names the checkout's links

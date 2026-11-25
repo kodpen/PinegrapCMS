@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order');
 }
 
 /**
@@ -843,6 +843,9 @@ function pg_layout_piece_map($type)
 
         case 'order preview':
             return _pg_lc_order_preview_map($none);
+
+        case 'view order':
+            return _pg_lc_view_order_map($none);
 
         case 'form item view':
             return array(
@@ -1608,6 +1611,161 @@ function _pg_lc_order_preview_map($none)
         ),
         'forms' => 'strip',
         'flag_list' => true,
+        'record' => true,
+    );
+}
+
+// The view order (_render_system_widget_order_view()): one record, so no
+// list is added. The recipients are read once, their heading the first
+// recipient's values (a site shipping to several reports it); the items
+// the widget's order.items list, their event, schedule and shipped
+// quantity its row values; the parcels its order.parcels list; the
+// product form and gift card blocks the widget's parts. The totals,
+// billing and payment under the widget's flags; the recurring charges,
+// applied offers and gift cards, the receipt messages and the custom
+// forms' answers have no element and are reported.
+function _pg_lc_view_order_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $keep = array('becomes' => 'keep');
+    $widget = array('becomes' => 'widget');
+    $full = array('becomes' => 'keep', 'state' => array('full_description'));
+    $echo = array(
+        '$order_number' => 'token:__order_no',
+        '$reference_code' => 'token:__reference_code',
+        "get_absolute_time(array('timestamp' => \$order_date, 'size' => 'long'))" => 'token:__order_date',
+        "h(\$recipient['ship_to_name'])" => 'token:__ship_to_name',
+        // The one-line address starts with the name.
+        "h(\$recipient['name'])" => 'none',
+        "h(\$recipient['address'])" => 'token:__shipping_full_address',
+        "get_absolute_time(array('timestamp' => strtotime(\$recipient['arrival_date']), 'type' => 'date', 'size' => 'long'))" => 'token:__arrival_date',
+        "get_shipping_tracking_url(\$shipping_tracking_number['number'],\$recipient['shipping_method_code'])" => 'token:__tracking_link',
+        "h(\$shipping_tracking_number['number'])" => 'token:__tracking_code',
+        "h(\$item['name'])" => 'token:__item_name',
+        "h(\$item['short_description'])" => 'token:__item_short_description',
+        "h(\$item['calendar_event']['name'])" => 'token:__item_event_name',
+        "\$item['calendar_event']['date_and_time_range']" => 'token:__item_event_date',
+        "h(\$item['recurring_payment_period'])" => 'token:__item_payment_period',
+        "pg_format_number(\$item['recurring_number_of_payments'], 0)" => 'token:__item_payment_count',
+        "get_absolute_time(array('timestamp' => strtotime(\$item['recurring_start_date']), 'type' => 'date', 'size' => 'long'))" => 'token:__item_first_payment_date',
+        "pg_format_number(\$item['quantity'], 0)" => 'token:__item_qty',
+        "pg_format_number(\$item['shipped_quantity'], 0)" => 'token:__item_shipped_qty',
+        "\$item['price_info']" => 'token:__item_price',
+        "\$item['amount_info']" => 'token:__item_total',
+        // The shipping row's first cell spans the item and its description.
+        '(2+$number_of_shipped_quantity_columns)' => 'text:2',
+        "h(\$recipient['shipping_method_name'])" => 'token:__shipping_method',
+        "\$recipient['shipping_cost_info']" => 'token:__order_shipping',
+        '$subtotal_info' => 'token:__order_subtotal',
+        '$discount_info' => 'token:__order_discount',
+        '$tax_info' => 'token:__order_tax',
+        '$shipping_info' => 'token:__order_shipping',
+        '$gift_card_discount_info' => 'token:__order_gift_card_discount',
+        '$surcharge_info' => 'token:__order_surcharge',
+        'h($number_of_installment)' => 'token:__installment_count',
+        '$installment_charges_info' => 'token:__installment_charges',
+        '$total_info' => 'token:__order_total',
+        'h($custom_field_1_label)' => 'token:__order_custom_field_1_label',
+        'h($custom_field_1)' => 'token:__order_custom_field_1',
+        'h($custom_field_2_label)' => 'token:__order_custom_field_2_label',
+        'h($custom_field_2)' => 'token:__order_custom_field_2',
+        'h($billing_zip_code)' => 'token:__billing_zip',
+        'h($billing_phone_number)' => 'token:__billing_phone',
+        'h($billing_fax_number)' => 'token:__billing_fax',
+        'h($billing_email_address)' => 'token:__billing_email',
+        'h($po_number)' => 'token:__order_po_number',
+        'h($payment_method_label)' => 'token:__payment_method_pretty',
+        'h($card_type)' => 'token:__card_type',
+        'h($card_number)' => 'token:__card_number_masked',
+        'h($my_account_url)' => 'token:__my_account_url',
+        // The reorder link's address, put together below ('replace').
+        'OUTPUT_PATH' => 'none',
+        'OUTPUT_SOFTWARE_DIRECTORY' => 'none',
+        '$order_id' => 'token:__order_id',
+        'get_token_query_string_field()' => 'none',
+    );
+    foreach (array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'country') as $part) {
+        $echo['h($billing_' . $part . ')'] = 'token:__billing_' . $part;
+    }
+    return array(
+        'echo' => $none + $echo,
+        'if' => array(
+            // The widget shows a completed order: its number, never the
+            // reference code of an incomplete one, nor its buttons.
+            "\$status != 'incomplete'" => $keep,
+            "\$status === 'incomplete'" => $widget,
+            // Today's and the recurring charges apart: the widget's items
+            // are one list, with no recurring totals.
+            '$recurring_items' => array('becomes' => 'drop'),
+            // Opens the items' column in one block and closes it in another.
+            '$nonrecurring_items' => $keep,
+            "\$recipient['in_nonrecurring']" => $keep,
+            "\$item['in_nonrecurring']" => $keep,
+            // A heading per recipient: the first recipient's values.
+            "\$recipient['ship_to_heading']" => array('becomes' => 'flag', 'flag' => 'has_shipping', 'drop_when' => array('multi_recipient' => 'recipients')),
+            "ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'" => array('becomes' => 'keep', 'state' => array('multi_recipient')),
+            "\$status != 'incomplete' and \$recipient['shipping_tracking_numbers']" => $flag('has_tracking_code'),
+            // The plural's "s": the list holds many.
+            "count(\$recipient['shipping_tracking_numbers']) > 1" => $keep,
+            // The comma between numbers: the list's rows stand side by side.
+            '$key != 0' => $widget,
+            // The number is the link; an unknown carrier's link is empty.
+            "get_shipping_tracking_url(\$shipping_tracking_number['number'],\$recipient['shipping_method_code']) != ''" => $keep,
+            "\$recipient['address']" => $keep,
+            "\$recipient['name']" => $widget,
+            '$arrival_dates' => $flag('has_arrival_date'),
+            // The date itself, also for a named arrival date.
+            "\$recipient['arrival_date_custom']" => $keep,
+            "\$recipient['non_donations_in_nonrecurring']" => $keep,
+            '$shipped_quantities_exist == TRUE' => $flag('shows_shipped_quantity'),
+            '$shipped_quantities_exist' => $flag('shows_shipped_quantity'),
+            "\$item['shipped_quantity'] > 0" => $flag('item_shipped_qty'),
+            "\$product_description_type == 'full_description'" => $full,
+            "\$item['image_url']" => $keep,
+            "\$item['image_url'] and (\$product_description_type == 'full_description')" => $full,
+            "\$item['calendar_event']" => $flag('item_event_name'),
+            "\$item['recurring_schedule']" => $flag('item_payment_period'),
+            "\$item['recurring_number_of_payments']" => $flag('item_payment_count'),
+            '$start_date' => $flag('item_first_payment_date'),
+            "\$item['gift_card']" => array('becomes' => 'token', 'token' => '__item_gift_card_html'),
+            "\$item['form']" => array('becomes' => 'token', 'token' => '__item_form_data_html'),
+            // A donation's quantity and price are shown too.
+            "\$item['selection_type'] != 'donation'" => $keep,
+            "\$recipient['shipping']" => $flag('has_shipping'),
+            "\$recipient['shipping_method_description']" => $widget,
+            '$show_subtotal' => $keep,
+            '$discount_info' => $flag('has_discount'),
+            '$tax_info' => $flag('has_tax'),
+            '$shipping_info' => $flag('has_shipping_cost'),
+            '$gift_card_discount_info' => $flag('has_gift_card_discount'),
+            '$number_of_applied_gift_cards > 1' => $keep,
+            '$surcharge_info' => $flag('has_surcharge'),
+            '$installment_charges_info' => $flag('has_installment_charges'),
+            // The widget shows the amounts charged: no converted total.
+            '$base_currency_total_info' => $widget,
+            '$total_disclaimer' => $widget,
+            '$custom_field_1_label and $custom_field_1' => $flag('shows_custom_field_1'),
+            '$custom_field_2_label and $custom_field_2' => $flag('shows_custom_field_2'),
+            '$billing_company' => $flag('billing_has_company'),
+            '$billing_address_2' => $flag('billing_has_address_2'),
+            '$billing_fax_number' => $flag('billing_has_fax'),
+            '$po_number' => $flag('has_po_number'),
+            '$tax_exempt' => $flag('is_tax_exempt'),
+            '$payment_method' => $flag('has_payment_method'),
+            "\$payment_method == 'Credit/Debit Card'" => $flag('has_card_number'),
+        ),
+        'else' => array(
+            "\$status != 'incomplete'" => 'widget',
+            "\$product_description_type == 'full_description'" => 'unless',
+            "get_shipping_tracking_url(\$shipping_tracking_number['number'],\$recipient['shipping_method_code']) != ''" => 'widget',
+            "\$recipient['arrival_date_custom']" => 'widget',
+        ),
+        'loop' => array(
+            "\$recipient['shipping_tracking_numbers'] as \$key => \$shipping_tracking_number" => 'source:order.parcels',
+            '$recipients as $recipient' => 'keep',
+            "\$recipient['items'] as \$item" => 'source:order.items',
+        ),
+        'replace' => array('/order_history_reorder.php?id=^^__order_id^^' => '^^__reorder_url^^'),
         'record' => true,
     );
 }
