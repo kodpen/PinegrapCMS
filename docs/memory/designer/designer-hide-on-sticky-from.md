@@ -4,7 +4,7 @@ description: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and
 ---
 
 ## What do the rows do?
-- "Hide on", under Display: three buttons, Phone (XS and SM, below 768 px), Tablet (MD) and Desktop (LG and up), as the canvas bar's widths. Pressed where every selected element is hidden at all of those sizes; a click hides or shows that group on every element in one undo step. Plan `designer-options-census-steps.md` DO3.
+- "Hide on", under Display: three buttons, Phone (XS and SM, below 768 px), Tablet (MD) and Desktop (LG and up), as the canvas bar's widths. Pressed where every selected element is hidden at all of those sizes; a click hides or shows that group on every element in one undo step. Plan `designer-options-census-steps.md` DO3 (#11602).
 - "Sticky from", under Position, shown only while Position is Sticky: "Every screen size" or "From MD up" and so on.
 
 ## What do they write?
@@ -13,7 +13,7 @@ description: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and
 - "Sticky from" at every size is `position-sticky`, as the Position list writes; from a size up it is Bootstrap's `sticky-{size}-top` (sticky, top 0, z-index 1020 from that size). The Position list reads `sticky-*-top` as Sticky and drops it when another position is chosen (`_SD_STICKY_FROM` in its `data-stylegroup`). `sticky-top` alone stays outside both rows.
 
 ## How is it loaded?
-- The core holds `<div data-sd-hideon hidden>` and `<div data-sd-stickyfrom hidden>`; the part `spacing` fills them in `sizes()` (`_hoDraw`, `_sfDraw`) when Size and display is shown, also where a custom style is off. Bundle growth (#PR): spacing part 27.7 → 31.6 KB (gzip 9.8 → 10.9 KB), core +0.4 KB.
+- The core holds `<div data-sd-hideon hidden>` and `<div data-sd-stickyfrom hidden>`; the part `spacing` fills them in `sizes()` (`_hoDraw`, `_sfDraw`) when Size and display is shown, also where a custom style is off. Bundle growth (#11602): spacing part 27.7 → 31.6 KB (gzip 9.8 → 10.9 KB), core +0.4 KB.
 
 ## Where is it tested?
 - `tests/designer_hide_sticky_test.php`: reading and writing the groups, the fewest classes, sticky read and write, the wiring. Not unit-tested: the buttons in a browser.
