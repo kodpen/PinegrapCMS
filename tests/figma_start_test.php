@@ -185,3 +185,22 @@ function test_figma_picture_budget_counts_a_fill_once()
 	pg_assert_same(array(), $plan['vectors'], 'no vector fetched');
 	pg_assert_same(true, $plan['fills'], 'image fills to ask for');
 }
+
+// A frame whose picture step never ended (the request failed) still has its
+// pictures listed at finish: each is a note, so the report does not call
+// the frame carried whole while its pictures are missing.
+function test_figma_report_notes_pictures_never_fetched()
+{
+	$frame = array('name' => 'Home', 'failed' => false, 'report' => array(),
+		'tree' => array('_id' => 'sd_1', 'type' => 'root', 'props' => array(), 'children' => array(
+			array('_id' => 'sd_2', 'type' => 'image', 'props' => array('customName' => 'Hero', 'src' => ''), 'children' => array()))),
+		'pictures' => array(array('node' => 'sd_2', 'figma' => '1:2', 'kind' => 'image', 'image_ref' => 'abc')));
+	$left = pg_figma_frame_unfetched($frame);
+	pg_assert_same(array(), $left['pictures'], 'no picture is left to fetch');
+	pg_assert_same('picture', $left['report'][0]['code'], 'the missing picture is a note');
+	pg_assert_same('Hero', $left['report'][0]['name'], 'naming its layer');
+	pg_assert_same('notes', pg_figma_report_frame($left)['state'], 'not carried whole');
+	$done = $frame;
+	$done['pictures'] = array();
+	pg_assert_same($done, pg_figma_frame_unfetched($done), 'a frame fetched is as it was');
+}
