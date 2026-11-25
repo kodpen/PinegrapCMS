@@ -197,3 +197,35 @@ function test_compare_look_with_base()
 	pg_assert_same('<base href="https://ex.test/site/"><p>no head</p>', $res[2], 'no head: the base first');
 	pg_assert_same('<head><base href="&quot;&gt;&lt;script&gt;"></head>', $res[3], 'the base is escaped');
 }
+
+// "What changed": a row's icon by its kind, the picture its place is on,
+// where the handle goes, the two pictures lined up on the element, a name
+// in an opened row and the old and new words of a text row.
+function test_compare_look_list_rules()
+{
+	$res = compare_look_test_node('function R(kind, code, sides, extra) { return { kind: kind, code: code, changes: sides.map(function (s) { var c = { kind: kind, code: code, side: s }; for (var k in extra || {}) c[k] = extra[k]; return c; }) }; }'
+		. ' out = { icons: [R("added", "added", ["after"]), R("removed", "removed_named", ["before"]), R("moved", "moved_up", ["both"]), R("moved", "moved_down", ["both"]),'
+		. ' R("moved", "moved_into", ["both"]), R("words", "alt", ["both"]), R("look", "look_rows", ["both"]), R("odd", "odd", ["both"])].map(L.icon),'
+		. ' sides: [L.sideOf(R("added", "added", ["after"])), L.sideOf(R("removed", "removed", ["before"])), L.sideOf(R("look", "look_rows", ["both", "both"])), L.sideOf(R("other", "other_rows", ["after", "before"]))],'
+		. ' handle: [L.handleFor("after", 50), L.handleFor("before", 30), L.handleFor("both", 30)],'
+		. ' align: [L.align(100, 340), L.align(500, 200), L.align(null, 80), L.align(90, null), L.align(null, null)],'
+		. ' names: [L.nameOf({ what: "Text", words: "Full" }), L.nameOf({ what: "Button", words: "" })],'
+		. ' words: [L.wordsOf(R("words", "words", ["both"], { before: "Rest.", after: "Rest well." })), L.wordsOf(R("picture", "picture", ["both"], { before: "a.jpg", after: "b.jpg" })), L.wordsOf({ kind: "look", changes: [] })] };');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('bi-plus-circle', 'bi-dash-circle', 'bi-arrow-up', 'bi-arrow-down', 'bi-arrow-return-right', 'bi-fonts', 'bi-palette', 'bi-three-dots'), $res['icons'], 'an icon per kind');
+	pg_assert_same(array('after', 'before', 'both', 'both'), $res['sides'], 'the picture a row is on');
+	pg_assert_same(array(0, 100, 30), $res['handle'], 'added: the draft shows; removed: the page on the site shows');
+	pg_assert_same(array(
+		array('before' => 240, 'after' => 0, 'top' => 340),
+		array('before' => 0, 'after' => 300, 'top' => 500),
+		array('before' => 0, 'after' => 0, 'top' => 80),
+		array('before' => 0, 'after' => 0, 'top' => 90),
+		null,
+	), $res['align'], 'the element stands at the same height in both');
+	pg_assert_same(array('Text “Full”', 'Button'), $res['names'], 'names in an opened row');
+	pg_assert_same(array(array('before' => 'Rest.', 'after' => 'Rest well.'), null, null), $res['words'], 'only a text row opens into its words');
+}

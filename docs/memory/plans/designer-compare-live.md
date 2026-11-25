@@ -24,7 +24,7 @@ priority: 6
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - CL1 (M) The reader, pure: two trees in, changes out (added, removed, moved, words, picture, link, look), each with its sentence and place. Done (#11539).
 - CL2 (M) after CL1: the Look tab: two frames, the slider, side by side, the width chooser, History's two choosers; boards L2, L3, L5 and L6 of the drawing. The PR body carries a table of the boards: what was built for each, what differs and why. Done (#11666).
-- CL3 (S) after CL2: "What changed" joined to the pictures; the tab menu's row, the palette's row and the Publish sheet's icon; boards L1, L4 and the list's part of L5 and L6. The PR body carries a table of the boards: what was built for each, what differs and why. In progress.
+- CL3 (S) after CL2: "What changed" joined to the pictures; the tab menu's row, the palette's row and the Publish sheet's icon; boards L1, L4 and the list's part of L5 and L6. The PR body carries a table of the boards: what was built for each, what differs and why. Done (#11707).
 - CL4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?

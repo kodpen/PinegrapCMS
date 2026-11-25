@@ -6478,6 +6478,7 @@
     "The picture of the ride's page and the share image.": "Sürüş sayfasının resmi ve paylaşım görseli.",
     "The picture or PDF kept with each expense. An expense with no file kept is not listed here.": "Her giderle saklanan fotoğraf ya da PDF. Dosyası saklanmamış gider burada listelenmez.",
     "The picture {var:1} was not fetched: {var:2}": "{var:1} resmi alınamadı: {var:2}",
+    "The pictures": "Görseller",
     "The pictures are in the file manager, folder {var:1}.": "Resimler dosya yöneticisinde, {var:1} klasöründe.",
     "The pictures could not be loaded.": "Görseller yüklenemedi.",
     "The pictures made in the Artifact Canvas whose texts are translated, drawn now in each language one after another in this browser. They are drawn by themselves without this page too: by an open panel, or, with nobody in the panel, by the server where it can. Keep this page open until the count reaches zero.": "Yapıt Tuvali'nde yapılmış ve metinleri çevrilmiş görseller, bu tarayıcıda her dil için sırayla hemen çizilir. Bu sayfa olmadan da kendiliğinden çizilirler: açık bir panel ya da panelde kimse yokken, çizebildiği yerde sunucu çizer. Sayı sıfıra inene dek bu sayfayı açık tutun.",

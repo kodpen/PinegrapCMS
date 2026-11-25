@@ -3220,6 +3220,7 @@ function pg_designer_publish_sheet()
         'state-scheduled' => lang('Scheduled'),
         'state-held'      => lang('Held by an experiment'),
         'changed'         => lang('Changed'),
+        'compare'         => lang('Compare with the live page'),
         'locked'          => lang('No content rights'),
         'busy'            => lang('Publishing…'),
         'result-live'     => lang('On the site now'),

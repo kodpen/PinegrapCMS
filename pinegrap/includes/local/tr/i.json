@@ -1879,6 +1879,7 @@
     "in {var:1} h": "{var:1} sa sonra",
     "in {var:1} h {var:2} min": "{var:1} sa {var:2} dk sonra",
     "in {var:1} min": "{var:1} dk sonra",
+    "in {var}": "{var} içinde",
     "in:\"Home renovation\" searches one notebook.": "in:\"Ev tadilatı\" tek bir defterde arar.",
     "in:\"Home\" searches one notebook.": "in:\"Ev\" tek bir defterde arar.",
     "inbox": "gelen-kutusu",
