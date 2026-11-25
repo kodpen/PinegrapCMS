@@ -77155,7 +77155,7 @@ const StyleDesigner = (function () {
             // "Show less") and a frame's amber count keep their own clicks
             // and keys.
             // A sketch box's chip opens its menu, its heading input types.
-            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-input',
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty, .sd-sketch-chip, .sd-sketch-more, .sd-sketch-input',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -77216,6 +77216,9 @@ const StyleDesigner = (function () {
             },
             key: function (event) {
                 if (_sdSketchKey(event)) return true;
+                // The command palette, whose rows act on the selected
+                // sketch page too ("Page details").
+                if ((event.ctrlKey || event.metaKey) && event.shiftKey && String(event.key || '').toLowerCase() === 'p') { openCommandPalette(); return true; }
                 // Esc clears the path (or the wait for its page), else goes
                 // back from a frame zoomed to, else closes the view.
                 if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }
@@ -77273,6 +77276,8 @@ const StyleDesigner = (function () {
         ui.boxes.addEventListener('click', function (event) {
             var chip = event.target.closest ? event.target.closest('.sd-sketch-chip') : null;
             if (chip) _sdSketchChipMenu(chip);
+            var more = event.target.closest ? event.target.closest('.sd-sketch-more') : null;
+            if (more) _sdSketchMoreMenu(more);
         });
         ui.boxes.addEventListener('dblclick', function (event) {
             var boxEl = (_sdProto.sketchOn && event.target.closest) ? event.target.closest('.sd-sketch-box') : null;
@@ -77838,6 +77843,8 @@ const StyleDesigner = (function () {
             if (!id || used['p' + id]) return;
             used['p' + id] = true;
             var page = { id: id, name: String((p && p.name) || '').slice(0, 120), x: num(p.x, -1e6, 1e6, 0), y: num(p.y, -1e6, 1e6, 0), boxes: [] };
+            var details = _sdSketchDetailsKeep(p.details);
+            if (details) page.details = details;
             (Array.isArray(p.boxes) ? p.boxes.slice(0, SD_SKETCH.boxes) : []).forEach(function (b) {
                 var bid = num(b && b.id, 0, 1e9, 0);
                 if (!bid || used['b' + bid]) return;
@@ -77854,6 +77861,19 @@ const StyleDesigner = (function () {
             out.n = Math.max(out.n, id + 1);
             out.pages.push(page);
         });
+        return out;
+    }
+
+    // A sketch page's "Page details" as kept (style_designer_sketchdetails.js
+    // writes them): the known keys only, texts short, numbers whole; null
+    // when the window never saved any. The part reads them through
+    // PGSketchDetails.keep(), which knows the values.
+    function _sdSketchDetailsKeep(raw) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+        var out = {};
+        ['address', 'type', 'menuName', 'afterName', 'title', 'description'].forEach(function (k) { out[k] = String(raw[k] == null ? '' : raw[k]).slice(0, 255); });
+        ['menu', 'after', 'folder'].forEach(function (k) { var n = Number(raw[k]); out[k] = isFinite(n) && n > 0 ? Math.floor(n) : 0; });
+        out.typed = !!raw.typed;
         return out;
     }
 
@@ -77973,6 +77993,14 @@ const StyleDesigner = (function () {
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', item.name));
         head.appendChild(_sdProtoEl('span', 'sd-proto-meta', page.boxes.length === 1 ? _sdT('1 box') : _sdT('{var:1} boxes', page.boxes.length)));
+        // "More": the sketch page's menu (_sdSketchMoreMenu()).
+        var more = _sdProtoEl('button', 'sd-sketch-more');
+        more.type = 'button';
+        more.title = _sdT('More');
+        more.setAttribute('aria-label', _sdT('More') + ': ' + item.name);
+        more.setAttribute('aria-haspopup', 'menu');
+        more.innerHTML = '<span class="bi bi-three-dots" aria-hidden="true"></span>';
+        head.appendChild(more);
         node.appendChild(head);
         node.setAttribute('aria-label', _sdT('Sketch') + ': ' + item.name);
         var body = _sdProtoEl('div', 'sd-sketch-body');
@@ -78419,6 +78447,114 @@ const StyleDesigner = (function () {
         el.style.top = place.top + 'px';
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
         if (first) first.focus({ preventScroll: true });
+    }
+
+    // The sketch frame selected on the open Prototype view, or ''.
+    function _sdSketchSelected() {
+        if (!_sdProto.open || !_sdProto.canvas) return '';
+        var id = _sdProto.canvas.focused();
+        return (id !== null && /^k:\d+$/.test(String(id)) && _sdSketchPage(id)) ? String(id) : '';
+    }
+
+    // A sketch page's "More" menu: its actions, each also a row of the
+    // command palette.
+    function _sdSketchMoreMenu(btn) {
+        var frameEl = btn.closest('[data-node]');
+        var frameId = frameEl ? frameEl.getAttribute('data-node') : '';
+        if (!_sdSketchPage(frameId)) return;
+        var key = 'more:' + frameId;
+        var reopen = _sdProto.menu && _sdProto.menu.chip === key;
+        _sdProtoMenuClose(false);
+        if (reopen) return;
+        if (_sdProto.canvas) _sdProto.canvas.focus(frameId);
+        _sdProtoSelect({ type: 'node', id: frameId });
+        var ui = _sdProto.ui;
+        var el = _sdProtoEl('div', 'sd-proto-menu sd-sketch-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('More'));
+        [{ icon: 'bi-card-list', text: _sdT('Page details'), run: function () { _sdSketchDetails(frameId); } }].forEach(function (row) {
+            var item = _sdProtoEl('button', 'sd-proto-menu-item');
+            item.type = 'button';
+            item.tabIndex = -1;
+            item.setAttribute('role', 'menuitem');
+            item.innerHTML = '<span class="bi ' + row.icon + ' sd-proto-icon" aria-hidden="true"></span>';
+            item.appendChild(_sdProtoEl('span', 'sd-proto-label', row.text));
+            item.addEventListener('click', function () { _sdProtoMenuClose(false); row.run(); });
+            el.appendChild(item);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            event.stopPropagation();
+            if (event.key === 'Escape') { event.preventDefault(); _sdProtoMenuClose(true); return; }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            var go = event.key === 'ArrowDown' ? (at + 1) % items.length : event.key === 'ArrowUp' ? (at <= 0 ? items.length : at) - 1 : -1;
+            if (go >= 0 && items[go]) { event.preventDefault(); items[go].focus(); }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: btn, chip: key };
+        var r = btn.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var c = ui.stage.getBoundingClientRect();
+        var area = { left: c.left - o.left, top: c.top - o.top, right: c.right - o.left, bottom: c.bottom - o.top };
+        var place = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = place.left + 'px';
+        el.style.top = place.top + 'px';
+        var first = el.querySelector('.sd-proto-menu-item');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    // "Page details" of a sketch page: a designer part
+    // (style_designer_sketchdetails.js), run the first time it is asked for.
+    function _sdSketchDetails(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page) return;
+        _sdSketchPick(null, null, false);
+        _sdPartCall('sketchdetails', 'open', [_sdSketchDetailsHost(frameId, page)]).catch(_sdPartFailed);
+    }
+
+    // What the window reads and writes of the editor: the page as the
+    // sketch keeps it, the folders of the Settings window's list (with who
+    // may open each), the addresses the design's pages and the other sketch
+    // pages have, and the save, kept and a step of the sketch's undo.
+    function _sdSketchDetailsHost(frameId, page) {
+        var item = _sdSketchItem(page);
+        var sel = document.getElementById('pg_page_folder');
+        var active = _pgActivePage() || {};
+        var folders = sel ? Array.prototype.map.call(sel.options, function (o) {
+            return { id: Number(o.value) || 0, label: String(o.textContent || '').replace(/\s+/g, ' ').trim(), access: o.getAttribute('data-access') || 'public' };
+        }).filter(function (f) { return f.id > 0; }) : [];
+        var site = (_design && _design.site && _design.site.url) ? String(_design.site.url) : (location.origin + (window.OUTPUT_PATH || '/'));
+        return {
+            page: page,
+            fallback: item.name,
+            mayEdit: !_sdIsContentLevel() && _collab.mayEdit !== false,
+            site: site,
+            folder: Number(active.page_folder) || (folders[0] ? folders[0].id : 0),
+            folders: function () { return folders; },
+            others: function () {
+                var out = _pages.map(function (p) { return { name: String(p.page_name || ''), address: String(p.page_name || '') }; });
+                _sdSketchData().pages.forEach(function (p) {
+                    if (p === page) return;
+                    var name = p.name || _sdT('Page {var:1}', p.id);
+                    var addr = (p.details && p.details.address) ? p.details.address : (window.PGSketchDetails ? window.PGSketchDetails.address(name) : '');
+                    out.push({ name: name, address: addr });
+                });
+                return out.filter(function (o) { return o.address; });
+            },
+            post: function (sub, extra) { return _pgApiPost(sub, extra); },
+            save: function (kept) {
+                var now = _sdSketchPage(frameId);
+                if (!now) return;
+                now.name = kept.name;
+                now.details = kept.details;
+                _sdSketchChanged(false, _sdT('Page details saved'));
+            },
+            closed: function () {
+                var node = _sdProto.ui ? _sdProto.ui.boxes.querySelector('[data-node="' + frameId + '"]') : null;
+                if (node) node.focus({ preventScroll: true });
+            }
+        };
     }
 
     // ── The shortest click path ──
@@ -88196,6 +88332,10 @@ const StyleDesigner = (function () {
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];
+
+        // A sketch page selected in the Prototype view: its "Page details".
+        var sketchId = _sdSketchSelected();
+        if (sketchId) items.unshift({ id: 'act_sketch_details', label: _sdT('Page details'), icon: 'bi-card-list', action: function () { _sdSketchDetails(sketchId); } });
 
         // A draft has its second action here too: put it on the site.
         if (_pgActiveIsDraft() && _pgDraftsCanChange()) {

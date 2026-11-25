@@ -1499,6 +1499,7 @@
     "For rent": "Kiralık",
     "For sale": "Satılık",
     "For schools": "Okullar için",
+    "For search engines and the browser tab. Empty, the name is used.": "Arama motorları ve tarayıcı sekmesi için. Boş bırakılırsa ad kullanılır.",
     "For selected folders, you can enter an optional expiration date.": "Seçili klasörler için isteğe bağlı bir son kullanma tarihi girebilirsiniz.",
     "For sending: {var:1}": "Gönderim için: {var:1}",
     "For shopping answers in ChatGPT. Give this address where OpenAI asks for your product feed.": "ChatGPT'nin alışveriş yanıtları için. OpenAI ürün akışınızı sorduğunda bu adresi verin.",

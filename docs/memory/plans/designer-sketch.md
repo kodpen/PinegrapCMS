@@ -23,7 +23,7 @@ priority: 7
 - SK2 (M) The Sketch tool on the graph canvas: frame, boxes, chips, snapping. Done #11497 (designer/prototype-sketch-tool.md; box kinds `header` … `booking` in `SD_SKETCH_KINDS`, `kind: ''` left to the reader; kept per browser until SK4).
 - SK3 (M) after SK1: the builder, pure: a section list to a tree from starters, with variables.
 - SK4 (M) after SK2, SK3: "Build the page", "Build again", the sketch kept with the draft.
-- SK5 (M) after SK2: "Page details".
+- SK5 (M) after SK2: "Page details". Done #11545 (`designer/sketch-page-details.md`; the More menu on a sketch page, values kept with the sketch).
 - SK6 (S) after SK4: the two AI actions.
 - SK7 (S) after SK2: the reference picture and "Read the picture".
 - SK8 (M) after SK4: the feel round: 60 frames a second on a hundred boxes, touch and pen, every key, light and dark; measured, the numbers in the PR.

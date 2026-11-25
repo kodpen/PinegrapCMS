@@ -3514,6 +3514,70 @@ function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
 }
 
 /**
+ * What the "Page details" window of a sketch page in the Prototype view
+ * (assets/js/style_designer_sketchdetails.js) asks of the server. Without
+ * an address: the site's menus with their top items, for "In the menu".
+ * With one: who has it already, the page whose name it is ('used'), or a
+ * file, short link or address the site answers itself ('taken',
+ * pg_designer_page_name_taken_elsewhere()), and why it cannot be a page's
+ * name ('error', pg_designer_page_name_error()). Nothing is written.
+ *
+ * @param array $request the API request
+ * @return array the answer
+ */
+function pg_designer_sketch_details($request)
+{
+    $address = isset($request['address']) ? trim((string) $request['address']) : '';
+
+    if ($address === '') {
+        $menus = db_items("SELECT id, name FROM menus ORDER BY name, id");
+        $items = db_items("SELECT id, menu_id, name FROM menu_items WHERE parent_id = '0' ORDER BY sort_order, id LIMIT 2000");
+
+        return array('status' => 'success', 'menus' => pg_designer_sketch_menus($menus, $items));
+    }
+
+    $error = pg_designer_page_name_error($address, true);
+    $used = ($error === '') ? (string) db_value("SELECT page_name FROM page WHERE page_name = '" . e($address) . "' LIMIT 1") : '';
+
+    return array(
+        'status' => 'success',
+        'error'  => $error,
+        'used'   => $used,
+        'taken'  => ($error === '' && $used === '') ? pg_designer_page_name_taken_elsewhere($address) : false,
+    );
+}
+
+/**
+ * The menus as the "Page details" window lists them: each with its top
+ * items in printing order, an item whose menu is not listed left out.
+ * Pure.
+ *
+ * @param array $menus rows id, name
+ * @param array $items rows id, menu_id, name, in printing order
+ * @return array [['id' => int, 'name' => string, 'items' => [['id', 'name']]]]
+ */
+function pg_designer_sketch_menus($menus, $items)
+{
+    $out = array();
+    $at = array();
+
+    foreach (is_array($menus) ? $menus : array() as $row) {
+        $at[(int) $row['id']] = count($out);
+        $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'items' => array());
+    }
+
+    foreach (is_array($items) ? $items : array() as $row) {
+        $menu = (int) $row['menu_id'];
+
+        if (isset($at[$menu])) {
+            $out[$at[$menu]]['items'][] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The columns, as SQL values, a new page's INSERT names because the page
  * table gives them no default, unless the save writes them itself ($c_extra,
  * column => value): the message shown while new comments are off is a text

@@ -54,6 +54,7 @@ function designer_sketch_test_node($script)
 	$parts = (($at === false) ? '' : substr($js, $at, strpos($js, "\n", $at + 1) - $at))
 		. designer_sketch_test_js('var SD_SKETCH_KINDS = [', "    ];\n")
 		. designer_sketch_test_js('function _sdSketchKind(')
+		. designer_sketch_test_js('function _sdSketchDetailsKeep(')
 		. designer_sketch_test_js('function _sdSketchClean(')
 		. designer_sketch_test_js('function _sdSketchBodyH(')
 		. designer_sketch_test_js('function _sdSketchRect(');
@@ -143,6 +144,53 @@ JS
 	pg_assert_same(80, strlen($page['boxes'][1]['text']), 'a heading of 80 characters at most');
 	pg_assert_same(9, $result['one']['n'], 'the next id after the last used');
 	pg_assert_same(array('header', 'intro', 'features', 'cards', 'text', 'picture', 'gallery', 'form', 'cta', 'footer', 'catalog', 'blog', 'booking'), $result['kinds'], 'the kinds a box can be');
+}
+
+// A sketch page keeps its "Page details": the known keys only, texts
+// short, numbers whole; a page never saved from the window keeps none.
+function test_designer_sketch_clean_details()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var out = _sdSketchClean({ pages: [
+    { id: 1, name: 'Classes', details: { address: 'classes', typed: 1, type: 'catalog', menu: '4', after: -2, folder: 2.7, title: new Array(400).join('t'), extra: 'x' } },
+    { id: 2, details: 'x' },
+    { id: 3 }
+] });
+console.log(JSON.stringify(out.pages.map(function (p) { return p.details === undefined ? null : p.details; })));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('address' => 'classes', 'type' => 'catalog', 'menuName' => '', 'afterName' => '', 'title' => str_repeat('t', 255), 'description' => '', 'menu' => 4, 'after' => 0, 'folder' => 2, 'typed' => true), $result[0], 'known keys, short texts, whole numbers');
+	pg_assert_same(null, $result[1], 'details that are not an object are dropped');
+	pg_assert_same(null, $result[2], 'a page never saved from the window has none');
+}
+
+// "Page details" sits in a sketch page's own "More" menu and in the command
+// palette, never in a bar; it is a part loaded on first use.
+function test_designer_sketch_details_wiring()
+{
+	$fill = designer_sketch_test_js('function _sdSketchFill(');
+	$build = designer_sketch_test_js('function _sdProtoBuild(');
+	$more = designer_sketch_test_js('function _sdSketchMoreMenu(');
+	$open = designer_sketch_test_js('function _sdSketchDetails(');
+	$cp = designer_sketch_test_js('function _getCpActionItems(');
+
+	pg_assert_contains("var more = _sdProtoEl('button', 'sd-sketch-more');", $fill, 'the head of a sketch page has its More button');
+	pg_assert_contains('.sd-sketch-chip, .sd-sketch-more, .sd-sketch-input', $build, 'the canvas leaves the More button its own click');
+	pg_assert_contains("if (more) _sdSketchMoreMenu(more);", $build, 'the button opens the menu');
+	pg_assert_contains("text: _sdT('Page details'), run: function () { _sdSketchDetails(frameId); }", $more, 'the menu has the Page details row');
+	pg_assert_contains("_sdPartCall('sketchdetails', 'open', [_sdSketchDetailsHost(frameId, page)]).catch(_sdPartFailed);", $open, 'the window is a part');
+	pg_assert_contains("id: 'act_sketch_details', label: _sdT('Page details')", $cp, 'the command palette has the row');
+	pg_assert_same(false, strpos(designer_sketch_test_js('function _sdProtoBuild('), "_sdT('Page details')"), 'no bar button for it');
+
+	$parts = pg_designer_parts();
+	$bundles = pg_js_bundles();
+	pg_assert_same('assets/js/style_designer_sketchdetails.min.js', $parts['sketchdetails'], 'a designer part');
+	pg_assert_same(array('assets/js/pg_sketch_details.js', 'assets/js/style_designer_sketchdetails.js'), $bundles[$parts['sketchdetails']], 'its pure values, then the window');
 }
 
 // A box's rectangle: a move lines it up with another box and stays inside
