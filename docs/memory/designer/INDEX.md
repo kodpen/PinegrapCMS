@@ -407,6 +407,8 @@
 - designer-content-translation.md: Which texts of a designer node enter the site translation (pg_tr_node_fields()), visible text kept in an underscore prop such as _labelDetail, and form records translated through translate_records.
 - designer-corner-box.md: Style › Border and corner's corners as one drawing (DP7b, #10633): sides, all corners, each corner as the browser rounds it, Shift and Alt, what it writes (today's radius classes) and reads
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
+- designer-first-tour-drawing.md: The first tour's drawing (DD14), boards T1 to T3 and T7: the first card, the five stops' ring and bubble, a content editor's three stops, the phone's sheet; the sentences
+- designer-first-tour-help-drawing.md: The first tour's drawing (DD14), boards T4 to T6 for step FT3: the Help window's "How do I…" with its ten tasks and three pointers, the "Tips" switch, a first-use tip, an empty page's three starts
 - designer-first-tour-model.md: The first tour's pure model (window.PGDesignerTour, FT1): stops and their controls per access, Next and Back skipping a missing control, what was seen kept per person in the browser
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
