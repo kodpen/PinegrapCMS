@@ -296,6 +296,9 @@ function pg_submitted_form_delete($form_id)
 
     pg_signature_delete($form_id);
 
+    // Its earlier address names (form_old_address).
+    pg_record_old_address_delete($form_id);
+
     // The view rows the form view directory feature counts.
     pg_sfv_delete_views('submitted_form_id', $form_id);
 

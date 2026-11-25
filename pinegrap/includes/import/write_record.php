@@ -500,6 +500,9 @@ function pg_import_unwrite_record($form_id)
     db_q("DELETE FROM forms WHERE id = ?", array((string) $form_id));
     db_q("DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')", array((string) $form_id));
     pg_signature_delete($form_id);
+    if (function_exists('pg_record_old_address_delete')) {
+        pg_record_old_address_delete($form_id);
+    }
     pg_sfv_delete_views('submitted_form_id', $form_id);
     pg_comment_delete_record_thread($form_id);
 
