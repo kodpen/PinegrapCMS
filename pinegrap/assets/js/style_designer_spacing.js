@@ -17,6 +17,14 @@
  * browser rounds it; Shift, Alt, typing, dragging and the keys work as on
  * the spacing box. What a change writes is window.PGCornerBox's.
  *
+ * On one element of a design with themes, a side of the box and the
+ * corners' centre also take a design variable: "Variables" beside the
+ * field a side is typed in opens the list of the part 'variables' ("Base
+ * unit", "Section rhythm", the units, "Corners", the designer's own sizes);
+ * a bound side is an inline style the box marks with braces, and its chip
+ * with "Detach" is a row under the box. Binding drops the side's classes,
+ * which are !important; writing a class drops the side's inline value.
+ *
  * Not needed to open a page: the core runs this file the first time the
  * Spacing section is shown (_sdSpBoxBind(), pg_designer_parts()) and hands
  * it a host: the elements' classes, the chosen size and the commit.
@@ -40,6 +48,9 @@ StyleDesigner.definePart('spacing', function (K) {
     // The side that had the focus before a change drew the panel again
     // ('m-t'), given back to the new box.
     var refocus = '';
+    // The side whose typed field opens again after its binding went
+    // ("Custom value…" of the list), as 'p-t'.
+    var reedit = '';
 
     function _spbSideName(kind, side) {
         var names = kind === 'm'
@@ -78,8 +89,100 @@ StyleDesigner.definePart('spacing', function (K) {
         return out;
     }
 
-    function _spbSideHtml(kind, side, r, locked) {
+    // ── Design variables on a side
+
+    // The inline property of a side ('r' 'all' is the corners' centre);
+    // '' where a side takes none.
+    function _spbProp(kind, side) {
+        if (kind === 'r') return side === 'all' ? 'border-radius' : '';
+        return B.styleProp(kind, side);
+    }
+
+    // A side's inline value on a host that offers variables:
+    // { value, ref } (ref null for a typed value), or null.
+    function _spbInline(host, kind, side) {
+        var prop = host.vars ? _spbProp(kind, side) : '';
+        var v = prop ? String(host.style(prop) || '').trim() : '';
+        return v ? { value: v, ref: host.parse(v) } : null;
+    }
+
+    // The side's button as an inline value draws it: braces for a bound
+    // side, the typed value as written.
+    function _spbInlineBtn(kind, side, name, inl, cls, locked) {
+        var said = inl.ref ? name + ': ' + _sdT('Variable') : name + ': ' + inl.value;
+        return '<button type="button" class="sd-spb-v ' + cls + ' is-set' + (inl.ref ? ' is-var' : ' is-lit') + '"' +
+            ' data-k="' + kind + '" data-s="' + side + '" data-v=""' + (inl.ref ? ' data-var="1"' : '') +
+            ' aria-label="' + esc(said) + '" title="' + esc(inl.ref ? name : name + ': ' + inl.value) + '"' +
+            (locked ? ' disabled' : '') + '>' +
+            (inl.ref ? '<span class="bi bi-braces" aria-hidden="true"></span>' : esc(inl.value)) + '</button>';
+    }
+
+    // The chips of the bound sides, a row each under the box.
+    function _spbVarRows(host, kinds) {
+        if (!host.vars) return '';
+        var h = '';
+        kinds.forEach(function (k) {
+            var sides = k === 'r' ? ['all'] : B.SIDES;
+            sides.forEach(function (side) {
+                var inl = _spbInline(host, k, side);
+                if (!inl || !inl.ref) return;
+                var label = k === 'r' ? _sdT('Corners') : _spbSideName(k, side);
+                h += '<div class="sd-spb-var"><span class="sd-spb-var-lab">' + esc(label) + '</span>' +
+                    '<div class="sd-var-ctl sd-var-bound" data-sd-var="' + (k === 'r' ? 'radius' : 'space') + '" data-sd-var-prop="' + _spbProp(k, side) + '"' +
+                    ' data-sd-var-side="' + k + '-' + side + '">' + host.chip(k === 'r' ? 'radius' : 'space', inl.ref) + '</div></div>';
+            });
+        });
+        return h ? '<div class="sd-spb-vars">' + h + '</div>' : '';
+    }
+
+    // What the list needs of a side's place: the class clean-up of a
+    // binding and the way out to the side's typed field.
+    function _spbVarHook(host, ctl) {
+        var ks = String(ctl.getAttribute('data-sd-var-side') || '').split('-');
+        var kind = ks[0], side = ks[1], prop = ctl.getAttribute('data-sd-var-prop');
+        ctl._sdVarClean = function (list) {
+            return kind === 'r' ? R.write(list, R.SIDES, '', true) : B.clearSide(list, kind, side);
+        };
+        ctl._sdVarTyped = function () {
+            if (_spbInline(host, kind, side)) {
+                reedit = kind + '-' + side;
+                host.commit(function (c) { return c; }, [prop]);
+                return;
+            }
+            var b = host.el.querySelector('.sd-spb-v[data-k="' + kind + '"][data-s="' + side + '"]');
+            if (b && !b.disabled) _spbEdit(host, b, {});
+        };
+    }
+
+    function _spbVarBind(host) {
+        host.el.querySelectorAll('.sd-var-ctl[data-sd-var-side]').forEach(function (ctl) { _spbVarHook(host, ctl); });
+    }
+
+    // Opens the list for a side: from its chip when bound, else from a
+    // place of no height under the box, made for the list to hang from.
+    function _spbVarOpen(host, kind, side) {
+        var key = kind + '-' + side;
+        var ctl = host.el.querySelector('.sd-var-ctl[data-sd-var-side="' + key + '"]');
+        if (!ctl) {
+            host.el.querySelectorAll('.sd-spb-slot').forEach(function (o) { o.remove(); });
+            ctl = document.createElement('div');
+            ctl.className = 'sd-var-ctl sd-spb-slot';
+            ctl.setAttribute('data-sd-var', kind === 'r' ? 'radius' : 'space');
+            ctl.setAttribute('data-sd-var-prop', _spbProp(kind, side));
+            ctl.setAttribute('data-sd-var-side', key);
+            ctl.innerHTML = '<button type="button" hidden data-sd-var-open></button>';
+            host.el.appendChild(ctl);
+            _spbVarHook(host, ctl);
+        }
+        // The core's panel listener opens the list (_sdVarOpen()).
+        var open = ctl.querySelector('[data-sd-var-open]');
+        if (open) open.click();
+    }
+
+    function _spbSideHtml(kind, side, r, locked, host) {
         var name = _spbSideName(kind, side);
+        var inl = host ? _spbInline(host, kind, side) : null;
+        if (inl) return _spbInlineBtn(kind, side, name, inl, 'sd-spb-' + side, locked);
         var said = r.mixed ? _sdT('— Multiple —') : _spbText(r.value);
         var why = r.mixed ? '' : (r.here ? '' : (r.size ? _sdT('inherited from {var}', r.size.toUpperCase()) : _sdT('default')));
         return '<button type="button" class="sd-spb-v sd-spb-' + side + (r.here && !r.mixed ? ' is-set' : '') + (r.mixed ? ' is-mixed' : '') + '"' +
@@ -93,7 +196,7 @@ StyleDesigner.definePart('spacing', function (K) {
         var m = _spbRead(host.classes, 'm', host.size);
         var p = _spbRead(host.classes, 'p', host.size);
         var sides = function (kind, r) {
-            return B.SIDES.map(function (s) { return _spbSideHtml(kind, s, r[s], host.locked); }).join('');
+            return B.SIDES.map(function (s) { return _spbSideHtml(kind, s, r[s], host.locked, host); }).join('');
         };
         var core = host.classes.length > 1 ? _sdT('{var} elements', host.classes.length) : _sdT('content');
         return '<div class="sd-spb" role="group" aria-label="' + esc(_sdT('Spacing') + ' · ' + host.size.toUpperCase()) + '">' +
@@ -102,7 +205,7 @@ StyleDesigner.definePart('spacing', function (K) {
                     '<div class="sd-spb-core">' + esc(core) + '</div>' +
                 '</div>' +
             '</div>' +
-        '</div>';
+        '</div>' + _spbVarRows(host, ['m', 'p']);
     }
 
     // The size chooser in the section's head: the chosen size pressed, a
@@ -145,16 +248,19 @@ StyleDesigner.definePart('spacing', function (K) {
 
     // Writes `val` on the side of the button, with the sides Shift and Alt
     // add, as one change of every element of the host.
+    // A side's inline value goes with the class written on it; on the
+    // corners any write drops the centre's, which rounds all four.
     function _spbCommit(host, btn, val, shift, alt) {
         var kind = btn.getAttribute('data-k'), side = btn.getAttribute('data-s');
         refocus = kind + '-' + side;
         if (kind === 'r') {
             var rto = R.sides(side, shift, alt);
-            host.commit(function (list) { return R.write(list, rto.sides, val, rto.all); });
+            host.commit(function (list) { return R.write(list, rto.sides, val, rto.all); }, host.vars ? ['border-radius'] : null);
             return;
         }
         var to = B.sides(side, shift, alt);
-        host.commit(function (list) { return B.write(list, kind, host.size, to.sides, val, to.all); });
+        host.commit(function (list) { return B.write(list, kind, host.size, to.sides, val, to.all); },
+            host.vars ? to.sides.map(function (s) { return B.styleProp(kind, s); }) : null);
     }
 
     // The side typed into: a field in the button's place; Enter or leaving
@@ -196,7 +302,37 @@ StyleDesigner.definePart('spacing', function (K) {
             if (_spbVal(kind, side, input.value) === null) { input.value = btn.getAttribute('data-v') || ''; finish(false); return; }
             finish(true, mods.shift, mods.alt);
         });
+        // "Variables" beside the field, on a side that takes one: pressing
+        // it keeps the field's focus until the click, which gives the
+        // button back and opens the list.
+        var vb = null;
+        if (host.vars && _spbProp(kind, side)) {
+            vb = document.createElement('button');
+            vb.type = 'button';
+            vb.className = 'sd-var-pick sd-spb-varbtn sd-spb-vb-' + side;
+            vb.title = _sdT('Variables');
+            vb.setAttribute('aria-label', _sdT('Choose a variable'));
+            vb.innerHTML = '<span class="bi bi-braces" aria-hidden="true"></span>';
+            vb.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+            vb.addEventListener('click', function () {
+                done = true;
+                vb.remove();
+                if (input.parentNode) input.parentNode.replaceChild(btn, input);
+                _spbVarOpen(host, kind, side);
+            });
+            var gone = finish;
+            finish = function (write, shift, alt) {
+                gone(write, shift, alt);
+                // A Tab from the field reaches the button; anything else
+                // takes it away.
+                if (done) setTimeout(function () { if (document.activeElement !== vb) vb.remove(); }, 0);
+            };
+            vb.addEventListener('blur', function () {
+                setTimeout(function () { if (document.activeElement !== vb) vb.remove(); }, 0);
+            });
+        }
         btn.parentNode.replaceChild(input, btn);
+        if (vb) input.parentNode.insertBefore(vb, input.nextSibling);
         input.focus();
         input.select();
     }
@@ -238,6 +374,17 @@ StyleDesigner.definePart('spacing', function (K) {
 
     function _spbBind(host, box) {
         box.querySelectorAll('.sd-spb-v').forEach(function (btn) {
+            // A bound side opens the list; Delete removes its binding.
+            if (btn.hasAttribute('data-var')) {
+                btn.addEventListener('click', function () { _spbVarOpen(host, btn.getAttribute('data-k'), btn.getAttribute('data-s')); });
+                btn.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+                    e.preventDefault();
+                    refocus = btn.getAttribute('data-k') + '-' + btn.getAttribute('data-s');
+                    host.commit(function (c) { return c; }, [_spbProp(btn.getAttribute('data-k'), btn.getAttribute('data-s'))]);
+                });
+                return;
+            }
             _spbDragBind(host, btn);
             btn.addEventListener('click', function (e) {
                 if (btn._spbDragged) { btn._spbDragged = false; return; }
@@ -305,8 +452,10 @@ StyleDesigner.definePart('spacing', function (K) {
         return out;
     }
 
-    function _rdbBtnHtml(side, r, locked) {
+    function _rdbBtnHtml(side, r, locked, host) {
         var names = { all: _sdT('Radius'), t: _sdT('Top Radius'), e: _sdT('Right Radius'), b: _sdT('Bottom Radius'), s: _sdT('Left Radius') };
+        var inl = side === 'all' && host ? _spbInline(host, 'r', 'all') : null;
+        if (inl) return _spbInlineBtn('r', 'all', names.all, inl, 'sd-rdb-all', locked);
         var said = r.mixed ? _sdT('— Multiple —') : _spbText(r.value, 'r');
         var why = r.mixed || r.here ? '' : (side !== 'all' && r.value !== '' ? _sdT('from all corners') : _sdT('default'));
         var tip = side === 'all'
@@ -332,8 +481,19 @@ StyleDesigner.definePart('spacing', function (K) {
         return '<div class="sd-rdb" role="group" aria-label="' + esc(_sdT('Corners')) + '">' +
             corners +
             R.SIDES.map(function (s) { return _rdbBtnHtml(s, r[s], host.locked); }).join('') +
-            '<div class="sd-rdb-shape" style="' + esc(shape) + '">' + _rdbBtnHtml('all', r.all, host.locked) + '</div>' +
-        '</div>';
+            '<div class="sd-rdb-shape" style="' + esc(shape) + '">' + _rdbBtnHtml('all', r.all, host.locked, host) + '</div>' +
+        '</div>' + _spbVarRows(host, ['r']);
+    }
+
+    // The typed field of the side whose binding "Custom value…" removed,
+    // once the box is drawn again (kind 'r' the corners, '' the spacing).
+    function _spbReedit(host, kind) {
+        if (!reedit || (reedit.indexOf('r-') === 0) !== (kind === 'r')) return;
+        var ks = reedit.split('-');
+        reedit = '';
+        refocus = '';
+        var b = host.el.querySelector('.sd-spb-v[data-k="' + ks[0] + '"][data-s="' + ks[1] + '"]');
+        if (b && !b.disabled) _spbEdit(host, b, {});
     }
 
     // Draws the corners into host.el (no size chooser: radius classes have
@@ -343,6 +503,8 @@ StyleDesigner.definePart('spacing', function (K) {
         if (!el || !el.isConnected) return;
         el.innerHTML = _rdbBoxHtml(host);
         _spbBind(host, el);
+        _spbVarBind(host);
+        _spbReedit(host, 'r');
         if (refocus.indexOf('r-') === 0) {
             var side = refocus.slice(2);
             refocus = '';
@@ -357,6 +519,8 @@ StyleDesigner.definePart('spacing', function (K) {
         if (!el || !el.isConnected) return;
         el.innerHTML = _spbBoxHtml(host);
         _spbBind(host, el);
+        _spbVarBind(host);
+        _spbReedit(host, '');
         var bar = _spbBar(el);
         if (bar) {
             bar._spbHost = host;

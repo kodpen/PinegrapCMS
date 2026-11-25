@@ -57343,17 +57343,7 @@ const StyleDesigner = (function () {
         var a = ' data-sd-var="' + kind + '" data-sd-var-prop="' + prop + '"';
         var pick = '<button type="button" class="sd-var-pick" data-sd-var-open title="' + esc(_sdT('Variables')) + '" aria-label="' + esc(_sdT('Choose a variable')) + '">' +
             '<span class="bi bi-braces" aria-hidden="true"></span></button>';
-        if (ref) {
-            var info = ref.token ? (_sdVarNames[ref.token] || {}) : {};
-            var nm = _sdVarRefName(ref, _sdVarNamesMap());
-            var mark = (kind === 'color' && info.color)
-                ? '<span class="sd-var-sw" style="background:' + esc(info.color) + '" aria-hidden="true"></span>'
-                : '<span class="bi ' + (kind === 'color' ? 'bi-palette' : 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>';
-            return '<div class="sd-var-ctl sd-var-bound"' + a + '><div hidden>' + html + '</div>' +
-                '<span class="sd-var-chip"><button type="button" class="sd-var-chip-name" data-sd-var-open title="' + esc(nm) + '">' + mark +
-                '<span class="sd-var-chip-txt">' + esc(nm) + '</span></button>' +
-                '<button type="button" class="sd-var-detach" data-sd-var-detach>' + esc(_sdT('Detach')) + '</button></span></div>';
-        }
+        if (ref) return '<div class="sd-var-ctl sd-var-bound"' + a + '><div hidden>' + html + '</div>' + _sdVarChipHtml(kind, ref) + '</div>';
         if (val && prop !== 'background-color') {
             return '<div class="sd-var-ctl"' + a + '><div hidden>' + html + '</div>' +
                 '<input type="text" class="form-control form-control-sm sd-var-lit" data-sd-var-lit value="' + esc(val) + '" spellcheck="false" aria-label="' + esc(_sdT('Value')) + '">' +
@@ -57362,12 +57352,33 @@ const StyleDesigner = (function () {
         return '<div class="sd-var-ctl"' + a + '><div class="sd-var-main">' + html + '</div>' + pick + '</div>';
     }
 
-    // Writes a bound or typed value ('' removes it) as one undo step.
-    function _sdVarSet(node, prop, v) {
+    // The icon of a control kind without a swatch.
+    var _SD_VAR_ICONS = { color: 'bi-palette', size: 'bi-fonts', space: 'bi-arrows-vertical', radius: 'bi-app' };
+
+    // The chip of a bound control: the swatch or the kind's icon, the
+    // variable's name (it opens the list) and "Detach".
+    function _sdVarChipHtml(kind, ref) {
+        var info = ref.token ? (_sdVarNames[ref.token] || {}) : {};
+        var nm = _sdVarRefName(ref, _sdVarNamesMap());
+        var mark = (kind === 'color' && info.color)
+            ? '<span class="sd-var-sw" style="background:' + esc(info.color) + '" aria-hidden="true"></span>'
+            : '<span class="bi ' + (_SD_VAR_ICONS[kind] || 'bi-fonts') + ' sd-var-ic" aria-hidden="true"></span>';
+        return '<span class="sd-var-chip"><button type="button" class="sd-var-chip-name" data-sd-var-open title="' + esc(nm) + '">' + mark +
+            '<span class="sd-var-chip-txt">' + esc(nm) + '</span></button>' +
+            '<button type="button" class="sd-var-detach" data-sd-var-detach>' + esc(_sdT('Detach')) + '</button></span>';
+    }
+
+    // Writes a bound or typed value ('' removes it) as one undo step;
+    // `clean` maps the element's classes when a value is written (the
+    // spacing box drops the side's !important classes).
+    function _sdVarSet(node, prop, v, clean) {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
-        if (!node || _sdPanelLockReason([node])) return;
-        if ((getAttrStyleProp(node, prop) || '') === (v || '')) return;
+        if (!node || !node.props || _sdPanelLockReason([node])) return;
+        var cls = node.props.cssClass || '';
+        var next = (clean && v) ? clean(cls) : cls;
+        if ((getAttrStyleProp(node, prop) || '') === (v || '') && next === cls) return;
         saveState();
+        if (next !== cls) node.props.cssClass = next;
         setAttrStyleProp(node, prop, v || '');
         _sdRenderNode(node, render);
     }
@@ -57412,12 +57423,16 @@ const StyleDesigner = (function () {
         h.kind = ctl.getAttribute('data-sd-var');
         h.value = getAttrStyleProp(node, prop);
         h.locked = !_collab.mayEdit || !!_sdPanelLockReason([node]);
-        h.set = function (v) { _sdVarSet(node, prop, v); };
-        h.typed = function () { _sdVarTyped(prop); };
+        h.icon = _SD_VAR_ICONS[h.kind] || '';
+        // A side of the spacing box or the corners (part 'spacing') hands
+        // its own class clean-up and way out to its typed field.
+        h.set = function (v) { _sdVarSet(node, prop, v, ctl._sdVarClean); };
+        h.typed = function () { if (ctl._sdVarTyped) ctl._sdVarTyped(); else _sdVarTyped(prop); };
         h.parse = _sdVarParse;
         h.expr = _sdVarExpr;
         h.px = _sdVarPx;
         h.steps = _SD_VAR_STEPS;
+        h.units = _SD_VAR_UNITS;
         h.names = function (map) { _sdVarNames = map || {}; };
         return h;
     }
@@ -57730,17 +57745,35 @@ const StyleDesigner = (function () {
     // What the part reads and writes: the elements' classes, the chosen
     // size and the commit of a change (`fn` maps a class list to the new
     // one) as one undo step.
+    // One element in a design with themes and Bootstrap: a side and the
+    // corners also take a design variable (an inline style, the chip of
+    // _sdVarChipHtml() under the box); `style(prop)` reads it, and the
+    // commit's `drop` lists inline properties removed in the same step.
     function _sdSpBoxHost(el, nodes) {
+        var one = nodes.length === 1 ? nodes[0] : null;
         return {
             el: el,
             size: _sdSpSize,
             classes: nodes.map(function (n) { return (n.props && n.props.cssClass) || ''; }),
             locked: !!_sdPanelLockReason(nodes),
             setSize: _sdSpSizeSet,
-            commit: function (fn) {
+            vars: !!one && !!_sdThemes() && _sdUsesBootstrap(),
+            style: function (prop) { return one ? getAttrStyleProp(one, prop) : ''; },
+            parse: _sdVarParse,
+            varName: function (ref) { return _sdVarRefName(ref, _sdVarNamesMap()); },
+            chip: _sdVarChipHtml,
+            commit: function (fn, drop) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
                 if (_sdPanelLockReason(nodes)) return;
+                var dropping = (one && drop ? drop : []).filter(function (p) { return !!getAttrStyleProp(one, p); });
                 var todo = nodes.filter(function (n) { return n.props && fn(n.props.cssClass || '') !== (n.props.cssClass || ''); });
+                if (dropping.length && one.props) {
+                    saveState();
+                    one.props.cssClass = fn(one.props.cssClass || '');
+                    dropping.forEach(function (p) { setAttrStyleProp(one, p, ''); });
+                    _sdRenderNode(one, render);
+                    return;
+                }
                 if (!todo.length) { renderProperties(); return; }
                 if (nodes.length > 1) {
                     _sdMcCommit(todo, function (n) { n.props.cssClass = fn(n.props.cssClass || ''); });

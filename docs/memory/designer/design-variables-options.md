@@ -5,7 +5,8 @@ description: Options controls offering a design's variables (DV3): which rows, t
 
 ## Which controls offer variables?
 - The single element's panel: Text Options "Color", "Text Bg", "Font Size"; Style "Text Color", "Background Color", Border "Color". `row(label, ctrl, vars)` with `vars` `'color:color'`, `'color:background-color'`, `'color:border-color'` or `'size:font-size'` wraps the control (`_sdVarCtl()`, after the button group is made).
-- Not offered: several elements selected, a design without themes or Bootstrap. The spacing box and the corners (part `spacing`) are DV3b (`plans/designer-variables.md`).
+- The spacing box's eight sides and the corners' centre (part `spacing`, PR #11622): `design-variables-spacing.md`.
+- Not offered: several elements selected, a design without themes or Bootstrap.
 
 ## How does a person bind one?
 - A quiet 22 px "Variables" button (braces icon) beside the control, shown on hover or focus; nothing in the panel's head. It opens the list of the part `variables` (`pick`), 252 px under the control: the first-use line with "Got it" (`localStorage` `sd_vars_tip`, never again once dismissed or a variable chosen), "Search variables", "Variables", "Your own", "Type scale" (size), then "Custom colour…" / "Custom value…", which drops a binding and opens today's control.
