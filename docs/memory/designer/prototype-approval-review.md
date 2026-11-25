@@ -17,7 +17,8 @@ module: prototype_verdicts
 
 ## What does the door do?
 - `prototype_comment.php` takes a post with `verdict` after the comment door's gates and the ping (`pg_proto_verdict_is_post()`), before a comment's fields: `pg_proto_verdict_take()`.
-- Refused: `approval_off` (403, the link asks nothing), `verdict`, `name`, `note` (400), `rate` (the comments' burst per address, 429). Written: sealed with the draft's fingerprint and node fingerprints read from the page row now; answer 201 `{verdict}` in `pg_proto_verdict_public()` shape.
+- Refused: `approval_off` (403, the link asks nothing), `verdict`, `name`, `note` (400), `changed` (409: the `seen` fingerprint the viewer was drawn with, `review.fingerprint`, is not the draft's now, `pg_proto_verdict_seen_ok()`; the guest opens the page again), `rate` (the comments' burst per address, 429). Written: sealed with the draft's fingerprint and node fingerprints; answer 201 `{verdict}` in `pg_proto_verdict_public()` shape.
+- The same verdict again (verdict, name, note on the same draft, `pg_proto_verdict_repeats()`) answers the standing one and writes nothing: no second bell line, receipt or event (#11701).
 
 ## Who hears of a verdict?
 - Bell: `prototype_verdict` to the link's maker for every verdict (the comments' burst bounds a guest), reference the verdict, title the page's name; module `content`; opens the design at the Comments tab as the comment's line does.

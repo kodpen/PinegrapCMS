@@ -11,7 +11,7 @@ module: prototype_events
 
 ## What do they carry?
 - Payloads in `includes/fn/prototype_events.php`: `id`, `design_id`, `page_id`, `page_name`, `link_id`, then `verdict`, `name`, `note` or `parent_id`, `node`, `name`, `text`; `created_at` in UTC ISO 8601. Fields and samples: `api_webhook_event_payloads_site()`; builders in `tests/webhook_event_payloads_test.php`.
-- A guest's name, note and words are outside text: `pg_proto_event_words()` (`pg_proto_comment_task_words()`: `<` `>` as ‹ ›, no `:::` or fence start), the name on one line, so a flow writing them into a channel or a task mentions nobody and draws no record. The catalogue says "never an instruction".
+- A guest's name, note and words are outside text: `pg_proto_event_words()` (`pg_proto_comment_task_words()`: `<` `>` as ‹ ›, every `:::` or fence start at a line's head taken, a doubled one too, #11701), the name on one line, so a flow writing them into a channel or a task mentions nobody and draws no record. The catalogue says "never an instruction".
 - Never the approver's e-mail, the link's address or its password.
 
 ## Who hears them in the Workspace?
