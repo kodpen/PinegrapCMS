@@ -11,7 +11,7 @@ description: Decisions made, product part 108 (2026-11-24 on): ten more designer
 - Level 1: screens side by side (`plans/designer-screens-side-by-side.md`), select similar (`plans/designer-select-similar.md`), the first tour and tips (`plans/designer-first-tour.md`).
 - Level 2: the style guide sheet (`plans/designer-style-guide.md`), the accessibility view (`plans/designer-accessibility-view.md`), a draft compared with the live page (`plans/designer-compare-live.md`), clean up (`plans/designer-cleanup.md`).
 - Level 3: a page from a document (`plans/designer-document-to-page.md`), a record corrected in place (`plans/designer-record-edit-in-place.md`), the Activity tab (`plans/designer-activity.md`).
-- Their sheets are drawn first, as he chose in part 106: `plans/designer-drawings-levels.md`.
+- Their sheets were drawn first, as he chose in part 106: ten sheets, DD12 to DD21, all landed by 2026-11-25; each plan names its drawing.
 
 ## What keeps the designer simple and quick?
 - His second sentence is a rule of its own for everything added to the designer: `designer/designer-light-and-simple.md`. No new button that stays in a bar; one menu row, a default that needs no choice, further choices one level down; a part loaded on first use; nothing running while off; measured before and after.
