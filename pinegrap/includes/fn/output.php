@@ -8190,6 +8190,10 @@ function pg_js_bundles()
         // window.PGSizeStyle), then the part that draws them.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/pg_size_style.js', 'assets/js/style_designer_spacing.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
+        // A grid's Columns and Rows under Advanced › Layout: the per size
+        // writer (window.PGSizeStyle, also in the part 'spacing') and the
+        // track values (window.PGGridTracks), then the part that draws them.
+        'assets/js/style_designer_grid.min.js'     => array('assets/js/pg_size_style.js', 'assets/js/pg_grid_tracks.js', 'assets/js/style_designer_grid.js'),
         // The canvas guides: their pure geometry (window.PGCanvasGuides),
         // then the part that draws Measure over the canvas.
         'assets/js/style_designer_guides.min.js'   => array('assets/js/pg_canvas_guides.js', 'assets/js/style_designer_guides.js'),
@@ -8301,6 +8305,9 @@ function pg_designer_parts()
         // head (also on Size and display and Text), drawn when the section
         // is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // A grid box's Columns and Rows (Advanced › Layout), a value per
+        // screen size, drawn when the section is first shown.
+        'grid' => 'assets/js/style_designer_grid.min.js',
         // The spacing bands and their handles on the selected element over
         // the canvas, drawn on the first selection that can show them.
         'bands' => 'assets/js/style_designer_bands.min.js',

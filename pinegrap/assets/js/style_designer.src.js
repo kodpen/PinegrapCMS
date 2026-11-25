@@ -34927,7 +34927,8 @@ const StyleDesigner = (function () {
         // every element (_sdOptOpenByDefault()).
         var ctx = nodes.map(_sdOptCtx).reduce(function (a, c) {
             return { text: a.text && c.text, flex: a.flex && c.flex, parentFlex: a.parentFlex && c.parentFlex,
-                snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem, visit: false };
+                snapBox: a.snapBox && c.snapBox, snapItem: a.snapItem && c.snapItem,
+                gridBox: a.gridBox && c.gridBox, visit: false };
         });
         // Layout's rows follow the same context; a row any element holds a
         // value in is drawn (rowCss()).
@@ -36660,6 +36661,7 @@ const StyleDesigner = (function () {
             parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
             snapBox: _sdSnapBox(n.type, p.cssClass),
             snapItem: !!(par && _sdSnapBox(par.type, (par.props || {}).cssClass)),
+            gridBox: _sdGridBox(p.cssClass),
             visit: _sdCondRowsOf(n).length > 0
         };
     }
@@ -57194,6 +57196,8 @@ const StyleDesigner = (function () {
         panel.querySelectorAll('[data-sd-szbox]').forEach(function (sz) {
             _sdSpBoxBindOne(sz, nodes, function () { return _sdPartCall('spacing', 'sizes', [_sdSzHost(sz, nodes)]); });
         });
+        var gr = panel.querySelector('[data-sd-gridbox]');
+        if (gr) _sdSpBoxBindOne(gr, nodes, function () { return _sdPartCall('grid', 'draw', [_sdSzHost(gr, nodes)]); }, 'grid');
     }
 
     // ── A length per screen size (Size and display, Text › Font Size)
@@ -57262,7 +57266,8 @@ const StyleDesigner = (function () {
         };
     }
 
-    function _sdSpBoxBindOne(el, nodes, call) {
+    // `part`: the part `call` runs, 'spacing' when not given.
+    function _sdSpBoxBindOne(el, nodes, call, part) {
         var draw = function () {
             if (!el.isConnected) return;
             var host = _sdSpBoxHost(el, nodes);
@@ -57270,7 +57275,7 @@ const StyleDesigner = (function () {
         };
         var sectBody = el.closest('.sd-sect-body');
         var hdr = sectBody ? sectBody.previousElementSibling : null;
-        if (!_sdPartLoaded('spacing') && sectBody && sectBody.style.display === 'none' && hdr) {
+        if (!_sdPartLoaded(part || 'spacing') && sectBody && sectBody.style.display === 'none' && hdr) {
             hdr.addEventListener('click', function first() {
                 hdr.removeEventListener('click', first);
                 draw();
@@ -57616,6 +57621,9 @@ const StyleDesigner = (function () {
         _layPlan.rows.forEach(function (id, i) {
             // A line between the box rows and the element's own.
             if (i && _sdLayOf(id) !== _sdLayOf(_layPlan.rows[i - 1])) _fxBody += '<div class="sd-sp-divider"></div>';
+            // A grid box's Columns and Rows: drawn by the part 'grid'
+            // (_sdSpBoxBind()), a value per screen size.
+            if (id === 'grid') { _fxBody += '<div data-sd-gridbox hidden></div>'; return; }
             var _lr = _layRows[id];
             if (!_lr[3]) { _fxBody += mkRespRow(_lr[0], _lr[1], _lr[2], _sdT('Default')); return; }
             _fxBody += mkNonRespRow(_lr[0], _lr[2].map(function (v) { return [_lr[1] + v[0], v[1]]; }), _lr[3]);
@@ -64585,7 +64593,8 @@ const StyleDesigner = (function () {
         { id: 'justify', of: 'box', name: 'alignment' },
         { id: 'alignItems', of: 'box', name: 'alignment' },
         { id: 'alignContent', of: 'box', name: 'alignment' },
-        { id: 'gap', of: 'box', name: 'gap' },
+        { id: 'grid', of: 'box', name: '', when: 'gridBox' },
+        { id: 'gap', of: 'box', name: 'gap', also: 'gridBox' },
         { id: 'snap', of: 'box', name: '', when: 'snapBox' },
         { id: 'alignSelf', of: 'item', name: 'self' },
         { id: 'order', of: 'item', name: 'order' },
@@ -64605,8 +64614,10 @@ const StyleDesigner = (function () {
 
     // What Layout draws. `ctx`: { flex: the element is a flex box,
     // parentFlex: its parent is one, snapBox / snapItem: the element / its
-    // parent takes Scroll snap } (_sdOptCtx()); a row with `when` follows
-    // that key instead of flex / parentFlex; `held`: { id: true }
+    // parent takes Scroll snap, gridBox: the element is a grid box }
+    // (_sdOptCtx()); a row with `when` follows that key instead of flex /
+    // parentFlex, one with `also` is drawn for that key too (Gap on a grid
+    // box); `held`: { id: true }
     // for a row holding a value, drawn whatever the context so nothing set
     // is out of sight. Returns { rows: the ids drawn, in order; make:
     // "Make it a container" is drawn; tag: "parent: flex" is drawn; hidden:
@@ -64617,7 +64628,7 @@ const StyleDesigner = (function () {
         held = held || {};
         var out = { rows: [], make: !ctx.flex && !held.container, tag: !!ctx.parentFlex, hidden: { box: [], item: [] } };
         _SD_LAY_ROWS.forEach(function (r) {
-            if (ctx[r.when || (r.of === 'box' ? 'flex' : 'parentFlex')] || held[r.id]) {
+            if (ctx[r.when || (r.of === 'box' ? 'flex' : 'parentFlex')] || (r.also && ctx[r.also]) || held[r.id]) {
                 out.rows.push(r.id);
                 return;
             }
@@ -64703,6 +64714,12 @@ const StyleDesigner = (function () {
         if (!/ d-(none|flex|inline-flex) /.test(s) || !/ d-((sm|md|lg|xl|xxl)-)?(inline-)?flex /.test(s)) out.push('d-flex');
         return out.join(' ');
     }
+    // Whether an element is a grid box at any size: Display Grid or Inline
+    // Grid, its Columns and Rows drawn under Layout (the part 'grid').
+    function _sdGridBox(cls) {
+        return / d-((sm|md|lg|xl|xxl)-)?(inline-)?grid /.test(' ' + String(cls || '').trim().split(/\s+/).join(' ') + ' ');
+    }
+
     // Scroll snap's classes, their rules in _SD_BLOCK_CSS.
     var _SD_SNAP_CLASSES = ['pg-scroll-snap-always', 'pg-scroll-snap-near', 'pg-snap-to-start', 'pg-snap-to-center', 'pg-snap-to-end'];
 
