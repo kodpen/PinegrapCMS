@@ -1,6 +1,6 @@
 ---
 name: canvas-phone
-description: The canvas screens at phone width (CO8, #9361): chips under the name, Full screen at the foot, icon tabs (.pg-seg-icons), New table floating on Data, what DL5f still draws
+description: The canvas screens at phone width (CO8, #9361): chips under the name, Full screen at the foot, icon tabs (.pg-seg-icons), New table floating on Data, the gaps dropped
 ---
 
 ## What changes on the card below 576 px?
@@ -19,9 +19,10 @@ description: The canvas screens at phone width (CO8, #9361): chips under the nam
 - New table is the filled button floating at the bottom right on a phone (`.ws-wt-fab`, placing only: fixed, 16 px from the edges and the safe area, z-index 1010 under the menu drawer); the toolbar's New table shows from 576 px.
 - The rows are the list table driver's phone cards (every column under its label). Its scopes are a select on a phone, Deleted tables an icon button (`ui/workspace-screen-bar.md`); the icon segments of #9361 went with the one-line bar.
 
-## What did CO8 leave to DL5f?
-- Built from the nearest recipe, no new one: the floating button is `pg-button-fill` with its label, not the drawing's 52 px icon tile. Not built: the drawing's compact row card (name, rows, place, time, canvases on two lines) and the groups "Channel tables" / "Mine and shared"; the list driver has neither.
-- Against the sheet's `table-page` (owner, 2026-11-13): Data already has the card frame, icon tiles, quiet icon actions, the selection bar with Select all, columns and Details, every row printed (no page numbers) and `pg-measure-list`. Left for DL5f: a bulk Delete in the selection bar (a server action of its own); a second text line under the name (driver rows are one line, so the description follows the name after "·"); no status pill, as a table has no status.
+## What did CO8 build from the nearest recipe?
+- The floating button is `pg-button-fill` with its label, not the drawing's 52 px icon tile. Data has the sheet's `table-page` parts (owner, 2026-11-13): card frame, icon tiles, quiet icon actions, the selection bar with Select all, columns and Details, every row printed and `pg-measure-list`; a table has no status, so no pill.
+- Driver rows are one line, so a description follows the name after "·". The selection bar's Delete landed in WL10 #11404 (`workflow-tables-data-bulk-delete.md`).
+- Architect (2026-11-24, message 12602): the compact row card with its groups ("Channel tables" / "Mine and shared"), the 52 px tile and a second text line are dropped (`ui/look-workspace-recipes.md`).
 
 ## How was it checked?
 - `tests/workspace_canvas_phone_test.php`. On a sandbox panel (#9361) a two-part canvas made through the API, shot dark and light at 390 and 1440 px: the wide card unchanged, the phone card and Data list as above, and CO7d's lines undone from the panel (a new binding taken off, a changed access put back).

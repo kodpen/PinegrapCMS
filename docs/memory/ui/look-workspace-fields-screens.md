@@ -18,6 +18,6 @@ description: WL9b: the Workspace PHP screens' fields and the command palette's s
 - `includes/settings/workspace_team.php`, and the switch rows' help in `calls_settings.php`, `link_preview.php`, `bulk.php`: Site Settings cards, whose row grid matches `.form-label` + `.form-control` and `.form-field > .form-text` (`look-settings-screens.md`, `look-settings-mail-sending.md`).
 - `mail_add.php`'s choice cards (`.pg-start-choice .form-text`), `mail_phone.php`'s channel field (`.pg-set-card .pg-f-md > .form-control`), `mail_list.php`'s toolbar search (the toolbars' search, `tests/bs6_form_adorn_test.php`).
 - The department's colour (`form-control-color` in `team_settings.php`): no recipe draws a colour field.
-- `workspace_guest.php` and `workspace_approval.php`: pages without the panel stylesheet (WL11 names them).
+- `workspace_guest.php` and `workspace_approval.php`: pages without the panel stylesheet (`look-open-work.md`).
 
 Related: docs/memory/ui/look-workspace-fields.md, docs/memory/ui/look-workspace-fields-scripts.md, docs/memory/ui/look-check.md
