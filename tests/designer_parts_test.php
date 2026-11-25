@@ -123,7 +123,11 @@ function test_designer_parts_files_describe_every_part()
 // editor, 'off' ones never, the others while their condition is true.
 function test_designer_parts_for_follow_their_condition()
 {
-	$every = array('bands', 'code', 'focus', 'fonts', 'guides', 'import', 'interactions', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'treesearch', 'variables');
+	// Read from the files, so a new 'always' part edits no list here.
+	$every = array_keys(array_filter(pg_designer_part_files(), function ($part) {
+		return $part['when'] === 'always';
+	}));
+	pg_assert_true(count(array_intersect(array('code', 'move', 'treesearch'), $every)) === 3, 'the parts of every editor include the always ones');
 	pg_assert_same($every, pg_designer_parts_for(array()), 'nothing holds: the parts of every editor');
 	pg_assert_same($every, pg_designer_parts_for(array('always' => false, 'off' => true, 'nope' => true)), 'always and off cannot be turned');
 
