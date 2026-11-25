@@ -3188,8 +3188,8 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                     oi.ship_to_id, p.name AS product_name, p.short_description, p.full_description,
                     p.shippable, p.image_name, p.address_name, p.selection_type, p.gift_card,
                     p.form, p.form_name, p.form_quantity_type,
-                    p.inventory, p.inventory_quantity, p.backorder,
-                    oi.added_by_offer,
+                    p.inventory, p.inventory_quantity, p.backorder, p.out_of_stock_message,
+                    oi.added_by_offer, oi.calendar_event_id, oi.recurrence_number,
                     p.recurring, p.payment_period, p.recurring_schedule_editable_by_customer,
                     p.number_of_payments AS product_number_of_payments,
                     p.start AS recurring_start_days,
@@ -3202,6 +3202,21 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         );
     }
     $cart_count = is_array($items) ? count($items) : 0;
+
+    // Which of a classic layout's two tables a row stands in (charged today
+    // or later, as the cart decides), its picture, its amount and the event
+    // it reserves.
+    $_eo_today_str = date('Y-m-d');
+    $_eo_clearcommerce = (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
+        && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'ClearCommerce');
+    foreach ((array)$items as $_i => $_it) {
+        $items[$_i]['is_recurring'] = _pg_cart_row_charged_later($_it, $_eo_today_str, $_eo_clearcommerce) ? 1 : 0;
+        $items[$_i]['image'] = (string)($_it['image_name'] ?? '');
+        $items[$_i]['line_cents'] = (int)$_it['price'] * (int)$_it['quantity'];
+        $_cal = (defined('CALENDARS') && CALENDARS == true && !empty($_it['calendar_event_id']) && function_exists('get_calendar_event'))
+            ? get_calendar_event((int)$_it['calendar_event_id'], (int)$_it['recurrence_number']) : null;
+        $items[$_i]['calendar_event'] = is_array($_cal) ? $_cal : array();
+    }
 
     // Pre-load existing gift_card data for any item in the cart so the
     // form re-fills the recipient email / from name / message / delivery
@@ -3444,6 +3459,8 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // visitors toward higher tiers; applied confirms current discounts.
         'upsell_offers'          => _eo_render_upsell_offers(isset($_eo_offers['upsell_offers']) ? $_eo_offers['upsell_offers'] : array()),
         'applied_offers'         => _eo_render_applied_offers(),
+        // A classic layout's recurring totals, one line per payment period.
+        'payment_periods'        => pg_cart_payment_periods_html(array_map($_eo_fmt, pg_cart_payment_periods($items))),
         'errors_notices'         => '',                       // populated below before form wrap
     );
     // Resolve submit / update labels here so the bindings path can render the
@@ -3679,7 +3696,30 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // one the gateway charges: the "amount charged" row and its note.
             'has_foreign_currency' => (defined('VISITOR_CURRENCY_CODE') && defined('BASE_CURRENCY_CODE') && VISITOR_CURRENCY_CODE != BASE_CURRENCY_CODE),
         );
-        _eo_apply_visibility_bindings($tree_decoded_for_eo, $_eo_vis_ctx);
+        // A classic layout's own lines: its tables, totals, payment part and
+        // the billing extras the classic page offered.
+        $_eo_page_row = $_eo_page_id > 0 ? db_item("SELECT shopping_cart_label, special_offer_code_label, special_offer_code_message, update_button_label, purchase_now_button_label FROM express_order_pages WHERE page_id = '" . (int)$_eo_page_id . "' LIMIT 1") : array();
+        if (!is_array($_eo_page_row)) $_eo_page_row = array();
+        $_eo_word = function ($cfg_key, $row_key, $default) use ($cfg, $_eo_page_row) {
+            if (isset($cfg[$cfg_key]) && (string)$cfg[$cfg_key] !== '') return (string)$cfg[$cfg_key];
+            return (string)($_eo_page_row[$row_key] ?? '') !== '' ? (string)$_eo_page_row[$row_key] : (string)$default;
+        };
+        $_eo_offer_label = $_eo_word('special_offer_code_label', 'special_offer_code_label', '');
+        $_eo_offer_message = $_eo_word('special_offer_code_message', 'special_offer_code_message', '');
+        $_eo_currency_code = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string)VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
+        $_eo_referrals = array();
+        foreach ((array)db_items("SELECT name, code FROM referral_sources ORDER BY sort_order, name") as $_rs) $_eo_referrals[(string)$_rs['name']] = (string)$_rs['code'];
+        $_eo_vis_ctx = array(
+            'has_gift_card_code'   => defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true,
+            'can_update_contact'   => defined('USER_LOGGED_IN') && USER_LOGGED_IN && empty($_SESSION['software']['ghost']),
+            'has_referral_sources' => (bool)$_eo_referrals,
+        ) + $_eo_vis_ctx + pg_eo_layout_flags($items, array(
+            'discount' => $discount_cents, 'tax' => $tax_cents, 'shipping' => $ship_cents, 'gift_card' => $gc_disc_cents,
+            'total' => $total_cents, 'offer_code' => ($_eo_offer_label . $_eo_offer_message) !== '', 'currency_code' => $_eo_currency_code,
+        ));
+        // A row's own flags stay for the row pass.
+        $_eo_row_flag_names = array_keys(pg_cart_row_flags(array()));
+        _eo_apply_visibility_bindings($tree_decoded_for_eo, $_eo_vis_ctx, array_fill_keys($_eo_row_flag_names, true));
         _eo_apply_section_bindings($tree_decoded_for_eo, $sections_html);
 
         // The opt_in_displayed field the system screens post, added only
@@ -3722,6 +3762,25 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         _eo_state_list_prefixes(null, true);
         if ($_eo_lf) _eo_fit_state_lists($tree_decoded_for_eo, $_eo_lf, $_eo_ship_rid);
         _eo_apply_action_bindings($tree_decoded_for_eo);
+        pg_eo_fill_empty_selects($tree_decoded_for_eo, array(
+            'billing_salutation' => function_exists('get_salutation_options') ? get_salutation_options() : array(),
+            'referral_source'    => array('' => '') + $_eo_referrals,
+        ), array(
+            'billing_salutation' => $_eo_lf ? (string)$_eo_lf->get_field_value('billing_salutation') : '',
+            'referral_source'    => $_eo_lf ? (string)$_eo_lf->get_field_value('referral_source') : '',
+        ));
+
+        // A classic layout lists the rows in two tables: each place after the
+        // first is drawn row by row with the first; a row's flags are marked
+        // in every place and resolved per row.
+        $eo_extra_tpl = array();
+        foreach (pg_cart_extra_loops($tree_decoded_for_eo) as $_k => $_kids) {
+            $_wrap = array('type' => 'semantic', 'props' => array(), 'children' => $_kids);
+            _pg_sw_mark_visibility($_wrap, $_eo_row_flag_names);
+            $eo_extra_tpl[$_k] = '';
+            foreach ($_wrap['children'] as $_kid) $eo_extra_tpl[$_k] .= (string)_render_tree_node($_kid, 0, 0);
+        }
+        $eo_extra_rows = array_fill_keys(array_keys($eo_extra_tpl), '');
 
         // ── 2. Split off any loop_area the designer placed (typically the
         // cart items <tbody>). _split_widget_tree replaces the loop_area
@@ -3749,6 +3808,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // way regardless of how many items — we just substitute per iteration.
         if (is_array($eo_loop_kids) && !empty($eo_loop_kids) && !empty($items)) {
             $tmpl_html = '';
+            $_wrap = array('type' => 'semantic', 'props' => array(), 'children' => $eo_loop_kids);
+            _pg_sw_mark_visibility($_wrap, $_eo_row_flag_names);
+            $eo_loop_kids = $_wrap['children'];
             foreach ($eo_loop_kids as $kid) {
                 $tmpl_html .= (string)_render_tree_node($kid, 0, 0);
             }
@@ -3757,7 +3819,12 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $loop_html = '';
             foreach ($items as $_it) {
                 $item_vars = _eo_compute_item_tokens($_it, $widget_id, $form_id, $_eo_fmt, $_eo_lf_rows, $gift_card_data, $base_path, $sw_dir, $csrf_token, $eo_back_url);
-                $row_html  = _eo_replace_tokens($tmpl_html, $item_vars);
+                $_eo_rf    = pg_cart_row_flags($_it, array(
+                    '__item_out_of_stock_message' => $item_vars['^^__item_out_of_stock_message^^'],
+                    '__item_calendar_event_name'  => $item_vars['^^__item_calendar_event_name^^'],
+                    '__item_calendar_event_dates' => $item_vars['^^__item_calendar_event_dates^^'],
+                ));
+                $row_html  = pg_cart_row_visibility(_eo_replace_tokens($tmpl_html, $item_vars), $_eo_rf);
                 $_eo_iid   = (int)$_it['item_id'];
                 $_eo_don   = (($_it['selection_type'] ?? '') === 'donation');
                 if ($_eo_don || !empty($_it['added_by_offer'])) {
@@ -3770,8 +3837,17 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                 // agree_terms, the form) all live outside the loop.
                 $row_html  = pg_sw_uniquify_row_ids($row_html, $widget_id, isset($_it['item_id']) ? (int)$_it['item_id'] : 0);
                 $loop_html .= $row_html;
+                foreach ($eo_extra_tpl as $_k => $_tpl) {
+                    $_x = pg_cart_row_visibility(_eo_replace_tokens($_tpl, $item_vars), $_eo_rf);
+                    if ($_eo_don || !empty($_it['added_by_offer'])) {
+                        $_x = _pg_cart_retarget_qty_box($_x, 'quantity[' . $_eo_iid . ']', $_eo_iid,
+                            $_eo_don ? pg_format_input_amount(pg_visitor_amount((int)$_it['price'] * max(1, (int)$_it['quantity']) / 100)) : null);
+                    }
+                    $eo_extra_rows[$_k] .= pg_sw_uniquify_row_ids($_x, $widget_id, ($_k + 1) * 100000 + $_eo_iid);
+                }
             }
             $designed_body = str_replace('<!--pg-loop-slot-->', $loop_html, $designed_body);
+            foreach ($eo_extra_rows as $_k => $_rows) $designed_body = str_replace('<!--pg-cart-loop-' . $_k . '-->', $_rows, $designed_body);
         } else {
             // No loop_area OR empty cart — just strip the marker if present.
             $designed_body = str_replace('<!--pg-loop-slot-->', '', $designed_body);
@@ -3849,6 +3925,21 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // A list of the cart, the offers, the gift cards or the recipients
         // outside a recipient row lists the whole order.
         $static_vars['^^__ship_to_key^^'] = '0';
+        // A classic layout's words and values.
+        $static_vars += array(
+            '^^__currency_code^^'               => h($_eo_currency_code),
+            '^^__shopping_cart_label^^'         => h($_eo_word('cart_section_label', 'shopping_cart_label', lang('cart'))),
+            '^^__update_button_label^^'         => h($_eo_word('update_button_label', 'update_button_label', lang('Update'))),
+            '^^__purchase_now_button_label^^'   => h($_eo_word('purchase_button_label', 'purchase_now_button_label', lang('Place Order'))),
+            '^^__special_offer_code_label^^'    => h($_eo_offer_label),
+            '^^__special_offer_code_message^^'  => h($_eo_offer_message),
+
+            '^^__opt_in_label^^'                => h(defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : ''),
+            '^^__tax_exempt_label^^'            => h(defined('ECOMMERCE_TAX_EXEMPT_LABEL') && ECOMMERCE_TAX_EXEMPT_LABEL != '' ? (string)ECOMMERCE_TAX_EXEMPT_LABEL : lang('Tax-Exempt?')),
+        );
+        // Read only where a layout prints them.
+        if (strpos($designed_body, '^^__retrieve_order_url^^') !== false) $static_vars['^^__retrieve_order_url^^'] = h(_eo_saved_cart_url());
+        if (strpos($designed_body, '^^__currency_selector^^') !== false) $static_vars['^^__currency_selector^^'] = _pg_cart_currency_selector($request_uri);
         $designed_body = _eo_replace_tokens($designed_body, $static_vars);
 
         // Every substitution is done by here — the per-item loop and the
