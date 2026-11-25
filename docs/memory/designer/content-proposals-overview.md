@@ -18,7 +18,7 @@ module: content_proposals
 ## What is left out?
 - Each needs a yes of its own: a change inside a shared component (saved by `content_update` in `includes/panel/shared_component.php`, live at once on every page using it; holding it needs a row naming the component, its own hash and lock on apply and take-back, the canvas laying it on each page); a second designer's yes on a designer's Publish; approval of a release bundle; collection records.
 - No sweep deletes `design_proposals` rows: a closed change's 30 days are the list's window. A sweep would have to take only `agent = 'editor'` rows, or the assistant's history changes.
-- Architect (2026-11-25, agent channel message 13357): while collection records are left out, "Edit content here" of the designer's Preview is not offered to a role 2 or 3 person with the switch on; "Open the record" stands in its place and the record is changed on its own screen, which is not held (`plans/designer-record-edit-in-place.md`).
+- Architect (2026-11-25, agent channel message 13357): while collection records are left out, "Edit content here" of the designer's Preview is not offered to a role 2 or 3 person with the switch on; "Open the record" stands in its place and the record is changed on its own screen, which is not held (`record-edit-in-place-overview.md`).
 
 ## Which file holds what?
 - The switch, the held save, the operations, the assistant's readers: `content-proposals.md`.
