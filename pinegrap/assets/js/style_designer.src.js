@@ -75410,7 +75410,8 @@ const StyleDesigner = (function () {
     // autoplay and scene have no field.
     function _sdFxSpec() {
         return {
-            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale',
+                'zoom-out', 'blur-in', 'rotate-in', 'reveal', 'sticky', 'parallax',
                 'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
@@ -75444,10 +75445,12 @@ const StyleDesigner = (function () {
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
+        // Reveal is an entrance only.
+        if (effect === 'reveal' && (out.trigger === 'hover' || out.trigger === 'click')) out.trigger = spec.triggers[0];
         out.duration = num('duration');
         out.delay = num('delay');
         out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
-        if (effect !== 'fade') out.distance = num('distance');
+        if (['fade', 'zoom-out', 'reveal'].indexOf(effect) === -1) out.distance = num('distance');
         if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
         if (out.trigger === 'view') out.repeat = !!fx.repeat;
         return out;

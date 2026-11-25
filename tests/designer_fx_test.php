@@ -61,6 +61,13 @@ function _test_fx_cases()
 		'chapter clamped' => array('effect' => 'chapter', 'duration' => 1),
 		'scene' => array('effect' => 'scene'),
 		'scene drops every field' => array('effect' => 'Scene', 'trigger' => 'view', 'duration' => 900, 'from' => 50, 'speed' => 30),
+		'zoom out' => array('effect' => 'zoom-out', 'trigger' => 'load', 'duration' => 900, 'stagger' => 60, 'distance' => 30),
+		'blur in' => array('effect' => 'Blur-In', 'distance' => 12, 'easing' => 'ease-in-out', 'repeat' => true),
+		'blur in on hover' => array('effect' => 'blur-in', 'trigger' => 'hover', 'stagger' => 40),
+		'rotate in' => array('effect' => 'rotate-in', 'delay' => 200, 'distance' => 15),
+		'reveal' => array('effect' => 'reveal', 'stagger' => 120, 'distance' => 40),
+		'reveal on hover becomes view' => array('effect' => 'reveal', 'trigger' => 'hover', 'duration' => 800),
+		'reveal on click becomes view' => array('effect' => 'reveal', 'trigger' => 'click'),
 	);
 }
 
@@ -76,6 +83,24 @@ function test_designer_fx_normalize()
 	pg_assert_same(651, pg_fx_normalize(array('effect' => 'scale', 'duration' => 650.5))['duration'], 'a half rounds up');
 	pg_assert_same(array('effect' => 'autoplay'), pg_fx_normalize(array('effect' => 'autoplay', 'trigger' => 'load', 'duration' => 900)), 'autoplay has no field');
 	pg_assert_same(' data-pg-fx="autoplay"', pg_fx_attrs(array('_fx' => array('effect' => 'autoplay'))), 'autoplay writes only its effect');
+}
+
+// The four later entrances take the same trigger, timing, easing and
+// stagger as the first six. Zoom out and Reveal have no distance; Blur in
+// reads it as the blur in px, Rotate in as the angle in degrees. Reveal
+// is an entrance only: a hover or click trigger is read as view.
+function test_designer_fx_more_entrances()
+{
+	foreach (array('zoom-out', 'blur-in', 'rotate-in', 'reveal') as $effect) {
+		pg_assert_true(in_array($effect, pg_fx_effects(), true), $effect . ' is known');
+	}
+	pg_assert_same(array('effect' => 'zoom-out', 'trigger' => 'load', 'duration' => 900, 'delay' => 0, 'easing' => 'ease-out', 'stagger' => 60), pg_fx_normalize(_test_fx_cases()['zoom out']), 'zoom out has no distance');
+	pg_assert_same(array('effect' => 'blur-in', 'trigger' => 'view', 'duration' => 600, 'delay' => 0, 'easing' => 'ease-in-out', 'distance' => 12, 'stagger' => 0, 'repeat' => true), pg_fx_normalize(_test_fx_cases()['blur in']), 'blur in keeps its distance');
+	pg_assert_same(array('effect' => 'blur-in', 'trigger' => 'hover', 'duration' => 600, 'delay' => 0, 'easing' => 'ease-out', 'distance' => 0), pg_fx_normalize(_test_fx_cases()['blur in on hover']), 'blur in on hover');
+	pg_assert_same(array('effect' => 'reveal', 'trigger' => 'view', 'duration' => 800, 'delay' => 0, 'easing' => 'ease-out', 'stagger' => 0, 'repeat' => false), pg_fx_normalize(_test_fx_cases()['reveal on hover becomes view']), 'reveal is an entrance only');
+	pg_assert_same(' data-pg-fx="rotate-in" data-pg-fx-trigger="view" data-pg-fx-delay="200" data-pg-fx-distance="15"', pg_fx_attrs(array('_fx' => _test_fx_cases()['rotate in'])));
+	pg_assert_same(' data-pg-fx="reveal" data-pg-fx-trigger="view" data-pg-fx-stagger="120"', pg_fx_attrs(array('_fx' => _test_fx_cases()['reveal'])), 'reveal writes no distance');
+	pg_assert_true(strpos(pg_fx_head_style(), 'reveal') === false, 'the head style hides them by their trigger, as the six');
 }
 
 function test_designer_fx_attrs()
