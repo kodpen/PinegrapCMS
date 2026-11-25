@@ -729,6 +729,9 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $type_on = !empty($settings['address_type']);
 
     $lf = new liveform('shipping_address_and_arrival');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'shipping_address_and_arrival');
     if ($custom_form && $ship_to_id > 0 && !$lf->field_in_session('first_name')) {
         _pg_sa_prefill_custom_form($lf, "form_data.ship_to_id = '" . $ship_to_id . "'");
     }

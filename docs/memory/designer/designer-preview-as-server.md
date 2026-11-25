@@ -22,5 +22,5 @@ module: designer_preview_render
 - Every widget is drawn inside `pg_preview_as_while($setup, $fn)`: background render, errors throw, the setup held for renderers (`pg_preview_as_current()`, `pg_preview_as_flag()`), and `$_SESSION` put back as it was after the widget, also on a throw.
 - `tests/designer_preview_render_test.php` asserts the scope (no site search count, no visit fact, session back, flags cleared), the statements (SELECT only, limited) and the wiring.
 
-## What does no renderer read yet?
-- The flags (`empty`, `long` on lists, `form_error`) and the visitor are held but no renderer reads them yet (plan step PW2b); the record cases (long, sold out, chosen) are drawn.
+## What do the renderers read?
+- The flags, as [[designer-preview-as-readers]] says; the visitor not yet.

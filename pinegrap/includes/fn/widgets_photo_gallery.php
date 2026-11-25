@@ -470,6 +470,8 @@ function _render_system_widget_photo_gallery($tree_json, $widget_id, $cfg = arra
         list($albums, $photos) = _pg_gal_read($folder_id);
         $rows = pg_gal_rows($albums, $photos, $page_url, defined('OUTPUT_PATH') ? OUTPUT_PATH : '/');
     }
+    // The Preview's cases "Empty" and "Long".
+    $rows = pg_preview_as_rows($rows);
     $in_album = ($folder_id !== $root_id);
     $back_url = '';
     if ($in_album) {

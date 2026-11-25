@@ -217,6 +217,9 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
     if (!is_array($contact)) $contact = array();
 
     $lf = new liveform('billing_information');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'billing_information');
     $custom_form = !empty($settings['form']);
     if ($lf->field_in_session('billing_first_name')) {
         $values = array();
