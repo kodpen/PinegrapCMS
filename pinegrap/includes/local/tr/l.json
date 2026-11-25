@@ -240,6 +240,7 @@
     "Last runs": "Son çalıştırmalar",
     "Last sale": "Son satış",
     "Last saved: {var}": "Son kayıt: {var}",
+    "Last scan {var:1}": "Son tarama {var:1}",
     "Last scan {var:1}: {var:2} files and {var:3} records.": "Son tarama {var:1}: {var:2} dosya ve {var:3} kayıt.",
     "Last seen": "Son görülme",
     "Last seen a moment ago": "Az önce görüldü",
