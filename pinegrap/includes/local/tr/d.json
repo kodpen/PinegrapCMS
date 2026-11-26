@@ -478,6 +478,7 @@
     "Delete the group": "Grubu sil",
     "Delete the group “{var:1}”? Its notes are not deleted: they go back to no group.": "“{var:1}” grubu silinsin mi? Notları silinmez: grupsuz notlara döner.",
     "Delete the page": "Sayfayı sil",
+    "Delete the paragraph": "Paragrafı sil",
     "Delete the picture": "Görseli sil",
     "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil",
     "Delete the row": "Satırı sil",
