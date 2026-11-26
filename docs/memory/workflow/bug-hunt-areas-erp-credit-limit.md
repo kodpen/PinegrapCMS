@@ -7,7 +7,7 @@ description: The bug hunt of the ERP credit limit and "Put it on my account" (ar
 - The customer credit limit (`includes/erp/credit.php`, the issue check in `erp_invoice_issue()` and the API's `422 credit_limit`) and "Put it on my account" at checkout (`pg_erp_open_account()` and its refusal in `includes/fn/ecommerce.php`, `erp_storefront_on_account()` in `includes/erp/storefront.php`, `submit_order.php`, the order preview and express order options).
 - Looked at: open orders in flight, two orders at once on one limit, the storefront rule against the panel's, the API's gate.
 
-## What did the hunt's PR fix?
+## What did the hunt's PR fix? (#11865)
 - Two checkouts of one account at the same moment each fitted the limit and together passed it: the figures were read once, without a lock, long before the order was written. Now read again under a named lock per account (`erp_storefront_on_account_hold()`, `erp_credit_lock()`), kept until the order is written (`erp-credit-limit-and-on-account.md`).
 - In block mode two sales invoices of one account issued at once each fitted the limit: the account was read without a lock. Now weighed after the series lock against the account row read `FOR UPDATE` (`erp_credit_refusal_locked()`).
 
