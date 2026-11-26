@@ -47,7 +47,7 @@ function settings_accounting_test_category($key)
 function settings_accounting_test_names($source)
 {
 	// A field drawn by the pane's switch or radio rows is named in the call.
-	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"|pg_accounting_settings_(?:switch|choice)\(\'([a-z0-9_]+)\'/', $source, $match);
+	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"|pg_accounting_settings_(?:switch|choice|tick)\(\'([a-z0-9_]+)\'/', $source, $match);
 	$names = array_values(array_filter(array_unique(array_merge($match[1], $match[2])), 'strlen'));
 	sort($names);
 

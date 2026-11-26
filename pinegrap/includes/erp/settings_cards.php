@@ -168,7 +168,7 @@ function erp_settings_rules_fields()
 
         $output .= '
                         <fieldset class="mb-7">
-                            <legend class="form-label">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
+                            <legend class="form-label pg-field-label">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
                             <div class="form-field">
                                 <input class="radio" type="radio" name="vat_net_withholding" id="vat_net_withholding_0" value="0"' . ($rules['vat_net_withholding'] ? '' : ' checked') . ' />
                                 <label class="" for="vat_net_withholding_0">' . lang('Shown beside the calculated VAT, which stays in full') . '</label>
@@ -188,7 +188,7 @@ function erp_settings_rules_fields()
 
     $output .= '
                         <p class="form-text mb-0">' . lang('Whether an expense category takes its VAT back is set with the categories.') . '
-                            <a href="erp_expense_categories.php">' . lang('Expense categories') . '</a></p>';
+                            <a class="pg-button pg-button-ghost pg-button-sm" href="erp_expense_categories.php">' . lang('Expense categories') . '</a></p>';
 
     return $output;
 }

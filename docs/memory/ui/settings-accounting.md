@@ -15,7 +15,7 @@ module: accounting_settings_fold
 - Web orders (`pgset-erp-orders`): the invoice of a web order, its two filters, marketplace orders, the invoice e-mail and its message, tax on shipping and surcharges.
 - Customer accounts (`pgset-erp-accounts`, drawn once one of its columns exists): credit limit, account prices in the store, Put it on my account.
 - Foreign currency (`pgset-erp-currency`): the switch, the currencies, the exchange difference. Reminders and notices (`pgset-erp-notices`): overdue reminders, then notices as they happen.
-- Documents, Sales and Web orders are drawn open since SA2 (`ui/settings-accounting-open-rows.md`); the other three rows keep the old markup (`div.switch`, the currency popover) until SA3.
+- Documents, Sales and Web orders are drawn open since SA2, Customer accounts, Foreign currency, Reminders and notices and the E-Invoice row since SA3 (`ui/settings-accounting-open-rows.md`).
 
 ## What does each row say closed?
 - Documents "Series PGF · numbers by year · due in 30 days". Sales "Till prices with tax · invoices change stock · <walk-in account>". Web orders "Invoiced from the order screen" / "once paid" / "once shipped", "· e-mailed to the customer".

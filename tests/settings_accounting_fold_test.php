@@ -54,7 +54,7 @@ function settings_accounting_fold_test_card($id)
 function settings_accounting_fold_test_names($html)
 {
 	// A field drawn by the pane's switch or radio rows is named in the call.
-	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"|pg_accounting_settings_(?:switch|choice)\(\'([a-z0-9_]+)\'/', $html, $match);
+	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"|pg_accounting_settings_(?:switch|choice|tick)\(\'([a-z0-9_]+)\'/', $html, $match);
 	$names = array();
 
 	foreach ($match[1] as $index => $name) {

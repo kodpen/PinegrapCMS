@@ -5,7 +5,7 @@ description: Site Settings groups, user rights Select / Select All and the other
 
 ## Which Site Settings cells are named groups?
 - The pane arrives over Ajax, so a heading must name its controls in the markup itself (`toggle-and-mark-names.md`). These cells are `role="group"` with `aria-labelledby` on the existing `col-12`, their heading a `div.form-label` with an id.
-- The headings: `erp_edoc_provider_title` (e-Document Provider radios), `erp_fx_currencies_title` (Currencies allowed on documents), `erp_overdue_notify_title` (Overdue receivable reminders: the bare "E-mail" switch now reads with it), `waf_country_exempt_title` (Always let in; was a `<label>` with no `for`; its heading is now an `h6`, below), `translation_targets_title` (Target languages; same).
+- The headings: `erp_edoc_provider_title` (e-Document Provider radios), `erp_fx_currencies_title` (Currencies allowed on documents; the overdue reminders' channels are a fieldset whose legend, Send through, names the bare "E-mail" tick since SA3), `waf_country_exempt_title` (Always let in; was a `<label>` with no `for`; its heading is now an `h6`, below), `translation_targets_title` (Target languages; same).
 - No wrapper was added: the card rows are laid out by `:has()` rules on the cell's children, and those rules match the `.form-label` class, not the element, so a label turned div keeps its look.
 - Always let in is the exception since #9046: its heading is the sub-heading `h6.fg-secondary` (same id) and its three switches sit in a nested `.row` inside the `col-12 pb-0` group cell, so each is a row with its line (`settings-card-markup.md`).
 

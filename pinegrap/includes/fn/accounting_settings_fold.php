@@ -481,3 +481,41 @@ function pg_accounting_settings_choice($name, $legend, $options, $help = '')
                         <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
                     </div>';
 }
+
+/**
+ * One tick of a row of ticks, posting 1 when ticked, as a checkbox setting
+ * the select or switch did. Pure.
+ *
+ * @param string $name  the field's name and id
+ * @param bool   $on    it is ticked
+ * @param string $label plain text
+ * @return string HTML, an inline cell
+ */
+function pg_accounting_settings_tick($name, $on, $label)
+{
+    return '
+                            <div class="form-field d-inline-grid me-5">
+                                <input value="1" class="check" type="checkbox" id="' . h($name) . '" name="' . h($name) . '"' . ($on ? ' checked="checked"' : '') . '/>
+                                <label for="' . h($name) . '">' . h($label) . '</label>
+                            </div>';
+}
+
+/**
+ * A row of ticks (pg_accounting_settings_tick()) under their legend, with
+ * the group's one line under it. Pure.
+ *
+ * @param string $group  the group's id, naming its help line
+ * @param string $legend plain text
+ * @param string $ticks  the ticks' HTML
+ * @param string $help   plain text, '' for none
+ * @return string HTML, a full-width cell
+ */
+function pg_accounting_settings_ticks($group, $legend, $ticks, $help = '')
+{
+    return '
+                    <div class="col-12">
+                        <fieldset' . (($help !== '') ? ' aria-describedby="' . h($group) . '_help"' : '') . '><legend class="form-label pg-field-label">' . h($legend) . '</legend>' . $ticks . '
+                        </fieldset>' . (($help !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($group) . '_help">' . h($help) . '</p>' : '') . '
+                    </div>';
+}
