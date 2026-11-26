@@ -689,38 +689,98 @@ function pg_supplier_feed_products_of($ids)
 }
 
 /**
- * Products found by code (products.name) or barcode for unmatched keys.
+ * Product ids by code, the name folded as the match folds it, pure.
  *
- * @param array $values lower key => record values
+ * @param array $rows id, name
+ * @return array lower name => list of ids
+ */
+function pg_supplier_feed_match_group($rows)
+{
+    $grouped = array();
+
+    foreach ((array) $rows as $row) {
+        $grouped[pg_supplier_feed_lower($row['name'])][] = (int) $row['id'];
+    }
+
+    return $grouped;
+}
+
+/**
+ * The product a record matches, pure: the one product whose name is the
+ * code; with two or more, the one the record's barcode belongs to when it
+ * belongs to exactly one of them, else none (ambiguous); with none by name,
+ * the first product of the barcode.
+ *
+ * @param array $code_ids    products whose name is the code
+ * @param array $barcode_ids products holding the record's barcode
+ * @return array id (0 for none), ambiguous (bool)
+ */
+function pg_supplier_feed_match_pick($code_ids, $barcode_ids)
+{
+    $code_ids = array_values(array_unique(array_map('intval', (array) $code_ids)));
+    $barcode_ids = array_values(array_unique(array_map('intval', (array) $barcode_ids)));
+
+    if (count($code_ids) === 1) {
+        return array('id' => $code_ids[0], 'ambiguous' => false);
+    }
+
+    if (count($code_ids) > 1) {
+        if ((count($barcode_ids) === 1) && in_array($barcode_ids[0], $code_ids, true)) {
+            return array('id' => $barcode_ids[0], 'ambiguous' => false);
+        }
+
+        return array('id' => 0, 'ambiguous' => true);
+    }
+
+    return array('id' => ($barcode_ids !== array()) ? $barcode_ids[0] : 0, 'ambiguous' => false);
+}
+
+/**
+ * Products found by code (products.name) or barcode for unmatched keys.
+ * Architect (2026-11-26): a code that is the name of two live products
+ * matches none unless the barcode settles it; such keys go to $ambiguous.
+ *
+ * @param array $values    lower key => record values
+ * @param array $ambiguous lower keys two products hold, set
  * @return array lower key => product id
  */
-function pg_supplier_feed_match($values)
+function pg_supplier_feed_match($values, &$ambiguous = array())
 {
     $found = array();
+    $ambiguous = array();
     $codes = array();
     $barcodes = array();
+    $by_name = array();
+    $by_barcode = array();
 
-    foreach ($values as $lower => $value) {
+    foreach ($values as $value) {
         $codes[] = $value['key'];
 
         if ($value['barcode'] !== '') {
-            $barcodes[$value['barcode']] = $lower;
+            $barcodes[] = $value['barcode'];
         }
     }
 
     if ($codes !== array()) {
-        foreach ((array) db_items("SELECT id, name FROM products WHERE name IN ('" . implode("', '", array_map('escape', $codes)) . "')" . pg_catalog_bin_live_sql('products')) as $product) {
-            $found[pg_supplier_feed_lower($product['name'])] = (int) $product['id'];
-        }
+        $by_name = pg_supplier_feed_match_group((array) db_items("SELECT id, name FROM products WHERE name IN ('" . implode("', '", array_map('escape', $codes)) . "')" . pg_catalog_bin_live_sql('products') . " ORDER BY id"));
     }
 
     if ($barcodes !== array()) {
-        foreach ((array) db_items("SELECT barcode, product_id FROM product_barcodes WHERE barcode IN ('" . implode("', '", array_map('escape', array_keys($barcodes))) . "')") as $row) {
-            $lower = isset($barcodes[(string) $row['barcode']]) ? $barcodes[(string) $row['barcode']] : '';
+        foreach ((array) db_items("SELECT barcode, product_id FROM product_barcodes WHERE barcode IN ('" . implode("', '", array_map('escape', array_unique($barcodes))) . "') ORDER BY id") as $row) {
+            $by_barcode[(string) $row['barcode']][] = (int) $row['product_id'];
+        }
+    }
 
-            if (($lower !== '') && !isset($found[$lower])) {
-                $found[$lower] = (int) $row['product_id'];
-            }
+    foreach ($values as $lower => $value) {
+        $pick = pg_supplier_feed_match_pick(
+            isset($by_name[$lower]) ? $by_name[$lower] : array(),
+            (($value['barcode'] !== '') && isset($by_barcode[$value['barcode']])) ? $by_barcode[$value['barcode']] : array()
+        );
+
+        if ($pick['id'] > 0) {
+            $found[$lower] = $pick['id'];
+        } elseif ($pick['ambiguous']) {
+            $ambiguous[$lower] = true;
         }
     }
 
@@ -772,7 +832,7 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
         }
     }
 
-    $found = pg_supplier_feed_match($unmatched);
+    $found = pg_supplier_feed_match($unmatched, $ambiguous);
 
     foreach ($values as $lower => $value) {
         if (!isset($items[$lower])) {
@@ -814,6 +874,14 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
         }
 
         pg_supplier_feed_item_write($feed, $state, $context, $items[$lower], $products, $value, $lines);
+
+        if (isset($ambiguous[$lower])) {
+            // Not a draft: one named after the code would be a third product
+            // of that name. Not dismissed: the next pull tries again.
+            $lines[] = array('line' => $value['key'], 'reason' => lang('Two products have this code'));
+            $state['count']['failed']++;
+            continue;
+        }
 
         $spool_line = pg_supplier_feed_spool_line($value, $items[$lower]);
 

@@ -11,7 +11,7 @@ module: supplier_feed_sync
 
 ## What are the phases?
 - Scan: every record read once, nothing written to products; items seen get `seen_at` = the run's start.
-- Apply: the records again. Unknown keys get an item row (product 0 while unmatched). Matched by the code to `products.name`, else `product_barcodes.barcode`. Only the `active` item writes; with several feeds: `supplier-feed-several.md`. Bundles and binned products skipped.
+- Apply: the records again. Unknown keys get an item row (product 0 while unmatched). Matched by code or barcode: `supplier-feed-sync-matching.md`. Only the `active` item writes; with several feeds: `supplier-feed-several.md`. Bundles and binned products skipped.
 - Close: active matched items not seen in the pull are closed as if their stock were 0.
 - Drafts: the records no product matched become products switched off (`supplier-feed-drafts.md`).
 

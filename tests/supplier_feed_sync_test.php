@@ -134,6 +134,24 @@ function test_supplier_feed_sync_item_buy()
 	pg_assert_same(array(), $none['item'], 'no buy price writes nothing');
 }
 
+// A code that is the name of two products matches none, unless the record's
+// barcode belongs to exactly one product and that one holds the code.
+function test_supplier_feed_sync_match_pick()
+{
+	pg_assert_same(array('id' => 5, 'ambiguous' => false), pg_supplier_feed_match_pick(array(5), array()), 'one product');
+	pg_assert_same(array('id' => 0, 'ambiguous' => true), pg_supplier_feed_match_pick(array(5, 6), array()), 'two products: none');
+	pg_assert_same(array('id' => 6, 'ambiguous' => false), pg_supplier_feed_match_pick(array(5, 6), array(6)), 'the barcode of one of them settles it');
+	pg_assert_same(array('id' => 0, 'ambiguous' => true), pg_supplier_feed_match_pick(array(5, 6), array(9)), 'a barcode of a third settles nothing');
+	pg_assert_same(array('id' => 0, 'ambiguous' => true), pg_supplier_feed_match_pick(array(5, 6), array(5, 6)), 'a barcode on two products settles nothing');
+	pg_assert_same(array('id' => 9, 'ambiguous' => false), pg_supplier_feed_match_pick(array(), array(9)), 'no code: the barcode, as before');
+	pg_assert_same(array('id' => 0, 'ambiguous' => false), pg_supplier_feed_match_pick(array(), array()), 'nothing');
+	pg_assert_same(array(5, 6), pg_supplier_feed_match_group(array(
+		array('id' => 5, 'name' => 'ABC-1'),
+		array('id' => 6, 'name' => 'abc-1'),
+		array('id' => 7, 'name' => 'XYZ'),
+	))['abc-1'], 'two that differ only in case hold one code');
+}
+
 function test_supplier_feed_sync_missing_fields()
 {
 	$records = array(
