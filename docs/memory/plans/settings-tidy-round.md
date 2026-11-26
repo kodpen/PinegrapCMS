@@ -25,7 +25,7 @@ priority: 6
 - TR3c Done #11894 (`ui/connections-page-finishes.md`): the page finishes it: the application's fields on the page of a Google or Microsoft account service, the drives' two answers made one, Sign in with Microsoft given its anchor and button (paths 1 to 6).
 - TR3d Done #11911 (`ui/connections-list-opens-card.md`): no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.
 - TR4 Done by the architect (2026-11-26): Ecommerce's plan is `settings-ecommerce-tidy.md`, steps EC1 to EC6, free beside TR3 (another file).
-- TR5 Done by the architect (2026-11-26): Accounting's plan (SA1 to SA4) is done (`ui/settings-accounting.md`), Updates and maintenance's `settings-maintenance-tidy.md` (SM1 to SM4; SM3 after TR3a). The two S3 sets stay apart.
+- TR5 Done by the architect (2026-11-26): Accounting's plan (SA1 to SA4) is done (`ui/settings-accounting.md`), Updates and maintenance is done (SM1 to SM4, `ui/settings-maintenance.md`). The two S3 sets stay apart.
 - TR6 (S) Close-out: the rule into `ui/`, the survey files corrected or deleted, this file deleted.
 
 ## What about the other panes?

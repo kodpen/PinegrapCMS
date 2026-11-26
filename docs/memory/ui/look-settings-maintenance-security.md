@@ -7,6 +7,7 @@ description: Site Settings Maintenance, Firewall, Security and Features in look 
 - `includes/settings/maintenance.php`, `firewall.php`, `security.php`, `features.php` (step S5b of the plan panel-old-screens). Their `*.save.php` handlers are unchanged: no field, name or save changed.
 - `tools/check_look.php` counts 0 old buttons in all four; their baseline entries are gone.
 - The Features pane was redrawn after S5b as the Modules board and folded rows (#11003, #11043): its Feature Options card is gone; the pane today is `settings-features.md`.
+- Updates and maintenance was later redrawn as folded rows (#11876, #11891, #11910): the Setup Instructions drawer and the popovers are gone; the pane today is `settings-maintenance.md`.
 - Firewall and HTTPS and Accounts and sign-in were later redrawn as folded rows (#11000, #11074, #11209): their cards and popovers are gone; the panes today are `settings-firewall.md` and `settings-accounts.md`.
 
 ## What changed on them?
@@ -19,6 +20,6 @@ description: Site Settings Maintenance, Firewall, Security and Features in look 
 - Plain `small` text outside alerts (the log file path, the fail2ban snippet, the sign-in buttons line, Apple's steps) is `pg-text-meta`; the Apple private key box lost `small` and takes the 13 px settings field.
 
 ## What stayed as it was?
-- Alerts keep `alert … small`: no recipe draws an alert. Maintenance's popovers keep their arrows' inline position (scripts and Bootstrap place them), as in S3; Firewall and Security have none since they became folded rows.
+- Alerts keep `alert … small`: no recipe draws an alert. Maintenance, Firewall and Security have no popovers since they became folded rows.
 - The fail2ban `<pre>` keeps `white-space: pre-wrap` inline: no utility class gives it.
 - Card titles were already the settings recipe (`pg-title-section` on the header or its span).

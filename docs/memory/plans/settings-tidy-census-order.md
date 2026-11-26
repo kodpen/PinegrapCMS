@@ -22,7 +22,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 ## In which order are the plans written?
 - One category a plan, each written when the queue allows and the session's PR before it has landed.
 - 5. General and Appearance: done (`ui/settings-general.md`, `ui/settings-appearance.md`).
-- 7. Ecommerce, after its CX11 step. 8. Accounting: done (`ui/settings-accounting.md`). 9. Updates and maintenance (cron steps, one S3, K2), after its CX11 step.
+- 7. Ecommerce, after its CX11 step. 8. Accounting: done (`ui/settings-accounting.md`). 9. Updates and maintenance: done (`ui/settings-maintenance.md`; the two S3 sets stay apart).
 - Which date format wins: a page in another language uses that language's format, said under Date Format (`ui/settings-general.md`). The Workspace menu's "Workspace Settings" entry stays: it names the group (`workspace/workspace-settings-place-names.md`).
 
 Related: docs/memory/plans/settings-tidy-census.md
