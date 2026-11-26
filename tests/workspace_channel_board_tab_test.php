@@ -108,3 +108,16 @@ function test_workspace_channel_board_tab_board_address_opens_the_board()
 	// the browser, as ?view=list opens the List view.
 	pg_assert_contains("self.boardView = (self.tab === 'board') ? 'board' : '';", $js, 'the board asked for in the address is the view opened');
 }
+
+function test_workspace_channel_board_tab_list_mine_and_person_together()
+{
+	$tasks = workspace_channel_board_tab_tasks();
+
+	// The board and its figures keep the tasks the reader and the person
+	// chosen are both on; the List view narrows the same way.
+	pg_assert_same(array(1), workspace_channel_board_tab_ids(ws_tasks_for_person(ws_tasks_for_person($tasks, 9), 4)), 'a person and the reader: the tasks both are on');
+
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_contains("\$tasks = ws_tasks_for_person(ws_tasks_for_person(\$tasks, (int) (\$request['person'] ?? 0)), !empty(\$request['mine']) ? (int) \$viewer['id'] : 0);", $php, 'the List view keeps both the person and "Only mine"');
+}
