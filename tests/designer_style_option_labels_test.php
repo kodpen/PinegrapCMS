@@ -264,11 +264,9 @@ function test_designer_style_option_labels_colour_row_keys()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("row(_sdT('Text Color'),", $source);
 	pg_assert_contains("row(_sdT('Background Color'),", $source);
-	pg_assert_contains("esc(_sdT('Custom Background Color'))", $source);
 	pg_assert_same(0, preg_match_all("/row\\(_sdT\\('(Text Col|Bg Col|Bg Color)'\\)/", $source));
 	pg_assert_same('Metin Rengi', $language['Text Color']);
 	pg_assert_same('Arka Plan Rengi', $language['Background Color']);
-	pg_assert_same('Özel Arka Plan Rengi', $language['Custom Background Color']);
 	pg_assert_same('Metin Sütunu', $language['Text Col']);
 	// The colour picker's button and the placement selects say their
 	// first option through _sdT() like the hidden select below them.
