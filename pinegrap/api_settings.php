@@ -104,6 +104,10 @@ if ($_POST) {
 
 		} elseif ($cors_parsed['invalid']) {
 
+			// The box shows the refused list again, not the saved one, so
+			// only the named entries have to be corrected.
+			$_SESSION['software']['api_cors_typed'] = mb_substr($cors_text, 0, 20000);
+
 			$liveform->add_error(lang(array(
 				'string' => 'These are not browser origins: {var:1}. An origin is https:// and a host, such as https://app.example.com, or the fixed origin of an app shell.',
 				'vars'   => h(implode(', ', $cors_parsed['invalid']))
@@ -1699,6 +1703,17 @@ if (!empty($webhook_all)) {
 // origins, which is the site's decision, not one application's.
 $cors_card = '';
 
+// What a refused save typed, read once; else the saved list.
+$cors_box_text = api_cors_origins_text(api_cors_origins());
+
+if (isset($_SESSION['software']['api_cors_typed'])) {
+
+	$cors_box_text = (string)$_SESSION['software']['api_cors_typed'];
+
+	unset($_SESSION['software']['api_cors_typed']);
+
+}
+
 if ((int)$user['role'] <= 1) {
 
 	$cors_card = '
@@ -1711,7 +1726,7 @@ if ((int)$user['role'] <= 1) {
 					<label class="pg-field-label" for="cors_origins">' . lang('Origins') . '</label>
 					<textarea class="pg-input" name="cors_origins" id="cors_origins" rows="4" maxlength="20000"
 						spellcheck="false" autocomplete="off" aria-describedby="cors_origins_help"
-						placeholder="https://app.example.com">' . h(api_cors_origins_text(api_cors_origins())) . '</textarea>
+						placeholder="https://app.example.com">' . h($cors_box_text) . '</textarea>
 					<div class="pg-field-help" id="cors_origins_help">'
 						. lang('One origin per line. A web page on a listed origin may call the API with a bearer token; with the list empty no web page can, and servers and native apps call as before. An origin is https:// and a host, such as https://app.example.com. A native app shell loads its pages from a fixed origin: capacitor://localhost and https://localhost (Capacitor), ionic://localhost, tauri://localhost or http://localhost.') . '
 					</div>
