@@ -3605,6 +3605,8 @@ function pg_office_view_strings()
         'kind_bullet'       => lang('Bulleted list'),
         'kind_number'       => lang('Numbered list'),
         'kind_other'        => lang('Other style'),
+        'doc_undo'          => lang('Undo (Ctrl+Z)'),
+        'doc_redo'          => lang('Redo (Ctrl+Y)'),
         'doc_delete'        => lang('Delete the paragraph'),
         'doc_restore'       => lang('Keep the paragraph'),
         'doc_pick'          => lang('Click a paragraph first.'),

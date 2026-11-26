@@ -3249,6 +3249,14 @@
         var nodes = [];
         var shown = { node: null, editor: null, last: null, opened: false, note: '' };
 
+        // The document's own list of changes for Undo and Redo: the state
+        // before each change, the last 100. Typing is one change while the
+        // caret goes on where the last letter went (run: its paragraph,
+        // whether it types or deletes, the caret's point after it).
+        var steps = changeList(100);
+        var run = null;
+        var stepControls = null;
+
         doc.setAttribute('aria-label', strings.doc || '');
         paper.setAttribute('data-bs-theme', 'light');
         doc.appendChild(paper);
@@ -3598,7 +3606,9 @@
             }
 
             event.preventDefault();
-            applyFormat(DOC_FORMATS[index]);
+            step(function () {
+                applyFormat(DOC_FORMATS[index]);
+            });
 
             return true;
         }
@@ -4001,11 +4011,238 @@
             notify();
         }
 
+        // A copy of the document's changes as they stand, with what is being
+        // typed, the paragraphs added (where each stands) and those hidden,
+        // and the caret or the paragraph picked: what Undo puts back.
+        function capture() {
+            var state = {
+                changes: changesNow(),
+                looks: {},
+                wantKinds: copyOf(wantKinds),
+                deletes: copyOf(deletes),
+                added: [],
+                hidden: [],
+                caret: null
+            };
+            var range = sheetRange();
+            var parts = range ? partsOf(range) : [];
+
+            Object.keys(looks).forEach(function (position) {
+                state.looks[position] = lookCopy(looks[position]);
+            });
+
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                var key = node.getAttribute('data-p');
+
+                state.added.push({
+                    node: node,
+                    key: key,
+                    parent: node.parentNode,
+                    prev: node.previousElementSibling,
+                    text: texts[key],
+                    marks: marks[key],
+                    kind: kinds[key],
+                    drawn: drawn[key]
+                });
+            });
+
+            nodes.forEach(function (node) {
+                if (node.hidden) {
+                    state.hidden.push(node);
+                }
+            });
+
+            if (parts.length) {
+                state.caret = { node: parts[0].node, start: parts[0].start, last: parts[parts.length - 1].node, end: parts[parts.length - 1].end };
+            } else if (shown.node) {
+                state.caret = { node: shown.node };
+            }
+
+            return state;
+        }
+
+        function copyOf(map) {
+            var copy = {};
+
+            Object.keys(map).forEach(function (key) {
+                copy[key] = map[key];
+            });
+
+            return copy;
+        }
+
+        function lookCopy(look) {
+            return { text: look.text, base: look.base.slice(), want: look.want.slice() };
+        }
+
+        // What a state means for the file: two states that read the same
+        // save the same. A look counts only where it changes a format.
+        function meaning(state) {
+            var shaped = {};
+
+            Object.keys(state.looks).forEach(function (position) {
+                var look = state.looks[position];
+                var ranges = formatRanges(look.base, look.want);
+
+                if (ranges.length) {
+                    shaped[position] = [look.text, ranges];
+                }
+            });
+
+            return JSON.stringify([state.changes, shaped, state.wantKinds, state.deletes, state.added.map(function (item) {
+                return item.key;
+            }), state.hidden.map(function (node) {
+                return node.getAttribute('data-p');
+            })]);
+        }
+
+        // Runs one change of the document: the state before it goes on the
+        // list when it changed anything.
+        function step(change) {
+            var before = capture();
+
+            change();
+            run = null;
+
+            if (meaning(capture()) !== meaning(before)) {
+                steps.record(before);
+            }
+
+            drawBar();
+        }
+
+        // Typing the browser does inside one paragraph: a new change unless
+        // it goes on where the last letter went, the same way.
+        function typing(node, type) {
+            var kind = /^insert/.test(type) ? 'insert' : 'delete';
+            var at = selectionIn(node);
+
+            if (!run || run.node !== node || run.kind !== kind || !at || at[0] !== at[1] || run.at !== at[0]) {
+                steps.record(capture());
+                run = { node: node, kind: kind, at: -1 };
+            }
+        }
+
+        // Puts the document back as a state of the list left it: the
+        // paragraphs added then stand again where they stood, the others
+        // go; each paragraph touched is drawn again; the caret goes back.
+        function restore(state) {
+            var touched = {};
+            var caret = state.caret;
+
+            if (shown.editor) {
+                touched[shown.editor.position] = true;
+            }
+
+            shown.editor = null;
+            shown.node = null;
+            shown.last = null;
+            shown.note = '';
+            run = null;
+
+            [changes, looks, wantKinds, deletes].forEach(function (map) {
+                Object.keys(map).forEach(function (key) {
+                    touched[key] = true;
+                });
+            });
+
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                var key = node.getAttribute('data-p');
+
+                node.parentNode.removeChild(node);
+                [texts, marks, kinds, drawn].forEach(function (map) {
+                    delete map[key];
+                });
+            });
+
+            // In reading order, so the paragraph each follows stands already.
+            state.added.forEach(function (item) {
+                if (item.prev && item.prev.parentNode === item.parent) {
+                    item.parent.insertBefore(item.node, item.prev.nextSibling);
+                } else {
+                    item.parent.insertBefore(item.node, item.parent.firstChild);
+                }
+
+                texts[item.key] = item.text;
+                marks[item.key] = item.marks;
+                kinds[item.key] = item.kind;
+                drawn[item.key] = item.drawn;
+            });
+
+            changes = copyOf(state.changes);
+            wantKinds = copyOf(state.wantKinds);
+            deletes = copyOf(state.deletes);
+            looks = {};
+
+            Object.keys(state.looks).forEach(function (position) {
+                looks[position] = lookCopy(state.looks[position]);
+            });
+
+            [changes, looks, wantKinds, deletes].forEach(function (map) {
+                Object.keys(map).forEach(function (key) {
+                    touched[key] = true;
+                });
+            });
+
+            nodes = Array.prototype.slice.call(doc.querySelectorAll('[data-p]'));
+
+            nodes.forEach(function (node) {
+                var key = node.getAttribute('data-p');
+                var hide = state.hidden.indexOf(node) >= 0;
+
+                node.classList.remove('office-selected');
+
+                if (node.hidden !== hide) {
+                    node.hidden = hide;
+                    touched[key] = true;
+                }
+
+                if (own(touched, key) || isNew(key)) {
+                    redraw(node);
+                }
+            });
+
+            if (caret && nodes.indexOf(caret.node) >= 0 && !caret.node.hidden) {
+                if (own(caret, 'start') && caret.node.classList.contains('office-typing')) {
+                    enter(caret.node, caret.start);
+
+                    if (caret.last !== caret.node || caret.end !== caret.start) {
+                        if (nodes.indexOf(caret.last) >= 0 && !caret.last.hidden) {
+                            placeSelection(caret.node, caret.start, caret.end, caret.last);
+                            follow();
+                        }
+                    }
+                } else {
+                    enter(caret.node, 'end');
+                }
+            }
+
+            drawBar();
+            notify();
+        }
+
+        // Undo (back) or Redo: one change of the list a press.
+        function undoStep(back) {
+            var now = capture();
+            var state = back ? steps.undo(now) : steps.redo(now);
+
+            if (state) {
+                restore(state);
+            }
+
+            drawBar();
+        }
+
         // The bar's buttons pressed when all of the selected text has theirs;
         // the kind choice on the picked paragraph's kind.
         function drawBar() {
             if (!bar) {
                 return;
+            }
+
+            if (stepControls) {
+                stepControls.undo.disabled = !steps.canUndo();
+                stepControls.redo.disabled = !steps.canRedo();
             }
 
             if (kindChoice) {
@@ -4491,6 +4728,12 @@
         doc.addEventListener('input', function () {
             follow();
 
+            if (run && shown.editor && run.node === shown.editor.node) {
+                var at = selectionIn(run.node);
+
+                run.at = (at && at[0] === at[1]) ? at[0] : -1;
+            }
+
             if (shown.editor) {
                 shown.editor.typed = true;
                 notify();
@@ -4507,6 +4750,14 @@
         doc.addEventListener('beforeinput', function (event) {
             var type = event.inputType || '';
             var range = sheetRange();
+
+            // The browser's own undo and redo (its menu) work on the
+            // document's list instead.
+            if (/^history(Undo|Redo)$/.test(type) && stepControls && paper.contains(event.target)) {
+                event.preventDefault();
+                undoStep(type === 'historyUndo');
+                return;
+            }
 
             if (!range || /^history/.test(type)) {
                 return;
@@ -4526,7 +4777,7 @@
                 event.preventDefault();
 
                 if (inside || parts.length > 1) {
-                    splitParagraph();
+                    step(splitParagraph);
                 }
                 return;
             }
@@ -4538,22 +4789,9 @@
                     event.preventDefault();
                 }
 
-                var typed = normal(event.data || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : '') || '');
-
-                if (parts.length === 1 && parts[0].start < parts[0].end) {
-                    // A whole paragraph selected (three clicks): the
-                    // selection is put inside it and typed over there.
-                    placeSelection(parts[0].node, parts[0].start, parts[0].end);
-                    follow();
-
-                    if (/^insert/.test(type) && typed !== '') {
-                        typeText(typed);
-                    } else if (/^delete/.test(type) && document.execCommand) {
-                        document.execCommand('delete');
-                    }
-                } else if (parts.length > 1 && removeAcross(parts) && /^insert/.test(type)) {
-                    typeText(typed);
-                }
+                step(function () {
+                    across(parts, type, normal(event.data || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : '') || ''));
+                });
                 return;
             }
 
@@ -4561,20 +4799,40 @@
                 follow();
             }
 
-            if (!range.collapsed) {
-                return;
-            }
-
-            var at = textOffset(from, range.startContainer, range.startOffset);
+            var at = range.collapsed ? textOffset(from, range.startContainer, range.startOffset) : -1;
 
             if (/^delete.*Backward$/.test(type) && at === 0) {
                 event.preventDefault();
-                joinParagraphs(from, true);
+                step(function () {
+                    joinParagraphs(from, true);
+                });
             } else if (/^delete.*Forward$/.test(type) && at === textNow(from.getAttribute('data-p')).length) {
                 event.preventDefault();
-                joinParagraphs(from, false);
+                step(function () {
+                    joinParagraphs(from, false);
+                });
+            } else {
+                typing(from, type);
             }
         });
+
+        // Typing over a selection that is not all inside one paragraph.
+        function across(parts, type, typed) {
+            if (parts.length === 1 && parts[0].start < parts[0].end) {
+                // A whole paragraph selected (three clicks): the
+                // selection is put inside it and typed over there.
+                placeSelection(parts[0].node, parts[0].start, parts[0].end);
+                follow();
+
+                if (/^insert/.test(type) && typed !== '') {
+                    typeText(typed);
+                } else if (/^delete/.test(type) && document.execCommand) {
+                    document.execCommand('delete');
+                }
+            } else if (parts.length > 1 && removeAcross(parts) && /^insert/.test(type)) {
+                typeText(typed);
+            }
+        }
 
         // Paste is plain text, typed where the caret stands; over a
         // selection of several paragraphs it takes them out first.
@@ -4591,13 +4849,15 @@
 
             event.preventDefault();
 
-            if (parts.length > 1 && !removeAcross(parts)) {
-                return;
-            }
+            step(function () {
+                if (parts.length > 1 && !removeAcross(parts)) {
+                    return;
+                }
 
-            if (shown.editor) {
-                typeText(text);
-            }
+                if (shown.editor) {
+                    typeText(text);
+                }
+            });
         });
 
         // The bar follows the selection on the sheet. Once the view has left
@@ -4652,6 +4912,17 @@
                 return;
             }
 
+            // Ctrl+Z undoes a change of the document; Ctrl+Y and
+            // Ctrl+Shift+Z do it again. The browser's own undo is not used.
+            var asked = stepControls ? historyKey(event) : '';
+
+            if (asked) {
+                event.preventDefault();
+                event.stopPropagation();
+                undoStep(asked === 'undo');
+                return;
+            }
+
             if ((onSheet || event.target === node) && formatKey(event)) {
                 event.stopPropagation();
                 return;
@@ -4670,13 +4941,15 @@
                 // inside it, typed by the browser.
                 if (key === 'Enter' && plain && !event.shiftKey) {
                     event.preventDefault();
-                    splitParagraph();
+                    step(splitParagraph);
                     return;
                 }
 
                 if (key === 'Escape' && editor.typed) {
                     event.preventDefault();
-                    undoTyping(node);
+                    step(function () {
+                        undoTyping(node);
+                    });
                     return;
                 }
 
@@ -4732,6 +5005,32 @@
             bar.setAttribute('role', 'toolbar');
             bar.setAttribute('aria-label', strings.doc_format_bar || '');
 
+            // Undo and Redo at the bar's start, on the document's own list.
+            stepControls = {};
+
+            [['undo', 'bi-arrow-counterclockwise', strings.doc_undo], ['redo', 'bi-arrow-clockwise', strings.doc_redo]].forEach(function (item) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi ' + item[1]);
+
+                button.type = 'button';
+                button.disabled = true;
+                button.setAttribute('aria-label', item[2] || '');
+                button.title = item[2] || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the focus, and so the caret, on the sheet.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    undoStep(item[0] === 'undo');
+                });
+
+                stepControls[item[0]] = button;
+                bar.appendChild(button);
+            });
+
             [['bi-type-bold', strings.format_bold], ['bi-type-italic', strings.format_italic], ['bi-type-underline', strings.doc_underline]].forEach(function (item, index) {
                 var button = el('button', 'pg-icon-button pg-icon-button-sm');
                 var glyph = el('span', 'bi ' + item[0]);
@@ -4749,7 +5048,9 @@
                     event.preventDefault();
                 });
                 button.addEventListener('click', function () {
-                    applyFormat(DOC_FORMATS[index]);
+                    step(function () {
+                        applyFormat(DOC_FORMATS[index]);
+                    });
                 });
 
                 controls[DOC_FORMATS[index][0]] = button;
@@ -4778,7 +5079,9 @@
                 choice.appendChild(other);
 
                 choice.addEventListener('change', function () {
-                    applyKind(choice.value);
+                    step(function () {
+                        applyKind(choice.value);
+                    });
                 });
 
                 field.appendChild(choice);
@@ -4804,7 +5107,9 @@
                 button.addEventListener('mousedown', function (event) {
                     event.preventDefault();
                 });
-                button.addEventListener('click', item[3]);
+                button.addEventListener('click', function () {
+                    step(item[3]);
+                });
 
                 blockControls[item[0]] = button;
                 bar.appendChild(button);
@@ -4906,6 +5211,8 @@
                 wantKinds = {};
                 deletes = {};
                 shown.last = null;
+                steps.clear();
+                run = null;
 
                 positions.forEach(function (position) {
                     var node = doc.querySelector('[data-p="' + position + '"]');

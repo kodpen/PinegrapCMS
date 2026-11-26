@@ -185,9 +185,13 @@ function test_office_document_page_source()
 	pg_assert_contains("getData('text/plain')", $body, 'paste is plain text');
 	pg_assert_contains("paper.setAttribute('data-bs-theme', 'light');", $body, 'the sheet is white in both themes');
 	pg_assert_contains('paper.contentEditable = typeMode;', $body, 'the sheet is the one place typed in, so a selection crosses paragraphs');
-	pg_assert_contains('splitParagraph();', $body, 'Enter cuts the paragraph');
 	pg_assert_contains('joinParagraphs(from, true);', $body, 'Backspace at a paragraph\'s start joins it to the one before');
 	pg_assert_same(false, strpos($body, 'strings.doc_add'), 'the bar has no Add a paragraph button');
+	pg_assert_contains("['undo', 'bi-arrow-counterclockwise', strings.doc_undo]", $body, 'the bar starts with Undo');
+	pg_assert_contains("['redo', 'bi-arrow-clockwise', strings.doc_redo]", $body, 'Redo follows it');
+	pg_assert_contains('historyKey(event)', $body, 'Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z go to the document\'s list');
+	pg_assert_contains('step(splitParagraph);', $body, 'Enter cuts the paragraph, one change of the list');
+	pg_assert_contains('steps.clear();', $body, 'dropping every change empties the list');
 	pg_assert_same(0, preg_match('/\bvar (select|enter|follow|refuse)\b/', $body), 'no variable hides a function of the view');
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
