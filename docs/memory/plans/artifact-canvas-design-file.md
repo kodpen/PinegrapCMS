@@ -26,7 +26,7 @@ priority: 6
 
 ## Which steps? (M about 1,000 product lines; tests red first, on presentations the test writes)
 - DF1 (M) done, PR #11840 (`platform/office-pptx-design-reader.md`): the reader, pure: slides of placed elements, counts of what is left out.
-- DF2 (M) after DF1: the mapper, pure: a slide to a canvas document, sizes and spacing by the census's sums, the font lookup, the report's numbers.
+- DF2 (M) done, PR #11872 (`platform/office-pptx-canvas-mapper.md`): the mapper, pure: a slide to a canvas document, sizes and spacing by the census's sums, the font lookup, the report's numbers.
 - DF3 (M) after DF2: the canvas's action that reads an uploaded file, the pictures into Files, limits and refusals, and Import's one page as a group.
 - DF4 (M) after DF3: the chooser window, the New image dialog's door, many canvases or scenes, the report line, the phone.
 - DF5 (S) Close-out: `ui/image-editor-design-file.md`, the `[NEW]` line named, the census file and this file deleted.
