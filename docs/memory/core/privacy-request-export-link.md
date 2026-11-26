@@ -13,10 +13,11 @@ module: privacy_request_link
 ## Where is the file and what is the link?
 - `data/privacy_exports/<request>-<end>-<32 hex>.json` (`pg_privacy_link_dir()`, mode 0600); `data/` is closed to the web. Nothing of the person in the name.
 - Link: `privacy_download.php?r=<request>&e=<end>&n=<file part>&s=<sig>`, `s` = HMAC-SHA256 of `privacy-request-export:<id>:<n>:<e>` under `ENCRYPTION_KEY` (`pg_fs_key()`), compared with `hash_equals`.
-- No column: the file is the link's state. A new link deletes the old file (the old link ends), "Withdraw the link" deletes it, `job.php` runs `pg_privacy_link_sweep()` beside the request sweep and deletes files past their end.
+- No column: the file is the link's state. A new link deletes the old file once its e-mail has gone (a failed send deletes only the new file, `pg_privacy_link_discard()`, so the old link keeps working; #pending), "Withdraw the link" deletes it, `job.php` runs `pg_privacy_link_sweep()` beside the request sweep and deletes files past their end.
+- An erasure of the person deletes the files of their requests (`_pg_privacy_erase_apply_privacy_requests()`, before the rows lose the address), and a request whose address became a person token is never served (#pending).
 
 ## What does privacy_download.php do?
-- `pg_privacy_link_valid()`: signature, end in the future and at most 7 days ahead, the row kind `information` and status `answered`, the file there. Then audit `download` as a site visitor (`pg_audit_as_site()`; the IP as every audit line keeps it), `Content-Disposition: attachment` `personal-data-<day>.json`.
+- `pg_privacy_link_valid()`: signature, end in the future and at most 7 days ahead, the row kind `information` and status `answered`, its address not a person token (erased), the file there. Then audit `download` as a site visitor (`pg_audit_as_site()`; the IP as every audit line keeps it), `Content-Disposition: attachment` `personal-data-<day>.json`.
 - Anything else: status 410, one sentence "This link has ended. Ask the site for a new one.", on the secure card; never says whether a request exists.
 - Headers: `no-store, private`, `X-Robots-Tag: noindex, nofollow`, `no-referrer`, `DENY`. In `waf_sensitive_scripts()` (GETs counted like `erp_invoice.php`).
 - A mail scanner opening the link counts as a download.
