@@ -58,6 +58,8 @@
   --pgie-ink: var(--pg-primary-ink, #1565c0);
   --pgie-sel: #1e88e5;
   --pgie-danger: #c62828;
+  /* A page of a design file not read whole, the report line after it. */
+  --pgie-amber: #f9a825;
   --pgie-shadow: 0 10px 30px rgba(16, 24, 40, 0.16);
   position: relative;
   display: flex;
@@ -2269,6 +2271,164 @@
 
   .pgie-pthumb span {
     transform: scale(0.75);
+  }
+}
+
+/* The New image dialog's "Open a design file": a row under the sizes, how
+   the file is made under it (a refusal in the danger colour). */
+.pgie-door {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pgie .pgie-doorbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-confirm-box .pgie-doorhint,
+.pgie-confirm-box .pgie-dnote {
+  margin: 0;
+  color: var(--pgie-muted);
+  font-size: 12px;
+}
+
+.pgie-confirm-box .pgie-derror {
+  color: var(--pgie-danger);
+}
+
+/* The window "Open a design file": the pages as tiles that scroll, the foot
+   always in view; two tiles a row on a phone. */
+.pgie-confirm-box.pgie-designbox {
+  width: min(860px, calc(100% - 32px));
+  overflow: hidden;
+}
+
+.pgie-dtiles {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pgie .pgie-dtile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 14px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie .pgie-dtile:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-dtile.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+}
+
+.pgie-dpic {
+  display: block;
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  background: var(--pgie-stage);
+  overflow: hidden;
+}
+
+.pgie-dthumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgie-dname {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-dtick {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--pgie-muted);
+  border-radius: 4px;
+}
+
+.pgie-dtile.on .pgie-dtick {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-sel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+
+.pgie-damber {
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--pgie-amber);
+}
+
+.pgie-dfoot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pgie-line);
+}
+
+.pgie-dcount {
+  font-weight: 650;
+}
+
+/* The line under the top bar after a design file is opened: the report,
+   Details opening the list under it. */
+.pgie-dreport {
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pgie-amber) 45%, transparent);
+  background: color-mix(in srgb, var(--pgie-amber) 14%, var(--pgie-surface));
+  color: var(--pgie-tx);
+  font-size: 13px;
+}
+
+.pgie-drow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-dtext {
+  flex: 1;
+  min-width: 0;
+}
+
+.pgie-dlist {
+  margin: 6px 0 2px;
+  padding-left: 20px;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-dtiles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pgie-drow {
+    flex-wrap: wrap;
   }
 }
 

@@ -562,11 +562,48 @@
 
         return this.importApi() ? [t('designImport'), function () {
             self.designScript().then(function () {
-                self.designPick();
+                self.designPick('import');
             }, function () {
                 self.showMessage(t('designError'), true);
             });
         }] : null;
+    });
+
+    // Rows of the New image dialog under its sizes: fn() on the editor
+    // gives an element or null; close() closes the dialog as Cancel does.
+    Editor.newImageRows = [];
+
+    // "Open a design file": a new canvas from a folder of Files (save mode
+    // new) opens a .pptx's pages as canvases or scenes. How the file is made
+    // and the reading or its refusal are written under the button; the
+    // dialog closes once the file is read and the window shows its pages.
+    Editor.newImageRows.push(function (close) {
+        var self = this, note, row;
+
+        if (!this.importApi() || (this.saveMode !== 'new') || !(this.opts.save && this.opts.save.folderId)) {
+            return null;
+        }
+
+        note = el('p', { class: 'pgie-doorhint', text: t('designDoorHint') });
+
+        var say = function (text, error) {
+            note.textContent = text;
+            note.classList.toggle('pgie-derror', !!error);
+            note.setAttribute('role', error ? 'alert' : 'status');
+        };
+
+        row = el('div', { class: 'pgie-door' }, [
+            el('button', { type: 'button', class: 'pgie-btn pgie-doorbtn', onclick: function () {
+                self.designScript().then(function () {
+                    self.designPick('new', say, close);
+                }, function () {
+                    say(t('designError'), true);
+                });
+            } }, [X.icon('import'), el('span', { text: t('designDoor') })]),
+            note
+        ]);
+
+        return row;
     });
 
     // A file from this computer or a drop: an SVG becomes one SVG layer
@@ -1009,13 +1046,18 @@
             });
         });
 
+        var rows = Editor.newImageRows.map(function (fn) {
+            return fn.call(self, function () { self.closeNewImage(null); });
+        });
+
         var box = el('div', { class: 'pgie-confirm-box pgie-newbox' }, [
             el('h2', { id: 'pgie-new-title', text: t('newImage') }),
             presets,
-            custom,
+            custom
+        ].concat(rows, [
             section(t('boardBackground'), bgs),
             el('div', { class: 'pgie-confirm-actions' }, [cancel, create])
-        ]);
+        ]));
 
         this.board.dialog = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-new-title' }, [box]);
         this.board.dialog.addEventListener('keydown', function (e) {

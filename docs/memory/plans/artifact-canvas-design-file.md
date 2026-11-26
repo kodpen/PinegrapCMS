@@ -28,7 +28,7 @@ priority: 6
 - DF1 (M) done, PR #11840 (`platform/office-pptx-design-reader.md`): the reader, pure: slides of placed elements, counts of what is left out.
 - DF2 (M) done, PR #11872 (`platform/office-pptx-canvas-mapper.md`): the mapper, pure: a slide to a canvas document, sizes and spacing by the census's sums, the font lookup, the report's numbers.
 - DF3 (M) done, PR #11889 (`ui/image-editor-design-file.md`): the action reading the file, pictures into Files, refusals, Import's one page as a group.
-- DF4 (M) in progress: the chooser window, the New image dialog's door, many canvases or scenes, the report line, the phone.
+- DF4 (M) done, PR #11913 (`ui/image-editor-design-chooser.md`): the chooser, the New image door, canvases or scenes, the report line.
 - DF5 (S) Close-out: `ui/image-editor-design-file.md`, the `[NEW]` line named, the census file and this file deleted.
 
 ## What is open?

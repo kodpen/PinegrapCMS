@@ -11627,6 +11627,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             blank: { width: BLANK_IMAGE_SIZE, height: BLANK_IMAGE_SIZE, background: '#ffffff' },
             save: { mode: 'new', folderId: folderId, name: L.new_image_name },
             send: canvasSend(),
+            // The New image dialog's "Open a design file" writes a canvas a
+            // page before the editor closes: the folder shows them now.
+            onCreated: function () {
+                if (folderId !== state.folderId) { exitAllFiles(folderId); } else { reload(); }
+            },
             onSave: function (result) {
 
                 var response = result.file || {};

@@ -306,3 +306,59 @@ function test_image_editor_design_place()
 	pg_assert_same(array(480, 480, 100, 24, 20), array($layers[2]['x'], $layers[2]['y'], $layers[2]['w'], $layers[2]['h'], $layers[2]['size']), 'the text at half: its letters too');
 	pg_assert_same(1, $r['white'], 'a white page adds no rectangle');
 }
+
+// The chooser's pure parts: the pages ticked at first, a page's name, the
+// amber mark, a page drawn small without its pictures, many pages as the
+// scenes of one canvas, the report line's numbers and the cap on scenes.
+function test_image_editor_design_chooser()
+{
+	$r = image_editor_design_node(
+		'var pages = [{ n: 1, report: { left: [], simplified: 0 } }, { n: 3, report: { left: { chart: 1 }, simplified: 0 } },'
+		. ' { n: 4, report: { left: [], simplified: 2 } }];' . "\n"
+		. 'var thumb = D.designThumbDoc(M, { artboard: { width: 100, height: 50, background: "#ffffff" }, layers: ['
+		. '{ id: "l0", type: "image", src: "pptx:ppt/media/image1.png", x: 1, y: 2, w: 30, h: 20, rot: 15, opacity: 1 },'
+		. '{ id: "l1", type: "image", src: "/files/a.png", x: 0, y: 0, w: 10, h: 10, rot: 0, opacity: 1 }] });' . "\n"
+		. 'var docs = [{ n: 1, doc: { artboard: { width: 1920, height: 1080, background: "#ff0000" }, layers: [{ id: "l0", type: "rect", x: 0, y: 0, w: 5, h: 5, rot: 0 }] } },'
+		. ' { n: 2, doc: { artboard: { width: 1920, height: 1080, background: "#00ff00" }, layers: [{ id: "l0", type: "text", text: "B", size: 9, x: 0, y: 0, w: 5, h: 5, rot: 0 }] } }];' . "\n"
+		. 'var scenes = D.designScenes(M, docs);' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' all: D.designTicks(pages, "new"), one: D.designTicks(pages, "import"), none: D.designTicks([], "new"),'
+		. ' names: [D.designName("Brand deck.pptx", 2), D.designName("Brand deck.PPTX", 0), D.designName("", 3), D.designName("a/b\\\\Talk.pptx", 1)],'
+		. ' partial: pages.map(D.designPartial),'
+		. ' thumb: thumb.layers,'
+		. ' scenes: { count: M.sceneCount(scenes), open: scenes.scene, bg: scenes.artboard.background, layers: scenes.layers.map(function (l) { return l.type; }),'
+		. '  closed: { bg: scenes.scenes[1].background, layers: scenes.scenes[1].layers.map(function (l) { return l.type; }) } },'
+		. ' one_scene: M.sceneCount(D.designScenes(M, [docs[0]])),'
+		. ' report: D.designReport({ texts: 4, pictures: 2, shapes: 1, fonts: { "Aileron": "Roboto", "Canva Sans": "Roboto" }, left: { chart: 2, table: 1 }, simplified: 1 }),'
+		. ' empty: D.designReport({ texts: 0, pictures: 0, shapes: 0, fonts: [], left: [], simplified: 0 }),'
+		. ' cap: [D.designRoom(3, false, 50), D.designRoom(51, false, 50), D.designRoom(51, true, 50), D.designRoom(0, false, 50)]'
+		. ' }));'
+	);
+
+	if ($r === null) {
+		pg_assert_true(true, 'no Node here');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+
+	if (isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array(1, 3, 4), $r['all'], 'from the New image dialog every page is ticked');
+	pg_assert_same(array(1), $r['one'], 'from Import one page, the first');
+	pg_assert_same(array(), $r['none'], 'no page, nothing ticked');
+	pg_assert_same(array('Brand deck 2', 'Brand deck', '', 'Talk 1'), $r['names'], 'named by the file and the page\'s number');
+	pg_assert_same(array(false, true, true), $r['partial'], 'a page with a part left out or simplified carries the amber mark');
+	pg_assert_same(array('rect', 'image'), array_column($r['thumb'], 'type'), 'a picture still in the package is a plain box in the tile');
+	pg_assert_same(array(1, 2, 30, 20, 15), array($r['thumb'][0]['x'], $r['thumb'][0]['y'], $r['thumb'][0]['w'], $r['thumb'][0]['h'], $r['thumb'][0]['rot']), 'in the picture\'s place');
+	pg_assert_same(2, $r['scenes']['count'], 'a scene a page');
+	pg_assert_same(array('s1', '#ff0000', array('rect')), array($r['scenes']['open'], $r['scenes']['bg'], $r['scenes']['layers']), 'the first page open');
+	pg_assert_same(array('#00ff00', array('text')), array($r['scenes']['closed']['bg'], $r['scenes']['closed']['layers']), 'the second page a closed scene with its board colour');
+	pg_assert_same(0, $r['one_scene'], 'one page is a canvas without scenes');
+	pg_assert_same(array('texts' => 4, 'pictures' => 2, 'fonts' => array(array('Aileron', 'Roboto'), array('Canva Sans', 'Roboto')),
+		'left' => array(array('chart', 2), array('table', 1)), 'leftCount' => 3, 'simplified' => 1), $r['report'], 'the report line\'s numbers');
+	pg_assert_same(array('texts' => 0, 'pictures' => 0, 'fonts' => array(), 'left' => array(), 'leftCount' => 0, 'simplified' => 0), $r['empty'], 'PHP\'s empty arrays read as none');
+	pg_assert_same(array('', '', 'scenes', 'none'), $r['cap'], 'at most 50 scenes in one canvas; nothing ticked opens nothing');
+}

@@ -22,7 +22,7 @@ module: image_editor_design
 - A file whose bytes are no ZIP: "This is not a .pptx file. In Canva: Share, Download, then PPTX." (also on the first part of an upload). The reader's sentences otherwise: too large (part 64 MB, package 256 MB), a part not readable. Larger than one request without parts: the upload's 413.
 
 ## What does Import do with it?
-- Import's menu "A design file (.pptx)" (with `importApi()`): a file picker, the read, `designChoosePage()` (the first page; DF4's chooser takes its place), then the page asked for.
+- Import's menu "A design file (.pptx)" (with `importApi()`): a file picker, the read, the window "Open a design file" picking one page (`image-editor-design-chooser.md`), then the page asked for.
 - `designPlace()`: the page's board colour (not white) a rectangle under its layers, a locked background unlocked, new ids, one new group (`M.groupNewId()`), scaled as one into the board (`viewRect()`) contained and centred with `M.groupScale()`, letters by `M.textResize()`, outlines and corner radii by the same factor. One undo step; the group is picked; a toast "Page {n} added: {texts} texts, {pictures} pictures.".
 
 ## How is it tested?
