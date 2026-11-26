@@ -6,7 +6,7 @@ module: accounting_settings_fold
 
 ## How is the pane drawn?
 - "Enable the ERP module" (`erp_enabled`, a `pg-switch` with its help) stands above the rows, in the pane's one form: the save checks it with the invoice series (`ui/settings-features.md`).
-- Then folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`): Documents, Sales, Web orders, Customer accounts, Foreign currency, Reminders and notices, E-Invoice, Accounting rules, Late payment fee, e-Fatura threshold, Stock planning, Document templates. Order, names, icons, lines: `includes/fn/accounting_settings_fold.php` (pure but for `lang()`); test `tests/settings_accounting_fold_test.php`. Built in SA1 (#PR).
+- Then folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`): Documents, Sales, Web orders, Customer accounts, Foreign currency, Reminders and notices, E-Invoice, Accounting rules, Late payment fee, e-Fatura threshold, Stock planning, Document templates. Order, names, icons, lines: `includes/fn/accounting_settings_fold.php` (pure but for `lang()`); test `tests/settings_accounting_fold_test.php`. Built in SA1 (#11875).
 - E-Invoice and e-Fatura threshold, where `pg_edoc_settings_shown()` / `erp_settings_efatura_threshold_shown()` is false, are no rows: their cards are drawn `d-none` after the rows, as before, so a save keeps their values.
 
 ## Where did the ERP card's fields go?
