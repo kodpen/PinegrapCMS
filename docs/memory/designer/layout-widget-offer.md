@@ -1,16 +1,16 @@
 ---
 name: layout-widget-offer
-description: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
+description: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, "Put a widget beside it" and "Remove the classic region" under the file's Convert, why no 301
 ---
 
 ## What is a custom layout, and how does it reach the designer?
 - 26 page types (`check_if_page_type_supports_layout()`) draw their system region through `render_layout()`: `includes/templates/<type>.php`, or with `page.layout_modified` the PHP file `data/layouts/<page_id>.php` (hosted sites ignore it). A view template over a fixed data contract, no queries. The starting site has 88 of 180 pages with one.
-- In the designer the page's `system` node keeps drawing it: edited as a code tab ([[layout-code-tab]]), previewed on the canvas ([[legacy-region-preview]]), replaced by a widget only when the designer chooses (below).
+- In the designer the page's `system` node keeps drawing it: edited as a code tab ([[layout-code-tab]]), drawn true on the canvas ([[legacy-region-preview]]). Replaced by "Convert to design elements", the widget built from the file with the theme's markup (all 24 types mapped by LE10d, [[layout-type-overview]]), or by the offer below, which loses that markup.
 
 ## Which pages get an offer?
 - A page in `_design.layoutPages` (custom layout, `pg_layout_custom_page_ids()`, role 1 or better) whose type is in `pg_layout_widget_kinds()` (`includes/fn/layouts.php`): the 24 layout types with a widget. The editor gets them as `_design.layoutWidgets`, page id => `{kind, cfg}` (`pg_layout_widget_offers()`, `designer_screen.php`).
 - Left out: `custom form` (its layout converts into a widget of design elements, [[layout-code-tab]]) and `order receipt` (no widget). The kinds agree with `pg_sw_page_type_widgets()` (test).
-- A `standard` page with `layout_type = 'custom'` gets nothing and is not normalised: it never calls `render_layout()`, gets no tab, and rewriting its row would be a data change for no visible gain.
+- A `standard` page with `layout_type = 'custom'` gets nothing and is not normalised: it never calls `render_layout()`; rewriting its row would change data for no visible gain.
 
 ## What does the editor do with it?
 - The Region panel of the page's own (unnamed) `system` node (`_sdLegacyRegionOwn()`) on a page in `layoutWidgets` shows "Put a "{kind}" widget beside it" (`_sdLayoutWidgetPropsHtml()`, `style_designer.js`). `_sdLayoutWidgetPlace()` creates the row (`_sdLayoutWidgetCfg()`: the carried settings, then `_swTypeDefaults()`; `_buildStarterTree(kind)`) and puts its `shared_ref` right after the region, one undo step. The region stays.

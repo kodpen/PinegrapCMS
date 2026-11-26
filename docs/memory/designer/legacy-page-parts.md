@@ -28,4 +28,4 @@ description: The move run's page_parts step (LE2, #11159): region nodes in moved
 ## Tests?
 - `tests/legacy_to_designer_plan_test.php` (targets, keys, configs, starters against the renderers' bindings, dry run counts), `tests/legacy_to_designer_run_test.php` (steps, an old cursor, categories, wiring).
 
-Related: docs/memory/designer/legacy-to-designer-run.md, docs/memory/designer/region-node-to-widget.md, docs/memory/plans/legacy-editable-regions.md
+Related: docs/memory/designer/legacy-to-designer-run.md, docs/memory/designer/region-node-to-widget.md, docs/memory/designer/legacy-editable-overview.md

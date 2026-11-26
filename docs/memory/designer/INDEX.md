@@ -62,7 +62,7 @@
 - classic-style-design-files.md: A classic style converted to a visual design: its own linked CSS/JS files become managed file entries, editable in the designer (P7, #2484, #2532)
 - classic-style-folder-pages.md: Save of a converted classic style also converts the pages that take it from their folder (#2411 (c)): the box, which pages, what is written
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
-- classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays [decision: decisions-made-product-43.md]
+- classic-style-to-design.md: A classic style's frame as shared components and page trees (L2, #2370): pg_classic_style_design_open(), now the move run's own function with no button, what Save writes and what stays [decision: decisions-made-product-43.md]
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-fields.md: Collection forms and field kinds: columns, where the kind is written and read, kinds per field type, template collections (C6a), the slug kind (C5b)
 - collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
@@ -486,6 +486,7 @@
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
 - designer-option-change-panels.md: One Options panel select or switch change draws the Options panel and the node now; Layers rows, status bar, Attributes, HTML tree after the pause; badges of the redrawn element (#10013)
+- designer-options-bg-layers.md: Background layers in Color and background as built (DO13, #11737): the layers and their rows, palette stops, what is written, old and hand-written backgrounds, the part
 - designer-options-collection-drawing-made.md: What "Create" of "New collection with pages" makes, as drawn for DO23 (boards N4, N5, Z1): the three pages, a stop half way, the closing line, keys, read-out, measures
 - designer-options-collection-drawing-steps.md: "New collection with pages" as drawn for DO23 (options-collection.html, boards N1 to N3): the row, step 1 (name, fields, a collection that is there), step 2 (the two pages), the refusals
 - designer-options-collection-drawing.md: The drawing of "New collection with pages" (plan designer-options-census, DO23): the sheet, its six boards, what is new, what is left to the step, where it differs from the plan
@@ -544,7 +545,7 @@
 - designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (steps PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 - designer-phone-preview-phone.md: "Preview on a phone" on the phone (PP3): the page a phone link opens, its 32 px line, the page list, the asking and its stop rules, the redraw after a save keeping the scroll
 - designer-phone-preview-rules.md: "Preview on a phone": why it exists, the rules every change keeps (QR code a secret, bounded asking, Share prototype rights), which file holds which part [decision: decisions-made-product-106.md]
-- designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
+- designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read [decision: here]
 - designer-phone-preview-window.md: The "Preview on a phone" window as built (PP2, #11578): its row in the Preview menu and the command palette, the part phone, its states, what it asks the server, the cost
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-position-presets.md: Options panel Size and display: Position's "Fill the parent" and "Centre" presets of the four offsets, Z Index as a typed number with Bootstrap's layers by name (DO7, #11566)
@@ -717,7 +718,7 @@
 - layout-type-converter-view-order.md: View order layout files into the order view widget (LE9e, #11688): its map, the widget's new flags and tokens, what is reported, the known differences
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
 - layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10d): what the converter is, the rules kept, which file holds each type's map [decision: here]
-- layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
+- layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, "Put a widget beside it" and "Remove the classic region" under the file's Convert, why no 301
 - legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
 - legacy-bootstrap-map.md: The Bootstrap 3 to 5.3.8 map and converter of a Legacy design (LB2, #8949): pg_lbs_* functions, the map's rules beyond renames, what a tree, a sheet and the report do, what is left for a designer [decision: decisions-made-product-46.md]
@@ -733,6 +734,7 @@
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-earlier-designs.md: The "Designs moved earlier" card (LE11): fully editable pages per Legacy design, its dry run drawer, its run of page_parts and types only, a design moved before the frame split
 - legacy-editable-measure.md: The measure of the move to the visual designer (LE1, #11128): pg_classic_closed_census() counts the region nodes left on a moved page by kind; the move screen's four figures
+- legacy-editable-overview.md: Start file for a classic page made editable in the visual designer (LE1-LE12, closed): the owner's goal, the rules kept, which file holds each part, the starting sites' last figures [decision: here]
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
 - legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2 #8986, #9143): pg_lbs_layout_html(), its rules beyond the map, what stays, the starting layouts' counts
@@ -744,7 +746,7 @@
 - legacy-layouts-shapes.md: The names a page type's markup took from its tag or parent in Bootstrap 3 and the layout pass writes on a bootstrap5 design (LL4, #9170): rules, what stays by hand
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
 - legacy-one-door.md: One door for a classic style (LE3): "Open in the Page Design Studio" lands on the move screen ticked, dry run in three groups, Convert, "Open the design"
-- legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
+- legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7, LE1-LE12), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
 - legacy-page-parts.md: The move run's page_parts step (LE2, #11159): region nodes in moved pages and in the components the run made become components and widgets; Login, Cart, Comments Block in frame and page_parts
 - legacy-region-preview.md: The canvas's true picture of every region node (LE4): markers around each region tag, designer/legacy_region_preview, the band and pill, the match, who may ask
 - legacy-run-starters.md: Where the legacy-editable run gets a widget's starter layout for a stock-layout page (step LE5b): built in the browser at Convert and posted, never a PHP twin or an empty tree [decision: here]

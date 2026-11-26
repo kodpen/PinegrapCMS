@@ -236,7 +236,8 @@ function test_image_focus_control_is_a_part()
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdPartCall('focus', 'draw', [_sdFocusHost(el, node, el.getAttribute('data-sd-focus'))])", $core, 'the core draws it through the part');
 	pg_assert_contains("if (_sdFocusTakes(n, 'image')) h += _sdFocusPlace('image');", $core, 'the Image section');
-	pg_assert_contains("(_sdFocusTakes(n, 'background') ? _sdFocusPlace('background') :", $core, 'the background group');
+	$layers = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bglayers.js');
+	pg_assert_contains("K._sdFocusTakes(node, 'background') ? K._sdFocusPlace('background') :", $layers, 'a picture layer alone');
 	pg_assert_contains('_sdFocusBind(selectedNode);', $core, 'the single element\'s panel binds it');
 	pg_assert_true(strpos($core, 'PGImageFocus') === false, 'the module is not in the core');
 }

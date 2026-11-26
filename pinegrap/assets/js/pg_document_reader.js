@@ -304,11 +304,20 @@
     }
 
     // The contact lines of a group: {type: 'email'|'phone'|'address', value}.
-    function contactsOf(body) {
+    // An address line is one item with all its words; with `every` its
+    // e-mail and phone are listed too (to weigh the reading, not to show).
+    function contactsOf(body, every) {
         var found = [];
 
         body.forEach(function (e) {
             if (e.type !== 'paragraph' && e.type !== 'item') {
+                return;
+            }
+
+            var address = ADDRESS.test(e.text) && words(e.text) <= 25;
+
+            if (address && !every) {
+                found.push({type: 'address', value: e.text, i: e.i});
                 return;
             }
 
@@ -324,7 +333,7 @@
                 found.push({type: 'phone', value: trim(m[0]), i: e.i});
             }
 
-            if (ADDRESS.test(e.text) && words(e.text) <= 25) {
+            if (address) {
                 found.push({type: 'address', value: e.text, i: e.i});
             }
         });
@@ -497,12 +506,12 @@
             out.push({kind: 'cards', items: cards, score: cards.length * 2 / Math.max(all, 1)});
         }
 
-        contacts = contactsOf(body);
+        contacts = contactsOf(body, true);
 
         if (contacts.length && (contacts.some(function (c) {
             return c.type !== 'address';
         }) || contacts.length >= 2) && all <= 8) {
-            out.push({kind: 'contact', items: contacts, score: Math.min(1, contacts.length * 2 / Math.max(all, 1))});
+            out.push({kind: 'contact', items: contactsOf(body, false), score: Math.min(1, contacts.length * 2 / Math.max(all, 1))});
         }
 
         out.sort(function (a, b) {

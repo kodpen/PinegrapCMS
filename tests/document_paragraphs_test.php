@@ -197,6 +197,24 @@ function test_document_paragraphs_docx_limit()
 	pg_assert_same(50, $doc['read']['percent'], 'half of the document read');
 }
 
+// A document held whole in one content control (a template's usual shape)
+// says how much of it was read, not "100%", when the limit cut it.
+function test_document_paragraphs_docx_limit_in_a_control()
+{
+	if (!document_paragraphs_test_loaded() || !pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the reader is not run');
+		return;
+	}
+
+	$body = '<w:sdt><w:sdtContent>' . str_repeat(document_paragraphs_test_p('', document_paragraphs_test_r('Satır')), PG_DOCUMENT_MAX_PARAGRAPHS * 2) . '</w:sdtContent></w:sdt>';
+	$path = document_paragraphs_test_docx($body);
+	$doc = pg_document_paragraphs($path, 'template.docx');
+	unlink($path);
+
+	pg_assert_same('paragraphs', $doc['cut'], 'the limit cut it');
+	pg_assert_same(50, $doc['read']['percent'], 'half of the document read');
+}
+
 // A .md or .txt comes back as UTF-8 text, which the browser's reader turns
 // into paragraphs as it does a paste; past the size limit at a line's end.
 function test_document_paragraphs_text_files()

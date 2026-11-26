@@ -116,6 +116,60 @@ function pg_proto_phone_pick($rows, $user_id, $audience, $now)
 }
 
 /**
+ * The page a found phone link opens on: its start page while it is a draft
+ * of the design, the first draft when it starts on none; 0 when its start
+ * page is no longer a draft (binned, deleted, moved to another design) or
+ * the design has none. Pure.
+ *
+ * @param array $row       prototype_links row
+ * @param int[] $draft_ids the design's drafts (pg_proto_design_pages())
+ * @return int
+ */
+function pg_proto_phone_found_start($row, $draft_ids)
+{
+    $drafts = array();
+
+    foreach ((array) $draft_ids as $id) {
+        if ((int) $id > 0) {
+            $drafts[] = (int) $id;
+        }
+    }
+
+    if (!is_array($row) || !$drafts) {
+        return 0;
+    }
+
+    $start = isset($row['start_page_id']) ? (int) $row['start_page_id'] : 0;
+
+    if ($start === 0) {
+        return $drafts[0];
+    }
+
+    return in_array($start, $drafts, true) ? $start : 0;
+}
+
+/**
+ * Whether a found phone link is handed out again: its start page is still a
+ * draft (pg_proto_phone_found_start()) and its audience is drawn that page
+ * (pg_proto_link_page_shown()). One that is not would open the phone on the
+ * lock note or the first draft; it is ended and a new one made, as one
+ * whose address can no longer be shown. Pure.
+ *
+ * @param array|null $row                 the found link
+ * @param int[]      $draft_ids           the design's drafts
+ * @param string     $access_control_type of the link's start page's folder
+ * @return bool
+ */
+function pg_proto_phone_found_keeps($row, $draft_ids, $access_control_type)
+{
+    if (pg_proto_phone_found_start($row, $draft_ids) <= 0) {
+        return false;
+    }
+
+    return pg_proto_link_page_shown(isset($row['audience']) ? (string) $row['audience'] : '', (string) $access_control_type);
+}
+
+/**
  * What the phone window shows of its link, with nothing that opens it: the
  * id, audience, start page, hint and the seconds it has left. Pure.
  *
@@ -442,6 +496,21 @@ function pg_proto_phone_panel($sub, $request, $user)
         return array('status' => 'error', 'message' => pg_proto_link_error_message('no_drafts'));
     }
 
+    $row = pg_proto_phone_pick(pg_proto_links_of_design($style_id), (int) $user['id'], $audience, $now);
+
+    // A found link whose own start page no longer opens for its audience
+    // (moved behind a sign-in) or is no longer a draft would show the phone
+    // the lock note or another page: it is ended, and the press goes on as
+    // if none was found.
+    if ($row !== null) {
+        $found_start = pg_proto_phone_found_start($row, $draft_ids);
+
+        if (!pg_proto_phone_found_keeps($row, $draft_ids, ($found_start > 0) ? pg_proto_link_page_access($found_start) : '')) {
+            pg_proto_link_revoke($row, (int) $user['id'], (string) $user['username']);
+            $row = null;
+        }
+    }
+
     // A link for anyone draws a page only when it goes live where signed-out
     // visitors may see it (pg_proto_link_page_shown()): the window offers a
     // team link instead.
@@ -451,7 +520,6 @@ function pg_proto_phone_panel($sub, $request, $user)
         return array('status' => 'success', 'team_only' => true, 'start_page' => pg_proto_phone_start_name($pages, $start));
     }
 
-    $row = pg_proto_phone_pick(pg_proto_links_of_design($style_id), (int) $user['id'], $audience, $now);
     $token = ($row === null) ? '' : pg_proto_link_token($row);
 
     // A link whose address can no longer be shown (no key, or a key changed

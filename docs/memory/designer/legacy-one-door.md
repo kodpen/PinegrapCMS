@@ -27,4 +27,4 @@ module: legacy_to_designer, legacy_to_designer_plan, legacy_to_designer_run
 ## Tests?
 - `tests/legacy_editable_door_test.php`: stay targets, groups of a style and a set, rows, the door's choice, the run's designs, the wiring of the screen, the style list and Edit Style.
 
-Related: docs/memory/designer/legacy-to-designer-report.md, docs/memory/designer/classic-style-to-design.md, docs/memory/plans/legacy-editable-screens.md
+Related: docs/memory/designer/legacy-to-designer-report.md, docs/memory/designer/classic-style-to-design.md, docs/memory/designer/legacy-editable-overview.md
