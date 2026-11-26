@@ -57,7 +57,7 @@ function settings_maintenance_test_names($source)
 
 function settings_maintenance_test_sections()
 {
-	return array('pgset-channel', 'pgset-cron', 'pgset-alerts', 'pgset-maintenance');
+	return array('pgset-channel', 'pgset-maintenance', 'pgset-cron', 'pgset-alerts');
 }
 
 function test_settings_maintenance_category_is_last()

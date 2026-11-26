@@ -4,10 +4,12 @@
  *
  * Site Settings - the Updates and maintenance cards: which releases the site takes, what runs on a schedule, how the site is backed up, who is told when something stops working and the maintenance screen.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and <key>.save.php writes what they edit. The variables they read
- * are prepared by includes/settings/prep.php.
+ * Fills $pg_settings_cards with one entry: the cards as folded rows
+ * (includes/settings/fold.php), each with its line of state from
+ * includes/fn/maintenance_settings_fold.php. Which cards belong here is said
+ * once, in includes/settings/registry.php; this file holds them, and
+ * <key>.save.php writes what they edit. The variables they read are prepared
+ * by includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,8 +21,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_settings_fold.php');
+
+// Each part: its card's markup and its row's line, pill and attention.
+$maintenance_parts = array();
+$maintenance_now = time();
+
 // ── Update Channel ──
-$pg_settings_cards[] = '
+$maintenance_parts['channel'] = array('html' => '
     <div id="pgset-channel" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -49,10 +58,13 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_channel($software_update_channel, $update_backup_ready, $update_backup);
 
 // ── Cron Jobs ──
-$pg_settings_cards[] = '
+$maintenance_cron_runs = pg_cron_last_runs();
+$maintenance_cron_jobs = pg_cron_jobs();
+
+$maintenance_parts['cron'] = array('html' => '
                         <div id="pgset-cron" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
@@ -99,7 +111,13 @@ $pg_settings_cards[] = '
                                 master.addEventListener("change", sync);
                                 sync();
                             })();
-                        </script>';
+                        </script>') + pg_maintenance_fold_cron(
+    (is_array($maintenance_cron_runs) && !empty($maintenance_cron_runs['job'])) ? (int) $maintenance_cron_runs['job'] : 0,
+    $maintenance_now,
+    (int) $maintenance_cron_jobs['job']['stale_after'],
+    ($job_dispatch_enabled == 1),
+    pg_maintenance_fold_cron_count($job_dispatch_selection, $maintenance_cron_jobs)
+);
 
 // The setup instructions explain every job the card can switch on, with the
 // command that runs it on this server. A drawer over the pane, not a second
@@ -477,7 +495,9 @@ if ($backup_settings_ready) {
     </script>';
 }
 
-$pg_settings_cards[] = '
+$maintenance_backup_newest = function_exists('pg_backup_newest') ? pg_backup_newest() : array('newest' => 0);
+
+$maintenance_parts['backup'] = array('html' => '
     <div id="pgset-backup" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
@@ -489,7 +509,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_backup($backup_remote_type, $backup_remote_error, (int) $maintenance_backup_newest['newest'], $maintenance_now);
 
 // ── Storage ──
 //
@@ -499,6 +519,11 @@ $pg_settings_cards[] = '
 // drawn (object_storage_card). The secret is drawn empty; an empty box keeps
 // it. "Save and test" saves first, then writes, reads and deletes one small
 // file.
+//
+// The row's facts: a store in use, its bucket, the move under way and how
+// many files it still has to carry, the last test.
+$maintenance_storage = array('used' => false, 'bucket' => '', 'direction' => '', 'paused' => false, 'left' => 0, 'test_ok' => null);
+
 if (!$object_storage_ready) {
 
     $output_object_storage_settings = '
@@ -511,6 +536,7 @@ if (!$object_storage_ready) {
     $output_object_storage_last_test = '';
 
     if ($object_storage_last_test) {
+        $maintenance_storage['test_ok'] = (bool) $object_storage_last_test['ok'];
         $object_storage_last_when = get_relative_time(array('timestamp' => $object_storage_last_test['at'], 'format' => 'plain_text'));
         $output_object_storage_last_test = '
                         <div class="form-text ' . ($object_storage_last_test['ok'] ? 'fg-success' : 'fg-danger') . '">' . ($object_storage_last_test['ok']
@@ -529,6 +555,15 @@ if (!$object_storage_ready) {
         $object_storage_switch = pg_config_text('object_storage_files');
         $object_storage_mode = pg_file_storage_mode($object_storage_switch);
         $object_storage_usage = pg_file_storage_usage();
+
+        $maintenance_storage = array(
+            'used'      => true,
+            'bucket'    => (string) $object_storage['bucket'],
+            'direction' => $object_storage_mode['direction'],
+            'paused'    => $object_storage_mode['paused'],
+            'left'      => ($object_storage_mode['direction'] === 'back') ? (int) $object_storage_usage['stored_files'] : (int) $object_storage_usage['local_files'],
+            'test_ok'   => $maintenance_storage['test_ok'],
+        );
 
         $object_storage_status = lang('Files stay on the disk.');
 
@@ -632,7 +667,7 @@ if (!$object_storage_ready) {
                     </div>' . $output_object_storage_files;
 }
 
-$pg_settings_cards[] = '
+$maintenance_parts['storage'] = array('html' => '
     <div id="pgset-storage" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -643,7 +678,14 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_storage(
+    $maintenance_storage['used'],
+    $maintenance_storage['bucket'],
+    $maintenance_storage['direction'],
+    $maintenance_storage['paused'],
+    $maintenance_storage['left'],
+    $maintenance_storage['test_ok']
+);
 
 // ── Alerts ──
 //
@@ -719,13 +761,20 @@ if ($ops_alerts_ready) {
                 return;
             }
 
+            // The Sales watch card stops with this switch: its fields hide
+            // and its note leads back here.
             var sales = document.getElementById("sales_watch_fields");
+            var salesOff = document.getElementById("sales_watch_off");
 
             function sync() {
                 fields.style.display = master.checked ? "" : "none";
 
                 if (sales) {
                     sales.style.display = master.checked ? "" : "none";
+                }
+
+                if (salesOff) {
+                    salesOff.style.display = master.checked ? "none" : "";
                 }
             }
 
@@ -735,11 +784,25 @@ if ($ops_alerts_ready) {
     </script>';
 }
 
+$maintenance_parts['alerts'] = array('html' => '
+    <div id="pgset-alerts" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Alerts') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . $output_ops_alert_settings . '
+                </div>
+            </div>
+        </div>
+    </div>') + pg_maintenance_fold_alerts($ops_alerts_ready, (bool) $ops_alerts, (bool) $ops_alert_email, $ops_alert_recipients, (bool) $ops_alert_push);
+
 // ── Sales watch ──
 //
-// Part of the Alerts card, shown and hidden with its master switch: the
-// shop's own alerts (includes/fn/sales_watch.php), one config_text row. The
-// save module writes it only when this part was drawn (sales_watch_card).
+// A card of its own that still stops with Operations alerts: its fields
+// hide with that switch and a note leads to its row. The shop's own alerts
+// (includes/fn/sales_watch.php), one config_text row. The save module writes
+// it only when this card was drawn (sales_watch_card).
 if ($ops_alerts_ready && $sales_watch_ready) {
 
     $sales_watch_codes = pg_ops_alert_codes();
@@ -784,12 +847,15 @@ if ($ops_alerts_ready && $sales_watch_ready) {
                                     </div>';
     }
 
-    $output_ops_alert_settings .= '
+    $output_sales_watch_settings = '
+                    <div class="col-12" id="sales_watch_off">
+                        <div class="form-text">' . lang('Off with Operations alerts: the watch tells nothing while they are switched off.') . '</div>
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm mt-3" data-pg-set-goto="pgset-alerts"><i class="bi bi-bell" aria-hidden="true"></i>' . lang('Open Operations alerts') . '</button>
+                    </div>
                     <div class="col-12" id="sales_watch_fields">
                         <input type="hidden" name="sales_watch_card" value="1"/>
                         <div class="row gy-5">
                             <div class="col-12">
-                                <h4 class="pg-group-label">' . lang('Sales watch') . '</h4>
                                 <div class="form-text">' . lang('The store learns how many orders each channel - the site and every marketplace account - usually brings in each hour of the week, and says when the shop stops working as usual: orders stop coming in, or carts reach payment but are not completed. Counter sales are left out. A channel with fewer than 20 orders in eight weeks is not watched yet.') . '</div>
                             </div>
                             <div class="col-12">
@@ -823,20 +889,20 @@ if ($ops_alerts_ready && $sales_watch_ready) {
                             <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>
                         </div>
                     </div>';
-}
 
-$pg_settings_cards[] = '
-    <div id="pgset-alerts" class="pg-set-card">
+    $maintenance_parts['sales-watch'] = array('html' => '
+    <div id="pgset-sales-watch" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Alerts') . '
+                ' . lang('Sales watch') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">' . $output_ops_alert_settings . '
+                <div class="row gy-5">' . $output_sales_watch_settings . '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_sales((bool) $ops_alerts, $sales_watch, $maintenance_now);
+}
 
 // ── Chat notifications ──
 //
@@ -847,7 +913,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/notify_channels_page.php');
 
 $output_notify_settings = pg_notify_settings_card_html(pg_notify_target_counts($notify_targets));
 
-$pg_settings_cards[] = '
+$maintenance_parts['chat-notify'] = array('html' => '
     <div id="pgset-chat-notify" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -858,7 +924,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_chat($notify_targets, pg_notify_channel_kinds());
 
 // ── Maintenance Mode ──
 //
@@ -912,7 +978,7 @@ if ($maintenance_ready) {
                     </div>';
 }
 
-$pg_settings_cards[] = '
+$maintenance_parts['maintenance'] = array('html' => '
     <div id="pgset-maintenance" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -923,4 +989,15 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_mode($maintenance_ready, (bool) $maintenance_mode, $maintenance_until, $maintenance_now);
+
+// ── The rows ──
+$maintenance_rows = array();
+
+foreach (pg_maintenance_fold_order() as $maintenance_key) {
+    if (isset($maintenance_parts[$maintenance_key])) {
+        $maintenance_rows[] = array('key' => $maintenance_key) + pg_maintenance_fold_face($maintenance_key) + $maintenance_parts[$maintenance_key];
+    }
+}
+
+$pg_settings_cards[] = pg_settings_fold($maintenance_rows);

@@ -947,6 +947,7 @@
     "Ended": "Bitti",
     "Ended Right of Withdrawal": "Sona Ermiş Cayma Hakkı",
     "Ended at {var:1}": "Bitiş: {var:1}",
+    "Ended at {var:1}: visitors see the site": "{var:1} itibarıyla bitti: ziyaretçiler siteyi görüyor",
     "Ended on {var:1}": "Süresi doldu: {var:1}",
     "Ended subscriptions": "Aboneliği biten",
     "Ended {var:1}": "Bitti: {var:1}",
