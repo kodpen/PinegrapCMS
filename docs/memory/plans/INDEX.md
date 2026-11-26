@@ -18,7 +18,6 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-memory-search.md: Plan (owner 2026-11-23, opened 2026-11-26): text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
-- artifact-canvas-canva-census.md: Plan artifact-canvas-content, step AC2: what a design downloaded from Canva keeps as .pptx and as .pdf (read 2026-11-26 on the owner's ten-page file), and why the .pptx is the route
 - artifact-canvas-content-census-gaps.md: Plan artifact-canvas-content, step AC1: each content gap of the Artifact Canvas against Canva and the others: what it takes in own code, where its content comes from, the licence, a size (S, M, L)
 - artifact-canvas-content-census-proposals.md: Plan artifact-canvas-content, step AC1: ten proposals for the Artifact Canvas's ready content, most use for least work first, with size, source and licence
 - artifact-canvas-content-census-tools.md: Plan artifact-canvas-content, step AC1: what Canva, Adobe Express, VistaCreate and Polotno Studio give on an empty design, from their public pages (2026-11-26)
@@ -26,7 +25,6 @@
 - artifact-canvas-content-screens.md: Plan artifact-canvas-content: how each part of the Artifact Canvas's ready content is put together on screen, step by step (AC4 to AC13)
 - artifact-canvas-content-steps.md: Plan artifact-canvas-content, the build steps AC4 to AC14 (owner, poll 231): the ten kinds of ready content in order, what each step holds, what every step keeps
 - artifact-canvas-content.md: Plan (owner 2026-11-26): the Artifact Canvas gets ready content and opens a design made in Canva as editable layers from the exported file; content census AC1, design file steps DF1 to DF5
-- artifact-canvas-design-file.md: Plan artifact-canvas-content, the design file (owner 2026-11-26, poll 230): a .pptx from Canva opened in the Artifact Canvas as editable layers; rules, the page chooser, steps DF1 to DF5
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
