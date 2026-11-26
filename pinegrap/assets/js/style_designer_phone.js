@@ -53,6 +53,18 @@ StyleDesigner.definePart('phone', function (K) {
         return secondsLeft > 0 ? 'ready' : 'ended';
     }
 
+    // Why a 'failed' answer made no link, and whether "Try again" can help:
+    // the server's own message where it answered an error, retried only
+    // where it marks the answer `retry` (the link could not be stored); no
+    // answer or a malformed one says "Nothing was changed." and may be
+    // tried again. A design with no draft pages is never helped by a retry.
+    function _phFailure(res) {
+        if (res && res.status === 'error') {
+            return { text: res.message ? String(res.message) : _sdT('Nothing was changed.'), again: !!res.retry };
+        }
+        return { text: _sdT('Nothing was changed.'), again: true };
+    }
+
     function _phLeft() {
         var link = state.answer && state.answer.link;
         if (!link) return 0;
@@ -135,10 +147,12 @@ StyleDesigner.definePart('phone', function (K) {
                 '<p class="sd-phone-act"><button type="button" class="btn btn-sm btn-solid theme-primary" data-ph="team">' + esc(_sdT('Make a team link')) + '</button></p>';
             footHtml = '<span class="sd-phone-note">' + esc(_sdT('Team: administrators, designers and managers.')) + '</span>';
         } else if (state.view === 'failed') {
+            var why = _phFailure(res);
             html = '<div class="sd-phone-code sd-phone-wait"><span class="bi bi-qr-code" aria-hidden="true"></span></div>' +
                 '<p class="sd-phone-head">' + esc(_sdT('The link could not be made')) + '</p>' +
-                '<p class="sd-phone-sub">' + esc(_sdT('Nothing was changed.')) + '</p>' +
-                '<p class="sd-phone-act"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="again">' + esc(_sdT('Try again')) + '</button></p>';
+                '<p class="sd-phone-sub">' + esc(why.text) + '</p>' +
+                (why.again ? '<p class="sd-phone-act"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="again">' + esc(_sdT('Try again')) + '</button></p>' : '');
+            footHtml = '';
         } else if (state.view === 'ended') {
             html = '<div class="sd-phone-code sd-phone-dim">' + res.qr + '</div>' +
                 '<p class="sd-phone-head">' + esc(_sdT('This link has ended')) + '</p>' +
@@ -156,6 +170,8 @@ StyleDesigner.definePart('phone', function (K) {
         }
         body.innerHTML = html;
         foot.innerHTML = footHtml;
+        // No link, no foot: "Copy link" and "End now" are not drawn dead.
+        foot.hidden = footHtml === '';
     }
 
     function _phStartsLine() {
