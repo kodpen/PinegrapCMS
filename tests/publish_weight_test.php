@@ -257,6 +257,24 @@ function test_publish_weight_local_files_reads_sizes_under_the_root_only()
 	@unlink(sys_get_temp_dir() . '/pgpw_outside.css');
 }
 
+// A picture address with an encoded null byte (/files/a%00.jpg, typed in
+// the draft) is a file the measure cannot read: it is left out, as a
+// missing file is, instead of stopping the whole check (PHP 8 throws on a
+// path with a null byte).
+function test_publish_weight_local_files_leaves_out_an_address_with_a_null_byte()
+{
+	$root = sys_get_temp_dir() . '/pgpwnul' . getmypid();
+	@mkdir($root, 0777, true);
+	file_put_contents($root . '/a.jpg', 'x');
+
+	$files = pg_publish_weight_local_files(array('/a%00.jpg', '/a.jpg'), $root, '/');
+
+	pg_assert_same(array('/a.jpg'), array_keys($files));
+
+	@unlink($root . '/a.jpg');
+	@rmdir($root);
+}
+
 // The design's own stylesheet is the one the render prints last as
 // <style id="pg-user-styles">; a page without it has none.
 function test_publish_weight_own_css_is_the_designs_stylesheet()

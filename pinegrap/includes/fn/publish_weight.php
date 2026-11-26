@@ -750,7 +750,14 @@ function pg_publish_weight_local_files($urls, $root, $base)
             continue;
         }
 
-        $file = realpath($real_root . '/' . rawurldecode(substr($path, strlen($base))));
+        // A decoded null byte names no file; PHP 8 throws on such a path.
+        $relative = rawurldecode(substr($path, strlen($base)));
+
+        if (strpos($relative, "\0") !== false) {
+            continue;
+        }
+
+        $file = realpath($real_root . '/' . $relative);
 
         if ($file === false || strpos($file, $real_root . DIRECTORY_SEPARATOR) !== 0 || !is_file($file)) {
             continue;
