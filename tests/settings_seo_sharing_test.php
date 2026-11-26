@@ -112,10 +112,13 @@ function test_settings_seo_sharing_feeds_in_ecommerce()
 	pg_assert_same(false, strpos($seo, '_merchant.php'), 'Merchant Center not required by SEO');
 	pg_assert_contains('pg_merchant_card_connection_html(', $merchant, 'the card shows Merchant Center\'s connection; its account is chosen on Connections');
 
-	foreach (array('product_feed_seller_name', 'product_feed_default_brand', 'product_feed_seller_url', 'product_feed_privacy_policy_url', 'product_feed_terms_url', 'product_feed_excluded_groups', 'product_feed_build', 'product_feed_new_address') as $field) {
+	foreach (array('product_feed_seller_name', 'product_feed_default_brand', 'product_feed_seller_url', 'product_feed_privacy_policy_url', 'product_feed_terms_url', 'product_feed_build', 'product_feed_new_address') as $field) {
 		pg_assert_contains('name="' . $field, $cards, $field . ' drawn by Ecommerce');
 		pg_assert_same(false, strpos($seo, 'name="' . $field), $field . ' no longer drawn by SEO');
 	}
+
+	pg_assert_contains("pg_commerce_settings_group_ticks('product_feed_excluded_groups'", $cards, 'product_feed_excluded_groups drawn by Ecommerce');
+	pg_assert_same(false, strpos($seo, 'product_feed_excluded_groups'), 'product_feed_excluded_groups no longer drawn by SEO');
 
 	$seo_save = settings_seo_sharing_source('includes/settings/seo.save.php');
 	$save = settings_seo_sharing_source('includes/settings/commerce.save.php');
