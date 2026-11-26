@@ -157,7 +157,7 @@ function test_privacy_erase_tables_are_pinned()
 			'ws_wtable_bin_cells' => array('cells' => ''),
 			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
 			'application_reviewers' => array('name' => '', 'email' => '{token}'),
-			'feedback_responses' => array('contact_id' => 0, 'person_hash' => '', 'recipient' => '', 'comment' => null, 'answers' => null),
+			'feedback_responses' => array('contact_id' => 0, 'person_hash' => '', 'recipient' => '', 'comment' => null, 'answers' => null, 'token_hash' => null),
 			'waiting_tickets' => array('name' => '', 'phone' => '', 'email' => '', 'contact_id' => 0, 'priority' => '', 'token_hash' => ''),
 	);
 

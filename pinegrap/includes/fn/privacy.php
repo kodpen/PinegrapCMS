@@ -1033,14 +1033,18 @@ function pg_privacy_erase_tables()
             'user_id'      => 0,
         )),
         // A satisfaction survey's answer keeps its score, band and dates for
-        // the report; whom it went to and what they wrote go. A send still
-        // queued is cancelled first (_pg_privacy_erase_apply_feedback_responses()).
+        // the report; whom it went to and what they wrote go, and so does
+        // the answer link's hash, so the link left in the person's mailbox
+        // no longer opens the row and writes a comment into it again. A send
+        // still queued is cancelled and one still waiting for its answer is
+        // closed first (_pg_privacy_erase_apply_feedback_responses()).
         'feedback_responses' => array('find' => array('contact_id' => 'contact_ids', 'person_hash' => 'feedback_hashes'), 'action' => 'anonymise', 'fields' => array(
             'contact_id'  => 0,
             'person_hash' => '',
             'recipient'   => '',
             'comment'     => null,
             'answers'     => null,
+            'token_hash'  => null,
         )),
         // A volunteer goes whole: their shifts and hours, their documents
         // (whose files are in the scope's file_ids) and their profiles. A
@@ -2071,13 +2075,15 @@ function _pg_privacy_erase_apply_application_reviewers($where, array $fields, ar
 
 /**
  * A satisfaction survey still queued for the person is cancelled (status 3)
- * while the person hash still finds it, so the job never sends it to an
- * empty recipient; then the person and what they wrote go, the score, band
- * and dates stay.
+ * and one sent and still unanswered is closed as no answer (status 4) while
+ * the person hash still finds them, so the job never sends it or its
+ * reminder to an empty recipient; then the person and what they wrote go,
+ * the score, band and dates stay.
  */
 function _pg_privacy_erase_apply_feedback_responses($where, array $fields, array $scope, $name)
 {
     db("UPDATE feedback_responses SET status = 3 WHERE (status = 0) AND (" . $where . ")");
+    db("UPDATE feedback_responses SET status = 4 WHERE (status = 1) AND (" . $where . ")");
 
     _pg_privacy_erase_write('feedback_responses', $where, $fields, $name);
 }
