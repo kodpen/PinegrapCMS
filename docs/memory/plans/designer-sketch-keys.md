@@ -17,7 +17,7 @@ priority: 8
 - Add a table, a column or a stored value.
 
 ## Which step?
-- SX1 (S) after UR3 has landed: the line "Drag to draw a box, or press B" in an empty sketch page; B on a selected sketch page adds a box (as wide as the page, 96 units high, 16 under the lowest one), also as "Add a box" in the page's "More" menu and the command palette; Alt and an arrow sizes a selected box by 8 units, Shift and Alt by 32; the links panel's sentence "A sketch page has no links until it is built.".
+- SX1 (S, in progress) after UR3 has landed: the line "Drag to draw a box, or press B" in an empty sketch page; B on a selected sketch page adds a box (as wide as the page, 96 units high, 16 under the lowest one), also as "Add a box" in the page's "More" menu and the command palette; Alt and an arrow sizes a selected box by 8 units, Shift and Alt by 32; the links panel's sentence "A sketch page has no links until it is built.".
 - The same PR: the new keys in the shortcuts help; tests in `tests/designer_sketch_test.php` for the added box's place and the size's limits; `designer/prototype-sketch-tool.md` corrected, this file deleted.
 
 ## Which files?
