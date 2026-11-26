@@ -133,6 +133,7 @@
 - bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas-workspace-tasks-time.md: Bug hunt 28, Workspace tasks and time (2026-11-24, PR #11413): timer in two tabs and over midnight, a task changed while its timer runs, totals, who edits another's time, a repeat made twice
+- bug-hunt-areas-workspace-voice.md: The bug hunt of Workspace voice messages (V3-V5, VA1-VA6), 2026-11-26, #11809: five faults fixed in the transcript job, the voice ask and the speech answer; what read clean and what was left [decision: here]
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
 - bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean [decision: here]

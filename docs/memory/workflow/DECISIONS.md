@@ -1627,6 +1627,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean
 - workflow/bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean
 - workflow/bug-hunt-areas-workspace-calls.md: The bug hunt of Workspace voice and video calls (CL1-CL8, CN1-CN7), 2026-11-26, #11765: four faults fixed, the ring in a muted channel asked, what read clean
+- workflow/bug-hunt-areas-workspace-voice.md: The bug hunt of Workspace voice messages (V3-V5, VA1-VA6), 2026-11-26, #11809: five faults fixed in the transcript job, the voice ask and the speech answer; what read clean and what was left
 - workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-channel-commands-server.md: Bug hunt of the channel commands' server side (commands.php, command_registry.php, app_commands.php, quick_edit.php, changes.php): the three faults fixed, the issue opened, what was read clean

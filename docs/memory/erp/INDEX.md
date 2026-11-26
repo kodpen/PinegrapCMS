@@ -115,6 +115,7 @@
 - erp-parasut-devhub-application.md: Paraşüt's partner application (2026-11-26): what was entered, the two fixed redirect addresses, the staging client and company, a partner client on a self-hosted site [decision: here]
 - erp-parasut-devhub-client.md: Paraşüt's Developer Portal (DevHub) client as its guide describes it: the application and its fixed redirect address, sign-in at id.parasut.com with PKCE, token lifetimes, the Temel package's limits
 - erp-parasut-devhub-connection.md: Paraşüt through a Developer Portal client (#11694): provider and purpose of connected accounts, the company read on return, which token the requests use, Disconnect
+- erp-parasut-devhub-staging.md: Paraşüt's test environment (staging) for a Developer Portal client (PS1): the config_text row, the sign-in host, the read-only Environment select, the amber pill
 - erp-parasut-driver-2.md: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Arşiv (fresh GİB lookup, the card's alias, the scenario, a failed lookup) and its request layer (token lock, retries, throttle)
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
 - erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open
