@@ -18,3 +18,7 @@ description: Designer toolbars hide labels, never controls: the page bar below 1
 - **Never remove a control with `display:none`.** The page bar is `overflow:visible` (the Add Page dropdown needs it), so overflow is clipped, not scrollable. Make room: label to icon, less padding, wrap if needed. If Save or Undo vanishes on a narrow screen, that is a bug.
 - **A new bar button puts its label in a separate `<span>`** (the `sd-vb-txt` pattern) and gets a `title`; otherwise it cannot become an icon when the bar is narrow.
 - **The measure is an element running out of its column, not `scrollWidth > clientWidth`** alone. In an `overflow:visible` container scrollWidth may not show overflow. Check controls one by one with `getBoundingClientRect().right` against the column's right edge, and `elementFromPoint()` at the button's centre for clickability. The designer's guided tour veil covers the page in a fresh sandbox: remove `.pg-tour-veil` before a hit test.
+
+## Why does a labelled bar button with .sd-icon-btn come out 32 px wide?
+- `.sd-icon-btn` (late in `style_designer.css`) sets `width: 32px` and `font-size: 1rem`. A button's own rule of the same weight placed earlier in the file loses, so its label runs out of the 32 px box over the next control.
+- Write the own rule as `.sd-icon-btn.<class>` (or place it after); `.sd-icon-btn.sd-tabs-all-btn` and `.sd-icon-btn.sd-tab-suggest-btn` do (#11965: "Suggested groups" was written over the controls after it). `tests/designer_frame_bar_test.php` checks both.

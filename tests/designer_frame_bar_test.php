@@ -119,3 +119,20 @@ function test_designer_clicks_is_a_view_menu_row()
 	pg_assert_contains("id: 'act_clicks'", $js, 'a command palette row');
 	pg_assert_contains("_sdClicks.on ? _sdT('Hide clicks on this page') : _sdT('Show clicks on this page')", $js, 'its label follows the state');
 }
+
+// The Pages button and the "Suggested groups" button carry .sd-icon-btn,
+// whose rule sets width: 32px and font-size: 1rem. Their own width: auto
+// must outweigh it (a heavier selector, or a later rule of equal weight),
+// or the label runs out of the 32 px box over the next control (#11965).
+function test_designer_bar_labelled_icon_buttons_outweigh_icon_btn()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	$base = strpos($css, "\n.sd-icon-btn {");
+
+	pg_assert_true($base !== false, 'the .sd-icon-btn rule is there');
+	foreach (array('sd-tabs-all-btn', 'sd-tab-suggest-btn') as $cls) {
+		pg_assert_true(preg_match('/\n([^\n{}]*\.' . preg_quote($cls, '/') . ')\s*\{[^}]*width:\s*auto/', $css, $m, PREG_OFFSET_CAPTURE) === 1, $cls . ' has its width: auto rule');
+		$heavier = strpos($m[1][0], '.sd-icon-btn.' . $cls) !== false;
+		pg_assert_true($heavier || $m[1][1] > $base, $cls . ': width: auto outweighs .sd-icon-btn');
+	}
+}

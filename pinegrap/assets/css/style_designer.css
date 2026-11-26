@@ -464,15 +464,19 @@
 @media (max-width: 1023.98px) {
     .sd-tabs-add-txt { display: none; }
 }
-/* The Pages button after the strip, shown while the strip overflows. */
+/* The Pages button after the strip, shown while the strip overflows.
+   Its rule and the suggested groups' one below carry .sd-icon-btn: the
+   bare .sd-icon-btn rule comes later in this file with width: 32px and
+   font-size: 1rem, and at equal weight it would win, leaving the label
+   wider than its box and written over the next control. */
 .sd-tabs-all { flex: 0 0 auto; display: flex; align-items: center; }
 .sd-tabs-all[hidden] { display: none; }
-.sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
+.sd-icon-btn.sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
 .sd-tabs-all-count { font-size: .66rem; font-weight: 600; }
 .sd-tabs-all-count:empty { display: none; }
 /* The suggested groups' offer (a design without groups) and its menu.
    Under 768 px the button keeps its icon only. */
-.sd-tab-suggest-btn { flex: 0 0 auto; width: auto; min-width: 32px; padding: 0 .5rem; gap: .35rem; font-size: .78rem; white-space: nowrap; }
+.sd-icon-btn.sd-tab-suggest-btn { flex: 0 0 auto; width: auto; min-width: 32px; padding: 0 .5rem; gap: .35rem; font-size: .78rem; white-space: nowrap; }
 .sd-tab-suggest-menu { max-width: 300px; }
 .sd-tab-suggest-row { display: flex; align-items: center; gap: .5rem; padding: .3rem .6rem; color: var(--sd-text); font-size: .8rem; }
 .sd-tab-suggest-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
