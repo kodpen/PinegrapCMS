@@ -16,7 +16,7 @@ priority: 7
 - DO12 (M) done #11671: "Transform": Rotate, Scale, Move X and Y, Skew and Origin, in every state; composed with an Interactions effect's own transform (`pgFxBase` keeps the node's), never overwriting it.
 - DO13 (M) done #11737: background layers: a list of layers (colour, gradient, picture) in order, each with its own rows; a gradient linear, radial or conic with three or more stops, a stop chosen from the palette so a palette change follows.
   - An element with one background reads as one layer and is written back unchanged until it is changed.
-- DO14 (M) after DO13, in progress: "Clip shape" (Circle, Ellipse, Rounded inset, Slant, Arrow) and "Mask" (a fade at one edge, a picture as the mask), shown on the canvas as chosen.
+- DO14 (M) done #11786: "Clip shape" (Circle, Ellipse, Rounded inset, Slant, Arrow) and "Mask" (a fade at one edge, a picture as the mask), shown on the canvas as chosen. (`designer/designer-options-shape.md`)
 
 ## Which steps add the small effects? (line "small rows", after DO9)
 - DO15 (S) done #11700: Shadow and effect, under "More": Filter (Blur, Brightness, Contrast, Grayscale, Saturate, Sepia, Hue) as sliders, "Background blur" for a glass panel, "Blend" for the element and for its background.

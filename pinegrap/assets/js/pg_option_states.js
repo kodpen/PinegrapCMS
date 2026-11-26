@@ -80,7 +80,12 @@
         { sect: 'styling', props: ['filter'] },
         { sect: 'styling', props: ['backdrop-filter', '-webkit-backdrop-filter'] },
         { sect: 'styling', props: ['mix-blend-mode'] },
-        { sect: 'styling', props: ['background-blend-mode'] }
+        { sect: 'styling', props: ['background-blend-mode'] },
+        // Clip shape and Mask (with its prefixed twins), written by the
+        // part 'shape' (pg_clip_shape.js).
+        { sect: 'styling', props: ['clip-path'] },
+        { sect: 'styling', props: ['mask-image', '-webkit-mask-image', 'mask-size', '-webkit-mask-size',
+            'mask-position', '-webkit-mask-position', 'mask-repeat', '-webkit-mask-repeat'] }
     ];
 
     // The order the declarations are written in: a shorthand before its
