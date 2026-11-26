@@ -15,11 +15,10 @@ description: Hand-over note of the architect session of 2026-11-24 to 26, writte
 ## What did he decide on 2026-11-26?
 - Message 14316: the New design window, the Page Design Studio home and then the editor's own frame are made plain, drawn by the architect: plans `designer-home-tidy` (drawn, #11893) and `designer-frame-tidy` (#11898).
 - Poll 233: "Evet, sırada o", the editor's frame after the window and the home.
-- Poll 234 (message 14331): "Evet, tek çubuk". The panel's top bar is not drawn in the editor; its tools stand in the main menu's drawer. Step FR5 no longer waits: its line is still to be corrected (`architect-hand-over-work.md`).
+- Poll 234 (message 14331): "Evet, tek çubuk". The panel's top bar is not drawn in the editor; its tools stand in the main menu's drawer. Step FR5 no longer waits (#11901).
 
 ## What is owed to the owner?
 - The ease-of-use study before the launch, in four areas, for a site owner and for an agency. The designer's part is the designer plans, Site Settings the `settings-*` plans; first setup and first day and the daily jobs are not started.
-- Bug issue #11549 (SQL error on "Edit Contact") is closed: he is told its fix has landed.
 - After DF4 has landed: a poll whether the Page Design Studio's Canva start reads the same .pptx file.
 - EC5's open point: where the seller's identity stands, General › Organization or Product feeds.
 - Three plans have no coordinator (the Paraşüt DevHub connection, the security scan, the Claude plugin bundle): whose they are is his call. The settings panes come after TR5.

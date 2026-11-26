@@ -84,8 +84,9 @@ and the race between two drafts: `workflow/claim-work.md`.
    a **draft** PR to `development` titled `[plan:<plan file name>] <steps> — <topic>`
    (`[iş] <topic>` outside a plan). Small fixes, memory-only edits and
    reviews skip the draft, not the check.
-3. **Finish:** mark the steps done in the plan file with the PR number, push,
-   mark the draft ready; when green, Working mode 2.
+3. **Finish:** push and mark the draft ready; when green, Working mode 2.
+   The PR's title is its steps' state: a worker's PR never edits the plan
+   file (`workflow/plan-step-state.md`).
 
 ## Working mode
 

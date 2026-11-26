@@ -10,6 +10,9 @@ description: A worker does one task and ends at the ready label (since 2026-11-1
 ## Who gets the plan's next step?
 - A new session, cloud or desktop, with its own short brief, once the step before it has landed (`coordinator.md`, `coordinator-worker-brief.md`). A coordinator never sends a step to a worker that is waiting or done.
 
+## Who keeps the plan's step state?
+- The PR titles, not the plan file: a worker writes no done mark ([[plan-step-state]]). The coordinator runs `php tools/plan_state.php <plan> --tasks` when it starts a worker on a plan and when one of the plan's PRs has landed, so the agent channel's Tasks tab shows the steps.
+
 ## What is given out as one task?
 - Work in one file or on one screen that is known when the task is given: two fixes of one screen go to one worker as one PR, inside the small-PR limit. The second fix then costs about a third less than in a new session, since the reading is paid once and nothing waits in between.
 
@@ -18,4 +21,4 @@ description: A worker does one task and ends at the ready label (since 2026-11-1
 - The wait for the merge is paid too: a wake more than an hour after the last call writes the session's whole context into the cache again. A measured worker spent 48% of its use after the label.
 - On 2026-11-11 and 2026-11-12 a coordinator sent idle sessions the next step itself at each 30-minute check-in: some sessions did more than 200 tasks, and the account's quota for the period was spent in one day.
 
-Related: docs/memory/workflow/coordinator.md, docs/memory/workflow/coordinator-worker-brief.md, docs/memory/workflow/coordinator-workers.md, docs/memory/workflow/session-lifecycle.md
+Related: docs/memory/workflow/plan-step-state.md, docs/memory/workflow/coordinator.md, docs/memory/workflow/coordinator-worker-brief.md, docs/memory/workflow/coordinator-workers.md, docs/memory/workflow/session-lifecycle.md

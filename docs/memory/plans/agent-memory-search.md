@@ -33,4 +33,4 @@ priority: 6
 ## What is not in this plan?
 - Moving the record itself out of git. The owner decides that after the mirror has run for a time; the agent channel's last home is meant to be pinegrap.com.
 
-Related: docs/memory/workspace/channel-memory.md, docs/memory/plans/plan-state-channel.md
+Related: docs/memory/workspace/channel-memory.md, docs/memory/workflow/plan-step-state.md
