@@ -3606,7 +3606,7 @@
             }
 
             event.preventDefault();
-            step(function () {
+            oneChange(function () {
                 applyFormat(DOC_FORMATS[index]);
             });
 
@@ -4098,7 +4098,7 @@
 
         // Runs one change of the document: the state before it goes on the
         // list when it changed anything.
-        function step(change) {
+        function oneChange(change) {
             var before = capture();
 
             change();
@@ -4113,7 +4113,7 @@
 
         // Typing the browser does inside one paragraph: a new change unless
         // it goes on where the last letter went, the same way.
-        function typing(node, type) {
+        function typedRun(node, type) {
             var kind = /^insert/.test(type) ? 'insert' : 'delete';
             var at = selectionIn(node);
 
@@ -4777,7 +4777,7 @@
                 event.preventDefault();
 
                 if (inside || parts.length > 1) {
-                    step(splitParagraph);
+                    oneChange(splitParagraph);
                 }
                 return;
             }
@@ -4789,7 +4789,7 @@
                     event.preventDefault();
                 }
 
-                step(function () {
+                oneChange(function () {
                     across(parts, type, normal(event.data || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : '') || ''));
                 });
                 return;
@@ -4803,16 +4803,16 @@
 
             if (/^delete.*Backward$/.test(type) && at === 0) {
                 event.preventDefault();
-                step(function () {
+                oneChange(function () {
                     joinParagraphs(from, true);
                 });
             } else if (/^delete.*Forward$/.test(type) && at === textNow(from.getAttribute('data-p')).length) {
                 event.preventDefault();
-                step(function () {
+                oneChange(function () {
                     joinParagraphs(from, false);
                 });
             } else {
-                typing(from, type);
+                typedRun(from, type);
             }
         });
 
@@ -4849,7 +4849,7 @@
 
             event.preventDefault();
 
-            step(function () {
+            oneChange(function () {
                 if (parts.length > 1 && !removeAcross(parts)) {
                     return;
                 }
@@ -4941,13 +4941,13 @@
                 // inside it, typed by the browser.
                 if (key === 'Enter' && plain && !event.shiftKey) {
                     event.preventDefault();
-                    step(splitParagraph);
+                    oneChange(splitParagraph);
                     return;
                 }
 
                 if (key === 'Escape' && editor.typed) {
                     event.preventDefault();
-                    step(function () {
+                    oneChange(function () {
                         undoTyping(node);
                     });
                     return;
@@ -5048,7 +5048,7 @@
                     event.preventDefault();
                 });
                 button.addEventListener('click', function () {
-                    step(function () {
+                    oneChange(function () {
                         applyFormat(DOC_FORMATS[index]);
                     });
                 });
@@ -5079,7 +5079,7 @@
                 choice.appendChild(other);
 
                 choice.addEventListener('change', function () {
-                    step(function () {
+                    oneChange(function () {
                         applyKind(choice.value);
                     });
                 });
@@ -5108,7 +5108,7 @@
                     event.preventDefault();
                 });
                 button.addEventListener('click', function () {
-                    step(item[3]);
+                    oneChange(item[3]);
                 });
 
                 blockControls[item[0]] = button;

@@ -190,9 +190,9 @@ function test_office_document_page_source()
 	pg_assert_contains("['undo', 'bi-arrow-counterclockwise', strings.doc_undo]", $body, 'the bar starts with Undo');
 	pg_assert_contains("['redo', 'bi-arrow-clockwise', strings.doc_redo]", $body, 'Redo follows it');
 	pg_assert_contains('historyKey(event)', $body, 'Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z go to the document\'s list');
-	pg_assert_contains('step(splitParagraph);', $body, 'Enter cuts the paragraph, one change of the list');
+	pg_assert_contains('oneChange(splitParagraph);', $body, 'Enter cuts the paragraph, one change of the list');
 	pg_assert_contains('steps.clear();', $body, 'dropping every change empties the list');
-	pg_assert_same(0, preg_match('/\bvar (select|enter|follow|refuse)\b/', $body), 'no variable hides a function of the view');
+	pg_assert_same(0, preg_match('/\bvar (select|enter|follow|refuse|oneChange|capture|restore|typedRun)\b/', $body), 'no variable hides a function of the view');
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
