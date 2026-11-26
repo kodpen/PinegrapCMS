@@ -64,33 +64,33 @@ $accounting_parts['erp'] = array('html' => '
                 <div class="row gy-5">
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_default_series">' . lang('Invoice series') . '</label>
-                        <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" pattern="[A-Za-z0-9]{1,10}" autocapitalize="characters" spellcheck="false" autocomplete="off" />
-                        <div class="form-text">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.') . '</div>
+                        <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" pattern="[A-Za-z0-9]{1,10}" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="erp_default_series_help" />
+                        <div class="form-text" id="erp_default_series_help">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.') . '</div>
                     </div>
                     <div class="pg-f-lg">
                         <label class="form-label" for="erp_number_style">' . lang('Document numbers') . '</label>
-                        <select class="form-control" id="erp_number_style" name="erp_number_style">' . $erp_number_options . '</select>
-                        <div class="form-text">' . lang('Applies to numbers taken from now on; documents already issued keep theirs. Changing it never repeats a number.') . '</div>
+                        <select class="form-control" id="erp_number_style" name="erp_number_style" aria-describedby="erp_number_style_help">' . $erp_number_options . '</select>
+                        <div class="form-text" id="erp_number_style_help">' . lang('Applies to numbers taken from now on; documents already issued keep theirs. Changing it never repeats a number.') . '</div>
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_tax_name">' . lang('Tax name on documents') . '</label>
-                        <input type="text" class="form-control" id="erp_tax_name" name="erp_tax_name" value="' . h($erp_tax_name) . '" maxlength="30" placeholder="' . h(lang('VAT')) . '" autocomplete="off" />
-                        <div class="form-text">' . lang('Leave empty for VAT. Write the name your invoices use instead, for example Sales tax or GST; it is printed as written.') . '</div>
+                        <input type="text" class="form-control" id="erp_tax_name" name="erp_tax_name" value="' . h($erp_tax_name) . '" maxlength="30" placeholder="' . h(lang('VAT')) . '" autocomplete="off" aria-describedby="erp_tax_name_help" />
+                        <div class="form-text" id="erp_tax_name_help">' . lang('Leave empty for VAT. Write the name your invoices use instead, for example Sales tax or GST; it is printed as written.') . '</div>
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_tax2_name">' . lang('Second tax on invoice lines') . '</label>
-                        <input type="text" class="form-control" id="erp_tax2_name" name="erp_tax2_name" value="' . h($erp_tax2_name) . '" maxlength="30" autocomplete="off" />
-                        <div class="form-text">' . lang('For places that charge two taxes on the same amount, such as GST and PST in Canada: name the second one and every invoice line gets a rate for it. Leave empty for one tax per line.') . '</div>
+                        <input type="text" class="form-control" id="erp_tax2_name" name="erp_tax2_name" value="' . h($erp_tax2_name) . '" maxlength="30" autocomplete="off" aria-describedby="erp_tax2_name_help" />
+                        <div class="form-text" id="erp_tax2_name_help">' . lang('For places that charge two taxes on the same amount, such as GST and PST in Canada: name the second one and every invoice line gets a rate for it. Leave empty for one tax per line.') . '</div>
                     </div>
                     <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
                         <label class="form-label" for="erp_web_address">' . lang('Address the sale was made at') . '</label>
-                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" class="form-control" id="erp_web_address" name="erp_web_address" value="' . h($erp_web_address) . '" maxlength="255" autocomplete="off" />
-                        <div class="form-text">' . lang('Printed on invoices for internet sales, which have to name it. For example www.example.com.') . '</div>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" class="form-control" id="erp_web_address" name="erp_web_address" value="' . h($erp_web_address) . '" maxlength="255" autocomplete="off" aria-describedby="erp_web_address_help" />
+                        <div class="form-text" id="erp_web_address_help">' . lang('Printed on invoices for internet sales, which have to name it. For example www.example.com.') . '</div>
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_default_due_days">' . lang('Default payment term (days)') . '</label>
-                        <input type="number" class="form-control" id="erp_default_due_days" name="erp_default_due_days" value="' . (int) $erp_default_due_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
-                        <div class="form-text">' . lang('A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.') . '</div>
+                        <input type="number" class="form-control" id="erp_default_due_days" name="erp_default_due_days" value="' . (int) $erp_default_due_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" aria-describedby="erp_default_due_days_help" />
+                        <div class="form-text" id="erp_default_due_days_help">' . lang('A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.') . '</div>
                     </div>
                 </div>
             </div>
@@ -117,24 +117,13 @@ $accounting_parts['erp-sales'] = array('html' => '
                 <div class="row gy-5">
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_walkin_account_id">' . lang('Walk-in sales account') . '</label>
-                        <select class="form-control" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
-                        <div class="form-text">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
-                    </div>
-                    <div class="pg-f-md">
-                        <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>
-                        <select class="form-control" id="local_sale_prices" name="local_sale_prices">
-                            <option value="gross"' . (($local_sale_prices === 'gross') ? ' selected' : '') . '>' . lang('With tax included (VAT countries)') . '</option>
-                            <option value="net"' . (($local_sale_prices === 'net') ? ' selected' : '') . '>' . lang('Without tax, added at the total (sales-tax countries)') . '</option>
-                        </select>
-                        <div class="form-text">' . lang('Only what the local sale screen shows changes; product prices are kept without tax and the amount charged is the same.') . '</div>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_stock_documents_checked . ' class="" type="checkbox" id="erp_stock_documents" name="erp_stock_documents" /></div>
-                            <label class="" for="erp_stock_documents">' . lang('Invoices change stock') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.') . '</div>
-                    </div>
+                        <select class="form-control" id="erp_walkin_account_id" name="erp_walkin_account_id" aria-describedby="erp_walkin_account_id_help">' . $erp_walkin_options . '</select>
+                        <div class="form-text" id="erp_walkin_account_id_help">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
+                    </div>' . pg_accounting_settings_choice('local_sale_prices', lang('Prices on the till'), array(
+                        array('value' => 'gross', 'label' => lang('With tax included (VAT countries)'), 'line' => lang('The local sale screen shows each price with its tax.'), 'on' => $local_sale_prices === 'gross'),
+                        array('value' => 'net', 'label' => lang('Without tax, added at the total (sales-tax countries)'), 'line' => lang('The local sale screen shows prices without tax and adds the tax at the total.'), 'on' => $local_sale_prices === 'net'),
+                    ), lang('Product prices are kept without tax and the amount charged is the same.'))
+                    . pg_accounting_settings_switch('erp_stock_documents', $erp_stock_documents_checked !== '', lang('Invoices change stock'), lang('On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; an order\'s invoice leaves stock alone, as the order already took them. Off, only the costs are kept.')) . '
                 </div>
             </div>
         </div>
@@ -150,60 +139,32 @@ $accounting_parts['erp-orders'] = array('html' => '
                 ' . lang('Web orders') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">' . ($erp_auto_invoice_ready ? '
-                    <div class="pg-f-md">
-                        <label class="form-label" for="erp_auto_invoice_on">' . lang('The invoice of a web order') . '</label>
-                        <select class="form-control" id="erp_auto_invoice_on" name="erp_auto_invoice_on">
-                            <option value="off"' . (($erp_auto_invoice_on === 'off') ? ' selected' : '') . '>' . lang('Is issued from the order screen') . '</option>
-                            <option value="order_paid"' . (($erp_auto_invoice_on === 'order_paid') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is paid') . '</option>
-                            <option value="order_shipped"' . (($erp_auto_invoice_on === 'order_shipped') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is shipped') . '</option>
-                        </select>
-                        <div class="form-text">' . ($erp_auto_invoice_marketplace_ready
-                            ? lang('On its own, the order gets the invoice its screen\'s Issue the Invoice step writes, with the same checks: an order the step cannot invoice yet waits there with the reason, and the panel bell names it. Paid is a card, PayPal or iyzico payment at checkout, a bank transfer recorded with Payment Received, or an order put on the customer\'s account. Counter sales are still invoiced at the till and marketplace orders from their screen unless the switch below is on; the e-document is still made official from the order screen.')
-                            : lang('On its own, the order gets the invoice its screen\'s Issue the Invoice step writes, with the same checks: an order the step cannot invoice yet waits there with the reason, and the panel bell names it. Paid is a card, PayPal or iyzico payment at checkout, a bank transfer recorded with Payment Received, or an order put on the customer\'s account. Counter sales are still invoiced at the till and marketplace orders from their screen; the e-document is still made official from the order screen.')) . '</div>
-                    </div>' : '') . ($erp_auto_invoice_filters_ready ? '
+                <div class="row gy-5">' . ($erp_auto_invoice_ready ? pg_accounting_settings_choice('erp_auto_invoice_on', lang('The invoice of a web order'), array(
+                        array('value' => 'off', 'label' => lang('Is issued from the order screen'), 'line' => lang('Nothing is issued on its own; the order screen\'s Issue the Invoice step writes it.'), 'on' => $erp_auto_invoice_on === 'off'),
+                        array('value' => 'order_paid', 'label' => lang('Is issued on its own once the order is paid'), 'line' => lang('Paid is a card, PayPal or iyzico payment at checkout, a bank transfer recorded with Payment Received, or an order put on the customer\'s account.'), 'on' => $erp_auto_invoice_on === 'order_paid'),
+                        array('value' => 'order_shipped', 'label' => lang('Is issued on its own once the order is shipped'), 'line' => lang('With the checks of Issue the Invoice: an order it cannot invoice yet waits there with the reason, and the panel bell names it.'), 'on' => $erp_auto_invoice_on === 'order_shipped'),
+                    ), $erp_auto_invoice_marketplace_ready
+                        ? lang('Counter sales are still invoiced at the till and marketplace orders from their screen unless the switch below is on; the e-document is still made official from the order screen.')
+                        : lang('Counter sales are still invoiced at the till and marketplace orders from their screen; the e-document is still made official from the order screen.')) : '') . ($erp_auto_invoice_filters_ready ? '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_auto_invoice_min_total">' . h(lang(array('string' => 'Smallest order invoiced on its own ({var:1})', 'vars' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')))) . '</label>
-                        <input type="number" class="form-control" id="erp_auto_invoice_min_total" name="erp_auto_invoice_min_total" value="' . (int) $erp_auto_invoice_min_total . '" min="0" max="10000000" step="1" inputmode="numeric" autocomplete="off" />
-                        <div class="form-text">' . lang('A smaller order waits for Issue the Invoice on its screen. The amount is the whole sale the invoice states, a gift card included. 0 invoices every order.') . '</div>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_auto_invoice_tax_number_only_checked . ' class="" type="checkbox" id="erp_auto_invoice_tax_number_only" name="erp_auto_invoice_tax_number_only" /></div>
-                            <label class="" for="erp_auto_invoice_tax_number_only">' . lang('Only for buyers with a tax number') . '</label>
-                        </div>
-                        <div class="form-text">' . ((pg_erp_store_country() === 'TR')
-                            ? lang('Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.')
-                            : lang('Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.')) . '</div>
-                    </div>' : '') . ($erp_auto_invoice_marketplace_ready ? '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_auto_invoice_marketplace_checked . ' class="" type="checkbox" id="erp_auto_invoice_marketplace" name="erp_auto_invoice_marketplace" /></div>
-                            <label class="" for="erp_auto_invoice_marketplace">' . lang('Also invoice marketplace orders (Trendyol, n11)') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('A marketplace order is paid when it is imported and shipped when its tracking number arrives; the same moment and filters apply. Leave it off if you invoice them elsewhere. The invoice link is still typed on the Imported orders card.') . '</div>
-                    </div>' : '') . ($erp_invoice_mail_ready ? '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_invoice_mail_auto_checked . ' class="" type="checkbox" id="erp_invoice_mail_auto" name="erp_invoice_mail_auto" /></div>
-                            <label class="" for="erp_invoice_mail_auto">' . lang('E-mail each issued invoice to the customer') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('The invoice goes with its PDF to the account\'s invoice e-mail address (or its main address) when it is issued. Where e-documents are in use it goes once GİB has accepted it, with the official copy. Off for a single account on its card; any invoice can also be sent from its own screen.') . '</div>
-                    </div>
+                        <input type="number" class="form-control" id="erp_auto_invoice_min_total" name="erp_auto_invoice_min_total" value="' . (int) $erp_auto_invoice_min_total . '" min="0" max="10000000" step="1" inputmode="numeric" autocomplete="off" aria-describedby="erp_auto_invoice_min_total_help" />
+                        <div class="form-text" id="erp_auto_invoice_min_total_help">' . lang('A smaller order waits for Issue the Invoice on its screen. The amount is the whole sale the invoice states, a gift card included. 0 invoices every order.') . '</div>
+                    </div>' . pg_accounting_settings_switch('erp_auto_invoice_tax_number_only', $erp_auto_invoice_tax_number_only_checked !== '', lang('Only for buyers with a tax number'), (pg_erp_store_country() === 'TR')
+                        ? lang('Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.')
+                        : lang('Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.')) : '')
+                    . ($erp_auto_invoice_marketplace_ready ? pg_accounting_settings_switch('erp_auto_invoice_marketplace', $erp_auto_invoice_marketplace_checked !== '', lang('Also invoice marketplace orders (Trendyol, n11)'), lang('A marketplace order is paid when it is imported and shipped when its tracking number arrives; the same moment and filters apply. Leave it off if you invoice them elsewhere. The invoice link is still typed on the Imported orders card.')) : '')
+                    . ($erp_invoice_mail_ready ? pg_accounting_settings_switch('erp_invoice_mail_auto', $erp_invoice_mail_auto_checked !== '', lang('E-mail each issued invoice to the customer'), lang('Sent with its PDF to the account\'s invoice e-mail address when it is issued, or once GİB has accepted it where e-documents are in use. Off for a single account on its card.')) . '
                     <div class="col-12">
                         <label class="form-label" for="erp_invoice_mail_message">' . lang('Invoice e-mail message') . '</label>
-                        <textarea class="form-control" id="erp_invoice_mail_message" name="erp_invoice_mail_message" rows="2" maxlength="2000" placeholder="' . h(lang('Thank you for your purchase. Your invoice is attached to this e-mail.')) . '">' . h($erp_invoice_mail_message) . '</textarea>
-                        <div class="form-text">' . lang('The text above the invoice\'s figures in the e-mail. Empty uses the text shown.') . '</div>
-                    </div>' : '') . '
-                    <div class="pg-f-md">
-                        <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>
-                        <select class="form-control" id="erp_shipping_tax" name="erp_shipping_tax">
-                            <option value=""' . (($erp_shipping_tax === '') ? ' selected' : '') . '>' . lang('By the store\'s country') . '</option>
-                            <option value="included"' . (($erp_shipping_tax === 'included') ? ' selected' : '') . '>' . lang('Included in the amount charged, at the rate of the goods') . '</option>
-                            <option value="none"' . (($erp_shipping_tax === 'none') ? ' selected' : '') . '>' . lang('Not taxed') . '</option>
-                        </select>
-                        <div class="form-text">' . lang('How an order\'s shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store\'s country: untaxed in the United States, included everywhere else.') . '</div>
-                    </div>
+                        <textarea class="form-control" id="erp_invoice_mail_message" name="erp_invoice_mail_message" rows="2" maxlength="2000" placeholder="' . h(lang('Thank you for your purchase. Your invoice is attached to this e-mail.')) . '" aria-describedby="erp_invoice_mail_message_help">' . h($erp_invoice_mail_message) . '</textarea>
+                        <div class="form-text" id="erp_invoice_mail_message_help">' . lang('The text above the invoice\'s figures in the e-mail. Empty uses the text shown.') . '</div>
+                    </div>' : '')
+                    . pg_accounting_settings_choice('erp_shipping_tax', lang('Tax on shipping and surcharges'), array(
+                        array('value' => '', 'label' => lang('By the store\'s country'), 'line' => lang('Untaxed in the United States, included everywhere else.'), 'on' => $erp_shipping_tax === ''),
+                        array('value' => 'included', 'label' => lang('Included in the amount charged, at the rate of the goods'), 'line' => lang('The tax is inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge.'), 'on' => $erp_shipping_tax === 'included'),
+                        array('value' => 'none', 'label' => lang('Not taxed'), 'line' => lang('The charge is written on the invoice without tax.'), 'on' => $erp_shipping_tax === 'none'),
+                    ), lang('How an order\'s shipping, surcharge and installment charge are written on its invoice; the customer paid them with no tax added.')) . '
                 </div>
             </div>
         </div>

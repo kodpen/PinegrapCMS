@@ -443,5 +443,5 @@ function test_erp_auto_invoice_marketplace_setting_save()
 	pg_assert_true(strpos($save, "waf_table_has_column('config', 'erp_auto_invoice_marketplace')") !== false, 'not before the step has run');
 
 	$card = erp_auto_invoice_test_source('includes/settings/accounting.php');
-	pg_assert_contains('name="erp_auto_invoice_marketplace"', $card);
+	pg_assert_contains("pg_accounting_settings_switch('erp_auto_invoice_marketplace'", $card);
 }
