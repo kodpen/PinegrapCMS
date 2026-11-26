@@ -5,7 +5,7 @@ module: lead_journey_store
 ---
 
 ## Which tables hold the journey?
-- Step 11.0.265 (`upgrade_2026_11_0_lead_journey()`), columns in `workflow/decisions-made-schema-42.md`: `lead_browsers`, `lead_visits`, `contact_journey`, `contact_scores`. No column on `visitors` or `contacts`; no IP, user agent or form content. All four are in `get_tables()`.
+- Step 11.0.265 (`upgrade_2026_11_0_lead_journey()`), columns in `workflow/decisions-made-schema-42.md`: `lead_browsers`, `lead_visits`, `contact_journey`, `contact_scores`. No IP, user agent or form content; all four in `get_tables()`.
 - Until the step runs `pg_lead_ready()` is false and nothing is written or listed.
 
 ## When is the browser key written?
