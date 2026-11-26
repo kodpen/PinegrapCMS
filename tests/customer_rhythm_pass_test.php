@@ -391,3 +391,24 @@ function test_customer_rhythm_pass_job_hook_announces_nothing()
 	pg_assert_false(strpos($source, 'pg_webhook') !== false, 'no webhook from the pass');
 	pg_assert_same(1, substr_count($source, '= pg_customer_rhythm_tell('), 'one hand-over per written batch');
 }
+
+// A customer erased (or whose orders were deleted) while a pass was under
+// way: none of the orders the walk read still carries their key, so the
+// write step leaves them out instead of writing their row back.
+function test_customer_rhythm_pass_erased_customer_is_not_written_back()
+{
+	$kept = pg_customer_value_key(array('billing_email_address' => 'ayse@example.com'));
+	$erased = pg_customer_value_key(array('billing_email_address' => 'mehmet@example.com'));
+	$current = array(
+		10 => array('billing_email_address' => 'AYSE@example.com', 'contact_id' => 3),
+		// The erasure put a token in place of the address.
+		20 => array('billing_email_address' => 'erased-1f2e3d@invalid', 'contact_id' => 0),
+		30 => array('billing_email_address' => '', 'contact_id' => 7),
+	);
+
+	pg_assert_same(array($erased, 'c9'), pg_customer_rhythm_keys_gone(array($kept => array(10), $erased => array(20), 'c7' => array(30), 'c9' => array(40)), $current), 'gone: address replaced, order deleted');
+	pg_assert_same(array(), pg_customer_rhythm_keys_gone(array($kept => array(99, 10)), $current), 'one order still carrying the key keeps the customer');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_pass.php');
+	pg_assert_contains('pg_customer_rhythm_pass_gone(', $source);
+}

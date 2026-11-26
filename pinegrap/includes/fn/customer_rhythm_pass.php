@@ -657,6 +657,117 @@ function pg_customer_rhythm_pass_available($ids)
 }
 
 /**
+ * The customers none of whose orders still carries their key: the orders
+ * were deleted, or an erasure put a token in place of the address, after
+ * the walk read them. Pure.
+ *
+ * @param array $ids      customer key => list of order ids the walk read
+ * @param array $current  order id => billing_email_address, contact_id as
+ *                        they are now; an order not there is gone
+ * @return array  the keys gone
+ */
+function pg_customer_rhythm_keys_gone($ids, $current)
+{
+    $gone = array();
+
+    foreach ($ids as $key => $list) {
+        $kept = false;
+
+        foreach ((array) $list as $id) {
+            if (isset($current[(int) $id]) && (pg_customer_value_key($current[(int) $id]) === (string) $key)) {
+                $kept = true;
+                break;
+            }
+        }
+
+        if (!$kept) {
+            $gone[] = (string) $key;
+        }
+    }
+
+    return $gone;
+}
+
+/**
+ * The customers of a write batch whose orders no longer carry their key
+ * (pg_customer_rhythm_keys_gone()), so an erasure made while the pass runs
+ * is not undone by writing the row back. The latest order of each is read
+ * first; only a customer whose latest order changed has the rest read.
+ *
+ * @param array $keys
+ * @param array $state  the walk (c: key => packed orders)
+ * @return array  the keys gone; none when the orders cannot be read
+ */
+function pg_customer_rhythm_pass_gone($keys, $state)
+{
+    $read = function ($ids) {
+        $current = array();
+
+        foreach (array_chunk(array_values(array_unique(array_map('intval', $ids))), 1000) as $chunk) {
+            $result = db_q("SELECT id, billing_email_address, contact_id FROM orders WHERE id IN (" . implode(',', $chunk) . ")");
+
+            if ($result === false) {
+                return null;
+            }
+
+            while ($row = mysqli_fetch_assoc($result)) {
+                $current[(int) $row['id']] = $row;
+            }
+
+            mysqli_free_result($result);
+        }
+
+        return $current;
+    };
+
+    $all = array();
+    $latest = array();
+
+    foreach ($keys as $key) {
+        $all[$key] = array();
+
+        foreach (pg_customer_rhythm_pass_orders(isset($state['c'][$key]) ? $state['c'][$key] : '') as $order) {
+            $all[$key][] = (int) $order['id'];
+        }
+
+        // The walk reads by date, so the last record is the latest order.
+        $latest[$key] = $all[$key] ? array($all[$key][count($all[$key]) - 1]) : array();
+    }
+
+    $ids = array();
+
+    foreach ($latest as $list) {
+        $ids = array_merge($ids, $list);
+    }
+
+    $current = $ids ? $read($ids) : array();
+
+    if ($current === null) {
+        return array();
+    }
+
+    $suspects = array();
+
+    foreach (pg_customer_rhythm_keys_gone($latest, $current) as $key) {
+        $suspects[$key] = $all[$key];
+    }
+
+    if (!$suspects) {
+        return array();
+    }
+
+    $ids = array();
+
+    foreach ($suspects as $list) {
+        $ids = array_merge($ids, $list);
+    }
+
+    $current = $ids ? $read($ids) : array();
+
+    return ($current === null) ? array() : pg_customer_rhythm_keys_gone($suspects, $current);
+}
+
+/**
  * The general job's pass: under one claim of the pass record, walk the
  * orders for at most $budget seconds from where the last run stopped; once
  * the walk is done, work out the store's figures and write the customers'
@@ -801,9 +912,14 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
             mysqli_free_result($result);
             $rows = array();
             $batch = array();
+            $gone = array_flip(pg_customer_rhythm_pass_gone($keys, $state));
 
             foreach ($keys as $key) {
-                $made = pg_customer_rhythm_pass_row($key, pg_customer_rhythm_pass_orders($state['c'][$key]), pg_customer_rhythm_pass_lines($key, $state['l'][$key]), isset($stored[$key]) ? $stored[$key] : null, $state['store'], $state['available'], $state['started']);
+                if (isset($gone[$key])) {
+                    continue;
+                }
+
+                $made =pg_customer_rhythm_pass_row($key, pg_customer_rhythm_pass_orders($state['c'][$key]), pg_customer_rhythm_pass_lines($key, $state['l'][$key]), isset($stored[$key]) ? $stored[$key] : null, $state['store'], $state['available'], $state['started']);
 
                 if ($made === null) {
                     continue;
