@@ -1,17 +1,17 @@
 ---
 name: office-sheet-tabs
-description: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves one sheet of an .xlsx: where it opens, what it sends, one change a save
+description: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves a sheet of an .xlsx: where it opens, what it puts in the list of changes, how the tabs are drawn
 ---
 
 ## Where is it, and what does it send?
-- In the sheet tabs of `assets/js/pg_office_view.js` (no bundle, no .min twin), in the File Manager's file window and a channel's preview. `view.edits()` sends one sheet change as the whole save (`office-sheets.md` has the entries and the server's refusals); a refusal's message shows as the save's error, the change still waiting.
+- In the sheet tabs of `assets/js/pg_office_view.js` (no bundle, no .min twin), in the File Manager's file window and a channel's preview. `view.edits()` sends each sheet change in its place in the list (`office-sheets.md` has the entries and the server's refusals); a refusal's message shows as the save's error, the changes still waiting.
 - Offered only when the preview's `sheets_edit.ok` is true (not signed, no password to change, structure not protected).
-- The open sheet's tab clicked again, a right click on a tab, the menu key or Shift+F10 open the menu: Rename, Move left, Move right, Delete sheet X. F2 on a tab renames. The + button after the tabs adds a sheet, named "Sheet{n}" (translated) until typed over.
-- A name is typed in place of the tab: Enter keeps it, Esc leaves the sheet as it was. The view checks the server's name rules first and names the problem in the status line.
+- The open sheet's tab clicked again, a right click on a tab, the menu key or Shift+F10 open the menu: Rename, Move left, Move right, Delete sheet X. F2 on a tab renames. The + button after the tabs adds a sheet, named "Sheet{n}" (translated) until typed over. Delete is not offered for the last sheet shown.
+- A name is typed in place of the tab: Enter keeps it, Esc leaves the sheet as it was. The view checks the server's name rules against the sheets as the list leaves them and names the problem in the status line.
 
 ## How does a waiting change look?
-- One change a save: with changed cells or a waiting row or column the menu only says "Save the other changes first…"; while a sheet change waits, cells are not typed in, and the tab menu and the grid's head menu offer only "Undo the sheet change" (also Escape in the grid).
-- A renamed tab shows its new name, a deleted one is struck through, a moved one has a dashed border, an added one shows after the tabs; the status line says what happens on save.
+- Since OF3 (plan office-sheet-steady) sheet changes go into the one list beside cells, formats, rows and columns, any number of them (`office-sheet-change-list.md`). The tabs are drawn again from the list: a renamed tab shows its new name, a moved one stands in its new place, a deleted one is gone, an added one is a tab whose empty grid is typed into before the save; each changed sheet's tab carries the changed dot. Escape in the grid drops the change while it is the last one.
+- Before OF3 one sheet change was a save of its own, struck through or dashed on the tabs, with "Undo the sheet change".
 
 ## What was checked?
-- `node --check` and the server's tests; no browser run, the menu not tried by hand.
+- The server's tests (`office-sheets.md`), the list's tests and the browser run of `office-sheet-change-list.md`.

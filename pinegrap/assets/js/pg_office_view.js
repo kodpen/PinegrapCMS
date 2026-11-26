@@ -33,15 +33,16 @@
  *
  * The view returned (for a workbook, and for a document read for editing)
  * tells the caller what was changed: view.kind ('xlsx' or 'docx'),
- * view.count(), view.edits() for the save request (for a workbook the
- * typed cells, {sheet, name, cell, value}, and the format ranges chosen
- * from the bar above the grid, {op: format, sheet, name, range, set}, in
- * one list in the order they were made; or the one row or column to insert
- * or delete, [{sheet, name, op, row}] / [{sheet, name, op, column}], chosen
- * from a row's or column's head menu; or the one sheet to add, rename,
- * delete or move, [{op: sheet_add, to}] / [{op: sheet_rename, sheet, name,
- * to}] / [{op: sheet_delete, sheet, name}] / [{op: sheet_move, sheet, name,
- * to}], chosen from the sheet tabs; [{p, text}] for a document),
+ * view.count(), view.edits() for the save request (for a workbook one
+ * list in the order the changes were made: the typed cells, {sheet, name,
+ * cell, value}, the format ranges chosen from the bar above the grid, {op:
+ * format, sheet, name, range, set}, the rows and columns inserted or
+ * deleted from a head menu, {sheet, name, op, row} / {sheet, name, op,
+ * column}, and the sheets added, renamed, deleted or moved from the tabs,
+ * {op: sheet_add, to} / {op: sheet_rename, sheet, name, to} / {op:
+ * sheet_delete, sheet, name} / {op: sheet_move, sheet, name, to}, each
+ * position and name the workbook's at that point of the list; [{p, text}]
+ * for a document),
  * view.version, and
  * view.reset() to drop every change. What is being typed counts already, so
  * a Save pressed before Enter sends it too. Nothing is saved from here; the
@@ -74,6 +75,11 @@
     // PG_OFFICE_SHIFT_ROWS and PG_OFFICE_SHIFT_COLUMNS).
     var SHEET_ROWS = 1048576;
     var SHEET_COLUMNS = 16384;
+
+    // The empty grid an added sheet is drawn as, the size of a new
+    // spreadsheet's (PG_OFFICE_NEW_ROWS, PG_OFFICE_NEW_COLUMNS).
+    var NEW_ROWS = 30;
+    var NEW_COLUMNS = 10;
 
     // The most cells one format change takes (PG_OFFICE_EDIT_MAX_CHANGES).
     var FORMAT_CELLS = 5000;
@@ -564,22 +570,36 @@
     }
 
     // A workbook's waiting changes are one list in the order they were
-    // made, as the save sends them: a typed cell ({sheet, cell}, its value
-    // kept beside the list) or a format range ({sheet, range, set}). The
-    // server applies each on the workbook the one before left.
+    // made, as the save sends them: a typed cell ({sheet, cell, value}), a
+    // format range ({sheet, range, set}), a row or column inserted or
+    // deleted ({op: insert|delete, sheet, axis, at}; `at` a row number or a
+    // 0-based column, the line inserted before) or a sheet change ({op:
+    // sheet_add|sheet_rename|sheet_delete|sheet_move, sheet, to}). Every
+    // position and sheet place is the workbook's at that point of the list,
+    // as the server applies each on the workbook the one before left; the
+    // grid and the tabs are drawn from the list (listBook()).
 
-    // Puts a typed cell at the end of the list, or takes it out when it
-    // holds the file's value again. A cell typed again moves to the end, so
-    // it is written over every format laid on it before.
-    function listCell(list, sheet, address, changed) {
-        for (var index = list.length - 1; index >= 0; index--) {
-            if (!list[index].range && list[index].sheet === sheet && list[index].cell === address) {
+    // Whether a change moves cells or sheets, so that an address before it
+    // names another cell than after it.
+    function listMoves(step) {
+        return !step.cell && !step.range;
+    }
+
+    // Takes a typed cell out of the changes made since the last row, column
+    // or sheet change, then, unless `value` is null, puts it at the end with
+    // its value. A cell typed again moves to the end, so it is written over
+    // every format laid on it before; the caller leaves `value` null when
+    // the cell holds its value without the change.
+    function listCell(list, sheet, address, value) {
+        for (var index = list.length - 1; index >= 0 && !listMoves(list[index]); index--) {
+            if (list[index].cell && list[index].sheet === sheet && list[index].cell === address) {
                 list.splice(index, 1);
+                break;
             }
         }
 
-        if (changed) {
-            list.push({ sheet: sheet, cell: address });
+        if (value !== null && value !== undefined) {
+            list.push({ sheet: sheet, cell: address, value: String(value) });
         }
 
         return list;
@@ -605,66 +625,302 @@
         return list.length;
     }
 
-    // A cell's look with every waiting range over it laid on, in order.
-    function listLook(look, list, sheet, row, column) {
-        list.forEach(function (step) {
-            if (step.range && step.sheet === sheet && inRange(step.range, row, column)) {
-                look = lookWith(look, step.set);
-            }
+    // A cell's look with the format parts laid on it (listBook()'s `sets`
+    // of the cell), in order.
+    function listLook(look, sets) {
+        (sets || []).forEach(function (set) {
+            look = lookWith(look, set);
         });
 
         return look || {};
     }
 
-    // The save list: each change in its order with its sheet's name. A
-    // cell's value is the one `values` (per sheet, address => value) holds
-    // now; a cell no longer there is left out, and one there but not in the
-    // list yet (the cell being typed) goes last. `rangeName` writes a range.
-    function listEdits(list, values, names, rangeName) {
-        var out = [];
-        var listed = {};
+    // Where a row number or a column lands after a line is inserted before
+    // `at` or deleted at it; null for the line deleted.
+    function shiftAt(number, op, at) {
+        if (number < at) {
+            return number;
+        }
 
-        list.forEach(function (step) {
-            if (step.range) {
-                var set = {};
+        if (op === 'insert') {
+            return number + 1;
+        }
 
-                Object.keys(step.set).forEach(function (key) {
-                    set[key] = step.set[key];
-                });
+        return (number === at) ? null : number - 1;
+    }
 
-                out.push({ op: 'format', sheet: step.sheet, name: names[step.sheet], range: rangeName(step.range), set: set });
-            } else if (values[step.sheet] && own(values[step.sheet], step.cell)) {
-                listed[step.sheet + '!' + step.cell] = true;
-                out.push({ sheet: step.sheet, name: names[step.sheet], cell: step.cell, value: values[step.sheet][step.cell] });
+    // An address-keyed map with its addresses moved by a row or column
+    // change; the cells of a deleted line leave it.
+    function shiftKeys(map, axis, op, at) {
+        var out = {};
+
+        Object.keys(map || {}).forEach(function (address) {
+            var parts = /^([A-Z]+)(\d+)$/.exec(address);
+
+            if (!parts) {
+                return;
             }
-        });
 
-        values.forEach(function (sheetValues, sheet) {
-            Object.keys(sheetValues).forEach(function (address) {
-                if (!listed[sheet + '!' + address]) {
-                    out.push({ sheet: sheet, name: names[sheet], cell: address, value: sheetValues[address] });
-                }
-            });
+            var column = columnIndex(parts[1]);
+            var row = parseInt(parts[2], 10);
+            var moved = shiftAt((axis === 'row') ? row : column, op, at);
+
+            if (moved !== null) {
+                out[(axis === 'row') ? columnName(column) + moved : columnName(moved) + row] = map[address];
+            }
         });
 
         return out;
     }
 
-    // The class a cell or head takes from the row or column waiting to be
-    // inserted (a line drawn before or after the one chosen) or deleted
-    // (struck through).
-    function shiftMark(state, row, column) {
-        var pending = state ? state.pending : null;
+    // A column-keyed map of a row (its styles, its shown texts) moved by a
+    // column change.
+    function shiftColumns(map, op, at) {
+        var out = {};
 
-        if (!pending || ((pending.axis === 'row') ? row : column) !== pending.at) {
-            return '';
+        Object.keys(map || {}).forEach(function (key) {
+            var moved = shiftAt(parseInt(key, 10), op, at);
+
+            if (moved !== null) {
+                out[moved] = map[key];
+            }
+        });
+
+        return out;
+    }
+
+    // An area [first row, first column, last row, last column, …] moved as
+    // the server moves it: an insert inside widens it, a delete inside
+    // narrows it; null when nothing of it is left.
+    function shiftRange(range, axis, op, at) {
+        var out = range.slice();
+        var low = (axis === 'row') ? 0 : 1;
+        var high = low + 2;
+
+        if (op === 'insert') {
+            out[low] += (out[low] >= at) ? 1 : 0;
+            out[high] += (out[high] >= at) ? 1 : 0;
+        } else {
+            out[low] -= (out[low] > at) ? 1 : 0;
+            out[high] -= (out[high] >= at) ? 1 : 0;
         }
 
-        if (pending.place === 'delete') {
-            return 'office-shift-delete';
+        return (out[high] < out[low]) ? null : out;
+    }
+
+    function copyOf(object, skip) {
+        var out = {};
+
+        Object.keys(object || {}).forEach(function (key) {
+            if (key !== skip) {
+                out[key] = object[key];
+            }
+        });
+
+        return out;
+    }
+
+    // A sheet with a row or a column inserted or deleted: its rows, cell
+    // values, styles, shown texts, formula marks, locked cells and areas
+    // moved, an inserted row drawn empty, an inserted line marked added.
+    function shiftSheet(sheet, axis, op, at) {
+        var out = copyOf(sheet, 'byRow');
+        var width = Math.max(sheet.wide || 0, sheetWidth(sheet));
+        var edit = sheet.edit ? copyOf(sheet.edit) : null;
+        var added = sheet.added || { row: {}, column: {} };
+
+        if (axis === 'row') {
+            var rows = [];
+            var placed = (op !== 'insert');
+
+            sheet.rows.forEach(function (row) {
+                var number = shiftAt(row.n, op, at);
+
+                if (!placed && row.n >= at) {
+                    rows.push({ n: at, cells: [] });
+                    placed = true;
+                }
+
+                if (number === row.n) {
+                    rows.push(row);
+                } else if (number !== null) {
+                    var moved = copyOf(row);
+
+                    moved.n = number;
+                    rows.push(moved);
+                }
+            });
+
+            if (!placed) {
+                rows.push({ n: at, cells: [] });
+            }
+
+            out.rows = rows;
+        } else {
+            out.rows = sheet.rows.map(function (row) {
+                var copy = copyOf(row);
+
+                copy.cells = row.cells.slice();
+
+                if (at < copy.cells.length) {
+                    if (op === 'insert') {
+                        copy.cells.splice(at, 0, '');
+                    } else {
+                        copy.cells.splice(at, 1);
+                    }
+                }
+
+                copy.s = row.s ? shiftColumns(row.s, op, at) : row.s;
+                copy.show = row.show ? shiftColumns(row.show, op, at) : row.show;
+                copy.calc = row.calc ? row.calc.map(function (column) { return shiftAt(column, op, at); }).filter(function (column) { return column !== null; }) : row.calc;
+
+                return copy;
+            });
+
+            out.wide = (op === 'insert') ? Math.min(Math.max(width, at) + 1, SHEET_COLUMNS) : Math.max(0, width - ((at < width) ? 1 : 0));
         }
 
-        return 'office-shift-insert-' + pending.axis + ((pending.place === 'after') ? '-after' : '');
+        if (edit) {
+            edit.locked = shiftKeys(edit.locked, axis, op, at);
+            edit.formulas = shiftKeys(edit.formulas, axis, op, at);
+            edit.ranges = (edit.ranges || []).map(function (range) { return shiftRange(range, axis, op, at); }).filter(Boolean);
+            out.edit = edit;
+        }
+
+        out.added = { row: added.row, column: added.column };
+        out.added[axis] = shiftColumns(added[axis], op, at);
+
+        if (op === 'insert') {
+            out.added[axis][at] = true;
+        }
+
+        return out;
+    }
+
+    // An added sheet as the grid draws it: an empty grid of the rows and
+    // columns of a new spreadsheet (PG_OFFICE_NEW_ROWS, PG_OFFICE_NEW_COLUMNS),
+    // every cell open; the server makes the rows a cell is typed into.
+    function newSheet(name, id) {
+        var rows = [];
+
+        for (var number = 1; number <= NEW_ROWS; number++) {
+            rows.push({ n: number, cells: [] });
+        }
+
+        return { id: id, name: name, rows: rows, wide: NEW_COLUMNS, edit: { ok: true }, changed: true };
+    }
+
+    function moveItem(list, from, to) {
+        list.splice(to, 0, list.splice(from, 1)[0]);
+    }
+
+    // The workbook as the list leaves it, from the sheets the server sent:
+    // {sheets, values, sets}. Each sheet is a copy with `id` (its place as
+    // opened, or "new" and a number), its rows, name and edit as the list
+    // leaves them, `changed` when a change of the list touches it, `added`
+    // rows and columns; `values` holds per sheet the cells typed (address
+    // => value), `sets` the format parts laid on each cell (address =>
+    // [set]). Nothing the server sent is changed.
+    function listBook(sheets, list) {
+        var book = {
+            sheets: sheets.map(function (sheet, index) {
+                var copy = copyOf(sheet, 'byRow');
+
+                copy.id = index;
+
+                return copy;
+            }),
+            values: sheets.map(function () { return {}; }),
+            sets: sheets.map(function () { return {}; })
+        };
+        var added = 0;
+
+        list.forEach(function (step) {
+            var at = step.sheet;
+
+            if (step.cell) {
+                if (book.sheets[at]) {
+                    book.values[at][step.cell] = step.value;
+                    book.sheets[at].changed = true;
+                }
+            } else if (step.range) {
+                if (book.sheets[at]) {
+                    for (var row = step.range[0]; row <= step.range[2]; row++) {
+                        for (var column = step.range[1]; column <= step.range[3]; column++) {
+                            var address = columnName(column) + row;
+
+                            (book.sets[at][address] = book.sets[at][address] || []).push(step.set);
+                        }
+                    }
+
+                    book.sheets[at].changed = true;
+                }
+            } else if (step.op === 'insert' || step.op === 'delete') {
+                if (book.sheets[at]) {
+                    book.sheets[at] = shiftSheet(book.sheets[at], step.axis, step.op, step.at);
+                    book.sheets[at].changed = true;
+                    book.values[at] = shiftKeys(book.values[at], step.axis, step.op, step.at);
+                    book.sets[at] = shiftKeys(book.sets[at], step.axis, step.op, step.at);
+                }
+            } else if (step.op === 'sheet_add') {
+                book.sheets.push(newSheet(step.to, 'new' + (++added)));
+                book.values.push({});
+                book.sets.push({});
+            } else if (book.sheets[at] && step.op === 'sheet_rename') {
+                book.sheets[at] = copyOf(book.sheets[at]);
+                book.sheets[at].name = step.to;
+                book.sheets[at].changed = true;
+            } else if (book.sheets[at] && step.op === 'sheet_delete') {
+                book.sheets.splice(at, 1);
+                book.values.splice(at, 1);
+                book.sets.splice(at, 1);
+            } else if (book.sheets[at] && step.op === 'sheet_move' && book.sheets[step.to]) {
+                book.sheets[at].changed = true;
+                moveItem(book.sheets, at, step.to);
+                moveItem(book.values, at, step.to);
+                moveItem(book.sets, at, step.to);
+            }
+        });
+
+        return book;
+    }
+
+    // The save list: each change in its order, named by its sheet's name
+    // at that point of the list (`names` the names as opened); `rangeName`
+    // writes a range. The server inserts before the line it is sent.
+    function listEdits(list, names, rangeName) {
+        var out = [];
+
+        names = names.slice();
+
+        list.forEach(function (step) {
+            var name = names[step.sheet];
+
+            if (step.cell) {
+                out.push({ sheet: step.sheet, name: name, cell: step.cell, value: step.value });
+            } else if (step.range) {
+                out.push({ op: 'format', sheet: step.sheet, name: name, range: rangeName(step.range), set: copyOf(step.set) });
+            } else if (step.op === 'insert' || step.op === 'delete') {
+                var change = { sheet: step.sheet, name: name, op: step.op };
+
+                change[step.axis] = (step.axis === 'row') ? step.at : columnName(step.at);
+                out.push(change);
+            } else if (step.op === 'sheet_add') {
+                out.push({ op: 'sheet_add', to: step.to });
+                names.push(step.to);
+            } else if (step.op === 'sheet_rename') {
+                out.push({ op: 'sheet_rename', sheet: step.sheet, name: name, to: step.to });
+                names[step.sheet] = step.to;
+            } else if (step.op === 'sheet_delete') {
+                out.push({ op: 'sheet_delete', sheet: step.sheet, name: name });
+                names.splice(step.sheet, 1);
+            } else if (step.op === 'sheet_move') {
+                out.push({ op: 'sheet_move', sheet: step.sheet, name: name, to: step.to });
+                moveItem(names, step.sheet, step.to);
+            }
+        });
+
+        return out;
     }
 
     // A row's or a column's head. A column's, with `tools`, is a button
@@ -675,10 +931,10 @@
         var shifts = !!(state && state.heads);
         var menu = (axis === 'column') ? (!!tools || shifts) : shifts;
         var th = el('th', '', menu ? '' : label);
-        var marked = state ? shiftMark(state, (axis === 'row') ? at : -1, (axis === 'column') ? at : -1) : '';
 
-        if (marked) {
-            th.classList.add(marked);
+        // A row or column inserted by a change waiting is marked on its head.
+        if (state && state.added && state.added[axis] && own(state.added[axis], at)) {
+            th.classList.add('office-head-added');
         }
 
         if (menu) {
@@ -724,7 +980,7 @@
     // it (state.look). `tools` ({order, sort, filters}) gives the
     // rows' order as sorted and filtered, marked on the column heads.
     function sheetTable(sheet, strings, state, looks, tools) {
-        var width = 0;
+        var width = sheet.wide || 0;
 
         sheet.rows.forEach(function (row) {
             width = Math.max(width, row.cells.length);
@@ -776,12 +1032,6 @@
                     if (own(state.changes, address)) {
                         value = state.changes[address];
                         td.classList.add('office-edited');
-                    }
-
-                    var marked = shiftMark(state, row.n, column);
-
-                    if (marked) {
-                        td.classList.add(marked);
                     }
 
                     if (lock) {
@@ -850,45 +1100,36 @@
         var current = null;
         var editable = !!(options && options.editable);
 
-        // Per sheet, by position: address -> the value typed.
-        var changes = office.sheets.map(function () { return {}; });
-
         // The sheet on show, and in it the selected cell and the open editor.
         var shown = { index: -1, table: null, cell: null, editor: null, note: '' };
-
-        // The one row or column waiting to be inserted or deleted: a save of
-        // its own, so cells are not changed beside it ({sheet, axis, at,
-        // place}; `at` is the row number or 0-based column chosen, `place`
-        // is before, after or delete).
-        var pending = null;
         var menu = null;
 
-        // The one sheet change waiting, a save of its own as well ({action:
-        // add|rename|delete|move, sheet, to}; `to` is the new name, or the
-        // place a moved sheet takes). The tabs offer it when the server
-        // allows the workbook's sheets to change.
-        var sheetPending = null;
+        // The tabs offer sheet changes when the server allows the
+        // workbook's sheets to change.
         var sheetsEditable = editable && !!office.sheets_edit && !!office.sheets_edit.ok;
         var strip = sheetsEditable ? el('div', 'office-tabs') : null;
         var addButton = null;
 
-        // The typed cells and the format ranges waiting, in the order they
-        // were made (listCell(), listFormat()); a cell's value stays in
-        // `changes`. A range is [first row, first column, last row, last
-        // column], its `set` what the bar above the grid chose for the cells
-        // selected: one, or the rectangle from shown.anchor to shown.cell
-        // picked with Shift.
+        // Every change waiting, in the order it was made (listCell(),
+        // listFormat(), and the rows, columns and sheets the menus change).
+        // A range is [first row, first column, last row, last column], its
+        // `set` what the bar above the grid chose for the cells selected:
+        // one, or the rectangle from shown.anchor to shown.cell picked with
+        // Shift. `workbook` is the workbook as the list leaves it (listBook()):
+        // the grid and the tabs are drawn from it, so a row or a sheet put
+        // in is typed into before the save.
         var steps = [];
+        var workbook = listBook(office.sheets, steps);
         var looks = office.looks || {};
         var bar = editable ? el('div', 'office-format') : null;
         var controls = {};
 
-        // Per sheet, by position, how its rows are shown ({sort: {column,
-        // down}, filters: {column: {text: true}}}); nothing of it is written
-        // to the file. A sheet sorted or filtered is only looked at, so that
-        // a selection, a range and a row's place on the grid stay the
-        // file's. `finder` is the search through the workbook.
-        var views = office.sheets.map(function () { return { sort: null, filters: {} }; });
+        // Per sheet, by its id in the book, how its rows are shown ({sort:
+        // {column, down}, filters: {column: {text: true}}}); nothing of it
+        // is written to the file. A sheet sorted or filtered is only looked
+        // at, so that a selection, a range and a row's place on the grid
+        // stay the file's. `finder` is the search through the workbook.
+        var views = {};
         var tools = el('div', 'office-tools');
         var toolParts = {};
         var finder = { query: '', list: [], at: -1 };
@@ -907,40 +1148,68 @@
             // A language tag the browser does not know: the plain order.
         }
 
-        // The changes as they stand, with the value of the cell being typed
-        // in: Save is offered, and sends it, before Enter.
-        function changesNow() {
-            var list = changes.map(function (sheetChanges) {
-                var copy = {};
+        function viewOf(index) {
+            var id = workbook.sheets[index].id;
 
-                Object.keys(sheetChanges).forEach(function (address) {
-                    copy[address] = sheetChanges[address];
-                });
+            return views[id] || (views[id] = { sort: null, filters: {} });
+        }
 
-                return copy;
-            });
+        // The workbook drawn again from the list.
+        function rebuild() {
+            workbook = listBook(office.sheets, steps);
+        }
 
-            var editor = shown.editor;
+        // Puts a value typed into a cell of the open sheet into the list:
+        // the change made since the last row, column or sheet change is
+        // taken out, and the new one put at the end unless the cell holds
+        // that value without it.
+        function listValue(list, position, value) {
+            var address = columnName(position.column) + position.row;
 
-            if (editor) {
-                var position = cellPosition(editor.td);
-                var address = columnName(position.column) + position.row;
-                var value = String(editor.input.value).replace(/\r\n?/g, '\n');
+            listCell(list, shown.index, address, null);
 
-                if (value === original(office.sheets[shown.index], position.row, position.column)) {
-                    delete list[shown.index][address];
-                } else {
-                    list[shown.index][address] = value;
-                }
+            var under = listBook(office.sheets, list);
+            var values = under.values[shown.index];
+            var was = own(values, address) ? values[address] : original(under.sheets[shown.index], position.row, position.column);
+
+            if (value !== was) {
+                listCell(list, shown.index, address, value);
             }
 
             return list;
         }
 
-        function cellCount() {
-            return changesNow().reduce(function (total, sheetChanges) {
-                return total + Object.keys(sheetChanges).length;
-            }, 0);
+        // The list as it stands, with the value of the cell being typed in:
+        // Save is offered, and sends it, before Enter.
+        function listNow() {
+            var editor = shown.editor;
+
+            if (!editor) {
+                return steps;
+            }
+
+            var value = String(editor.input.value).replace(/\r\n?/g, '\n');
+
+            if (value === shownValue(editor.td)) {
+                return steps;
+            }
+
+            return listValue(steps.slice(), cellPosition(editor.td), value);
+        }
+
+        // The typed values of a sheet as they stand, the cell being typed in
+        // with them.
+        function valuesNow(index) {
+            var values = copyOf(workbook.values[index]);
+            var editor = shown.editor;
+
+            if (editor && index === shown.index) {
+                var position = cellPosition(editor.td);
+
+                values[columnName(position.column) + position.row] = String(editor.input.value).replace(/\r\n?/g, '\n');
+            }
+
+            return values;
         }
 
         function formatCount() {
@@ -948,7 +1217,7 @@
         }
 
         function count() {
-            return cellCount() + formatCount() + (pending ? 1 : 0) + (sheetPending ? 1 : 0);
+            return listCount(listNow());
         }
 
         function notify() {
@@ -960,36 +1229,37 @@
         }
 
         function sheetEditable(index) {
-            var edit = office.sheets[index].edit;
+            var edit = (index >= 0) ? workbook.sheets[index].edit : null;
 
-            return editable && !!edit && !!edit.ok && !pending && !sheetPending && !arranged(index);
+            return editable && !!edit && !!edit.ok && !arranged(index);
         }
 
         // The format bar serves a sheet whose cells may change, unless it is
-        // protected (the server refuses a sheet that does not allow it), and
-        // waits while a row, a column or a sheet change does.
+        // protected (the server refuses a sheet that does not allow it).
         function sheetFormattable(index) {
-            var edit = (index >= 0) ? office.sheets[index].edit : null;
+            var edit = (index >= 0) ? workbook.sheets[index].edit : null;
 
-            return editable && !!edit && !!edit.ok && !edit.protected && !pending && !sheetPending && !arranged(index);
+            return editable && !!edit && !!edit.ok && !edit.protected && !arranged(index);
         }
 
         // Rows and columns move on a sheet whose cells may change, unless it
         // is protected (the server says why for whatever else it refuses).
         function sheetShiftable(index) {
-            var edit = office.sheets[index].edit;
+            var edit = (index >= 0) ? workbook.sheets[index].edit : null;
 
             return editable && !!edit && !!edit.ok && !edit.protected && !arranged(index);
         }
 
         // Whether a sheet is shown sorted or filtered.
         function arranged(index) {
-            return index >= 0 && (!!views[index].sort || Object.keys(views[index].filters).length > 0);
+            var view = (index >= 0) ? viewOf(index) : null;
+
+            return !!view && (!!view.sort || Object.keys(view.filters).length > 0);
         }
 
         // The places of a sheet's rows in the order they are shown.
         function orderOf(index) {
-            return arrange(office.sheets[index].rows, views[index], changes[index], compare);
+            return arrange(workbook.sheets[index].rows, viewOf(index), workbook.values[index], compare);
         }
 
         // The value the file holds for a cell, as the server showed it.
@@ -1015,7 +1285,7 @@
             }
 
             var parts = [];
-            var sheetEdit = (shown.index >= 0) ? office.sheets[shown.index].edit : null;
+            var sheetEdit = (shown.index >= 0) ? workbook.sheets[shown.index].edit : null;
             var note = sheetNote(sheetEdit, strings);
 
             if (note) {
@@ -1034,18 +1304,11 @@
                 }
             }
 
-            var waiting = cellCount() + formatCount();
+            var list = listNow();
 
-            if (pending) {
-                var line = (pending.axis === 'row') ? pending.at : columnName(pending.at);
-
-                parts.push(fill(strings['shift_' + pending.axis + '_' + pending.place], line)
-                    + ' ' + (strings.shift_sheet ? fill(strings.shift_sheet, office.sheets[pending.sheet].name) : '')
-                    + (strings.recalc ? ' ' + strings.recalc : ''));
-            } else if (waiting > 0) {
-                parts.push(fill(strings.unsaved, waiting) + ((strings.recalc && cellCount() > 0) ? ' ' + strings.recalc : ''));
-            } else if (sheetPending) {
-                parts.push(sheetPendingText());
+            // Formulas are worked out again after a cell or a line changes.
+            if (list.length > 0) {
+                parts.push(fill(strings.unsaved, list.length) + ((strings.recalc && list.some(function (step) { return !step.range && !/^sheet_/.test(step.op || ''); })) ? ' ' + strings.recalc : ''));
             } else if (sheetsEditable) {
                 parts.push(strings.sheet_hint || '');
             }
@@ -1057,11 +1320,8 @@
             status.textContent = parts.filter(Boolean).join(' · ');
             status.classList.toggle('d-none', status.textContent === '');
 
-            var list = changesNow();
-
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index) || (!!sheetPending && sheetPending.sheet === index)
-                    || steps.some(function (step) { return !!step.range && step.sheet === index; });
+                var edited = !!workbook.sheets[index] && (!!workbook.sheets[index].changed || (index === shown.index && list !== steps));
                 var mark = tab.querySelector('.office-tab-changed');
 
                 tab.classList.toggle('office-tab-edited', edited);
@@ -1187,9 +1447,9 @@
 
         // A cell's look as it stands: the file's, under the waiting ranges.
         function lookAt(index, row, column) {
-            var entry = rowOf(office.sheets[index], row);
+            var entry = rowOf(workbook.sheets[index], row);
 
-            return listLook((entry && entry.s && own(entry.s, column)) ? looks[entry.s[column]] : null, steps, index, row, column);
+            return listLook((entry && entry.s && own(entry.s, column)) ? looks[entry.s[column]] : null, workbook.sets[index][columnName(column) + row]);
         }
 
         function repaint(range) {
@@ -1213,6 +1473,7 @@
                 shown.note = strings.format_many || '';
             } else {
                 listFormat(steps, shown.index, range, key, value);
+                rebuild();
                 shown.note = '';
                 repaint(range);
                 drawBar();
@@ -1242,8 +1503,15 @@
             }
 
             var dropped = steps.splice(at, 1)[0];
+            var moved = steps.slice(at).some(listMoves);
 
-            if (dropped.sheet === shown.index) {
+            rebuild();
+
+            // A range named before a row, column or sheet change names other
+            // cells now: the sheet is drawn again.
+            if (moved) {
+                show(shown.index);
+            } else if (dropped.sheet === shown.index) {
                 repaint(dropped.range);
             }
 
@@ -1431,35 +1699,30 @@
         function shownValue(td) {
             var position = cellPosition(td);
             var address = columnName(position.column) + position.row;
-            var sheetChanges = changes[shown.index];
+            var values = workbook.values[shown.index];
 
-            return own(sheetChanges, address) ? sheetChanges[address] : original(office.sheets[shown.index], position.row, position.column);
+            return own(values, address) ? values[address] : original(workbook.sheets[shown.index], position.row, position.column);
         }
 
-        // Puts a value in a cell, remembers it as a change unless it is the
-        // file's own value again, and redraws the cell.
+        // Puts a value in a cell, remembers it as a change unless the cell
+        // holds it already, and redraws the cell.
         function keep(td, value) {
-            var sheet = office.sheets[shown.index];
             var position = cellPosition(td);
             var address = columnName(position.column) + position.row;
-            var was = original(sheet, position.row, position.column);
 
             value = String(value).replace(/\r\n?/g, '\n');
 
-            var had = own(changes[shown.index], address) ? changes[shown.index][address] : null;
-
-            if (value === was) {
-                delete changes[shown.index][address];
-                listCell(steps, shown.index, address, false);
-            } else if (had !== value) {
-                changes[shown.index][address] = value;
-                listCell(steps, shown.index, address, true);
+            if (value !== shownValue(td)) {
+                listValue(steps, position, value);
+                rebuild();
             }
 
+            var sheet = workbook.sheets[shown.index];
+            var typed = own(workbook.values[shown.index], address);
             var entry = rowOf(sheet, position.row);
 
-            td.textContent = (value === was && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
-            td.classList.toggle('office-edited', own(changes[shown.index], address));
+            td.textContent = (!typed && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
+            td.classList.toggle('office-edited', typed);
             td.classList.toggle('office-num', isNumber(value));
             td.classList.remove('office-calc');
             paint(td, lookAt(shown.index, position.row, position.column));
@@ -1597,45 +1860,60 @@
             }
         }
 
+        // Puts a row's or a column's insert or delete at the end of the
+        // list and draws the sheet as it leaves it. A line below or right of
+        // the one chosen goes before the next one: the server inserts
+        // before the line it is sent.
         function choose(axis, at, place) {
             closeEditor(true);
-            pending = { sheet: shown.index, axis: axis, at: at, place: place };
+            steps.push({ op: (place === 'delete') ? 'delete' : 'insert', sheet: shown.index, axis: axis, at: at + ((place === 'after') ? 1 : 0) });
+            rebuild();
+            refind(false);
             show(shown.index);
             notify();
         }
 
-        function cancelPending() {
-            if (!pending) {
-                return;
+        // Drops the last change of the list when it is not a typed cell (a
+        // cell is undone by typing its value again), and draws the workbook
+        // as the list leaves it.
+        function cancelLast() {
+            var last = steps.length ? steps[steps.length - 1] : null;
+
+            if (!last || last.cell) {
+                return false;
             }
 
-            var index = pending.sheet;
-
-            pending = null;
-
-            if (index === shown.index) {
-                show(index);
+            if (last.range) {
+                cancelFormat();
+                return true;
             }
 
+            var id = (shown.index >= 0) ? workbook.sheets[shown.index].id : null;
+
+            steps.pop();
+            rebuild();
+            refind(false);
+            drawTabs();
+            openTab(sheetPlace(id, shown.index));
             notify();
+
+            return true;
         }
 
-        // What the menu offers for a row, a column or both (from a cell):
-        // nothing beside cell changes, and only an undo while a row or
-        // column waits.
+        // Where a sheet of the book stands now, by its id; failing that
+        // (a sheet deleted), the place it had, or the last.
+        function sheetPlace(id, place) {
+            for (var index = 0; index < workbook.sheets.length; index++) {
+                if (workbook.sheets[index].id === id) {
+                    return index;
+                }
+            }
+
+            return Math.max(0, Math.min(place, workbook.sheets.length - 1));
+        }
+
+        // What the menu offers for a row, a column or both (from a cell).
         function menuItems(lines) {
-            if (sheetPending) {
-                return [{ label: strings.sheet_undo, run: cancelSheet }];
-            }
-
-            if (pending) {
-                return [{ label: strings.shift_undo, run: cancelPending }];
-            }
-
-            if (cellCount() > 0 || formatCount() > 0) {
-                return [{ label: strings.shift_first }];
-            }
-
             var items = [];
 
             lines.forEach(function (line) {
@@ -1793,70 +2071,32 @@
             (buttons[0] || node).focus({ preventScroll: true });
         }
 
-        // The waiting sheet change in words, for the status line.
-        function sheetPendingText() {
-            var change = sheetPending;
-            var name = (change.action === 'add') ? change.to : office.sheets[change.sheet].name;
-            var text = fill(strings['sheet_pending_' + change.action], name);
-
-            if (change.action === 'rename') {
-                text = text.replace('{2}', change.to);
-            } else if (change.action === 'move') {
-                text = text.replace('{2}', change.to + 1);
-            }
-
-            return text;
-        }
-
-        // The tabs as the waiting change leaves them: a new name, a sheet
-        // struck through or marked as moving, a sheet being added.
-        function drawTabs() {
-            tabList().forEach(function (tab, index) {
-                var mine = !!sheetPending && sheetPending.sheet === index;
-
-                tab.querySelector('.office-tab-name').textContent = (mine && sheetPending.action === 'rename') ? sheetPending.to : (office.sheets[index].name || ('#' + (index + 1)));
-                tab.classList.toggle('office-tab-delete', mine && sheetPending.action === 'delete');
-                tab.classList.toggle('office-tab-moved', mine && sheetPending.action === 'move');
-            });
-
-            var added = strip ? strip.querySelector('.office-tab-new') : null;
-
-            if (added) {
-                added.remove();
-            }
-
-            if (strip && sheetPending && sheetPending.action === 'add') {
-                added = el('button', 'office-tab-new');
-                added.type = 'button';
-                added.appendChild(el('span', 'office-tab-name', sheetPending.to));
-                added.appendChild(el('span', 'visually-hidden', ', ' + (strings.changed_mark || '')));
-                added.addEventListener('click', function () {
-                    openMenu(added, sheetMenuItems(-1), strings.sheet_menu);
-                });
-                strip.insertBefore(added, addButton);
-            }
-        }
-
-        function setSheetPending(change) {
-            sheetPending = change;
+        // Puts a sheet change at the end of the list and draws the tabs
+        // and the sheet on show as it leaves them; the sheet at `open` (its
+        // place after the change) opens.
+        function changeSheets(change, open) {
+            closeEditor(true);
+            steps.push(change);
+            rebuild();
+            refind(false);
             shown.note = '';
             drawTabs();
-
-            if (shown.index >= 0) {
-                show(shown.index);
-            }
-
+            openTab(open);
             notify();
         }
 
-        function cancelSheet() {
-            if (sheetPending) {
-                setSheetPending(null);
-            }
+        // The tabs drawn from the book: one a sheet, in its order, with its
+        // name as the list leaves it.
+        function drawTabs() {
+            tabs.innerHTML = '';
+
+            workbook.sheets.forEach(function (sheet, index) {
+                tabs.appendChild(makeTab(sheet, index));
+            });
         }
 
         function focusTab(index) {
-            var tab = (index >= 0) ? tabList()[index] : (strip ? strip.querySelector('.office-tab-new') : null);
+            var tab = (index >= 0) ? tabList()[index] : null;
 
             (tab || addButton || tabs).focus({ preventScroll: true });
 
@@ -1874,9 +2114,9 @@
                 return strings.sheet_bad || '';
             }
 
-            for (var at = 0; at < office.sheets.length; at++) {
-                if (at !== index && String(office.sheets[at].name).toLowerCase() === name.toLowerCase()) {
-                    return fill(strings.sheet_taken, office.sheets[at].name);
+            for (var at = 0; at < workbook.sheets.length; at++) {
+                if (at !== index && String(workbook.sheets[at].name).toLowerCase() === name.toLowerCase()) {
+                    return fill(strings.sheet_taken, workbook.sheets[at].name);
                 }
             }
 
@@ -1884,7 +2124,7 @@
         }
 
         function newName() {
-            var number = office.sheets.length + 1;
+            var number = workbook.sheets.length + 1;
 
             while (nameError(fill(strings.sheet_new || 'Sheet{1}', number), -1)) {
                 number++;
@@ -1904,7 +2144,7 @@
             var done = false;
 
             input.type = 'text';
-            input.value = (index >= 0) ? office.sheets[index].name : newName();
+            input.value = (index >= 0) ? workbook.sheets[index].name : newName();
             input.setAttribute('aria-label', strings.sheet_name || '');
             anchor.parentNode.insertBefore(input, anchor);
 
@@ -1936,14 +2176,17 @@
 
                 shown.note = '';
 
-                if (keep && !error && (index < 0 || name !== office.sheets[index].name)) {
-                    setSheetPending((index < 0) ? { action: 'add', sheet: -1, to: name } : { action: 'rename', sheet: index, to: name });
+                var place = (index < 0) ? workbook.sheets.length : index;
+
+                if (keep && !error && (index < 0 || name !== workbook.sheets[index].name)) {
+                    changeSheets((index < 0) ? { op: 'sheet_add', to: name } : { op: 'sheet_rename', sheet: index, to: name }, place);
                 } else {
                     drawStatus();
+                    place = index;
                 }
 
                 if (!leaving) {
-                    focusTab(index);
+                    focusTab(place);
                 }
             }
 
@@ -1967,28 +2210,30 @@
             input.select();
         }
 
-        // What a sheet tab's menu offers: one sheet change a save, nothing
-        // beside other changes, and only an undo while one waits.
+        // What a sheet tab's menu offers; each change goes into the list
+        // and the tabs are drawn as it leaves them.
         function sheetMenuItems(index) {
-            if (sheetPending) {
-                return [{ label: strings.sheet_undo, run: function () { var at = sheetPending.sheet; cancelSheet(); return focusTab(at); } }];
-            }
-
-            if (pending || formatCount() > 0 || cellCount() > 0) {
-                return [{ label: strings.sheet_first }];
-            }
-
             var items = [{ label: strings.sheet_rename, icon: 'bi-pencil', run: function () { askName(index); return true; } }];
 
             if (index > 0) {
-                items.push({ label: strings.sheet_left, icon: 'bi-arrow-left', run: function () { setSheetPending({ action: 'move', sheet: index, to: index - 1 }); return focusTab(index); } });
+                items.push({ label: strings.sheet_left, icon: 'bi-arrow-left', run: function () { changeSheets({ op: 'sheet_move', sheet: index, to: index - 1 }, index - 1); return focusTab(index - 1); } });
             }
 
-            if (index < office.sheets.length - 1) {
-                items.push({ label: strings.sheet_right, icon: 'bi-arrow-right', run: function () { setSheetPending({ action: 'move', sheet: index, to: index + 1 }); return focusTab(index); } });
+            if (index < workbook.sheets.length - 1) {
+                items.push({ label: strings.sheet_right, icon: 'bi-arrow-right', run: function () { changeSheets({ op: 'sheet_move', sheet: index, to: index + 1 }, index + 1); return focusTab(index + 1); } });
             }
 
-            items.push({ label: fill(strings.sheet_delete, office.sheets[index].name), icon: 'bi-trash', run: function () { setSheetPending({ action: 'delete', sheet: index }); return focusTab(index); } });
+            // The last sheet shown stays (the server refuses to delete it).
+            var others = workbook.sheets.some(function (sheet, at) { return at !== index && !sheet.hidden; });
+
+            if (others) {
+                items.push({ label: fill(strings.sheet_delete, workbook.sheets[index].name), icon: 'bi-trash', run: function () {
+                    var open = (index < workbook.sheets.length - 1) ? index : index - 1;
+
+                    changeSheets({ op: 'sheet_delete', sheet: index }, open);
+                    return focusTab(open);
+                } });
+            }
 
             return items;
         }
@@ -2006,19 +2251,19 @@
         }
 
         function setSort(column, down) {
-            views[shown.index].sort = (column === null) ? null : { column: column, down: down };
+            viewOf(shown.index).sort = (column === null) ? null : { column: column, down: down };
             rearrange(false);
         }
 
         function clearView() {
-            views[shown.index] = { sort: null, filters: {} };
+            views[workbook.sheets[shown.index].id] = { sort: null, filters: {} };
             rearrange(false);
         }
 
         // What a column's menu offers for the view: sort either way, the
         // filter by its values, and the removal of either when set.
         function viewItems(column) {
-            var view = views[shown.index];
+            var view = viewOf(shown.index);
             var name = columnName(column);
             var items = [
                 { label: strings.sort_up, icon: 'bi-sort-alpha-down', run: function () { setSort(column, false); } },
@@ -2032,7 +2277,7 @@
 
             if (own(view.filters, column)) {
                 items.push({ label: fill(strings.filter_off, name), icon: 'bi-x-lg', run: function () {
-                    delete views[shown.index].filters[column];
+                    delete viewOf(shown.index).filters[column];
                     rearrange(false);
                 } });
             }
@@ -2044,16 +2289,16 @@
         // showing it, at once; the menu stays open.
         function openFilter(column) {
             var anchor = headButton(column);
-            var values = columnValues(office.sheets[shown.index].rows, column, changes[shown.index], compare);
-            var hidden = views[shown.index].filters[column] || {};
+            var values = columnValues(workbook.sheets[shown.index].rows, column, workbook.values[shown.index], compare);
+            var hidden = viewOf(shown.index).filters[column] || {};
             var items = [{ label: strings.filter_all, icon: 'bi-eye', run: function () {
-                delete views[shown.index].filters[column];
+                delete viewOf(shown.index).filters[column];
                 rearrange(false);
             } }, { divider: true }];
 
             values.texts.forEach(function (text) {
                 items.push({ label: (text === '') ? strings.filter_empty : text, checked: !own(hidden, text), run: function (on) {
-                    var filters = views[shown.index].filters;
+                    var filters = viewOf(shown.index).filters;
 
                     filters[column] = filters[column] || {};
 
@@ -2160,9 +2405,9 @@
         // Searches the workbook again; `move` goes to the first match from
         // the open sheet on, else the one at the same place is kept.
         function refind(move) {
-            var orders = office.sheets.map(function (sheet, index) { return orderOf(index); });
+            var orders = workbook.sheets.map(function (sheet, index) { return orderOf(index); });
 
-            finder.list = findCells(office.sheets, finder.query, orders, changes, lower);
+            finder.list = findCells(workbook.sheets, finder.query, orders, workbook.values, lower);
 
             if (!finder.list.length) {
                 finder.at = -1;
@@ -2243,8 +2488,8 @@
                 return;
             }
 
-            var sheet = office.sheets[index];
-            var text = csvText(sheet.rows, orderOf(index), changesNow()[index]);
+            var sheet = workbook.sheets[index];
+            var text = csvText(sheet.rows, orderOf(index), valuesNow(index));
             var link = el('a');
 
             link.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
@@ -2365,9 +2610,9 @@
             var index = shown.index;
 
             if (arranged(index)) {
-                var view = views[index];
-                var rows = office.sheets[index].rows;
-                var header = headerRow(rows, changes[index]) ? 1 : 0;
+                var view = viewOf(index);
+                var rows = workbook.sheets[index].rows;
+                var header = headerRow(rows, workbook.values[index]) ? 1 : 0;
 
                 if (view.sort) {
                     parts.push(fill(strings[view.sort.down ? 'view_sorted_down' : 'view_sorted_up'], columnName(view.sort.column)));
@@ -2483,17 +2728,11 @@
                     return;
                 }
 
-                if (key === 'Escape' && (pending || sheetPending || formatCount() > 0)) {
+                // Escape drops the last change when it is a format, a row, a
+                // column or a sheet change.
+                if (key === 'Escape' && cancelLast()) {
                     event.preventDefault();
                     event.stopPropagation();
-
-                    if (pending) {
-                        cancelPending();
-                    } else if (formatCount() > 0) {
-                        cancelFormat();
-                    } else {
-                        cancelSheet();
-                    }
                     return;
                 }
 
@@ -2537,7 +2776,7 @@
                 closeMenu(false);
             }
 
-            var sheet = office.sheets[index];
+            var sheet = workbook.sheets[index];
             var offered = editable && !!sheet.edit;
 
             shown.index = index;
@@ -2552,11 +2791,11 @@
                 shown.table = null;
             } else {
                 shown.table = sheetTable(sheet, strings, offered ? {
-                    changes: changes[index],
+                    changes: workbook.values[index],
                     heads: sheetShiftable(index),
-                    pending: (pending && pending.sheet === index) ? pending : null,
-                    look: function (row, column, look) { return listLook(look, steps, index, row, column); }
-                } : null, looks, { order: orderOf(index), sort: views[index].sort, filters: views[index].filters });
+                    added: sheet.added,
+                    look: function (row, column, look) { return listLook(look, workbook.sets[index][columnName(column) + row]); }
+                } : null, looks, { order: orderOf(index), sort: viewOf(index).sort, filters: viewOf(index).filters });
                 pane.appendChild(shown.table);
                 wireHeads(shown.table, !offered);
 
@@ -2617,7 +2856,8 @@
             show(index);
         }
 
-        office.sheets.forEach(function (sheet, index) {
+        // A sheet's tab, as the book has it at `index`.
+        function makeTab(sheet, index) {
             var tab = el('button', 'office-tab' + (sheet.hidden ? ' office-tab-hidden' : ''));
             tab.type = 'button';
             tab.id = paneId + '_tab_' + index;
@@ -2661,9 +2901,13 @@
                 openMenu(tab, sheetMenuItems(index), strings.sheet_menu);
             });
 
-            tabs.appendChild(tab);
+            return tab;
+        }
 
-            // The first sheet that is not hidden opens; failing that, the first.
+        drawTabs();
+
+        // The first sheet that is not hidden opens; failing that, the first.
+        workbook.sheets.forEach(function (sheet, index) {
             if (current === null && !sheet.hidden) {
                 current = index;
             }
@@ -2687,7 +2931,7 @@
                 return;
             }
 
-            if (sheetsEditable && event.key === 'F2' && !sheetPending && !pending && !count()) {
+            if (sheetsEditable && event.key === 'F2') {
                 event.preventDefault();
                 askName(at);
                 return;
@@ -2727,12 +2971,6 @@
             addButton.appendChild(plus);
 
             addButton.addEventListener('click', function () {
-                if (count() > 0) {
-                    shown.note = sheetPending ? (strings.sheet_one || '') : (strings.sheet_first || '');
-                    drawStatus();
-                    return;
-                }
-
                 askName(-1);
             });
 
@@ -2758,7 +2996,7 @@
 
         container.appendChild(book);
 
-        if (current === null && office.sheets.length) {
+        if (current === null && workbook.sheets.length) {
             current = 0;
         }
 
@@ -2771,46 +3009,14 @@
             version: office.version || '',
             count: count,
             edits: function () {
-                if (sheetPending) {
-                    var sheetChange = { op: 'sheet_' + sheetPending.action };
-
-                    if (sheetPending.action !== 'add') {
-                        sheetChange.sheet = sheetPending.sheet;
-                        sheetChange.name = office.sheets[sheetPending.sheet].name;
-                    }
-
-                    if (sheetPending.action !== 'delete') {
-                        sheetChange.to = sheetPending.to;
-                    }
-
-                    return [sheetChange];
-                }
-
-                if (pending) {
-                    // The server inserts before the line it is sent, so a
-                    // line after the one chosen goes before the next one.
-                    var at = pending.at + ((pending.place === 'after') ? 1 : 0);
-                    var change = { sheet: pending.sheet, name: office.sheets[pending.sheet].name, op: (pending.place === 'delete') ? 'delete' : 'insert' };
-
-                    change[pending.axis] = (pending.axis === 'row') ? at : columnName(at);
-
-                    return [change];
-                }
-
-                return listEdits(steps, changesNow(), office.sheets.map(function (sheet) { return sheet.name; }), rangeName);
+                return listEdits(listNow(), office.sheets.map(function (sheet) { return sheet.name; }), rangeName);
             },
             reset: function () {
                 shown.editor = null;
-                pending = null;
-                sheetPending = null;
                 steps = [];
-                changes = office.sheets.map(function () { return {}; });
+                rebuild();
                 drawTabs();
-
-                if (shown.index >= 0) {
-                    show(shown.index);
-                }
-
+                openTab(Math.min(Math.max(shown.index, 0), workbook.sheets.length - 1));
                 notify();
             }
         };
@@ -5469,12 +5675,14 @@
             csvText: csvText,
             csvName: csvName
         },
-        // A workbook's waiting cells and formats as one ordered list.
+        // A workbook's waiting changes as one ordered list, and the workbook
+        // it leaves.
         sheetList: {
             cell: listCell,
             format: listFormat,
             count: listCount,
             look: listLook,
+            book: listBook,
             edits: listEdits
         },
         // A document's bold, italic and underline, which read no page: the

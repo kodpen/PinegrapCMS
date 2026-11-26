@@ -2451,7 +2451,6 @@
     "Row total (currency)": "Satır toplamı (₺)",
     "Row total (effective)": "Satır toplamı (efektif)",
     "Row total block (automatic struck-through + new, HTML)": "Satır toplamı bloğu (otomatik strike+yeni HTML)",
-    "Row {1} is deleted when you save.": "Kaydettiğinizde {1}. satır silinir.",
     "Row {1} stays on top as the header.": "{1}. satır başlık olarak üstte kalır.",
     "Row {1}: insert or delete": "Satır {1}: ekle veya sil",
     "Row {var:1}": "Satır {var:1}",

@@ -22,4 +22,4 @@ module: office_edit
 - Refusals of the whole file or save (`ready`, `none` of an empty list, `many`, `steps`, `busy`, `changed` of the version, `signed`, `password`, `read`, `save`) carry `at` null and no place in the message.
 
 ## What was checked?
-- `tests/office_save_list_test.php`: the steps, a mixed list (cells, format, insert, typing into the inserted row, rename, typing by the new name, add, typing into the new sheet, move) read back by `pg_office_read()`, four refusals at later places leaving the file byte for byte, a stale version. The view sends typed cells and format ranges in one list (OF2, `office-sheet-change-list.md`); rows, columns and sheets still go alone until OF3.
+- `tests/office_save_list_test.php`: the steps, a mixed list (cells, format, insert, typing into the inserted row, rename, typing by the new name, add, typing into the new sheet, move) read back by `pg_office_read()`, four refusals at later places leaving the file byte for byte, a stale version. The view sends every kind in one list, positions and names as the list leaves them (OF2, OF3, `office-sheet-change-list.md`).

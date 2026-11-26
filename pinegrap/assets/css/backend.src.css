@@ -21584,13 +21584,12 @@ button.ws-file-name {
   opacity: .7;
 }
 /* A workbook whose sheets may change: its tab list is laid out in one strip
-   with the sheet being added and the add button. */
+   with the add button. */
 .office-tablist {
   display: contents;
 }
-.office-tab-add,
-.office-tab-new {
-  border: 1px dashed var(--pg-border-color);
+.office-tab-add {
+  border: 1px solid transparent;
   border-radius: 999px;
   padding: .15rem .6rem;
   font: inherit;
@@ -21598,22 +21597,9 @@ button.ws-file-name {
   color: var(--pg-fg-2);
   background: transparent;
 }
-.office-tab-add {
-  border-color: transparent;
-}
 .office-tab-add:hover {
   color: var(--pg-fg-body);
   background: var(--pg-bg-body);
-}
-.office-tab-delete {
-  background: var(--pg-danger-bg-subtle);
-}
-.office-tab-delete .office-tab-name {
-  text-decoration: line-through;
-}
-.office-tab-moved {
-  border-style: dashed;
-  border-color: var(--pg-primary);
 }
 .office-tab-input {
   width: 10rem;
@@ -21826,9 +21812,8 @@ button.ws-file-name {
 .office-head-menu [aria-checked="true"] > .office-menu-check {
   visibility: visible;
 }
-/* A row's or column's head opens its insert and delete menu; the line
-   waiting to be inserted is drawn before or after the row or column chosen,
-   the one waiting to be deleted struck through. */
+/* A row's or column's head opens its insert and delete menu; the head of a
+   row or column inserted by a change waiting is drawn in the accent. */
 .office-sheet .office-head {
   display: block;
   width: 100%;
@@ -21844,21 +21829,8 @@ button.ws-file-name {
 .office-sheet .office-head:focus-visible {
   color: var(--pg-primary);
 }
-.office-sheet .office-shift-insert-row {
-  box-shadow: inset 0 2px 0 var(--pg-primary);
-}
-.office-sheet .office-shift-insert-column {
-  box-shadow: inset 2px 0 0 var(--pg-primary);
-}
-.office-sheet .office-shift-insert-row-after {
-  box-shadow: inset 0 -2px 0 var(--pg-primary);
-}
-.office-sheet .office-shift-insert-column-after {
-  box-shadow: inset -2px 0 0 var(--pg-primary);
-}
-.office-sheet .office-shift-delete {
-  text-decoration: line-through;
-  background: var(--pg-danger-bg-subtle);
+.office-sheet .office-head-added {
+  color: var(--pg-primary);
 }
 .office-head-menu {
   position: absolute;
