@@ -64,7 +64,7 @@ function test_designer_palette_keyboard_headers_are_toggle_buttons()
 	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains('<div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true">', $source, 'Components and Blocks category headers');
-	pg_assert_contains("'<div class=\"sd-category-header\"><button type=\"button\" class=\"sd-category-toggle\" aria-expanded=\"true\"><span class=\"bi bi-chevron-down\"></span>' + esc(_sdT('Recently Used'))", $source, 'Recently Used header');
+	pg_assert_contains("'<div class=\"sd-pal-label\"><span class=\"sd-pal-label-txt\">' + esc(_sdT('Recently used'))", $source, 'Recently used is a label that does not fold');
 	pg_assert_true((bool) preg_match('/sd-pal-group-toggle"[^\n]*\n[^\n]*<button type="button" class="sd-category-toggle" aria-expanded="\' \+ \(open \? \'true\' : \'false\'\)/', $source), 'Site-wide toggle');
 	pg_assert_contains("function _sdPalSyncExpanded(cat)", $source, 'aria-expanded follows the fold');
 	pg_assert_true(substr_count($source, '_sdPalSyncExpanded(') >= 3, 'synced on click and on search');
@@ -75,11 +75,11 @@ function test_designer_palette_keyboard_search_named()
 {
 	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 
-	pg_assert_contains("id=\"sd-search\" placeholder=\"' + esc(_sdT('Search...')) + '\" aria-label=\"' + esc(_sdT('Search components')) + '\"", $source, 'components search');
-	pg_assert_contains("id=\"sd-blocks-search\" placeholder=\"' + esc(_sdT('Search...')) + '\" aria-label=\"' + esc(_sdT('Search blocks')) + '\"", $source, 'blocks search');
+	pg_assert_contains("id=\"sd-search\" placeholder=\"' + esc(_sdT('Search components')) + '\" aria-label=\"' + esc(_sdT('Search components')) + '\"", $source, 'components search');
+	pg_assert_contains("id=\"sd-blocks-search\" placeholder=\"' + esc(_sdT('Search blocks')) + '\" aria-label=\"' + esc(_sdT('Search blocks')) + '\"", $source, 'blocks search');
 	pg_assert_contains("id=\"sd-search-clear\" aria-label=\"' + esc(_sdT('Clear search')) + '\"", $source, 'components clear');
 	pg_assert_contains("id=\"sd-blocks-search-clear\" aria-label=\"' + esc(_sdT('Clear search')) + '\"", $source, 'blocks clear');
-	pg_assert_contains("class=\"sd-recent-clear-btn\" title=\"' + esc(_sdT('Clear')) + '\" aria-label=\"' + esc(_sdT('Clear')) + '\"", $source, 'Recently Used clear');
+	pg_assert_contains("class=\"sd-recent-clear-btn\" aria-label=\"' + esc(_sdT('Clear the recently used list')) + '\">' + esc(_sdT('Clear'))", $source, 'Recently used clear is the word Clear, named in full');
 }
 
 function test_designer_palette_keyboard_bulk_check_is_v6_and_reachable()

@@ -27970,30 +27970,40 @@ const StyleDesigner = (function () {
         if (!_sdOptSearchRefine()) _sdPropsSearchEmpty(shown.length ? '' : typed);
     }
 
+    // One palette tab: its word, and the rail's icon for it, shown in place
+    // of the word when the column is under 230 px and the tab is not open
+    // (CSS); the word stays in the tip.
+    function _sdPalTabHTML(key, label, active) {
+        return '<button type="button" class="sd-panel-tab' + (active ? ' active' : '') + '" data-tab="' + key + '" title="' + esc(label) + '">' +
+            '<span class="bi ' + (_SD_RAIL_ICONS[key] || 'bi-grid') + ' sd-pal-tab-ic" aria-hidden="true"></span>' +
+            '<span class="sd-pal-tab-txt">' + esc(label) + '</span></button>';
+    }
+
     function initLeftPanel() {
         var panel = document.getElementById('sd-components');
         if (!panel) return;
 
         // Left panel structure: top (comp palette) + separator + bottom (overview tree)
-        // Overview section mirrors the Design/Themes pattern from the right
-        // panel: clickable section header (collapses everything) on top,
-        // full-width tabs row below, content below that. The tree-collapse-
-        // all button moves into the search row so the tab strip stays clean.
+        // The Overview's head is one row: its name (a press shuts and opens
+        // the section, the caret at the right shows which) and the Tree /
+        // Notes pair. The tree-collapse-all button sits in the search row.
         _sdWirePaletteKeys(panel);
 
         panel.innerHTML =
             '<div class="sd-comp-section" id="sd-comp-outer"></div>' +
             '<div class="sd-left-vsep" id="sd-left-vsep"></div>' +
             '<div class="sd-overview-section" id="sd-overview-section">' +
-                '<div class="sd-panel-header sd-overview-header" id="sd-overview-header" style="cursor:pointer">' +
-                    '<span class="bi bi-diagram-3 me-1"></span><span id="sd-overview-header-title">' + esc(_sdT('Overview')) + '</span>' +
-                    '<span class="bi bi-chevron-down sd-panel-caret" id="sd-overview-caret"></span>' +
-                '</div>' +
-                '<div class="sd-panel-tabs sd-ov-subtabs" id="sd-ov-subtabs">' +
-                    '<button type="button" class="sd-panel-tab sd-ov-subtab active" data-subtab="tree" title="' + esc(_sdT('Page tree')) + '"><span class="bi bi-diagram-3 me-1"></span>' + esc(_sdT('Tree')) + '</button>' +
-                    '<button type="button" class="sd-panel-tab sd-ov-subtab" data-subtab="notes" title="' + esc(_sdT('Notes')) + '"><span class="bi bi-chat-dots me-1"></span>' + esc(_sdT('Notes')) + '' +
-                        '<span class="sd-notes-tab-count" id="sd-notes-tab-count" style="display:none">0</span>' +
+                '<div class="sd-panel-header sd-overview-header" id="sd-overview-header">' +
+                    '<button type="button" class="sd-ov-name" id="sd-ov-name" aria-expanded="true" aria-controls="sd-ov-body" title="' + esc(_sdT('Overview')) + '">' +
+                        '<span class="bi bi-diagram-3" aria-hidden="true"></span><span class="sd-ov-name-txt" id="sd-overview-header-title">' + esc(_sdT('Overview')) + '</span>' +
                     '</button>' +
+                    '<div class="sd-ov-subtabs" id="sd-ov-subtabs" role="group" aria-label="' + esc(_sdT('Overview')) + '">' +
+                        '<button type="button" class="sd-ov-subtab active" data-subtab="tree" aria-pressed="true" title="' + esc(_sdT('Page tree')) + '">' + esc(_sdT('Tree')) + '</button>' +
+                        '<button type="button" class="sd-ov-subtab" data-subtab="notes" aria-pressed="false" title="' + esc(_sdT('Notes')) + '">' + esc(_sdT('Notes')) +
+                            '<span class="sd-notes-tab-count" id="sd-notes-tab-count" style="display:none">0</span>' +
+                        '</button>' +
+                    '</div>' +
+                    '<span class="bi bi-chevron-down sd-panel-caret" id="sd-overview-caret" aria-hidden="true"></span>' +
                 '</div>' +
                 '<div class="sd-ov-search-box" id="sd-ov-search-wrap">' +
                     '<span class="bi bi-search"></span>' +
@@ -28050,17 +28060,18 @@ const StyleDesigner = (function () {
                 caret.classList.toggle('bi-chevron-down', !collapsed);
                 caret.classList.toggle('bi-chevron-up',   collapsed);
             }
+            var nameBtn = document.getElementById('sd-ov-name');
+            if (nameBtn) nameBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         }
 
         // Restore collapse state
         try { if (localStorage.getItem(_OV_COL_KEY) === '1') { _setOvCollapsed(true); } } catch(e) {}
 
-        // Caret toggle moved into the section header itself (clicking the
-        // whole header — same pattern as the right panel's assets header).
-        // The chevron is just the visual indicator now, not a separate
-        // button. Header collapses BOTH the tabs row and the body.
+        // A press on the head shuts or opens the section; the Tree / Notes
+        // pair in the same row only switches the view.
         if (_ovHdr) {
-            _ovHdr.addEventListener('click', function() {
+            _ovHdr.addEventListener('click', function(e) {
+                if (e.target.closest && e.target.closest('#sd-ov-subtabs')) return;
                 _setOvCollapsed(!_ovCollapsed);
                 try { localStorage.setItem(_OV_COL_KEY, _ovCollapsed ? '1' : '0'); } catch(ex) {}
                 if (_ovCollapsed) {
@@ -28079,11 +28090,14 @@ const StyleDesigner = (function () {
         var compOuter = document.getElementById('sd-comp-outer');
 
         compOuter.innerHTML =
-            '<div class="sd-panel-header"><span class="bi bi-puzzle me-1"></span>' + esc(_sdT('Components')) + '</div>' +
-            '<div class="sd-panel-tabs" id="sd-panel-tabs">' +
-                '<button type="button" class="sd-panel-tab active" data-tab="components">' + esc(_sdT('Components')) + '</button>' +
-                '<button type="button" class="sd-panel-tab" data-tab="shared" style="color:#22c55e"><span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Shared')) + '</button>' +
-                '<button type="button" class="sd-panel-tab" data-tab="system"><span class="bi bi-cpu me-1"></span>' + esc(_sdT('System')) + '</button>' +
+            // The tab holder is the palette's head; the dock button joins
+            // it at the end (_sdAddDockToggle()).
+            '<div class="sd-panel-header sd-pal-head">' +
+                '<div class="sd-pal-tabs" id="sd-panel-tabs">' +
+                    _sdPalTabHTML('components', _sdT('Components'), true) +
+                    _sdPalTabHTML('shared', _sdT('Shared'), false) +
+                    _sdPalTabHTML('system', _sdT('System'), false) +
+                '</div>' +
             '</div>' +
             // One tab, two lists: the building blocks and the ready sections,
             // chosen with the switch at its top (_sdPalSwitchWire()).
@@ -28092,7 +28106,7 @@ const StyleDesigner = (function () {
                 '<div id="sd-pal-components" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-components">' +
                     '<div class="sd-search-box">' +
                         '<span class="bi bi-search"></span>' +
-                        '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
+                        '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search components')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
                         '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
                     '</div>' +
                     '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
@@ -28100,7 +28114,7 @@ const StyleDesigner = (function () {
                 '<div id="sd-pal-blocks" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-blocks" hidden>' +
                     '<div class="sd-search-box">' +
                         '<span class="bi bi-search"></span>' +
-                        '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
+                        '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search blocks')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
                         '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
                     '</div>' +
                     '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
@@ -28321,23 +28335,16 @@ const StyleDesigner = (function () {
                 var btn = e.target.closest('.sd-ov-subtab');
                 if (!btn) return;
                 var sub = btn.dataset.subtab;
-                _ovSubtabs.querySelectorAll('.sd-ov-subtab').forEach(function(t) { t.classList.toggle('active', t.dataset.subtab === sub); });
+                _ovSubtabs.querySelectorAll('.sd-ov-subtab').forEach(function(t) {
+                    t.classList.toggle('active', t.dataset.subtab === sub);
+                    t.setAttribute('aria-pressed', t.dataset.subtab === sub ? 'true' : 'false');
+                });
                 var treeWrap  = document.getElementById('sd-overview-tree-wrap');
                 var notesWrap = document.getElementById('sd-overview-notes-wrap');
                 var searchBox = document.getElementById('sd-ov-search-wrap');
                 if (treeWrap)  treeWrap.style.display  = sub === 'tree'  ? '' : 'none';
                 if (notesWrap) notesWrap.style.display = sub === 'notes' ? '' : 'none';
                 if (sub === 'tree') _sdPanelsFlush();
-                // Header title mirrors the active sub-tab — same pattern the
-                // right panel uses for Design ↔ Themes so both ends feel
-                // consistent. Icon swaps too.
-                var hdrTitle = document.getElementById('sd-overview-header-title');
-                var hdr = document.getElementById('sd-overview-header');
-                if (hdrTitle) hdrTitle.textContent = (sub === 'notes') ? _sdT('Notes') : _sdT('Overview');
-                if (hdr) {
-                    var iconEl = hdr.querySelector('.bi:not(.sd-panel-caret)');
-                    if (iconEl) iconEl.className = (sub === 'notes' ? 'bi bi-chat-dots me-1' : 'bi bi-diagram-3 me-1');
-                }
                 // Search box only meaningful for tree view
                 if (searchBox) searchBox.style.display = sub === 'tree' ? '' : 'none';
                 var ovSecEl = document.getElementById('sd-overview-section');
@@ -96481,8 +96488,8 @@ const StyleDesigner = (function () {
         var items = '';
         recent.forEach(function (it) { items += _sdPaletteItemHTML(it, 'sd-recent-item'); });
 
-        sec.innerHTML = '<div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true"><span class="bi bi-chevron-down"></span>' + esc(_sdT('Recently Used')) + '</button>' +
-            '<button type="button" class="sd-recent-clear-btn" title="' + esc(_sdT('Clear')) + '" aria-label="' + esc(_sdT('Clear')) + '"><span class="bi bi-x-circle" aria-hidden="true"></span></button>' +
+        sec.innerHTML = '<div class="sd-pal-label"><span class="sd-pal-label-txt">' + esc(_sdT('Recently used')) + '</span>' +
+            '<button type="button" class="sd-recent-clear-btn" aria-label="' + esc(_sdT('Clear the recently used list')) + '">' + esc(_sdT('Clear')) + '</button>' +
             '</div><div class="sd-category-items">' + items + '</div>';
 
         sec.querySelector('.sd-recent-clear-btn').addEventListener('click', function(e) {

@@ -2575,6 +2575,7 @@
     "Clear the conversation of this channel? What was written so far is kept as an earlier version in the channel's settings and can still be read; the conversation starts again.": "Bu kanalın konuşması temizlensin mi? Şimdiye kadar yazılanlar kanal ayarlarında önceki bir sürüm olarak saklanır ve okunmaya devam eder; konuşma baştan başlar.",
     "Clear the filter": "Filtreyi kaldır",
     "Clear the path (Esc)": "Yolu temizle (Esc)",
+    "Clear the recently used list": "Son kullanılanlar listesini temizle",
     "Clear the search": "Aramayı temizle",
     "Clear the selection (canvas)": "Seçimi kaldır (canvas)",
     "Clear the shelf address": "Raf adresini sil",

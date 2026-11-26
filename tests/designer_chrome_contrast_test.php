@@ -137,8 +137,9 @@ function test_designer_chrome_left_panel_small_texts()
 	pg_assert_true(designer_chrome_ratio($active, $subtab_ground) >= 4.5, 'an active Tree or Design sub-tab reads 4.5:1');
 
 	pg_assert_true(strpos($js, 'data-tab="system" style="color:#6366f1"') === false, 'the System tab has no inline indigo');
-	pg_assert_contains('#sd-panel-tabs .sd-panel-tab[data-tab="system"] { color: #818cf8; }', $css, 'the System tab takes the light indigo');
-	pg_assert_true(designer_chrome_ratio(designer_chrome_rgb('#818cf8'), $panel) >= 4.5, 'the System tab reads 4.5:1');
+	pg_assert_true(strpos($css, '[data-tab="system"] { color:') === false, 'the System tab has no colour of its own');
+	pg_assert_true(strpos($js, 'data-tab="shared" style="color:') === false, 'the Shared tab has no colour of its own');
+	pg_assert_true(designer_chrome_ratio(designer_chrome_rgb($t['label']), designer_chrome_rgb($t['input-bg'])) >= 4.5, 'a palette tab that is not open reads 4.5:1 in its holder');
 
 	pg_assert_contains('background: rgba(77,142,240,.2); color: #79b8ff;', $css, 'the EXT badge takes the light blue');
 	$ext_fill = designer_chrome_mix(designer_chrome_rgb('#4d8ef0'), $assets_ground, 0.2);
