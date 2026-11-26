@@ -386,7 +386,9 @@ function pg_lead_sources_totals(array $groups)
 }
 
 /**
- * The lead and customer rows of a period with the touch's visit: its
+ * The lead and customer rows of a period with the touch's visit, each
+ * contact's earliest row of a kind only (a merge moves both contacts' rows
+ * to the one kept, and a contact becomes a lead or a customer once): its
  * channel, campaign and landing page; whether a lead's contact became a
  * customer (at any time); a customer's first order total in minor units
  * (0 for a paid invoice).
@@ -412,7 +414,8 @@ function pg_lead_sources_read($from, $to, $touch)
             (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "') AS customer_rows
         FROM contact_journey j
         LEFT JOIN lead_visits v ON v.id = " . $visit . "
-        WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', '" . PG_LEAD_JOURNEY_CUSTOMER . "') AND j.at >= '" . (int) $from . "' AND j.at < '" . (int) $to . "'") as $row) {
+        WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', '" . PG_LEAD_JOURNEY_CUSTOMER . "') AND j.at >= '" . (int) $from . "' AND j.at < '" . (int) $to . "'
+            AND NOT EXISTS (SELECT 1 FROM contact_journey e WHERE e.contact_id = j.contact_id AND e.kind = j.kind AND (e.at < j.at OR (e.at = j.at AND e.id < j.id)))") as $row) {
         $rows[] = array(
             'kind'         => (int) $row['kind'],
             'channel'      => (string) $row['channel'],
