@@ -52,11 +52,11 @@ function test_erp_bank_statement_match_skips_cancels()
 function test_erp_bank_statement_unmatch()
 {
 	$import = erp_bank_statement_bugs_source('includes/erp/bank_import.php');
-	pg_assert_contains("SET status = 'new', cash_id = 0\n        WHERE id = '\" . (int) \$line_id . \"' AND status = 'matched'", $import, 'only a matched line is undone');
+	pg_assert_contains("SET status = 'new', cash_id = 0\n        WHERE id = '\" . (int) \$line_id . \"'\n          AND (status = 'matched'", $import, 'a matched line is undone');
 
 	$screen = erp_bank_statement_bugs_source('erp_bank_statement.php');
 	pg_assert_contains("if (\$action === 'unmatch') {", $screen, 'unmatch action');
-	pg_assert_contains("if (((string) \$line['status'] === 'matched') && !\$readonly) {", $screen, 'button on a matched line only');
+	pg_assert_contains("if (erp_bank_line_reopenable(\$line) && !\$readonly) {", $screen, 'button on a line that can be opened again');
 }
 
 function test_erp_bank_statement_combobox_in_scrolling_table()
