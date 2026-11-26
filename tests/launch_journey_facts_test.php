@@ -148,3 +148,49 @@ function test_launch_journey_facts_row_written_twice()
 
 	pg_assert_true(pg_launch_journey_row_write(function ($json) { return $json; }, function () { return '{"a":1}'; }, function () { return false; }), 'nothing to change is written');
 }
+
+function test_launch_journey_facts_card_stays_while_maintenance_blocks()
+{
+	$facts = array(
+		'https' => true, 'mail_ready' => true, 'kvkk_text' => true, 'consent_enabled' => true,
+		'robots_text' => '', 'search_console' => 'connected', 'google_analytics' => 'connected',
+		'backup' => 'pass', 'cron' => 'ok', 'team_signed_in' => true, 'broken_links' => 0,
+	);
+
+	pg_assert_true(pg_launch_journey_state('company', $facts + array('maintenance' => true), array())['finished'], 'every card step done');
+	pg_assert_false(pg_launch_journey_card_closes('company', $facts + array('maintenance' => true), array()), 'maintenance on: the card stays for "Go live"');
+	pg_assert_true(pg_launch_journey_card_closes('company', $facts + array('maintenance' => false), array()), 'nothing blocking: it closes');
+	pg_assert_false(pg_launch_journey_card_closes('company', array('maintenance' => false) + array_diff_key($facts, array('team_signed_in' => 1)), array()), 'a step not done keeps it');
+}
+
+function test_launch_journey_facts_shop_switched_off()
+{
+	$rule = pg_launch_journey_rule('payment_live', array('shop' => false, 'payments' => array()), 'shop');
+	pg_assert_same('todo', $rule['state'], 'a shop switched off is a known answer');
+	pg_assert_same('warning', $rule['level']);
+	pg_assert_same('shop_off', $rule['reason']);
+
+	$row = array('key' => 'payment_live') + $rule;
+	pg_assert_same('The shop is switched off', pg_launch_journey_step_line($row, array()));
+	pg_assert_same('#settings/commerce/pgset-store', pg_launch_journey_step_url($row), '"Do it" opens where the shop is switched on');
+
+	$card = pg_launch_journey_card('shop', array('shop' => false, 'payments' => array()), array());
+	$keys = array_column($card['rows'], 'url', 'key');
+	pg_assert_same('#settings/commerce/pgset-store', $keys['payment_live']);
+
+	pg_assert_same('no_online_payment', pg_launch_journey_rule('payment_live', array('shop' => true, 'payments' => array()), 'shop')['reason'], 'the shop on with no online way stays as it was');
+}
+
+function test_launch_journey_facts_bookings_not_set_up()
+{
+	$rule = pg_launch_journey_rule('booking_hours', array('booking_setup' => false, 'booking_hours' => false), 'clinic');
+	pg_assert_same('warning', $rule['level']);
+	pg_assert_same('not_set_up', $rule['reason']);
+
+	$row = array('key' => 'booking_hours') + $rule;
+	pg_assert_same('Bookings are not set up', pg_launch_journey_step_line($row, array()));
+	pg_assert_same('#settings/bookings/pgset-booking-services', pg_launch_journey_step_url($row));
+
+	pg_assert_same('unknown', pg_launch_journey_rule('booking_hours', array(), 'clinic')['state'], 'tables not there yet: unreadable, unknown');
+	pg_assert_same('no_hours', pg_launch_journey_rule('booking_hours', array('booking_setup' => true, 'booking_hours' => false), 'clinic')['reason']);
+}
