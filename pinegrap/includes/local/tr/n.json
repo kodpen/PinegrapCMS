@@ -3489,6 +3489,7 @@
     "Nothing was saved; use Save on the settings card to keep the credentials.": "Hiçbir şey kaydedilmedi; kimlik bilgilerini saklamak için ayarlar kartındaki Kaydet'i kullanın.",
     "Nothing was searched (a group is browsed)": "Arama yapılmadı (bir grupta geziniliyor)",
     "Nothing was searched for in this period.": "Bu dönemde arama yapılmadı.",
+    "Nothing was searched yet": "Henüz bir şey aranmadı",
     "Nothing was sent or changed.": "Hiçbir şey gönderilmedi veya değiştirilmedi.",
     "Nothing was sent. To post it as a message, start it with two slashes: {var:1}. {var:2} lists every command.": "Hiçbir şey gönderilmedi. Mesaj olarak göndermek için iki eğik çizgiyle başlayın: {var:1}. {var:2} tüm komutları listeler.",
     "Nothing was sold in this period.": "Bu dönemde satış yapılmadı.",

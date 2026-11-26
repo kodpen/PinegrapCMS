@@ -7152,7 +7152,16 @@ function pg_sw_search_index_save_item($item, $timestamp)
 //   ^^__result_section^^ (the search section the result links to, or '').
 // Bindings: form action search_form, input value search_query, button action
 //   submit_search, section pagination; visibility (eo_visible_if) has_query,
-//   has_results, no_results, has_prev_page, has_next_page, has_more_pages.
+//   has_results, no_results, has_prev_page, has_next_page, has_more_pages;
+//   for a converted classic layout (pg_sr_layout_flags()) no_query,
+//   is_limited, not_limited, many_results, one_result and the kinds shown on
+//   this page: has_featured_results, has_catalog_results, has_page_results,
+//   has_featured_or_catalog_results.
+// Row flags (pg_sr_row_flags()): result_is_featured, result_is_catalog,
+//   result_is_page, result_has_excerpt, result_has_image, result_has_price.
+//   Every loop area after the first is a further place of the one list (a
+//   classic layout lists each kind under its own heading): each draws every
+//   row, its nodes under a row flag kept or cut per row.
 // Paging tokens, as a form list gives them (pg_sw_list_paging()):
 //   ^^__page_number^^, ^^__prev_page_url^^, ^^__next_page_url^^; a list of
 //   the page links (paging.pages) replaces the pagination section.
@@ -7181,9 +7190,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         ? array('featured' => array(), 'catalog' => array(), 'pages' => array())
         : _pg_sw_search_collect($query, $cfg);
     $rows  = array();
-    foreach ($found['featured'] as $r) { $r['featured'] = '1'; $rows[] = $r; }
-    foreach ($found['catalog']  as $r) { $r['featured'] = '';  $rows[] = $r; }
-    foreach ($found['pages']    as $r) { $r['featured'] = '';  $rows[] = $r; }
+    foreach ($found['featured'] as $r) { $r['featured'] = '1'; $r['group'] = 'featured'; $rows[] = $r; }
+    foreach ($found['catalog']  as $r) { $r['featured'] = '';  $r['group'] = 'catalog';  $rows[] = $r; }
+    foreach ($found['pages']    as $r) { $r['featured'] = '';  $r['group'] = 'pages';    $rows[] = $r; }
     $rows  = pg_preview_as_rows($rows);
     // The results start after `offset` of them; the count and the pages
     // run through what is left.
@@ -7219,19 +7228,26 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     ));
     // Visibility bindings (eo_visible_if) — e.g. a heading shown only once
     // something was searched.
-    _eo_apply_visibility_bindings($tree, array(
+    // A row's own flags are left for the rows.
+    $shown = array_slice($rows, $offset, $per_page);
+    $flags = array(
         'has_query'   => $query !== '',
         'has_results' => $total > 0,
         'no_results'  => $query !== '' && $total === 0,
-    ) + $paging['flags']);
+    ) + pg_sr_layout_flags($query, $total, !empty($found['limited']), $shown) + $paging['flags'];
+    _eo_apply_visibility_bindings($tree, $flags, array_fill_keys(array_keys(pg_sr_row_flags(array())), true));
 
+    // The list's further places: each drawn row by row with the first.
+    $extra_nodes = pg_cart_extra_loops($tree);
     $split = _split_widget_tree($tree);
+    $loop_nodes = array();
     if ($split['loop_children'] === null) {
         $loop_template = trim(_render_tree_node($tree, 0, 0));
         $static_html   = '';
     } else {
+        $loop_nodes    = $split['loop_children'];
         $loop_template = '';
-        foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
+        foreach ($loop_nodes as $child) $loop_template .= _render_tree_node($child, 0, 0);
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
@@ -7246,9 +7262,10 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $type_labels = array('page' => lang('Page'), 'file' => lang('File'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
     $loop_rendered = '';
+    $extra_rendered = array_fill_keys(array_keys($extra_nodes), '');
     // A tree without a loop_area has nowhere to put rows: it renders once.
     if ($loop_template !== '' && $static_html !== '') {
-        foreach (array_slice($rows, $offset, $per_page) as $i => $r) {
+        foreach ($shown as $i => $r) {
             $values = pg_sw_escape_token_values(array(
                 '__result_title'        => $r['title'],
                 '__result_url'          => ($r['url'] !== '') ? $r['url'] : '#',
@@ -7263,8 +7280,13 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
                 '__result_number'       => (string)($offset + $i + 1),
                 '__result_section'      => isset($r['section']) ? (string)$r['section'] : '',
             ), array('__result_price')) + $paging['tokens'];
-            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $values));
+            $row_flags = pg_sr_row_flags($r) + $flags;
+            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens(pg_sr_row_template($loop_nodes, $row_flags, $pagination_html), $values));
             $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $offset + $i);
+            foreach ($extra_nodes as $k => $nodes) {
+                $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens(pg_sr_row_template($nodes, $row_flags, $pagination_html), $values));
+                $extra_rendered[$k] .= pg_sw_uniquify_row_ids($row_html, $widget_id, ($k + 1) * 100000 + $offset + $i);
+            }
         }
     }
 
@@ -7305,7 +7327,80 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $click_script = ($loop_rendered !== '')
         ? pg_site_search_click_script_for($query, array_column(array_slice($rows, $offset, $per_page), 'url'))
         : '';
+    foreach ($extra_rendered as $k => $html) $static_html = str_replace('<!--pg-cart-loop-' . $k . '-->', $html, $static_html);
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $click_script;
+}
+
+/**
+ * The search results widget's flags a converted classic layout reads: no
+ * search yet, a list cut at the most relevant results, one or many
+ * results, and which kinds of results the page shown holds. Pure.
+ *
+ * @param string $query   the search text
+ * @param int    $total   the results found
+ * @param bool   $limited the advanced search stopped at its most relevant
+ * @param array  $shown   the rows on the page shown (each with 'group':
+ *                        featured, catalog or pages)
+ * @return array flag => bool
+ */
+function pg_sr_layout_flags($query, $total, $limited, $shown)
+{
+    $groups = array_count_values(array_map(function ($r) { return (string)($r['group'] ?? ''); }, (array)$shown));
+    $featured = !empty($groups['featured']);
+    $catalog  = !empty($groups['catalog']);
+    // Named as the renderer hands it on: check_bindings.php reads the keys.
+    $flags = array(
+        'no_query'     => (string)$query === '',
+        'is_limited'   => $total > 0 && (bool)$limited,
+        'not_limited'  => $total > 0 && !$limited,
+        'many_results' => $total > 1,
+        'one_result'   => $total === 1,
+        'has_featured_results' => $featured,
+        'has_catalog_results'  => $catalog,
+        'has_page_results'     => !empty($groups['pages']),
+        'has_featured_or_catalog_results' => $featured || $catalog,
+    );
+    return $flags;
+}
+
+/**
+ * A search result's row flags: its kind (the list it came from) and the
+ * values it has. Pure.
+ *
+ * @param array $r a result row ('group', 'excerpt', 'image', 'price')
+ * @return array flag => bool
+ */
+function pg_sr_row_flags($r)
+{
+    $group = (string)($r['group'] ?? '');
+    $row_flags = array(
+        'result_is_featured' => $group === 'featured',
+        'result_is_catalog'  => $group === 'catalog',
+        'result_is_page'     => $group === 'pages',
+        'result_has_excerpt' => (string)($r['excerpt'] ?? '') !== '',
+        'result_has_image'   => (string)($r['image'] ?? '') !== '',
+        'result_has_price'   => (string)($r['price'] ?? '') !== '',
+    );
+    return $row_flags;
+}
+
+/**
+ * One row's template from a place's nodes: a node under a row flag the row
+ * does not hold goes; the pagination marker gets its links. Tokens are
+ * left for the caller.
+ *
+ * @param array  $nodes      the loop area's children
+ * @param array  $row_flags  pg_sr_row_flags(), with the widget's flags
+ * @param string $pagination the pagination's HTML
+ * @return string HTML
+ */
+function pg_sr_row_template($nodes, $row_flags, $pagination)
+{
+    $holder = array('type' => 'root', 'props' => array(), 'children' => array_values((array)$nodes));
+    _eo_apply_visibility_bindings($holder, $row_flags);
+    $html = '';
+    foreach ($holder['children'] as $child) $html .= _render_tree_node($child, 0, 0);
+    return str_replace('<!--pg-sr-pagination-->', $pagination, trim($html));
 }
 
 // The guest's way on a registration widget: the section `guest` (drawn
