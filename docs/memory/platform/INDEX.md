@@ -183,12 +183,12 @@
 - office-pptx-design-reader.md: The design file reader pg_pptx_design_read() (PR #11840): a .pptx read as slides of placed elements for the Artifact Canvas; units, what each element gives, what is left out and counted, limits
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-save-list.md: One workbook save as an ordered list of changes of every kind (office_edit.php, OF1): steps, one lock and version check, each change on the workbook the one before left, refusals naming their place
-- office-sheet-change-list.md: The workbook view's one list of waiting changes (pg_office_view.js, OF2): typed cells and format ranges in the order made, any number of ranges, the count on the status line, what still goes alone
+- office-sheet-change-list.md: The workbook view's one list of changes (pg_office_view.js, OF2, OF3): cells, formats, rows, columns and sheets in order, the grid and tabs drawn from it, the count
 - office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn [decision: here]
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why
-- office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it sends, one change a save
+- office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it puts in the list of changes
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list
-- office-sheet-tabs.md: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves one sheet of an .xlsx: where it opens, what it sends, one change a save
+- office-sheet-tabs.md: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves a sheet of an .xlsx: where it opens, what it puts in the list of changes, how the tabs are drawn
 - office-sheet-tools.md: The workbook view's tools (pg_office_view.js, OE4): sort by a column, filter by value, find in the workbook, Download as CSV of the open sheet; nothing written to the file
 - office-sheets.md: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one entry of a save's list
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
