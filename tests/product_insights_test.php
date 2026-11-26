@@ -324,6 +324,18 @@ function test_product_insights_counted_sql_follows_the_customer_value_rule()
 	pg_assert_true(strpos($bare, 'refunded_amount') === false, 'no column before its migration');
 }
 
+// A request the customer withdrew before sending anything holds no goods
+// (pg_return_holds_goods()), so it is no return; one closed after the parcel
+// left still is.
+function test_product_insights_returns_held_sql()
+{
+	$sql = pg_product_insights_returns_held_sql();
+
+	pg_assert_true(strpos($sql, "order_returns.status IN ('requested', 'approved', 'shipped', 'received', 'refunded')") !== false);
+	pg_assert_true(strpos($sql, "order_returns.status = 'closed' AND (order_returns.shipped_at > 0 OR order_returns.received_at > 0 OR order_returns.refunded_at > 0)") !== false);
+	pg_assert_true(strpos($sql, "<> 'rejected'") === false, 'no longer every status but rejected');
+}
+
 function test_product_insights_head_pills()
 {
 	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));
