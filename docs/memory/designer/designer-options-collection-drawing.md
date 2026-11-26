@@ -36,4 +36,4 @@ description: The drawing of "New collection with pages" (plan designer-options-c
 - The plan says "it ends with a line naming what it made": the same line names what there is after a stop half way.
 - The drawing wins where the two differ (`workflow/architect-draws-new-part.md`); what neither says the worker asks of the architect.
 
-Related: docs/memory/plans/designer-options-census-steps-3.md, docs/memory/designer/collections-decisions.md, docs/memory/designer/designer-pages-window.md
+Related: docs/memory/designer/options-panel-census.md, docs/memory/designer/collections-decisions.md, docs/memory/designer/designer-pages-window.md

@@ -27,4 +27,4 @@ description: The drawing of background layers, Clip shape and Mask (plan designe
 - The plan says Clip shape and Mask are "shown on the canvas as chosen": the drawing adds the dashed outline of the element's whole box, and one line said once about clicks and shadows.
 - The drawing wins where the two differ (`workflow/architect-draws-new-part.md`); what neither says the worker asks of the architect.
 
-Related: docs/memory/plans/designer-options-census-steps-2.md, docs/memory/designer/options-panel-census-look.md, docs/memory/designer/designer-options-effects.md
+Related: docs/memory/designer/options-panel-census.md, docs/memory/designer/options-panel-census-look.md, docs/memory/designer/designer-options-effects.md

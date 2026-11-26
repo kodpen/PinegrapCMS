@@ -26,4 +26,4 @@ description: The drawing of the Options panel's states, Transition and Transform
 - The plan's "one line saying why" is the summary "same in every state" on each dimmed card, not a line of its own.
 - The drawing wins where the two differ (`workflow/architect-draws-new-part.md`); what neither says the worker asks of the architect.
 
-Related: docs/memory/plans/designer-options-census-steps-2.md, docs/memory/designer/designer-options-overview.md, docs/memory/designer/designer-chrome-measures.md
+Related: docs/memory/designer/options-panel-census.md, docs/memory/designer/designer-options-overview.md, docs/memory/designer/designer-chrome-measures.md
