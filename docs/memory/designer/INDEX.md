@@ -624,6 +624,7 @@
 - designer-sketch-drawing-details.md: "Page details" as drawn (details.html, boards D1 to D4): the window's seven rows with their sentences and defaults, what each choice says, errors, saving, read-only, phone [decision: here]
 - designer-sketch-drawing-picture.md: The reference picture as drawn (ai-and-picture.html, boards E4 and E5): the picture under a sketch page, its rows in "More", and "Read the picture" with its proposal, "Keep" and "Discard" [decision: decisions-made-product-111.md]
 - designer-sketch-drawing.md: The drawing of the Sketch tool's later steps (SK4 to SK7, `sketch-overview.md`): the three sheets, where each part is described, and which board belongs to which step
+- designer-sketch-tool-drawing.md: Drawing of the Sketch tool itself (DD4, 2026-11-26): the switch and a new page, a box drawn and named, the chip's kinds, every key; what the fix step SX1 adds for the keyboard and the links panel [decision: here]
 - designer-spacing-box.md: Style › Spacing as one box (DP7): outer and inner sides typed, dragged or stepped, Shift and Alt, the screen-size chooser in the head, the part 'spacing', what it writes (today's classes) and reads
 - designer-start-import-drawing-canva.md: The Canva start as drawn (canva.html, boards C1 to C5): the upload of PNG or PDF pages, the page tiles, refused files and the colours card
 - designer-start-import-drawing-connections.md: The Figma page of Connections as drawn (connections.html, boards A1 to A6): the three cards, the personal access token field, the token's states and the "Disconnect" question

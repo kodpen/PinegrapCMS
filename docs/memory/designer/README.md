@@ -51,7 +51,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `designer-preview-*`: 14 files; start at `designer-preview-overview.md`.
 - `designer-prototype-*`: 9 files.
 - `designer-publish-*`: 12 files; start at `designer-publish-overview.md`.
-- `designer-sketch-*`: 7 files.
+- `designer-sketch-*`: 8 files.
 - `designer-start-*`: 7 files.
 - `email-designs-*`: 6 files; start at `email-designs.md`.
 - `form-list-*`: 8 files.
