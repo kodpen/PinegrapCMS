@@ -410,6 +410,7 @@
     "Figma refused this token. Check that it was copied whole and has not expired.": "Figma bu anahtarı reddetti. Tamamının kopyalandığını ve süresinin dolmadığını kontrol edin.",
     "Figma's answer could not be read. Try again.": "Figma'nın yanıtı okunamadı. Yeniden deneyin.",
     "Figma's limit for this account is reached": "Bu hesabın Figma sınırına ulaşıldı",
+    "Figma, Canva, a document, a ZIP file or pasted markup.": "Figma, Canva, bir belge, bir ZIP dosyası ya da yapıştırılan kod.",
     "Figure": "Görsel Bloğu",
     "Figure Caption": "Görsel Açıklaması",
     "Figure Tile": "Değer Kutusu",

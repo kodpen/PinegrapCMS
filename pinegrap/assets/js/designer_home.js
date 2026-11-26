@@ -165,59 +165,65 @@
     var keyboardMenuAt = 0;
     var lastLongPress = 0;
 
-    function entry(act, icon, label, key) {
-        return { act: act, icon: icon, label: label, key: key || '' };
+    function entry(act, label, key) {
+        return { act: act, label: label, key: key || '' };
     }
 
-    var DIVIDER = { divider: true };
+    // The rows in their groups, a divider between two groups; a row that
+    // does not apply is left out, and so is a group left empty.
+    function grouped(groups) {
+        var list = [];
 
+        groups.forEach(function (group) {
+            if (!group.length) {
+                return;
+            }
+            if (list.length) {
+                list.push({ divider: true });
+            }
+            list = list.concat(group);
+        });
+        return list;
+    }
+
+    // Work on it; the site; the design itself; Delete alone.
     function designEntries(card) {
         var state = stateOf(card);
         var data = card.dataset;
-        var list = [entry('open', 'bi-pencil-square', say('edit'), 'Enter'), entry('newtab', 'bi-box-arrow-up-right', say('newTab'))];
+        var work = [entry('open', say('edit'), 'Enter'), entry('newtab', say('newTab'))];
+        var site = [];
+        var self = [];
 
         if (C.canChange) {
-            list.push(entry('add', 'bi-file-earmark-plus', say('addPage')));
+            work.push(entry('add', say('addPage')));
         }
         if (data.viewUrl) {
-            list.push(entry('view', 'bi-eye', say('view')));
+            site.push(entry('view', say('view')));
         }
-
-        var change = [];
-
         if (C.canDraft && state.drafts > 0) {
-            change.push(entry('on', 'bi-cloud-check', say('on')));
+            site.push(entry('on', say('on')));
         }
         if (C.canDraft && state.offable > 0) {
-            change.push(entry('off', 'bi-cloud-slash', say('off')));
+            site.push(entry('off', say('off')));
         }
         if (C.canChange) {
-            change.push(entry('rename', 'bi-input-cursor-text', say('rename'), 'F2'));
+            self.push(entry('rename', say('rename'), 'F2'));
         }
         if (C.canTemplate && state.pages > 0) {
-            change.push(entry('template', 'bi-grid-1x2', say('template')));
+            self.push(entry('template', say('template')));
         }
-        if (change.length) {
-            list.push(DIVIDER);
-            list = list.concat(change);
-        }
-        if (C.canChange) {
-            list.push(DIVIDER);
-            list.push(entry('delete', 'bi-trash', say('delete'), 'Delete'));
-        }
-        return list;
+        return grouped([work, site, self, C.canChange ? [entry('delete', say('delete'), 'Delete')] : []]);
     }
 
+    // The page in the editor; the page on the site.
     function pageEntries(chip) {
-        var list = [];
+        var editor = [];
 
         if (chip.dataset.locked !== '1') {
-            list.push(entry('page-open', 'bi-pencil-square', say('editPage'), 'Enter'));
-            list.push(entry('page-newtab', 'bi-box-arrow-up-right', say('newTab')));
+            editor.push(entry('page-open', say('editPage'), 'Enter'));
+            editor.push(entry('page-newtab', say('newTab')));
         }
-        list.push(entry('page-view', 'bi-eye', say('view')));
-        list.push(entry('page-copy', 'bi-link-45deg', say('copy')));
-        return list;
+        return grouped([editor, [entry('page-view', say('view')), entry('page-copy', say('copy'))]]);
     }
 
     function drawMenu(title, list) {
@@ -228,8 +234,8 @@
                 html += '<div class="menu-divider" role="separator"></div>';
                 return;
             }
-            html += '<button type="button" class="menu-item" role="menuitem" tabindex="-1" data-act="' + item.act + '">'
-                + '<i class="bi ' + item.icon + '" aria-hidden="true"></i><span>' + escapeHtml(item.label) + '</span>'
+            html += '<button type="button" class="menu-item' + (item.act === 'delete' ? ' sdh-menu-danger' : '') + '" role="menuitem" tabindex="-1" data-act="' + item.act + '">'
+                + '<span>' + escapeHtml(item.label) + '</span>'
                 + (item.key ? '<span class="sdh-menu-key" aria-hidden="true">' + escapeHtml(item.key) + '</span>' : '')
                 + '</button>';
         });
@@ -495,8 +501,69 @@
             var folded = box.classList.toggle('is-folded');
             toggle.textContent = folded ? toggle.dataset.more : toggle.dataset.less;
             toggle.setAttribute('aria-expanded', folded ? 'false' : 'true');
+            if (folded) {
+                fitChips(box);
+            }
         }
     });
+
+    // ── One row of page chips ───────────────────────────────────────────
+
+    // A folded row shows as many chips as fit it, then "+n more"
+    // (pg_designer_home_page_chips() prints a first guess).
+    function fitChips(box) {
+        var toggle = box.querySelector('.sdh-pages-toggle');
+
+        if (!toggle || !box.classList.contains('is-folded') || !box.offsetParent) {
+            return;
+        }
+
+        var chips = Array.prototype.slice.call(box.querySelectorAll('.sdh-page:not(.sdh-pages-toggle)'));
+        var show = function (count) {
+            chips.forEach(function (chip, i) {
+                chip.classList.toggle('is-extra', i >= count);
+            });
+            toggle.dataset.more = say('pagesMore').replace('{var}', String(chips.length - count));
+            toggle.textContent = toggle.dataset.more;
+            toggle.hidden = (count >= chips.length);
+        };
+
+        toggle.hidden = true;
+        chips.forEach(function (chip) {
+            chip.classList.remove('is-extra');
+        });
+
+        var top = chips.length ? chips[0].offsetTop : 0;
+        var count = chips.length;
+
+        for (var i = 1; i < chips.length; i++) {
+            if (chips[i].offsetTop > top) {
+                count = i;
+                break;
+            }
+        }
+
+        show(count);
+        while (count > 1 && !toggle.hidden && toggle.offsetTop > top) {
+            count--;
+            show(count);
+        }
+    }
+
+    function fitAllChips() {
+        document.querySelectorAll('.sdh-pages.is-row').forEach(fitChips);
+    }
+
+    var fitTimer = 0;
+
+    window.addEventListener('resize', function () {
+        window.clearTimeout(fitTimer);
+        fitTimer = window.setTimeout(fitAllChips, 120);
+    });
+    fitAllChips();
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(fitAllChips);
+    }
 
     // ── Keys on a card or a chip ────────────────────────────────────────
 
@@ -1285,8 +1352,12 @@
     function countDesigns() {
         var count = document.querySelectorAll('.sdh-card').length;
         var badge = document.querySelector('#sdh-designs-title .sdh-count');
+        var others = document.getElementById('sdh-others-count');
         if (badge) {
             badge.textContent = String(count);
+        }
+        if (others) {
+            others.textContent = String(document.querySelectorAll('.sdh-tile').length);
         }
     }
 
@@ -1379,10 +1450,24 @@
             });
 
             var none = document.getElementById('sdh-filter-empty');
+            var words = document.getElementById('sdh-filter-empty-text');
             if (none) {
                 none.classList.toggle('d-none', (needle === '') || (shown > 0));
             }
+            if (words) {
+                words.textContent = say('noMatch').replace('{var}', filter.value.trim());
+            }
         });
+
+        var clear = document.getElementById('sdh-filter-clear');
+
+        if (clear) {
+            clear.addEventListener('click', function () {
+                filter.value = '';
+                filter.dispatchEvent(new Event('input'));
+                filter.focus();
+            });
+        }
     }
 
     // ── Shared components and system widgets (pg_designer_components_card()) ──

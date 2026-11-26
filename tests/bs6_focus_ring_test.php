@@ -104,7 +104,7 @@ button.no-popover:focus-visible', 'var(--pg-primary-ink)', 'no-popover links');
 	pg_assert_same(0, preg_match_all('/box-shadow:\s*0 0 0 0?\.2(5)?rem var\(--pg-focus-ring-color\)/', $css), 'no rem-sized halo left');
 
 	$home = bs6_focus_ring_test_code('designer_home.css');
-	foreach (array('.sdh-start:focus-visible', '.sdh-page:focus-visible') as $selector) {
+	foreach (array('.sdh-first-start:focus-visible', '.sdh-page:focus-visible') as $selector) {
 		bs6_focus_ring_test_assert_ring($home, $selector, 'var(--pg-primary-ink)', $selector);
 	}
 	// A card has tabindex="0": the global [tabindex] ring outranks any

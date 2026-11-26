@@ -12075,6 +12075,7 @@
     "Turn a message into a task with /gorev. The Planning Board shows who does what on which day and warns about clashes.": "/gorev ile mesajı göreve çevirin. Planlama Panosu kimin hangi gün ne yaptığını gösterir ve çakışmaları uyarır.",
     "Turn camera off": "Kamerayı kapat",
     "Turn camera on": "Kamerayı aç",
+    "Turn into a template": "Şablona çevir",
     "Turn into an invoice": "Faturaya dönüştür",
     "Turn it off to go back to the old dashboard.": "Kapatınca eski panoya dönersin.",
     "Turn it on": "Açın",

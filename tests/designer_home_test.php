@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the Visual Page Editor home (view_system_styles.php): which
- * design is shown large (pg_designer_home_featured_id()) and how a name
- * typed into the rename box is stored (pg_designer_design_name_clean()).
+ * design is shown large (pg_designer_home_featured_id()), how a name typed
+ * into the rename box is stored (pg_designer_design_name_clean()), the head
+ * row, the first visit, the tiles and the large card.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -63,54 +64,6 @@ function test_designer_home_name_clean_refuses_what_is_not_text()
 	pg_assert_same('12', pg_designer_design_name_clean(12), 'a number is its digits');
 }
 
-// The start drawings are the panel's greys and its one accent: every shape
-// takes its colour from a class in designer_home.css, none carries one.
-function _test_designer_home_drawing_classes()
-{
-	return array('p', 'g', 'l', 'k', 's', 'sk', 'dash', 'cursor', 'a', 'as');
-}
-
-function test_designer_home_drawings_carry_no_colour_of_their_own()
-{
-	foreach (array('blank', 'import', 'paste', 'template') as $kind) {
-		$svg = pg_designer_home_drawing($kind, array());
-		pg_assert_true(strpos($svg, '<svg') !== false, $kind . ': a drawing');
-		pg_assert_same(0, preg_match('/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|style=|stop-color|flood-color/i', $svg), $kind . ': no colour value');
-		preg_match_all('/\s(fill|stroke)="([^"]*)"/', $svg, $m);
-		foreach ($m[2] as $value) {
-			pg_assert_true(in_array($value, array('none', 'currentColor'), true), $kind . ': fill or stroke "' . $value . '" is none or currentColor');
-		}
-		pg_assert_same(0, preg_match('/(fill|stroke)-opacity=/', $svg), $kind . ': no opacity tint');
-	}
-}
-
-function test_designer_home_drawings_use_only_the_token_classes()
-{
-	$allowed = _test_designer_home_drawing_classes();
-	foreach (array('blank', 'import', 'paste', 'template') as $kind) {
-		$svg = pg_designer_home_drawing($kind, array());
-		$inner = substr($svg, strpos($svg, '<svg'));
-		preg_match_all('/class="([^"]*)"/', $inner, $m);
-		pg_assert_true(count($m[1]) > 0, $kind . ': shapes have classes');
-		foreach ($m[1] as $list) {
-			foreach (preg_split('/\s+/', trim($list)) as $class) {
-				pg_assert_true(in_array($class, $allowed, true), $kind . ': class "' . $class . '" is a drawing token');
-			}
-		}
-	}
-}
-
-function test_designer_home_drawings_hold_at_most_the_one_accent()
-{
-	foreach (array('blank', 'import', 'paste') as $kind) {
-		$svg = pg_designer_home_drawing($kind, array());
-		preg_match_all('/class="(?:a|as)"/', $svg, $m);
-		pg_assert_true(count($m[0]) >= 1 && count($m[0]) <= 2, $kind . ': one accented part (a fill and its soft surface)');
-	}
-	$none = pg_designer_home_drawing('template', array());
-	pg_assert_same(0, preg_match('/class="(?:a|as)"/', $none), 'no template to show: no accent');
-}
-
 function _test_designer_home_status_row($pages, $drafts, $home)
 {
 	return array('page_count' => $pages, 'draft_count' => $drafts, 'home_count' => $home, 'scheduled_count' => 0);
@@ -132,17 +85,6 @@ function test_designer_home_status_is_words_and_a_shaped_mark()
 		pg_assert_same(0, preg_match('/\bbadge\b|theme-(success|warning|info|danger|secondary)/', $html), $state . ': no coloured badge');
 		pg_assert_true(preg_match('/<\/i>[^<]+<\/span>/', $html) === 1, $state . ': the state in words');
 	}
-}
-
-// Every start card: its drawing, then the icon and title, then one sentence.
-function test_designer_home_start_card_order()
-{
-	$html = pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', 'Create New', 'An empty page.', array('modal' => '#sdStartModal', 'start' => 'blank'));
-	$ill = strpos($html, 'sdh-ill');
-	$title = strpos($html, 'sdh-start-title');
-	$text = strpos($html, 'sdh-start-text');
-	pg_assert_true($ill !== false && $title > $ill && $text > $title, 'drawing, title, sentence');
-	pg_assert_true(strpos($html, '<div class="col-6 xl:col-3">') === 0, 'two by two on phones, four in a row on wide screens');
 }
 
 function test_designer_home_template_card_theme_follows_the_choice()
@@ -335,4 +277,106 @@ function test_designer_start_template_cards_have_no_button()
 	pg_assert_true(strpos($gallery, 'sd-tpl-card" tabindex="0" data-use="') !== false, 'a card is a stop and carries its address');
 	$win = pg_designer_start_window(array(), false);
 	pg_assert_true(preg_match('/id="sd-ns-pane-template"[^>]*data-go="' . preg_quote(h(lang('Use this template')), '/') . '"/', $win) === 1, 'the foot\'s words on the template start');
+}
+
+// The first visit: three starting points, each opening the New design window
+// on its start; "Bring your own" opens it on the first import start.
+function test_designer_home_first_starts()
+{
+	$starts = pg_designer_home_first_starts(pg_designer_start_kinds(true, true));
+	pg_assert_same(array('blank', 'template', 'figma'), array_map(function ($s) { return $s['start']; }, $starts), 'Blank, Template, then Figma for "Bring your own"');
+	pg_assert_same(array('bi-plus-square', 'bi-grid-1x2', 'bi-box-arrow-in-down'), array_map(function ($s) { return $s['icon']; }, $starts), 'the window\'s icons, and one for "Bring your own"');
+	pg_assert_same(array(false, false, false), array_map(function ($s) { return $s['disabled']; }, $starts), 'all three take a press');
+
+	$no_figma = pg_designer_home_first_starts(pg_designer_start_kinds(true, false));
+	pg_assert_same('canva', $no_figma[2]['start'], 'no Figma start: the first import start listed');
+
+	$none = pg_designer_home_first_starts(pg_designer_start_kinds(false, true));
+	pg_assert_true($none[1]['disabled'], 'no templates: the Template card takes no press');
+	pg_assert_same(lang('There are no templates.'), $none[1]['line'], 'and says why');
+}
+
+function test_designer_home_first_visit_markup()
+{
+	$html = pg_designer_home_first_visit(pg_designer_start_kinds(false, true));
+	pg_assert_contains(h(lang('Start your first design')), $html);
+	pg_assert_same(3, substr_count($html, 'class="pg-icon-tile sdh-first-tile"'), 'three cards, each an icon tile');
+	pg_assert_true(preg_match('/<button[^>]*data-sd-start="blank"/', $html) === 1, 'Blank opens the window');
+	pg_assert_true(preg_match('/<button[^>]*data-sd-start="figma"/', $html) === 1, '"Bring your own" opens it on Figma');
+	pg_assert_true(preg_match('/<button[^>]*disabled[^>]*data-sd-start="template"/', $html) === 1, 'no templates: Template is disabled');
+	pg_assert_same(1, substr_count($html, 'class="sdh-first-steps"'), 'the three steps as one line');
+	pg_assert_false(strpos($html, '<svg') !== false, 'no drawings');
+	pg_assert_same(0, preg_match('/\bbtn btn-/', $html), 'look A only');
+}
+
+// The head: "Designs" with the count and the sentence, the search from seven
+// designs, then the shared components button and "New design".
+function test_designer_home_head_row()
+{
+	$comp = '<button type="button" id="sd-comp-open"></button>';
+	$many = pg_designer_home_head(7, $comp, true);
+	$find = strpos($many, 'id="sdh-filter"');
+	$open = strpos($many, 'id="sd-comp-open"');
+	$new  = strpos($many, 'data-sd-start="blank"');
+	pg_assert_true($find !== false && $open > $find && $new > $open, 'search, shared components, New design');
+	pg_assert_contains('id="sdh-designs-title">' . h(lang('Designs')) . '<span class="sdh-count">7</span>', $many);
+	pg_assert_contains(h(lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.')), $many);
+	pg_assert_same(1, substr_count($many, 'pg-button-fill'), 'one filled button');
+
+	$few = pg_designer_home_head(6, '', true);
+	pg_assert_false(strpos($few, 'id="sdh-filter"') !== false, 'six designs: no search');
+
+	$first = pg_designer_home_head(0, '', true);
+	pg_assert_false(strpos($first, 'sdh-count') !== false, 'no design: no count');
+	pg_assert_false(strpos($first, h(lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.'))) !== false, 'the sentence moves into the middle');
+
+	$reader = pg_designer_home_head(3, '', false);
+	pg_assert_false(strpos($reader, 'data-sd-start') !== false, 'below designer: no New design');
+}
+
+function _test_designer_home_card_row($pages, $drafts)
+{
+	if (!defined('PATH')) define('PATH', '/');
+	if (!defined('HOSTNAME')) define('HOSTNAME', 'example.com');
+	return array(
+		'style_id' => 4, 'style_name' => 'Kafe', 'page_count' => $pages, 'draft_count' => $drafts, 'home_count' => 0,
+		'scheduled_count' => 0, 'template' => '', 'framework_bootstrap' => true, 'framework_label' => 'Bootstrap 5',
+		'look' => '', 'palette' => '', 'theme_name' => '', 'last_modified_timestamp' => time() - 60,
+		'last_modified_username' => 'ada',
+	);
+}
+
+function _test_designer_home_page($id, $name)
+{
+	return array('id' => $id, 'name' => $name, 'home' => false, 'draft' => false, 'locked' => false);
+}
+
+// A tile: the picture, the name with its menu button, one line of state,
+// page count and time. An empty design says so in the picture's place.
+function test_designer_home_tile_has_one_line()
+{
+	$tile = pg_designer_home_design_card(_test_designer_home_card_row(2, 2), array(_test_designer_home_page(8, 'a'), _test_designer_home_page(9, 'b')), array('folders' => 0));
+	pg_assert_same(1, substr_count($tile, 'class="sdh-tile-line"'), 'one line under the name');
+	pg_assert_true(preg_match('/class="sdh-tile-line">\s*<div class="sdh-status"/', $tile) === 1, 'the line starts with the state');
+	pg_assert_contains('sdh-browser', $tile);
+
+	$empty = pg_designer_home_design_card(_test_designer_home_card_row(0, 0), array(), array('folders' => 0));
+	pg_assert_contains('class="sdh-nopic"', $empty);
+	pg_assert_contains(h(lang('No pages yet')), $empty);
+	pg_assert_false(strpos($empty, 'sdh-browser-bar') !== false, 'no empty frame');
+}
+
+// The large card: four facts in one row, one row of page chips, today's
+// buttons with Edit filled.
+function test_designer_home_large_card()
+{
+	$pages = array();
+	for ($i = 1; $i <= 20; $i++) $pages[] = _test_designer_home_page($i, 'p' . $i);
+	$card = pg_designer_home_design_card(_test_designer_home_card_row(20, 0), $pages, array('featured' => true, 'can_change' => true, 'can_draft' => true, 'folders' => 0));
+	pg_assert_same(4, substr_count($card, 'class="sdh-fact"'), 'four facts');
+	pg_assert_contains('<small>' . h(lang('Template')) . '</small>', $card);
+	pg_assert_contains('sdh-pages is-folded is-row', $card);
+	pg_assert_same(1, substr_count($card, 'pg-button pg-button-sm pg-button-fill'), 'Edit is the one filled button');
+	pg_assert_contains('>' . h(lang('Add page')) . '<', $card);
+	pg_assert_same(0, preg_match('/\bbtn btn-/', $card), 'look A buttons only');
 }
