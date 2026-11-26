@@ -2300,6 +2300,156 @@
   color: var(--pgie-danger);
 }
 
+/* -- Start from a design (pg_image_editor_starts.js) --
+   A row above the sizes: its head opens the purpose chips and the tiles,
+   three a row, two on a phone; the chips are one row that scrolls. A picked
+   design hides the sizes and backgrounds, which it brings itself. */
+.pgie-start {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pgie .pgie-starthead {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  cursor: pointer;
+}
+
+.pgie .pgie-starthead svg {
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+
+.pgie .pgie-starthead.on svg {
+  transform: none;
+}
+
+.pgie-startbody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pgie-startbody[hidden] {
+  display: none;
+}
+
+.pgie-sttiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pgie-sttiles > .pgie-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.pgie .pgie-sttile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 14px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie .pgie-sttile:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-sttile.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+}
+
+.pgie-stthumb {
+  display: block;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+}
+
+.pgie-stthumb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgie-stthumb.pgie-stblank {
+  border-style: dashed;
+}
+
+.pgie-sttile b {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-stsize {
+  min-height: 1em;
+  color: var(--pgie-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-newdesign .pgie-presets,
+.pgie-newdesign .pgie-wh,
+.pgie-newdesign .pgie-newbg {
+  display: none;
+}
+
+.pgie-stslot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pgie-stslot .pgie-note,
+.pgie .pgie-stfor {
+  margin: 0;
+}
+
+.pgie .pgie-stslot .pgie-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-sttiles {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgie .pgie-starthead svg {
+    transition: none;
+  }
+}
+
 /* The window "Open a design file": the pages as tiles that scroll, the foot
    always in view; two tiles a row on a phone. */
 .pgie-confirm-box.pgie-designbox {

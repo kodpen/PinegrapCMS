@@ -1,0 +1,14 @@
+{
+ "id": "event-portrait",
+ "width": 1080,
+ "height": 1350,
+ "background": "#1b1f3b",
+ "layers": [
+  {"type": "slot", "x": 0, "y": 0, "w": 1080, "h": 680},
+  {"type": "text", "text": "startEventHead", "font": "g:Bebas Neue", "size": 130, "weight": 400, "color": "#ffffff", "align": "center", "x": 540, "y": 740, "maxW": 980, "lineHeight": 1.05},
+  {"type": "text", "text": "startEventWhen", "font": "g:Montserrat", "size": 48, "weight": 600, "color": "#ffd43b", "align": "center", "x": 540, "y": 900, "maxW": 980},
+  {"type": "text", "text": "startEventNote", "font": "g:Montserrat", "size": 34, "weight": 400, "color": "#ced4da", "align": "center", "x": 540, "y": 980, "maxW": 980},
+  {"type": "rect", "x": 440, "y": 1090, "w": 200, "h": 6, "color": "#ffd43b"},
+  {"type": "text", "text": "startEventBook", "font": "g:Montserrat", "size": 36, "weight": 700, "color": "#ffffff", "align": "center", "x": 540, "y": 1150, "maxW": 980}
+ ]
+}

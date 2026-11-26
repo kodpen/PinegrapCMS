@@ -13900,6 +13900,232 @@
     var ELEMENTS = { ELEMENT_SETS: ELEMENT_SETS, ELEMENT_MAX: ELEMENT_MAX, ELEMENT_WIDTH: ELEMENT_WIDTH, elementSets: elementSets, elementMarkup: elementMarkup,
         elementPaint: elementPaint, elementRepaint: elementRepaint, elementLayer: elementLayer };
 
+    // -- Start from a design (pg_image_editor_starts.js) --
+
+    // The purpose chips in order ('all' shows every design); the index's
+    // and a design's limits; the longest side a picture filling a "Your
+    // picture" box is cut at.
+    var START_PURPOSES = ['all', 'post', 'story', 'banner', 'announcement', 'sale', 'event', 'quote', 'invitation'];
+    var START_MAX = 60;
+    var START_LAYER_MAX = 40;
+    var START_PICTURE_SIDE = 2000;
+    var START_SHAPES = ['rect', 'ellipse', 'triangle', 'polygon', 'star'];
+    var START_KEY = /^start[A-Z][A-Za-z0-9]*$/;
+    var START_HEX = /^#[0-9a-f]{6}$/;
+
+    function startNumber(n, lo, hi) {
+        return (typeof n === 'number') && isFinite(n) && (n >= lo) && (n <= hi);
+    }
+
+    function startColor(c) {
+        return (typeof c === 'string') && START_HEX.test(c.toLowerCase());
+    }
+
+    // The designs index (assets/canvas/designs.json) checked: each an id
+    // [a-z0-9-] once, a purpose of START_PURPOSES but 'all', a label key
+    // start…; START_MAX at most, in the file's order.
+    function startIndex(data) {
+        var out = [], seen = {};
+
+        ((data && Array.isArray(data.designs)) ? data.designs : []).forEach(function (d) {
+            if (!d || (out.length >= START_MAX) || (typeof d.id !== 'string') || !/^[a-z0-9-]{1,40}$/.test(d.id) || seen[d.id]
+                || (START_PURPOSES.indexOf(d.purpose) < 1) || (typeof d.label !== 'string') || !START_KEY.test(d.label)) {
+                return;
+            }
+
+            seen[d.id] = true;
+            out.push({ id: d.id, purpose: d.purpose, label: d.label });
+        });
+
+        return out;
+    }
+
+    // A box inside the board, or null: whole numbers are not asked, a side
+    // at least 1 and the box within one board of the edges.
+    function startBox(d, W, H) {
+        if (!d || !startNumber(d.x, -W, 2 * W) || !startNumber(d.y, -H, 2 * H) || !startNumber(d.w, 1, 2 * W) || !startNumber(d.h, 1, 2 * H)) {
+            return null;
+        }
+
+        return { x: d.x, y: d.y, w: d.w, h: d.h, rot: startNumber(d.rot, -360, 360) ? d.rot : 0, opacity: startNumber(d.opacity, 0, 1) ? d.opacity : 1 };
+    }
+
+    // The widest a text anchored at x may be on a board W wide, by its
+    // align, when its design names none.
+    function startRoom(align, x, W) {
+        var room = (align === 'center') ? 2 * Math.min(x, W - x) : ((align === 'right') ? x : W - x);
+
+        return Math.max(1, room);
+    }
+
+    // One layer of a design checked, or null. A text keeps a label key as
+    // its words, a font (sans, serif or a family `known` accepts), its
+    // anchor (x by its align, y its top) and the widest it may be (maxW); a
+    // shape of START_SHAPES its box and paint; a slot ("Your picture") its
+    // box and corner radius.
+    function startLayer(d, W, H, known) {
+        var l, box;
+
+        if (!d || (typeof d !== 'object')) {
+            return null;
+        }
+
+        if (d.type === 'text') {
+            var font = String(d.font || 'sans'), family = (font.slice(0, 2) === 'g:') ? textFamilyName(font.slice(2)) : '';
+
+            if ((typeof d.text !== 'string') || !START_KEY.test(d.text) || !startNumber(d.x, 0, W) || !startNumber(d.y, 0, H) || !startNumber(d.size, 8, 1000)
+                || !startColor(d.color) || (family ? ((family !== font.slice(2)) || (known && !known(family))) : !TEXT_FONTS.hasOwnProperty(font))) {
+                return null;
+            }
+
+            return { type: 'text', text: d.text, font: font, size: d.size, weight: (TEXT_WEIGHTS.indexOf(d.weight) >= 0) ? d.weight : 400,
+                italic: d.italic === true, align: (['left', 'center', 'right'].indexOf(d.align) >= 0) ? d.align : 'left', color: d.color.toLowerCase(),
+                lineHeight: startNumber(d.lineHeight, 0.8, 3) ? d.lineHeight : 1.2, spacing: startNumber(d.spacing, -0.2, 1) ? d.spacing : 0,
+                x: d.x, y: d.y, maxW: startNumber(d.maxW, 1, W) ? d.maxW : startRoom(d.align, d.x, W), opacity: startNumber(d.opacity, 0, 1) ? d.opacity : 1 };
+        }
+
+        box = startBox(d, W, H);
+
+        if (!box) {
+            return null;
+        }
+
+        if (d.type === 'slot') {
+            box.type = 'slot';
+            box.radius = startNumber(d.radius, 0, Math.min(d.w, d.h) / 2) ? d.radius : 0;
+
+            return box;
+        }
+
+        if ((START_SHAPES.indexOf(d.type) < 0) || !startColor(d.color)) {
+            return null;
+        }
+
+        l = box;
+        l.type = d.type;
+        l.color = d.color.toLowerCase();
+        l.fill = (['solid', 'soft', 'none'].indexOf(d.fill) >= 0) ? d.fill : 'solid';
+        l.stroke = startNumber(d.stroke, 0, 200) ? d.stroke : 0;
+        l.dash = (['solid', 'dashed', 'dotted'].indexOf(d.dash) >= 0) ? d.dash : 'solid';
+
+        if (l.fill === 'none' && !l.stroke) {
+            return null;
+        }
+
+        if (d.type === 'rect') {
+            l.radius = startNumber(d.radius, 0, Math.min(d.w, d.h) / 2) ? d.radius : 0;
+        } else if (d.type === 'polygon') {
+            l.sides = startNumber(d.sides, 3, 12) ? Math.round(d.sides) : 6;
+        } else if (d.type === 'star') {
+            l.points = startNumber(d.points, 3, 12) ? Math.round(d.points) : 5;
+            l.inner = startNumber(d.inner, 0.1, 0.9) ? d.inner : 0.48;
+        }
+
+        return l;
+    }
+
+    // A design file checked against its index entry: the same id, the
+    // entry's purpose and label, a size of 16-8000 a side, a background
+    // colour or transparent, its layers (bottom first) each well formed;
+    // null when the file is not the design or keeps no layer.
+    function startDesign(data, entry, known) {
+        var W, H, layers = [];
+
+        if (!data || !entry || (data.id !== entry.id) || !startNumber(data.width, 16, 8000) || !startNumber(data.height, 16, 8000)
+            || !Array.isArray(data.layers) || (data.layers.length > START_LAYER_MAX)) {
+            return null;
+        }
+
+        W = Math.round(data.width);
+        H = Math.round(data.height);
+
+        for (var i = 0; i < data.layers.length; i++) {
+            var l = startLayer(data.layers[i], W, H, known);
+
+            if (!l) {
+                return null;
+            }
+
+            layers.push(l);
+        }
+
+        return layers.length ? { id: entry.id, purpose: entry.purpose, label: entry.label, width: W, height: H,
+            background: (data.background === 'transparent') ? 'transparent' : (startColor(data.background) ? data.background.toLowerCase() : '#ffffff'), layers: layers } : null;
+    }
+
+    // The designs a purpose chip shows, in their order.
+    function startPurposeList(designs, purpose) {
+        return (designs || []).filter(function (d) {
+            return !purpose || (purpose === 'all') || (d.purpose === purpose);
+        });
+    }
+
+    // A design's text as a text layer with its words, without its box.
+    function startText(d, words) {
+        var l = textDefaults();
+
+        ['font', 'size', 'weight', 'italic', 'align', 'color', 'lineHeight', 'spacing', 'opacity'].forEach(function (k) {
+            l[k] = d[k];
+        });
+        l.type = 'text';
+        l.text = String(words || '');
+        l.rot = 0;
+
+        return l;
+    }
+
+    // The size a text of width w at `size` takes so it is no wider than
+    // maxW (a longer translation); never under 8 px.
+    function startTextFit(size, w, maxW) {
+        if (!(w > maxW) || !(maxW > 0)) {
+            return size;
+        }
+
+        return Math.max(8, Math.floor(size * maxW / w));
+    }
+
+    // Where a text of width w sits: x is its left edge, middle or right
+    // edge by its align; y its top.
+    function startTextPlace(d, w) {
+        var x = (d.align === 'center') ? d.x - w / 2 : ((d.align === 'right') ? d.x - w : d.x);
+
+        return { x: textRound(x), y: textRound(d.y) };
+    }
+
+    // A "Your picture" box as an svg layer: a light, dashed rectangle with
+    // the words in its middle, marked slot so a picture can fill it.
+    function startSlotLayer(d, label) {
+        var w = d.w, h = d.h, sw = Math.max(2, Math.round(Math.min(w, h) / 120)), fs = Math.max(12, Math.round(Math.min(w, h) / 10));
+        var r = Math.max(0, d.radius || 0), dash = sw * 4;
+
+        return { type: 'svg', kind: 'g', slot: true, name: String(label || ''), vb: { x: 0, y: 0, w: w, h: h },
+            markup: '<g><rect x="' + sw / 2 + '" y="' + sw / 2 + '" width="' + (w - sw) + '" height="' + (h - sw) + '" rx="' + r + '" fill="#e9ecef" stroke="#868e96" stroke-width="' + sw
+                + '" stroke-dasharray="' + dash + ' ' + dash + '"/><text x="' + (w / 2) + '" y="' + (h / 2) + '" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="' + fs
+                + '" fill="#495057">' + svgEscape(label) + '</text></g>',
+            x: d.x, y: d.y, w: w, h: h, rot: d.rot || 0, opacity: (d.opacity === undefined) ? 1 : d.opacity };
+    }
+
+    // The part of a picture (iw × ih) a box (bw × bh) shows when the picture
+    // covers it, centred: sx, sy, sw, sh in the picture's pixels, and the
+    // size it is kept at (w × h, the box's ratio, the longer side at most
+    // `max`, never more pixels than the part has).
+    function startCover(iw, ih, bw, bh, max) {
+        var ratio = bw / bh, sw = iw, sh = iw / ratio, k;
+
+        if (sh > ih) {
+            sh = ih;
+            sw = ih * ratio;
+        }
+
+        k = Math.min(1, (max || START_PICTURE_SIDE) / Math.max(sw, sh));
+
+        return { sx: textRound((iw - sw) / 2), sy: textRound((ih - sh) / 2), sw: textRound(sw), sh: textRound(sh),
+            w: Math.max(1, Math.round(sw * k)), h: Math.max(1, Math.round(sh * k)) };
+    }
+
+    var STARTS = { START_PURPOSES: START_PURPOSES, START_MAX: START_MAX, START_PICTURE_SIDE: START_PICTURE_SIDE, startIndex: startIndex, startDesign: startDesign,
+        startPurposeList: startPurposeList, startText: startText, startTextFit: startTextFit, startTextPlace: startTextPlace, startSlotLayer: startSlotLayer, startCover: startCover };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -13917,7 +14143,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

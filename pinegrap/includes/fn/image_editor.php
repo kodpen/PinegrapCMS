@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -207,6 +207,8 @@ function pg_image_editor_config()
         'fontPairs' => pg_image_editor_font_pairs_url(),
         // The Sticker tool's element sets, read when the panel first opens.
         'elements' => pg_image_editor_elements_url(),
+        // The New image dialog's designs, read when its row first opens.
+        'starts' => pg_image_editor_starts_urls(),
         // The animation encoder's script, started as a worker.
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
@@ -7437,4 +7439,81 @@ function pg_image_editor_strings_elements()
 function pg_image_editor_elements_url()
 {
     return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/elements.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/elements.json');
+}
+
+// -- Start from a design (pg_image_editor_starts.js) --
+
+/**
+ * The New image dialog's "Start from a design": the row, its purpose chips,
+ * the "Your picture" box, each design's name and the words its texts write
+ * on the board (keys named in assets/canvas/designs.json and the files of
+ * assets/canvas/designs/).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_starts()
+{
+    return array(
+        'startRow'                => lang('Start from a design'),
+        'startBlank'              => lang('Blank'),
+        'startLoading'            => lang('Loading designs…'),
+        'startError'              => lang('The designs could not be loaded.'),
+        'startNone'               => lang('No design for this purpose yet.'),
+        'startPurpose_all'        => lang('All'),
+        'startPurpose_post'       => lang('Post'),
+        'startPurpose_story'      => lang('Story'),
+        'startPurpose_banner'     => lang('Banner'),
+        'startPurpose_announcement' => lang('Announcement'),
+        'startPurpose_sale'       => lang('Sale'),
+        'startPurpose_event'      => lang('Event'),
+        'startPurpose_quote'      => lang('Quote'),
+        'startPurpose_invitation' => lang('Invitation'),
+        'startPicture'            => lang('Your picture'),
+        'startPictureChoose'      => lang('Choose a picture'),
+        'startPictureNote'        => lang('A picture from Files fills the box, cut to its shape.'),
+        'startPictureHint'        => lang('Pick a picture for the box "Your picture".'),
+        'startPictureError'       => lang('The picture could not be placed in the box.'),
+        'startDesignSale'         => lang('Weekend sale'),
+        'startDesignEvent'        => lang('Music night'),
+        'startDesignQuote'        => lang('Quote card'),
+        'startDesignStory'        => lang('New arrivals story'),
+        'startDesignBanner'       => lang('Shop banner'),
+        'startDesignInvite'       => lang('Garden party invitation'),
+        'startSaleHead'           => lang('Big sale'),
+        'startSaleOff'            => lang('Up to half off'),
+        'startSaleWhen'           => lang('This weekend only'),
+        'startSaleShop'           => lang('Shop now'),
+        'startEventHead'          => lang('Live music night'),
+        'startEventWhen'          => lang('Friday at eight'),
+        'startEventNote'          => lang('Doors open at seven, free entry'),
+        'startEventBook'          => lang('Book your seat'),
+        'startQuoteLine1'         => lang('Small steps every day'),
+        'startQuoteLine2'         => lang('lead to big changes.'),
+        'startQuoteAuthor'        => lang('Your name'),
+        'startStoryHead'          => lang('New arrivals'),
+        'startStoryLine'          => lang('Fresh picks for the season'),
+        'startStorySwipe'         => lang('Swipe up'),
+        'startBannerHead'         => lang('Welcome to our shop'),
+        'startBannerLine'         => lang('Quality products, friendly service'),
+        'startBannerVisit'        => lang('Visit us'),
+        'startInviteHead'         => lang('You are invited'),
+        'startInviteWhat'         => lang('To our garden party'),
+        'startInviteWhen'         => lang('Saturday afternoon at four'),
+        'startInviteReply'        => lang('Please reply by the end of May'),
+    );
+}
+
+/**
+ * Where "Start from a design" reads its designs: the index, and the folder
+ * of the design files (each <id>.json); the addresses carry the index's time
+ * so changed files are fetched again.
+ *
+ * @return array index, base and v
+ */
+function pg_image_editor_starts_urls()
+{
+    $dir = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/';
+    $v = (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/designs.json');
+
+    return array('index' => $dir . 'designs.json?v=' . $v, 'base' => $dir . 'designs/', 'v' => $v);
 }

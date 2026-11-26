@@ -7,7 +7,7 @@ module: image_editor
 ## Where are the doors?
 - Import's menu "A design file (.pptx)" (`image-editor-design-file.md`): one page picked joins the open canvas.
 - The New image dialog's "Open a design file", under its sizes, only for a canvas made in a folder of Files (save mode new with `save.folderId`, the File Manager's New image) and with `importApi()`. Under the button how the file is made (Canva: Share, Download, PPTX; a Website design has no download); the reading and a refusal are written there. The dialog closes (as Cancel) once the file is read.
-- `Editor.newImageRows` (artboard part): functions on the editor giving a row of the New image dialog under its sizes, or null; they get `close()`. A later row (AC7) is another entry of this list.
+- `Editor.newImageRows` (artboard part): functions on the editor giving a row of the New image dialog under its sizes, or null; they get `close()`. Rows above the sizes are `Editor.newImageHeads` (AC7, `image-editor-starts.md`).
 
 ## What does the window show?
 - `designChoose()` in `pg_image_editor_design.js`: the pages as tiles in the file's order, each drawn small with `layerNode()` (`designThumb()`; a picture still `pptx:` is a grey box, `designThumbDoc()`), its number and a tick. A page with something left out or simplified (`designPartial()`) carries the amber dot and the title "Not everything on this page could be brought in.".
