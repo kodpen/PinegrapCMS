@@ -17,7 +17,7 @@
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: here]
-- architect-hand-over-work.md: Hand-over of the architect session of 2026-11-24 to 26, the work in flight: its open PR, the step to free, the sheet still to draw, how sheets are made, what is watched [decision: here]
+- architect-hand-over-work.md: Hand-over of the architect session of 2026-11-24 to 26, the work in flight: what has landed, who works now, what is left of the sheets, how sheets are made, what is watched
 - architect-hand-over.md: Hand-over note of the architect session of 2026-11-24 to 26, written as the owner moves the architect to another account: what is owed to the owner, what he decided last, what he was asked [decision: here]
 - architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look [decision: here]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact at 300k (2026-11-23) summarises its context in place; what it reads again after a compaction
@@ -158,7 +158,7 @@
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
 - bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
-- claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
+- claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing without a mark in the plan file, marking ready
 - claude-context-reader.md: tools/claude_context.php reads a Claude Code session's used context from its newest transcript; ws_profile.php --context=auto sends it (#11871)
 - coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken [decision: here]
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
@@ -429,7 +429,7 @@
 - designer-use-round-options-panel.md: Use round UR4 (plan designer-use-round): the Options panel's DO2 to DO26 parts used in a browser at 1440, 390 and 240 px, light and dark, by keyboard; the eight faults fixed
 - designer-use-round-prototype-sketch.md: Use round UR3 (PR #11884): the Prototype view's Sketch tool used in a browser as a drawing board; the eight fixes, what was left and what could not be run
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
-- docs-only-pr-checks.md: A pull request whose every changed file is under docs/ runs only the memory check and the branch guards in php-checks.yml; its jobs keep their names and end green
+- docs-only-pr-checks.md: A pull request whose every changed file is under docs/ runs only the memory check and the branch guards in php-checks.yml; its jobs keep their names and end green [decision: decisions-made-workspace-49.md]
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
 - held-file-allowed-2.md: Held files, what the architect allowed from 2026-11-20 on: auth.php, image_editor.php and custom_form.php beside their holders; one call line in a root script's top-level code [decision: here]
@@ -461,6 +461,7 @@
 - plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2 [decision: here]
 - plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step [decision: here]
 - plan-state-tool.md: tools/plan_state.php <plan> [--tasks]: step states from PRs (draft held, open ready, merged done), written as agent channel tasks "<plan> <step>"
+- plan-step-state.md: Where a plan step's state is kept: the PR titled for the plan, never a done mark a worker writes into the plan file; the plan file is the architect's alone; a coordinator writes the channel tasks [decision: decisions-made-workspace-49.md]
 - pr-footer-and-trailers.md: Where the "Generated by Claude Code" footer and commit trailers come from, the settings that turn them off, how to write without it, and why only the merging session removes it.
 - pr-text-at-words.md: An @ word in a PR text, comment, issue or commit message mentions a real GitHub account, because the repository is public: write every one as a code span; what happened on #8454 and how it is undone
 - pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, no session strips it now [decision: here]

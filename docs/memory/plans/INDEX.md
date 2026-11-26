@@ -72,7 +72,6 @@
 - picture-text-fit-rules.md: Plan picture-text-fit, the fit's rules (architect 2026-11-26): a text's room from the picture's edges and the other layers, the order grow, wrap, shrink, what stays of the old rule
 - picture-text-fit-screens.md: Plan picture-text-fit, one language's texts corrected by hand: what a correction keeps, the Languages list's rows and the language view of the Artifact Canvas, described for PF3 and PF4
 - picture-text-fit.md: Plan (owner 2026-11-26, poll 229): a translated picture text grows into the free room, then wraps, then shrinks; one language's texts corrected by hand in the Artifact Canvas; steps PF1 to PF5
-- plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - settings-accounting-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Accounting as folded rows, the flat ERP card cut into six by topic, steps SA1 to SA4
 - settings-crossings-census-leads.md: Crossings census, the leads: every Site Settings card (and other screen) that leads to a Connections page, the page and anchor it opens, its label, same or new tab, when the lead shows
