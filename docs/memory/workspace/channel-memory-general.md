@@ -17,7 +17,7 @@ description: A memory record's project (ws_channel_memory.project) and the gener
 - `workspace.memory.move_general` (`POST /workspace/memory/{id}/general`): same id, project, tags and text, `channel_id` set to 0 (`ws_memory_move_general()`). `ws_memory_move_check()` over the pure `ws_memory_move_fault()`: only an agent channel's record (422 otherwise, and for one already general), moved by a poster of that channel who keeps the general memory (403). The Memory tab's Move to the general memory button is the panel action `ws_memory_move` over the same check (#10425).
 
 ## What does an agent's brief carry of it?
-- In an agent channel, for an asker who keeps it (`ws_memory_brief_general()`), "General memory, shared by the agent channels" comes first in `ws_memory_digest()`, each line `- #id Project: title [tags]`, then the channel's index and decisions, all inside `WS_MEMORY_DIGEST_MAX`. A general line left out adds `workspace.memory.general.list` to the closing count.
+- In an agent channel, for an asker who keeps it (`ws_memory_brief_general()`), "General memory, shared by the agent channels" comes first in `ws_memory_digest()`, each line `- #id Project: title [tags]`, then the channel's index and decisions, all inside `WS_MEMORY_DIGEST_MAX`. Past 40 live records it is told by its projects (`channel-memory-brief-projects.md`). A general line left out adds `workspace.memory.general.list` to the closing count.
 
 ## What does the sweep do with them?
 - `ws_memory_sweep()` deletes a general record only once it expired 30 days ago: it has no channel to lose (`OR (c.id IS NULL AND m.channel_id > 0)`).

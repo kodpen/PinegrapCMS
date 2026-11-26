@@ -11,6 +11,7 @@ description: A channel's memory (ws_channel_memory) and the decision mark by a p
 
 ## What does an agent's brief carry?
 - The index only, never texts (owner 2026-11-08, #8188): `ws_memory_digest()`: "- #id title [tags]" lines, pinned first then the newest, expired left out; in an agent channel after the general index (`channel-memory-general.md`).
+- A memory of more than `WS_MEMORY_DIGEST_LINES` (40) live records is told by its projects: `channel-memory-brief-projects.md`.
 - Then "Decisions in this channel": the newest `WS_MEMORY_BRIEF_DECISIONS` (10) and a count of the older ones; `ws_memory_brief()` reads ten and counts the rest (#8756). An agent channel's are every agent channel's (`agent-channel-decisions.md`).
 - The brief's read-more line names `?limit=<n>` (`agent_queue.php`; `$more` in `ws_ai_briefing()`).
 - All within `WS_MEMORY_DIGEST_MAX`, the closing count too (#11790): a line that does not fit is left out with the lines after it. One closing count ("(N more not shown: …)") holds them and older decisions.
