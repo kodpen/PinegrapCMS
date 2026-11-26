@@ -224,10 +224,12 @@ StyleDesigner.definePart('accessview', function (K) {
 
     // ── Reading the canvas ──────────────────────────────────────────────
 
-    // The editor's own elements in the canvas (issue badges, placeholders):
-    // no node of the page, a class of the editor's.
+    // The editor's own elements in the canvas (issue badges, placeholders,
+    // toolbars): no node of the page, a class of the editor's, and nothing
+    // of the page inside. A shared component's or a system widget's content
+    // is drawn inside the editor's div.sd-shared-inner, which is kept.
     function chrome(el) {
-        return !el.hasAttribute('data-sd-id') && /(^|\s)sd-/.test(el.getAttribute('class') || '');
+        return !el.hasAttribute('data-sd-id') && /(^|\s)sd-/.test(el.getAttribute('class') || '') && !el.querySelector('[data-sd-id]');
     }
 
     function read() {

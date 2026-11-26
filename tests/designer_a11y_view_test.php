@@ -224,3 +224,36 @@ function test_designer_a11y_view_see_as_is_style_only()
 	pg_assert_false((bool) preg_match('/getImageData|toDataURL|drawImage|localStorage|sessionStorage/', $js), 'no picture read, nothing kept');
 	pg_assert_true(strpos($js, "var see = V ? V.see : '';") !== false, 'a new canvas document keeps it until the view goes off');
 }
+
+// A fake canvas element for the part's functions run in Node: a tag, its
+// attributes, its children and its parent.
+function designer_a11y_view_fake_dom()
+{
+	return 'function El(tag, attrs, kids) { this.nodeType = 1; this.tagName = tag.toUpperCase(); this.attrs = attrs || {}; this.children = kids || []; this.parentElement = null;'
+		. ' var self = this; this.children.forEach(function (k) { k.parentElement = self; }); }' . "\n"
+		. 'El.prototype.hasAttribute = function (n) { return Object.prototype.hasOwnProperty.call(this.attrs, n); };' . "\n"
+		. 'El.prototype.getAttribute = function (n) { return this.hasAttribute(n) ? this.attrs[n] : null; };' . "\n"
+		. 'El.prototype.querySelector = function (sel) { var m = /^\[([a-z-]+)\]$/.exec(sel); for (var i = 0; i < this.children.length; i++) { var k = this.children[i];'
+		. ' if (m && k.hasAttribute(m[1])) return k; var d = k.querySelector(sel); if (d) return d; } return null; };' . "\n";
+}
+
+// A shared component's or a system widget's content is drawn inside the
+// editor's div.sd-shared-inner: it is the page's, never the editor's chrome.
+function test_designer_a11y_view_reads_shared_component_content()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('chrome'),
+		designer_a11y_view_fake_dom()
+		. 'var link = new El("a", { "href": "/", "data-sd-id": "n2" });' . "\n"
+		. 'var inner = new El("div", { "class": "sd-shared-inner" }, [new El("nav", { "data-sd-id": "n1" }, [link])]);' . "\n"
+		. 'var tb = new El("div", { "class": "sd-tb" }, [new El("button", {})]);' . "\n"
+		. 'var badge = new El("span", { "class": "sd-issue-badge" });' . "\n"
+		. 'var wrap = new El("div", { "class": "sd-wrap sd-selected", "data-sd-id": "n3" });' . "\n"
+		. 'var page = new El("div", { "class": "card" });' . "\n"
+		. 'console.log(JSON.stringify([chrome(inner), chrome(tb), chrome(badge), chrome(wrap), chrome(page)]));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, true, false, false), $res, 'only the editor\'s own elements that hold nothing of the page are left out');
+}
