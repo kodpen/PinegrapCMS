@@ -5332,6 +5332,10 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-icon-btn-primary:hover { background: color-mix(in srgb, var(--sd-accent-strong) 85%, var(--sd-shadow)); }
 .sd-icon-btn[disabled], .sd-icon-btn.disabled { opacity: .4; pointer-events: none; }
+/* Undo and Redo in the page bar: 28 px icon buttons between two lines
+   (.sd-bar-line), greyed while there is nothing to undo. */
+.sd-history-btn { width: 28px; height: 28px; font-size: .95rem; }
+.sd-bar-line { flex-shrink: 0; width: 1px; height: 20px; margin: 0 4px; background: var(--sd-panel-border); }
 
 /* The classic style's "Also convert the pages that take it from their
    folder" choice (pg_classic_style_folder_pages_field()). It sits outside the
@@ -9502,12 +9506,10 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 }
 
 /* The "Clicks" layer (the part 'clicks', assets/js/style_designer_clicks.js):
-   its toolbar toggle, and its panel over the canvas' right edge, 300 wide,
-   scrolling on its own. The badges and tenth lines are in the canvas
-   document and take their look from _sdClicksCanvasStyle(). */
-.sd-clicks-btn { width: auto; gap: .35rem; padding: 0 .55rem; }
-.sd-clicks-btn.active { background: rgba(var(--sd-accent-rgb), .22); border-color: rgba(var(--sd-accent-rgb), .5); }
-.sd-clicks-btn-txt { font-size: .8rem; }
+   its panel over the canvas' right edge, 300 wide, scrolling on its own. Its
+   switch is the View menu's row "Clicks on this page" (#sd-clicks-btn). The
+   badges and tenth lines are in the canvas document and take their look
+   from _sdClicksCanvasStyle(). */
 .sd-clicks-panel {
     position: absolute; top: 12px; right: 12px; bottom: 12px; z-index: 30;
     display: flex; flex-direction: column; width: 300px; max-width: calc(100% - 24px);
@@ -9525,7 +9527,6 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-clicks-off p { color: var(--sd-text); line-height: 1.45; }
 .sd-clicks-missing li { border-color: var(--sd-panel-border) !important; }
 .sd-clicks-missing li > span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (max-width: 575.98px) { .sd-clicks-btn-txt { display: none; } }
 
 /* My library (style_designer_mylibrary.js): the group at the top of the
    Blocks list, its own group names, its first-use line; the save window's

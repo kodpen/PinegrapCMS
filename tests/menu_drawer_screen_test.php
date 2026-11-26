@@ -73,8 +73,8 @@ function test_designer_toolbar_button_opens_the_main_menu()
 	pg_assert_contains('aria-controls="menu"', $m[0], 'controls the menu');
 	pg_assert_contains("data-label-show=\"' . h(lang('Show menu')) . '\"", $m[0], 'the phone label to show');
 	pg_assert_contains("data-label-hide=\"' . h(lang('Hide menu')) . '\"", $m[0], 'and to hide');
-	pg_assert_contains('bi bi-layout-sidebar pg-mt-shut', $screen, 'shut picture');
-	pg_assert_contains('bi bi-layout-sidebar-inset pg-mt-open', $screen, 'open picture');
+	pg_assert_contains('bi bi-list pg-mt-shut', $screen, 'shut picture');
+	pg_assert_contains('bi bi-x-lg pg-mt-open', $screen, 'open picture');
 	pg_assert_false(strpos($screen, 'left panel') !== false, 'no left panel labels');
 
 	// First in the toolbar, before the page group the component editor hides.

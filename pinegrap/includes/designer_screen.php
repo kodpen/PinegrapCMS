@@ -597,8 +597,8 @@ function pg_designer_screen_render($ctx)
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
                          delete). Middle: the tabs, starting right after, scrolling
-                         in their own strip when there are many. Right: undo / redo /
-                         save. The page name is not here — it is edited on the tab
+                         in their own strip when there are many. Right: who else is
+                         here, undo / redo, the assistant, preview, publish. The page name is not here — it is edited on the tab
                          itself (double-click) or in Page Settings; duplicating a page
                          is on the tab menu (⋮ / right-click), where the page it
                          copies is the one under the cursor. No back button: Ctrl+G,
@@ -610,7 +610,7 @@ function pg_designer_screen_render($ctx)
                              page group so the component editor and read-only
                              mode keep it. Wired by backend.src.js
                              (data-pg-menu-drawer-toggle). -->
-                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle no-popover" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></span><span class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></span></button>
+                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle no-popover" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-list pg-mt-shut" aria-hidden="true"></span><span class="bi bi-x-lg pg-mt-open" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <!-- The menu of the design: its name opens
                                  Settings and, under a divider, Delete (the
@@ -655,9 +655,13 @@ function pg_designer_screen_render($ctx)
                             <!-- The page on screen in an experiment: filled by
                                  _pgExperimentSync(), empty otherwise. -->
                             <a class="badge d-none text-decoration-none" id="sd-experiment-chip" href="#" target="_blank" rel="noopener"></a>
+                            <!-- Undo and Redo between two lines: what is done
+                                 with the page goes right of the first one. -->
+                            <span class="sd-bar-line" aria-hidden="true"></span>
+                            <button type="button" id="sd-main-undo" class="sd-icon-btn sd-history-btn" onclick="StyleDesigner.undo()" title="' . h(lang('Undo')) . ' (Ctrl+Z)" aria-label="' . h(lang('Undo')) . '" disabled><span class="bi bi-arrow-counterclockwise" aria-hidden="true"></span></button>
+                            <button type="button" id="sd-main-redo" class="sd-icon-btn sd-history-btn" onclick="StyleDesigner.redo()" title="' . h(lang('Redo')) . ' (Ctrl+Y)" aria-label="' . h(lang('Redo')) . '" disabled><span class="bi bi-arrow-clockwise" aria-hidden="true"></span></button>
+                            <span class="sd-bar-line" aria-hidden="true"></span>
                             ' . (!empty($sd_ai['enabled']) ? '<button type="button" id="sd-ai-btn" class="sd-icon-btn sd-ai-btn" title="' . h(lang('Ask the assistant')) . '" aria-expanded="false"><span class="bi bi-stars" aria-hidden="true"></span><span class="sd-ai-btn-txt">' . h(lang('Assistant')) . '</span><span class="sd-ai-btn-dot" aria-hidden="true"></span></button>' : '') . '
-                            <button type="button" id="sd-main-undo" class="sd-vb-btn" onclick="StyleDesigner.undo()" title="' . lang('Undo') . ' (Ctrl+Z)" disabled><span class="bi bi-arrow-counterclockwise"></span></button>
-                            <button type="button" id="sd-main-redo" class="sd-vb-btn" onclick="StyleDesigner.redo()" title="' . lang('Redo') . ' (Ctrl+Y)" disabled><span class="bi bi-arrow-clockwise"></span></button>
                             <!-- The Preview menu: the page outside the editor (a new
                                  window, the site as saved, the prototype). Its rows
                                  are drawn by _sdPreviewMenuBuild(). -->
