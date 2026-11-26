@@ -326,11 +326,14 @@ function _pg_library_portable($node, $rows, &$item, &$dropped, $seen, $depth = 0
 }
 
 // The kind of record a settings key points at: page (a page, which is also
-// what a form or a collection is), group (a contact group), folder; '' for
+// what a form or a collection is), group (a contact group), folder,
+// product_group (a catalog's group, its root among them), calendar; '' for
 // any other key.
 function pg_library_ref_kind($key)
 {
     $key = (string)$key;
+    if (strpos($key, 'product_group_id') !== false || strpos($key, 'root_group_id') !== false) return 'product_group';
+    if (strpos($key, 'calendar_id') !== false) return 'calendar';
     if (strpos($key, 'contact_group_id') !== false || $key === 'group_id') return 'group';
     if (strpos($key, 'folder_id') !== false) return 'folder';
     if (strpos($key, 'page_id') !== false || strpos($key, 'form_id') !== false) return 'page';
@@ -473,6 +476,8 @@ function pg_library_item_from_subtree($node, $meta, $design, $site)
         'page'   => isset($site['pages']) ? (array)$site['pages'] : array(),
         'group'  => isset($site['groups']) ? (array)$site['groups'] : array(),
         'folder' => isset($site['folders']) ? (array)$site['folders'] : array(),
+        'product_group' => isset($site['product_groups']) ? (array)$site['product_groups'] : array(),
+        'calendar' => isset($site['calendars']) ? (array)$site['calendars'] : array(),
     );
     $refs = array();
     $collect = function ($kind, $id, $raw) use (&$refs, $names) {
@@ -611,6 +616,8 @@ function pg_library_item_into_design($item, $design, $site)
         'page'   => isset($site['pages']) ? (array)$site['pages'] : array(),
         'group'  => isset($site['groups']) ? (array)$site['groups'] : array(),
         'folder' => isset($site['folders']) ? (array)$site['folders'] : array(),
+        'product_group' => isset($site['product_groups']) ? (array)$site['product_groups'] : array(),
+        'calendar' => isset($site['calendars']) ? (array)$site['calendars'] : array(),
     );
     $resolve = function ($kind, $id) use ($refs, $site_names) {
         $name = isset($refs[$kind][$id]) ? (string)$refs[$kind][$id] : '';
@@ -674,9 +681,17 @@ function pg_library_item_into_design($item, $design, $site)
     }
 
     // A placement of a widget whose settings were cleared carries the mark;
-    // a placement of a component the site has points at it again.
-    _pg_library_each_tree($copy, function (&$n) use ($widget_cleared, $kept_shared) {
+    // a placement of a component the site has points at it again. A row id
+    // of a site written into the item's tree (a file made by hand: an export
+    // writes the item's own keys) is not this site's row: it is cleared and
+    // marked.
+    _pg_library_each_tree($copy, function (&$n) use ($widget_cleared, $kept_shared, &$out) {
         if (!isset($n['type']) || $n['type'] !== 'shared_ref') return;
+        if (isset($n['props']) && is_array($n['props']) && array_key_exists('sharedId', $n['props'])) {
+            unset($n['props']['sharedId'], $n['props']['sharedName']);
+            $n['props']['_libraryUnbound'] = array('shared');
+            $out['cleared'] += 1;
+        }
         $w = isset($n['props']['libraryWidget']) ? (string)$n['props']['libraryWidget'] : '';
         if ($w !== '' && !empty($widget_cleared[$w])) {
             $n['props']['_libraryUnbound'] = $widget_cleared[$w];
@@ -1150,10 +1165,12 @@ function pg_library_site_rows($node)
 // The site's records an item may point at, id => name, by kind.
 function pg_library_site_records()
 {
-    $out = array('pages' => array(), 'groups' => array(), 'folders' => array());
+    $out = array('pages' => array(), 'groups' => array(), 'folders' => array(), 'product_groups' => array(), 'calendars' => array());
     foreach ((array)db_items("SELECT page_id, page_name FROM page") as $r) $out['pages'][(int)$r['page_id']] = (string)$r['page_name'];
     foreach ((array)db_items("SELECT id, name FROM contact_groups") as $r) $out['groups'][(int)$r['id']] = (string)$r['name'];
     foreach ((array)db_items("SELECT folder_id, folder_name FROM folder") as $r) $out['folders'][(int)$r['folder_id']] = (string)$r['folder_name'];
+    foreach ((array)(db_items("SELECT id, name FROM product_groups") ?: array()) as $r) $out['product_groups'][(int)$r['id']] = (string)$r['name'];
+    foreach ((array)(db_items("SELECT id, name FROM calendars") ?: array()) as $r) $out['calendars'][(int)$r['id']] = (string)$r['name'];
     return $out;
 }
 

@@ -342,3 +342,43 @@ function test_library_manage_delete()
 	pg_assert_same(array(), $c['write'], 'a delete leaves the order as it is');
 	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_nothing', array())));
 }
+
+function test_library_hunt_shared_id_of_this_site_cleared()
+{
+	// A file made by hand may place a component by this site's own row id;
+	// the export never writes one (_pg_library_portable()).
+	$item = array('format' => PG_LIBRARY_FORMAT, 'version' => 1, 'name' => 'x',
+		'tree' => array('type' => 'section', 'children' => array(
+			array('type' => 'shared_ref', 'props' => array('sharedId' => 9, 'sharedName' => 'Admin menu'), 'children' => array()),
+		)));
+	$out = pg_library_item_into_design($item, array(), array('shared' => array(9 => 'Admin menu')));
+	$ref = $out['tree']['children'][0];
+	pg_assert_false(isset($ref['props']['sharedId']), 'not left pointing at this site\'s row');
+	pg_assert_same(array('shared'), $ref['props']['_libraryUnbound']);
+	pg_assert_same(1, $out['cleared']);
+}
+
+function test_library_hunt_product_group_and_calendar_refs()
+{
+	pg_assert_same('product_group', pg_library_ref_kind('product_group_id'));
+	pg_assert_same('product_group', pg_library_ref_kind('quick_add_product_group_id'));
+	pg_assert_same('product_group', pg_library_ref_kind('catalog_listing_root_group_id'));
+	pg_assert_same('calendar', pg_library_ref_kind('calendar_ids'));
+	pg_assert_same('group', pg_library_ref_kind('contact_group_id'));
+
+	$item = pg_library_item_from_subtree(
+		array('type' => 'section', 'children' => array(array('type' => 'shared_ref', 'props' => array('sharedId' => 4)))),
+		array('name' => 'Shop band'), array(),
+		array('rows' => array(4 => array('name' => 'Catalog', 'tree' => array('type' => 'div'),
+			'config' => array('regionType' => 'catalog', 'product_group_id' => 3, 'calendar_ids' => array(6, 8)))),
+			'product_groups' => array(3 => 'Shoes'), 'calendars' => array(6 => 'Events', 8 => 'Classes')));
+	pg_assert_same(array(3 => 'Shoes'), $item['refs']['product_group']);
+	pg_assert_same(array(6 => 'Events', 8 => 'Classes'), $item['refs']['calendar']);
+
+	$out = pg_library_item_into_design($item, array(), array('product_groups' => array(3 => 'Hats', 11 => 'Shoes'),
+		'calendars' => array(6 => 'Events')));
+	$cfg = $out['widgets']['w4']['config'];
+	pg_assert_same(11, $cfg['product_group_id'], 'the product group of that name');
+	pg_assert_same(array(6, ''), $cfg['calendar_ids'], 'a calendar the site lacks is cleared, not another one');
+	pg_assert_same(array('calendar'), $out['widgets']['w4']['cleared']);
+}
