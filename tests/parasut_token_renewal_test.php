@@ -167,5 +167,5 @@ function test_parasut_request_wires_the_renewal()
 	pg_assert_contains('parasut_token_in_use($token, ', $after);
 
 	$me = parasut_token_renewal_test_source('parasut_me');
-	pg_assert_contains("_parasut_request('GET', _parasut_base() . '/v4/me?include=companies', null, \$token, true, false);", $me);
+	pg_assert_contains("_parasut_request('GET', _parasut_v4_base() . '/v4/me?include=companies', null, \$token, true, false);", $me);
 }

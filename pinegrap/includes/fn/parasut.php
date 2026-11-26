@@ -302,7 +302,9 @@ function _parasut_request_once($method, $url, $body = null, $token = null, $retr
 }
 
 /**
- * Return the Parasut API base URL (production or sandbox).
+ * The API address of the older way (a client from before the portal): its
+ * OAuth addresses (/oauth/token, /oauth/authorize) and, for a site without a
+ * portal connection, the v4 requests.
  */
 function _parasut_base()
 {
@@ -311,21 +313,56 @@ function _parasut_base()
     // sandbox offered to customers: it does not answer to a merchant's
     // credentials, and because the OAuth call goes through here too, turning the
     // switch on stopped the integration working at all.
-    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : parasut_api_base(parasut_environment());
+    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : parasut_api_base('live');
 }
 
 /**
- * The API address of an environment. Paraşüt's pages name no API address of
- * its own for the test environment (staging): their examples read
- * api.parasut.com for both, so both answer it until a connect with a staging
- * client shows otherwise. Pure.
+ * The API address of an environment: api.parasut.com for live,
+ * api-staging.parasut.com for staging. api.parasut.com refuses a token issued
+ * by id-staging.parasut.com with 401 "Invalid token". Pure.
  *
  * @param string $environment  'live' | 'staging'
  * @return string
  */
 function parasut_api_base($environment)
 {
-    return 'https://api.parasut.com';
+    return ($environment === 'staging') ? 'https://api-staging.parasut.com' : 'https://api.parasut.com';
+}
+
+/**
+ * The environment the v4 requests go to, decided by the token in use: staging
+ * only for the portal connection's token while the site's environment is
+ * staging. The older way's token was issued by the live host, so it stays
+ * there whatever the environment row says. Pure.
+ *
+ * @param string $choice       parasut_token_choice()
+ * @param string $environment  parasut_environment()
+ * @return string  'live' | 'staging'
+ */
+function parasut_api_environment($choice, $environment)
+{
+    return (($choice === 'connection') && ($environment === 'staging')) ? 'staging' : 'live';
+}
+
+/**
+ * The site's API environment now (parasut_api_environment()).
+ *
+ * @return string  'live' | 'staging'
+ */
+function _parasut_api_environment()
+{
+    return parasut_api_environment(parasut_token_choice(parasut_devhub_connection()), parasut_environment());
+}
+
+/**
+ * The API address the v4 requests go to: the staging host for a portal
+ * connection in staging, else the older way's base.
+ *
+ * @return string
+ */
+function _parasut_v4_base()
+{
+    return (_parasut_api_environment() === 'staging') ? parasut_api_base('staging') : _parasut_base();
 }
 
 /**
@@ -333,7 +370,7 @@ function parasut_api_base($environment)
  */
 function _parasut_prefix()
 {
-    return _parasut_base() . '/v4/' . PARASUT_COMPANY_ID;
+    return _parasut_v4_base() . '/v4/' . PARASUT_COMPANY_ID;
 }
 
 /**
@@ -1168,7 +1205,7 @@ function parasut_authorize_url($client_id = null)
  */
 function parasut_me($token)
 {
-    $result = _parasut_request('GET', _parasut_base() . '/v4/me?include=companies', null, $token, true, false);
+    $result = _parasut_request('GET', _parasut_v4_base() . '/v4/me?include=companies', null, $token, true, false);
 
     if (($result['http_code'] !== 200) || empty($result['body']['data'])) {
         return ['success' => false, 'email' => '', 'name' => '', 'companies' => [], 'error' => _parasut_extract_error($result)];
