@@ -42,6 +42,46 @@ function erp_credit_ready()
 }
 
 /**
+ * The name of the lock that keeps two sales to one account from both being
+ * weighed against the same figures: two orders put on the account at
+ * checkout, or two invoices issued at once. GET_LOCK names belong to the
+ * whole database server, so the name carries the database.
+ *
+ * @param int $account_id
+ * @return string
+ */
+function erp_credit_lock_name($account_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+    return 'pg_erp_credit_' . md5($database) . '_' . (int) $account_id;
+}
+
+/**
+ * Takes the account's credit lock (erp_credit_lock_name()), waiting a few
+ * seconds for a sale already being weighed. The connection keeps it until
+ * erp_credit_unlock() or the end of the request.
+ *
+ * @param int $account_id
+ * @return bool  False when it was not got in time
+ */
+function erp_credit_lock($account_id)
+{
+    return ((int) db_value("SELECT GET_LOCK('" . e(erp_credit_lock_name($account_id)) . "', 10)") === 1);
+}
+
+/**
+ * Gives the account's credit lock back.
+ *
+ * @param int $account_id
+ * @return void
+ */
+function erp_credit_unlock($account_id)
+{
+    db_value("SELECT RELEASE_LOCK('" . e(erp_credit_lock_name($account_id)) . "')");
+}
+
+/**
  * What a sale past the limit does: 'warn' or 'block'.
  *
  * @return string
