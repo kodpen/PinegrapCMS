@@ -13154,6 +13154,36 @@
         filesRemember: filesRemember, filesRemembered: filesRemembered, filesIndent: filesIndent
     };
 
+    // ---- Site colours (pg_image_editor_colors.js) ----
+
+    var SITE_COLORS_MAX = 12;
+
+    // The site_colors answer made safe for the swatch row: well-formed
+    // #rrggbb colours, each once, lower case, named (the colour itself when
+    // the answer names none), twelve at most; [] for a refusal or no answer.
+    function siteColors(res) {
+        var out = [], seen = {};
+
+        if (!res || (res.status !== 'success') || !Array.isArray(res.colors)) {
+            return out;
+        }
+
+        res.colors.forEach(function (c) {
+            var hex = (c && (typeof c.color === 'string')) ? c.color.trim().toLowerCase() : '';
+
+            if ((out.length >= SITE_COLORS_MAX) || !/^#[0-9a-f]{6}$/.test(hex) || seen[hex]) {
+                return;
+            }
+
+            seen[hex] = true;
+            out.push({ color: hex, name: ((typeof c.name === 'string') && c.name.trim()) ? c.name.trim().slice(0, 60) : hex });
+        });
+
+        return out;
+    }
+
+    var SITECOLORS = { siteColors: siteColors };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -13171,7 +13201,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
