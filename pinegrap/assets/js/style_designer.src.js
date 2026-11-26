@@ -46322,6 +46322,7 @@ const StyleDesigner = (function () {
             ['registered_date_and_time', _sdT('Registration Date & Time'), 'date'],
             ['avatar_url',               _sdT('Profile photo URL')],
             ['member_id',                _sdT('Membership ID')],
+            ['__member_id_label',        _sdT('Member number label (site setting)')],
             ['member',                   _sdT('Active member (1/0)')],
             ['not_logged_in',            _sdT('Signed-out message')]
         ]},
@@ -51622,7 +51623,8 @@ const StyleDesigner = (function () {
             ['has_recipients', _sdT('There are saved recipients')],
             ['no_recipients',  _sdT('There are no saved recipients')],
             ['is_editing',     _sdT('A recipient is being edited (?id=)')],
-            ['is_adding',      _sdT('A new recipient is being added')]
+            ['is_adding',      _sdT('A new recipient is being added')],
+            ['has_address_type', _sdT('The address type is asked for')]
         ],
         account_security: [
             ['is_signed_in',        _sdT('The visitor is signed in')],

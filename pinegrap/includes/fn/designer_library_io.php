@@ -28,12 +28,21 @@ define('PG_LIBRARY_EXPORT_MAX', 1048576);
 
 // ── The checks (pure) ──────────────────────────────────────────────────
 
+// Character references decoded as a browser decodes them: a numeric one
+// without its closing ";" ("java&#115cript:") counts too, which
+// html_entity_decode() leaves as it is.
+function _pg_library_entity_decode($text)
+{
+    $text = (string)preg_replace('/&#([xX][0-9a-fA-F]+|[0-9]+);?/', '&#$1;', (string)$text);
+    return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
 // An address as a browser reads it: entities decoded, the blanks and
 // control characters it skips taken out, so "java&#115;cript:" or
 // "java\tscript:" is read as it would run.
 function _pg_library_address_flat($url)
 {
-    $u = html_entity_decode((string)$url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $u = _pg_library_entity_decode($url);
     return (string)preg_replace('/[\x00-\x20\x7f]+/', '', $u);
 }
 
@@ -94,6 +103,25 @@ function _pg_library_urls_problem($key, $value)
 }
 
 /**
+ * The start tags of a markup text, read two ways so that neither hides an
+ * attribute: up to the first ">" (an unquoted value holding a quote mark),
+ * and with quoted values kept whole (a quoted value holding ">"). A tag
+ * left open at the end of the text is read too: on the page the markup
+ * after it closes it.
+ */
+function _pg_library_markup_tags($text)
+{
+    $tags = array();
+    if (preg_match_all('/<[a-zA-Z][^>]*(?:>|$)/', $text, $m)) $tags = $m[0];
+    if (preg_match_all('/<[a-zA-Z](?:"[^"]*"|\'[^\']*\'|[^"\'>])*(?:>|$)/', $text, $m)) {
+        foreach ($m[0] as $t) {
+            if (!in_array($t, $tags, true)) $tags[] = $t;
+        }
+    }
+    return $tags;
+}
+
+/**
  * What is wrong with one text of an item, or null: a script, an event
  * attribute, or an address of a kind not allowed. Reads the text as markup
  * when it holds a tag and as a style when it holds url( or expression(;
@@ -108,27 +136,51 @@ function pg_library_text_problem($text, $key = '')
         $p = _pg_library_urls_problem($key, $text);
         if ($p) return $p;
     }
-    $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $decoded = _pg_library_entity_decode($text);
     if (preg_match('/^[\x00-\x20]*(javascript|vbscript|livescript)\s*:/i', $decoded, $m)) {
         return _pg_library_problem('address', strtolower($m[1]) . ':');
     }
     if (strpos($text, '<') !== false) {
         if (preg_match('/<\s*\/?\s*script\b/i', $text)) return _pg_library_problem('script');
-        if (preg_match_all('/<[a-zA-Z][^>]*>/', $text, $tags)) {
-            foreach ($tags[0] as $tag) {
-                if (preg_match('/[\s\/"\'](on[a-zA-Z]+)\s*=/', $tag, $ev)) return _pg_library_problem('event', strtolower($ev[1]));
-                if (preg_match('/[\s\/"\']srcdoc\s*=/i', $tag)) return _pg_library_problem('script');
-                if (!preg_match_all('/[\s\/"\']([a-zA-Z:-]+)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/', $tag, $attrs, PREG_SET_ORDER)) continue;
-                foreach ($attrs as $a) {
-                    if (!pg_library_address_key($a[1])) continue;
-                    $value = (isset($a[5]) && $a[5] !== '') ? $a[5] : ((isset($a[4]) && $a[4] !== '') ? $a[4] : $a[3]);
-                    $p = _pg_library_urls_problem($a[1], $value);
-                    if ($p) return $p;
+        foreach (_pg_library_markup_tags($text) as $tag) {
+            if (preg_match('/[\s\/"\'](on[a-zA-Z]+)\s*=/i', $tag, $ev)) return _pg_library_problem('event', strtolower($ev[1]));
+            if (preg_match('/[\s\/"\']srcdoc\s*=/i', $tag)) return _pg_library_problem('script');
+            if (!preg_match_all('/[\s\/"\']([a-zA-Z:-]+)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/', $tag, $attrs, PREG_SET_ORDER)) continue;
+            foreach ($attrs as $a) {
+                $value = (isset($a[5]) && $a[5] !== '') ? $a[5] : ((isset($a[4]) && $a[4] !== '') ? $a[4] : $a[3]);
+                $name = strtolower($a[1]);
+                if (in_array($name, array('to', 'from', 'by', 'values'), true)) {
+                    // An SVG <set> or <animate> writes these into the
+                    // attribute it names, an href among them.
+                    foreach (explode(';', $value) as $one) {
+                        $p = _pg_library_urls_problem('href', $one);
+                        if ($p) return $p;
+                    }
+                    continue;
                 }
+                if (!pg_library_address_key($name)) continue;
+                $p = _pg_library_urls_problem($name, $value);
+                if ($p) return $p;
             }
         }
     }
     return pg_library_css_problem($decoded);
+}
+
+// A style text with its escapes read as the browser reads them: "\64 " or
+// "\000064" is "d", "\:" is ":". An escaped line break is dropped. Read
+// byte by byte, so a text that is not UTF-8 is still read whole.
+function _pg_library_css_unescape($css)
+{
+    return (string)preg_replace_callback('/\\\\(?:([0-9a-fA-F]{1,6})[ \t\r\n\f]?|(\r\n|[\r\n\f])|(.))/s', function ($m) {
+        if (isset($m[1]) && $m[1] !== '') {
+            $code = hexdec($m[1]);
+            if ($code === 0 || $code > 0x10FFFF || ($code >= 0xD800 && $code <= 0xDFFF)) return "\xEF\xBF\xBD";
+            return html_entity_decode('&#' . $code . ';', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        if (isset($m[2]) && $m[2] !== '') return '';
+        return isset($m[3]) ? $m[3] : '';
+    }, (string)$css);
 }
 
 // What is wrong with a style text, or null: a CSS expression, a binding,
@@ -137,10 +189,13 @@ function pg_library_css_problem($css)
 {
     $css = (string)$css;
     if ($css === '') return null;
-    $flat = preg_replace('/\\\\|\/\*.*?\*\//s', '', $css);
+    $flat = _pg_library_css_unescape((string)preg_replace('/\/\*.*?\*\//s', '', $css));
     if (preg_match('/expression\s*\(|-moz-binding|behavior\s*:|@import/i', $flat)) return _pg_library_problem('script');
-    if (preg_match_all('/url\(\s*(["\']?)([^"\')]*)\1\s*\)/i', $flat, $m)) {
-        foreach ($m[2] as $u) {
+    // A quoted address runs to its own quote, ")" and the other quote mark
+    // included; an unquoted one to the first ")".
+    if (preg_match_all('/url\(\s*(?:"([^"]*)"|\'([^\']*)\'|([^)]*))/i', $flat, $m, PREG_SET_ORDER)) {
+        foreach ($m as $one) {
+            $u = isset($one[3]) && $one[3] !== '' ? $one[3] : (isset($one[2]) && $one[2] !== '' ? $one[2] : $one[1]);
             $scheme = pg_library_address_refused($u);
             if ($scheme !== '') return _pg_library_problem('address', $scheme);
         }
