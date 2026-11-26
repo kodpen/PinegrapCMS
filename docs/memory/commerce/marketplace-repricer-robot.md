@@ -15,7 +15,8 @@ module: marketplace_repricer
 - No floor (no cost and none typed) or no read (rank 0): nothing (`mp_repricer_target()`).
 
 ## What are the day's limits?
-- From the listing's `marketplace_price_log` rows of the last 24 h, Try first rows included: at most 4 changes, and at most 10% from the price before the first (`mp_repricer_day()`, `mp_repricer_limit()`). A move cut short of the floor by the 10% is logged `lost`, not `floor`.
+- From the listing's `marketplace_price_log` rows of the last 24 h, Try first rows included: at most 4 changes, and at most 10% from the price before the first (`mp_repricer_day()`, `mp_repricer_limit()`).
+- The limit only holds a move short: when the rules' price or the floor moved the price outside the day's 10%, a cut goes no deeper than wanted and a raise is never turned into a cut (bug hunt, #PRNUM; before, a Win cut was clamped into the window, under the floor). A move cut short of the floor by the 10% is logged `lost`, not `floor`.
 
 ## How does a price go out?
 - Sending (robot 2) and `push_price` on: the change sets `marketplace_price_state.robot_price` and queues the listing (`mp_matches_send()`); the log row has `sent` 1.

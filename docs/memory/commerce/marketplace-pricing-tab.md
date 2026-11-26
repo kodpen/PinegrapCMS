@@ -14,12 +14,12 @@ module: marketplace_pricing_settings
 - Left at its defaults with no rule (`mp_pricing_settings_is_default()`), the tab keeps no row, or removes the rows it had: the account then sends the site price, as before any rule. Saving the drawer for its name alone creates no pricing row.
 
 ## When are the prices sent again?
-- When a save moves a price: any rule's percent, fixed or rounding, a rule added or removed, or the margin (the floor) (`mp_pricing_settings_changed()`); the robot's switch, step and limit do not. Only for an active account that sends prices.
+- When a save moves a price: any rule's percent, fixed or rounding, a rule added or removed, the margin (the floor), or Try first switched to or from sending (`mp_pricing_settings_changed()`; #PRNUM); the robot's step and limit do not. Only for an active account that sends prices.
 - The request only marks the account in `data/temp/mp_pricing_requeue.json`; the general job (`job.php`, `mp_pricing_requeue_run()`) queues its active listings 500 a statement, five seconds a tick, skipping one a not yet taken row waits for. The drawer says "Prices are sent again in the background."
 - A second change during a pass starts the account over (`mp_pricing_requeue_step()` keeps a newer mark). The marketplace job (`api_sync_job.php`) is not touched.
 
 ## What does a product's row show? (Marketplace Products › Products in this shop)
-- A matched row gains: Channel price (grey while the rules or the site price set it), the floor or "No floor: no cost is known", Own price (empty is by the rules) and Strategy, with a quiet Save (action `shop_pricing`).
+- A matched row gains: Channel price (grey while the rules or the site price set it), the floor or "No floor: no cost is known", Own price (empty is by the rules) and Strategy, with a quiet Save (action `shop_pricing`). It queues the listing when what it sends changes (`mp_pricing_listing_moves()`).
 - Strategies: Fixed everywhere; Win and Grow while winning on Trendyol only (`mp_pricing_strategies()`); a strategy the marketplace lacks is stored as Fixed. RP4's robot reads it; RP2 only stores it.
 - A changed own price queues that product on this account (`mp_matches_send()`).
 
