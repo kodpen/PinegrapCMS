@@ -2117,6 +2117,20 @@ function pg_office_docx_edit_mark(&$state, $paragraph)
     $position = (int) $state['edit']['index'][$path];
     $edit = pg_office_docx_paragraph_edit($paragraph);
 
+    // Why it may not be deleted, and that no paragraph may be added after
+    // it, each only when so (includes/fn/office_docx_paragraphs.php).
+    if (function_exists('pg_office_docx_delete_refusal')) {
+        $keep = pg_office_docx_delete_refusal($paragraph);
+
+        if ($keep !== '') {
+            $state['edit']['keeps'][(string) $position] = $keep;
+        }
+
+        if (!pg_office_docx_add_allowed($paragraph)) {
+            $state['edit']['shut'][(string) $position] = 1;
+        }
+    }
+
     if ($edit['lock'] !== '') {
         return ' data-p="' . $position . '" data-lock="' . h($edit['lock']) . '"';
     }
@@ -2186,7 +2200,7 @@ function pg_office_docx_read($path, $edit = false)
     }
 
     if ($edit && ($refusal === '')) {
-        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array());
+        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array(), 'keeps' => array(), 'shut' => array());
 
         foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
             $state['edit']['index'][$paragraph->getNodePath()] = $position;
@@ -2205,7 +2219,8 @@ function pg_office_docx_read($path, $edit = false)
     if ($edit) {
         $out['edit'] = ($refusal !== '')
             ? array('ok' => false, 'why' => $refusal)
-            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks'], 'kinds' => (object) $state['edit']['kinds']);
+            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks'], 'kinds' => (object) $state['edit']['kinds'],
+                'keeps' => (object) $state['edit']['keeps'], 'shut' => (object) $state['edit']['shut']);
         $out['version'] = $version;
     }
 
@@ -3592,6 +3607,18 @@ function pg_office_view_strings()
         'kind_bullet'       => lang('Bulleted list'),
         'kind_number'       => lang('Numbered list'),
         'kind_other'        => lang('Other style'),
+        'doc_add'           => lang('Add a paragraph after this one'),
+        'doc_delete'        => lang('Delete the paragraph'),
+        'doc_restore'       => lang('Keep the paragraph'),
+        'doc_pick'          => lang('Click a paragraph first.'),
+        'doc_deleted'       => lang('This paragraph is deleted when you save. Press the delete button again to keep it.'),
+        'doc_shut'          => lang('No paragraph can be added after this one here: it is in a content control, a text box, a merged cell or a tracked change.'),
+        'keep_picture'      => lang('This paragraph holds a picture, so it is not deleted here.'),
+        'keep_section'      => lang('This paragraph ends a section of the document, which holds its page layout, so it is not deleted here.'),
+        'keep_cell'         => lang('This is the last paragraph of a table cell, which cannot be left without one, so it is not deleted.'),
+        'keep_last'         => lang('This is the last paragraph of the document, so it is not deleted. Its text can be emptied.'),
+        'keep_bookmark'     => lang('This paragraph holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.'),
+        'keep_locked'       => lang('This paragraph holds more than text, so it is not deleted here.'),
         'doc_editor'        => lang('Text of the paragraph'),
         'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),

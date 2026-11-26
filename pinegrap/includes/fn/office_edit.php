@@ -3107,13 +3107,61 @@ function pg_office_docx_edit_refusal($zip)
 }
 
 /**
+ * The text, format and kind one entry of a save asks for, checked.
+ *
+ * @param array $change an entry of pg_office_docx_save()'s changes
+ * @param bool  $added  whether it adds a paragraph, whose text is '' when not given
+ * @return array|string text, format, kind (each null when not asked); or the refusal's code
+ */
+function pg_office_docx_change_parts($change, $added)
+{
+    $format = null;
+
+    if (isset($change['format'])) {
+        $format = pg_office_docx_format_request($change['format']);
+
+        if ($format === null) {
+            return 'none';
+        }
+    }
+
+    $kind = null;
+
+    if (isset($change['kind'])) {
+        $kind = pg_office_docx_kind_request($change['kind']);
+
+        if ($kind === null) {
+            return 'none';
+        }
+    }
+
+    $text = null;
+
+    if ($added || (($format === null) && ($kind === null)) || isset($change['text'])) {
+        $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
+
+        if ($text === null) {
+            return 'text';
+        }
+
+        if (mb_strlen($text, 'UTF-8') > PG_OFFICE_EDIT_MAX_PARAGRAPH) {
+            return 'long';
+        }
+    }
+
+    return array('text' => $text, 'format' => $format, 'kind' => $kind);
+}
+
+/**
  * Writes changed paragraph texts into a document on disk.
  *
  * @param string $path      the document
  * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text,
  *                          format => stretches to make bold, italic or underlined (pg_office_docx_format_request()),
  *                          kind => normal, heading1 to heading3, bullet or number (pg_office_docx_kind_request())];
- *                          text, format or kind may be left out when another is there
+ *                          text, format or kind may be left out when another is there. [p, delete => true] deletes
+ *                          the paragraph; [after => a paragraph's position, text, format, kind] adds one after it
+ *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3141,47 +3189,41 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
     // text, counted in it: includes/fn/office_docx_format.php), a kind
     // (includes/fn/office_docx_kind.php), or any of them together.
     $wanted = array();
+    $added = array();
 
     foreach ($changes as $change) {
+        // A paragraph added after another, named by the other's position.
+        if (is_array($change) && !isset($change['p']) && isset($change['after'])) {
+            if (!is_scalar($change['after']) || !ctype_digit((string) $change['after'])) {
+                return $fail('none');
+            }
+
+            $item = pg_office_docx_change_parts($change, true);
+
+            if (is_string($item)) {
+                return $fail($item);
+            }
+
+            $added[] = array('after' => (int) $change['after']) + $item;
+            continue;
+        }
+
         if (!is_array($change) || !isset($change['p']) || !is_scalar($change['p']) || !ctype_digit((string) $change['p'])) {
             return $fail('none');
         }
 
-        $format = null;
-
-        if (isset($change['format'])) {
-            $format = pg_office_docx_format_request($change['format']);
-
-            if ($format === null) {
-                return $fail('none');
-            }
+        if (!empty($change['delete'])) {
+            $wanted[(int) $change['p']] = array('text' => null, 'format' => null, 'kind' => null, 'delete' => true);
+            continue;
         }
 
-        $kind = null;
+        $item = pg_office_docx_change_parts($change, false);
 
-        if (isset($change['kind'])) {
-            $kind = pg_office_docx_kind_request($change['kind']);
-
-            if ($kind === null) {
-                return $fail('none');
-            }
+        if (is_string($item)) {
+            return $fail($item);
         }
 
-        $text = null;
-
-        if ((($format === null) && ($kind === null)) || isset($change['text'])) {
-            $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
-
-            if ($text === null) {
-                return $fail('text');
-            }
-
-            if (mb_strlen($text, 'UTF-8') > PG_OFFICE_EDIT_MAX_PARAGRAPH) {
-                return $fail('long');
-            }
-        }
-
-        $wanted[(int) $change['p']] = array('text' => $text, 'format' => $format, 'kind' => $kind);
+        $wanted[(int) $change['p']] = $item + array('delete' => false);
     }
 
     $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
@@ -3196,8 +3238,8 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
         return $fail('busy');
     }
 
-    $result = pg_office_save_package($path, (string) $version, $directory, $fail, function ($zip, $spool) use ($wanted, $fail) {
-        return pg_office_docx_save_parts($zip, $wanted, $fail, $spool);
+    $result = pg_office_save_package($path, (string) $version, $directory, $fail, function ($zip, $spool) use ($wanted, $added, $fail) {
+        return pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added);
     });
 
     pg_office_edit_unlock($lock);
@@ -3210,12 +3252,14 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  * in, and writes it to a file.
  *
  * @param ZipArchive $zip
- * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null, kind => a kind or null]
+ * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null, kind => a kind or null,
+ *                           delete => true to delete it]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
+ * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind]
  * @return array ok, parts (part name => file), changed; or a refusal
  */
-function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
+function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array())
 {
     $refusal = pg_office_docx_edit_refusal($zip);
 
@@ -3252,6 +3296,11 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
             return $fail('missing', (string) ($position + 1));
         }
 
+        // A paragraph to delete is checked when it is deleted, below.
+        if (!empty($change['delete'])) {
+            continue;
+        }
+
         $edit = pg_office_docx_paragraph_edit($paragraphs[$position]);
 
         if ($edit['lock'] !== '') {
@@ -3275,7 +3324,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
         $budget -= ($cost <= $budget) ? $cost : 0;
 
         pg_office_docx_paragraph_write($paragraphs[$position], $edit, $text, $limit);
-        $changed[$position] = true;
+        $changed[spl_object_hash($paragraphs[$position])] = true;
     }
 
     // Formats go on the texts as they now stand.
@@ -3290,31 +3339,71 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
             return $fail($code, (string) ($position + 1));
         }
 
-        $changed[$position] = true;
+        $changed[spl_object_hash($paragraphs[$position])] = true;
     }
 
-    // Kinds, in the order the paragraphs read, so a list the one before
-    // was just made into is the one a paragraph joins.
-    $parts = array();
+    // Paragraphs added, with their own text, format and kind; then those
+    // deleted, each refused when it may not go
+    // (includes/fn/office_docx_paragraphs.php).
     $kinds = array();
+    $deletes = array();
 
     foreach ($wanted as $position => $change) {
-        if ($change['kind'] !== null) {
-            $kinds[$position] = $change['kind'];
+        if (!empty($change['delete'])) {
+            $deletes[] = $position;
+        } elseif ($change['kind'] !== null) {
+            $kinds[] = array($paragraphs[$position], $change['kind']);
         }
     }
 
+    if (!empty($added)) {
+        $result = pg_office_docx_paragraphs_add($paragraphs, $added, $kinds);
+
+        if (!$result['ok']) {
+            return $fail($result['code'], $result['paragraph']);
+        }
+
+        foreach ($result['added'] as $index => $paragraph) {
+            $changed[spl_object_hash($paragraph)] = true;
+        }
+    }
+
+    if (!empty($deletes)) {
+        $result = pg_office_docx_paragraphs_delete($paragraphs, $deletes);
+
+        if (!$result['ok']) {
+            return $fail($result['code'], $result['paragraph']);
+        }
+
+        foreach ($deletes as $position) {
+            $changed[spl_object_hash($paragraphs[$position])] = true;
+        }
+    }
+
+    // Kinds, in the order the paragraphs now read, so a list the one
+    // before was just made into is the one a paragraph joins.
+    $parts = array();
+
     if (!empty($kinds)) {
-        ksort($kinds);
+        $order = new SplObjectStorage();
+
+        foreach (pg_office_docx_paragraphs($document) as $index => $paragraph) {
+            $order[$paragraph] = $index;
+        }
+
+        usort($kinds, function ($a, $b) use ($order) {
+            return $order[$a[0]] - $order[$b[0]];
+        });
+
         $context = pg_office_docx_kind_context($zip, $document);
 
         if (!is_array($context)) {
             return $fail($context);
         }
 
-        foreach ($kinds as $position => $kind) {
-            if (pg_office_docx_paragraph_kind($context, $paragraphs[$position], $kind)) {
-                $changed[$position] = true;
+        foreach ($kinds as $index => $item) {
+            if (pg_office_docx_paragraph_kind($context, $item[0], $item[1])) {
+                $changed[spl_object_hash($item[0])] = true;
             }
         }
 
@@ -3385,6 +3474,18 @@ function pg_office_docx_edit_message($code, $paragraph = '')
             return lang('The styles or the list numbering of this document cannot be changed here, so its paragraph styles stay as they are.');
         case 'format_range':
             return lang(array('string' => 'The text to format is not in paragraph {var:1} any more. Open the file again.', 'vars' => array($paragraph)));
+        case 'delete_picture':
+            return lang(array('string' => 'Paragraph {var:1} holds a picture, so it is not deleted here.', 'vars' => array($paragraph)));
+        case 'delete_section':
+            return lang(array('string' => 'Paragraph {var:1} ends a section of the document, which holds its page layout, so it is not deleted here.', 'vars' => array($paragraph)));
+        case 'delete_cell':
+            return lang(array('string' => 'Paragraph {var:1} is the last paragraph of a table cell, which cannot be left without one, so it is not deleted.', 'vars' => array($paragraph)));
+        case 'delete_last':
+            return lang(array('string' => 'Paragraph {var:1} is the last paragraph of the document, so it is not deleted. Its text can be emptied.', 'vars' => array($paragraph)));
+        case 'delete_bookmark':
+            return lang(array('string' => 'Paragraph {var:1} holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.', 'vars' => array($paragraph)));
+        case 'add_locked':
+            return lang(array('string' => 'No paragraph can be added after paragraph {var:1} here: it is in a content control, a text box, a merged cell or a tracked change.', 'vars' => array($paragraph)));
         case 'unusual':
             return lang('This document cannot be changed here.');
     }

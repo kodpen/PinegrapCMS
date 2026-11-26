@@ -3011,6 +3011,17 @@
         var wantKinds = {};
         var kindChoice = null;
 
+        // By position, why a paragraph may not be deleted (picture, section,
+        // cell, last, bookmark, locked) and those no paragraph may be added
+        // after; the paragraphs to delete; how many were added. An added
+        // paragraph is named n1, n2... and remembers the paragraph of the
+        // file it follows (data-after), whose kind it takes.
+        var keeps = (edit && edit.ok && edit.keeps) ? edit.keeps : {};
+        var shut = (edit && edit.ok && edit.shut) ? edit.shut : {};
+        var deletes = {};
+        var added = 0;
+        var blockControls = null;
+
         // By position: the text typed, and the server's drawing of a
         // paragraph opened, to put back when its change is undone.
         var changes = {};
@@ -3127,6 +3138,10 @@
             });
         }
 
+        function isNew(position) {
+            return String(position).charAt(0) === 'n';
+        }
+
         // The paragraphs changed: a new text, a format, a kind, or more.
         function positionsNow() {
             var list = Object.keys(changesNow());
@@ -3146,8 +3161,13 @@
             return list;
         }
 
+        // Paragraphs of the file changed, deleted, and added.
         function count() {
-            return positionsNow().length;
+            var total = positionsNow().filter(function (position) {
+                return !isNew(position) && !own(deletes, position);
+            }).length;
+
+            return total + Object.keys(deletes).length + doc.querySelectorAll('.office-added').length;
         }
 
         function drawStatus() {
@@ -3266,7 +3286,134 @@
             var node = shown.editor ? shown.editor.node : shown.node;
             var position = node ? node.getAttribute('data-p') : null;
 
-            return (position !== null && own(kinds, position) && !node.classList.contains('office-locked')) ? position : null;
+            return (position !== null && own(kinds, position) && !own(deletes, position) && !node.classList.contains('office-locked')) ? position : null;
+        }
+
+        // The paragraph Add and Delete act on: the one open or picked.
+        function blockNode() {
+            return shown.editor ? shown.editor.node : shown.node;
+        }
+
+        // A new, empty paragraph after the picked one, of the same kind (a
+        // list item continues its list), opened to type in. The server
+        // writes it with the paragraph properties of the file's paragraph
+        // it follows.
+        function addParagraph() {
+            var node = blockNode();
+
+            if (!node) {
+                shown.note = strings.doc_pick || '';
+                drawStatus();
+                return;
+            }
+
+            var position = node.getAttribute('data-p');
+
+            if (own(shut, position)) {
+                shown.note = strings.doc_shut || '';
+                drawStatus();
+                return;
+            }
+
+            closeEditor(true);
+
+            var after = isNew(position) ? node.getAttribute('data-after') : position;
+            var tag = /^(P|H[1-6]|LI)$/.test(node.tagName) ? node.tagName.toLowerCase() : 'p';
+            var key = 'n' + (++added);
+            var fresh = el(tag, (tag === 'li' ? node.className.replace(/\boffice-\S+/g, function (name) {
+                return /^office-lvl-/.test(name) ? name : '';
+            }) + ' ' : '') + 'office-para office-added');
+            var want = own(wantKinds, position) ? wantKinds[position] : kinds[position];
+
+            fresh.setAttribute('data-p', key);
+            fresh.setAttribute('data-after', after);
+            fresh.tabIndex = -1;
+            texts[key] = '';
+            marks[key] = [];
+            drawn[key] = '';
+            kinds[key] = own(kinds, after) ? kinds[after] : 'other';
+
+            if (want && want !== kinds[key]) {
+                wantKinds[key] = want;
+            }
+
+            node.parentNode.insertBefore(fresh, node.nextSibling);
+            nodes.splice(nodes.indexOf(node) + 1, 0, fresh);
+            redraw(fresh);
+            notify();
+            openEditor(fresh, null);
+        }
+
+        // Why the picked paragraph of the file may not be deleted, '' when
+        // it may: a cell's or the document's last paragraph may go once a
+        // paragraph is added after it.
+        function keepReason(node) {
+            var position = node.getAttribute('data-p');
+            var keep = own(keeps, position) ? keeps[position] : '';
+            var next = node.nextElementSibling;
+
+            if ((keep === 'cell' || keep === 'last') && next && next.classList.contains('office-added')) {
+                keep = '';
+            }
+
+            return keep;
+        }
+
+        // Deletes the picked paragraph, or keeps it again when it was to be
+        // deleted; an added one simply goes.
+        function deleteParagraph() {
+            var node = blockNode();
+
+            if (!node) {
+                shown.note = strings.doc_pick || '';
+                drawStatus();
+                return;
+            }
+
+            var position = node.getAttribute('data-p');
+
+            if (isNew(position)) {
+                closeEditor(false);
+
+                var next = beside(node, 1) || beside(node, -1);
+
+                nodes.splice(nodes.indexOf(node), 1);
+                node.parentNode.removeChild(node);
+                [changes, looks, wantKinds, texts, marks, kinds, drawn].forEach(function (map) {
+                    delete map[position];
+                });
+                shown.node = null;
+                shown.last = null;
+                notify();
+
+                if (next) {
+                    select(next);
+                } else {
+                    drawBar();
+                }
+                return;
+            }
+
+            if (own(deletes, position)) {
+                delete deletes[position];
+                shown.note = '';
+            } else {
+                var keep = keepReason(node);
+
+                if (keep) {
+                    shown.note = strings['keep_' + keep] || strings.keep_locked || '';
+                    drawStatus();
+                    return;
+                }
+
+                closeEditor(true);
+                deletes[position] = true;
+                shown.note = strings.doc_deleted || '';
+            }
+
+            redraw(node);
+            drawBar();
+            notify();
         }
 
         // Asks for a kind for the picked paragraph; its file's kind again
@@ -3309,6 +3456,20 @@
                 kindChoice.other.hidden = kind !== 'other';
                 kindChoice.select.disabled = position === null;
                 kindChoice.select.value = kind === '' ? 'normal' : kind;
+            }
+
+            if (blockControls) {
+                var block = blockNode();
+                var at = block ? block.getAttribute('data-p') : null;
+                var gone = at !== null && own(deletes, at);
+                var label = gone ? strings.doc_restore : strings.doc_delete;
+
+                blockControls.add.disabled = !block || own(shut, at);
+                blockControls.remove.disabled = !block;
+                blockControls.remove.setAttribute('aria-pressed', gone ? 'true' : 'false');
+                blockControls.remove.classList.toggle('is-active', gone);
+                blockControls.remove.setAttribute('aria-label', label || '');
+                blockControls.remove.title = label || '';
             }
 
             var range = selectedText();
@@ -3357,7 +3518,7 @@
 
             // Why a picked paragraph stays as it is, for screens without a
             // pointer to show its title.
-            shown.note = node.classList.contains('office-locked') ? (node.title || '') : '';
+            shown.note = own(deletes, node.getAttribute('data-p')) ? (strings.doc_deleted || '') : (node.classList.contains('office-locked') ? (node.title || '') : '');
             drawStatus();
             drawBar();
         }
@@ -3390,7 +3551,9 @@
                 node.removeAttribute('data-kind');
             }
 
-            node.classList.toggle('office-edited', own(changes, position) || shaped || own(wantKinds, position));
+            node.classList.toggle('office-edited', own(changes, position) || shaped || own(wantKinds, position) || isNew(position));
+            node.classList.toggle('office-deleted', own(deletes, position));
+            node.setAttribute('aria-disabled', own(deletes, position) ? 'true' : 'false');
         }
 
         // Remembers a paragraph's text as a change, unless it is the file's
@@ -3446,7 +3609,7 @@
         }
 
         function openEditor(node, span) {
-            if (!node || node.classList.contains('office-locked') || (shown.editor && shown.editor.node === node)) {
+            if (!node || node.classList.contains('office-locked') || own(deletes, node.getAttribute('data-p')) || (shown.editor && shown.editor.node === node)) {
                 return;
             }
 
@@ -3682,32 +3845,56 @@
             // The picked paragraph's kind, when the server sent the kinds.
             if (Object.keys(kinds).length) {
                 var field = el('span', 'pg-input pg-input-sm office-kind');
-                var select = el('select');
+                var choice = el('select');
                 var other = el('option', '', strings.kind_other || '');
 
-                select.setAttribute('aria-label', strings.doc_kind || '');
-                select.title = strings.doc_kind || '';
+                choice.setAttribute('aria-label', strings.doc_kind || '');
+                choice.title = strings.doc_kind || '';
 
                 DOC_KINDS.forEach(function (kind) {
                     var option = el('option', '', strings['kind_' + kind] || kind);
 
                     option.value = kind;
-                    select.appendChild(option);
+                    choice.appendChild(option);
                 });
 
                 other.value = 'other';
                 other.disabled = true;
                 other.hidden = true;
-                select.appendChild(other);
+                choice.appendChild(other);
 
-                select.addEventListener('change', function () {
-                    applyKind(select.value);
+                choice.addEventListener('change', function () {
+                    applyKind(choice.value);
                 });
 
-                field.appendChild(select);
+                field.appendChild(choice);
                 bar.appendChild(field);
-                kindChoice = { select: select, other: other };
+                kindChoice = { select: choice, other: other };
             }
+
+            // Add a paragraph after the picked one; delete it (pressed again,
+            // keep it).
+            blockControls = {};
+
+            [['add', 'bi-plus-lg', strings.doc_add, addParagraph], ['remove', 'bi-trash3', strings.doc_delete, deleteParagraph]].forEach(function (item) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi ' + item[1]);
+
+                button.type = 'button';
+                button.setAttribute('aria-label', item[2] || '');
+                button.title = item[2] || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the focus in the paragraph's box.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', item[3]);
+
+                blockControls[item[0]] = button;
+                bar.appendChild(button);
+            });
 
             container.insertBefore(bar, doc);
         }
@@ -3723,12 +3910,37 @@
             edits: function () {
                 var list = changesNow();
 
-                return positionsNow().map(Number).sort(function (a, b) {
+                // Paragraphs of the file changed, then those deleted, then
+                // those added, in the order they read after the same one.
+                var items = positionsNow().filter(function (position) {
+                    return !isNew(position) && !own(deletes, position);
+                }).map(Number).sort(function (a, b) {
                     return a - b;
                 }).map(function (position) {
-                    var key = String(position);
-                    var item = { p: position };
+                    return entry(String(position), { p: position });
+                });
 
+                Object.keys(deletes).map(Number).sort(function (a, b) {
+                    return a - b;
+                }).forEach(function (position) {
+                    items.push({ p: position, delete: true });
+                });
+
+                Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                    var key = node.getAttribute('data-p');
+                    var item = entry(key, { after: Number(node.getAttribute('data-after')) });
+
+                    if (!own(item, 'text')) {
+                        item.text = textNow(key);
+                    }
+
+                    items.push(item);
+                });
+
+                return items;
+
+                // A paragraph's new text, kind and format beside its name.
+                function entry(key, item) {
                     if (own(list, key)) {
                         item.text = list[key];
                     }
@@ -3751,16 +3963,34 @@
                     }
 
                     return item;
-                });
+                }
             },
             reset: function () {
                 closeEditor(false);
 
-                var positions = Object.keys(changes).concat(Object.keys(looks), Object.keys(wantKinds));
+                // Added paragraphs go, deleted ones come back.
+                Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                    var key = node.getAttribute('data-p');
+
+                    nodes.splice(nodes.indexOf(node), 1);
+                    node.parentNode.removeChild(node);
+                    [texts, marks, kinds, drawn].forEach(function (map) {
+                        delete map[key];
+                    });
+
+                    if (shown.node === node) {
+                        shown.node = null;
+                    }
+                });
+
+                var positions = Object.keys(changes).concat(Object.keys(looks), Object.keys(wantKinds), Object.keys(deletes)).filter(function (position) {
+                    return !isNew(position);
+                });
 
                 changes = {};
                 looks = {};
                 wantKinds = {};
+                deletes = {};
                 shown.last = null;
 
                 positions.forEach(function (position) {
@@ -3771,6 +4001,7 @@
                     }
                 });
 
+                drawBar();
                 notify();
             }
         };
