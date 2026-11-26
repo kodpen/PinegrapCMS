@@ -2125,6 +2125,7 @@
     "A number": "Bir sayı",
     "A number (negative for a group) or @channelname. The bot has to be a member of the chat.": "Bir sayı (grup için negatif) ya da @kanaladi. Bot sohbetin üyesi olmalıdır.",
     "A number can be at most {var:1}.": "Sayı en fazla {var:1} olabilir.",
+    "A number from {var:1} to {var:2}.": "{var:1} ile {var:2} arasında bir sayı.",
     "A number is needed.": "Bir sayı gerekiyor.",
     "A number of days.": "Gün sayısı.",
     "A number of items in the cart, whatever they are, ships free.": "Ne olduğuna bakılmadan sepetteki ürün sayısı kargoyu bedava yapar.",
