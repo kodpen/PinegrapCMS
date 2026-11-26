@@ -723,68 +723,192 @@ button.sdh-page:hover {
 
 /* ── The New design window ─────────────────────────────────────────────── */
 
-/* Wide, for the template start's gallery beside the list of starts. */
+/* A window in the middle of the screen, at most 1120 x 720 px and 24 px
+   from each edge below that, one height whatever the start. */
 #sdStartModal.sd-ns-dialog {
-  --bs-dialog-width: min(96vw, 1600px);
+  --bs-dialog-width: 1120px;
+  --bs-dialog-margin: 24px;
 }
 
-/* One height for every start, so the window does not jump up and down as
-   the starts are walked; a longer pane scrolls in the body. */
 @media (min-width: 768px) {
   #sdStartModal.sd-ns-dialog {
-    height: min(52rem, calc(100dvh - 2 * var(--bs-dialog-margin, 1.75rem)));
+    height: min(720px, calc(100dvh - 48px));
   }
 }
 
-/* The starts on the left (the settings rail's rows), the chosen start's
-   pane on the right; the list stays in view while a long pane scrolls. */
+/* The rail (256 px, its own surface) beside the chosen start's pane; each
+   scrolls on its own, the window's head and foot stay. */
 .sd-ns {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
+  grid-template-columns: 256px minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+
+.dialog.dialog-scrollable[open] .dialog-body.sd-ns {
+  overflow: hidden;
 }
 
 .sd-ns-list {
-  position: sticky;
-  top: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pg-border-color);
+  background: var(--pg-bg-1);
 }
 
+.sd-ns-panes {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 26px 24px 28px;
+}
+
+/* A group's grey label over its rows. */
+.sd-ns-group {
+  margin: 16px 10px 6px;
+}
+
+.sd-ns-group:first-child {
+  margin-top: 2px;
+}
+
+/* A row: one icon tile, the name and one line that never wraps. */
 .sd-ns-item {
-  align-items: flex-start;
+  gap: 11px;
+  padding: 7px 10px;
+  border-radius: 11px;
+}
+
+.sd-ns-tile {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.pg-sm-link.is-active .sd-ns-tile,
+.sd-ns-head-tile {
+  --pg-tone: var(--pg-accent);
 }
 
 .sd-ns-item[aria-disabled="true"] {
   cursor: default;
-  opacity: .6;
+  opacity: .45;
 }
 
-/* A small drawing before the words, from the home's start cards. */
-.sd-ns-item .sdh-ill {
-  flex: 0 0 72px;
-  width: 72px;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 6px;
+.sd-ns-item[aria-disabled="true"]:hover {
+  background: none;
 }
 
 .sd-ns-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   min-width: 0;
 }
 
-.sd-ns-title .bi {
-  margin-right: .375rem;
+.sd-ns-title {
+  color: var(--pg-fg-body);
+  font-weight: 600;
 }
 
-/* The pane's title and line, as a settings pane's head, with the room of
-   the Design examples screen before the start's form. */
+.pg-sm-link .sd-ns-line {
+  overflow: hidden;
+  overflow-wrap: normal;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The pane's head: the start's icon as a 44 px accent tile, the act and
+   one sentence of what happens next. */
 .sd-ns-head {
-  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.sd-ns-head-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  font-size: 20px;
+}
+
+.sd-ns-head .pg-title-section {
+  margin: 0;
+}
+
+.sd-ns-head .pg-sm-desc {
+  max-width: 560px;
+  margin: 3px 0 0;
+}
+
+/* "Built on": two choice cards, a line and three ticks each, at most
+   720 px wide; the lock line once under them, grey. */
+.sd-ns-built {
+  max-width: 720px;
+}
+
+.sd-ns-fw {
+  cursor: pointer;
+}
+
+.sd-ns-fw .pg-start-head .pg-pill {
+  margin-left: 0;
+}
+
+.sd-ns-ticks {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 11px 0 0;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  list-style: none;
+}
+
+.sd-ns-ticks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sd-ns-ticks .bi {
+  color: var(--pg-fg-3);
+}
+
+.sd-ns-fw:has(:checked) .sd-ns-ticks .bi {
+  color: var(--pg-accent);
+}
+
+.sd-ns-lock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+}
+
+/* Template: a card is chosen by a press and wears the chosen ring. */
+.sd-tpl-card {
+  cursor: pointer;
+}
+
+.sd-tpl-card.is-chosen {
+  border-color: var(--pg-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pg-accent) 18%, transparent);
+}
+
+.sd-tpl-card:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
 }
 
 /* The pane is a Tab stop after the list (the tab pattern): it shows it. */
@@ -1245,18 +1369,24 @@ button.sdh-page:hover {
   }
 }
 
-/* Phones: the list over the pane, words only. */
+/* Phones: the list over the pane, the body scrolling as one. */
 @media (max-width: 767.98px) {
   .sd-ns {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sd-ns-list {
-    position: static;
+  .dialog.dialog-scrollable[open] .dialog-body.sd-ns {
+    overflow-y: auto;
   }
 
-  .sd-ns-item .sdh-ill {
-    display: none;
+  .sd-ns-list,
+  .sd-ns-panes {
+    overflow: visible;
+  }
+
+  .sd-ns-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--pg-border-color);
   }
 }
 
