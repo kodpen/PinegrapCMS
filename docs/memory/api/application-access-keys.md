@@ -23,5 +23,5 @@ description: Application Access (api_settings.php): rows made and secrets issued
 - A row that still exists (older data, or a disabled older app switched back on) is shown as "Not in use" in the list, its sub-line and a drawer warning (`api_app_oauth_served_id()`, `api_app_oauth_unused()`, `includes/api/app_access.php`). PR #4188, issue #4021.
 
 ## How does the Logs tab pick its rows?
-- One `UNION ALL` query of bounded subqueries per application (`api_app_log_sql()`): its last 15 requests and last 15 errors, read on `idx_app_time (app_id, timestamp)`. Never a site-wide window: a busy app emptied the others' lists. "Errors only" shows the errors list. Today's rows show the time, older ones the date too (`api_app_log_time_label()`). PR #4188, issue #4023.
+- One `UNION ALL` query of bounded subqueries per application (`api_app_log_sql()`): its last 15 requests and last 15 errors, read on `idx_app_time (app_id, timestamp)`. Never a site-wide window: a busy app emptied the others' lists. "Errors only" shows the errors list. Today's rows show the time, older ones the date too (`api_app_log_time_label()`); the day is told in the zone the time is printed in, the person's own or the site's (#11826). PR #4188, issue #4023.
 - Tests: tests/api_app_access_test.php.

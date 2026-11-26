@@ -6,7 +6,7 @@ description: Allowed browser origins card on Application Access (api_settings.ph
 ## Where is the list kept and edited?
 - One `config_text` row, `api_cors_origins` (`api_cors_setting_name()`), one origin per line; no column. Read by `api_cors_origins()`, which parses it again so a hand-edited row cannot widen it.
 - Edited in the "Allowed browser origins" card at the foot of Application Access's left column, drawn and saved only for roles 0 and 1 (administrator, Designer); a Manager neither sees it nor can post `api_action=cors_origins`.
-- A save with any entry that is not an origin is refused whole, naming the entries; an unchanged list writes nothing; a change writes a Site Log line.
+- A save with any entry that is not an origin is refused whole, naming the entries, and the box shows the list as typed (session `api_cors_typed`, #11826); an unchanged list writes nothing; a change writes a Site Log line.
 
 ## What is an origin here?
 - `https://` and a host (letters, digits, hyphens, dots, or a bracketed IPv6), an optional port; kept lower case, `:443` dropped (`api_cors_origin_normalize()`).
