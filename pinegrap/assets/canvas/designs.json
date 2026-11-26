@@ -1,0 +1,10 @@
+{
+ "designs": [
+  {"id": "sale-square", "purpose": "sale", "label": "startDesignSale"},
+  {"id": "event-portrait", "purpose": "event", "label": "startDesignEvent"},
+  {"id": "quote-share", "purpose": "quote", "label": "startDesignQuote"},
+  {"id": "story-arrivals", "purpose": "story", "label": "startDesignStory"},
+  {"id": "banner-welcome", "purpose": "banner", "label": "startDesignBanner"},
+  {"id": "invitation-portrait", "purpose": "invitation", "label": "startDesignInvite"}
+ ]
+}

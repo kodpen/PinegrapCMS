@@ -1,0 +1,13 @@
+{
+ "id": "banner-welcome",
+ "width": 1920,
+ "height": 600,
+ "background": "#e7f5ff",
+ "layers": [
+  {"type": "slot", "x": 1180, "y": 0, "w": 740, "h": 600},
+  {"type": "text", "text": "startBannerHead", "font": "g:DM Serif Display", "size": 96, "weight": 400, "color": "#1c3d5a", "align": "left", "x": 100, "y": 150, "maxW": 1020},
+  {"type": "text", "text": "startBannerLine", "font": "g:DM Sans", "size": 42, "weight": 400, "color": "#1c7ed6", "align": "left", "x": 100, "y": 290, "maxW": 1020},
+  {"type": "rect", "x": 100, "y": 400, "w": 320, "h": 90, "color": "#1c7ed6", "radius": 45},
+  {"type": "text", "text": "startBannerVisit", "font": "g:DM Sans", "size": 36, "weight": 700, "color": "#ffffff", "align": "center", "x": 260, "y": 422, "maxW": 280}
+ ]
+}

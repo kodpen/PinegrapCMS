@@ -573,6 +573,13 @@
     // gives an element or null; close() closes the dialog as Cancel does.
     Editor.newImageRows = [];
 
+    // Rows of the New image dialog above its sizes: fn(api) on the editor
+    // gives an element or null. api.close() closes the dialog as Cancel
+    // does; api.choose(make) picks a ready document instead of a blank
+    // board (make() gives { artboard, layers }), null goes back to blank.
+    // While one is picked the sizes and backgrounds are hidden.
+    Editor.newImageHeads = [];
+
     // "Open a design file": a new canvas from a folder of Files (save mode
     // new) opens a .pptx's pages as canvases or scenes. How the file is made
     // and the reading or its refusal are written under the button; the
@@ -958,7 +965,7 @@
     // stay in it: Tab goes round, Escape cancels, Enter in a size creates.
     Editor.prototype.openNewImage = function () {
         var self = this, a = this.doc.artboard;
-        var s = { preset: M.boardPreset(a.width, a.height), w: a.width, h: a.height, bg: a.background };
+        var s = { preset: M.boardPreset(a.width, a.height), w: a.width, h: a.height, bg: a.background, design: null };
         var presets = el('div', { class: 'pgie-presets' }), bgs = el('div', { class: 'pgie-bgopts' });
         var w = el('input', { type: 'number', class: 'pgie-input', min: '16', max: '8000', value: String(s.w), 'aria-label': t('width') });
         var h = el('input', { type: 'number', class: 'pgie-input', min: '16', max: '8000', value: String(s.h), 'aria-label': t('height') });
@@ -990,7 +997,7 @@
             return isFinite(n) && (n >= 16) && (n <= 8000);
         };
         var check = function () {
-            var mine = (s.preset === 'custom'), okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
+            var mine = (s.preset === 'custom') && !s.design, okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
 
             w.setAttribute('aria-invalid', okW ? 'false' : 'true');
             h.setAttribute('aria-invalid', okH ? 'false' : 'true');
@@ -1050,12 +1057,24 @@
             return fn.call(self, function () { self.closeNewImage(null); });
         });
 
-        var box = el('div', { class: 'pgie-confirm-box pgie-newbox' }, [
-            el('h2', { id: 'pgie-new-title', text: t('newImage') }),
+        var box, heads = Editor.newImageHeads.map(function (fn) {
+            return fn.call(self, {
+                close: function () { self.closeNewImage(null); },
+                choose: function (make) {
+                    s.design = make || null;
+                    box.classList.toggle('pgie-newdesign', !!make);
+                    check();
+                }
+            });
+        });
+
+        box = el('div', { class: 'pgie-confirm-box pgie-newbox' }, [
+            el('h2', { id: 'pgie-new-title', text: t('newImage') })
+        ].concat(heads, [
             presets,
             custom
-        ].concat(rows, [
-            section(t('boardBackground'), bgs),
+        ], rows, [
+            el('div', { class: 'pgie-newbg' }, [section(t('boardBackground'), bgs)]),
             el('div', { class: 'pgie-confirm-actions' }, [cancel, create])
         ]));
 
@@ -1082,16 +1101,32 @@
     };
 
     // s: the dialog's choice, or null for Cancel. The chosen canvas is the
-    // one the editor opened with: nothing to save yet, nothing to undo.
+    // one the editor opened with: nothing to undo, and nothing to save yet
+    // but a design's layers, which count as a change (a canvas saved over
+    // its address keeps them).
     Editor.prototype.closeNewImage = function (s) {
-        var a = this.doc.artboard, p;
+        var a = this.doc.artboard, p, layers = null;
 
-        if (s) {
+        if (s && s.design) {
+            p = s.design.call(this);
+            a.width = p.artboard.width;
+            a.height = p.artboard.height;
+            a.background = p.artboard.background;
+            layers = p.layers;
+        } else if (s) {
             p = M.BOARD_PRESETS.filter(function (x) { return x[0] === s.preset; })[0];
             a.width = p ? p[1] : M.boardSide(s.w);
             a.height = p ? p[2] : M.boardSide(s.h);
             a.background = s.bg;
+        }
+
+        if (s) {
             this.opening = M.clone(this.doc);
+
+            if (layers) {
+                this.doc.layers = layers;
+            }
+
             this.settleDirty();
             this.layersDirty = true;
             this.renderMeta();
