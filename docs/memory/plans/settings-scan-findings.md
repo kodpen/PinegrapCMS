@@ -19,6 +19,6 @@ description: Faults found by the 2026-11-21 scan of the Site Settings panes and 
 - E-mail, EM3: the DKIM field group as one group with its label.
 
 ## Which panes still need a plan?
-- SEO, Languages and Translation, Fediverse, Integrations, Channels, Team: folded-row plans by the research agent. E-commerce, Accounting and Maintenance wait for the CX11 steps.
+- SEO, Languages and Translation, Fediverse, Integrations, Channels, Team: folded-row plans by the research agent. E-commerce and Maintenance have their plans (`settings-tidy-round.md`); Accounting is done (`ui/settings-accounting.md`).
 
 Related: docs/memory/ui/screen-composition-nesting.md, docs/memory/ui/screen-composition-rules.md
