@@ -9,7 +9,7 @@ description: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter 
 - Typing, Enter, Backspace, cut or paste over a selection of several paragraphs (`removeAcross()`) takes them out first, by the same rules; a locked paragraph between refuses it. A whole paragraph selected (three clicks) is typed over inside it.
 - Text moved into another paragraph or a new one is sent with every format on or off (`exactBase()`), as the server puts it in a run whose look the view does not know.
 - Arrows: Left at a start and Right at an end go to the paragraph beside; Up and Down are the browser's. Shift+Enter: a line break. Tab and Shift+Tab: next and previous paragraph, at either end the focus leaves. Esc: what was typed since the caret came in is undone; with nothing typed Esc goes on to the window.
-- Ctrl/Cmd+B, I, U and the bar act on the selection, also across paragraphs (`selectedParts()`), kept selected after the redraw; Ctrl/Cmd+S saves. `format*` input and a drop are refused in `beforeinput`; the browser's own undo is left alone (OP3 brings the document's).
+- Ctrl/Cmd+B, I, U and the bar act on the selection, also across paragraphs (`selectedParts()`), kept selected after the redraw; Ctrl/Cmd+S saves. `format*` input and a drop are refused in `beforeinput`. Ctrl/Cmd+Z, Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z undo and redo on the document's own list (`office-docx-undo.md`).
 - Paste takes `text/plain` only. A link is followed with Ctrl/Cmd and a click; a plain click places the caret.
 - A locked paragraph is not typed into: a click or Tab picks it (it takes the focus, ringed, its reason in its title and the status line); the arrows go on from it. A click on the sheet below the last paragraph puts the caret at the end of the last one that may change.
 
@@ -19,4 +19,4 @@ description: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter 
 - Tried there: split in a bold run, Enter at an end and after a heading, Backspace and Delete joins, the cell, locked and last-paragraph refusals and the fallback, arrows past a locked one, Tab, three-click typing, typing over a locked paragraph (refused), bold over two paragraphs, Ctrl+A underline, Delete, reset.
 - The edits were saved by `pg_office_docx_save()` and read back as typed. Not tried on a sandbox's file window or channel preview, nor in Firefox or Safari.
 
-Related: docs/memory/platform/office-docx-page.md, docs/memory/platform/office-docx-add-delete.md, docs/memory/plans/office-document-page.md
+Related: docs/memory/platform/office-docx-undo.md, docs/memory/platform/office-docx-page.md, docs/memory/platform/office-docx-add-delete.md, docs/memory/plans/office-document-page.md
