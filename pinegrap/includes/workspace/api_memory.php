@@ -112,7 +112,8 @@ function ws_memory_api_routes()
             'handler'     => 'ws_api_memory_projects',
             'returns'     => array('list' => 'WorkspaceMemoryProject'),
             'summary'     => 'The projects of a memory with their entry counts',
-            'description' => 'The projects the entries of a channel\'s memory (channel_id) or of the general memory (no channel_id) are filed under, each with its count of entries, in alphabetical order; project is empty for the entries filed under none, listed last. GET /workspace/channels/{id}/memory or GET /workspace/memory/general with project lists one project\'s entries. Expired entries are left out unless expired is true. The general memory: 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
+            'description' => 'The projects of a channel\'s memory (channel_id) or of the general memory (no channel_id), each with its count of entries, alphabetical; project is empty for the entries filed under none, listed last. A memory list with project gives one project\'s entries.',
+            'details'     => 'Expired entries are left out unless expired is true. The general memory: 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
             'params'      => array(
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A channel the owner may read; left out for the general memory.'),
                 array('name' => 'expired', 'in' => 'query', 'type' => 'bool', 'description' => 'The expired entries counted too.'),
