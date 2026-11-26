@@ -8116,8 +8116,10 @@ const StyleDesigner = (function () {
             email: now.email,
             userId: (_design && _design.userId) || 0,
             canvasWidth: _sdSideCanvasW,
-            // The first-use line's state module comes with the part 'bands'.
-            tour: function () { return _sdPartLoad('bands'); },
+            // The first-use line's state module (PGDesignerTour) comes with
+            // the part 'tour'. Loading 'bands' here ran that part before the
+            // Spacing box's part and left its handles without a writer.
+            tour: function () { return _sdPartCall('tour', 'model', []); },
             choose: function (widths) {
                 _sdSideStore('pg_sd_side_w', widths.join(','));
                 _sdSideSync();

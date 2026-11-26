@@ -37,7 +37,11 @@ StyleDesigner.definePart('bands', function (K) {
     var _sdT = K._sdT;
     var esc = K.esc;
     var C = window.PGCanvasBands;
-    var B = window.PGSpacingBox;
+    // What a change writes (window.PGSpacingBox) comes with the part
+    // 'spacing'. It is read where it is used, never once here: the part can
+    // run before that one (the Side by side mirrors ask for it at start), and
+    // a value taken then stays undefined for the session.
+    function _bdSpacing() { return window.PGSpacingBox; }
     var TIP = 'canvas-guides';
     var SIDES = ['t', 'e', 'b', 's'];
     var PROPS = { m: 'margin', p: 'padding' };
@@ -241,7 +245,7 @@ StyleDesigner.definePart('bands', function (K) {
     // reports its width in pixels, which is no step of the scale.
     function _bdAuto(kind, side) {
         if (kind !== 'm' || !S.host.classes || S.host.classes.length !== 1) return false;
-        var r = B.read(S.host.classes[0], 'm', C.sizeFor(S.host.width));
+        var r = _bdSpacing().read(S.host.classes[0], 'm', C.sizeFor(S.host.width));
         return !!(r[side] && r[side].value === 'auto');
     }
 
@@ -270,7 +274,7 @@ StyleDesigner.definePart('bands', function (K) {
         live.step = step;
         live.reach = reach;
         _bdRestore(live);
-        var to = B.sides(live.side, reach === 'tb' || reach === 'se', reach === 'all');
+        var to = _bdSpacing().sides(live.side, reach === 'tb' || reach === 'se', reach === 'all');
         to.sides.forEach(function (s) {
             live.el.style.setProperty(PROPS[live.kind] + '-' + C.edge(s, live.rtl), step.px + 'px', 'important');
         });
@@ -303,8 +307,8 @@ StyleDesigner.definePart('bands', function (K) {
             return;
         }
         var host = S.host, size = C.sizeFor(host.width);
-        var to = B.sides(live.side, live.reach === 'tb' || live.reach === 'se', live.reach === 'all');
-        host.commit(function (list) { return B.write(list, live.kind, size, to.sides, live.step.step, to.all); });
+        var to = _bdSpacing().sides(live.side, live.reach === 'tb' || live.reach === 'se', live.reach === 'all');
+        host.commit(function (list) { return _bdSpacing().write(list, live.kind, size, to.sides, live.step.step, to.all); });
     }
 
     function _bdEsc(e) {

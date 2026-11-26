@@ -298,6 +298,22 @@ function test_canvas_bands_are_a_part()
 	pg_assert_contains("_sdPartApis.bands.hide()", $core, 'and hides it once loaded');
 }
 
+// The part may run before the Spacing box's part (the Side by side mirrors
+// load it at start): it reads PGSpacingBox when a change writes, never once
+// in its factory, and the mirrors' first-use line asks the part 'tour',
+// which brings PGDesignerTour, not 'bands' (#11921).
+function test_canvas_bands_read_the_spacing_box_late()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+	pg_assert_false(strpos($part, 'var B = window.PGSpacingBox') !== false, 'not taken once in the factory');
+	pg_assert_false((bool) preg_match('/\\bB\\.(read|sides|write)\\(/', $part), 'no use of a captured B');
+	pg_assert_contains('window.PGSpacingBox', $part, 'read where it is used');
+
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_false(strpos($core, "tour: function () { return _sdPartLoad('bands'); }") !== false, 'the mirrors do not load the bands for the tour');
+	pg_assert_contains("tour: function () { return _sdPartCall('tour', 'model', []); }", $core, 'they ask the tour part');
+}
+
 // The drawing's row (G3): 626 px wide at 36, gutter 12 px; its twelve
 // columns are drawn half a gutter in from each column line.
 function test_canvas_bands_column_grid()

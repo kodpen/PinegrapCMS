@@ -1,7 +1,11 @@
 ---
 name: designer-canvas-bands-drag-start
-description: Why a canvas spacing handle takes a drag (#11921): the handles' hit areas, the start value of an automatic or off-scale margin, the bands drawn again after the Prototype view closes
+description: Why canvas spacing handles take a drag (#11921): PGSpacingBox read late (Side by side), hit areas, auto and off-scale start values, bands back after Prototype
 ---
+
+## Why do the handles work with Side by side on at load?
+- The part reads `window.PGSpacingBox` where a change writes (`_bdSpacing()`), never once in its factory. The mirrors' first-use line asks the part `tour` (`_sdPartCall('tour', 'model', [])`), which brings `PGDesignerTour`.
+- Before #11921 the mirrors' `cfg.tour()` loaded the part `bands` at start, before the part `spacing`; the factory kept `B = undefined` for the session and every drag threw `Cannot read properties of undefined (reading 'sides')`, writing nothing.
 
 ## Why can a margin handle be held on a side with no spacing?
 - An inner handle sits at least one handle (6 px, `HANDLE`) inside the frame in `PGCanvasBands.layout()`, also for a padding thinner than that on screen; the outer one sits on the frame.
@@ -18,4 +22,4 @@ description: Why a canvas spacing handle takes a drag (#11921): the handles' hit
 - `_sdProtoButtonState()` (run on open and close) calls `_sdBandsSoon()` beside `_sdLinkMarksSoon()`. Before #11921 nothing asked for a draw on close and the layer stayed hidden until another element was selected.
 
 ## What tests it?
-- `tests/designer_canvas_bands_test.php`: `inner_handle_clears_the_outer`, `start_step`, `nearest_step_from_auto`, `key_step_from`. The hit areas and the drag itself were checked in Chromium on a sandbox (PR description).
+- `tests/designer_canvas_bands_test.php`: `read_the_spacing_box_late`, `inner_handle_clears_the_outer`, `start_step`, `nearest_step_from_auto`, `key_step_from`. The hit areas and the drag itself were checked in Chromium on a sandbox (PR description).
