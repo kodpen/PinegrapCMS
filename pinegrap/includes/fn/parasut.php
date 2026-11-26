@@ -1779,6 +1779,12 @@ function parasut_devhub_status($connection, $details)
 function parasut_devhub_after_connect($connection_id)
 {
     $answer = array('notices' => array(), 'warnings' => array(), 'log' => '');
+
+    // Connecting again keeps the connection's id, so the e-mail and company
+    // read for the account before would still pass as this one's when the
+    // read below fails.
+    pg_connect_service_delete('parasut_devhub');
+
     $token = pg_connect_access_token((int) $connection_id);
 
     if (empty($token['ok'])) {

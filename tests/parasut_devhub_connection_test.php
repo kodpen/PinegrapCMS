@@ -195,3 +195,17 @@ function test_parasut_devhub_code_connect_refused_beside_a_portal_connection()
 	pg_assert_true($refused < strpos($connect, '_parasut_token_exchange('), 'before the code is spent');
 	pg_assert_true($refused < strpos($connect, 'UPDATE config'), 'before anything is saved');
 }
+
+// Connect again keeps the connection's id (one row per site), so what was
+// read for the account before is dropped before the new account is read:
+// when that read fails, the status line does not name the earlier account's
+// e-mail and company.
+function test_parasut_devhub_after_connect_drops_the_earlier_account()
+{
+	$after = parasut_devhub_test_body('includes/fn/parasut.php', 'parasut_devhub_after_connect');
+	$dropped = strpos($after, "pg_connect_service_delete('parasut_devhub')");
+
+	pg_assert_true($dropped !== false, 'the earlier details are dropped');
+	pg_assert_true($dropped < strpos($after, 'pg_connect_access_token('), 'before the token is read');
+	pg_assert_true($dropped < strpos($after, 'parasut_me('), 'before the account is asked');
+}
