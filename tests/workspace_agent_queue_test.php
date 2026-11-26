@@ -291,3 +291,20 @@ function test_workspace_agent_answer_closes_before_writing()
 	pg_assert_contains("answered_at = '0'", $sql);
 	pg_assert_contains("WHERE id = '7' AND status = 'answered' AND reply_message_id = 0", $sql, 'only the close this call made');
 }
+
+// A fail closes the request before its reason is written under the asking
+// message: a second fail, or one after an answer or a Cancel, writes no
+// second line and answers 409 closed.
+function test_workspace_agent_fail_closes_before_writing()
+{
+	$fail = workspace_agent_queue_test_source('ws_api_agent_request_fail');
+	$close = strpos($fail, "UPDATE ws_ai_requests SET status = 'failed'");
+	$write = strpos($fail, 'ws_message_send(');
+	$checked = ($close === false) ? false : strpos($fail, 'mysqli_affected_rows(db::$con) < 1', $close);
+
+	pg_assert_true(($close !== false) && ($write !== false) && ($close < $write), 'closed before the reason is written');
+	pg_assert_true(strpos($fail, 'api_dry_run_stop(') < $close, 'a dry run stops before the close');
+	pg_assert_true(($checked !== false) && ($checked < $write), 'a request closed meanwhile answers 409');
+	pg_assert_contains("'closed'", (string) substr($fail, (int) $checked, 200));
+	pg_assert_true(strpos($fail, "ws_task_delegation_told(\$row, 'failed')") > $checked, 'the task\'s asker is told once');
+}

@@ -907,7 +907,14 @@ function ws_api_agent_request_fail($params)
 
     api_dry_run_stop('failed', 'workspace_agent_request', array('id' => (int) $row['id'], 'told_in_channel' => (bool) $place));
 
-    $reply_id = 0;
+    // Closed before the reason is written: a second fail, or one racing an
+    // answer or a person's Cancel, writes no second line.
+    db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = 0, answered_at = '" . time() . "'
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        api_fail(409, 'closed', lang('This request is already closed.'));
+    }
 
     // A wake was asked by nobody: there is nobody to tell.
     if ($place && ($reason !== '') && !ws_agent_wake_of($row)) {
@@ -915,15 +922,15 @@ function ws_api_agent_request_fail($params)
             'parent_id' => (int) $row['message_id'],
             'app_id'    => (int) $agent['app_id'],
         ));
-        $reply_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
-    }
 
-    db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "'
-        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+        if ($sent['ok']) {
+            db("UPDATE ws_ai_requests SET reply_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $row['id'] . "'");
+        }
+    }
 
     // A run on a task: the reason stays on the run, and the person who
     // asked is told it ended undone, as for Claude's.
-    if (((int) ($row['task_id'] ?? 0) > 0) && (mysqli_affected_rows(db::$con) > 0) && function_exists('ws_task_delegation_told')) {
+    if (((int) ($row['task_id'] ?? 0) > 0) && function_exists('ws_task_delegation_told')) {
         ws_task_delegation_told($row, 'failed');
     }
 
