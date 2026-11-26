@@ -211,7 +211,9 @@ function test_office_sheet_list_strings()
 	$strings = pg_office_view_strings();
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js');
 
-	foreach (array('format_first', 'format_one', 'format_pending', 'changed') as $key) {
+	foreach (array('format_first', 'format_one', 'format_pending', 'changed', 'shift_first', 'shift_undo', 'shift_row_before', 'shift_row_after', 'shift_row_delete',
+		'shift_column_before', 'shift_column_after', 'shift_column_delete', 'shift_sheet', 'sheet_first', 'sheet_one', 'sheet_undo',
+		'sheet_pending_add', 'sheet_pending_rename', 'sheet_pending_delete', 'sheet_pending_move') as $key) {
 		pg_assert_false(isset($strings[$key]), $key . ' leaves the strings');
 		pg_assert_false(strpos($source, 'strings.' . $key . ' ') !== false || strpos($source, 'strings.' . $key . ',') !== false || strpos($source, 'strings.' . $key . ')') !== false, $key . ' leaves the view');
 	}
