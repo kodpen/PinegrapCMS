@@ -125,6 +125,7 @@
 - component-overrides-model.md: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
 - component-overrides-render.md: How a place's values of a shared component reach the site, the canvas and the Preview (CO2, #11595): the place marker, the per-call render and the cache rule, the draw checks, translation
 - component-overrides-this-place.md: A placed shared component with open fields (CO4, #11663): "This place", the dot and reset, typing in place, read-only elements and "Edit the component", content editors, save checks
+- component-overrides-variants.md: Named variants of a shared component (CO5, #11687): props._variants on its root, props._variant on a place, the site's place marker, the settings list, editing a variant, the place's "Variant" row
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
 - content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
 - content-proposals-deleted-page.md: An editor's waiting change whose page is deleted or in the Recycle Bin: stale and told on Apply, or refused and still waiting; the count skips a gone page; "Deleted page" in the list (#10219)
@@ -408,6 +409,7 @@
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
 - designer-cleanup-drawing.md: The drawing of the designer's "Clean up" window (plan designer-cleanup, CU2 and CU3): boards U1 what opens it and U2 the window with its four lists and rows
 - designer-cleanup-states-drawing.md: The drawing of the designer's "Clean up" window, boards U3 and U4: "Show", ticked rows and the foot, what is not listed, the closing line after "Remove", the states [decision: here]
+- designer-cleanup-window.md: The designer's "Clean up" window as built (CU2): what opens it, the four lists and what each counts as unused, "Show", the states, the endpoint and the part
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
