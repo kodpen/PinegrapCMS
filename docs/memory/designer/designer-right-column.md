@@ -15,7 +15,7 @@ description: The designer's right column (Options and Design tabs, 336 px defaul
 - Under 300 px the column carries `sd-rcol-narrow` (a ResizeObserver on its own width, not the window's); the tabs drop their icons. The other parts' narrow forms are `designer-options-narrow.md`.
 
 ## How does the bottom panel open?
-- Closed, it is one 28 px strip (chevron, "HTML · Attributes · Styles"); nothing inside is drawn, and a click anywhere on it opens it. D2.
+- Closed, it is one 28 px strip ("HTML · Attributes · Styles", the chevron at its right end, where the open panel has it); nothing inside is drawn, and a click anywhere on it opens it. D2.
 - Open or closed is kept per browser in `pinegrap_designer_bp_collapsed` ('0' open, '1' closed), written by the chevron, the strip, the edge drag and its double-click. A browser that never chose starts closed (`_sdBpOpenRead()`).
 - Below 992 px the docked panel keeps its three strips (`designer-sticky-panel-layout.md`); the folded state does not apply there.
 

@@ -29739,6 +29739,20 @@ const StyleDesigner = (function () {
         return typeof stored === 'string' && stored.trim() === '0';
     }
 
+    // What the Attributes and the Styles parts say with nothing selected:
+    // one line at the top of the part.
+    function _sdBpNoneHtml() {
+        return '<div class="sd-bp-none">' + esc(_sdT('No element selected')) + '</div>';
+    }
+
+    // Whether the Styles head, `w` px wide, shows "Export to a File" and the
+    // rules' search as icon buttons. 0 is a part not laid out yet (the shut
+    // panel), which keeps the words.
+    function _sdBpStylesNarrow(w) {
+        w = +w;
+        return w > 0 && w < 460;
+    }
+
     function initBottomPanel() {
         // Append to .sd-canvas-wrapper (NOT to sd-canvas!)
         // createCanvasIframe() → the panel survives when #sd-canvas.innerHTML is reset.
@@ -29769,7 +29783,6 @@ const StyleDesigner = (function () {
                     '<div class="sd-bp-quad-hdr">' +
                         '<span class="bi bi-code-slash me-1"></span>' + esc(_sdT('HTML')) + '' +
                         '<span class="sd-bp-quad-spacer"></span>' +
-                        '<button type="button" class="bi bi-chevron-down sd-panel-caret sd-bp-collapse" id="sd-bp-collapse" title="' + esc(_sdT('Collapse/Expand')) + '" aria-label="' + esc(_sdT('Collapse/Expand')) + '" aria-controls="sd-bottom-panel" aria-expanded="true"></button>' +
                     '</div>' +
                     '<div class="sd-bp-quad-body">' +
                         '<div class="sd-html-tree" id="sd-html-tree">' +
@@ -29785,7 +29798,7 @@ const StyleDesigner = (function () {
                         '<span class="sd-attrs-elem-badge" id="sd-attrs-elem-badge"></span>' +
                     '</div>' +
                     '<div class="sd-bp-quad-body" id="sd-bp-attrs">' +
-                        '<div class="sd-attrs-empty"><span class="bi bi-cursor"></span> ' + esc(_sdT('No element selected')) + '</div>' +
+                        _sdBpNoneHtml() +
                     '</div>' +
                 '</div>' +
 
@@ -29802,13 +29815,20 @@ const StyleDesigner = (function () {
                         // live in <head> as pg-user-styles) into a managed CSS
                         // file. After a successful extract, the rules cascade
                         // from that file via <link>, not from <head>.
-                        '<button type="button" class="sd-styles-tool sd-styles-extract" id="sd-styles-extract" title="' + esc(_sdT('Move all of User Styles into a CSS file — it leaves the head and is loaded from the file')) + '">' +
-                            '<span class="bi bi-box-arrow-up-right me-1"></span>' + esc(_sdT('Export to a File')) + '' +
+                        // Under 460 px (_sdBpStylesNarrow()) the export
+                        // button is its icon and the search is a button that
+                        // lays its field over the head; the tips keep the words.
+                        '<button type="button" class="sd-styles-tool sd-styles-extract" id="sd-styles-extract" title="' + esc(_sdT('Move all of User Styles into a CSS file — it leaves the head and is loaded from the file')) + '" aria-label="' + esc(_sdT('Export to a File')) + '">' +
+                            '<span class="bi bi-box-arrow-up-right" aria-hidden="true"></span><span class="sd-styles-tool-txt">' + esc(_sdT('Export to a File')) + '</span>' +
                         '</button>' +
-                        '<input type="text" class="sd-styles-find" id="sd-styles-find" placeholder="' + esc(_sdT('Search rules...')) + '">' +
+                        '<button type="button" class="sd-styles-tool sd-styles-find-btn" id="sd-styles-find-btn" title="' + esc(_sdT('Search rules...')) + '" aria-label="' + esc(_sdT('Search rules...')) + '" aria-controls="sd-styles-find" aria-expanded="false"><span class="bi bi-search" aria-hidden="true"></span></button>' +
+                        '<input type="text" class="sd-styles-find" id="sd-styles-find" placeholder="' + esc(_sdT('Search rules...')) + '" aria-label="' + esc(_sdT('Search rules...')) + '">' +
+                        // The one way to shut the panel, at its right end;
+                        // the shut strip shows it in the same place.
+                        '<button type="button" class="bi bi-chevron-down sd-panel-caret sd-bp-collapse" id="sd-bp-collapse" title="' + esc(_sdT('Collapse/Expand')) + '" aria-label="' + esc(_sdT('Collapse/Expand')) + '" aria-controls="sd-bottom-panel" aria-expanded="true"></button>' +
                     '</div>' +
                     '<div class="sd-bp-quad-body" id="sd-bp-styles">' +
-                        '<div class="sd-attrs-empty"><span class="bi bi-cursor"></span> ' + esc(_sdT('No element selected')) + '</div>' +
+                        _sdBpNoneHtml() +
                     '</div>' +
                 '</div>' +
             '</div>';
@@ -29994,8 +30014,45 @@ const StyleDesigner = (function () {
         });
         var findInp = document.getElementById('sd-styles-find');
         if (findInp) findInp.addEventListener('input', function () { renderStylesPanel(); });
+        _sdBpStylesHeadInit(findInp);
         var compFindInp = document.getElementById('sd-computed-find');
         if (compFindInp) compFindInp.addEventListener('input', function () { renderStylesPanel(); });
+    }
+
+    // The Styles head's narrow form: below 460 px of its own width the part
+    // carries sd-bp-styles-narrow; the search button then opens the field
+    // over the head (sd-find-open), and it shuts again on Escape or when it
+    // loses the focus empty. A typed search keeps the field open.
+    function _sdBpStylesHeadInit(findInp) {
+        var quad = document.getElementById('sd-bp-quad-tr');
+        var btn = document.getElementById('sd-styles-find-btn');
+        if (!quad || !btn || !findInp) return;
+        function setOpen(on) {
+            quad.classList.toggle('sd-find-open', on);
+            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        }
+        function fit() {
+            var narrow = _sdBpStylesNarrow(quad.offsetWidth);
+            quad.classList.toggle('sd-bp-styles-narrow', narrow);
+            if (!narrow) setOpen(false);
+            else if (findInp.value) setOpen(true);
+        }
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            setOpen(true);
+            findInp.focus();
+        });
+        findInp.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' || !quad.classList.contains('sd-find-open')) return;
+            e.stopPropagation();
+            setOpen(false);
+            btn.focus();
+        });
+        findInp.addEventListener('blur', function () {
+            if (!findInp.value) setOpen(false);
+        });
+        if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(quad);
+        fit();
     }
 
     // ========================= ATTRIBUTES PANEL (alt panel) =========================
@@ -31307,15 +31364,14 @@ const StyleDesigner = (function () {
         var badge = document.getElementById('sd-attrs-elem-badge');
         if (badge) {
             if (selectedNode) {
-                var tagInfo = getNodeHtmlTag(selectedNode);
-                badge.textContent = '\u00a0<' + tagInfo.tag + '>';
+                badge.textContent = getNodeHtmlTag(selectedNode).tag;
             } else {
                 badge.textContent = '';
             }
         }
 
         if (!selectedNode) {
-            panel.innerHTML = '<div class="sd-attrs-empty"><span class="bi bi-cursor d-block mb-3" style="font-size:1.1rem"></span>' + esc(_sdT('No element selected')) + '</div>';
+            panel.innerHTML = _sdBpNoneHtml();
             return;
         }
 
@@ -31748,7 +31804,7 @@ const StyleDesigner = (function () {
     function renderAttrsMulti(panel, nodes) {
         // Update badge
         var badge = document.getElementById('sd-attrs-elem-badge');
-        if (badge) badge.textContent = '\u00a0' + _sdT('{var} elements', nodes.length);
+        if (badge) badge.textContent = _sdT('{var} elements', nodes.length);
 
         // Compute common / union-only class sets
         function _clsArr(n) { return (n.props.cssClass || '').split(/\s+/).filter(Boolean); }
@@ -32152,8 +32208,12 @@ const StyleDesigner = (function () {
         var panel = document.getElementById('sd-bp-styles');
         if (!panel || _sdPanelDefer('styles')) return;
 
+        // The selected element's tag beside the head, as the Attributes
+        // part shows it.
+        var badge = document.getElementById('sd-styles-elem-badge');
+        if (badge) badge.textContent = selectedNode ? getNodeHtmlTag(selectedNode).tag : '';
         if (!selectedNode) {
-            panel.innerHTML = '<div class="sd-styles-empty"><span class="bi bi-palette2 d-block mb-1" style="font-size:1.3rem"></span>' + esc(_sdT('No element selected')) + '</div>';
+            panel.innerHTML = _sdBpNoneHtml();
             return;
         }
 
@@ -33823,9 +33883,7 @@ const StyleDesigner = (function () {
         btn.className = 'sd-styles-tool sd-html-code-toggle';
         btn.addEventListener('click', function (e) { e.stopPropagation(); _sdCodeToggle(!_sdCode.on); });
         _sdCodeLabelSwitch(btn, _sdCodeMayEdit());
-        var caret = document.getElementById('sd-bp-collapse');
-        if (caret && caret.parentNode) caret.parentNode.insertBefore(btn, caret);
-        else quad.querySelector('.sd-bp-quad-hdr').appendChild(btn);
+        quad.querySelector('.sd-bp-quad-hdr').appendChild(btn);
 
         var wanted = false;
         try { wanted = localStorage.getItem(_SD_CODE_KEY) === '1'; } catch (e) {}
@@ -37964,7 +38022,7 @@ const StyleDesigner = (function () {
     function _sdTextInnerAttrs(panel, s) {
         var tag = s.el.tagName.toLowerCase();
         var badge = document.getElementById('sd-attrs-elem-badge');
-        if (badge) badge.textContent = ' <' + tag + '>';
+        if (badge) badge.textContent = tag;
         var h = '';
         Array.prototype.forEach.call(s.el.attributes, function (at) {
             h += '<div class="sd-attr-row sd-attr-row-sys">' +
@@ -62881,11 +62939,11 @@ const StyleDesigner = (function () {
             actions.id = 'sd-status-actions';
             actions.className = 'sd-status-actions';
             actions.innerHTML =
-                '<button type="button" class="sd-status-btn" id="sd-status-shortcuts" title="' + esc(_sdT('Help (?)')) + '" aria-label="' + esc(_sdT('Help')) + '" aria-haspopup="dialog">' +
-                    '<span class="bi bi-question-circle"></span>' +
+                '<button type="button" class="sd-status-btn" id="sd-status-shortcuts" title="' + esc(_sdT('Help (?)')) + '" aria-haspopup="dialog">' +
+                    '<span class="bi bi-question-circle" aria-hidden="true"></span><span class="sd-status-txt">' + esc(_sdT('Help')) + '</span>' +
                 '</button>' +
                 '<button type="button" class="sd-status-btn sd-status-validate" id="sd-status-validate" title="' + esc(_sdT('Validate the HTML')) + '">' +
-                    '<span class="bi bi-check-circle" id="sd-status-validate-icon"></span> <span id="sd-status-validate-count">' + esc(_sdT('Validate')) + '</span>' +
+                    '<span class="bi bi-check-circle" id="sd-status-validate-icon" aria-hidden="true"></span><span class="sd-status-txt" id="sd-status-validate-count">' + esc(_sdT('Validate')) + '</span>' +
                 '</button>';
             bar.appendChild(actions);
             // Wire shortcuts button to modal opener
@@ -66150,7 +66208,7 @@ const StyleDesigner = (function () {
         if (unsaved) h += ' · ' + esc(_sdT('Not saved yet: {var}', unsaved));
         var lm = document.getElementById('sd-last-modified-label');
         var when = lm ? lm.textContent.trim() : '';
-        if (when) h += '<br>' + esc(_sdT('Last saved: {var}', when));
+        if (when) h += '<br>' + esc(when);
         box.innerHTML = h;
     }
 
@@ -86580,7 +86638,7 @@ const StyleDesigner = (function () {
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {
                     var _lmDate = new Date(res.data.saved_ts * 1000);
                     var _lmStr  = _lmDate.toLocaleString(_sdLocale(), { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-                    _lmLabel.textContent = _lmStr + ' · ' + res.data.saved_by;
+                    _lmLabel.textContent = _sdT('Saved {var:1} by {var:2}', [_lmStr, res.data.saved_by]);
                 }
                 // New tabs learn their page ids, every baseline resets, the
                 // dirty dots clear.
@@ -97306,27 +97364,31 @@ const StyleDesigner = (function () {
             _validationIssues = validateTree(tree);
             _seoCheckCache = null;          // the page changed; the score is stale
             _sdServerAuditIssues = [];      // and so are the draft's findings
-            updateValidationChip();
+            updateValidationChip(true);
             applyIssueBadges();
         }, 500);
     }
 
-    function updateValidationChip() {
-        // statusbar validate button — always visible, appearance changes based on issues
+    // The status bar's Validate button shows the check's result in its own
+    // place: "Validate" until the first check has run (`ran` from
+    // scheduleValidation()), then "Valid" or the count of problems.
+    var _sdValidationRan = false;
+    function updateValidationChip(ran) {
+        if (ran) _sdValidationRan = true;
         var sbBtn   = document.getElementById('sd-status-validate');
         var sbCount = document.getElementById('sd-status-validate-count');
         var sbIcon  = document.getElementById('sd-status-validate-icon');
         if (!sbBtn) return;
         sbBtn.style.display = '';
         if (_validationIssues.length) {
-            if (sbIcon) { sbIcon.className = 'bi bi-exclamation-triangle-fill'; }
+            if (sbIcon) { sbIcon.className = 'bi bi-exclamation-triangle'; }
             sbBtn.classList.add('sd-validate-warn');
-            if (sbCount) sbCount.textContent = _sdT('{var} warning(s)', _validationIssues.length);
+            if (sbCount) sbCount.textContent = _validationIssues.length === 1 ? _sdT('1 problem') : _sdT('{var} problems', _validationIssues.length);
             sbBtn.title = _sdT('HTML / SEO check');
         } else {
             if (sbIcon) { sbIcon.className = 'bi bi-check-circle'; }
             sbBtn.classList.remove('sd-validate-warn');
-            if (sbCount) sbCount.textContent = _sdT('Validate');
+            if (sbCount) sbCount.textContent = _sdValidationRan ? _sdT('Valid') : _sdT('Validate');
             sbBtn.title = _sdT('Validate the HTML');
         }
     }

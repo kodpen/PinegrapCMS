@@ -508,6 +508,7 @@
     "Saved with redaction": "Sansürle kaydedildi",
     "Saved with this page; other pages that show this widget keep their own.": "Bu sayfayla kaydedilir; bu widget'ı gösteren diğer sayfalar kendi ayarlarını korur.",
     "Saved without being checked with Meta. The test message below shows whether it works.": "Meta ile denetlenmeden kaydedildi. Çalışıp çalışmadığını aşağıdaki deneme mesajı gösterir.",
+    "Saved {var:1} by {var:2}": "{var:1} {var:2} tarafından kaydedildi",
     "Saved.": "Kaydedildi.",
     "Saved. Add the fields of the new form with the link below.": "Kaydedildi. Yeni formun alanlarını aşağıdaki bağlantıdan ekleyin.",
     "Saved. Drafts stay off the site.": "Kaydedildi. Taslaklar sitede görünmez.",

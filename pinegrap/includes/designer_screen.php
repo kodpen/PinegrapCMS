@@ -515,8 +515,11 @@ function pg_designer_screen_render($ctx)
     if ($mode === 'edit') {
         $lm_user = (string)$style['last_modified_username'];
         if ($lm_user === '') $lm_user = '[Unknown]';
-        $last_modified = get_relative_time(array('timestamp' => $style['last_modified_timestamp'])) . ' '
-                       . lang(array('string' => 'by {var:1}', 'vars' => array(h($lm_user))));
+        // The status bar's line with its verb: "Saved 19 hours ago by admin".
+        $last_modified = lang(array('string' => 'Saved {var:1} by {var:2}', 'vars' => array(
+            get_relative_time(array('timestamp' => $style['last_modified_timestamp'])),
+            h($lm_user),
+        )));
     }
 
     $form_action = ($mode === 'edit') ? 'edit_system_style.php' : 'add_system_style.php';
