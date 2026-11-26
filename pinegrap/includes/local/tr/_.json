@@ -1535,6 +1535,8 @@
     "{var:1} link{suffix:1} with an empty address": "{var:1} bağlantının adresi boş",
     "{var:1} link{suffix:1} with generic wording": "{var:1} bağlantıda genel ifade kullanılmış",
     "{var:1} link{suffix:1} with no text": "{var:1} bağlantıda metin yok",
+    "{var:1} locations": "{var:1} konum",
+    "{var:1} locations, {var:2} off": "{var:1} konum, {var:2} kapalı",
     "{var:1} locked notes were left out of this export. Export a locked note on its own with the lock open.": "{var:1} kilitli not bu dışa aktarıma alınmadı. Kilitli bir notu, kilit açıkken tek başına dışa aktarın.",
     "{var:1} low scores": "{var:1} düşük puan",
     "{var:1} made this an agent channel: its decisions stay apart from the other channels' decisions.": "{var:1} bu kanalı ajan kanalı yaptı: kararları diğer kanalların kararlarından ayrı tutulur.",

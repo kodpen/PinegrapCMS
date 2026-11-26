@@ -2744,7 +2744,7 @@ function connections_method_page($page, $id, $may_manage) {
 		<section class="pg-card p-5 mb-6" id="' . h($section) . '" aria-labelledby="' . h($section) . '-title">
 			<h2 class="pg-title-section mb-1" id="' . h($section) . '-title">' . h($beside ? $definition['label'] : lang('Connection details')) . '</h2>
 			<p class="pg-card-sub mb-4">' . h(($id === 'givex')
-				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift Cards & Rewards card of Site Settings › Ecommerce.')
+				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift cards row of Site Settings › Ecommerce.')
 				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, its Transaction Type and Mode are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
 			<form method="post" action="connections.php" class="connections-app-form">
 				' . get_token_field() . '
@@ -2770,7 +2770,7 @@ function connections_method_page($page, $id, $may_manage) {
 
 	}
 
-	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift Cards & Rewards') : lang('Payment Methods');
+	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift cards') : lang('Payment Methods');
 
 	$page['uses'] .= '
 				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', $definition['card'])) . '">

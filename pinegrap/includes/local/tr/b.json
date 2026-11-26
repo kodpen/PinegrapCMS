@@ -1723,6 +1723,8 @@
     "Built the new changing rooms and sponsors the academy's kit.": "Yeni soyunma odalarını yaptı ve altyapının formalarına sponsor oluyor.",
     "Built three products from the first sketch to a million users; writes about calm product teams.": "Üç ürünü ilk eskizden bir milyon kullanıcıya taşıdı; sakin ürün ekipleri üzerine yazıyor.",
     "Built to last": "Kalıcı olsun diye",
+    "Built today {var:1} · {var:2} products": "Bugün {var:1} oluşturuldu · {var:2} ürün",
+    "Built {var:1} · {var:2} products": "{var:1} oluşturuldu · {var:2} ürün",
     "Built {var:1}: {var:2} product(s).": "{var:1} oluşturuldu: {var:2} ürün.",
     "Built-in": "Yerleşik",
     "Built-in fields": "Yerleşik alanlar",
