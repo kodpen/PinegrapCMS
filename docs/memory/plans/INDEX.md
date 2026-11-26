@@ -34,10 +34,6 @@
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
-- designer-options-census-steps-2.md: Plan designer-options-census, DO10 to DO20: states, transition, transform, background layers, clip shape and mask, the small effects, new entrances, the easing curve, page transitions
-- designer-options-census-steps-3.md: Plan designer-options-census, DO21 to DO27 and sheets DD22 to DD26: back to top, scroll progress, scrollspy, scrolled navbar, a collection with its pages, favourites, find and replace, Markdown
-- designer-options-census-steps.md: Plan designer-options-census, DO2 to DO9: a value per screen size, grid columns, rows, spans and areas, the small layout rows (inset presets, layer order, scroll snap, aspect ratio, object fit)
-- designer-options-census.md: Plan (owner 2026-11-24, 2026-11-25): the eleven packages he picked from the Options panel census as DO2 to DO27 in three steps files; how an option enters the panel, the lines, what a step keeps
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
@@ -72,6 +68,7 @@
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
+- settings-tidy-round.md: Plan (owner 2026-11-26): the settings tidy round: first the crossings between Site Settings and Connections, then the categories the 2026-11-21 survey left; steps TR1 to TR6
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route

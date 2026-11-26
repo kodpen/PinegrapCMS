@@ -508,6 +508,7 @@
 - designer-options-layout.md: Advanced › Layout in the Options panel draws its rows by context (DP6, #10504): flex container rows, flex child rows under "parent: flex", the note naming hidden rows, "Make it a container"
 - designer-options-multiple.md: The Options panel with several elements selected (#10468): identity row with the count, tabs by kind, "— Multiple —" per control, the ring dot, the counts, a change written to all as one undo step
 - designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts [decision: here]
+- designer-options-new-row.md: How a new option enters the Options panel and what every option keeps: its section, the row kinds it copies, unset draws as before, one writer, User Styles or a Bootstrap class [decision: here]
 - designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added [decision: here]
 - designer-options-page-transition.md: "Page transition" (Settings, Theme) and "Keep across pages" (Interactions) as built in DO20: the page entry in the variables file, the rules, the page-only save, the names
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
@@ -784,11 +785,11 @@
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image on the page and the canvas (#9199): an icon without words; its address in data-pg-fallback, never in the onerror code
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
-- options-panel-census-bss.md: Options panel census, part 4: what Bootstrap Studio has that the Page Design Studio lacks, each as have, partly or missing, with where ours lives (view transitions to collection pages) [decision: here]
-- options-panel-census-layout.md: Options panel census, part 2: gaps to place and size an element (grid tracks, position, layer order, per size values, sticky, scroll snap, aspect ratio, object fit)
-- options-panel-census-look.md: Options panel census, part 3: gaps to dress and move an element (hover/focus/pressed, transitions, gradients, filters, blend, transforms, text effects, masks)
+- options-panel-census-bss.md: Options panel census, part 4, as built: what Bootstrap Studio has beside the Page Design Studio, as have or partly, with where ours lives (DO19 to DO26) [decision: here]
+- options-panel-census-layout.md: Options panel census, part 2, as built: grid tracks and areas, position presets, per size values, hide and sticky by size, scroll snap, aspect ratio, object fit
+- options-panel-census-look.md: Options panel census, part 3, as built: states, transition, easing curve, background layers, filters, transform, text effects, clip shape and mask, cursor
 - options-panel-census-today.md: Options panel census, part 1: every Options panel control on 2026-11-24 per element kind and Style/Advanced section, and which rows take a per screen size value
-- options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24): what the designer's Options panel sets today and what needs code, each gap sized S or M [decision: decisions-made-product-110.md]
+- options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24) and what was built from it (DO2 to DO26, done 2026-11-26): which file holds each row or component now [decision: decisions-made-product-105.md, decisions-made-product-110.md]
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out. [decision: here]

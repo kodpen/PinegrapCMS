@@ -783,6 +783,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-52.md: Which columns does form_old_address have? (architect, 2026-11-24)
 - decisions-made-schema-52.md: When is a row written and removed? (architect, 2026-11-24)
 - decisions-made-schema-52.md: What does an old name answer? (architect, 2026-11-24)
+- decisions-made-schema-53.md: Where are the rules and the earlier parts?
+- decisions-made-schema-53.md: Where does an agent's context window size come from? (owner, 2026-11-26, agent channel polls 227 and 228, messages 14104 and 14109)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
@@ -1003,6 +1005,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-51.md: How should the board look? (owner, same day)
 - decisions-made-workspace-51.md: Do automations come to the board? (owner, same day)
 - decisions-made-workspace-51.md: Where is the work?
+- decisions-made-workspace-52.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-52.md: Is an agent's answer that does not name the asking agent refused? (owner, 2026-11-26, agent channel poll 226, message 14090)
 - decisions-made-workspace-6.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-6.md: What does a change made in the person's own calendar do to the Workspace task? (#4490)
 - decisions-made-workspace-6.md: Why does the pinned My Notes row open the Workspace list? (#4889)
@@ -1253,6 +1257,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows
 - designer/designer-my-library-overview.md: My library in the designer: a section saved as the site's own start, inserted as a copy, managed, exported and imported as a file; what binds it and which file holds which part
 - designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
+- designer/designer-options-new-row.md: How a new option enters the Options panel and what every option keeps: its section, the row kinds it copies, unset draws as before, one writer, User Styles or a Bootstrap class
 - designer/designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
 - designer/designer-page-strip.md: The Page Design Studio's page strip: the design's menu (Settings, Delete), how the strip makes room on a narrow screen in six steps, what never goes, the "+N" lists, which file holds the rest
@@ -1302,7 +1307,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/legacy-to-classic.md: Back to classic (LG7): a set's Legacy design sends its pages, all or one, back to the classic styles they came from; how the origin is found, why the tree leaves the page, the refusals, the card
 - designer/legacy-to-designer-report.md: The "Move to the Page Design Studio" readiness report (LD1, #6219): what it lists per classic style, its sets (LG4), its state, the "What stays classic" card (#6488), the rules the whole move keeps
 - designer/member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.
-- designer/options-panel-census-bss.md: Options panel census, part 4: what Bootstrap Studio has that the Page Design Studio lacks, each as have, partly or missing, with where ours lives (view transitions to collection pages)
+- designer/options-panel-census-bss.md: Options panel census, part 4, as built: what Bootstrap Studio has beside the Page Design Studio, as have or partly, with where ours lives (DO19 to DO26)
+- designer/options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24) and what was built from it (DO2 to DO26, done 2026-11-26): which file holds each row or component now
 - designer/order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
 - designer/overview-search-map.md: Designer Overview (DP13): the tree search part (name, text, class, id; Turkish letters folded; results with their path; Ctrl+F) and the page map at the tree's right edge
 - designer/page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
