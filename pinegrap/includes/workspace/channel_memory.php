@@ -357,14 +357,38 @@ function ws_memory_project_ready()
 }
 
 /**
- * Whether this person reads and writes the general memory: they may post in
- * an agent channel (the channel memory's rule carried over). An application
- * acts as the person who owns it.
+ * Whether one of these agent channels opens the general memory: the keeper
+ * may post in it and, where $allowed is given (the application Claude works
+ * through), Claude may be asked in it too. Pure but for the callables.
  *
- * @param array $viewer
+ * @param array[]       $channels ws_channels rows
+ * @param callable      $can_post channel => bool
+ * @param callable|null $allowed  channel => bool, null for no further limit
  * @return bool
  */
-function ws_memory_general_can($viewer)
+function ws_memory_general_reached($channels, $can_post, $allowed = null)
+{
+    foreach ((array) $channels as $channel) {
+        if ($can_post($channel) && (($allowed === null) || $allowed($channel))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether this person reads and writes the general memory: they may post in
+ * an agent channel (the channel memory's rule carried over). An application
+ * acts as the person who owns it; the application Claude works through
+ * ($claude) only while Claude may be asked in such a channel, as it reads a
+ * channel only where it may be asked (ws_api_channel_or_404()).
+ *
+ * @param array $viewer
+ * @param bool  $claude the caller is the application Claude works through
+ * @return bool
+ */
+function ws_memory_general_can($viewer, $claude = false)
 {
     static $cache = array();
 
@@ -372,17 +396,17 @@ function ws_memory_general_can($viewer)
         return false;
     }
 
-    $key = (int) ($GLOBALS['ws_membership_generation'] ?? 0) . ':' . (int) ($viewer['id'] ?? 0);
+    $claude = $claude && function_exists('ws_claude_channel_allowed');
+    $key = (int) ($GLOBALS['ws_membership_generation'] ?? 0) . ':' . (int) ($viewer['id'] ?? 0) . ($claude ? ':claude' : '');
 
     if (!array_key_exists($key, $cache)) {
-        $cache[$key] = false;
-
-        foreach ((array) db_items("SELECT * FROM ws_channels WHERE agent_channel = 1 AND kind IN ('public', 'private', 'guest') AND archived_at = 0 ORDER BY id LIMIT 200") as $channel) {
-            if (ws_can_post_channel($viewer, $channel)) {
-                $cache[$key] = true;
-                break;
-            }
-        }
+        $cache[$key] = ws_memory_general_reached(
+            (array) db_items("SELECT * FROM ws_channels WHERE agent_channel = 1 AND kind IN ('public', 'private', 'guest') AND archived_at = 0 ORDER BY id LIMIT 200"),
+            function ($channel) use ($viewer) {
+                return ws_can_post_channel($viewer, $channel);
+            },
+            $claude ? 'ws_claude_channel_allowed' : null
+        );
     }
 
     return $cache[$key];

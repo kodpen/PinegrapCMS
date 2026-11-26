@@ -595,3 +595,29 @@ function test_workspace_channel_memory_digest_across_agent_channels()
 	$many = array_fill(0, 12, array('body' => 'x', 'marked_at' => 1, 'channel' => ''));
 	pg_assert_contains('workspace.decisions.list (agent_channels only)', ws_memory_digest(array(), $many, 100, WS_MEMORY_DIGEST_MAX, 40, array(), true), 'the count says where the rest are');
 }
+
+// The application Claude works through reaches the general memory only
+// while Claude may be asked in an agent channel its owner may post in: a
+// private channel's records moved there leave the site no other way.
+function test_workspace_memory_general_claude_needs_an_allowed_agent_channel()
+{
+	$channels = array(array('id' => 1, 'kind' => 'private', 'claude' => false), array('id' => 2, 'kind' => 'public', 'claude' => false));
+	$post = function ($channel) {
+		return true;
+	};
+	$claude = function ($channel) {
+		return $channel['claude'];
+	};
+
+	pg_assert_true(ws_memory_general_reached($channels, $post), 'a person who posts in an agent channel keeps it');
+	pg_assert_true(!ws_memory_general_reached($channels, $post, $claude), 'Claude, asked in no agent channel, does not');
+
+	$channels[1]['claude'] = true;
+	pg_assert_true(ws_memory_general_reached($channels, $post, $claude), 'Claude, allowed in one, does');
+	pg_assert_true(!ws_memory_general_reached($channels, function ($channel) { return $channel['id'] === 1; }, $claude), 'the allowed channel must be one the owner posts in');
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
+	pg_assert_contains('return ws_memory_general_can($viewer, function_exists(\'ws_api_is_claude\') && ws_api_is_claude());', $api);
+	pg_assert_true(substr_count($api, 'ws_api_memory_general_can($viewer)') >= 2, 'the general list and create, and a general record by id, ask it');
+	pg_assert_true(strpos($api, '!ws_memory_general_can($viewer)') === false, 'no route asks the person\'s rule alone');
+}
