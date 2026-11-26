@@ -1445,6 +1445,11 @@ $agent_back = isset($_SESSION['software']['api_agent_back']) ? (int)$_SESSION['s
 
 unset($_SESSION['software']['api_agent_back']);
 
+// What a refused AI agent save typed, shown again on the tab (read once).
+$agent_typed = isset($_SESSION['software']['api_agent_typed']) ? $_SESSION['software']['api_agent_typed'] : null;
+
+unset($_SESSION['software']['api_agent_typed']);
+
 // The Events tab's "New subscription": every event of the catalogue with its
 // module and its line, for the list the form searches.
 $hook_catalogue = array();
@@ -3045,4 +3050,4 @@ echo '
 	window.pgApiOpenApp = openApp;
 
 })();
-</script>' . ($agent_ready ? api_app_agent_script(api_app_agent_tab_data($app_data, $user), $agent_back) : '') . output_footer();
+</script>' . ($agent_ready ? api_app_agent_script(api_app_agent_tab_data($app_data, $user), $agent_back, $agent_typed) : '') . output_footer();

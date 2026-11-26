@@ -102,3 +102,22 @@ function test_api_app_agent_view_sheet_name_follows_the_application_name()
 	pg_assert_contains('e.target.id === "n_name"', $script, 'Application name is followed as it is typed');
 	pg_assert_contains('dataset.agentTyped', $script, 'a name typed for the agent is kept');
 }
+
+// A refused agent comes back with what was typed: the tab was filled again
+// from the saved agent (or left empty for a new one), so a handle someone
+// else had took the name, role, door and channels with it.
+function test_api_app_agent_view_refused_values_come_back()
+{
+	$typed = api_app_agent_typed(array('handle' => 'sales<b>', 'name' => 'Sales', 'role' => 'worker', 'door_kind' => 'push',
+		'door_url' => 'https://agent.example.com/knock', 'channels' => array(4, 7), 'channels_sent' => true));
+
+	pg_assert_same(array('handle' => 'sales<b>', 'name' => 'Sales', 'role' => 'worker', 'door_kind' => 'push',
+		'door_url' => 'https://agent.example.com/knock', 'channels' => array(4, 7)), $typed, 'the fields the tab draws');
+	pg_assert_same(null, api_app_agent_typed('x'), 'nothing posted');
+
+	$script = api_app_agent_script(array(), 5, $typed);
+
+	pg_assert_contains('var TYPED = {"handle":"sales' . '\\u003Cb' . '\\u003E"', $script, 'handed to the script, escaped for it');
+	pg_assert_contains('fillTyped(', $script, 'the tab takes them after it opens');
+	pg_assert_contains('var TYPED = null', api_app_agent_script(array(), 5), 'none by default');
+}
