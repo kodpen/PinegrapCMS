@@ -1293,9 +1293,12 @@ function erp_expense_cancel_check($id, $reason)
  * @param int    $id
  * @param string $reason
  * @param int    $user_id
+ * @param bool   $may_refund  Whether the caller holds the right to the tills,
+ *                            which a paid expense's cancel needs: it puts
+ *                            money back into a till
  * @return array ['success' => bool, 'error' => string]
  */
-function erp_expense_cancel($id, $reason, $user_id = 0)
+function erp_expense_cancel($id, $reason, $user_id = 0, $may_refund = true)
 {
     $reason = trim((string) $reason);
     $checked = erp_expense_cancel_check($id, $reason);
@@ -1325,6 +1328,13 @@ function erp_expense_cancel($id, $reason, $user_id = 0)
     }
     if ((string) $expense['status'] !== (string) $checked['expense']['status']) {
         return $fail(lang('The expense could not be cancelled.'));
+    }
+
+    // Judged on the locked row: a caller that read the expense as unpaid
+    // before it was paid would otherwise put its money back into the till
+    // without the right to the tills.
+    if (((string) $expense['status'] === 'paid') && !$may_refund) {
+        return $fail(lang('Cancelling a paid expense needs the right to the tills.'));
     }
 
     if ((string) $expense['status'] === 'paid') {

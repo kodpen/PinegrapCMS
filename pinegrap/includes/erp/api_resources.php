@@ -2080,6 +2080,18 @@ function erp_api_expense_cash_gate()
     }
 }
 
+/**
+ * Whether the key may put money back into a till: what
+ * erp_api_expense_cash_gate() asks, as a yes or no for the cancel, which
+ * judges a paid expense on its own locked row.
+ *
+ * @return bool
+ */
+function erp_api_expense_may_refund()
+{
+    return api_has_scope(api_current_scopes(), 'erp_cash:write') && !empty(erp_api_owner()['cash']);
+}
+
 function erp_api_expenses_list($params)
 {
     erp_api_expenses_ready();
@@ -2424,7 +2436,7 @@ function erp_api_expenses_cancel($params)
         'refunded_cash_account_id' => is_array($checked['movement']) ? (int) $checked['movement']['cash_account_id'] : null,
     ));
 
-    $cancelled = erp_expense_cancel((int) $row['id'], $reason, $owner['id']);
+    $cancelled = erp_expense_cancel((int) $row['id'], $reason, $owner['id'], erp_api_expense_may_refund());
 
     if (empty($cancelled['success'])) {
         api_fail_validation((string) $cancelled['error'], 'id');
