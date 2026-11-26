@@ -4164,6 +4164,7 @@
     "The expense was cancelled and its money put back into the till.": "Gider iptal edildi ve parası kasaya geri kondu.",
     "The expense was cancelled.": "Gider iptal edildi.",
     "The expense was not saved.": "Gider kaydedilmedi.",
+    "The expense was paid or cancelled meanwhile; open it again to see it as it is now.": "Gider bu arada ödendi ya da iptal edildi; şimdiki hâlini görmek için yeniden açın.",
     "The expense was paid.": "Gider ödendi.",
     "The expense was recorded.": "Gider kaydedildi.",
     "The expense was saved, but it does not repeat:": "Gider kaydedildi ama tekrarı başlatılamadı:",
