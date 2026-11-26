@@ -14,7 +14,7 @@ description: How ws_ai_step() makes one model turn's tool calls: answer, fail an
 - Only while `$steps < WS_AI_MAX_STEPS - 2`: on the last steps the answer goes out as written, so a request still ends.
 
 ## Why?
-- dev.pinegrap.com, 2026-11-26: "bir çizim üret kalp şeklinde kırmızı" was answered "İşte kalp şeklindeki kırmızı çizim:" with no canvas under it. One turn held `draw_canvas` twice and `answer` twice; the first `answer` ended the request and the calls after it were dropped, and a failed `draw_canvas` held nothing back (only `page_*` tools did).
+- Built in #11935. dev.pinegrap.com, 2026-11-26: "bir çizim üret kalp şeklinde kırmızı" was answered "İşte kalp şeklindeki kırmızı çizim:" with no canvas under it. One turn held `draw_canvas` twice and `answer` twice; the first `answer` ended the request and the calls after it were dropped, and a failed `draw_canvas` held nothing back (only `page_*` tools did).
 - The saved request (ws_ai_requests 3200) kept no state after it was answered at step 0 and the site logged no PHP error, so whether the drawings came after the answer or failed is not known.
 
 ## Tests?
