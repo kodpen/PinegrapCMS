@@ -1888,48 +1888,71 @@ function pg_designer_components_rows()
 }
 
 /**
- * The starts the New design window lists, in the order it lists them. Each
- * is one row of the list: an icon, a title, one line, a small drawing
- * (pg_designer_home_drawing()) and the main button's words. A start built
- * later (a sketch, an import from another service) takes its place in this
- * list with a pane of its own in pg_designer_start_pane().
+ * A start's one icon, the same in the window's rail, in its pane's head and
+ * on the home's cards; '' for a key that names no start. Pure.
+ *
+ * @param mixed $key a start of pg_designer_start_kinds(), or one a later plan adds
+ * @return string a Bootstrap Icons class
+ */
+function pg_designer_start_icon($key)
+{
+    $icons = array(
+        'blank'    => 'bi-plus-square',
+        'template' => 'bi-grid-1x2',
+        'sketch'   => 'bi-pencil',
+        'figma'    => 'bi-vector-pen',
+        'canva'    => 'bi-images',
+        'document' => 'bi-file-earmark-text',
+        'import'   => 'bi-file-zip',
+        'paste'    => 'bi-code-slash',
+        'describe' => 'bi-stars',
+    );
+    return (is_string($key) && isset($icons[$key])) ? $icons[$key] : '';
+}
+
+/**
+ * The starts the New design window lists, in the order it lists them, each
+ * in its group of the rail: 'new' (Start new), 'tool' (From a design tool),
+ * 'have' (From what you have). A row is the start's icon, its title and one
+ * short line; its pane opens with the icon, a heading that says the act and
+ * one sentence of what happens next. 'go' is the foot's filled button's
+ * words ('' where the start's part draws its own). A start built later takes
+ * its place in this list with a pane of its own in pg_designer_start_pane().
  *
  * @param bool $has_templates whether a template can be offered
  * @param bool $figma         whether the Figma start is listed
  *                            (pg_designer_figma_start_on())
- * @return array list of array('key', 'icon', 'title', 'line', 'drawing', 'go',
- *               'disabled'), 'heading' where the pane's title is not the row's
+ * @return array list of array('key', 'group', 'icon', 'title', 'line',
+ *               'heading', 'lead', 'go', 'disabled')
  */
 function pg_designer_start_kinds($has_templates, $figma = false)
 {
-    $figma_row = array('key' => 'figma', 'icon' => 'bi-vector-pen', 'title' => lang('Figma'),
-              'line' => lang('A Figma file\'s frames become pages.'),
-              'drawing' => 'figma', 'go' => '', 'disabled' => false);
+    $kind = function ($key, $group, $title, $line, $heading, $lead, $go, $disabled = false) {
+        return array('key' => $key, 'group' => $group, 'icon' => pg_designer_start_icon($key), 'title' => $title, 'line' => $line,
+                     'heading' => $heading, 'lead' => $lead, 'go' => $go, 'disabled' => $disabled);
+    };
+    $create = lang('Create design');
 
+    $kinds = array(
+        $kind('blank', 'new', lang('Blank'), lang('An empty page'), lang('Start with a blank page'),
+              lang('The editor opens on an empty page. Add sections from the palette, then more pages as tabs.'), $create),
+        $kind('template', 'new', lang('Template'), lang('A ready design'), lang('Start from a template'),
+              lang('A ready-made design with its pages, colours and fonts. Change anything afterwards.'), lang('Use this template'), !$has_templates),
+    );
+    if ($figma) {
+        $kinds[] = $kind('figma', 'tool', lang('Figma'), lang('Frames of a Figma file'), lang('Start from a Figma file'),
+              lang('Paste a file\'s link. Its frames are listed with their pictures; the ones you tick become pages.'), '');
+    }
     // No connection: the pictures are added in the window (pg_designer_canva_pane()).
-    $canva_row = array('key' => 'canva', 'icon' => 'bi-images', 'title' => lang('Canva'),
-              'line' => lang('Pages exported from Canva become the models of sketch pages.'),
-              'heading' => lang('Start from Canva pages'),
-              'drawing' => 'canva', 'go' => '', 'disabled' => false);
-
-    return array_merge(array(
-        array('key' => 'blank', 'icon' => 'bi-file-earmark-plus', 'title' => lang('Blank'),
-              'line' => lang('An empty page; add sections from the palette.'),
-              'drawing' => 'blank', 'go' => lang('Create design'), 'disabled' => false),
-        array('key' => 'template', 'icon' => 'bi-grid-1x2', 'title' => lang('Template'),
-              'line' => lang('A ready-made design to change as you like.'),
-              'drawing' => 'template-none', 'go' => '', 'disabled' => !$has_templates),
-    ), $figma ? array($figma_row) : array(), array($canva_row), array(
-        array('key' => 'document', 'icon' => 'bi-file-earmark-text', 'title' => lang('From a document'),
-              'line' => lang('A text or a Word file'), 'heading' => lang('Start from a document'),
-              'drawing' => 'document', 'go' => '', 'disabled' => false),
-        array('key' => 'import', 'icon' => 'bi-file-earmark-zip', 'title' => lang('ZIP file'),
-              'line' => lang('An HTML page or a project archive; its pages become tabs.'),
-              'drawing' => 'import', 'go' => lang('Continue'), 'disabled' => false),
-        array('key' => 'paste', 'icon' => 'bi-clipboard-plus', 'title' => lang('Pasted markup'),
-              'line' => lang('The design starts from the markup you paste.'),
-              'drawing' => 'paste', 'go' => lang('Continue'), 'disabled' => false),
-    ));
+    $kinds[] = $kind('canva', 'tool', lang('Canva'), lang('Pages exported from Canva'), lang('Start from Canva pages'),
+              lang('Download the pages from Canva as PNG and add them here. Each comes in as a picture to build on, a model for the page, not layers you can edit.'), '');
+    $kinds[] = $kind('document', 'have', lang('From a document'), lang('A text or a Word file'), lang('Start from a document'),
+              lang('The headings, lists, questions and figures of a text become the sections of a page.'), '');
+    $kinds[] = $kind('import', 'have', lang('ZIP file'), lang('An HTML page or a project'), lang('Start from a ZIP file'),
+              lang('Choose what the design is built on. The editor then opens and asks for the file; its pages become tabs.'), $create);
+    $kinds[] = $kind('paste', 'have', lang('Pasted markup'), lang('HTML and CSS you paste'), lang('Start from pasted markup'),
+              lang('Choose what the design is built on. The editor then opens with a box to paste the HTML and CSS into.'), $create);
+    return $kinds;
 }
 
 /**
@@ -2021,7 +2044,6 @@ function pg_designer_canva_pane($from_pages)
             . '<span class="pg-button pg-button-quiet' . ($small ? ' pg-button-sm' : '') . '" aria-hidden="true">' . h(lang('Choose files')) . '</span>';
     };
     return '<div class="sd-cv" data-texts="' . h(json_encode($texts, JSON_UNESCAPED_UNICODE)) . '">'
-        . '<p class="pg-text-2 mb-5">' . h(lang('Download the pages from Canva as PNG and add them here. Each comes in as a picture to build on, a model for the page, not layers you can edit.')) . '</p>'
         . '<div class="sd-cv-head" hidden></div>'
         . '<div class="sd-cv-tiles" role="list" aria-label="' . h(lang('Pages')) . '" hidden></div>'
         . '<label class="sd-cv-drop" data-big="' . h($place(false)) . '" data-small="' . h($place(true)) . '">' . $place(false)
@@ -2174,33 +2196,43 @@ function pg_designer_start_go_href($key, $framework, $from_pages)
 }
 
 /**
- * The framework a design is built on, as two choice cards. Asked before the
+ * The framework a design is built on, as two choice cards named as things,
+ * each with one line and three ticks of what it brings. Asked before the
  * editor opens, because the pages are written against it and it does not
- * change. An import is asked what the project is built on instead.
+ * change. Bootstrap 5 comes chosen; "Recommended" stands on the blank
+ * start's card only. A press anywhere on a card chooses it
+ * (assets/js/designer_home.js).
+ *
+ * @param string $key        blank | import | paste
+ * @param bool   $from_pages
+ * @return string
  */
 function pg_designer_start_framework_choice($key, $from_pages)
 {
-    $import = ($key !== 'blank');
-    $choice = function ($framework, $tone, $icon, $title, $text, $checked) use ($key, $from_pages) {
+    $choice = function ($framework, $title, $text, $ticks, $pill, $checked) use ($key, $from_pages) {
         $id = 'sd-ns-fw-' . $key . '-' . $framework;
-        return '<div class="form-field form-field-card">'
+        $list = '';
+        foreach ($ticks as $tick) {
+            $list .= '<li><i class="bi bi-check-lg" aria-hidden="true"></i>' . h($tick) . '</li>';
+        }
+        return '<div class="form-field form-field-card sd-ns-fw">'
             . '<input class="radio" type="radio" name="sd_ns_fw_' . h($key) . '" value="' . h($framework) . '" id="' . $id . '" aria-describedby="' . $id . '_help"'
             . ' data-href="' . h(pg_designer_start_go_href($key, $framework, $from_pages)) . '"' . ($checked ? ' checked' : '') . '>'
-            . '<label class="pg-start-head" for="' . $id . '"><span class="pg-icon-tile pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
-            . '<strong>' . h($title) . '</strong><span class="pg-start-mark" aria-hidden="true"><i class="bi bi-check"></i></span></label>'
-            . '<div class="form-text" id="' . $id . '_help">' . h($text) . '</div>'
+            . '<label class="pg-start-head" for="' . $id . '"><strong>' . h($title) . '</strong>'
+            . ($pill ? '<span class="pg-pill">' . h(lang('Recommended')) . '</span>' : '')
+            . '<span class="pg-start-mark" aria-hidden="true"><i class="bi bi-check"></i></span></label>'
+            . '<div class="form-text" id="' . $id . '_help">' . h($text)
+            . '<ul class="sd-ns-ticks">' . $list . '</ul></div>'
             . '</div>';
     };
-    return '<fieldset><legend class="pg-group-label">' . h($import ? lang('What is the project built on?') : lang('What is the design built on?')) . '</legend>'
+    return '<fieldset class="sd-ns-built"><legend class="pg-group-label">' . h(lang('Built on')) . '</legend>'
         . '<div class="pg-start pg-start-choice">'
-        . $choice('bootstrap5', 'violet', 'bi-bootstrap', lang('Build with Bootstrap 5'), $import
-            ? lang('For a project on Bootstrap 5. The editor\'s Bootstrap 5.3 is used; the project\'s own Bootstrap and jQuery files are left out.')
-            : lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true)
-        . $choice('custom', 'gray', 'bi-code-slash', lang('Build a Custom Design'), $import
-            ? lang('For any other project (Bootstrap 6, Tailwind, your own CSS). Its CSS and JS files come in as they are, framework included; nothing is added.')
-            : lang('No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.'), false)
+        . $choice('bootstrap5', lang('Bootstrap 5'), lang('Bootstrap 5.3 is loaded on every page of the design.'),
+            array(lang('The grid and its columns'), lang('Bootstrap\'s components'), lang('Ready-made blocks in the palette')), $key === 'blank', true)
+        . $choice('custom', lang('Custom'), lang('Nothing is added. For Bootstrap 6, Tailwind or your own CSS.'),
+            array(lang('Your CSS and JS files, as they are'), lang('Any framework you bring'), lang('No stylesheet of ours on the page')), false, false)
         . '</div>'
-        . '<p class="pg-field-help mb-0">' . h(lang('This cannot be changed later.')) . '</p>'
+        . '<p class="sd-ns-lock"><i class="bi bi-lock" aria-hidden="true"></i>' . h(lang('This cannot be changed later.')) . '</p>'
         . '</fieldset>';
 }
 
@@ -2213,8 +2245,7 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
         case 'template':
             return pg_designer_template_gallery($templates, $from_pages);
         case 'import':
-            return pg_designer_start_framework_choice('import', $from_pages)
-                . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens and asks for a single .html file or a .zip with the whole project.')) . '</p>';
+            return pg_designer_start_framework_choice('import', $from_pages);
         case 'figma':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
             // The window is a designer's (role 1 or 0), who may open
@@ -2229,8 +2260,7 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
         case 'canva':
             return pg_designer_canva_pane($from_pages);
         case 'paste':
-            return pg_designer_start_framework_choice('paste', $from_pages)
-                . '<p class="pg-text-meta mt-5 mb-0">' . h(lang('The editor opens with a box to paste the markup into.')) . '</p>';
+            return pg_designer_start_framework_choice('paste', $from_pages);
         default:
             return pg_designer_start_framework_choice('blank', $from_pages);
     }
@@ -2238,11 +2268,12 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
 
 /**
  * The New design window (#sdStartModal): the ways to start a design in one
- * place. On the left the starts, each a row with its small drawing, title
- * and one line; on the right the chosen start's pane; in the foot Cancel and
- * the one filled button, which leads where the pane's choice says (the
- * template start has none: each template card has its own button). The
- * home's start cards open it on their own start (data-sd-start), and
+ * place, at most 1120 x 720 px. On the left the rail: the starts in three
+ * labelled groups, each a row of its icon tile, title and one line; on the
+ * right the chosen start's pane, opening with the start's icon, the act and
+ * one sentence; in the foot Cancel and the one filled button, which leads
+ * where the pane's choice says (on the template start, the chosen card).
+ * The home's start cards open it on their own start (data-sd-start), and
  * ?start=<key> opens it on load (assets/js/designer_home.js).
  *
  * @param array $templates pg_design_templates()
@@ -2251,29 +2282,37 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
  */
 function pg_designer_start_window($templates, $from_pages)
 {
-    $kinds = pg_designer_start_kinds(!empty($templates), pg_designer_figma_start_on());
-    $tabs  = '';
-    $panes = '';
+    $kinds  = pg_designer_start_kinds(!empty($templates), pg_designer_figma_start_on());
+    $groups = array('new' => lang('Start new'), 'tool' => lang('From a design tool'), 'have' => lang('From what you have'));
+    $tabs   = '';
+    $panes  = '';
+    $group  = '';
     foreach ($kinds as $i => $k) {
         $key = $k['key'];
+        // A group's label is not a stop: the arrow keys walk every row.
+        if ($k['group'] !== $group) {
+            $group = $k['group'];
+            $tabs .= '<p class="pg-group-label sd-ns-group" aria-hidden="true">' . h($groups[$group]) . '</p>';
+        }
         $tabs .= '<button type="button" class="pg-sm-link sd-ns-item' . ($i === 0 ? ' is-active' : '') . '" role="tab" id="sd-ns-tab-' . $key . '" aria-controls="sd-ns-pane-' . $key . '"'
                . ' aria-selected="' . ($i === 0 ? 'true' : 'false') . '" tabindex="' . ($i === 0 ? '0' : '-1') . '" data-start="' . $key . '"'
                . ($k['disabled'] ? ' aria-disabled="true"' : '') . '>'
-               . pg_designer_home_drawing($k['drawing'])
-               . '<span class="sd-ns-text"><span class="sd-ns-title"><i class="bi ' . h($k['icon']) . '" aria-hidden="true"></i>' . h($k['title']) . '</span>'
-               . '<span class="pg-text-meta">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
+               . '<span class="pg-icon-tile sd-ns-tile"><i class="bi ' . h($k['icon']) . '" aria-hidden="true"></i></span>'
+               . '<span class="sd-ns-text"><span class="sd-ns-title">' . h($k['title']) . '</span>'
+               . '<span class="sd-ns-line">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
                 . ' data-go="' . h($k['go']) . '"' . pg_designer_start_part_attrs($key) . ($i === 0 ? '' : ' hidden') . '>'
-                . '<div class="pg-sm-heading sd-ns-head"><h3 class="pg-title-section">' . h(isset($k['heading']) ? $k['heading'] : $k['title']) . '</h3>'
-                . '<p class="pg-sm-desc pg-text-2">' . h($k['line']) . '</p></div>'
+                . '<div class="sd-ns-head"><span class="pg-icon-tile sd-ns-head-tile" aria-hidden="true"><i class="bi ' . h($k['icon']) . '"></i></span>'
+                . '<div><h3 class="pg-title-section">' . h($k['heading']) . '</h3>'
+                . '<p class="pg-sm-desc pg-text-2">' . h($k['lead']) . '</p></div></div>'
                 . ($k['disabled'] ? '' : pg_designer_start_pane($k, $templates, $from_pages))
                 . '</section>';
     }
     return '
         <dialog class="dialog dialog-xl pg-dialog-centered dialog-scrollable sd-ns-dialog" id="sdStartModal" aria-labelledby="sdStartModalLabel">
             <div class="dialog-header">
-                <h2 class="dialog-title fs-lg" id="sdStartModalLabel"><i class="bi bi-plus-lg me-3" aria-hidden="true"></i>' . h(lang('New design')) . '</h2>
+                <h2 class="dialog-title fs-lg" id="sdStartModalLabel">' . h(lang('New design')) . '</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
             </div>
             <div class="dialog-body sd-ns">
@@ -2488,11 +2527,14 @@ function pg_designer_template_gallery($templates, $from_pages)
         $delete_btn = $custom
             ? '<button type="button" class="btn btn-sm btn-text theme-secondary sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
+        // A press chooses the card, the foot's "Use this template" leads to
+        // data-use; a double press or Enter uses it at once. The theme picker
+        // keeps data-use on its choice, from data-href.
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $use_now = $use_href . '&look=' . rawurlencode($theme['look']) . '&palette=' . rawurlencode($theme['palette']);
         $cards .=
-            '<div class="col-12 md:col-6 xl:col-4 2xl:col-3">
-                <div class="card h-100 overflow-hidden sd-tpl-card"' . $theme_attrs . '>
+            '<div class="col-12 md:col-6 xl:col-4">
+                <div class="card h-100 overflow-hidden sd-tpl-card" tabindex="0" data-use="' . h($use_now) . '" data-href="' . h($use_href) . '" aria-label="' . h($s['name']) . '"' . $theme_attrs . '>
                     ' . $thumb . '
                     <div class="card-body d-flex flex-column gap-1 p-5">
                         <div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-1">
@@ -2505,7 +2547,6 @@ function pg_designer_template_gallery($templates, $from_pages)
                             <div class="d-flex align-items-center gap-3 ms-auto">
                                 ' . $delete_btn . '
                                 ' . $tour_btn . '
-                                <a href="' . h($use_now) . '" class="pg-button pg-button-fill text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small fg-secondary text-truncate">' . h($s['description']) . '</span>
@@ -2515,7 +2556,6 @@ function pg_designer_template_gallery($templates, $from_pages)
             </div>';
     }
     return '
-        <p class="small fg-secondary mb-5">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
         ' . pg_designer_template_theme_picker() . '
         <div class="row g-5" id="sd-tpl-cards">' . $cards . '</div>
         <p class="small fg-secondary mb-0' . ($cards !== '' ? ' d-none' : '') . '" id="sd-tpl-empty">' . lang('There are no templates.') . '</p>
@@ -2564,7 +2604,7 @@ function pg_designer_template_gallery($templates, $from_pages)
  * ("Template's theme", "Template's palette"); any other opens every
  * template in that one. The cards' pictures follow the choice
  * (PGLivePicture.set(), 300 ms after the last change, the cards in view
- * first), and "Use This Template" and "Preview" carry it
+ * first), and "Use this template" and "Preview" carry it
  * (?look=&palette=). Both can be changed later in the editor, under
  * Settings > Theme.
  */
@@ -2666,8 +2706,7 @@ function pg_designer_template_theme_picker()
                     if (nm && p) nm.textContent = p.getAttribute("data-name");
                     modal.querySelectorAll(".sd-tpl-card").forEach(function (card) {
                         var t = theme(card, look, palette);
-                        var use = card.querySelector(".sd-tpl-use");
-                        if (use) use.href = use.getAttribute("data-href") + "&look=" + encodeURIComponent(t.look) + "&palette=" + encodeURIComponent(t.palette);
+                        card.setAttribute("data-use", card.getAttribute("data-href") + "&look=" + encodeURIComponent(t.look) + "&palette=" + encodeURIComponent(t.palette));
                         var tour = card.querySelector(".sd-tpl-tour");
                         if (tour) tour.href = themed(card.getAttribute("data-tour"), t);
                         var pic = card.querySelector("[data-pg-live-picture]");

@@ -2211,6 +2211,8 @@
     "Choose what kind of record to change.": "Değiştirilecek kayıt türünü seçin.",
     "Choose what should be done.": "Ne yapılacağını seçin.",
     "Choose what starts the flow.": "Akışı neyin başlatacağını seçin.",
+    "Choose what the design is built on. The editor then opens and asks for the file; its pages become tabs.": "Tasarımın neyle kurulacağını seçin. Ardından düzenleyici açılır ve dosyayı ister; sayfaları sekme olur.",
+    "Choose what the design is built on. The editor then opens with a box to paste the HTML and CSS into.": "Tasarımın neyle kurulacağını seçin. Ardından düzenleyici, HTML ve CSS'i yapıştıracağınız bir kutuyla açılır.",
     "Choose what the design is built on. The pages are written against it, so it cannot be changed later.": "Tasarımın neyin üzerine kurulacağını seçin. Sayfalar buna göre yazıldığı için sonradan değiştirilemez.",
     "Choose what the flow does next.": "Akışın sonra ne yapacağını seçin.",
     "Choose what the list holds: texts or numbers.": "Listenin ne tuttuğunu seçin: metinler ya da sayılar.",

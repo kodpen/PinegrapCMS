@@ -22,7 +22,7 @@ priority: 8
 - Use a colour beyond greys and the accent (`designer/designer-home-colours.md`), or write a label without `php tools/tr_add.php`.
 
 ## Which steps? (M about 1,000 product lines, S under 400; tests red first in `tests/designer_home_test.php`)
-- HT1 (M) The New design window, boards N1 to N4: at most 1120 × 720 px; the rail in three groups, a row as one icon tile, name and one line, the small drawings removed; one icon a start as a pure function; the pane head; "Built on" as two cards with ticks; Template chosen by a press and used by the foot's "Use this template".
+- HT1 (M, done #PRNUM) The New design window, boards N1 to N4: at most 1120 × 720 px; the rail in three groups, a row as one icon tile, name and one line, the small drawings removed; one icon a start as a pure function; the pane head; "Built on" as two cards with ticks; Template chosen by a press and used by the foot's "Use this template".
 - HT2 (M) after HT1 has landed: the home, boards H1 to H4: the head row; the four start cards only when the site has no design, as three starting points; the large card's state lines, facts in one row and one row of page chips; tiles with a state mark and one line; the search in the head; the menus' groups; the hint line removed.
 - HT3 (S) after HT2 has landed: narrow, boards N5 and H5: the window as a list then a pane with "All starts"; the home in one column, the other designs as a list.
 - HT4 (S) Close-out: `designer/new-design-window.md` and `designer-home-screen.md` corrected, the two readings below moved there, this file deleted.

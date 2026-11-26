@@ -851,11 +851,10 @@
     }, true);
 
     // The New design window (pg_designer_start_window()): the starts are a
-    // vertical tab list, each showing its own pane; the foot's one button
-    // takes the chosen start's words and the address of its framework
-    // choice, and stands aside for the template start, whose cards carry
-    // their own button. A start card or ?start=<key> names the start it
-    // opens on.
+    // vertical tab list in three groups, each showing its own pane; the
+    // foot's one button takes the chosen start's words and the address of
+    // its framework choice, or of the chosen template card (grey until one
+    // is chosen). A start card or ?start=<key> names the start it opens on.
     (function () {
         var win = document.getElementById('sdStartModal');
 
@@ -901,13 +900,93 @@
                 loadPart(part, pane);
             }
 
-            go.classList.toggle('d-none', !label || !pick);
+            // The template start: the chosen card, none until a press.
+            var card = pane.querySelector('.sd-tpl-card.is-chosen');
+            var href = pick ? pick.getAttribute('data-href') : (card ? card.getAttribute('data-use') : '');
+            var gallery = !!pane.querySelector('.sd-tpl-card');
 
-            if (label && pick) {
+            go.classList.toggle('d-none', !label || (!pick && !gallery));
+
+            if (label) {
                 go.textContent = label;
-                go.href = pick.getAttribute('data-href');
+            }
+            if (href) {
+                go.href = href;
+                go.removeAttribute('aria-disabled');
+                go.classList.remove('disabled');
+                go.removeAttribute('tabindex');
+            } else {
+                go.removeAttribute('href');
+                go.setAttribute('aria-disabled', 'true');
+                go.classList.add('disabled');
+                go.tabIndex = -1;
             }
         }
+
+        // A template card: a press chooses it, a double press or Enter uses
+        // it at once; its links and buttons (Preview, details, delete) keep
+        // their own work.
+        function chooseCard(card) {
+            win.querySelectorAll('.sd-tpl-card.is-chosen').forEach(function (other) {
+                other.classList.remove('is-chosen');
+                other.removeAttribute('aria-current');
+            });
+            card.classList.add('is-chosen');
+            card.setAttribute('aria-current', 'true');
+            syncGo();
+        }
+
+        function cardOf(event) {
+            var card = event.target.closest ? event.target.closest('.sd-tpl-card') : null;
+
+            if (!card || !win.contains(card) || event.target.closest('a, button, input, label')) {
+                return null;
+            }
+            return card;
+        }
+
+        win.addEventListener('click', function (event) {
+            var card = cardOf(event);
+
+            if (card) {
+                chooseCard(card);
+                return;
+            }
+
+            // A press anywhere on a framework card chooses it.
+            var fw = event.target.closest ? event.target.closest('.sd-ns-fw') : null;
+            var radio = fw ? fw.querySelector('input[type="radio"]') : null;
+
+            if (radio && !radio.checked && !event.target.closest('input, label')) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+
+        win.addEventListener('dblclick', function (event) {
+            var card = cardOf(event);
+
+            if (card) {
+                chooseCard(card);
+                window.location.href = card.getAttribute('data-use');
+            }
+        });
+
+        win.addEventListener('keydown', function (event) {
+            var card = (event.target.classList && event.target.classList.contains('sd-tpl-card')) ? event.target : null;
+
+            if (!card) {
+                return;
+            }
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                chooseCard(card);
+                window.location.href = card.getAttribute('data-use');
+            } else if (event.key === ' ') {
+                event.preventDefault();
+                chooseCard(card);
+            }
+        });
 
         var parts = {};
 
@@ -1149,6 +1228,11 @@
 
         if (go) {
             go.addEventListener('click', function (event) {
+                if (go.getAttribute('aria-disabled') === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+
                 var pane = win.querySelector('.sd-ns-pane:not([hidden])');
                 var pick = pane ? pane.querySelector('input[type="radio"][data-href]:checked') : null;
 
