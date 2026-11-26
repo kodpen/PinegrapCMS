@@ -87,7 +87,6 @@ function test_security_content_rules_read_entities_in_an_attribute_value()
 	pg_assert_same(array(), pg_security_content_rules('<iframe src="https://www.youtube.com/embed/x?a=1&amp;b=2" width="560"></iframe>', array('youtube.com')));
 }
 
-
 function test_security_content_rules_read_backslashes_as_slashes()
 {
 	$known = array('mysite.example');
@@ -102,6 +101,16 @@ function test_security_content_rules_read_backslashes_as_slashes()
 	pg_assert_same('evil.example', pg_security_content_url_host('https:\/\/evil.example\/a.js'));
 }
 
+function test_security_content_rules_read_a_tag_cut_at_the_end_of_a_field()
+{
+	$known = array('mysite.example');
+
+	// A field that ends inside a tag is closed by the markup the page puts
+	// after it, so the tag still loads.
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<p>Hi</p><script src="//evil.example/a.js"', $known));
+	pg_assert_same(array('content_iframe_hidden' => array('evil.example')), pg_security_content_rules('<iframe src="//evil.example/" width="0"', $known));
+	pg_assert_same(array('content_redirect' => array('evil.example')), pg_security_content_rules('<meta http-equiv="refresh" content="0;url=//evil.example/"', $known));
+}
 
 function test_security_content_rules_find_a_script_added_by_code()
 {

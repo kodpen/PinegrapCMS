@@ -311,7 +311,7 @@ function pg_security_content_rules($text, array $known)
     $script = pg_security_content_script_text($text);
     $urls = array_fill_keys(array_keys(pg_security_content_kinds()), array());
 
-    if (preg_match_all('#<script\b([^>]*)>#i', $text, $tags) > 0) {
+    if (preg_match_all('#<script\b([^>]*)(?:>|$)#i', $text, $tags) > 0) {
         foreach ($tags[1] as $attributes) {
             $urls['content_script_host'][] = pg_security_content_attribute($attributes, 'src');
         }
@@ -327,7 +327,7 @@ function pg_security_content_rules($text, array $known)
         }
     }
 
-    if (preg_match_all('#<iframe\b([^>]*)>#i', $text, $tags) > 0) {
+    if (preg_match_all('#<iframe\b([^>]*)(?:>|$)#i', $text, $tags) > 0) {
         foreach ($tags[1] as $attributes) {
             if (pg_security_content_frame_hidden($attributes)) {
                 $urls['content_iframe_hidden'][] = pg_security_content_attribute($attributes, 'src');
@@ -335,7 +335,7 @@ function pg_security_content_rules($text, array $known)
         }
     }
 
-    if (preg_match_all('#<meta\b([^>]*)>#i', $text, $tags) > 0) {
+    if (preg_match_all('#<meta\b([^>]*)(?:>|$)#i', $text, $tags) > 0) {
         foreach ($tags[1] as $attributes) {
             if ((strcasecmp(trim(pg_security_content_attribute($attributes, 'http-equiv')), 'refresh') === 0)
                 && (preg_match('/url\s*=\s*["\']?([^"\'\s>]+)/i', pg_security_content_attribute($attributes, 'content'), $match) === 1)) {
