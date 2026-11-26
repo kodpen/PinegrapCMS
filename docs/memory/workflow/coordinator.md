@@ -9,7 +9,7 @@ description: Coordinator session: one per account, keeps its worker sessions on 
 ## What does it do each turn?
 - Reads the state from GitHub, not memory: open PRs and drafts, the queue count (Working mode 8); free steps and issues only when a slot is free, by `php tools/free_work.php` (`coordinator-context.md`).
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or they touch different files.
-- Starts each worker as a real session (cloud, or desktop on the owner's machine), never as a Workflow or sub-agent run, with a short brief: the step or task, the memory folder, "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does; it ends at the `ready` label (Working mode 2 and 6).
+- Starts each worker as it chooses (a cloud or desktop session, or a background worker of its own window; `coordinator-worker-brief.md`), with a short brief: the step or task, the memory folder, "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does; it ends at the `ready` label (Working mode 2 and 6).
 - The brief ends with the lifecycle: the `ready` label, then the session ends (`coordinator-worker-brief.md`).
 - Gives each step a new session once the step before it has landed, never one more step to a waiting or ended worker; work in one file or on one screen is one task (`coordinator-worker-steps.md`).
 - Keeps 8 workers working (`coordinator-workers.md`).
