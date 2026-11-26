@@ -349,3 +349,114 @@ function pg_commerce_fold_feeds($store_on, $ready, $on, $built_at, $count, $now,
 
     return pg_commerce_fold_state(true, $line, pg_commerce_fold_pill(true, true));
 }
+
+/* ---------------------------------------------------------------------------
+   Inside the rows: the pane's switch, choice, ticks and group heads
+   --------------------------------------------------------------------------- */
+
+/**
+ * A pg-switch with its label and at most one line of help, as every switch
+ * inside an Ecommerce row is drawn. Pure.
+ *
+ * @param string $name       the field's name and id
+ * @param bool   $on         it is on
+ * @param string $label      plain text
+ * @param string $help       plain text, '' for none
+ * @param string $attributes more attributes of the input, already escaped
+ * @return string HTML
+ */
+function pg_commerce_settings_switch($name, $on, $label, $help = '', $attributes = '')
+{
+    return '
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-5">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($on ? ' checked="checked"' : '') . ' id="' . h($name) . '" name="' . h($name) . '"' . (($help !== '') ? ' aria-describedby="' . h($name) . '_help"' : '') . $attributes . '/>
+                            <label class="pg-text-2" for="' . h($name) . '">' . h($label) . '</label>
+                        </div>' . (($help !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
+                    </div>';
+}
+
+/**
+ * A group headed by its switch: a payment method's switch drawn as the
+ * group's label, its fields following it whatever its state. Pure.
+ *
+ * @param string $name       the field's name and id
+ * @param bool   $on         it is on
+ * @param string $label      plain text
+ * @param string $attributes more attributes of the input, already escaped
+ * @return string HTML
+ */
+function pg_commerce_settings_group_switch($name, $on, $label, $attributes = '')
+{
+    return '
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-5">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($on ? ' checked="checked"' : '') . ' id="' . h($name) . '" name="' . h($name) . '"' . $attributes . '/>
+                            <label class="pg-group-label mb-0" for="' . h($name) . '">' . h($label) . '</label>
+                        </div>
+                    </div>';
+}
+
+/**
+ * A group's label. Pure.
+ *
+ * @param string $label plain text
+ * @return string HTML
+ */
+function pg_commerce_settings_group($label)
+{
+    return '
+                    <div class="col-12"><h3 class="pg-group-label mb-0">' . h($label) . '</h3></div>';
+}
+
+/**
+ * A choice of a few as a pg-seg under its legend, posting the radios'
+ * values as the plain radios did. Pure.
+ *
+ * @param string $legend  plain text
+ * @param string $name    the radios' name
+ * @param array  $options each value, id, label (plain text), on
+ * @return string HTML, the inside of a column
+ */
+function pg_commerce_settings_seg($legend, $name, $options)
+{
+    $items = '';
+
+    foreach ($options as $option) {
+        $items .= '
+                                <label class="pg-seg-item" for="' . h($option['id']) . '"><input value="' . h($option['value']) . '" class="visually-hidden" type="radio" id="' . h($option['id']) . '" name="' . h($name) . '"' . ($option['on'] ? ' checked="checked"' : '') . '/>' . h($option['label']) . '</label>';
+    }
+
+    return '
+                        <fieldset><legend class="form-label pg-field-label">' . h($legend) . '</legend>
+                            <div class="pg-seg flex-wrap">' . $items . '
+                            </div>
+                        </fieldset>';
+}
+
+/**
+ * Switches of one kind as a wrapped list of ticks under a legend, each
+ * posting 1 under its own name. Pure.
+ *
+ * @param string $legend plain text
+ * @param array  $items  each name, label (plain text), on
+ * @return string HTML
+ */
+function pg_commerce_settings_ticks($legend, $items)
+{
+    $ticks = '';
+
+    foreach ($items as $item) {
+        $ticks .= '
+                                <label class="d-inline-flex align-items-center gap-2 pg-text-2" for="' . h($item['name']) . '"><input type="checkbox" class="pg-checkbox" value="1" id="' . h($item['name']) . '" name="' . h($item['name']) . '"' . ($item['on'] ? ' checked="checked"' : '') . '/>' . h($item['label']) . '</label>';
+    }
+
+    return '
+                    <div class="col-12">
+                        <fieldset><legend class="form-label pg-field-label">' . h($legend) . '</legend>
+                            <div class="d-flex flex-wrap gap-5">' . $ticks . '
+                            </div>
+                        </fieldset>
+                    </div>';
+}

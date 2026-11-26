@@ -41,6 +41,7 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
+- designer-home-tidy.md: Plan (owner 2026-11-26): the New design window and the Page Design Studio home made plain: one icon a start, a grouped rail, start cards only on the first visit; steps HT1 to HT4
 - designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start

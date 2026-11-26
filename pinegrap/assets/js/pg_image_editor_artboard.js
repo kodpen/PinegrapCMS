@@ -1804,11 +1804,12 @@
     // One language's picture: its words in the layers, each changed text
     // fitted by M.languageFitted() (grown into its free room, wrapped
     // between words past its width, smaller only past that, never under the
-    // floor of its size on the picture's shorter side), drawn and posted.
+    // floor of its size on the picture's shorter side) or put where it is
+    // corrected by hand for the language, drawn and posted.
     Editor.prototype.drawLanguage = function (data, lang) {
         var self = this, photo = (data.kind === 'photo');
         var opened = photo ? M.versionOpenDoc(data.doc, this.langFileId) : M.canvasOpenDoc(data.doc);
-        var put = opened ? M.languageDoc(opened, lang.texts) : null;
+        var put = opened ? M.languageDoc(opened, lang.texts, lang.code) : null;
 
         if (!put) {
             return Promise.resolve(null);

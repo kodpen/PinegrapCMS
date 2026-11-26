@@ -107,6 +107,7 @@
 - connections-google-reviews-page.md: Google reviews' page on Connections (CX11i): the Places API key and Place ID typed there under the Integrations gate; the Google Reviews card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
+- connections-lead-keeps-pane.md: A lead from the Site Settings dialog to a Connections service page keeps the pane's unsaved fields and open drawers in sessionStorage and puts them back when the pane comes again (TR3b)
 - connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
 - connections-mailchimp-page.md: Mailchimp's page on Connections (EM6): sync switch, key, list, store and limits set there under E-mail › Sending's gate; Campaign mail shows the connection; old anchors open the page [decision: here]
 - connections-mcp-connector-page.md: A ready-made MCP connector's page on Connections (CX11k3): Add, the server's address and sign-in, Connect and Disconnect; Site Settings' MCP servers row keeps the tools and leads there [decision: here]
@@ -368,6 +369,7 @@
 - image-editor-svg-motion.md: Motion in a saved SVG (AN10): layer groups pgm-n, the numbers M.svgMotion() sends, the @keyframes style the server writes, reduced motion, what reopening keeps [decision: decisions-made-product-15.md]
 - image-editor-svg-sanitize.md: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
 - image-editor-svg.md: The Artifact Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
+- image-editor-text-styles.md: The Artifact Canvas's text styles and font pairs at the top of the Text panel (AC5): the three Add buttons, the twelve pairs file, their sizes, the group a pair makes, the textstyles part
 - image-editor-text.md: The Artifact Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 - image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick [decision: here]
 - image-editor-tracks.md: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone [decision: decisions-made-product-67.md]
@@ -703,6 +705,7 @@
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
+- settings-accounting-open-rows.md: Site Settings › Accounting, the Documents, Sales and Web orders rows drawn open (SA2): pg-switch rows, the three selects turned radio rows with one line each, what each row holds, the radio ids
 - settings-accounting.md: Site Settings › Accounting as folded rows (SA1): Enable the ERP module at the head, the ERP card cut into six rows, each row's line and pill, hidden e-document cards, anchors
 - settings-accounts.md: Site Settings › Accounts and sign-in as folded rows: order, each row's line, Sign-in attempts and Deleting many at once on rows of their own, providers as connect rows, anchors
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
@@ -723,6 +726,7 @@
 - settings-communication.md: Site Settings › Communication as folded rows (#11151, #11194): Chat and Chat on the site split from the old two-popover card, state lines, what moved, what stayed
 - settings-dashboard-card.md: Dashboard row of Site Settings > Appearance (pgset-dashboard): Card style, Panel backdrop, Reset widgets, Refresh every per sign-in; role < 2 gate; a save shown on the dashboard [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
+- settings-ecommerce-store-payments.md: Site Settings › Ecommerce, the Store and Payment methods rows opened (EC2): groups, the pane's drawing helpers, what moved into Store, the gateway script kept
 - settings-ecommerce.md: Site Settings › Ecommerce as eleven folded rows under Enable Commerce: order, names, each row's line and pill, Gift cards and Rewards as two cards, anchors, what stayed
 - settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
 - settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
@@ -742,6 +746,7 @@
 - settings-mail-sending-rows.md: E-mail sending's folded rows (EM2): How e-mail leaves with a sentence a kind of mail, the ways sheet of system e-mail and what its choice saves, each row's line and pill, Send a test's result [decision: here]
 - settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3, EM6): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors [decision: here]
 - settings-mail.md: Site Settings › E-mail as a whole (plan mail-settings-one, EM1 to EM6): the two tabs, what each holds, the architect's eight answers, the approved drawing, which file holds each part [decision: decisions-made-panel-14.md]
+- settings-maintenance.md: Site Settings › Updates and maintenance as folded rows: the eight rows in order, each row's line of state and pill, the Sales watch card of its own, what stayed (ids, names, the save)
 - settings-modal-architecture.md: Site Settings dialog: file map, the 20 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.

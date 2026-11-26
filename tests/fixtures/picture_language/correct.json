@@ -1,0 +1,530 @@
+[
+	{
+		"about": "a corrected text is wrapped to its width at its size, from its place, and not marked",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": 20,
+							"y": 40,
+							"w": 200,
+							"size": 30
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosser Sommer Ausverkauf"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 20,
+				"y": 40,
+				"w": 150,
+				"h": 112.5,
+				"size": 30,
+				"text": "Grosser\nSommer\nAusverkauf"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a right aligned corrected text keeps the right side of its width",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"align": "right",
+					"corrections": {
+						"de": {
+							"x": 20,
+							"y": 40,
+							"w": 200,
+							"size": 30
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosser Sommer Ausverkauf"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 70,
+				"y": 40,
+				"w": 150,
+				"h": 112.5,
+				"size": 30,
+				"text": "Grosser\nSommer\nAusverkauf"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a centred corrected text keeps the middle of its width",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"align": "center",
+					"corrections": {
+						"de": {
+							"x": 20,
+							"y": 40,
+							"w": 200,
+							"size": 20
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Hallo Welt"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 70,
+				"y": 40,
+				"w": 100,
+				"h": 25,
+				"size": 20,
+				"text": "Hallo Welt"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a corrected text that ends on the picture's edge is not marked",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": 300,
+							"y": 40,
+							"w": 200,
+							"size": 20
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Hallo Welt"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 40,
+				"w": 100,
+				"h": 25,
+				"size": 20,
+				"text": "Hallo Welt"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a corrected text that runs past the picture's edge is marked",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": 320,
+							"y": 40,
+							"w": 200,
+							"size": 20
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Hallo Welt"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 320,
+				"y": 40,
+				"w": 100,
+				"h": 25,
+				"size": 20,
+				"text": "Hallo Welt"
+			}
+		},
+		"fit": 1
+	},
+	{
+		"about": "a turned corrected text moves along its own line and is marked past the edge",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"rot": 90,
+					"corrections": {
+						"de": {
+							"x": 100,
+							"y": 20,
+							"w": 200,
+							"size": 20
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Hallo weite Welt"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 120,
+				"y": 0,
+				"w": 160,
+				"h": 25,
+				"size": 20,
+				"text": "Hallo weite Welt"
+			}
+		},
+		"fit": 1
+	},
+	{
+		"about": "a correction holds when the words are the source's",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": 10,
+							"y": 10,
+							"w": 100,
+							"size": 50
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Sale"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 10,
+				"y": 10,
+				"w": 100,
+				"h": 62.5,
+				"size": 50,
+				"text": "Sale"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "another language's correction is not read: the text is fitted",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"fr": {
+							"x": 10,
+							"y": 10,
+							"w": 100,
+							"size": 50
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosser Sommer Ausverkauf"
+			}
+		],
+		"same_as_fit": true
+	},
+	{
+		"about": "a correction with a number as a string is not read: the text is fitted",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": "10",
+							"y": 10,
+							"w": 100,
+							"size": 50
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosser Sommer Ausverkauf"
+			}
+		],
+		"same_as_fit": true
+	},
+	{
+		"about": "a correction of no width is not read: the text is fitted",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 150,
+					"y": 80,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": 10,
+							"y": 10,
+							"w": 0,
+							"size": 50
+						}
+					}
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosser Sommer Ausverkauf"
+			}
+		],
+		"same_as_fit": true
+	},
+	{
+		"about": "beside a corrected text the other text is fitted as without it",
+		"code": "de",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 400,
+				"height": 200
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Sale",
+					"size": 40,
+					"x": 20,
+					"y": 20,
+					"w": 80,
+					"h": 50,
+					"corrections": {
+						"de": {
+							"x": 20,
+							"y": 20,
+							"w": 120,
+							"size": 20
+						}
+					}
+				},
+				{
+					"id": "b",
+					"type": "text",
+					"text": "New",
+					"size": 40,
+					"x": 250,
+					"y": 120,
+					"w": 80,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosser Sommer"
+			},
+			{
+				"id": "b",
+				"field": "text",
+				"text": "Neu"
+			}
+		],
+		"layers": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 70,
+				"h": 50,
+				"size": 20,
+				"text": "Grosser\nSommer"
+			}
+		},
+		"fit": 0,
+		"others_as_fit": true
+	}
+]

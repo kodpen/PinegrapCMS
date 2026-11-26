@@ -252,7 +252,10 @@ function test_settings_commerce_fold_names_stay()
 	$pane = settings_commerce_fold_test_source('includes/settings/commerce.php');
 
 	foreach (array('ecommerce', 'ecommerce_next_order_number', 'ecommerce_tax_exempt_label', 'ecommerce_payment_gateway', 'ecommerce_offline_payment', 'ecommerce_recipient_mode', 'ecommerce_reference_price_rule', 'affiliate_program', 'referral_on', 'product_feed_seller_name') as $name) {
-		pg_assert_contains('name="' . $name . '"', $pane, $name . ' posts under its name');
+		// A switch is drawn by pg_commerce_settings_switch() or
+		// pg_commerce_settings_group_switch(), named in their first argument.
+		$drawn = (strpos($pane, 'name="' . $name . '"') !== false) || (preg_match("/pg_commerce_settings_(group_)?switch\\('" . preg_quote($name, '/') . "'/", $pane) === 1);
+		pg_assert_true($drawn, $name . ' posts under its name');
 	}
 
 	$save = settings_commerce_fold_test_source('includes/settings/commerce.save.php');

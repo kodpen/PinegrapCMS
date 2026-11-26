@@ -9,7 +9,7 @@ module: picture_translation
 - The architect's reading, not his words: the fit as built is what he expects, and an improvement is made only where a point below turns out to need one. These words changed no behaviour.
 
 ## What does the draw already do for a longer text?
-- `M.languageFit()` (`picture-text-translation-draw.md`): the text grows into its free room, is wrapped between words, then the size shrinks until it is inside that room, never under its floor (below). Under it the text is drawn at the floor, so it runs past the room, and the language is listed as "Look by hand". The room: `picture-text-fit-room.md`. The server's draw follows the same rule with its own letter widths (`pg_picture_tr_language_fit()`, `picture-text-auto-server.md`).
+- `M.languageFit()` (`picture-text-translation-draw.md`): the text grows into its free room, is wrapped between words, then the size shrinks until it is inside that room, never under its floor (below). Under it the text is drawn at the floor, so it runs past the room, and the language is listed as "Look by hand". The room: `picture-text-fit-room.md`. The server follows the same rule with its own letter widths (`picture-text-auto-server.md`).
 - Wider than its room a translation is first wrapped between words, then made smaller (`picture-text-fit-wrap.md`).
 
 ## What floor does a large text get?
@@ -23,6 +23,6 @@ module: picture_translation
 - Right-to-left languages are not drawn (`picture-text-overview.md`).
 
 ## What is open? (architect, 2026-11-17, read in the code, not tried in a browser)
-- Under the floor a text is still drawn at its floor and marked. Owner (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): it is to grow into the free room, then wrap, then shrink, and a language is to be corrected by hand. `plans/picture-text-fit.md` builds it; the growth and the wrap run, the correction is its later step.
+- Under the floor a text is still drawn at its floor and marked. Owner (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): it is to grow into the free room, then wrap, then shrink, and a language is to be corrected by hand. `plans/picture-text-fit.md` builds it; growth, wrap and correction's model run (`picture-text-fit-correct.md`); its screen is later.
 - The font list's key is the face and the family, not the text. Two text layers of one face, of which only the second has letters of another part of the font (digits, then Cyrillic), wait only for the first part, so the second may be drawn in the next family at the first draw. A small fix for a worker: ask the face per layer text.
 - A family with no letters of the language (a display face without Cyrillic or `ğ`, `ş`, `ı`): the picture is drawn with borrowed letters and listed as drawn. A mark on the Languages row would be a new control, so the owner's look.

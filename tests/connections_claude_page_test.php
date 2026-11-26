@@ -96,5 +96,5 @@ function test_connections_claude_page_setup_step_leads_there()
 	$guide = ws_claude_setup_guide('example.com', 'prompt', '');
 
 	pg_assert_contains('<div class="ws-claude-step-title">' . h(lang('Paste the routine address and the token in Connections')) . '</div>', $guide, 'step 4\'s title');
-	pg_assert_contains('href="' . h(ws_claude_connections_url()) . '" target="_blank" rel="noopener">' . h(lang('Open Claude in Connections')), $guide, 'its button to the page');
+	pg_assert_contains('href="' . h(ws_claude_connections_url()) . '">' . h(lang('Open Claude in Connections')) . '</a>', $guide, 'its button to the page');
 }

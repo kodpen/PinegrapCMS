@@ -48,6 +48,12 @@ define('WS_MEMORY_BRIEF_DECISIONS', 10);
  */
 define('WS_MEMORY_DIGEST_LINES', 40);
 
+/** Characters of a record's text a row of the Memory tab shows. */
+define('WS_MEMORY_PANEL_LINE', 160);
+
+/** Records of one memory the Memory tab's search shows. */
+define('WS_MEMORY_PANEL_SEARCH', 100);
+
 // A writer's memory changes in one channel within this many seconds go into
 // one note: the channel's last note is extended rather than a new one written.
 define('WS_MEMORY_NOTE_BURST', 300);
@@ -733,21 +739,55 @@ function ws_memory_groups($entries)
 }
 
 /**
- * One part of the Memory tab: a memory's records with their text and first
- * line, under their project headings (ws_memory_groups()).
+ * The line a row of the Memory tab shows under its title: the text's first
+ * line, or with a search the text around the first word found
+ * (ws_memory_search_snippet()), as long as a first line. Pure.
  *
- * @param string $key      general | channel
- * @param int    $channel_id 0 for the general memory
- * @param bool   $can_post whoever reads it may write it
- * @param bool   $can_move its records move to the general memory
- * @return array key, can_post, can_move, count, groups
+ * @param string   $text
+ * @param string[] $terms ws_memory_search_terms(), none for no search
+ * @return string
  */
-function ws_memory_panel_part($key, $channel_id, $can_post, $can_move = false)
+function ws_memory_panel_line($text, $terms)
 {
+    $terms = array_values(array_filter(array_map('strval', (array) $terms), 'strlen'));
+
+    if (!$terms) {
+        return ws_memory_first_line($text, WS_MEMORY_PANEL_LINE);
+    }
+
+    return ws_memory_search_snippet($text, $terms, WS_MEMORY_PANEL_LINE);
+}
+
+/**
+ * One part of the Memory tab: a memory's records with their text and the
+ * line a row shows, under their project headings (ws_memory_groups()).
+ * With a search only the records holding every word, the expired ones too,
+ * WS_MEMORY_PANEL_SEARCH at most.
+ *
+ * @param string   $key        general | channel
+ * @param int      $channel_id 0 for the general memory
+ * @param bool     $can_post   whoever reads it may write it
+ * @param bool     $can_move   its records move to the general memory
+ * @param string[] $terms      ws_memory_search_terms(), none for every record
+ * @return array key, can_post, can_move, count, more (a search found more
+ *               than it shows), groups
+ */
+function ws_memory_panel_part($key, $channel_id, $can_post, $can_move = false, $terms = array())
+{
+    $more = false;
+
+    if ($terms) {
+        $page = ws_memory_search_page($channel_id, $terms, array('expired' => true, 'limit' => WS_MEMORY_PANEL_SEARCH));
+        $rows = $page['rows'];
+        $more = $page['more'];
+    } else {
+        $rows = ws_memory_rows($channel_id);
+    }
+
     $entries = array();
 
-    foreach (ws_memory_rows($channel_id) as $row) {
-        $entries[] = ws_memory_present($row) + array('first_line' => ws_memory_first_line($row['text']));
+    foreach ($rows as $row) {
+        $entries[] = ws_memory_present($row) + array('first_line' => ws_memory_panel_line($row['text'], $terms));
     }
 
     return array(
@@ -755,6 +795,7 @@ function ws_memory_panel_part($key, $channel_id, $can_post, $can_move = false)
         'can_post' => (bool) $can_post,
         'can_move' => (bool) $can_move,
         'count'    => count($entries),
+        'more'     => $more,
         'groups'   => ws_memory_groups($entries),
     );
 }
@@ -1372,5 +1413,8 @@ function ws_memory_js_strings()
         'mem_move'          => lang('Move to the general memory'),
         'mem_move_ask'      => lang('Move this entry to the general memory? Every agent channel sees it then.'),
         'mem_moved'         => lang('Moved to the general memory.'),
+        'mem_search'        => lang('Search the memory'),
+        'mem_search_none'   => lang('No entry holds these words.'),
+        'mem_search_more'   => lang('Only the first matches are shown. Add a word to narrow them.'),
     );
 }

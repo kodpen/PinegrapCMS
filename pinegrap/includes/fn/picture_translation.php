@@ -1658,6 +1658,34 @@ function pg_picture_tr_language_texts($file_id, $language)
 }
 
 /**
+ * How many text layers of a canvas document are corrected by hand for a
+ * language (a well formed corrections[code], pg_image_edit_correction()).
+ * Twin of M.languageCorrected(). Pure.
+ *
+ * @param mixed  $doc  the document, arrays or objects
+ * @param string $code
+ * @return int
+ */
+function pg_picture_tr_corrected($doc, $code)
+{
+    $doc = is_object($doc) ? json_decode((string) json_encode($doc), true) : $doc;
+    $count = 0;
+
+    if (!is_array($doc) || !isset($doc['layers']) || !is_array($doc['layers']) || !pg_image_edit_correction_code($code)) {
+        return 0;
+    }
+
+    foreach ($doc['layers'] as $layer) {
+        if (is_array($layer) && isset($layer['type']) && ($layer['type'] === 'text') && isset($layer['corrections']) && is_array($layer['corrections'])
+            && array_key_exists($code, $layer['corrections']) && (pg_image_edit_correction($layer['corrections'][$code]) !== null)) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
+/**
  * Whether a language is written right to left; its picture is not drawn.
  *
  * @param string $language
@@ -1678,12 +1706,13 @@ function pg_picture_tr_rtl($language)
  * set up), and the list is then left closed.
  *
  *   { file_id } -> { status, words, hash, doc, languages: [{ code, name,
- *   rtl, state, queued, total, translated, texts, stamp, url }] }
+ *   rtl, state, queued, total, translated, corrected, texts, stamp, url }] }
  *
  * queued: the language has a row that is not drawn (waiting or out of
  * date), so a page has shown the picture in it: the Design Canvas draws such
  * a language again right after a Save; one without a row is never drawn by
- * itself.
+ * itself. corrected: how many text layers are corrected by hand for the
+ * language (pg_picture_tr_corrected()).
  *
  * @return array array(payload, HTTP status)
  */
@@ -1740,6 +1769,7 @@ function pg_picture_tr_languages_answer($request, $user)
             'queued'     => ($row !== null) && ((int) $row['state'] !== 1),
             'total'      => count($texts),
             'translated' => $translated,
+            'corrected'  => pg_picture_tr_corrected($canvas['doc'], $code),
             'texts'      => $texts,
             'stamp'      => pg_picture_tr_stamp($file_id, $code, $canvas['hash'], $texts),
             'url'        => ($picture !== '') ? PATH . encode_url_path($picture) . '?v=' . (int) $row['drawn_at'] : '');

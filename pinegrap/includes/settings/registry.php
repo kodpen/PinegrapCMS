@@ -346,7 +346,7 @@ function pg_settings_categories()
                 'pgset-feeds'     => lang('Product feeds'),
             ),
             'keywords' => array(
-                'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
+                'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency, product images, photo reviews, custom product field, label, pack')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
                 'pgset-address-autocomplete' => pg_settings_keywords(lang('address, autocomplete, suggestions, google places, mapbox, photon, openstreetmap')),
@@ -478,22 +478,24 @@ function pg_settings_categories()
             'icon'  => 'bi-wrench-adjustable',
             'description' => lang('The update channel, scheduled jobs, backups, operations alerts and maintenance mode.'),
             'sections' => array(
-                'pgset-channel'     => lang('Update Channel'),
-                'pgset-cron'        => lang('Cron Jobs'),
+                'pgset-channel'     => lang('Update channel'),
+                'pgset-maintenance' => lang('Maintenance mode'),
+                'pgset-cron'        => lang('Scheduled jobs'),
                 'pgset-backup'      => lang('Backups'),
                 'pgset-storage'     => lang('Storage'),
-                'pgset-alerts'      => lang('Alerts'),
+                'pgset-alerts'      => lang('Operations alerts'),
+                'pgset-sales-watch' => lang('Sales watch'),
                 'pgset-chat-notify' => lang('Chat notifications'),
-                'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
                 'pgset-channel'     => pg_settings_keywords(lang('update, channel, beta, stable, version')),
+                'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
                 'pgset-cron'        => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'      => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
                 'pgset-storage'     => pg_settings_keywords(lang('storage, object storage, s3, bucket, endpoint, files, uploads')),
                 'pgset-alerts'      => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
+                'pgset-sales-watch' => pg_settings_keywords(lang('sales watch, orders stopped, payment broken, price error, returns, sensitivity, pause')),
                 'pgset-chat-notify' => pg_settings_keywords(lang('slack, teams, telegram, chat, notification, channel, webhook')),
-                'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
             ),
             'lists' => array(
                 'job_dispatch_job' => 1,
@@ -1316,6 +1318,10 @@ function pg_settings_legacy_anchors()
         'waf_text_log'     => array('firewall',   'pgset-waf-logs'),
         'pgset-ecommerce'  => array('commerce',   'pgset-store'),
         'pgsub-store'      => array('commerce',   'pgset-store'),
+        // The label rule left Shipping and the custom product field labels
+        // left Payment methods for Store's Labels and Products groups.
+        'pack_before_label' => array('commerce',  'pgset-store'),
+        'ecommerce_custom_product_field_1_label' => array('commerce', 'pgset-store'),
         'pgsub-shipping'   => array('commerce',   'pgset-shipping'),
         'pgsub-giftcards'  => array('commerce',   'pgset-giftcards'),
         // The reward programme left Gift Cards & Rewards for Rewards; an old

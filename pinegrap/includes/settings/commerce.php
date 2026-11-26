@@ -48,111 +48,6 @@ $commerce_head = '
     </div>';
 
 // ── Store ──
-$commerce_parts['store'] = array('html' => '
-    <div id="pgset-store" class="pg-set-card">
-        <div class="card">
-            <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Store') . '
-            </div>
-            <div class="card-body">
-                <div class="row gy-5">
-                                                        <div id="pgsub-store" class="pg-f-xs">
-                                                            <label for="ecommerce_next_order_number" class="form-label">' . lang('Next Order Number') . '</label>
-                                                            <input type="number" name="ecommerce_next_order_number" id="ecommerce_next_order_number" class="form-control" value="' . h($ecommerce_next_order_number) . '" min="1" step="1"/>
-                                                            <input type="hidden" name="ecommerce_next_order_number_was" value="' . h($ecommerce_next_order_number) . '"/>
-                                                        </div>
-                                                        <div class="pg-f-lg">
-                                                            <label for="ecommerce_email_address" class="form-label">' . lang('Commerce E-mail Address') . '</label>
-                                                            <input type="text" name="ecommerce_email_address" id="ecommerce_email_address" class="form-control" value="' . h($ecommerce_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
-                                                        </div>
-                                                        <div class="pg-f-lg">
-                                                            <label for="product_upload_folder_id" class="form-label">' . lang('Folder for product images') . '</label>
-                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control">' . pg_settings_select_folder($product_upload_folder_id) . '</select>
-                                                            <div class="form-text">' . lang('The product and product group screens open on this folder when an image is uploaded. It can still be changed while uploading.') . '</div>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_multicurrency_checked . ' class="" type="checkbox" id="ecommerce_multicurrency" name="ecommerce_multicurrency" onclick="show_or_hide_ecommerce_payment_gateway()"/></div>
-                                                                <label class="" for="ecommerce_multicurrency">' . lang('Multi-Currency') . '</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_show_product_images_checked . ' class="" type="checkbox" id="ecommerce_show_product_images" name="ecommerce_show_product_images"/></div>
-                                                                <label class="" for="ecommerce_show_product_images">' . lang('Show Product Images in Tables') . '</label>
-                                                            </div>
-                                                        </div>
-' . ($review_photos_ready ? '
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $review_photos_checked . ' class="" type="checkbox" id="review_photos" name="review_photos" aria-describedby="review_photos_hint"/></div>
-                                                                <label class="" for="review_photos">' . lang('Photo Reviews') . '</label>
-                                                                <div class="form-text" id="review_photos_hint">' . lang('A customer may add one image (JPG, PNG, GIF or WebP) to a product review. Other files are never taken on a review, whatever the page allows.') . '</div>
-                                                            </div>
-                                                        </div>
-' : '') . '
-
-                                                        <!-- ── Barcode ── -->
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $barcode_enabled_checked . ' class="collapse-switcher" type="checkbox" id="barcode_enabled" name="barcode_enabled" data-bs-target="#barcode_settings_row"/></div>
-                                                                <label class="" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="barcode_settings_row">
-                                                                <div class="popover-arrow" style="position:absolute;left:0px;transform:translate(30px,0px);"></div>
-                                                                <div class="popover-body">
-                                                                    <div class="row g-3">
-                                                                        <div class="pg-f-sm">
-                                                                            <label class="form-label" for="barcode_default_type">' . lang('Default Barcode Type') . '</label>
-                                                                            <select name="barcode_default_type" id="barcode_default_type" class="form-control form-control-sm">
-                                                                                <option value="CODE128"' . ($barcode_default_type === 'CODE128' ? ' selected' : '') . '>Code 128</option>
-                                                                                <option value="EAN13"'   . ($barcode_default_type === 'EAN13'   ? ' selected' : '') . '>EAN-13</option>
-                                                                                <option value="CODE39"'  . ($barcode_default_type === 'CODE39'  ? ' selected' : '') . '>Code 39</option>
-                                                                                <option value="UPC"'     . ($barcode_default_type === 'UPC'     ? ' selected' : '') . '>UPC-A</option>
-                                                                            </select>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <!-- ── /Barcode ── -->
-
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_tax_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_tax" name="ecommerce_tax" data-bs-target="#ecommerce_tax_row"/></div>
-                                                                <label class="" for="ecommerce_tax">' . lang('Tax') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_tax_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_tax_exempt_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_tax_exempt" name="ecommerce_tax_exempt" data-bs-target="#ecommerce_tax_exempt_row"/></div>
-                                                                                <label class="" for="ecommerce_tax_exempt">' . lang('Allow Tax-Exempt') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_tax_exempt_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <div class="col-12 ">
-                                                                                            <label for="ecommerce_tax_exempt_label" class="form-label">' . lang('Tax-Exempt Label') . '</label>
-                                                                                            <input type="text" name="ecommerce_tax_exempt_label" id="ecommerce_tax_exempt_label" class="form-control" value="' . h($ecommerce_tax_exempt_label) . '" maxlength="255"/>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                </div>
-            </div>
-        </div>
-    </div>') + pg_commerce_fold_store($commerce_on, $ecommerce_next_order_number, ($ecommerce_tax == 1) && ($ecommerce_tax_exempt == 1));
-
-// ── Shipping ──
 // The checked pack before a label (includes/fn/shipment_labels.php), a
 // config_text row; drawn once the pick and pack tables exist, and saved only
 // when drawn (pack_before_label_card).
@@ -162,15 +57,71 @@ if (pg_schema_has('order_packs') && pg_schema_has('config_text')) {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_labels.php');
 
     $pack_before_label_row = '
-                                                                        <div class="col-12">
-                                                                            <input type="hidden" name="pack_before_label_card" value="1"/>
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . (pg_shipment_label_pack_required() ? ' checked="checked"' : '') . ' type="checkbox" id="pack_before_label" name="pack_before_label"/></div>
-                                                                                <label class="" for="pack_before_label">' . lang('Create a label only after the pack is checked') . '</label>
-                                                                                <div class="form-text">' . lang('Create Label, Create Labels, the automatic label and the API wait until every unit of the address is scanned on the Pack screen.') . '</div>
-                                                                            </div>
-                                                                        </div>';
+                    <input type="hidden" name="pack_before_label_card" value="1"/>'
+        . pg_commerce_settings_switch('pack_before_label', pg_shipment_label_pack_required(), lang('Create a label only after the pack is checked'), lang('Create Label, Create Labels, the automatic label and the API wait until every unit of the address is scanned on the Pack screen.'));
 }
+
+// The four labels a product may fill in, numbered as the product form shows
+// them.
+$store_custom_fields = '';
+
+foreach (array(1 => $ecommerce_custom_product_field_1_label, 2 => $ecommerce_custom_product_field_2_label, 3 => $ecommerce_custom_product_field_3_label, 4 => $ecommerce_custom_product_field_4_label) as $store_custom_number => $store_custom_value) {
+    $store_custom_name = 'ecommerce_custom_product_field_' . $store_custom_number . '_label';
+    $store_custom_fields .= '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="' . $store_custom_name . '">' . lang(array('string' => 'Custom product field {var:1} label', 'vars' => array('#' . $store_custom_number))) . '</label>
+                        <input class="form-control" type="text" id="' . $store_custom_name . '" name="' . $store_custom_name . '" value="' . h($store_custom_value) . '"/>
+                    </div>';
+}
+
+$commerce_parts['store'] = array('html' => '
+    <div id="pgset-store" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Store') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div id="pgsub-store" class="pg-f-xs">
+                        <label for="ecommerce_next_order_number" class="form-label">' . lang('Next order number') . '</label>
+                        <input type="number" name="ecommerce_next_order_number" id="ecommerce_next_order_number" class="form-control" value="' . h($ecommerce_next_order_number) . '" min="1" step="1"/>
+                        <input type="hidden" name="ecommerce_next_order_number_was" value="' . h($ecommerce_next_order_number) . '"/>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="ecommerce_email_address" class="form-label">' . lang('Commerce e-mail address') . '</label>
+                        <input type="text" name="ecommerce_email_address" id="ecommerce_email_address" class="form-control" value="' . h($ecommerce_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="product_upload_folder_id" class="form-label">' . lang('Folder for product images') . '</label>
+                        <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control" aria-describedby="product_upload_folder_id_help">' . pg_settings_select_folder($product_upload_folder_id) . '</select>
+                        <div class="form-text" id="product_upload_folder_id_help">' . lang('The product and product group screens open on this folder when an image is uploaded. It can still be changed while uploading.') . '</div>
+                    </div>' . pg_commerce_settings_group(lang('Prices and tax'))
+                    . pg_commerce_settings_switch('ecommerce_multicurrency', $ecommerce_multicurrency_checked !== '', lang('Multi-currency'), '', ' onclick="show_or_hide_ecommerce_payment_gateway()"')
+                    . pg_commerce_settings_switch('ecommerce_tax', $ecommerce_tax_checked !== '', lang('Tax'))
+                    . pg_commerce_settings_switch('ecommerce_tax_exempt', $ecommerce_tax_exempt_checked !== '', lang('Allow tax-exempt')) . '
+                    <div class="pg-f-md">
+                        <label for="ecommerce_tax_exempt_label" class="form-label">' . lang('Tax-exempt label') . '</label>
+                        <input type="text" name="ecommerce_tax_exempt_label" id="ecommerce_tax_exempt_label" class="form-control" value="' . h($ecommerce_tax_exempt_label) . '" maxlength="255"/>
+                    </div>' . pg_commerce_settings_group(lang('Products'))
+                    . pg_commerce_settings_switch('ecommerce_show_product_images', $ecommerce_show_product_images_checked !== '', lang('Show product images in tables'))
+                    . ($review_photos_ready ? pg_commerce_settings_switch('review_photos', $review_photos_checked !== '', lang('Photo reviews'), lang('A customer may add one image (JPG, PNG, GIF or WebP) to a product review. Other files are never taken on a review, whatever the page allows.')) : '')
+                    . pg_commerce_settings_switch('barcode_enabled', $barcode_enabled_checked !== '', lang('Barcodes')) . '
+                    <div class="pg-f-sm">
+                        <label class="form-label" for="barcode_default_type">' . lang('Default barcode type') . '</label>
+                        <select name="barcode_default_type" id="barcode_default_type" class="form-control">
+                            <option value="CODE128"' . ($barcode_default_type === 'CODE128' ? ' selected' : '') . '>Code 128</option>
+                            <option value="EAN13"'   . ($barcode_default_type === 'EAN13'   ? ' selected' : '') . '>EAN-13</option>
+                            <option value="CODE39"'  . ($barcode_default_type === 'CODE39'  ? ' selected' : '') . '>Code 39</option>
+                            <option value="UPC"'     . ($barcode_default_type === 'UPC'     ? ' selected' : '') . '>UPC-A</option>
+                        </select>
+                    </div>' . $store_custom_fields
+                    . (($pack_before_label_row !== '') ? pg_commerce_settings_group(lang('Labels')) . $pack_before_label_row : '') . '
+                </div>
+            </div>
+        </div>
+    </div>') + pg_commerce_fold_store($commerce_on, $ecommerce_next_order_number, ($ecommerce_tax == 1) && ($ecommerce_tax_exempt == 1));
+
+// ── Shipping ──
 
 // The carriers connected, by name, for the row's line: the carriers' APIs
 // (pg_carrier_api_connected()) and the label services that may open
@@ -287,7 +238,6 @@ $commerce_parts['shipping'] = array('html' => '
                                                                             </div>
                                                                         </div>
                                                                         ' . pg_label_settings_rows() . '
-                                                                        ' . $pack_before_label_row . '
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
                                                                             <textarea name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_product_restriction_message) . '</textarea>
@@ -615,257 +565,118 @@ if ($ecommerce_offline_payment == 1) {
     $commerce_methods[] = lang('Offline payments');
 }
 
+// The gateway's choices, each a pg-seg posting the values the radios did.
+$commerce_seg_options = function ($id, $choices) {
+    $options = array();
+
+    foreach ($choices as $choice) {
+        $options[] = array('value' => $choice[0], 'id' => $id . '_' . $choice[1], 'label' => $choice[2], 'on' => $choice[3] !== '');
+    }
+
+    return $options;
+};
+
 $commerce_parts['payments'] = array('html' => '
     <div id="pgset-payments" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Payment Methods') . '
+                ' . lang('Payment methods') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
-                    <div class="col-12">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_credit_debit_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_credit_debit_card" name="ecommerce_credit_debit_card" data-bs-target="#ecommerce_credit_debit_card_row"/></div>
-                                                                <label class="" for="ecommerce_credit_debit_card">' . lang('Credit/Debit Card') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_credit_debit_card_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="col-12 ">
-                                                                            <label class="form-label">'. lang('Accepted Cards') . '</label>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_american_express_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_american_express" name="ecommerce_american_express"/></div>
-                                                                                <label class="" for="ecommerce_american_express">' . lang('American Express') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_diners_club_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_diners_club" name="ecommerce_diners_club"/></div>
-                                                                                <label class="" for="ecommerce_diners_club">' . lang('Diners Club') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_discover_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_discover_card" name="ecommerce_discover_card"/></div>
-                                                                                <label class="" for="ecommerce_discover_card">' . lang('Discover Card') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_mastercard_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_mastercard" name="ecommerce_mastercard"/></div>
-                                                                                <label class="" for="ecommerce_mastercard">' . lang('MasterCard') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_visa_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_visa" name="ecommerce_visa"/></div>
-                                                                                <label class="" for="ecommerce_visa">' . lang('Visa') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_troy_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_troy" name="ecommerce_troy"/></div>
-                                                                                <label class="" for="ecommerce_troy">' . lang('Troy') . '</label>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div class="col-12 ">
-                                                                           <div class="row gy-5">
-                                                                                <div class="pg-f-sm">
-                                                                                    <label class="form-label" for="ecommerce_payment_gateway">' . lang('Payment Gateway') . '</label>
-                                                                                    <select class="form-control collapse-if-selected " name="ecommerce_payment_gateway" id="ecommerce_payment_gateway" onchange="show_or_hide_ecommerce_payment_gateway()" data-bs-target="#ecommerce_payment_gateway_row">
-                                                                                        <option value="">-' . lang('None') . '-</option>
-                                                                                        <option value="Authorize.Net"' . $ecommerce_payment_gateway_authorizenet . '>Authorize.Net</option>
-                                                                                        <option value="ClearCommerce"' . $ecommerce_payment_gateway_clearcommerce . '>ClearCommerce/PayFuse</option>
-                                                                                        <option value="First Data Global Gateway"' . $ecommerce_payment_gateway_first_data_global_gateway . '>First Data Global Gateway</option>
-                                                                                        <option value="PayPal Payflow Pro"' . $ecommerce_payment_gateway_paypal_payflow_pro . '>PayPal Payflow Pro</option>
-                                                                                        <option value="PayPal Payments Pro"' . $ecommerce_payment_gateway_paypal_payments_pro . '>PayPal Payments Pro</option>
-                                                                                        <option value="Sage"' . $ecommerce_payment_gateway_sage . '>Sage</option>
-                                                                                        <option value="Stripe"' . $ecommerce_payment_gateway_stripe . '>' . h(lang('Stripe (classic)')) . '</option>
-                                                                                        <option value="Iyzipay"' . $ecommerce_payment_gateway_iyzipay . '>Iyzipay</option>' . pg_payment_settings_gateway_options($ecommerce_payment_gateway) . '
-                                                                                    </select>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0  " id="ecommerce_payment_gateway_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <div class="col-12 " id="ecommerce_payment_gateway_transaction_type_row" style="' . $ecommerce_payment_gateway_transaction_type_row_style . '">
-                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Transaction Type') . '</legend>
-                                                                                            <div class="form-field">
-                                                                                                <input value="Authorize" class="radio" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize . '>
-                                                                                                <label class="" for="ecommerce_payment_gateway_transaction_type_authorize">'. lang('Authorize') . '</label>
-                                                                                            </div>
-                                                                                            <div class="form-field">
-                                                                                                <input value="Authorize &amp; Capture" class="radio" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize_and_capture" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize_and_capture . '>
-                                                                                                <label class="" for="ecommerce_payment_gateway_transaction_type_authorize_and_capture">'. lang('Authorize & Capture') . '</label>
-                                                                                            </div>
-                                                                                            </fieldset>
-                                                                                        </div>
-                                                                                        <div class="col-12 " id="ecommerce_payment_gateway_mode_row" style="' . $ecommerce_payment_gateway_mode_row_style . '">
-                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Mode') . '</legend>
-                                                                                            <div class="form-field">
-                                                                                                <input value="test" class="radio" type="radio" id="ecommerce_payment_gateway_mode_test" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
-                                                                                                <label class="" for="ecommerce_payment_gateway_mode_test">'. lang('Test') . '</label>
-                                                                                            </div>
-                                                                                            <div class="form-field">
-                                                                                                <input value="live" class="radio" type="radio" id="ecommerce_payment_gateway_mode_live" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_live . '>
-                                                                                                <label class="" for="ecommerce_payment_gateway_mode_live">'. lang('Live') . '</label>
-                                                                                            </div>
-                                                                                            </fieldset>
-                                                                                        </div>
-                                                                                        <div class="col-12 " id="ecommerce_paypal_payments_pro_gateway_mode_row" style="' . $ecommerce_paypal_payments_pro_gateway_mode_row_style . '">
-                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Mode') . '</legend>
-                                                                                            <div class="form-field">
-                                                                                                <input value="test" class="radio" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_test" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
-                                                                                                <label class="" for="ecommerce_paypal_payments_pro_gateway_mode_test">'. lang('Sandbox') . '</label>
-                                                                                            </div>
-                                                                                            <div class="form-field">
-                                                                                                <input value="live" class="radio" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_live" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_live . '>
-                                                                                                <label class="" for="ecommerce_paypal_payments_pro_gateway_mode_live">'. lang('Live') . '</label>
-                                                                                            </div>
-                                                                                            </fieldset>
-                                                                                        </div>
-                                                                                        ' . pg_payment_gateway_connections_html($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1), $ecommerce_gateway_connection_stored) . '
-                                                                                        <div class="pg-f-lg" id="ecommerce_iyzipay_installment_row" style="' . $ecommerce_iyzipay_installment_row_style . '">
-                                                                                            <label class="form-label" for="ecommerce_iyzipay_installment">'. lang('Installment') . '</label>
-                                                                                            <select class="form-control" id="ecommerce_iyzipay_installment" name="ecommerce_iyzipay_installment">'.$ecommerce_iyzipay_installment_options.'</select>
-                                                                                        </div>
-                                                                                        <div class="pg-f-xs" id="ecommerce_surcharge_percentage_row" style="' . $ecommerce_surcharge_percentage_row_style . '">
-                                                                                            <label for="ecommerce_surcharge_percentage" class="form-label">' . lang('Surcharge') . '</label>
-                                                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                                                <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost text-end" size="7" maxlength="7" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
-                                                                                            </label>
-                                                                                        </div>
-                                                                                        <div class="col-12 " id="ecommerce_iyzipay_threeds_row" style="' . $ecommerce_iyzipay_3ds_row_style . '">
-                                                                                            <div class="form-field">
-                                                                                                <div class="switch"><input value="1"' . $ecommerce_iyzipay_threeds_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_iyzipay_threeds" name="ecommerce_iyzipay_threeds"/></div>
-                                                                                                <label class="" for="ecommerce_iyzipay_threeds">' . lang('3D Secure') . '</label>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <div class="col-12 ">
-                                                                                            <div class="form-field">
-                                                                                                <div class="switch"><input value="1" ' . $ecommerce_pay_with_iyzico_checked . ' class="" type="checkbox" id="ecommerce_pay_with_iyzico" name="ecommerce_pay_with_iyzico"/></div>
-                                                                                                <label class="" for="ecommerce_pay_with_iyzico">' . lang('Enable Pay with Iyzico') . '</label>
-                                                                                            </div>
-                                                                                        </div>
-
-                                                                                        <div class="col-12" id="ecommerce_iyzipay_protected_currency_row" style="' . $ecommerce_iyzipay_protected_currency_row_style . '">
-                                                                                            <div class="form-field">
-                                                                                                <div class="switch"><input value="1"' . $enable_iyzipay_protected_currency_checked . ' class="collapse-switcher" type="checkbox" id="enable_iyzipay_protected_currency" name="enable_iyzipay_protected_currency" data-bs-target="#enable_iyzipay_protected_currency_row"/></div>
-                                                                                                <label class="" for="enable_iyzipay_protected_currency">' . lang('Enable Iyzipay Protected Currency') . '</label>
-                                                                                            </div>
-                                                                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="enable_iyzipay_protected_currency_row">
-                                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                                <div class="popover-body">
-                                                                                                   <div class="row gy-5">
-                                                                                                        <div class="pg-f-md">
-                                                                                                            ' . (($output_iyzipay_protected_currency_select !== '') ? '<label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>' : '') . '
-                                                                                                            ' . $output_iyzipay_protected_currency_select . '
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        </div>' . pg_payment_settings_card_rows($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1)) . '
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_paypal_express_checkout_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_paypal_express_checkout" name="ecommerce_paypal_express_checkout" data-bs-target="#ecommerce_paypal_express_checkout_row"/></div>
-                                                                <label class="" for="ecommerce_paypal_express_checkout">' . lang('PayPal Express Checkout') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_paypal_express_checkout_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="col-12 ">
-                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Transaction Type') . '</legend>
-                                                                            <div class="form-field">
-                                                                                <input value="Authorize" class="radio" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize . '>
-                                                                                <label class="" for="ecommerce_paypal_express_checkout_transaction_type_authorize">'. lang('Authorize') . '</label>
-                                                                            </div>
-                                                                            <div class="form-field">
-                                                                                <input value="Authorize &amp; Capture" class="radio" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture . '>
-                                                                                <label class="" for="ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture">'. lang('Authorize & Capture') . '</label>
-                                                                            </div>
-                                                                            </fieldset>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Mode') . '</legend>
-                                                                            <div class="form-field">
-                                                                                <input value="sandbox" class="radio" type="radio" id="ecommerce_paypal_express_checkout_mode_sandbox" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_sandbox . '>
-                                                                                <label class="" for="ecommerce_paypal_express_checkout_mode_sandbox">'. lang('Sandbox') . '</label>
-                                                                            </div>
-                                                                            <div class="form-field">
-                                                                                <input value="live" class="radio" type="radio" id="ecommerce_paypal_express_checkout_mode_live" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_live . '>
-                                                                                <label class="" for="ecommerce_paypal_express_checkout_mode_live">'. lang('Live') . '</label>
-                                                                            </div>
-                                                                            </fieldset>
-                                                                        </div>' . pg_payment_method_connection_html('paypal_express', $ecommerce_method_connection_stored) . '
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>' . pg_payment_settings_redirect_rows() . '
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_offline_payment_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_offline_payment" name="ecommerce_offline_payment" data-bs-target="#ecommerce_offline_payment_row"/></div>
-                                                                <label class="" for="ecommerce_offline_payment">' . lang('Allow Offline Payments') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_offline_payment_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_offline_payment_only_specific_orders_checked . ' class="" type="checkbox" id="ecommerce_offline_payment_only_specific_orders" name="ecommerce_offline_payment_only_specific_orders"/></div>
-                                                                                <label class="" for="ecommerce_offline_payment_only_specific_orders">' . lang('Only on specific orders') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <label class="form-label" for="ecommerce_offline_payment_cancel_days">' . lang('Cancel unpaid bank transfer orders after') . '</label>
-                                                                            <input type="number" min="0" max="255" step="1" class="form-control" id="ecommerce_offline_payment_cancel_days" name="ecommerce_offline_payment_cancel_days" value="' . (int) $ecommerce_offline_payment_cancel_days . '"/>
-                                                                            <div class="form-text">' . lang('days; 0 keeps them open until you cancel by hand. Cancelled orders keep the reason on the order screen.') . '</div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div> 
-                                                        </div>
-                                                        <div class="pg-f-lg">
-                                                            <label class="form-label" for="ecommerce_private_folder_id">'. lang('Grant Private Access') . '</label>
-                                                            <select class="form-control" id="ecommerce_private_folder_id" name="ecommerce_private_folder_id">
-                                                                <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Folder')) )) . '-</option>
-                                                                ' . pg_settings_select_folder($ecommerce_private_folder_id, 'private') . '
-                                                            </select>
-                                                        </div>
-                                                        <div class="pg-f-lg">
-                                                            <label class="form-label" for="ecommerce_retrieve_order_next_page_id">'. lang('Reorder/Retrieve Order Next Page') . '</label>
-                                                            ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label class="form-label" for="ecommerce_custom_product_field_1_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#1') )) . '</label>
-                                                            <input class="form-control" type="text" id="ecommerce_custom_product_field_1_label" name="ecommerce_custom_product_field_1_label" value="' . h($ecommerce_custom_product_field_1_label) . '" />
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label class="form-label" for="ecommerce_custom_product_field_2_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#2') )) . '</label>
-                                                            <input class="form-control" type="text" id="ecommerce_custom_product_field_2_label" name="ecommerce_custom_product_field_2_label" value="' . h($ecommerce_custom_product_field_2_label) . '" />
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label class="form-label" for="ecommerce_custom_product_field_3_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#3') )) . '</label>
-                                                            <input class="form-control" type="text" id="ecommerce_custom_product_field_3_label" name="ecommerce_custom_product_field_3_label" value="' . h($ecommerce_custom_product_field_3_label) . '" />
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label class="form-label" for="ecommerce_custom_product_field_4_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#4') )) . '</label>
-                                                            <input class="form-control" type="text" id="ecommerce_custom_product_field_4_label" name="ecommerce_custom_product_field_4_label" value="' . h($ecommerce_custom_product_field_4_label) . '" />
+                <div class="row gy-5">' . pg_commerce_settings_group_switch('ecommerce_credit_debit_card', $ecommerce_credit_debit_card_checked !== '', lang('Cards'), ' onclick="show_or_hide_ecommerce_payment_gateway()"')
+                    . pg_commerce_settings_ticks(lang('Accepted cards'), array(
+                        array('name' => 'ecommerce_american_express', 'label' => lang('American Express'), 'on' => $ecommerce_american_express_checked !== ''),
+                        array('name' => 'ecommerce_diners_club', 'label' => lang('Diners Club'), 'on' => $ecommerce_diners_club_checked !== ''),
+                        array('name' => 'ecommerce_discover_card', 'label' => lang('Discover Card'), 'on' => $ecommerce_discover_card_checked !== ''),
+                        array('name' => 'ecommerce_mastercard', 'label' => lang('MasterCard'), 'on' => $ecommerce_mastercard_checked !== ''),
+                        array('name' => 'ecommerce_visa', 'label' => lang('Visa'), 'on' => $ecommerce_visa_checked !== ''),
+                        array('name' => 'ecommerce_troy', 'label' => lang('Troy'), 'on' => $ecommerce_troy_checked !== ''),
+                    )) . '
+                    <div class="pg-f-sm">
+                        <label class="form-label" for="ecommerce_payment_gateway">' . lang('Payment gateway') . '</label>
+                        <select class="form-control" name="ecommerce_payment_gateway" id="ecommerce_payment_gateway" onchange="show_or_hide_ecommerce_payment_gateway()">
+                            <option value="">-' . lang('None') . '-</option>
+                            <option value="Authorize.Net"' . $ecommerce_payment_gateway_authorizenet . '>Authorize.Net</option>
+                            <option value="ClearCommerce"' . $ecommerce_payment_gateway_clearcommerce . '>ClearCommerce/PayFuse</option>
+                            <option value="First Data Global Gateway"' . $ecommerce_payment_gateway_first_data_global_gateway . '>First Data Global Gateway</option>
+                            <option value="PayPal Payflow Pro"' . $ecommerce_payment_gateway_paypal_payflow_pro . '>PayPal Payflow Pro</option>
+                            <option value="PayPal Payments Pro"' . $ecommerce_payment_gateway_paypal_payments_pro . '>PayPal Payments Pro</option>
+                            <option value="Sage"' . $ecommerce_payment_gateway_sage . '>Sage</option>
+                            <option value="Stripe"' . $ecommerce_payment_gateway_stripe . '>' . h(lang('Stripe (classic)')) . '</option>
+                            <option value="Iyzipay"' . $ecommerce_payment_gateway_iyzipay . '>Iyzipay</option>' . pg_payment_settings_gateway_options($ecommerce_payment_gateway) . '
+                        </select>
+                    </div>
+                    <div class="col-12" id="ecommerce_payment_gateway_transaction_type_row" style="' . $ecommerce_payment_gateway_transaction_type_row_style . '">' . pg_commerce_settings_seg(lang('Transaction type'), 'ecommerce_payment_gateway_transaction_type', $commerce_seg_options('ecommerce_payment_gateway_transaction_type', array(
+                        array('Authorize', 'authorize', lang('Authorize'), $ecommerce_payment_gateway_transaction_type_authorize),
+                        array('Authorize & Capture', 'authorize_and_capture', lang('Authorize & capture'), $ecommerce_payment_gateway_transaction_type_authorize_and_capture),
+                    ))) . '
+                    </div>
+                    <div class="col-12" id="ecommerce_payment_gateway_mode_row" style="' . $ecommerce_payment_gateway_mode_row_style . '">' . pg_commerce_settings_seg(lang('Mode'), 'ecommerce_payment_gateway_mode', $commerce_seg_options('ecommerce_payment_gateway_mode', array(
+                        array('test', 'test', lang('Test'), $ecommerce_payment_gateway_mode_test),
+                        array('live', 'live', lang('Live'), $ecommerce_payment_gateway_mode_live),
+                    ))) . '
+                    </div>
+                    <div class="col-12" id="ecommerce_paypal_payments_pro_gateway_mode_row" style="' . $ecommerce_paypal_payments_pro_gateway_mode_row_style . '">' . pg_commerce_settings_seg(lang('Mode'), 'ecommerce_paypal_payments_pro_gateway_mode', $commerce_seg_options('ecommerce_paypal_payments_pro_gateway_mode', array(
+                        array('test', 'test', lang('Sandbox'), $ecommerce_payment_gateway_mode_test),
+                        array('live', 'live', lang('Live'), $ecommerce_payment_gateway_mode_live),
+                    ))) . '
+                    </div>
+                    ' . pg_payment_gateway_connections_html($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1), $ecommerce_gateway_connection_stored) . '
+                    <div class="pg-f-lg" id="ecommerce_iyzipay_installment_row" style="' . $ecommerce_iyzipay_installment_row_style . '">
+                        <label class="form-label" for="ecommerce_iyzipay_installment">' . lang('Installment') . '</label>
+                        <select class="form-control" id="ecommerce_iyzipay_installment" name="ecommerce_iyzipay_installment">' . $ecommerce_iyzipay_installment_options . '</select>
+                    </div>
+                    <div class="pg-f-xs" id="ecommerce_surcharge_percentage_row" style="' . $ecommerce_surcharge_percentage_row_style . '">
+                        <label for="ecommerce_surcharge_percentage" class="form-label">' . lang('Surcharge') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                            <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost text-end" size="7" maxlength="7" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
+                        </label>
+                    </div>
+                    <div class="col-12" id="ecommerce_iyzipay_threeds_row" style="' . $ecommerce_iyzipay_3ds_row_style . '">
+                        <div class="row gy-5">' . pg_commerce_settings_switch('ecommerce_iyzipay_threeds', $ecommerce_iyzipay_threeds_checked !== '', lang('3D Secure')) . '
+                        </div>
+                    </div>
+                    <div class="col-12" id="ecommerce_iyzipay_protected_currency_row" style="' . $ecommerce_iyzipay_protected_currency_row_style . '">
+                        <div class="row gy-5">' . pg_commerce_settings_switch('enable_iyzipay_protected_currency', $enable_iyzipay_protected_currency_checked !== '', lang('Iyzipay protected currency')) . (($output_iyzipay_protected_currency_select !== '') ? '
+                            <div class="pg-f-md">
+                                <label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>
+                                ' . $output_iyzipay_protected_currency_select . '
+                            </div>' : '') . '
+                        </div>
+                    </div>' . pg_payment_settings_card_rows($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1))
+                    . pg_commerce_settings_group_switch('ecommerce_pay_with_iyzico', $ecommerce_pay_with_iyzico_checked !== '', lang('Pay with iyzico'))
+                    . pg_commerce_settings_group_switch('ecommerce_paypal_express_checkout', $ecommerce_paypal_express_checkout_checked !== '', 'PayPal Express Checkout') . '
+                    <div class="col-12">' . pg_commerce_settings_seg(lang('Transaction type'), 'ecommerce_paypal_express_checkout_transaction_type', $commerce_seg_options('ecommerce_paypal_express_checkout_transaction_type', array(
+                        array('Authorize', 'authorize', lang('Authorize'), $ecommerce_paypal_express_checkout_transaction_type_authorize),
+                        array('Authorize & Capture', 'authorize_and_capture', lang('Authorize & capture'), $ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture),
+                    ))) . '
+                    </div>
+                    <div class="col-12">' . pg_commerce_settings_seg(lang('Mode'), 'ecommerce_paypal_express_checkout_mode', $commerce_seg_options('ecommerce_paypal_express_checkout_mode', array(
+                        array('sandbox', 'sandbox', lang('Sandbox'), $ecommerce_paypal_express_checkout_mode_sandbox),
+                        array('live', 'live', lang('Live'), $ecommerce_paypal_express_checkout_mode_live),
+                    ))) . '
+                    </div>' . pg_payment_method_connection_html('paypal_express', $ecommerce_method_connection_stored)
+                    . pg_payment_settings_redirect_rows()
+                    . pg_commerce_settings_group_switch('ecommerce_offline_payment', $ecommerce_offline_payment_checked !== '', lang('Offline payments'))
+                    . pg_commerce_settings_switch('ecommerce_offline_payment_only_specific_orders', $ecommerce_offline_payment_only_specific_orders_checked !== '', lang('Only on specific orders')) . '
+                    <div class="pg-f-xs">
+                        <label class="form-label" for="ecommerce_offline_payment_cancel_days">' . lang('Cancel unpaid bank transfer orders after') . '</label>
+                        <input type="number" min="0" max="255" step="1" class="form-control" id="ecommerce_offline_payment_cancel_days" name="ecommerce_offline_payment_cancel_days" value="' . (int) $ecommerce_offline_payment_cancel_days . '" aria-describedby="ecommerce_offline_payment_cancel_days_help"/>
+                    </div>
+                    <div class="col-12 mt-3">
+                        <div class="form-text mt-0" id="ecommerce_offline_payment_cancel_days_help">' . lang('days; 0 keeps them open until you cancel by hand. Cancelled orders keep the reason on the order screen.') . '</div>
+                    </div>' . pg_commerce_settings_group(lang('After the order')) . '
+                    <div class="pg-f-lg">
+                        <label class="form-label" for="ecommerce_private_folder_id">' . lang('Grant private access') . '</label>
+                        <select class="form-control" id="ecommerce_private_folder_id" name="ecommerce_private_folder_id">
+                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>
+                            ' . pg_settings_select_folder($ecommerce_private_folder_id, 'private') . '
+                        </select>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label class="form-label" for="ecommerce_retrieve_order_next_page_id">' . lang('Page after a reorder or retrieved order') . '</label>
+                        ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                     </div>
                 </div>
             </div>

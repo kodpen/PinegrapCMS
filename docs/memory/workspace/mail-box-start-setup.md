@@ -8,7 +8,7 @@ description: Site Settings › Mailboxes: the Google and Microsoft set-up drawer
 
 ## Where are the steps done at Google or Microsoft?
 - In their own drawers, printed once by the category (`ws_settings_mail_setup_drawer()`, ids `pgset-ws-mail-google-setup` / `pgset-ws-mail-microsoft-setup`), opened by one quiet button in a box's Reading tab (`ws_mail_setup_button()`): under "Sign in with" for Gmail, alone for Microsoft.
-- Google, five numbered steps (`ws_mail_setup_steps()`, `.pg-stepper-cards`): the OAuth client in Google Cloud Console, both redirect addresses with Copy, the Gmail API, the mailbox's account on Google's page in Connections (its state, `ws_mail_connection_html()` in a new tab), what to choose in the box. Then Google's verification warning and, folded, "Use an app password instead" (2-Step Verification, App passwords, the box's fields) with its notes.
+- Google, five numbered steps (`ws_mail_setup_steps()`, `.pg-stepper-cards`): the OAuth client in Google Cloud Console, both redirect addresses with Copy, the Gmail API, the mailbox's account on Google's page in Connections (its state, `ws_mail_connection_html()`, same tab), what to choose in the box. Then Google's verification warning and, folded, "Use an app password instead" (2-Step Verification, App passwords, the box's fields) with its notes.
 - Microsoft, four steps: App registrations in the Microsoft Entra admin center, both redirect addresses as Web redirect URIs, the mailbox's account on Microsoft's page, what to choose in the box.
 - The box's form keeps only "Sign in with" (`google_way`, not stored, `ws_mail_google_signin()`); no paragraph or list of steps.
 

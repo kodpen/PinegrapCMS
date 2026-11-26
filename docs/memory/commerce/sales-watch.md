@@ -10,7 +10,7 @@ module: sales_watch
 
 ## Where is each part?
 - Norm, orders stopped, payment broken, timing: `sales-watch-flow.md` (#10735).
-- Settings › Alerts, Sales watch part, the pause: `sales-watch-settings.md` (#10772).
+- Settings › Updates and maintenance › Sales watch row, the pause: `sales-watch-settings.md` (#10772).
 - Price error shield, taking a product off sale: `sales-watch-price.md` (#10775).
 - Return spike, nightly: `sales-watch-returns.md` (#10777).
 - `GET /reports/sales-watch`: `api/api-sales-watch-report.md` (#10817).
