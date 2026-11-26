@@ -466,7 +466,7 @@ StyleDesigner.definePart('mylibrary', function (K) {
                 renamed.map(function (c) { return '.' + res.renamed[c]; }).join(', ')]));
         }
         if (res.cleared) {
-            lines.push(_sdT('Added from my library. This site lacks what a widget of the copy was bound to: choose a form, collection or group for it.'));
+            lines.push(_sdT('Added from my library. This site lacks what a widget of the copy was bound to: choose a form, collection, group, product group, calendar, menu or component for it.'));
         }
         // A picture's address stays as written: the file put at that
         // place in the file manager repairs it.
