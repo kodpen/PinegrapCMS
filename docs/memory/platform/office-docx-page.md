@@ -23,4 +23,4 @@ description: A Word document drawn as a white sheet and typed where it stands (r
 - `tests/office_document_page_test.php`: `paragraphText()`, `textPoint()` (the inverse of `textOffset()`), `cutLook()` and `exactBase()` in Node, and the source (no textarea, plain paste, the light sheet, the typed sheet, no Add button, the CSS width).
 - Chromium (Playwright) on a page built from a fixture read by `pg_office_docx_read()` with a heading, a list, a table, a tab, a field-locked and an empty paragraph, at 1440 and 390 px, light and dark: click and type, Enter (then: to the next paragraph), Shift+Enter (also at the end), Esc, Ctrl+B, rich paste, the locked paragraph, Add, Delete and Keep, reset, Ctrl+S, the entries `edits()` gives. Not tried on a sandbox's file window or channel preview, nor in Firefox or Safari.
 
-Related: docs/memory/platform/office-docx-page-keys.md, docs/memory/plans/office-document-page.md, docs/memory/platform/office-paragraph-edits.md
+Related: docs/memory/platform/office-docx-page-keys.md, docs/memory/platform/office-paragraph-edits.md

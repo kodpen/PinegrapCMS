@@ -24,4 +24,4 @@ description: Undo and Redo of a Word document typed on its sheet (OP3, PR #11963
 - A new document (type, Enter, type; Ctrl+Z ×3, Ctrl+Y, Ctrl+Shift+Z, the buttons; bold and its undo; Backspace join and its undo; typing after an undo drops Redo; all undone and redone).
 - One with a heading, a bulleted list and a table: Enter in a list item, typing in a cell, Backspace over two items, Delete the paragraph, Paragraph style, Esc then Ctrl+Z. Saves read back with python-docx as shown. Not tried: Firefox, Safari, a phone keyboard, an input method.
 
-Related: docs/memory/platform/office-docx-page-keys.md, docs/memory/platform/office-docx-page.md, docs/memory/plans/office-document-page.md
+Related: docs/memory/platform/office-docx-page-keys.md, docs/memory/platform/office-docx-page.md

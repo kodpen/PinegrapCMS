@@ -6,7 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-26, in the architect's window): "yeni tablo ve word belgesi ekleme ekranları çok kararsız. […] excel tablosu arkaplan, eğik yazı veya bold renk değiştirme vs. alanları çalışmıyor, ayrıca bir belgede tablo satırlarını düzenleyemedim kapatıp yeni açınca düzeldi. her ikisi için yeteneklerini genişletelim, stabiliteyi artıralım."
-- The document's half is `plans/office-document-page.md`. The abilities on top (his answer to poll 235, agent channel message 14401: all eight) start when OF4 has landed: `plans/office-sheet-abilities.md`, then `plans/office-sheet-formulas.md`.
+- The document's half has landed: `platform/office-docx-page.md`. The abilities on top (his answer to poll 235, agent channel message 14401: all eight) start when OF4 has landed: `plans/office-sheet-abilities.md`, then `plans/office-sheet-formulas.md`.
 
 ## What is wrong today? (read in the code, 2026-11-26; not tried in a browser)
 - A workbook takes one kind of change a save (`platform/office-overview.md`). `setFormat()` in `pg_office_view.js` does nothing while a typed cell, a row, a column or a sheet change waits: only the status line says "Save the other changes first, then change the format." A second range is refused the same way.
@@ -28,4 +28,4 @@ priority: 6
 - OF2 to OF4 try the grid in a browser on a sandbox, in the file window and a channel's preview, at 1440 and 390 px: no unit test reaches the typing. The PR says what was tried.
 - The document plan changes `renderDocument()` of the same script; the two plans may run side by side, the coordinator's call.
 
-Related: docs/memory/plans/office-document-page.md, docs/memory/platform/office-overview.md, docs/memory/platform/office-sheet-format-controls.md
+Related: docs/memory/platform/office-docx-page.md, docs/memory/platform/office-overview.md, docs/memory/platform/office-sheet-format-controls.md
