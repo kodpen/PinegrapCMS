@@ -35,7 +35,7 @@ priority: 8
 - DD9 (M) Done (#11559). `designer-my-library-drawing.md`: the save window, "My library" in Blocks, "Manage library", Export, Import. Holds ML2 to ML4.
 - DD10 (S) Done (#11561). `designer/designer-image-focus-drawing.md`: the Focus control, "Set focus". IF2, IF3 built.
 - DD11 (S) Done (#11565). `designer-phone-preview-drawing.md`: the QR code window, the phone's thin line, the signed-in case. Holds PP2, PP3.
-- DD4 (M) after SK2 has landed: the Sketch tool. The New design window is drawn: `designer/designer-home-tidy-drawing.md`.
+- DD4 (M) Done (#PRNUM). `designer/designer-sketch-tool-drawing.md`: the Sketch tool.
 
 ## What does every step keep?
 - Docs only: the sheet and its pictures. No product code, no change to a plan another open PR holds.
