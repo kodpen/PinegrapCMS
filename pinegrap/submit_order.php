@@ -3633,6 +3633,12 @@ function submit_order($type) {
         )
     );
 
+    // The order is on the account now: the next checkout of the same account
+    // may weigh its own order (pg_erp_open_account_refusal() kept the lock).
+    if ($erp_values !== array()) {
+        erp_credit_unlock((int) $erp_values['erp_account_id']);
+    }
+
     // A placed order is the person's own act: the browser that allowed
     // marketing cookies is tied to the order's contact (visitor journey).
     if ($order_number && ((int) $contact_id > 0)) {

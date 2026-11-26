@@ -42,6 +42,46 @@ function erp_credit_ready()
 }
 
 /**
+ * The name of the lock that keeps two sales to one account from both being
+ * weighed against the same figures: two orders put on the account at
+ * checkout, or two invoices issued at once. GET_LOCK names belong to the
+ * whole database server, so the name carries the database.
+ *
+ * @param int $account_id
+ * @return string
+ */
+function erp_credit_lock_name($account_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+    return 'pg_erp_credit_' . md5($database) . '_' . (int) $account_id;
+}
+
+/**
+ * Takes the account's credit lock (erp_credit_lock_name()), waiting a few
+ * seconds for a sale already being weighed. The connection keeps it until
+ * erp_credit_unlock() or the end of the request.
+ *
+ * @param int $account_id
+ * @return bool  False when it was not got in time
+ */
+function erp_credit_lock($account_id)
+{
+    return ((int) db_value("SELECT GET_LOCK('" . e(erp_credit_lock_name($account_id)) . "', 10)") === 1);
+}
+
+/**
+ * Gives the account's credit lock back.
+ *
+ * @param int $account_id
+ * @return void
+ */
+function erp_credit_unlock($account_id)
+{
+    db_value("SELECT RELEASE_LOCK('" . e(erp_credit_lock_name($account_id)) . "')");
+}
+
+/**
  * What a sale past the limit does: 'warn' or 'block'.
  *
  * @return string
@@ -125,6 +165,29 @@ function erp_credit_refusal($account, $adding)
     }
 
     return erp_credit_sentence($state) . ' ' . lang('Take a payment first, or raise the limit on the account card.');
+}
+
+/**
+ * erp_credit_refusal() for an invoice being issued inside its transaction,
+ * with the account's limit and balance read by a locking read: a plain read
+ * misses an invoice another request issued to the account meanwhile, and two
+ * invoices that each fit alone would both be issued. The row stays locked
+ * until the transaction ends, so the next issue waits and reads this one's
+ * balance. Only in block mode; in warn mode nothing is refused or locked.
+ *
+ * @param int $account_id
+ * @param int $adding      The invoice total in the base currency
+ * @return string
+ */
+function erp_credit_refusal_locked($account_id, $adding)
+{
+    if (erp_credit_mode() !== 'block') {
+        return '';
+    }
+
+    $account = db_item("SELECT id, credit_limit, balance FROM erp_accounts WHERE id = '" . (int) $account_id . "' LIMIT 1 FOR UPDATE");
+
+    return is_array($account) ? erp_credit_refusal($account, $adding) : '';
 }
 
 /**

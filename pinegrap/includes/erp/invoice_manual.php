@@ -851,19 +851,22 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
 
     $grand_total_base = ($currency === $base) ? $totals['grand_total'] : erp_to_base($totals['grand_total'], $exchange_rate);
 
-    // A customer's credit limit (includes/erp/credit.php): where the store
-    // blocks, a sale past it is refused here, before it takes a number.
-    if (($direction === 'sales') && function_exists('erp_credit_refusal')
-        && (($refusal = erp_credit_refusal($account, (int) $grand_total_base)) !== '')) {
-        erp_tx_rollback();
-        return $fail($refusal);
-    }
-
     $numbered = erp_next_number($series, ($direction === 'sales') ? 'sales_invoice' : 'purchase_invoice', $issue_year);
 
     if (!$numbered['success']) {
         erp_tx_rollback();
         return $fail($numbered['error']);
+    }
+
+    // A customer's credit limit (includes/erp/credit.php): where the store
+    // blocks, a sale past it is refused here, and the rollback gives the
+    // number back. The account is read with a locking read so an invoice
+    // issued to it meanwhile is counted; it comes after the series lock, the
+    // order an order's invoice takes the two in.
+    if (($direction === 'sales') && function_exists('erp_credit_refusal_locked')
+        && (($refusal = erp_credit_refusal_locked((int) $invoice['account_id'], (int) $grand_total_base)) !== '')) {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
 
     $ok = erp_query("UPDATE erp_invoices SET
