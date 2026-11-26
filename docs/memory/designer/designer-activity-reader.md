@@ -26,7 +26,7 @@ module: designer_activity
 - Rights are applied after that cut, so `pg_designer_activity_fill()` reads on from the cursor (ten reads at most) until fifty visible events or the end (#11762: a content editor got empty pages before).
 
 ## Who sees what?
-- Designer roles: every event. A content editor: events of pages they may edit (`pg_designer_page_access()`; a binned or deleted page by the folder its line kept), no share link and no design file (`pg_designer_activity_visible()`).
+- Designer roles: every event. A content editor: only kinds `version` and `page` of pages they may edit (a binned or deleted page by its line's folder), `pg_designer_activity_visible()`; verdicts and comments are not read for them (#11762).
 
 ## Tests?
 - `tests/designer_activity_test.php`: cursor, SQL bound, merge and a walk over every page, sentences, the person, each store's event, rights. The SQL runs only on a database.

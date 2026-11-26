@@ -11,7 +11,7 @@ module: designer_activity
 ## What binds it?
 - No table or column of its own: it is read from `page_revisions`, the share link stores and the audit trail. Architect (2026-11-25): what leaves no page version goes to `audit_log`, never a new store (`designer-activity-audit-trail.md`).
 - Read only when the tab is shown; nothing polls, no count is stored.
-- The designer roles see the design's whole list; a content editor sees the events of the pages they may edit, no share link, design, component or file line (`designer-activity-reader.md`).
+- The designer roles see the design's whole list; a content editor sees only the versions of the pages they may edit and their moves on and off the site: no share link, customer's answer or comment, design, component or file line (`designer-activity-reader.md`).
 - A person erased from the site reads "A removed user"; the list keeps no name of its own and never reads the trail's `username` column.
 - The three choosers (person, page, kind) go to the reader with the request, never a filter over rows on screen (`designer-activity-drawing-choosers.md`).
 

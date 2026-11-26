@@ -34,8 +34,9 @@
  * page size, so the merge can tell whether more remain.
  *
  * Rights: the designer roles see every event of the design; a content
- * editor (Manager, User) sees the events of the pages they may edit and no
- * design-level event (a share link, a design file).
+ * editor (Manager, User) sees the versions of the pages they may edit and
+ * their moves on and off the site, nothing else (no share link, answer,
+ * comment, design file, design or component line).
  *
  * Loaded on demand by the panel action that serves the tab.
  *
@@ -728,6 +729,13 @@ function pg_designer_activity_visible($events, $full, $may_page)
     foreach ((array) $events as $event) {
         $page_id = (int) $event['page_id'];
 
+        // Only a page's versions and its moves on and off the site: a
+        // customer's answer or comment belongs to the prototype review,
+        // which is the designer roles' alone.
+        if (!in_array((string) ($event['kind'] ?? ''), array('version', 'page'), true)) {
+            continue;
+        }
+
         if ($page_id > 0 && $may_page($page_id, (int) $event['folder_id'])) {
             $out[] = $event;
         }
@@ -998,7 +1006,7 @@ function _pg_designer_activity_page($style_id, $full, $own, $own_in, $all_in, $c
         }
     }
 
-    if ($own && $where('verdict') !== false && pg_proto_approval_ready()) {
+    if ($full && $own && $where('verdict') !== false && pg_proto_approval_ready()) {
         $rows = db_items(
             "SELECT v.id, v.page_id, v.verdict, v.author_name, v.created_at
              FROM prototype_verdicts AS v
@@ -1018,7 +1026,7 @@ function _pg_designer_activity_page($style_id, $full, $own, $own_in, $all_in, $c
         $lists[] = array_filter($list);
     }
 
-    if ($own && $where('comment') !== false && pg_proto_comments_ready()) {
+    if ($full && $own && $where('comment') !== false && pg_proto_comments_ready()) {
         $rows = db_items(
             "SELECT c.id, c.page_id, c.user_id, c.author_name, c.created_at, user.user_username
              FROM prototype_comments AS c
