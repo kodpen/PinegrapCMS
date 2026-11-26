@@ -9,9 +9,10 @@ module: connections_screen, parasut
 - Gate: who may open Site Settings › Accounting (`connections_accounting_may_manage()`, `$can['accounting']` in `pg_connections_screen_page_cards()`); the write checks the same.
 
 ## What does Paraşüt's page hold?
-- "Connection details": `parasut_page_fields_html()`: "Connect in three steps" (Client ID, Client Secret, "Open the Paraşüt authorization page", the code and Connect), then "Advanced: company number, user name and password", then "Save". Connect is the `button.pg-edoc-test` handler posting to `parasut_connect.php`, unchanged (`erp/erp-parasut-connect-card.md`).
+- "Connection details" (#11694): "A client from the Developer Portal" (`connections_parasut_devhub_part()`): `connections_app_form()` (Client ID, Client secret, Redirect address with Copy and `redirect_help`, Save), then with a saved client "Connect", a form to `connect.php` back to this page (`erp/erp-parasut-devhub-connection.md`).
+- Then `parasut_page_fields_html()`: the fold "A client from before the Developer Portal" (the three steps, user name and password), open only while the site's token is of that kind; "Advanced" (company number); "Save" (`erp/erp-parasut-connect-card.md`).
 - Save posts `parasut_save`: `parasut_page_save()` writes client id, user name, company number (empty keeps the saved one), the secret and password only when typed, then exchanges a code left in the box, as Connect does.
-- Status: the connection line (`parasut_connection_line()`), Last checked, a test-environment pill, and "Disconnect" (`parasut_remove` → `parasut_disconnect()`: drops the token, secret and password; client id, company number and user name stay).
+- Status: the connection line (`parasut_connection_line()`: "Paraşüt is connected. · e-mail · company" for a portal connection), Last checked, a test-environment pill, and "Disconnect" (`parasut_remove` → `parasut_disconnect()`: ends the portal connection, drops the older token, secret and password; client ids, company number and user name stay).
 - Where it is used: the ERP's e-documents (the provider picked on the card) and the order screen's "Create Invoice" and "E-Shipment" (the "Enable Parasut Configuration" switch).
 
 ## What does Logo İşbaşı's page hold?

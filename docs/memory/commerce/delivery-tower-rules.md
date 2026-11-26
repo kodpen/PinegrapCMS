@@ -25,11 +25,14 @@ module: delivery_tower
 - `pg_delivery_tower_problems_found($parcel, $figures, $now, $settings, $tz)`.
 - stuck: status `in_transit` or `out_for_delivery`, calendar days since shipping greater than its own carrier and province's p90 plus `stuck_extra_days` (default 1). Exactly p90 + 1 is not yet stuck.
 - not_handed_over: status `created`, a label (`label_at`), the status is read (`pg_delivery_tower_status_is_read()`: source `carrier` or `marketplace`, or the carrier has a driver or webhook), and `not_handed_over_days` (default 1) working days fully passed since the label; the running day does not count. A Friday label is flagged on Tuesday.
+- A labelled parcel's source `carrier` does not count (the label path writes it): only a tracking driver or a marketplace makes its status read.
 - problem: status `exception`. returned: status `returned`. A marketplace parcel's problems are found and listed like any other; no message goes to its buyer.
 
 ## How does a problem close?
 - `pg_delivery_tower_pass($status, $open, $found)`: a found kind already open is not opened again (one open row per parcel and kind).
+- Architect (2026-11-26, agent channel request 3065): a kind closed by hand stays closed until the status changes, no days. Held: its latest hand close (`closed_by` > 0, any reason) is at or after `status_at`, or `status_at` is 0 (`pg_delivery_tower_held_kinds()`); all four kinds.
+- `pg_delivery_tower_pass()` opens no held kind; closing stays. A late status dated before the close keeps it held (accepted). After a change the parcel is judged anew, one new row per change. No event, alert, text or setting for a held kind.
 - A delivery closes every open kind with reason `delivered`. Otherwise a kind closes once the status left its own statuses: `scanned` for not_handed_over, `status_changed` for the rest. A stuck parcel still in transit stays open even when a new figure no longer finds it.
 
 ## Which settings are there?
-- `pg_delivery_tower_settings_clean()`: each kind on by default; `not_handed_over_days` 1 to 10, `stuck_extra_days` 0 to 30; not a number gives the default; unknown keys dropped. Kept in `config_text` `delivery_tower_settings`: read by the passes (`delivery-tower-passes.md`), written by the Settings drawer of Delivery problems (`delivery-problems-settings.md`).
+- `pg_delivery_tower_settings_clean()`: the kinds on or off and the two day counts; its rules are in `delivery-problems-settings.md`.

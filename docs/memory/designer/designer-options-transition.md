@@ -5,7 +5,7 @@ description: "Transition" in Shadow and effect as built (DO11): the three rows, 
 
 ## What does the Transition sub-head hold?
 - In "Shadow and effect", after Focus Ring, under the sub-head "Transition" (`_sdTransRowsHtml()`): "Transition" (None, Colours, Shadow, Size and place, All). None is the default: no transition until one is chosen.
-- Once chosen, "Duration" (a slider 0 to 1,000 with its number in ms) and "Easing" (Default, then the Interactions list: Ease out, Ease, Ease in, Ease in and out, Linear).
+- Once chosen, "Duration" (a slider 0 to 1,000 with its number in ms) and "Easing" (Default, then the Interactions list: Ease out, Ease, Ease in, Ease in and out, Linear), then the design's stored curves and "Custom curve…" (`designer-options-curve.md`).
 - Until changed, Duration shows the look's `--pg-duration` (read from the canvas) in grey and Easing reads "Default"; the rule then holds `var(--pg-duration, 0.15s)` and `var(--pg-ease, ease-in-out)`, so a change of the look carries.
 - Shown for one element whose custom style is on (`_sdStateNode()`), as the State row is.
 
@@ -28,7 +28,6 @@ description: "Transition" in Shadow and effect as built (DO11): the three rows, 
 
 ## What is not built?
 - Split ("This element" card) copies the base rule only: the transition, like a state's rule, stays with the old class.
-- The dragged easing curve is DO19's.
 
 ## Where is it tested?
 - `tests/designer_option_states_test.php` (`test_designer_option_states_transition`): write, read, the look's values, the 1,000 ms cap, None, kept declarations and lists. The panel and canvas are not unit tested.

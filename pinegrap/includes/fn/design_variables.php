@@ -29,7 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // The model (an array) has: name, look and palette (the choice the defaults
 // were taken from), values (key => value; a colour is array(light, dark)) and
-// custom (the designer's own colours and sizes).
+// custom (the designer's own colours, sizes and easing curves), and page
+// (the design's page transition) only when one is chosen.
 //
 // Every variable writes its own --pg-var-<key> token. A value that differs
 // from the default it was made from also writes the theme tokens it drives
@@ -160,10 +161,23 @@ function pg_design_variable_value($def, $value)
     switch ($def['kind']) {
         case 'font':
             // A font stack: names, quotes and commas only, so nothing can end
-            // the declaration or the rule.
-            return (preg_match('/^[A-Za-z0-9 ,"\'\-]{1,200}$/', $value) && strpos($value, '""') === false) ? $value : null;
+            // the declaration or the rule; each name bare or in one closed
+            // pair of quotes, as an open one runs on over the declarations
+            // after it.
+            if (!preg_match('/^[A-Za-z0-9 ,"\'\-]{1,200}$/', $value)) return null;
+            foreach (explode(',', $value) as $part) {
+                if (!preg_match('/^(?:[A-Za-z0-9 \-]+|"[A-Za-z0-9 \-]+"|\'[A-Za-z0-9 \-]+\')$/', trim($part))) return null;
+            }
+            return $value;
         case 'length':
-            if ($value === '0') return '0';
+            // A bare 0 only where each unit's bounds start at 0: a base size
+            // or a base unit of 0 is outside the row, and hides the text.
+            if ($value === '0') {
+                foreach (array('rem', 'px') as $u) {
+                    if (isset($def[$u]) && $def[$u][0] > 0) return null;
+                }
+                return '0';
+            }
             if (!preg_match('/^(\d{1,3}(?:\.\d{1,4})?)(rem|px)$/', $value, $m) || !isset($def[$m[2]])) return null;
             $n = (float)$m[1];
             return ($n >= $def[$m[2]][0] && $n <= $def[$m[2]][1]) ? _pg_design_variable_num($n) . $m[2] : null;
@@ -238,6 +252,11 @@ function pg_design_variables_normalize($model, $defaults)
             $dark = pg_design_variable_value($color, isset($c['dark']) ? $c['dark'] : '');
             $row['light'] = $light;
             $row['dark']  = ($dark === null) ? $light : $dark;
+        } elseif ($row['kind'] === 'curve') {
+            // An easing curve: its four numbers (pg_fx_curve_numbers()).
+            $nums = pg_fx_curve_numbers(isset($c['value']) ? $c['value'] : '');
+            if ($nums === null) continue;
+            $row['value'] = implode(', ', $nums);
         } elseif ($row['kind'] === 'size') {
             $row['value'] = pg_design_variable_value($size, isset($c['value']) ? $c['value'] : '');
             if ($row['value'] === null) continue;
@@ -245,6 +264,26 @@ function pg_design_variables_normalize($model, $defaults)
             continue;
         }
         $out['custom'][] = $row;
+    }
+    $page = pg_design_page_transition_clean(isset($model['page']) ? $model['page'] : null);
+    if ($page !== null) $out['page'] = $page;
+    return $out;
+}
+
+// The easing curves among a model's own variables, for the editor's
+// Easing lists: array of array(key, name, value) with value "x1, y1, x2,
+// y2". A stored model is read as written, so each row is checked here.
+function pg_design_variables_curves($model)
+{
+    $out = array();
+    $custom = (is_array($model) && isset($model['custom']) && is_array($model['custom'])) ? $model['custom'] : array();
+    foreach ($custom as $c) {
+        if (!is_array($c) || !isset($c['kind'], $c['key'], $c['value']) || $c['kind'] !== 'curve') continue;
+        if (!is_string($c['key']) || !preg_match('/^[a-z0-9][a-z0-9-]{0,29}$/', $c['key'])) continue;
+        $nums = pg_fx_curve_numbers($c['value']);
+        if ($nums === null) continue;
+        $name = isset($c['name']) && is_scalar($c['name']) ? mb_substr(trim((string)$c['name']), 0, 40) : '';
+        $out[] = array('key' => $c['key'], 'name' => $name !== '' ? $name : $c['key'], 'value' => implode(', ', $nums));
     }
     return $out;
 }
@@ -285,6 +324,8 @@ function pg_design_variables_css($model, $defaults)
         if ($c['kind'] === 'color') {
             $light[pg_design_variable_token($c['key'], true)] = $c['light'];
             $dark[pg_design_variable_token($c['key'], true)]  = $c['dark'];
+        } elseif ($c['kind'] === 'curve') {
+            $all[pg_design_variable_token($c['key'], true)] = 'cubic-bezier(' . $c['value'] . ')';
         } else {
             $all[pg_design_variable_token($c['key'], true)] = $c['value'];
         }
@@ -297,13 +338,126 @@ function pg_design_variables_css($model, $defaults)
     };
     $head = array('kind' => 'variables', 'version' => 1, 'name' => $m['name'], 'look' => $m['look'],
                   'palette' => $m['palette'], 'values' => $m['values'], 'custom' => $m['custom']);
+    $page = isset($m['page']) ? $m['page'] : null;
+    if ($page !== null) $head['page'] = $page;
     return pg_design_theme_header($head) . "\n"
         . '/* Pinegrap design variables' . ($m['name'] !== '' ? ': ' . pg_design_theme_comment_text($m['name']) : '') . ". */\n"
         . $block(":root,\n[data-bs-theme]", $all)
         . "\n"
         . $block(":root,\n[data-bs-theme=light]", $light)
         . "\n"
-        . $block('[data-bs-theme=dark]', $dark);
+        . $block('[data-bs-theme=dark]', $dark)
+        . ($page !== null ? "\n" . pg_design_page_transition_css($page) : '');
+}
+
+// ── Page transition ─────────────────────────────────────────────────────
+//
+// One transition for every page of the design (Settings, Theme, "Page
+// transition"): None, Fade or Slide, kept as the model's "page" entry and
+// written into the variables file as a cross-document view transition.
+// None keeps no entry, so the file stays what it was. A browser without
+// view transitions ignores the rules, and everything sits inside the
+// no-preference block: a visitor who asks for less motion gets none.
+
+// The sides Slide can come from.
+function pg_design_page_transition_sides()
+{
+    return array('right', 'left', 'below');
+}
+
+// A page transition made safe: array(kind, [from], [duration], [easing])
+// or null for None and anything refused. duration is ms (0 to 1,000) and,
+// like easing, left out to follow the look (--pg-duration, --pg-ease).
+function pg_design_page_transition_clean($page)
+{
+    if (!is_array($page) || !isset($page['kind']) || !is_string($page['kind'])) return null;
+    $kind = strtolower(trim($page['kind']));
+    if ($kind !== 'fade' && $kind !== 'slide') return null;
+    $out = array('kind' => $kind);
+    if ($kind === 'slide') {
+        $from = isset($page['from']) && is_string($page['from']) ? strtolower(trim($page['from'])) : '';
+        $out['from'] = in_array($from, pg_design_page_transition_sides(), true) ? $from : 'right';
+    }
+    if (isset($page['duration']) && is_numeric($page['duration'])) {
+        $out['duration'] = max(0, min(1000, (int)round((float)$page['duration'])));
+    }
+    if (isset($page['easing'])) {
+        $easing = pg_fx_easing_clean($page['easing']);
+        if ($easing !== '') $out['easing'] = $easing;
+    }
+    return $out;
+}
+
+// The stylesheet of a page transition, '' for None. Fade is the browser's
+// own cross-fade with the design's timing; Slide moves the new page in
+// from its side while the old one leaves the other way. The timing is set
+// on the old and new pictures too: they inherit the group's duration but
+// not its easing.
+function pg_design_page_transition_css($page)
+{
+    $page = pg_design_page_transition_clean($page);
+    if ($page === null) return '';
+    $duration = isset($page['duration']) ? $page['duration'] . 'ms' : 'var(--pg-duration, 0.25s)';
+    $easing = isset($page['easing']) ? $page['easing'] : 'var(--pg-ease, ease)';
+    $css = "/* Page transition. */\n"
+        . "@media (prefers-reduced-motion: no-preference) {\n"
+        . "    @view-transition {\n        navigation: auto;\n    }\n"
+        . "    ::view-transition-group(*),\n    ::view-transition-old(*),\n    ::view-transition-new(*) {\n"
+        . '        animation-duration: ' . $duration . ";\n"
+        . '        animation-timing-function: ' . $easing . ";\n"
+        . "    }\n";
+    if ($page['kind'] === 'slide') {
+        $moves = array('right' => array('100%, 0', '-100%, 0'), 'left' => array('-100%, 0', '100%, 0'), 'below' => array('0, 100%', '0, -100%'));
+        list($in, $out) = $moves[$page['from']];
+        $css .= "    ::view-transition-old(root) {\n        animation-name: pg-page-out;\n        mix-blend-mode: normal;\n    }\n"
+            . "    ::view-transition-new(root) {\n        animation-name: pg-page-in;\n        mix-blend-mode: normal;\n    }\n"
+            . "    @keyframes pg-page-out {\n        to { transform: translate(" . $out . "); }\n    }\n"
+            . "    @keyframes pg-page-in {\n        from { transform: translate(" . $in . "); }\n    }\n";
+    }
+    return $css . "}\n";
+}
+
+// The page transition a variables file holds, null for none.
+function pg_design_variables_page($css)
+{
+    if (!preg_match('~^/\*! pg-theme (\{.*?\}) \*/~s', (string)$css, $hit)) return null;
+    $meta = json_decode($hit[1], true);
+    if (!is_array($meta) || !isset($meta['kind'], $meta['page']) || $meta['kind'] !== 'variables') return null;
+    return pg_design_page_transition_clean($meta['page']);
+}
+
+// Whether a posted model carries the page transition alone: the Look tab
+// sets it while the Variables tab never ran, so the stored values must be
+// kept rather than reset to the defaults.
+function pg_design_variables_page_only($model)
+{
+    return is_array($model) && !empty($model['page_only']);
+}
+
+// The stored model (null: no file) with a page-only post's transition.
+// null when nothing is to be written: no file and None.
+function pg_design_variables_with_page($stored, $post)
+{
+    $page = pg_design_page_transition_clean(is_array($post) && isset($post['page']) ? $post['page'] : null);
+    if (!is_array($stored)) {
+        return $page === null ? null : array('page' => $page);
+    }
+    unset($stored['page']);
+    if ($page !== null) $stored['page'] = $page;
+    return $stored;
+}
+
+// The name that keeps an element across pages ("Keep across pages"):
+// small letters, digits and hyphens, at most 40, starting with a letter
+// (a digit first takes "n-"). '' for none, and for the CSS keywords none
+// and auto, which name nothing.
+function pg_design_view_transition_name_clean($name)
+{
+    if (!is_string($name)) return '';
+    $s = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name))), '-');
+    if ($s === '' || $s === 'none' || $s === 'auto') return '';
+    if (!preg_match('/^[a-z]/', $s)) $s = 'n-' . $s;
+    return rtrim(substr($s, 0, 40), '-');
 }
 
 // The model of a variables stylesheet, normalized against $defaults; null
@@ -686,6 +840,9 @@ function _pg_design_token_out($kind, $v)
             return ((string)$v === '') ? null : array('$type' => 'number', '$value' => (float)$v + 0);
         case 'weight':
             return ((string)$v === '') ? null : array('$type' => 'fontWeight', '$value' => (int)$v);
+        case 'curve':
+            $nums = pg_fx_curve_numbers((string)$v);
+            return $nums === null ? null : array('$type' => 'cubicBezier', '$value' => array_map('floatval', $nums));
     }
     return null;
 }
@@ -809,9 +966,11 @@ function _pg_design_tokens_dimension($v)
 
 // The built-in variable a token's name stands for: its key in
 // pg_design_variable_list(), or ''. Our own export's names and a few common
-// names of other tools.
+// names of other tools. A token of the "own" group is one of the design's
+// own variables, whatever its key reads as.
 function _pg_design_tokens_key($path)
 {
+    if (count($path) > 1 && $path[0] === 'own') return '';
     $name = strtolower((string)preg_replace('/[^a-zA-Z0-9]+/', '_', (string)end($path)));
     $name = trim($name, '_');
     $aliases = array(
@@ -929,7 +1088,11 @@ function pg_design_variables_tokens_import($text, $model, $defaults)
             if ($row !== null) {
                 $name = $t['desc'] !== '' ? $t['desc'] : implode(' ', $t['path'] && $t['path'][0] === 'own' ? array_slice($t['path'], 1) : $t['path']);
                 $row = array('key' => $slug, 'name' => mb_substr($name, 0, 40)) + $row;
-                if (isset($own_keys[$slug])) {
+                if (isset($own_keys[$slug]) && $m['custom'][$own_keys[$slug]]['kind'] !== $row['kind']) {
+                    // The design's own variable of another kind keeps it:
+                    // the places that read it would get a colour for a size.
+                    $ok = false;
+                } elseif (isset($own_keys[$slug])) {
                     $m['custom'][$own_keys[$slug]] = $row;
                     $ok = true;
                 } elseif (count($m['custom']) < 24) {

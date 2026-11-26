@@ -309,6 +309,68 @@ function test_product_insights_sales_from_reads_the_product_lines()
 	pg_assert_true(strpos(pg_product_insights_sales_from(42, 0), 'order_date') === false, 'no floor for All');
 }
 
+// An order the Customers report does not count (cancelled, or refunded in
+// full: pg_customer_value_order_counts()) sells nothing here either.
+function test_product_insights_counted_sql_follows_the_customer_value_rule()
+{
+	$sql = pg_product_insights_counted_sql(true, true);
+
+	pg_assert_true(strpos($sql, "orders.status IN ('complete', 'exported')") !== false);
+	pg_assert_true(strpos($sql, 'COALESCE(orders.cancelled_at, 0) = 0') !== false, 'a cancelled order is left out');
+	pg_assert_true(strpos($sql, 'orders.refunded_amount <= 0 OR orders.refunded_amount < orders.total') !== false, 'a full refund is left out');
+
+	$bare = pg_product_insights_counted_sql(false, false);
+	pg_assert_true(strpos($bare, 'cancelled_at') === false, 'no column before its migration');
+	pg_assert_true(strpos($bare, 'refunded_amount') === false, 'no column before its migration');
+}
+
+// A request the customer withdrew before sending anything holds no goods
+// (pg_return_holds_goods()), so it is no return; one closed after the parcel
+// left still is.
+function test_product_insights_returns_held_sql()
+{
+	$sql = pg_product_insights_returns_held_sql();
+
+	pg_assert_true(strpos($sql, "order_returns.status IN ('requested', 'approved', 'shipped', 'received', 'refunded')") !== false);
+	pg_assert_true(strpos($sql, "order_returns.status = 'closed' AND (order_returns.shipped_at > 0 OR order_returns.received_at > 0 OR order_returns.refunded_at > 0)") !== false);
+	pg_assert_true(strpos($sql, "<> 'rejected'") === false, 'no longer every status but rejected');
+}
+
+// Revenue is shown in the store's currency, so a marketplace order in
+// another unit (pg_customer_value_order_unit()) adds its units and its order
+// but no money.
+function test_product_insights_base_unit_sql()
+{
+	$sql = pg_product_insights_base_unit_sql('try', true);
+
+	pg_assert_true(strpos($sql, "orders.type <> 'marketplace'") !== false);
+	pg_assert_true(strpos($sql, "TRIM(COALESCE(orders.currency_code, '')) = ''") !== false, 'no code is the base unit');
+	pg_assert_true(strpos($sql, "UPPER(TRIM(orders.currency_code)) = 'TRY'") !== false, 'the base code in any case');
+	pg_assert_same('1 = 1', pg_product_insights_base_unit_sql('TRY', false), 'no type column: every order is a web order');
+	pg_assert_true(strpos(pg_product_insights_base_unit_sql("X'Y", true), "= 'XY'") !== false, 'only the letters of the code reach the SQL');
+}
+
+// Try again reads the period on screen: with storage blocked the stored one
+// is always 30 days, so it used to answer another period than the pressed one.
+function test_product_insights_script_retries_the_period_shown()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/product_insights.js');
+
+	pg_assert_true(strpos($js, 'load(shown);') !== false, 'Try again loads the period shown');
+	pg_assert_true(strpos($js, 'shown = period;') !== false, 'load() remembers the period it asks for');
+	pg_assert_same(1, substr_count($js, 'load(storedPeriod())'), 'only the first load reads storage');
+}
+
+// A server's refusal is shown for that read only: written over the card's
+// default line, it stayed for every later failure (a lost connection too).
+function test_product_insights_script_keeps_the_default_failure_line()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/product_insights.js');
+
+	pg_assert_true(strpos($js, "setAttribute('data-failed'") === false, 'the default line is never overwritten');
+	pg_assert_true(strpos($js, 'failed(answer && answer.message') !== false, 'the server message goes to this failure only');
+}
+
 function test_product_insights_head_pills()
 {
 	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));

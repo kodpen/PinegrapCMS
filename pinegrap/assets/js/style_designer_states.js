@@ -7,10 +7,10 @@
  * state's rule on the element's custom style class in User Styles
  * (window.PGOptionStates); Text, Spacing and Size and display stay closed
  * and dimmed, the same in every state; Transition stays open, one value
- * for every state; Transform shows the state's own values. The canvas
- * shows the state on the selected element, and while a Transform row is
- * used the place the element keeps. On Normal it rings the section heads
- * a state changes.
+ * for every state; Transform and the effects show the state's own
+ * values. The canvas shows the state on the selected element, and while
+ * a Transform row is used the place the element keeps. On Normal it rings
+ * the section heads a state changes.
  * Not needed to open a page: the core runs this file the first time a
  * state is chosen or an element holding a state's rule is shown
  * (_sdPartLoad(), pg_designer_parts()) and hands it the panel through a
@@ -45,6 +45,7 @@ StyleDesigner.definePart('states', function (K) {
     }
 
     function hintSeen() {
+        if (K._sdTipsOff()) return true;
         try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return true; }
     }
 
@@ -159,11 +160,13 @@ StyleDesigner.definePart('states', function (K) {
         var map = cls ? S.read(host.text(), cls, host.state) : {};
         if (!pane) return;
         host.panel.classList.add('sd-state-on');
-        // Transform: the state's own values, Normal's in grey until set.
+        // Transform and the effects: the state's own values, Normal's in
+        // grey until set.
         var tfBox = pane.querySelector('[data-sd-tf-box]');
         if (tfBox && cls) {
             var text = host.text();
-            tfBox.insertAdjacentHTML('afterend', host.tfHtml(host.node, S.tfRead(text, cls, host.state), S.tfRead(text, cls, '')));
+            tfBox.insertAdjacentHTML('afterend', host.tfHtml(host.node, S.tfRead(text, cls, host.state), S.tfRead(text, cls, ''),
+                S.fxRead(text, cls, host.state), S.fxRead(text, cls, '')));
             tfBox.parentNode.removeChild(tfBox);
             tfBox = pane.querySelector('[data-sd-tf-box]');
             if (tfBox) host.tfMark(tfBox);
@@ -178,7 +181,12 @@ StyleDesigner.definePart('states', function (K) {
             // The corners as five rows (the corner box writes classes).
             var rd = card.querySelector('.sd-rd-rows');
             if (rd) rd.hidden = false;
-            card.querySelectorAll('.sd-bg-img-grp, #sd-bcp-row').forEach(dimRow);
+            // The background layers are the same in every state.
+            card.querySelectorAll('[data-sd-bgl-box]').forEach(function (box) {
+                dimRow(box);
+                var note = box.querySelector('.sd-bgl-same');
+                if (note) note.hidden = false;
+            });
             card.querySelectorAll('.sd-prop-row').forEach(function (r) {
                 if (r.closest('.sd-state-off')) return;
                 // Transition is one value for every state: open, its changed

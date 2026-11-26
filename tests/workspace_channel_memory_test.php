@@ -66,9 +66,12 @@ function test_workspace_memory_digest()
 		ws_memory_digest($entries, $decisions, $now));
 	pg_assert_same('', ws_memory_digest(array(), array(), $now));
 
-	// A line that does not fit is left out whole, with the lines after it, and counted.
-	$small = ws_memory_digest($entries, $decisions, $now, mb_strlen($heading) + 12);
-	pg_assert_same($heading . "\n- #4 Pin\n\n(3 more not shown: list them with workspace.memory.list and workspace.decisions.list.)", $small);
+	// A line that does not fit is left out whole, with the lines after it,
+	// and counted; the count is inside the size too, so one character short
+	// of the whole digest leaves room for the count alone.
+	$whole = ws_memory_digest($entries, $decisions, $now);
+	pg_assert_same('(4 more not shown: list them with workspace.memory.list and workspace.decisions.list.)', ws_memory_digest($entries, $decisions, $now, mb_strlen($whole) - 1));
+	pg_assert_same($whole, ws_memory_digest($entries, $decisions, $now, mb_strlen($whole) + 2));
 }
 
 // The brief lists the newest decisions only, then one line with how many
@@ -107,8 +110,9 @@ function test_workspace_memory_digest_bounds_the_decisions()
 
 	// The character bound cuts first: one closing line counts the lines it
 	// left out and the older decisions together, never two counts.
-	$cut = ws_memory_digest(array(), $forty, 100, mb_strlen($heading) + 2 + 3 * 14);
-	pg_assert_same($heading . "\n- Decision 40\n- Decision 39\n- Decision 38\n\n(37 more not shown: list them with workspace.memory.list and workspace.decisions.list.)", $cut);
+	$expect = $heading . "\n- Decision 40\n- Decision 39\n- Decision 38\n\n(37 more not shown: list them with workspace.memory.list and workspace.decisions.list.)";
+	$cut = ws_memory_digest(array(), $forty, 100, mb_strlen($expect));
+	pg_assert_same($expect, $cut);
 	pg_assert_same(1, substr_count($cut, 'not shown'));
 }
 
@@ -446,8 +450,8 @@ function test_workspace_memory_digest_general_first()
 
 	// One size holds both: the general lines take their room first, and the
 	// count names the general list when a general line was left out.
-	$small = ws_memory_digest($entries, $decisions, $now, mb_strlen($general_heading) + 2 + 16, null, $general);
-	pg_assert_same($general_heading . "\n- #8 House rule\n\n(3 more not shown: list them with workspace.memory.general.list, workspace.memory.list and workspace.decisions.list.)", $small);
+	$expect = $general_heading . "\n- #8 House rule\n\n(3 more not shown: list them with workspace.memory.general.list, workspace.memory.list and workspace.decisions.list.)";
+	pg_assert_same($expect, ws_memory_digest($entries, $decisions, $now, mb_strlen($expect), null, $general));
 }
 
 function test_workspace_memory_move_fault()
@@ -594,4 +598,115 @@ function test_workspace_channel_memory_digest_across_agent_channels()
 
 	$many = array_fill(0, 12, array('body' => 'x', 'marked_at' => 1, 'channel' => ''));
 	pg_assert_contains('workspace.decisions.list (agent_channels only)', ws_memory_digest(array(), $many, 100, WS_MEMORY_DIGEST_MAX, 40, array(), true), 'the count says where the rest are');
+}
+
+// The application Claude works through reaches the general memory only
+// while Claude may be asked in an agent channel its owner may post in: a
+// private channel's records moved there leave the site no other way.
+function test_workspace_memory_general_claude_needs_an_allowed_agent_channel()
+{
+	$channels = array(array('id' => 1, 'kind' => 'private', 'claude' => false), array('id' => 2, 'kind' => 'public', 'claude' => false));
+	$post = function ($channel) {
+		return true;
+	};
+	$claude = function ($channel) {
+		return $channel['claude'];
+	};
+
+	pg_assert_true(ws_memory_general_reached($channels, $post), 'a person who posts in an agent channel keeps it');
+	pg_assert_true(!ws_memory_general_reached($channels, $post, $claude), 'Claude, asked in no agent channel, does not');
+
+	$channels[1]['claude'] = true;
+	pg_assert_true(ws_memory_general_reached($channels, $post, $claude), 'Claude, allowed in one, does');
+	pg_assert_true(!ws_memory_general_reached($channels, function ($channel) { return $channel['id'] === 1; }, $claude), 'the allowed channel must be one the owner posts in');
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
+	pg_assert_contains('return ws_memory_general_can($viewer, function_exists(\'ws_api_is_claude\') && ws_api_is_claude());', $api);
+	pg_assert_true(substr_count($api, 'ws_api_memory_general_can($viewer)') >= 2, 'the general list and create, and a general record by id, ask it');
+	pg_assert_true(strpos($api, '!ws_memory_general_can($viewer)') === false, 'no route asks the person\'s rule alone');
+}
+
+// A Turkish tag with a dotted capital I is kept: lowered alone it took a
+// combining dot the tag check refuses, so "İade" could not be saved, and a
+// list filtered by it found nothing.
+function test_workspace_memory_tag_with_dotted_capital_i()
+{
+	pg_assert_same(array('iade', 'kira'), ws_memory_tags("#\u{0130}ade, K\u{0130}RA"));
+	pg_assert_same('iade', ws_memory_tag(" #\u{0130}ade "));
+	pg_assert_same('', ws_memory_entry_problem(array('title' => 'x', 'tags' => ws_memory_tags("\u{0130}ade \u{015E}irket")), 1000));
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
+	pg_assert_same(2, substr_count($api, "\$tag = ws_memory_tag(\$params['tag'] ?? '');"), 'both list filters fold the tag as it is stored');
+}
+
+// The digest stays within its size, closing count included: the count line
+// was added after the lines were fitted and ran the brief past the bound.
+function test_workspace_memory_digest_count_line_inside_the_bound()
+{
+	$entries = array();
+
+	for ($i = 1; $i <= 40; $i++) {
+		$entries[] = array('id' => $i, 'title' => str_repeat('t', 40), 'tags' => array(), 'pinned' => 0, 'expires_at' => 0, 'updated_at' => $i);
+	}
+
+	$general = array(array('id' => 99, 'project' => 'Launch', 'title' => 'Shared', 'tags' => array(), 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 1));
+	$many = array_fill(0, 10, array('body' => 'Ship it', 'marked_at' => 1, 'channel' => ''));
+
+	foreach (array(300, 500, 1000, 1500) as $max) {
+		$digest = ws_memory_digest($entries, $many, 100, $max, 30, $general, true);
+		pg_assert_true(mb_strlen($digest) <= $max, 'within ' . $max . ', was ' . mb_strlen($digest));
+		pg_assert_contains(' more not shown: list them with ', $digest, 'the count still closes it at ' . $max);
+	}
+
+	// What fits whole is laid out as before.
+	$few = array_slice($entries, 0, 2);
+	$whole = ws_memory_digest($few, array(), 100, 100000);
+	pg_assert_same($whole, ws_memory_digest($few, array(), 100, mb_strlen($whole) + 2));
+}
+
+function test_workspace_memory_unchanged()
+{
+	$row = array('id' => 7, 'channel_id' => 3, 'title' => 'Merge window', 'text' => "Trains land at 08:00.\nNot on Fridays.", 'tags' => 'merge,iade', 'pinned' => '1', 'expires_at' => '0', 'project' => 'Release train', 'updated_at' => '500');
+	$same = array('title' => 'Merge window', 'text' => "Trains land at 08:00.\nNot on Fridays.", 'tags' => 'merge,iade', 'pinned' => 1, 'expires_at' => 0, 'project' => 'Release train');
+
+	pg_assert_true(ws_memory_unchanged($row, $same, true));
+
+	// Each checked field on its own is a change.
+	foreach (array('title' => 'Merge windows', 'text' => 'Trains land at 09:00.', 'tags' => 'merge', 'pinned' => 0, 'expires_at' => 2000, 'project' => 'Other') as $field => $value) {
+		$values = $same;
+		$values[$field] = $value;
+		pg_assert_false(ws_memory_unchanged($row, $values, true), $field);
+	}
+
+	// The same tags in another order are another index line.
+	$values = $same;
+	$values['tags'] = 'iade,merge';
+	pg_assert_false(ws_memory_unchanged($row, $values, true));
+
+	// Values come from ws_memory_check(): a tag in another case or a trailing
+	// space is folded there, so it reads as the stored row.
+	$values = $same;
+	$values['tags'] = implode(',', ws_memory_tags('#Merge, İade'));
+	$values['title'] = trim('Merge window ');
+	$values['project'] = ws_memory_project(' Release   train ');
+	pg_assert_true(ws_memory_unchanged($row, $values, true));
+
+	// no_expiry on an entry that has none: expires_at 0 against 0.
+	$values = $same;
+	$values['expires_at'] = 0;
+	pg_assert_true(ws_memory_unchanged($row, $values, true));
+
+	// A field left out of the request keeps the stored value in the check.
+	$values = $same;
+	unset($values['project']);
+	pg_assert_false(ws_memory_unchanged($row, $values, true));
+	pg_assert_true(ws_memory_unchanged($row, $values, false));
+
+	// Without the project column the project is not compared.
+	$values = $same;
+	$values['project'] = 'Other';
+	pg_assert_true(ws_memory_unchanged($row, $values, false));
+	$bare = $row;
+	unset($bare['project']);
+	pg_assert_true(ws_memory_unchanged($bare, $same, false));
 }

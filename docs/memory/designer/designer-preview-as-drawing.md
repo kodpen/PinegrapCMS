@@ -1,6 +1,6 @@
 ---
 name: designer-preview-as-drawing
-description: The drawing of the "Preview as" bar (plans/designer-preview-as.md, PW3 and PW4): the sheet, where each part is described, which board belongs to which step
+description: The drawing of the "Preview as" bar (steps PW3 and PW4, `designer-preview-as-rules.md`): the sheet, where each part is described, which board belongs to which step
 ---
 
 ## Where is the drawing?

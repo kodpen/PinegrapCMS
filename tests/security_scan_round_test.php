@@ -408,6 +408,72 @@ function test_security_scan_round_quarantine_and_restore_leave_the_file_as_befor
 	}
 }
 
+function test_security_scan_round_quarantine_never_goes_through_a_folder_turned_into_a_link()
+{
+	$outside = _test_scan_round_folder('link_target');
+	$folder = PG_FUNCTIONS_DIR . '/' . PG_SECURITY_QUARANTINE_FOLDER;
+	$made_folder = !is_dir($folder);
+	$link = PG_FUNCTIONS_DIR . '/data/temp/pg_scan_link_' . getmypid();
+	$place = 'data/temp/pg_scan_link_' . getmypid() . '/shell.php';
+	$row = array('kind' => 'file_php_unknown', 'place' => $place);
+
+	file_put_contents($outside . '/shell.php', '<?php echo 1;');
+	@unlink($link);
+	symlink($outside, $link);
+
+	pg_assert_true(pg_security_quarantine_move($row, 'quarantine') !== '', 'a file reached through a link is not moved');
+	clearstatcache();
+	pg_assert_true(is_file($outside . '/shell.php'), 'the file outside the site stays');
+
+	$kept = pg_security_quarantine_folder() . '/' . pg_security_quarantine_name($place);
+	file_put_contents($kept, 'kept');
+	unlink($outside . '/shell.php');
+	pg_assert_true(pg_security_quarantine_move($row, 'restore') !== '', 'nothing is moved back through a link');
+	clearstatcache();
+	pg_assert_false(file_exists($outside . '/shell.php'));
+	pg_assert_true(pg_security_place_folder_real('data/temp/x.php'), 'a real folder passes');
+
+	@unlink($kept);
+	unlink($link);
+	_test_scan_round_remove($outside);
+
+	if ($made_folder) {
+		@unlink($folder . '/.htaccess');
+		@unlink($folder . '/index.html');
+		@rmdir($folder);
+	}
+}
+
+function test_security_scan_round_a_second_quarantine_keeps_the_first_copy()
+{
+	$place = 'data/temp/pg_scan_twice_' . getmypid() . '.php';
+	$path = pg_security_place_disk_path($place);
+	$folder = PG_FUNCTIONS_DIR . '/' . PG_SECURITY_QUARANTINE_FOLDER;
+	$made_folder = !is_dir($folder);
+	$row = array('kind' => 'file_php_unknown', 'place' => $place);
+	$name = pg_security_quarantine_name($place);
+
+	file_put_contents($path, 'first');
+	pg_assert_same('', pg_security_quarantine_move($row, 'quarantine'));
+	file_put_contents($path, 'second');
+	pg_assert_same('', pg_security_quarantine_move($row, 'quarantine'), 'the file planted again is moved too');
+	pg_assert_same('second', file_get_contents($folder . '/' . $name));
+
+	$earlier = glob($folder . '/' . substr($name, 0, 40) . '.*.quarantine');
+	pg_assert_same(1, count($earlier), 'the first copy is kept beside it');
+	pg_assert_same('first', file_get_contents($earlier[0]));
+
+	@unlink($earlier[0]);
+	@unlink($folder . '/' . $name);
+	@unlink($path);
+
+	if ($made_folder) {
+		@unlink($folder . '/.htaccess');
+		@unlink($folder . '/index.html');
+		@rmdir($folder);
+	}
+}
+
 function test_security_scan_round_a_cut_walk_resumes_where_it_stopped()
 {
 	$site = _test_scan_round_folder('resume');
@@ -455,6 +521,52 @@ function test_security_scan_round_a_cut_walk_resumes_where_it_stopped()
 function _test_scan_round_json(array $state)
 {
 	return pg_security_files_state(json_decode(json_encode($state), true));
+}
+
+function test_security_scan_round_a_folder_that_cannot_be_read_is_kept_out_of_the_close()
+{
+	pg_assert_true(pg_security_place_unread('data/files/a/x.php', array('data/files/a')));
+	pg_assert_false(pg_security_place_unread('data/files/ab/x.php', array('data/files/a')), 'a folder is no prefix of a name');
+	pg_assert_true(pg_security_place_unread('x.php', array('')), 'the software folder unread keeps every place');
+	pg_assert_true(pg_security_place_unread('page:12', array('page')), 'a record type that could not be read');
+	pg_assert_false(pg_security_place_unread('pregion:12', array('page')));
+	pg_assert_false(pg_security_place_unread('x.php', array()));
+
+	$site = _test_scan_round_folder('unread');
+	_test_scan_round_plant($site . '/software', array('a/x.php' => '<?php', 'b.php' => '<?php'));
+	chmod($site . '/software/a', 0);
+	clearstatcache();
+
+	// Only where the folder really cannot be read (not as root).
+	if (@scandir($site . '/software/a') === false) {
+		$walk = pg_security_files_advance(pg_security_files_state(array('baseline' => array())), array('' => $site . '/software'), null, function () {
+			return false;
+		}, function () {
+		});
+		pg_assert_same(array('a'), $walk['state']['unread']);
+	}
+
+	chmod($site . '/software/a', 0755);
+	$walk = pg_security_files_advance(pg_security_files_state(array('baseline' => array())), array('' => $site . '/software', 'data/files' => $site . '/none'), null, function () {
+		return false;
+	}, function () {
+	});
+	pg_assert_same(array(), $walk['state']['unread'], 'a readable folder and an upload folder that is not there');
+	_test_scan_round_remove($site);
+}
+
+function test_security_scan_round_a_file_finding_carries_the_file_digest()
+{
+	$site = _test_scan_round_folder('digest');
+	_test_scan_round_plant($site, array('a.php' => 'x', '.htaccess' => 'AddHandler php-script .jpg'));
+
+	$check = pg_security_files_check('data/files/a.php', $site . '/a.php', null, array());
+	pg_assert_same('.php sha1:' . sha1('x'), $check['sightings'][0]['detail']);
+
+	$check = pg_security_files_check('data/files/.htaccess', $site . '/.htaccess', null, array());
+	pg_assert_same('new sha1:' . sha1('AddHandler php-script .jpg'), $check['sightings'][0]['detail']);
+
+	_test_scan_round_remove($site);
 }
 
 function test_security_scan_round_fifty_thousand_files_inside_the_budget()

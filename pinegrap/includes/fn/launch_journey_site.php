@@ -42,11 +42,63 @@ function pg_launch_journey_stored()
  */
 function pg_launch_journey_store($changes)
 {
-    $current = pg_schema_has('config_text')
-        ? (string) db_value("SELECT value FROM config_text WHERE name = '" . e(PG_LAUNCH_JOURNEY_ROW) . "'")
-        : '';
+    return pg_launch_journey_row_change(function ($current) use ($changes) {
+        return pg_launch_journey_stored_change($current, $changes);
+    });
+}
 
-    return pg_config_text_save(PG_LAUNCH_JOURNEY_ROW, pg_launch_journey_stored_change($current, $changes));
+/**
+ * Change the journey's row from its fresh value: the set-up card, "Go live"
+ * and the agency summary's link all keep their part of the one row, so a
+ * write only lands while the row still holds what was read
+ * (pg_config_text_claim()), and is made again on the newer row otherwise.
+ *
+ * @param callable $change the row's JSON => the JSON to keep
+ * @return bool false when the row could not be written
+ */
+function pg_launch_journey_row_change($change)
+{
+    if (!pg_schema_has('config_text')) {
+        return false;
+    }
+
+    $read = function () {
+        return (string) db_value("SELECT value FROM config_text WHERE name = '" . e(PG_LAUNCH_JOURNEY_ROW) . "'");
+    };
+    $claim = function ($expected, $value) {
+        return pg_config_text_claim(PG_LAUNCH_JOURNEY_ROW, $expected, $value);
+    };
+
+    return pg_launch_journey_row_write($change, $read, $claim);
+}
+
+/**
+ * The read, change and claim loop of pg_launch_journey_row_change(), its
+ * reads and writes given. A change that leaves the row as it is writes
+ * nothing.
+ *
+ * @param callable $change JSON => JSON
+ * @param callable $read   () => the row's value now
+ * @param callable $claim  (expected, value) => whether the write landed
+ * @param int      $tries
+ * @return bool
+ */
+function pg_launch_journey_row_write($change, $read, $claim, $tries = 5)
+{
+    for ($try = 0; $try < $tries; $try++) {
+        $current = (string) $read();
+        $value = (string) $change($current);
+
+        if (($value === $current) || ($value === '')) {
+            return $value === $current;
+        }
+
+        if ($claim($current, $value)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -67,8 +119,9 @@ function pg_launch_journey_template_noted($template)
 
 /**
  * The payment ways switched on that take money online, each with its driver
- * key (or the classic gateway's name when no driver takes it) and the
- * driver's settings. The offline payment takes no money online.
+ * key and the settings it runs on, or the classic way's name with the
+ * setting that says its mode (pg_launch_journey_payment_classic()). The
+ * offline payment takes no money online.
  *
  * @return array list of array(driver, settings)
  */
@@ -76,9 +129,13 @@ function pg_launch_journey_payment_facts()
 {
     $payments = array();
     $settings = function ($key) {
-        $stored = pg_payment_settings($key);
-        return array_merge($stored['values'], $stored['secrets']);
+        return pg_launch_journey_payment_driver_settings(pg_payment_settings($key), pg_payment_fields($key));
     };
+    $legacy = array(
+        'paypal_mode' => defined('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_MODE') ? (string) ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_MODE : '',
+        'stripe_key'  => defined('ECOMMERCE_STRIPE_API_KEY') ? (string) ECOMMERCE_STRIPE_API_KEY : '',
+    );
+    $gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string) ECOMMERCE_PAYMENT_GATEWAY : '';
 
     foreach (pg_payment_builtin_switches() as $method => $on) {
         if (!$on || ($method === 'Offline Payment')) {
@@ -88,8 +145,7 @@ function pg_launch_journey_payment_facts()
         $key = pg_payment_order_driver($method);
 
         if ($key === '') {
-            $key = ($method === 'Credit/Debit Card') ? (defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string) ECOMMERCE_PAYMENT_GATEWAY : '') : $method;
-            $payments[] = array('driver' => $key, 'settings' => array());
+            $payments[] = pg_launch_journey_payment_classic($method, $gateway, $legacy);
             continue;
         }
 
@@ -158,10 +214,7 @@ function pg_launch_journey_facts($user, $purpose)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
     $facts['mail_ready'] = pg_mail_settings_ready();
     if ($facts['mail_ready']) {
-        $health = pg_mail_domain_health();
-        foreach (array('spf', 'dkim', 'dmarc') as $record) {
-            $facts['mail_' . $record] = isset($health[$record]['state']) ? (string) $health[$record]['state'] : 'unknown';
-        }
+        $facts += pg_launch_journey_mail_facts(pg_mail_domain_health());
     }
 
     // Legal texts: the personal-data notice, cookie consent, and a shop's
@@ -188,14 +241,17 @@ function pg_launch_journey_facts($user, $purpose)
         }
     }
 
-    // Payment: only a shop is asked.
-    if ($shop && (pg_launch_journey_purpose($purpose) === 'shop')) {
-        $facts['payments'] = pg_launch_journey_payment_facts();
+    // Payment: only a shop is asked; the shop switched off takes none.
+    $facts['shop'] = $shop;
+    if (pg_launch_journey_purpose($purpose) === 'shop') {
+        $facts['payments'] = $shop ? pg_launch_journey_payment_facts() : array();
         $facts['gateway_mode'] = defined('ECOMMERCE_PAYMENT_GATEWAY_MODE') ? (string) ECOMMERCE_PAYMENT_GATEWAY_MODE : '';
     }
 
-    // Bookings: someone bookable has weekly hours.
+    // Bookings: a bookable service, and someone bookable with weekly hours.
+    // Before the booking tables exist nothing can be read.
     if ((pg_launch_journey_purpose($purpose) === 'clinic') && pg_booking_ready()) {
+        $facts['booking_setup'] = (bool) db_value("SELECT 1 FROM booking_services LIMIT 1");
         $facts['booking_hours'] = false;
         foreach (db_values("SELECT hours FROM booking_staff") as $hours) {
             if (pg_booking_hours_clean($hours)) {
@@ -261,39 +317,53 @@ function pg_launch_journey_go_live($user, $request)
     }
 
     $changes = pg_launch_journey_golive_changes($facts);
+    if (!pg_schema_has('config', 'maintenance_mode')) {
+        $changes = array_values(array_diff($changes, array('maintenance')));
+    }
+    $robots = isset($facts['robots_text']) ? (string) $facts['robots_text'] : '';
+    $applied = array();
 
-    if (in_array('maintenance', $changes, true) && pg_schema_has('config', 'maintenance_mode')) {
-        if (db("UPDATE config SET maintenance_mode = '0', last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()") === false) {
+    // Both changes in one statement, guarded by what was read: a second
+    // press arriving after the first changes no row.
+    $query = pg_launch_journey_golive_query($changes, $robots, in_array('robots', $changes, true) ? pg_launch_journey_robots_opened($robots) : '', $user['id']);
+    if ($query !== null) {
+        if (db_q($query[0], $query[1]) === false) {
             return lang('The change could not be saved.');
         }
-        log_activity(lang('Go live: maintenance mode was switched off.'));
-    }
 
-    if (in_array('robots', $changes, true)) {
-        $opened = pg_launch_journey_robots_opened($facts['robots_text']);
-        if (db("UPDATE config SET additional_robots_content = '" . e($opened) . "', last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()") === false) {
-            return lang('The change could not be saved.');
+        if (mysqli_affected_rows(db::$con) > 0) {
+            $applied = $changes;
+        } else {
+            // Nothing changed: another press did it, or the settings moved
+            // since they were read and the site is still closed.
+            $now = db_item("SELECT maintenance_mode, additional_robots_content FROM config LIMIT 1");
+            if (!is_array($now) || (in_array('maintenance', $changes, true) && ((string) $now['maintenance_mode'] !== '0'))
+                || pg_robots_catch_all_closed((string) $now['additional_robots_content'])) {
+                return lang('The change could not be saved.');
+            }
         }
-        log_activity(lang('Go live: the robots.txt rule closing the whole site to search engines was removed.'));
     }
 
-    if (($stored['live_at'] < 1) && !pg_launch_journey_store(array('live_at' => time()))) {
+    $first = false;
+    $kept = pg_launch_journey_row_change(function ($current) use (&$first) {
+        $first = (pg_launch_journey_stored_read($current)['live_at'] < 1);
+        return $first ? pg_launch_journey_stored_change($current, array('live_at' => time())) : $current;
+    });
+    if (!$kept) {
         return lang('The change could not be saved.');
     }
 
-    if ($left) {
-        $names = array();
-        foreach ($left as $row) {
-            $names[] = pg_launch_journey_step_face($row['key'])['name'] . ' (' . pg_launch_journey_step_line($row, $facts) . ')';
-        }
-        log_activity(lang(array('string' => 'The site went live with these left to fix: {var:1}', 'vars' => array(implode('; ', $names)))));
-    } else {
-        log_activity(lang('The site went live.'));
+    $names = array();
+    foreach ($left as $row) {
+        $names[] = pg_launch_journey_step_face($row['key'])['name'] . ' (' . pg_launch_journey_step_line($row, $facts) . ')';
+    }
+    foreach (pg_launch_journey_golive_log($applied, $first, $names) as $line) {
+        log_activity($line);
     }
 
     // System Status reads maintenance mode and robots.txt: told at once
     // rather than after its ten-minute cache.
-    if ($changes && function_exists('pg_system_status_forget')) {
+    if ($applied && function_exists('pg_system_status_forget')) {
         pg_system_status_forget();
     }
 

@@ -230,8 +230,9 @@ function api_marketplace_repricing_list($params) {
 
 // POST /marketplaces/{account}/repricing/{product}, PATCH accepted
 //
-// A changed own price queues the listing on this account, so it goes out on
-// the next run; a strategy alone waits for the robot's next pass.
+// A changed own price, or a strategy that stops or starts sending the robot's
+// price, queues the listing on this account, so it goes out on the next run;
+// a strategy with no robot price yet waits for the robot's next pass.
 function api_marketplace_repricing_update($params) {
 
 	$account = api_marketplace_repricing_account($params['account']);
@@ -267,7 +268,7 @@ function api_marketplace_repricing_update($params) {
 
 	}
 
-	if ($before['own_price'] !== $change['own_price']) {
+	if (mp_pricing_listing_moves($before, $change['own_price'], $change['strategy'])) {
 
 		mp_matches_send($account, array($product_id));
 

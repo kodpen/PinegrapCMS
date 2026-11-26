@@ -192,3 +192,35 @@ function test_designer_a11y_view_draws_outside_the_page()
 	pg_assert_true(strpos($js, 'V.mo.disconnect()') !== false && strpos($js, 'listen(false)') !== false, 'the observer and the listeners go with the view');
 	pg_assert_true(strpos($js, 'setTimeout(refresh, REST_MS)') !== false, 'read again when the hand rests');
 }
+
+// "See as" (board V5): the menu's values in order, the two common ones with
+// how many people see so, the pill's words and the filter laid on the frame.
+function test_designer_a11y_view_see_as_values()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('_avSeeName', '_avSeeShare', '_avSeePill', '_avSeeMatrix', '_avSeeFilter'),
+		'var all = ["", "red", "green", "blue", "grey", "blur", "x"];' . "\n"
+		. 'console.log(JSON.stringify({ name: all.map(_avSeeName), share: all.map(_avSeeShare), pill: all.map(_avSeePill),' . "\n"
+		. '  filter: all.map(_avSeeFilter), matrix: all.map(function (k) { return _avSeeMatrix(k).split(/\s+/).filter(Boolean).length; }) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('Off', 'Red-weak', 'Green-weak', 'Blue-weak', 'No colour', 'Blurred', 'Off'), $res['name'], 'the menu\'s values; an unknown one is Off');
+	pg_assert_same(array('', '1 in 100', '5 in 100', '', '', '', ''), $res['share'], 'only the two common ones say how many see so');
+	pg_assert_same(array('', 'Seen as: red-weak', 'Seen as: green-weak', 'Seen as: blue-weak', 'Seen as: no colour', 'Seen as: blurred', ''), $res['pill'], 'the pill names the filter; none while Off');
+	pg_assert_same(array('', 'url(#sd-av-see-red)', 'url(#sd-av-see-green)', 'url(#sd-av-see-blue)', 'grayscale(1)', 'blur(1.6px)', ''), $res['filter'], 'a colour matrix, a grey scale or a blur; nothing while Off');
+	pg_assert_same(array(0, 20, 20, 20, 0, 0, 0), $res['matrix'], 'a 4x5 matrix for each colour-weak eye');
+}
+
+// The filter is style on the editor's frame: no picture is read, nothing
+// goes into the canvas's page, and it is never kept.
+function test_designer_a11y_view_see_as_is_style_only()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_accessview.js');
+
+	pg_assert_true(strpos($js, 'frame.style.filter = f;') !== false, 'laid on the canvas frame');
+	pg_assert_true(strpos($js, "V.seeFrame.style.filter = '';") !== false, 'taken off with the view');
+	pg_assert_false((bool) preg_match('/getImageData|toDataURL|drawImage|localStorage|sessionStorage/', $js), 'no picture read, nothing kept');
+	pg_assert_true(strpos($js, "var see = V ? V.see : '';") !== false, 'a new canvas document keeps it until the view goes off');
+}

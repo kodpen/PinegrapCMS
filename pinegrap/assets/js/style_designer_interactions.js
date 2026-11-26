@@ -101,10 +101,7 @@ StyleDesigner.definePart('interactions', function (K) {
             h += row(_sdT('Trigger'), select('trigger', triggers));
             h += row(_sdT('Duration'), number('duration', 'ms'));
             h += row(_sdT('Delay'), number('delay', 'ms'));
-            h += row(_sdT('Easing'), select('easing', [
-                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
-                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
-            ]));
+            h += row(_sdT('Easing'), K._sdEaseHtml('data-fx="easing"', fx.easing, []));
             if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
             // Blur in and Rotate in read the distance as how far they start
             // from: the blur in px, the angle in degrees (pg_fx.src.js).
@@ -184,10 +181,22 @@ StyleDesigner.definePart('interactions', function (K) {
     // and redraws the panel, whose rows follow the effect and trigger; a
     // typed number is one undo step per focus and redraws the panel once
     // it is left, showing the value kept.
-    function _sdFxFill(body, n) {
+    function _sdFxFill(body, n, keep) {
         body.innerHTML = _sdFxRows(n);
         var play = body.querySelector('[data-fx-play]');
         if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
+        // The Easing row's curve editor writes as the list does: one undo
+        // step, the panel drawn again.
+        K._sdEaseWire(body, {
+            at: 'fx:' + n._id,
+            value: n.props._fx ? n.props._fx.easing : '',
+            write: function (v) {
+                K.saveState();
+                n.props._fx = _sdFxSet(n.props._fx, 'easing', v) || n.props._fx;
+                K.render();
+            },
+            play: function () { _sdFxReplay(n); }
+        });
         body.querySelectorAll('[data-fx]').forEach(function (el) {
             var field = el.getAttribute('data-fx');
             var typed = el.type === 'number';
@@ -206,6 +215,14 @@ StyleDesigner.definePart('interactions', function (K) {
             });
             if (typed) el.addEventListener('change', function () { K.render(); });
         });
+        // "Between pages": "Keep across pages", drawn by the part
+        // 'pagetrans' when the element can have its own style.
+        if (keep) {
+            var box = document.createElement('div');
+            box.setAttribute('data-fx-keep', '');
+            body.appendChild(box);
+            keep.draw(box);
+        }
     }
 
     return {

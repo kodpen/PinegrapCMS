@@ -163,3 +163,22 @@ function test_privacy_request_history_query_columns()
 	pg_assert_same(false, strpos($sql, 'actor_name'), 'no actor_name');
 	pg_assert_contains("(entity_id = '7')", $sql, 'one request');
 }
+
+// Send holds the screen's rule on the server: a correction, objection or
+// other request about a person this role may not see is refused, as the
+// erase dry run and the export already refuse theirs; Refuse is not held.
+function test_privacy_request_send_checks_the_gather()
+{
+	pg_assert_true(pg_privacy_request_send_gathers('correction', false), 'a correction');
+	pg_assert_true(pg_privacy_request_send_gathers('objection', false), 'an objection');
+	pg_assert_true(pg_privacy_request_send_gathers('other', false), 'other');
+	pg_assert_false(pg_privacy_request_send_gathers('erasure', false), 'the erase dry run checks it');
+	pg_assert_false(pg_privacy_request_send_gathers('information', false), 'the export checks it');
+	pg_assert_false(pg_privacy_request_send_gathers('correction', true), 'a refusal sends the reason only');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
+	$start = strpos($source, 'function pg_privacy_request_send(');
+	$send = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_contains("pg_privacy_request_answer_steps(\$request, pg_privacy_request_gather(\$request, \$operator))['can_send']", $send, 'the steps decide');
+	pg_assert_true(strpos($send, 'pg_privacy_request_send_gathers(') < strpos($send, 'email('), 'before the e-mail');
+}

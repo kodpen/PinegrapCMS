@@ -109,3 +109,64 @@ function test_record_edit_preview_marks_the_first_tag()
 		'<p>x</p>',
 	), json_decode(implode("\n", $out), true));
 }
+
+// The canvas row: in a bound element's menu (view mode too) and in the
+// command palette; the Preview opened with the switch on and that frame
+// focused, or the record's screen; one question per widget and record.
+function test_record_edit_preview_canvas_row()
+{
+	$core = record_edit_preview_source('assets/js/style_designer.src.js');
+	$menu = record_edit_preview_cut($core, 'showCanvasCtxMenu');
+	pg_assert_contains("var recItem = multi ? null : _sdRecEditItem(node, 'menu');", $menu);
+	pg_assert_contains('}, recItem].filter(Boolean));', $menu, 'view mode keeps the row: it changes the record, not the page');
+	pg_assert_contains("_sdRecEditItem(selectedNode, 'palette')", $core, 'the command palette row');
+	pg_assert_contains("id: 'act_record_edit'", record_edit_preview_cut($core, '_sdRecEditItem'));
+
+	$go = record_edit_preview_cut($core, '_sdRecEditGo');
+	pg_assert_contains("openPreview();\n            _sdRecEdit.want = { node: String(node._id) };", $go, 'the want is set after openPreview() clears it');
+	pg_assert_contains("var tab = window.open('', '_blank');", $go, 'a tab opened inside the click while the answer is on its way');
+	pg_assert_contains('_sdRecEdit.want = null;', record_edit_preview_cut($core, 'openPreview'), 'a plain Preview forgets a stale want');
+	pg_assert_contains("_pgApiPost('preview_record_open',", record_edit_preview_cut($core, '_sdRecOpenAsk'));
+	pg_assert_contains("var key = w.sid + ':' + (parseInt(_sdPvAsChoice().records[w.sid], 10) || 0);", record_edit_preview_cut($core, '_sdRecEditRow'));
+	pg_assert_contains('_sdRecEditWant: _sdRecEditWant,', $core, 'handed to the part');
+
+	$part = record_edit_preview_source('assets/js/style_designer_recordedit.js');
+	pg_assert_contains('if (R.read && !R.read.waits) setOn(true);', $part, 'the switch turns on unless the change would wait');
+	pg_assert_contains('focusWanted();', record_edit_preview_cut($part, 'sync'));
+}
+
+// A product or an event the Preview draws gets the link "Open the record"
+// in the bar, once the server says it may be opened; the part loads for it.
+function test_record_edit_preview_link_for_other_kinds()
+{
+	$core = record_edit_preview_source('assets/js/style_designer.src.js');
+	pg_assert_contains('return !!s.source && parseInt(s.record, 10) > 0;', record_edit_preview_cut($core, '_sdRecEditSync'));
+
+	$part = record_edit_preview_source('assets/js/style_designer_recordedit.js');
+	$sync = record_edit_preview_cut($part, 'sync');
+	pg_assert_contains("else if ((s.source === 'product' || s.source === 'event') && !other) other = { sid: parseInt(k, 10), id: rec };", $sync);
+	pg_assert_contains('otherRecord(id ? null : other);', $sync, 'a collection item drawn keeps the switch');
+	$other = record_edit_preview_cut($part, 'otherRecord');
+	pg_assert_contains('K._sdRecOpenAsk(o.sid, o.id)', $other);
+	pg_assert_contains("a.status !== 'ok'", $other, 'no link for whoever may not open it');
+	pg_assert_contains('if (!R.id) return (R.other && R.other.screen) ? link(R.other.screen, where) : \'\';', record_edit_preview_cut($part, 'html'));
+}
+
+// A plain text area keeps its line breaks when it is typed in; a line of text is one line.
+function test_record_edit_preview_keeps_line_breaks()
+{
+	$typed = record_edit_preview_cut(record_edit_preview_source('assets/js/style_designer_recordedit.js'), 'typed');
+	pg_assert_contains('var multi = !!(field(o.fid) || {}).multiline;', $typed);
+	pg_assert_contains("if (!rich && !multi) v = v.replace(/[\\r\\n]+/g, ' ');", $typed, 'only a single line drops them');
+}
+
+// A save takes off the changes it sent; a change typed while it was on its way stays counted.
+function test_record_edit_preview_save_keeps_later_changes()
+{
+	$part = record_edit_preview_source('assets/js/style_designer_recordedit.js');
+	pg_assert_contains('R.sent[c.field_id] = c.value;', record_edit_preview_cut($part, 'save'));
+
+	$saved = record_edit_preview_cut($part, 'saved');
+	pg_assert_contains('if (R.edits[fid] === R.sent[fid]) delete R.edits[fid];', $saved);
+	pg_assert_false(strpos($saved, 'R.edits = {}; R.bad = {}; R.theirs = {}; R.conflicts = []; R.mode = \'\';') !== false, 'a saved answer no longer drops every change');
+}

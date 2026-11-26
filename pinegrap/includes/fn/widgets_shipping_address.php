@@ -476,8 +476,11 @@ function _pg_sa_start_values($lf, $recipient, $ship_to_id, $arrival_dates)
     }
     $row = null;
     $ghost = !empty($_SESSION['software']['ghost']);
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && $recipient) {
-        $row = db_item("SELECT * FROM address_book WHERE user = '" . e(USER_ID) . "' AND ship_to_name = '" . e($recipient['ship_to_name']) . "' LIMIT 1");
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['signed_in'] && !$ghost && $recipient) {
+        // The sample account of a Preview: its own saved recipients.
+        $row = $viewer['sample'] ? pg_preview_as_sample_recipient($recipient['ship_to_name'])
+            : db_item("SELECT * FROM address_book WHERE user = '" . $viewer['id'] . "' AND ship_to_name = '" . e($recipient['ship_to_name']) . "' LIMIT 1");
     }
     if (!is_array($row)) $row = is_array($recipient) ? $recipient : array();
     foreach (pg_sa_address_fields() as $f) $values[$f] = isset($row[$f]) ? (string)$row[$f] : '';

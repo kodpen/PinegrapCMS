@@ -17,8 +17,8 @@ module: document_paragraphs
 
 ## What are the limits, and how much was read?
 - 2,000 paragraphs (the designer reader's own limit) and 600,000 characters of text; a .md or .txt 1 MB, cut back to a line's end.
-- `cut`: '' all read, 'size' (main part past 8 MB, or the text file past 1 MB), 'paragraphs' (a count limit). `read.paragraphs` the paragraphs given, `read.percent` about how much of the document they are: the share of the main part loaded times the share of its blocks walked. The form words it ("The first N paragraphs, about P%, were read").
+- `cut`: '' all read, 'size' (main part past 8 MB, or the text file past 1 MB), 'paragraphs' (a count limit). `read.paragraphs` the paragraphs given, `read.percent` about how much of the document they are: the share of the main part loaded times the share of its blocks walked, a content control counted by its own share (PR #11769: a document in one control said 100%). The form words it ("The first N paragraphs, about P%, were read").
 
 ## Where is it loaded and tested?
-- Not by `functions.php`: the door that reads the file (FD3, `plans/designer-document-to-page.md`) requires it, so no request pays for it otherwise. `tests/document_paragraphs_test.php` (styles, pictures, limits, text files, refusals, and the paragraphs read by `PGDocumentReader.read()` in Node).
+- Not by `functions.php`: the door that reads the file (`designer_document.php`, `document-start.md`) requires it, so no request pays for it otherwise. `tests/document_paragraphs_test.php` (styles, pictures, limits, text files, refusals, and the paragraphs read by `PGDocumentReader.read()` in Node).
 - Timing (PHP 8.3, 4 cores, median): 200 paragraphs (30 KB) 1.7 ms, 1,560 (238 KB) 11 ms, a 9.3 MB main part 205 ms (cut at 8 MB, 2,000 paragraphs, 3%).

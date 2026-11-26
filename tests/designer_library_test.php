@@ -342,3 +342,94 @@ function test_library_manage_delete()
 	pg_assert_same(array(), $c['write'], 'a delete leaves the order as it is');
 	pg_assert_true(is_string(pg_library_manage_changes(_library_test_shelf(), 'library_nothing', array())));
 }
+
+function test_library_hunt_shared_id_of_this_site_cleared()
+{
+	// A file made by hand may place a component by this site's own row id;
+	// the export never writes one (_pg_library_portable()).
+	$item = array('format' => PG_LIBRARY_FORMAT, 'version' => 1, 'name' => 'x',
+		'tree' => array('type' => 'section', 'children' => array(
+			array('type' => 'shared_ref', 'props' => array('sharedId' => 9, 'sharedName' => 'Admin menu'), 'children' => array()),
+		)));
+	$out = pg_library_item_into_design($item, array(), array('shared' => array(9 => 'Admin menu')));
+	$ref = $out['tree']['children'][0];
+	pg_assert_false(isset($ref['props']['sharedId']), 'not left pointing at this site\'s row');
+	pg_assert_same(array('shared'), $ref['props']['_libraryUnbound']);
+	pg_assert_same(1, $out['cleared']);
+}
+
+function test_library_hunt_product_group_and_calendar_refs()
+{
+	pg_assert_same('product_group', pg_library_ref_kind('product_group_id'));
+	pg_assert_same('product_group', pg_library_ref_kind('quick_add_product_group_id'));
+	pg_assert_same('product_group', pg_library_ref_kind('catalog_listing_root_group_id'));
+	pg_assert_same('calendar', pg_library_ref_kind('calendar_ids'));
+	pg_assert_same('group', pg_library_ref_kind('contact_group_id'));
+
+	$item = pg_library_item_from_subtree(
+		array('type' => 'section', 'children' => array(array('type' => 'shared_ref', 'props' => array('sharedId' => 4)))),
+		array('name' => 'Shop band'), array(),
+		array('rows' => array(4 => array('name' => 'Catalog', 'tree' => array('type' => 'div'),
+			'config' => array('regionType' => 'catalog', 'product_group_id' => 3, 'calendar_ids' => array(6, 8)))),
+			'product_groups' => array(3 => 'Shoes'), 'calendars' => array(6 => 'Events', 8 => 'Classes')));
+	pg_assert_same(array(3 => 'Shoes'), $item['refs']['product_group']);
+	pg_assert_same(array(6 => 'Events', 8 => 'Classes'), $item['refs']['calendar']);
+
+	$out = pg_library_item_into_design($item, array(), array('product_groups' => array(3 => 'Hats', 11 => 'Shoes'),
+		'calendars' => array(6 => 'Events')));
+	$cfg = $out['widgets']['w4']['config'];
+	pg_assert_same(11, $cfg['product_group_id'], 'the product group of that name');
+	pg_assert_same(array(6, ''), $cfg['calendar_ids'], 'a calendar the site lacks is cleared, not another one');
+	pg_assert_same(array('calendar'), $out['widgets']['w4']['cleared']);
+}
+
+function test_library_hunt_menu_by_name()
+{
+	$item = array('format' => PG_LIBRARY_FORMAT, 'version' => 1, 'name' => 'Header',
+		'tree' => array('type' => 'section', 'children' => array(
+			array('type' => 'shared_ref', 'props' => array('libraryWidget' => 'w5')),
+			array('type' => 'shared_ref', 'props' => array('libraryWidget' => 'w6')),
+		)),
+		'widgets' => array(
+			'w5' => array('name' => 'Main menu', 'kind' => 'menu', 'tree' => array('type' => 'div'), 'config' => array('menu_name' => 'Main')),
+			'w6' => array('name' => 'Footer menu', 'kind' => 'menu', 'tree' => array('type' => 'div'), 'config' => array('menu_name' => 'Footer links')),
+		));
+	$out = pg_library_item_into_design($item, array(), array('menus' => array(3 => 'main', 4 => 'Shop')));
+	pg_assert_same('Main', $out['widgets']['w5']['config']['menu_name'], 'the site has a menu of that name');
+	pg_assert_same(array(), $out['widgets']['w5']['cleared']);
+	pg_assert_same('', $out['widgets']['w6']['config']['menu_name'], 'no menu of that name: cleared');
+	pg_assert_same(array('menu'), $out['widgets']['w6']['cleared']);
+	pg_assert_same(array('menu'), $out['tree']['children'][1]['props']['_libraryUnbound'], 'the placement is marked');
+	pg_assert_false(isset($out['tree']['children'][0]['props']['_libraryUnbound']));
+	pg_assert_same(1, $out['cleared']);
+
+	$saved = pg_library_item_from_subtree(array('type' => 'div', 'props' => array('menu_name' => 'Main')), array('name' => 'x'), array(), array());
+	pg_assert_same('Main', $saved['tree']['props']['menu_name'], 'saving keeps the name');
+	pg_assert_false(isset($saved['refs']['menu']));
+}
+
+function test_library_missing_pictures_counted()
+{
+	$item = array('format' => PG_LIBRARY_FORMAT, 'version' => 1, 'name' => 'Gallery',
+		'tree' => array('type' => 'section', 'props' => array('style' => 'background-image: url("/hero.jpg")'), 'children' => array(
+			array('type' => 'img', 'props' => array('src' => '/team.jpg')),
+			array('type' => 'img', 'props' => array('src' => '/team.jpg', 'srcset' => '/team.jpg 1x, /logo.png 2x')),
+			array('type' => 'img', 'props' => array('src' => 'https://cdn.example.com/far.jpg')),
+			array('type' => 'img', 'props' => array('src' => 'data:image/png;base64,AAAA')),
+			array('type' => 'img', 'props' => array('src' => '{{image_url}}')),
+			array('type' => 'a', 'props' => array('href' => '/about')),
+		)));
+	$has = function ($name) { return $name === 'logo.png'; };
+	$out = pg_library_item_into_design($item, array(), array('path' => '/', 'has_file' => $has));
+	pg_assert_same(2, $out['pictures_missing'], 'two missing (one used twice); another host, data:, a placeholder and one the site has are not counted');
+	pg_assert_same('/team.jpg', $out['tree']['children'][0]['props']['src'], 'the address stays');
+	pg_assert_false(isset($out['tree']['children'][0]['props']['_libraryUnbound']), 'no mark');
+
+	pg_assert_same(1, pg_library_missing_pictures(array('/sub/a.webp', '/sub/a.webp', '/b.jpg', 'c.gif', '/sub/x/d.jpg'), '/sub/',
+		function ($name) { return $name === 'c.gif'; }), 'under the site path only, folders are not file names');
+	pg_assert_same(0, pg_library_missing_pictures(array('?v=1', '#top', '', 'https://shop.test'), '/', function ($name) { return false; }, 'shop.test:8080'),
+		'nothing left of an address once its query is dropped');
+	pg_assert_same(1, pg_library_missing_pictures(array('https://shop.test/a.jpg', 'https://other.test/b.jpg', '//shop.test/c.jpg?v=2'), '/',
+		function ($name) { return $name === 'c.jpg'; }, 'shop.test'), 'this site\'s own host counts');
+	pg_assert_same(0, pg_library_item_into_design($item, array(), array())['pictures_missing'], 'no callback: nothing counted');
+}

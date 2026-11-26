@@ -15,6 +15,13 @@
  * preview_widgets answer says the page offers a choice (_sdPvAsAnswered()).
  * A page that offers none shows no bar: its Preview is as before.
  *
+ * "Check all cases" (the "Case" menu's last row, the narrow sheet and the
+ * command palette) draws each case of the page for each visitor it has a
+ * rule for in the Preview's own window, measures each at the window's
+ * width and lists the cases where a text leaves its box, a picture is
+ * missing or a widget draws nothing. It writes nothing and keeps nothing:
+ * the list goes with the window.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2026 Erdal Güral. All rights reserved.
@@ -37,10 +44,13 @@ StyleDesigner.definePart('previewas', function (K) {
     // 'record', 'visitor', 'case', 'sheet'); sid: the record widget whose
     // records the menu lists; find: per sid {q, rows, busy, failed};
     // drawing: a draw the bar asked for is on its way; line: the line under
-    // the bar ({tone, text, act}) or null; narrow: the one-button form.
+    // the bar ({tone, text, act}) or null; narrow: the one-button form;
+    // run: "Check all cases" (null when its list is closed); marks: the
+    // places of an opened row, outlined once its case is drawn.
     var S = {
         win: null, doc: null, root: null, setups: {}, audience: false, defaults: {}, labels: {},
-        menu: '', sheet: '', sid: 0, find: {}, drawing: false, line: null, narrow: false, timer: 0, poll: 0
+        menu: '', sheet: '', sid: 0, find: {}, drawing: false, line: null, narrow: false, timer: 0, poll: 0,
+        run: null, marks: null, opening: null
     };
 
     function caseNames() {
@@ -51,6 +61,62 @@ StyleDesigner.definePart('previewas', function (K) {
             sold_out: [_sdT('Sold out'), _sdT('A product that cannot be bought')],
             error:    [_sdT('Error'), _sdT('A form sent with a required field missing')]
         };
+    }
+
+    // ── Check all cases: what is drawn and what counts (pure) ──
+    // Each case of `cases` for each visitor the page has a rule for: signed
+    // out always; signed in and returning where the page has an audience
+    // condition (the server takes one visitor). Nothing for a page with one.
+    function checkRuns(cases, audience) {
+        var who = [{ who: 'signed_out', visit: 'first_visit' }];
+        if (audience) who.push({ who: 'signed_in', visit: 'first_visit' }, { who: 'signed_out', visit: 'returning' });
+        var runs = [];
+        who.forEach(function (v) {
+            CASES.forEach(function (k) {
+                if (cases.indexOf(k) !== -1) runs.push({ case: k, who: v.who, visit: v.visit });
+            });
+        });
+        return runs.length > 1 ? runs : [];
+    }
+
+    // Whether a block holding text lets it out: wider than its box, or past
+    // the window's right edge when it starts inside it, or cut at the bottom
+    // of a box whose height is held. A scroller, a cut with an ellipsis and
+    // an inline box (its block is measured) are not findings; a pixel of
+    // rounding is none either. m: {display, overflowX, overflowY,
+    // textOverflow, sw, cw, sh, ch, left, right, viewW}.
+    function textLeaves(m) {
+        if (m.display === 'inline' || m.display === 'none' || m.display === 'contents') return false;
+        if (m.cw <= 0 && m.ch <= 0) return false;
+        var scrolls = function (o) { return o === 'auto' || o === 'scroll'; };
+        if (scrolls(m.overflowX) || m.textOverflow === 'ellipsis') return (m.overflowY === 'hidden' || m.overflowY === 'clip') && m.sh > m.ch + 1;
+        if (m.sw > m.cw + 1) return true;
+        if (m.left < m.viewW && m.right > m.viewW + 1) return true;
+        return (m.overflowY === 'hidden' || m.overflowY === 'clip') && m.sh > m.ch + 1;
+    }
+
+    // Whether a picture is missing: shown with no address, or loaded and
+    // its file could not be read. One still waiting (lazy or loading) is
+    // not judged. m: {src, complete, natural, lazy, shown}.
+    function pictureMissing(m) {
+        if (!m.shown) return false;
+        if (!m.src) return true;
+        if (!m.complete) return false;
+        return m.natural === 0;
+    }
+
+    // The list's head, the line under it and its foot. r: {total, done,
+    // found, busy, stopped, width}.
+    function checkHead(r) {
+        var head, sub;
+        if (r.busy) {
+            head = r.found === 1 ? _sdT('{var:1} case to look at so far', [r.found]) : _sdT('{var:1} cases to look at so far', [r.found]);
+            sub = _sdT('Checking {var:1} of {var:2}…', [Math.min(r.done + 1, r.total), r.total]);
+        } else {
+            head = r.stopped ? _sdT('Stopped after {var:1} of {var:2}.', [r.done, r.total]) : _sdT('{var:1} of {var:2} cases to look at', [r.found, r.total]);
+            sub = _sdT('A row opens its case.');
+        }
+        return { head: head, sub: sub, foot: r.busy ? _sdT('Checking at {var:1}px wide.', [r.width]) : _sdT('Checked at {var:1}px wide.', [r.width]) };
     }
 
     // ── What the page offers ──
@@ -97,7 +163,8 @@ StyleDesigner.definePart('previewas', function (K) {
         lock: '<path d="M8 1.5A3 3 0 0 0 5 4.5V6H4a1 1 0 0 0-1 1v6.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1V4.5a3 3 0 0 0-3-3zm1.5 4.5h-3V4.5a1.5 1.5 0 0 1 3 0V6z"/>',
         search: '<path d="M7 1.5a5.5 5.5 0 0 1 4.4 8.8l3.1 3.1a.75.75 0 1 1-1.1 1.1l-3.1-3.1A5.5 5.5 0 1 1 7 1.5zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>',
         back: '<path d="M10.3 2.7a.75.75 0 0 1 0 1.1L6.1 8l4.2 4.2a.75.75 0 1 1-1.1 1.1L4.5 8.5a.75.75 0 0 1 0-1L9.2 2.7a.75.75 0 0 1 1.1 0z"/>',
-        dot: '<circle cx="8" cy="8" r="4"/>'
+        dot: '<circle cx="8" cy="8" r="4"/>',
+        list: '<path d="M2.5 3.5h1.5v1.5H2.5zm3 .1h8v1.3h-8zM2.5 7.3h1.5v1.5H2.5zm3 .1h8v1.3h-8zm-3 3.7h1.5v1.5H2.5zm3 .1h8v1.3h-8z"/>'
     };
 
     // ── The bar's look: the designer's dark chrome, the same in both themes ──
@@ -147,6 +214,24 @@ StyleDesigner.definePart('previewas', function (K) {
         '.pg-pva-sheet{position:fixed;left:0;right:0;bottom:0;max-height:70vh;overflow:auto;padding:8px 10px 12px;border-radius:16px 16px 0 0;background:#1f242c;box-shadow:inset 0 1px 0 #343c48,0 -16px 36px rgba(0,0,0,.45)}' +
         '.pg-pva-grab{width:36px;height:4px;margin:0 auto 8px;border-radius:2px;background:#3a4049}' +
         '.pg-pva-head{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-weight:600;color:#e6edf3}' +
+        '.pg-pva-ck{position:fixed;top:calc(var(--pg-pva-h,40px) + 8px);right:8px;width:300px;max-height:calc(100vh - var(--pg-pva-h,40px) - 16px);display:flex;flex-direction:column;border-radius:12px;background:#1f242c;box-shadow:inset 0 0 0 1px #343c48,0 14px 34px rgba(0,0,0,.55)}' +
+        '.pg-pva-ck.left{right:auto;left:8px}' +
+        '.pg-pva-ck.nar{top:auto;left:0;right:0;bottom:0;width:auto;max-height:50vh;border-radius:16px 16px 0 0}' +
+        '.pg-pva-ckh{display:flex;align-items:flex-start;gap:8px;padding:10px 10px 8px 14px;border-bottom:1px solid #2a313b}' +
+        '.pg-pva-ckh>div{flex:1}.pg-pva-ckh b{display:block;font-weight:600;color:#e6edf3}.pg-pva-ckh small{display:block;color:#8c96a4}' +
+        '.pg-pva-ckl{flex:1;overflow:auto;padding:6px}' +
+        '.pg-pva-ckr{display:flex;align-items:flex-start;gap:6px;border-radius:8px;box-shadow:inset 3px 0 0 transparent}' +
+        '.pg-pva-ckr.on{box-shadow:inset 3px 0 0 #f5b54a;background:#262c35}' +
+        '#pg-pva .pg-pva-ckr>button:first-child{flex:1;min-width:0;display:block;padding:7px 8px 7px 10px;border-radius:8px;text-align:left}' +
+        '.pg-pva-ckr>button:first-child:hover,.pg-pva-ckr>button:first-child:focus{background:#2a313b;outline:0}' +
+        '.pg-pva-ckr>button[aria-disabled="true"]{cursor:default}' +
+        '.pg-pva-ckr b{display:block;font-weight:550;color:#e6edf3}' +
+        '.pg-pva-ckr span{display:flex;align-items:center;gap:6px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.pg-pva-ckr span svg{flex:none;color:#f5b54a}.pg-pva-ckr span.bad svg{color:#ff6b6b}.pg-pva-ckr em{font-style:normal;color:#8c96a4;overflow:hidden;text-overflow:ellipsis}' +
+        '.pg-pva-ckr .pg-pva-b{margin:6px 6px 0 0}' +
+        '.pg-pva-ckf{display:flex;align-items:center;gap:8px;padding:8px 10px 10px 14px;border-top:1px solid #2a313b;color:#8c96a4}.pg-pva-ckf>span{flex:1}' +
+        '#pg-pva-hl{position:absolute;left:0;top:0;width:0;height:0;z-index:2147483645;pointer-events:none}' +
+        '#pg-pva-hl>div{position:absolute;border-radius:3px;box-shadow:0 0 0 2px #f5b54a,0 0 0 5px rgba(245,181,74,.28)}' +
         '@media (max-width:560px){.pg-pva-ln{flex-wrap:wrap}}';
 
     // ── Values ──
@@ -183,12 +268,14 @@ StyleDesigner.definePart('previewas', function (K) {
     function chooserHtml(name, label, value, on, set) {
         return '<button type="button" class="pg-pva-ch' + (on ? ' on' : '') + (set ? ' set' : '') + (S.menu === name ? ' open' : '') + '"' +
             ' data-pva-open="' + name + '" aria-haspopup="menu" aria-expanded="' + (S.menu === name ? 'true' : 'false') + '"' +
-            (set ? ' aria-disabled="true" title="' + esc(_sdT('The case chooses the record')) + '"' : '') + '>' +
+            (set ? ' aria-disabled="true"' + (running() ? '' : ' title="' + esc(_sdT('The case chooses the record')) + '"') : '') + '>' +
             '<small>' + esc(label) + '</small><b>' + esc(value) + '</b>' + svg(IC.caret, 10) + '</button>';
     }
 
+    function running() { return !!(S.run && S.run.busy); }
+
     function barHtml() {
-        var c = choice(), o = offer();
+        var busy = running(), c = busy ? S.run.cur : choice(), o = offer();
         var h = '<div class="pg-pva-bar" role="toolbar" aria-label="' + esc(_sdT('Preview as')) + '">';
         if (S.narrow) {
             var n = changedCount(c);
@@ -196,13 +283,19 @@ StyleDesigner.definePart('previewas', function (K) {
                 svg(IC.eye) + '<b>' + esc(_sdT('Preview as')) + '</b>' + (n ? '<span class="pg-pva-n">' + n + '</span>' : '') + svg(IC.caret, 10) + '</button>';
         } else {
             h += '<span class="pg-pva-ttl">' + svg(IC.eye) + esc(_sdT('Preview as')) + '</span>';
-            if (o.record) h += chooserHtml('record', _sdT('Record'), recordValue(c), Object.keys(c.records).length > 0, recordSet(c));
-            if (o.visitor) h += chooserHtml('visitor', _sdT('Visitor'), visitorValue(c), c.who !== 'signed_out' || c.visit !== 'first_visit', false);
-            if (o.case) h += chooserHtml('case', _sdT('Case'), caseNames()[c.case][0], c.case !== 'typical', false);
+            // While a run draws, the choosers show the case on its way, dimmed.
+            if (o.record) h += chooserHtml('record', _sdT('Record'), recordValue(c), Object.keys(c.records).length > 0, busy || recordSet(c));
+            if (o.visitor) h += chooserHtml('visitor', _sdT('Visitor'), visitorValue(c), c.who !== 'signed_out' || c.visit !== 'first_visit', busy);
+            if (o.case) h += chooserHtml('case', _sdT('Case'), caseNames()[c.case][0], c.case !== 'typical', busy);
         }
         h += '<span class="pg-pva-end">';
-        if (S.drawing) h += '<span class="pg-pva-run" role="status"><span class="pg-pva-spin"></span>' + esc(_sdT('Drawing…')) + '</span>';
-        if (!isDefault(c) && !S.narrow) {
+        if (busy) {
+            h += '<span class="pg-pva-run" role="status"><span class="pg-pva-spin"></span>' + esc(_sdT('Checking {var:1} of {var:2}…', [Math.min(S.run.done + 1, S.run.runs.length), S.run.runs.length])) + '</span>' +
+                '<button type="button" class="pg-pva-b q" data-pva-act="stop">' + esc(_sdT('Stop')) + '</button>';
+        } else if (S.drawing) {
+            h += '<span class="pg-pva-run" role="status"><span class="pg-pva-spin"></span>' + esc(_sdT('Drawing…')) + '</span>';
+        }
+        if (!busy && !isDefault(c) && !S.narrow) {
             h += '<button type="button" class="pg-pva-b" data-pva-act="reset">' + svg(IC.reset, 13) + esc(_sdT('Reset')) + '</button>';
         }
         // "Edit content here" (part 'recordedit'): the last thing of the bar.
@@ -215,6 +308,7 @@ StyleDesigner.definePart('previewas', function (K) {
         if (!L) {
             var seen = false;
             try { seen = localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { seen = true; }
+            if (K._sdTipsOff()) seen = true;
             if (seen) return '';
             L = { tone: '', text: _sdT('See this page as a visitor would: choose a record, who is looking, and a case. Nothing is written to the site.'), act: 'seen' };
         }
@@ -304,7 +398,15 @@ StyleDesigner.definePart('previewas', function (K) {
         var c = choice(), names = caseNames();
         return pageCases().map(function (k) {
             return rowHtml('data-pva-case="' + k + '"', c.case === k, names[k][0], '', names[k][1]);
-        }).join('');
+        }).join('') + checkRowHtml();
+    }
+
+    // "Check all cases" under a rule, last in the "Case" menu and the
+    // narrow sheet; none on a page with one case.
+    function checkRowHtml() {
+        if (!checkRuns(pageCases(), S.audience).length) return '';
+        return '<div class="pg-pva-rule"></div><button type="button" class="pg-pva-row" role="menuitem" data-pva-act="check"' + (running() ? ' aria-disabled="true"' : '') + '>' +
+            '<span class="pg-pva-tk">' + svg(IC.list, 13) + '</span><span>' + esc(_sdT('Check all cases')) + '</span></button>';
     }
 
     // The narrow window's sheet: a row per chooser, or one chooser's list
@@ -324,8 +426,10 @@ StyleDesigner.definePart('previewas', function (K) {
         if (o.visitor) h += row('visitor', _sdT('Visitor'), visitorValue(c), false);
         if (o.case) h += row('case', _sdT('Case'), caseNames()[c.case][0], false);
         h += K._sdRecEditHtml('row');
+        h += checkRowHtml();
         if (!isDefault(c)) {
-            h += '<div class="pg-pva-rule"></div><button type="button" class="pg-pva-row" data-pva-act="reset"><span class="pg-pva-tk">' + svg(IC.reset, 13) + '</span><span>' + esc(_sdT('Reset')) + '</span></button>';
+            h += (checkRuns(pageCases(), S.audience).length ? '' : '<div class="pg-pva-rule"></div>') +
+                '<button type="button" class="pg-pva-row" data-pva-act="reset"><span class="pg-pva-tk">' + svg(IC.reset, 13) + '</span><span>' + esc(_sdT('Reset')) + '</span></button>';
         }
         return h;
     }
@@ -339,8 +443,41 @@ StyleDesigner.definePart('previewas', function (K) {
         return '<div class="pg-pva-pop' + (S.menu === 'record' ? ' rec' : '') + '" role="menu" data-pva-pop>' + body + '</div>';
     }
 
+    // The list of "Check all cases": a panel over the page's right edge (a
+    // sheet from the bottom in a narrow window), only the cases with a
+    // finding; it opens with the first one.
+    function listHtml() {
+        var R = S.run;
+        if (!R || (!R.results.length && !R.stopped)) return '';
+        var found = R.results.filter(function (x) { return x.findings.length || x.failed; }).length;
+        var t = checkHead({ total: R.runs.length, done: R.done, found: found, busy: R.busy, stopped: R.stopped, width: R.width });
+        var names = caseNames(), kinds = {
+            text: _sdT('A text leaves its box'), picture: _sdT('A picture is missing'), widget: _sdT('A widget draws nothing')
+        };
+        var h = '<div class="pg-pva-ck' + (S.narrow ? ' nar' : (R.left ? ' left' : '')) + '" role="region" aria-label="' + esc(_sdT('Check all cases')) + '" data-pva-ck>' +
+            '<div class="pg-pva-ckh"><div><b>' + esc(t.head) + '</b><small>' + esc(t.sub) + '</small></div>' +
+            '<button type="button" class="pg-pva-x" data-pva-act="unlist" aria-label="' + esc(_sdT('Close')) + '">' + svg(IC.x, 12) + '</button></div><div class="pg-pva-ckl">';
+        R.results.forEach(function (x, i) {
+            var run = R.runs[x.at];
+            var title = names[run.case][0] + ' · ' + visitorValue(run);
+            h += '<div class="pg-pva-ckr' + (R.open === i ? ' on' : '') + '"><button type="button" data-pva-res="' + i + '"' + (R.busy || x.failed ? ' aria-disabled="true"' : '') + '><b>' + esc(title) + '</b>';
+            if (x.failed) {
+                h += '<span class="bad">' + svg(IC.dot, 10) + esc(_sdT('Could not be drawn')) + '</span></button>' +
+                    (R.busy ? '' : '<button type="button" class="pg-pva-b q" data-pva-retry="' + i + '">' + esc(_sdT('Try again')) + '</button>');
+            } else {
+                h += x.findings.slice(0, 3).map(function (f) {
+                    return '<span>' + svg(IC.dot, 10) + esc(kinds[f.kind]) + (f.place ? ' <em>' + esc(f.place) + '</em>' : '') + '</span>';
+                }).join('') + (x.findings.length > 3 ? '<span><em>' + esc(_sdT('+{var:1} more', [x.findings.length - 3])) + '</em></span>' : '') + '</button>';
+            }
+            h += '</div>';
+        });
+        h += '</div><div class="pg-pva-ckf"><span>' + esc(t.foot) + '</span>' +
+            (R.busy ? '' : '<button type="button" class="pg-pva-b q" data-pva-act="check">' + esc(_sdT('Check again')) + '</button>') + '</div></div>';
+        return h;
+    }
+
     function markup() {
-        return barHtml() + lineHtml() + menuHtml();
+        return barHtml() + lineHtml() + menuHtml() + listHtml();
     }
 
     // The bar into a Preview document's markup (the core's _sdPvAsInject()),
@@ -402,10 +539,11 @@ StyleDesigner.definePart('previewas', function (K) {
         }
         // The document and the answer for "Edit content here".
         K._sdRecEditSync(d, S.win, S.setups);
+        if (S.marks && S.marks.doc === d) outline();
     }
 
     function focusKey(el) {
-        var names = ['data-pva-q', 'data-re-act', 'data-pva-open', 'data-pva-rec', 'data-pva-who', 'data-pva-visit', 'data-pva-case', 'data-pva-widget', 'data-pva-sheet', 'data-pva-act'];
+        var names = ['data-pva-q', 'data-re-act', 'data-pva-open', 'data-pva-rec', 'data-pva-who', 'data-pva-visit', 'data-pva-case', 'data-pva-widget', 'data-pva-sheet', 'data-pva-res', 'data-pva-retry', 'data-pva-act'];
         for (var i = 0; i < names.length; i++) {
             if (el.hasAttribute(names[i])) {
                 var v = el.getAttribute(names[i]);
@@ -513,16 +651,31 @@ StyleDesigner.definePart('previewas', function (K) {
             render();
         } else if (name === 'shut') {
             closeMenu();
+        } else if (name === 'check') {
+            check();
+        } else if (name === 'stop') {
+            stop(true);
+        } else if (name === 'unlist') {
+            // Closed while it draws: the page as chosen again.
+            var busy = running();
+            if (busy) stop(false);
+            S.run = null;
+            clearMarks();
+            if (busy) choose(function () {}); else render();
         }
     }
 
     function onClick(e) {
-        var t = e.target && e.target.closest ? e.target.closest('[data-pva-open],[data-pva-act],[data-pva-rec],[data-pva-who],[data-pva-visit],[data-pva-case],[data-pva-widget],[data-pva-sheet]') : null;
+        var t = e.target && e.target.closest ? e.target.closest('[data-pva-open],[data-pva-act],[data-pva-rec],[data-pva-who],[data-pva-visit],[data-pva-case],[data-pva-widget],[data-pva-sheet],[data-pva-res],[data-pva-retry]') : null;
         if (!t || t.tagName === 'SELECT') return;
         e.preventDefault();
         if (t.getAttribute('aria-disabled') === 'true') return;
         var c;
-        if (t.hasAttribute('data-pva-open')) {
+        if (t.hasAttribute('data-pva-res')) {
+            openResult(parseInt(t.getAttribute('data-pva-res'), 10) || 0);
+        } else if (t.hasAttribute('data-pva-retry')) {
+            retry(parseInt(t.getAttribute('data-pva-retry'), 10) || 0);
+        } else if (t.hasAttribute('data-pva-open')) {
             var name = t.getAttribute('data-pva-open');
             if (S.menu === name) closeMenu(); else openMenu(name);
         } else if (t.hasAttribute('data-pva-act')) {
@@ -562,6 +715,18 @@ StyleDesigner.definePart('previewas', function (K) {
         var t = e.target, root = S.root;
         if (!root) return;
         if (e.key === 'Escape' && S.menu) { e.preventDefault(); closeMenu(); return; }
+        // The list: Down and Up move through its rows, Escape closes it.
+        var ck = t.closest ? t.closest('[data-pva-ck]') : null;
+        if (ck && e.key === 'Escape') { e.preventDefault(); act('unlist'); return; }
+        if (ck && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+            var rs = Array.prototype.slice.call(ck.querySelectorAll('[data-pva-res]'));
+            if (!rs.length) return;
+            e.preventDefault();
+            var k = rs.indexOf(t);
+            k = (k === -1) ? 0 : (k + (e.key === 'ArrowDown' ? 1 : -1) + rs.length) % rs.length;
+            rs[k].focus();
+            return;
+        }
         if (t.hasAttribute && t.hasAttribute('data-pva-open') && !S.menu && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
             if (t.getAttribute('aria-disabled') !== 'true') openMenu(t.getAttribute('data-pva-open'));
@@ -615,7 +780,14 @@ StyleDesigner.definePart('previewas', function (K) {
     // again.
     function bindDoc(d, w) {
         d.addEventListener('mousedown', function (e) {
-            if (S.menu && S.root && !S.root.contains(e.target)) closeMenu();
+            if (S.root && S.root.contains(e.target)) return;
+            if (S.menu) closeMenu();
+            // An outlined place stays until the next click.
+            var hl = d.getElementById('pg-pva-hl');
+            if (hl) hl.parentNode.removeChild(hl);
+        });
+        d.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !S.menu && S.run && !running() && !(S.root && S.root.contains(e.target))) act('unlist');
         });
         var frame = 0;
         w.addEventListener('resize', function () {
@@ -681,10 +853,310 @@ StyleDesigner.definePart('previewas', function (K) {
         // The label of the default record, for the chooser's value.
         var sids = recordSids();
         if (sids.length && !S.find[sids[0]]) loadRecords(sids[0], '');
-        if (w && w !== S.win) { S.doc = null; S.menu = ''; S.sheet = ''; attach(w); return; }
+        if (w && w !== S.win) { S.doc = null; S.menu = ''; S.sheet = ''; S.run = null; S.marks = null; attach(w); return; }
         if (!S.doc && w) { attach(w); return; }
         try { if (S.win && S.win.document !== S.doc) { attach(S.win); return; } } catch (e) {}
         render();
+    }
+
+    // ── Check all cases: the run ──
+    // R: {runs, queue (indices still to draw), done, busy, stopped, results
+    // [{at, findings, failed}] in run order, width, cur (the choice drawn
+    // now), token (a stop or a new run drops an answer on its way), open
+    // (the opened row), left (the list at the left edge)}.
+    function check() {
+        if (running()) return;
+        var runs = checkRuns(pageCases(), S.audience);
+        S.menu = '';
+        S.sheet = '';
+        if (!runs.length || !S.win) { render(); return; }
+        if (S.line && S.line.tone === 'ok') S.line = null;
+        clearMarks();
+        S.run = { runs: runs, queue: runs.map(function (r, i) { return i; }), done: 0, busy: true, stopped: false, results: [],
+                  width: docWidth(), cur: runChoice(runs[0]), token: {}, open: -1, left: false };
+        K._sdPvAsRunning(true);
+        render();
+        next(S.run.token);
+    }
+
+    // The document the Preview window holds now (the bar may not be bound
+    // to it yet).
+    function winDoc() {
+        try { return S.win && !S.win.closed ? S.win.document : null; } catch (e) { return null; }
+    }
+
+    function docWidth() {
+        try { return S.doc ? S.doc.documentElement.clientWidth : 0; } catch (e) { return 0; }
+    }
+
+    // The kept choice with a run's case and visitor: the chosen records stay.
+    function runChoice(run) {
+        var c = choice();
+        c.case = run.case;
+        c.who = run.who;
+        c.visit = run.visit;
+        return c;
+    }
+
+    function next(token) {
+        var R = S.run;
+        if (!R || R.token !== token) return;
+        if (!R.queue.length) { finish(); return; }
+        var at = R.queue[0];
+        R.cur = runChoice(R.runs[at]);
+        render();
+        var done = function (findings, bad) {
+            if (S.run !== R || R.token !== token) return;
+            R.queue.shift();
+            R.done = Math.min(R.done + 1, R.runs.length);
+            R.results = R.results.filter(function (x) { return x.at !== at; });
+            if (bad || findings.length) R.results.push({ at: at, findings: findings || [], failed: !!bad });
+            R.results.sort(function (a, b) { return a.at - b.at; });
+            next(token);
+        };
+        K._sdPvAsAsk(R.cur).then(function (ans) {
+            if (S.run !== R || R.token !== token) return;
+            if (!ans) { done([], true); return; }
+            // Each widget between two marks, so one that draws nothing is found.
+            var wrapped = {};
+            Object.keys(ans.widgets).forEach(function (id) {
+                wrapped[id] = '<!--pg-pva-w:' + id + '-->' + String(ans.widgets[id] == null ? '' : ans.widgets[id]) + '<!--/pg-pva-w-->';
+            });
+            var was = winDoc();
+            if (!K._sdPvAsShow(K._sdPreviewDocHtml(wrapped, ans.raw))) { stop(false); return; }
+            loaded(was).then(function (d) {
+                if (S.run !== R || R.token !== token) return;
+                if (!d) { done([], true); return; }
+                R.width = d.documentElement.clientWidth;
+                var found = [];
+                try { found = measure(d); } catch (e) { done([], true); return; }
+                done(found, false);
+            });
+        });
+    }
+
+    // The new Preview document once it and its pictures and fonts have
+    // loaded (at most 8 s); null when the window went away.
+    function loaded(was) {
+        return new Promise(function (resolve) {
+            var tries = 0;
+            (function poll() {
+                var d = null;
+                try { d = S.win && !S.win.closed ? S.win.document : null; } catch (e) { d = null; }
+                if (!d) { resolve(null); return; }
+                var ready = d !== was && String(d.URL || '').indexOf('blob:') === 0 && d.readyState === 'complete';
+                if (!ready && ++tries < 160) { setTimeout(poll, 50); return; }
+                if (d === was || String(d.URL || '').indexOf('blob:') !== 0) { resolve(null); return; }
+                var fonts = (d.fonts && d.fonts.ready) ? d.fonts.ready : Promise.resolve();
+                var t = setTimeout(function () { resolve(d); }, 1500);
+                fonts.then(function () {
+                    S.win.requestAnimationFrame(function () { clearTimeout(t); resolve(d); });
+                }, function () { clearTimeout(t); resolve(d); });
+            })();
+        });
+    }
+
+    // The findings of one drawn case: [{kind, place, path}], at most five
+    // of a kind. The bar, the list and the outline are not the page's.
+    function measure(d) {
+        var w = d.defaultView, body = d.body, viewW = d.documentElement.clientWidth, out = [];
+        var mine = function (el) { return !!(el.closest && el.closest('#pg-pva,#pg-pva-hl')); };
+        var ranges = widgetRanges(d);
+        var count = { text: 0, picture: 0, widget: 0 };
+        var add = function (kind, el, place) {
+            if (count[kind] >= 5) return;
+            count[kind]++;
+            out.push({ kind: kind, place: place, path: pathOf(el, body) });
+        };
+        // Widgets that draw nothing.
+        ranges.forEach(function (r) {
+            var box = r.range.getBoundingClientRect();
+            if (box.width < 2 || box.height < 2) add('widget', r.start.parentElement || body, widgetName(r.id));
+        });
+        // Pictures.
+        Array.prototype.forEach.call(body.querySelectorAll('img'), function (img) {
+            if (mine(img)) return;
+            var cs = w.getComputedStyle(img);
+            var m = { src: img.currentSrc || img.getAttribute('src') || '', complete: img.complete, natural: img.naturalWidth,
+                      lazy: img.loading === 'lazy', shown: img.getClientRects().length > 0 && cs.visibility !== 'hidden' };
+            if (!pictureMissing(m)) return;
+            var src = String(img.getAttribute('src') || '');
+            var file = /^data:/i.test(src) ? '' : src.split(/[?#]/)[0].split('/').pop();
+            add('picture', img, placeName(ranges, img, String(img.getAttribute('alt') || '').trim() || file));
+        });
+        // Texts: each block holding text of its own, the innermost kept.
+        var blocks = [], seen = [];
+        var walker = d.createTreeWalker(body, w.NodeFilter.SHOW_TEXT);
+        for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+            if (!/\S/.test(n.nodeValue)) continue;
+            var el = n.parentElement;
+            if (!el || /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|TEXTAREA|OPTION)$/.test(el.tagName) || mine(el)) continue;
+            while (el && el !== body && w.getComputedStyle(el).display === 'inline') el = el.parentElement;
+            if (!el || el === body || seen.indexOf(el) !== -1) continue;
+            seen.push(el);
+            var cs2 = w.getComputedStyle(el);
+            if (cs2.visibility === 'hidden') continue;
+            var rect = el.getBoundingClientRect();
+            if (textLeaves({ display: cs2.display, overflowX: cs2.overflowX, overflowY: cs2.overflowY, textOverflow: cs2.textOverflow,
+                             sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight,
+                             left: rect.left, right: rect.right, viewW: viewW })) blocks.push(el);
+        }
+        blocks.filter(function (el) {
+            return !blocks.some(function (o) { return o !== el && el.contains(o); });
+        }).forEach(function (el) {
+            add('text', el, placeName(ranges, el, excerpt(el.textContent)));
+        });
+        return out;
+    }
+
+    // Each widget's markup between its two marks: [{id, start, range}].
+    function widgetRanges(d) {
+        var w = d.defaultView, out = [], open = null;
+        var walker = d.createTreeWalker(d.body, w.NodeFilter.SHOW_COMMENT);
+        for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+            var m = /^pg-pva-w:(\d+)$/.exec(n.nodeValue);
+            if (m) { open = { id: m[1], start: n }; continue; }
+            if (n.nodeValue === '/pg-pva-w' && open) {
+                var r = d.createRange();
+                r.setStartAfter(open.start);
+                r.setEndBefore(n);
+                out.push({ id: open.id, start: open.start, range: r });
+                open = null;
+            }
+        }
+        return out;
+    }
+
+    function excerpt(text) {
+        var t = String(text || '').replace(/\s+/g, ' ').trim();
+        return t.length > 40 ? t.slice(0, 39) + '…' : t;
+    }
+
+    // The name of a place: its words or file, and the widget it is in.
+    function placeName(ranges, el, words) {
+        var inW = '';
+        ranges.some(function (r) {
+            try { if (r.range.intersectsNode(el)) { inW = widgetName(r.id); return true; } } catch (e) {}
+            return false;
+        });
+        if (!words) return inW;
+        return inW ? _sdT('“{var:1}” in {var:2}', [words, inW]) : '“' + words + '”';
+    }
+
+    // An element's place from the body by element positions: the same in
+    // the case drawn again without the widget marks (comments are not
+    // counted).
+    function pathOf(el, body) {
+        var parts = [];
+        while (el && el !== body && el.parentElement) {
+            var i = 1, s = el;
+            while ((s = s.previousElementSibling)) i++;
+            parts.unshift(el.tagName.toLowerCase() + ':nth-child(' + i + ')');
+            el = el.parentElement;
+        }
+        return parts.length ? 'body>' + parts.join('>') : 'body';
+    }
+
+    function finish() {
+        var R = S.run;
+        R.busy = false;
+        K._sdPvAsRunning(false);
+        if (!R.results.length && !R.stopped) {
+            S.run = null;
+            S.line = { tone: 'ok', text: _sdT('Every case looks right. {var:1} cases drawn.', [R.runs.length]), act: 'close' };
+        }
+        // The page as chosen again.
+        choose(function () {});
+    }
+
+    // "Stop" keeps what was found so far; `kept` false when the window went
+    // away or the list was closed.
+    function stop(kept) {
+        var R = S.run;
+        if (!R || !R.busy) return;
+        R.token = {};
+        R.queue = [];
+        R.stopped = true;
+        if (!kept) { R.busy = false; K._sdPvAsRunning(false); return; }
+        finish();
+    }
+
+    // "Try again" on a case that could not be drawn.
+    function retry(i) {
+        var R = S.run, x = R && R.results[i];
+        if (!x || R.busy) return;
+        R.queue = [x.at];
+        R.done = Math.max(0, R.done - 1);
+        R.busy = true;
+        R.token = {};
+        K._sdPvAsRunning(true);
+        render();
+        next(R.token);
+    }
+
+    // A row opens its case: the choosers change to it (kept as the page's
+    // choice), the case is drawn as the run drew it, and its places are
+    // outlined once that document is there.
+    function openResult(i) {
+        var R = S.run, x = R && R.results[i];
+        if (!x || R.busy || x.failed) return;
+        R.open = i;
+        var c = runChoice(R.runs[x.at]), paths = x.findings.map(function (f) { return f.path; });
+        var mine = S.opening = {};
+        clearMarks();
+        K._sdPvAsChoose(c, true);
+        S.drawing = true;
+        render();
+        K._sdPvAsAsk(c).then(function (ans) {
+            if (S.opening !== mine || S.run !== R) return;
+            var was = winDoc();
+            if (!ans || !K._sdPvAsShow(K._sdPreviewDocHtml(ans.widgets, ans.raw))) { failed(); return; }
+            S.setups = ans.setups || S.setups;
+            loaded(was).then(function (d) {
+                if (S.opening !== mine) return;
+                S.drawing = false;
+                if (d) S.marks = { paths: paths, doc: d };
+                render();
+            });
+        });
+    }
+
+    function clearMarks() {
+        S.marks = null;
+        try {
+            var hl = S.doc && S.doc.getElementById('pg-pva-hl');
+            if (hl) hl.parentNode.removeChild(hl);
+        } catch (e) {}
+    }
+
+    // The opened row's places outlined in amber, as far as a text runs, and
+    // the first scrolled into sight; the page itself is never changed. The
+    // list moves to the left edge when the place lies under it.
+    function outline() {
+        var d = S.doc, w = S.win, paths = S.marks.paths;
+        S.marks = null;
+        if (!d || !w) return;
+        var old = d.getElementById('pg-pva-hl');
+        if (old) old.parentNode.removeChild(old);
+        var hl = d.createElement('div');
+        hl.id = 'pg-pva-hl';
+        var first = null, sx = w.scrollX || 0, sy = w.scrollY || 0;
+        paths.forEach(function (p) {
+            var el = null;
+            try { el = d.querySelector(p); } catch (e) { el = null; }
+            if (!el) return;
+            var r = el.getBoundingClientRect();
+            var box = d.createElement('div');
+            box.style.cssText = 'left:' + (r.left + sx) + 'px;top:' + (r.top + sy) + 'px;width:' + Math.max(r.width, el.scrollWidth) + 'px;height:' + Math.max(r.height, 4) + 'px';
+            hl.appendChild(box);
+            if (!first) first = r;
+        });
+        d.documentElement.appendChild(hl);
+        if (!first) return;
+        var barH = parseInt(w.getComputedStyle(d.documentElement).getPropertyValue('--pg-pva-h'), 10) || 40;
+        w.scrollTo(sx, Math.max(0, first.top + sy - barH - 24));
+        var left = !S.narrow && first.right > d.documentElement.clientWidth - 316;
+        if (S.run && S.run.left !== left) { S.run.left = left; render(); }
     }
 
     // The draw the bar asked for failed: the last page stays.
@@ -700,5 +1172,5 @@ StyleDesigner.definePart('previewas', function (K) {
         render();
     }
 
-    return { answer: answer, attach: attach, failed: failed, inject: inject, note: note, redraw: render };
+    return { answer: answer, attach: attach, check: check, failed: failed, inject: inject, note: note, redraw: render };
 });

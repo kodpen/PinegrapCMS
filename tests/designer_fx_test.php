@@ -68,6 +68,12 @@ function _test_fx_cases()
 		'reveal' => array('effect' => 'reveal', 'stagger' => 120, 'distance' => 40),
 		'reveal on hover becomes view' => array('effect' => 'reveal', 'trigger' => 'hover', 'duration' => 800),
 		'reveal on click becomes view' => array('effect' => 'reveal', 'trigger' => 'click'),
+		'a curve' => array('effect' => 'fade', 'easing' => 'Cubic-Bezier(0.220, 1,.36 , 1.0)'),
+		'a stored curve' => array('effect' => 'slide-up', 'easing' => 'var(--pg-var-c-soft-landing,cubic-bezier(0.22,1,0.36,1))'),
+		'a curve that overshoots is held' => array('effect' => 'scale', 'easing' => 'cubic-bezier(0.34, 2.5, 0.64, -1)'),
+		'a curve leaving the time' => array('effect' => 'fade', 'easing' => 'cubic-bezier(1.4, 0, 0, 1)'),
+		'not a curve' => array('effect' => 'fade', 'easing' => 'cubic-bezier(0, 0, 1); color: red'),
+		'a stored curve with a bad key' => array('effect' => 'fade', 'easing' => 'var(--pg-var-c-x"y, cubic-bezier(0, 0, 1, 1))'),
 	);
 }
 
@@ -525,7 +531,8 @@ function test_designer_fx_panel()
 		. substr($js, $twins, $twins_end - $twins) . substr($js, $panel, $panel_end - $panel)
 		. 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "interactions") factory = f; } };'
 		. "\n" . $part . "\n"
-		. 'var api = factory({ esc: esc, _sdT: _sdT, row: row, swAttr: swAttr, _sdFxSpec: _sdFxSpec, _sdFxNormalize: _sdFxNormalize, _sdFxTakes: _sdFxTakes });'
+		. 'var api = factory({ esc: esc, _sdT: _sdT, row: row, swAttr: swAttr, _sdFxSpec: _sdFxSpec, _sdFxNormalize: _sdFxNormalize, _sdFxTakes: _sdFxTakes,'
+		. ' _sdEaseHtml: function (a, cur) { return "<select " + a + "><option value=\\"" + cur + "\\" selected></option></select>"; } });'
 		. 'function propsInteractions(n) { return _sdFxTakes(n) ? api.rows(n) : ""; }'
 		. 'var _sdFxSet = api.set;'
 		. 'function rows(h) { return (h.match(/<row [^>]+>/g) || []).map(function (r) { return r.slice(5, -1); }); }'

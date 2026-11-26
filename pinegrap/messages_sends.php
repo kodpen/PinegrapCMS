@@ -74,6 +74,8 @@ if ($_POST) {
             $liveform->add_notice(lang('The message was sent.'));
         } elseif ($sends_outcome === 'unsent') {
             $liveform->add_warning(lang('The message could not be sent; its last error is in the list. While the queue is inactive it waits until Run now is pressed.'));
+        } elseif ($sends_outcome === 'offer_key') {
+            $liveform->add_warning(lang('This WhatsApp message carried a single-use offer code that was switched off when it failed, so it is not sent again. Send the template anew.'));
         } elseif ($sends_outcome === 'deleted') {
             $liveform->add_notice(lang('Deleted.'));
         }

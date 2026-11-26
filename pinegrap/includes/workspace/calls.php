@@ -259,6 +259,20 @@ function ws_call_party_check($party, $channel, $start)
 }
 
 /**
+ * May a party in a call no longer stay in it: taken out of the channel
+ * during the call, a guest whose link now reads only, the channel archived
+ * or gone? The same rule as a join's. Pure.
+ *
+ * @param array      $party
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_call_party_barred($party, $channel)
+{
+    return ws_call_party_check($party, $channel, false) !== '';
+}
+
+/**
  * May one more join this call? Pure.
  *
  * @param array|null $call       the ws_calls row
@@ -424,9 +438,22 @@ function ws_call_over_limit($count, $limit)
  */
 function ws_call_is_silent($call, $last_signal_at, $last_join_at, $now)
 {
-    $heard = max((int) $call['started_at'], (int) $last_signal_at, (int) $last_join_at);
+    return ws_call_heard_at($call, $last_signal_at, $last_join_at) < ((int) $now - WS_CALL_SILENCE);
+}
 
-    return $heard < ((int) $now - WS_CALL_SILENCE);
+/**
+ * When a call was last heard of: its start, its newest join or its newest
+ * signal. A call the clean-up finds silent ended then, not when the
+ * clean-up came by. Pure.
+ *
+ * @param array $call           the ws_calls row
+ * @param int   $last_signal_at its newest signal, 0 for none
+ * @param int   $last_join_at   its newest join, 0 for none
+ * @return int
+ */
+function ws_call_heard_at($call, $last_signal_at, $last_join_at)
+{
+    return max((int) $call['started_at'], (int) $last_signal_at, (int) $last_join_at);
 }
 
 /**
@@ -919,6 +946,26 @@ function ws_call_leave($party, $call_id, $member_id = 0)
 }
 
 /**
+ * Takes a party's place out of a call when it may no longer take part
+ * (ws_call_party_barred()), so it hears no new member's offer and sends
+ * nothing more; the last one out ends the call.
+ *
+ * @param array $party
+ * @param array $call
+ * @return bool its place was taken out
+ */
+function ws_call_party_out_if_barred($party, $call)
+{
+    if (!ws_call_party_barred($party, ws_channel((int) $call['channel_id']))) {
+        return false;
+    }
+
+    ws_call_leave($party, (int) $call['id']);
+
+    return true;
+}
+
+/**
  * Ends a call for everyone: its starter or whoever manages the channel.
  *
  * @param array $party
@@ -948,10 +995,12 @@ function ws_call_end($party, $call, $manages)
  *
  * @param array $call
  * @param int   $declined_by the user who declined it, 0 for none
+ * @param int   $ended_at    when it ended, 0 for now (the clean-up passes
+ *                           when a silent call was last heard)
  */
-function ws_call_end_row($call, $declined_by = 0)
+function ws_call_end_row($call, $declined_by = 0, $ended_at = 0)
 {
-    $now = time();
+    $now = ((int) $ended_at > 0) ? min(time(), (int) $ended_at) : time();
     $id = (int) $call['id'];
 
     db("UPDATE ws_calls SET state = 'ended', ended_at = '" . $now . "' WHERE id = '" . $id . "' AND state = 'live'");
@@ -983,6 +1032,12 @@ function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body, $mem
     $from = ($call && ((string) $call['state'] === 'live')) ? ws_call_member_of($party, $call_id) : null;
 
     if (!ws_call_member_matches($from, $member_id)) {
+        return array('ok' => false, 'error' => lang('You are not in this call.'));
+    }
+
+    // Taken out of the channel during the call: its place goes, and so
+    // does this message.
+    if (ws_call_party_out_if_barred($party, $call)) {
         return array('ok' => false, 'error' => lang('You are not in this call.'));
     }
 
@@ -1103,6 +1158,7 @@ function ws_calls_sweep($force = false)
     // Members unheard too long are out (a tab closed without its leave);
     // the last one out ends the call.
     $emptied = array();
+    $heard = array();
 
     foreach ((array) db_items("SELECT m.id, m.call_id, m.joined_at,
             (SELECT MAX(s.created_at) FROM ws_call_signals s WHERE s.from_member_id = m.id) AS last_signal_at
@@ -1111,6 +1167,7 @@ function ws_calls_sweep($force = false)
         if (ws_call_member_is_gone($member, (int) $member['last_signal_at'], $now)) {
             ws_call_member_out((int) $member['id'], $now);
             $emptied[(int) $member['call_id']] = true;
+            $heard[(int) $member['call_id']] = max($heard[(int) $member['call_id']] ?? 0, (int) $member['joined_at'], (int) $member['last_signal_at']);
         }
     }
 
@@ -1118,7 +1175,7 @@ function ws_calls_sweep($force = false)
         $call = ws_call($call_id);
 
         if ($call && ((string) $call['state'] === 'live') && !ws_call_members_live($call_id)) {
-            ws_call_end_row($call);
+            ws_call_end_row($call, 0, $heard[$call_id]);
         }
     }
 
@@ -1127,7 +1184,7 @@ function ws_calls_sweep($force = false)
             (SELECT MAX(m.joined_at) FROM ws_call_members m WHERE m.call_id = c.id) AS last_join_at
         FROM ws_calls c WHERE c.state = 'live'") as $call) {
         if (ws_call_is_silent($call, (int) $call['last_signal_at'], (int) $call['last_join_at'], $now)) {
-            ws_call_end_row($call);
+            ws_call_end_row($call, 0, ws_call_heard_at($call, (int) $call['last_signal_at'], (int) $call['last_join_at']));
         }
     }
 
@@ -1163,8 +1220,20 @@ function ws_call_live_part($party, $channel_id, $signal_after)
         return array('call' => null, 'member_id' => 0, 'signals' => array());
     }
 
-    $members = ws_call_members_live($call['id']);
     $mine = ws_call_member_of($party, $call['id']);
+
+    // A party that may no longer take part loses its place here; its window
+    // reads that the connection was lost.
+    if ($mine && ws_call_party_out_if_barred($party, $call)) {
+        $mine = null;
+        $call = ws_call_live($channel_id);
+
+        if (!$call) {
+            return array('call' => null, 'member_id' => 0, 'signals' => array());
+        }
+    }
+
+    $members = ws_call_members_live($call['id']);
 
     return array(
         'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharers((int) $call['id'], $members),
@@ -1259,6 +1328,23 @@ function ws_call_live_users($members)
 }
 
 /**
+ * Is a guest among a call's live members? Pure.
+ *
+ * @param array[] $members ws_call_members rows
+ * @return bool
+ */
+function ws_call_has_guest($members)
+{
+    foreach ((array) $members as $member) {
+        if ((int) $member['guest_id'] > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * People with a membership row in a channel.
  *
  * @param int $channel_id
@@ -1323,11 +1409,14 @@ function ws_call_decline($party, $call)
         return array('ok' => true, 'error' => '');
     }
 
-    $live_users = ws_call_live_users(ws_call_members_live($call['id']));
+    $members = ws_call_members_live($call['id']);
+    $live_users = ws_call_live_users($members);
 
     // A guest room's call is never rung, so never declined: its guest may
-    // be in it while the caller is the room's only person.
-    if (ws_channel_is_guest(ws_channel((int) $call['channel_id'])) || !ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))) {
+    // be in it while the caller is the room's only person. The same holds
+    // for a conversation of two shared with a guest who came into the call.
+    if (ws_channel_is_guest(ws_channel((int) $call['channel_id'])) || !ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))
+        || ws_call_has_guest($members)) {
         return array('ok' => false, 'error' => lang('This call is not open to you.'));
     }
 

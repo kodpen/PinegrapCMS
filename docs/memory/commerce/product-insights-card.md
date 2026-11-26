@@ -14,7 +14,8 @@ module: product_insights
 
 ## How does the card load?
 - `pg_pb_render_insights_card()` draws the first section `pg_pb_sec_insights` (and its rail entry "Performance") on Edit Product only: title, a `pg-seg` of 30 days, 12 months, All, and four skeleton cells.
-- `assets/js/product_insights.js` (served as written, no bundle) asks `product_insights` once the page has opened and puts `data.html` in `.pg-pi-body`. The period is kept in `localStorage` (`pg_product_insights_period`), 30 days when storage is blocked. A failed read: the server's message, else "The figures could not be read. Try again.", with Try again. An answer for a period no longer chosen is dropped.
+- `assets/js/product_insights.js` (served as written, no bundle) asks `product_insights` once the page has opened and puts `data.html` in `.pg-pi-body`. The period is kept in `localStorage` (`pg_product_insights_period`), 30 days when storage is blocked.
+- A failed read: the server's message for that failure only, else "The figures could not be read. Try again.", with Try again, which asks for the period on screen (before #11815 the stored one, 30 days with storage blocked). An answer for a period no longer chosen is dropped.
 
 ## Who draws the body?
 - The action adds `html` to its `data`, kept read or fresh: `pg_product_insights_card_html($data, $sku, BASE_CURRENCY_SYMBOL, $now)`, pure, tests in `tests/product_insights_test.php`.

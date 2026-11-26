@@ -168,3 +168,86 @@ function test_workspace_channel_board_rules_list()
 	pg_assert_false($made['ready'][3]['on']);
 	pg_assert_same(0, $made['on']);
 }
+
+// A column's rule lines: the rules that are on and tied to a status; an
+// overdue rule has no column, a paused flow no line.
+function test_workspace_channel_board_rules_lines()
+{
+	$rules = ws_board_rules(12, array(
+		ws_board_rules_test_flow(1, ws_board_rule_graph('done_post', 12)),
+		ws_board_rules_test_flow(2, ws_board_rule_graph('overdue_remind', 12)),
+		ws_board_rules_test_flow(3, ws_board_rules_test_event('workspace.task.status_changed', 'doing'), array('name' => 'Tell the lead')),
+		ws_board_rules_test_flow(4, ws_board_rules_test_event('workspace.task.status_changed', 'waiting'), array('status' => 'paused')),
+	), ws_task_statuses());
+
+	pg_assert_same(array(
+		'done'  => array('A task that comes here: it is written in the channel'),
+		'doing' => array('A task that comes here: “Tell the lead” runs'),
+	), ws_board_rule_lines($rules));
+	pg_assert_same(array(), ws_board_rule_lines(ws_board_rules(12, array(), ws_task_statuses())));
+	pg_assert_same('A task that comes here: its approval is asked', ws_board_rule_line('waiting_approval', ''));
+}
+
+function test_workspace_channel_board_rules_week_start()
+{
+	pg_assert_same('2026-11-23', ws_board_rule_week_start('2026-11-25'), 'a Wednesday');
+	pg_assert_same('2026-11-23', ws_board_rule_week_start('2026-11-23'), 'a Monday');
+	pg_assert_same('2026-11-23', ws_board_rule_week_start('2026-11-29'), 'a Sunday');
+}
+
+// How often each rule ran this week: a made rule and another flow by their
+// flow; a ready rule not made yet never ran.
+function test_workspace_channel_board_rules_ran()
+{
+	$rules = ws_board_rules(12, array(
+		ws_board_rules_test_flow(1, ws_board_rule_graph('done_post', 12)),
+		ws_board_rules_test_flow(3, ws_board_rules_test_event('workspace.task.completed')),
+	), ws_task_statuses());
+
+	pg_assert_same(array(1, 3), ws_board_rule_flow_ids($rules));
+
+	$ran = ws_board_rules_ran($rules, array(1 => 4, 7 => 9));
+
+	pg_assert_same(array(4, 0, 0, 0), array_column($ran['ready'], 'ran'));
+	pg_assert_same(array(0), array_column($ran['flows'], 'ran'));
+}
+
+// The drawer's last runs: newest first, cut to the limit; a task named only
+// when it is the channel's; a run with no sentence says its status.
+function test_workspace_channel_board_rules_run_lines()
+{
+	$runs = array(
+		array('id' => 30, 'flow_id' => 1, 'status' => 'done', 'started_at' => 900, 'subject_type' => 'task', 'subject_id' => 5),
+		array('id' => 29, 'flow_id' => 2, 'status' => 'running', 'started_at' => 800, 'subject_type' => 'task', 'subject_id' => 6),
+		array('id' => 28, 'flow_id' => 1, 'status' => 'failed', 'started_at' => 700, 'subject_type' => 'contact', 'subject_id' => 5),
+	);
+	$lines = ws_board_rule_run_lines($runs, array(30 => 'Written in #design', 28 => 'The channel is gone'), array(5 => 'Campaign calendar'), array(1 => 'Board: done', 2 => 'Other'), 2);
+
+	pg_assert_same(2, count($lines));
+	pg_assert_same(array('id' => 30, 'flow_id' => 1, 'flow' => 'Board: done', 'at' => 900, 'task' => 'Campaign calendar', 'text' => 'Written in #design', 'status' => 'done'), $lines[0]);
+	pg_assert_same('', $lines[1]['task'], 'not a task of this channel');
+	pg_assert_same('Running', $lines[1]['text']);
+	pg_assert_same('', ws_board_rule_run_lines(array($runs[2]), array(), array(5 => 'x'), array())[0]['task'], 'a contact is no task');
+}
+
+// The board's script: "Automations" only where the board's answer allows
+// it, the rules read through their panel actions, no rule line on a
+// workflow table's board, every word from the board's strings.
+function test_workspace_channel_board_rules_script()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js');
+
+	pg_assert_true(strpos($js, "automations(self, data.automations)") !== false, 'the gate comes with the board');
+	pg_assert_true(strpos($js, "node.hidden = true;") !== false, 'hidden until allowed');
+	pg_assert_true(strpos($js, "'ws_channel_board_rules'") !== false && strpos($js, "'ws_channel_board_rule_set'") !== false);
+	pg_assert_true(strpos($js, "if (self.source || !self.rules") !== false, 'no rule line on a table board');
+
+	preg_match_all("/t\\('(cb_auto[a-z_]*)'/", $js, $found);
+	$strings = ws_channel_board_js_strings();
+
+	pg_assert_true(count($found[1]) > 10);
+
+	foreach (array_unique($found[1]) as $key) {
+		pg_assert_true(isset($strings[$key]), 'a string for ' . $key);
+	}
+}

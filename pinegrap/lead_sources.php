@@ -56,7 +56,7 @@ if (($_GET['export'] ?? '') === 'xlsx') {
     }
 
     foreach ($groups as $group) {
-        $line = array(pg_lead_sources_label($by, $group['key']), $group['leads'], $group['customers'], $group['share']);
+        $line = array(pg_lead_sources_label($by, $group['key'], $group['gone']), $group['leads'], $group['customers'], $group['share']);
 
         if ($revenue) {
             $line[] = array('money' => $group['revenue'] / 100);
@@ -101,7 +101,7 @@ if ($revenue) {
 $output_rows = '';
 
 foreach ($groups as $group) {
-    $output_rows .= '<tr><th scope="row" class="text-break">' . h(pg_lead_sources_label($by, $group['key'])) . '</th>'
+    $output_rows .= '<tr><th scope="row" class="text-break">' . h(pg_lead_sources_label($by, $group['key'], $group['gone'])) . '</th>'
         . '<td class="text-end">' . h(pg_format_number($group['leads'], 0)) . '</td>'
         . '<td class="text-end">' . h(pg_format_number($group['customers'], 0)) . '</td>'
         . '<td class="text-end">' . (($group['share'] !== null) ? h(lang(array('string' => '{var:1}%', 'vars' => array($group['share'])))) : '<span class="fg-secondary">–</span>') . '</td>'

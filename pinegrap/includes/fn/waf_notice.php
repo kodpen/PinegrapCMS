@@ -236,7 +236,7 @@ function pg_waf_ban_notice_samples($ip, $when)
             'when'   => (int) $row['last_seen'],
             'rule'   => (string) $row['rule_id'],
             'method' => (string) $row['method'],
-            'url'    => (string) $row['request_url'],
+            'url'    => waf_mask_request_url($row['request_url']),
             'hits'   => (int) $row['hit_count'],
         );
     }

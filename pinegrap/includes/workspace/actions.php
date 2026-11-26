@@ -955,7 +955,9 @@ function ws_handle_action($action, $request)
                 }
             }
 
-            $rules = ws_board_rules_for($viewer, $channel);
+            // The drawer asks for the week's counts and the last runs; the
+            // board alone for the count on its button and the rule lines.
+            $rules = ws_board_rules_for($viewer, $channel, !empty($request['runs']) || ($action === 'ws_channel_board_rule_set'));
 
             if (!$rules['ok']) {
                 return ws_action_error($rules['error']);
@@ -4915,7 +4917,7 @@ function ws_handle_action($action, $request)
                 'search'     => trim((string) ($request['q'] ?? '')),
                 'priority'   => (string) ($request['priority'] ?? ''),
             ));
-            $tasks = ws_tasks_for_person($tasks, !empty($request['mine']) ? (int) $viewer['id'] : (int) ($request['person'] ?? 0));
+            $tasks = ws_tasks_for_person(ws_tasks_for_person($tasks, (int) ($request['person'] ?? 0)), !empty($request['mine']) ? (int) $viewer['id'] : 0);
 
             return ws_action_ok(array('tasks' => ws_channel_board_list_figure($tasks, $figure)));
 
@@ -4945,7 +4947,8 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('This channel has no board.'));
             }
 
-            return ws_action_ok(ws_channel_board($viewer, $channel, array(
+            // Whether the toolbar offers "Automations" (channel_board_rules.php).
+            return ws_action_ok(array('automations' => ws_board_rules_gate($viewer, $channel)) + ws_channel_board($viewer, $channel, array(
                 'group_by'  => (string) ($request['group_by'] ?? 'status'),
                 'priority'  => (string) ($request['priority'] ?? ''),
                 'person'    => (int) ($request['person'] ?? 0),
@@ -5747,6 +5750,13 @@ function ws_handle_action($action, $request)
             $channel = $call ? ws_channel((int) $call['channel_id']) : null;
 
             if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+                // Taken out of a private channel during the call: the
+                // person's place goes with this refusal, so the others stop
+                // connecting to it at once.
+                if ($call && in_array($action, array('ws_call_leave', 'ws_call_signal', 'ws_call_sync'), true)) {
+                    ws_call_leave(ws_call_party_person($viewer, null), (int) $call['id']);
+                }
+
                 return ws_action_error(lang('This call has ended.'));
             }
 

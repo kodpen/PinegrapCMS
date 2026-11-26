@@ -13,4 +13,4 @@ description: Decisions made, product part 102 (2026-11-24 on): a rule-based Secu
 - "lansman sonrası sitelerde seo ve kullanıma engelleyecek sorun oluşturmaması adına iyi test etmemiz de lazım bir döngü boyunca her şekilde testi de plana ekleyelim, her senaryo denensin."
 - The name: "antivirüs olmaz db den beslemiyor olacağız". The architect's proposal: Security Scan ("Güvenlik Taraması"), his to change.
 - The architect's reading, not his words: the scan only reads and never acts by itself; quarantine is a person's click.
-- Plan: `plans/security-scan.md`; the table: `decisions-made-schema-51.md`.
+- The feature: `waf/security-scan-overview.md`; the table: `decisions-made-schema-51.md`.

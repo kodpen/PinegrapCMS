@@ -84,7 +84,7 @@ function test_lead_touch_group_by_channel()
 	$groups = pg_lead_sources_group($rows, 'channel');
 
 	pg_assert_same(array('organic', 'paid', '', 'email'), array_column($groups, 'key'), 'most leads first, then most customers, then by name');
-	pg_assert_same(array('key' => 'organic', 'leads' => 2, 'converted' => 1, 'customers' => 1, 'revenue' => 12550, 'share' => 50), $groups[0]);
+	pg_assert_same(array('key' => 'organic', 'gone' => false, 'leads' => 2, 'converted' => 1, 'customers' => 1, 'revenue' => 12550, 'share' => 50), $groups[0]);
 	pg_assert_same(0, $groups[1]['share'], 'no lead became a customer');
 	pg_assert_same(null, $groups[3]['share'], 'no lead: no share');
 	pg_assert_same('', $groups[2]['key'], 'a trimmed visit groups as not known');
@@ -138,4 +138,62 @@ function test_lead_touch_screen_pinned()
 	pg_assert_contains("/lead_sources.php", $menu, 'listed under Visitors');
 	pg_assert_contains("case 'lead_sources.php':", $menu, 'the Visitors menu is the active one');
 	pg_assert_contains("'lead_sources'", $help, 'a help row');
+}
+
+function test_lead_touch_became_runs_under_the_contacts_lock()
+{
+	$name = pg_lead_became_lock_name(42, PG_LEAD_JOURNEY_LEAD, 'shop_db');
+
+	pg_assert_true(strlen($name) <= 64, 'a lock name has at most 64 characters');
+	pg_assert_true($name !== pg_lead_became_lock_name(42, PG_LEAD_JOURNEY_CUSTOMER, 'shop_db'), 'a lead and a customer mark lock apart');
+	pg_assert_true($name !== pg_lead_became_lock_name(42, PG_LEAD_JOURNEY_LEAD, 'other_db'), 'two sites on one server lock apart');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
+	$body = substr($source, strpos($source, 'function pg_lead_became($act'));
+	pg_assert_true(strpos($body, 'GET_LOCK') !== false && strpos($body, 'GET_LOCK') < strpos($body, 'FROM contact_journey'), 'the check and the write run under the lock');
+	pg_assert_contains('RELEASE_LOCK', $body);
+}
+
+function test_lead_touch_a_cancelled_booking_is_no_earlier_act()
+{
+	$counted = pg_lead_touch_booking_statuses();
+
+	pg_assert_false(in_array('held', $counted, true), 'a hold is no booking yet');
+	pg_assert_false(in_array('cancelled', $counted, true), 'an abandoned deposit hold ends cancelled: no booking, as a cancelled order is none');
+	pg_assert_true(in_array('requested', $counted, true) && in_array('confirmed', $counted, true) && in_array('done', $counted, true));
+	pg_assert_contains('pg_lead_touch_booking_statuses()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php'));
+}
+
+function test_lead_touch_a_trimmed_visit_is_not_known_under_campaign()
+{
+	$rows = array(
+		array('kind' => PG_LEAD_JOURNEY_LEAD, 'channel' => 'direct', 'campaign' => '', 'landing_page' => '/', 'converted' => false, 'revenue' => 0, 'gone' => false),
+		array('kind' => PG_LEAD_JOURNEY_LEAD, 'channel' => '', 'campaign' => '', 'landing_page' => '', 'converted' => false, 'revenue' => 0, 'gone' => true),
+		array('kind' => PG_LEAD_JOURNEY_LEAD, 'channel' => '', 'campaign' => '', 'landing_page' => '', 'converted' => false, 'revenue' => 0, 'gone' => true),
+	);
+
+	$groups = pg_lead_sources_group($rows, 'campaign');
+
+	pg_assert_same(2, count($groups), 'a visit without a campaign and a trimmed visit are two rows');
+	pg_assert_same(array('', ''), array_column($groups, 'key'));
+	pg_assert_same(array(true, false), array_column($groups, 'gone'), 'the trimmed one has more leads here');
+	pg_assert_same(2, $groups[0]['leads']);
+	pg_assert_same(1, count(pg_lead_sources_group($rows, 'landing_page')) - 1, 'by landing page as before');
+}
+
+function test_lead_touch_report_counts_a_contacts_first_row_of_a_kind()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
+	$body = substr($source, strpos($source, 'function pg_lead_sources_read('));
+
+	pg_assert_contains('NOT EXISTS (SELECT 1 FROM contact_journey e WHERE e.contact_id = j.contact_id AND e.kind = j.kind', $body, 'a merged contact holding two lead rows is one lead');
+	pg_assert_contains('v.id AS visit_id', $body, 'a trimmed visit is marked');
+}
+
+function test_lead_touch_became_customer_only_at_or_after_the_lead()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
+	$body = substr($source, strpos($source, 'function pg_lead_sources_read('));
+
+	pg_assert_contains("c.kind = '\" . PG_LEAD_JOURNEY_CUSTOMER . \"' AND c.at >= j.at)", $body, 'a contact who bought first and sent a form later did not become a customer since');
 }

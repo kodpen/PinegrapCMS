@@ -150,3 +150,113 @@ function test_figma_import_path_is_the_sessions()
 	pg_assert_same('', pg_figma_import_path('../etc'), 'only an import id');
 	pg_assert_contains('/data/temp/figma_', pg_figma_import_path('0123456789abcdef'));
 }
+
+// A frame step that ends after "Stop" removed the work file does not write
+// it back: the import stays stopped and leaves no file in data/temp.
+function test_figma_frame_step_after_stop_keeps_nothing()
+{
+	$id = 'f1a2b3c4d5e6f7a8';
+	$path = pg_figma_import_path($id);
+	@unlink($path);
+	pg_assert_same(false, pg_figma_import_keep_step($id, array('frames' => array()), array()), 'stopped: not kept');
+	pg_assert_same(false, is_file($path), 'no work file written back');
+	pg_assert_true(pg_figma_import_keep($id, array('frames' => array())), 'a running import');
+	pg_assert_same(true, pg_figma_import_keep_step($id, array('frames' => array(1)), array()), 'running: kept');
+	pg_assert_same(array(1), pg_figma_import_load($id)['frames'], 'the step is written');
+	@unlink($path);
+}
+
+// One image fill on many layers is fetched once, so it spends one place of
+// the import's picture budget, not one per layer.
+function test_figma_picture_budget_counts_a_fill_once()
+{
+	$pic = function ($n, $ref) {
+		return array('node' => 'sd_' . $n, 'figma' => '1:' . $n, 'kind' => 'image', 'image_ref' => $ref);
+	};
+	$frames = array(
+		array('pictures' => array($pic(1, 'logo'), $pic(2, 'logo'), $pic(3, 'hero')), 'report' => array()),
+		array('pictures' => array($pic(4, 'logo'), $pic(5, 'team'), array('node' => 'sd_6', 'figma' => '1:6', 'kind' => 'vector', 'image_ref' => '')), 'report' => array()),
+	);
+	$plan = pg_figma_picture_budget($frames, 3);
+	pg_assert_same(3, count($plan['frames'][0]['pictures']), 'the logo three times and the hero');
+	pg_assert_same(array(), $plan['frames'][0]['report'], 'nothing over the budget on the first frame');
+	pg_assert_same(2, count($plan['frames'][1]['pictures']), 'the logo again and the team picture; the vector is over');
+	pg_assert_same('pictures', $plan['frames'][1]['report'][0]['code'], 'the vector over the budget is a note');
+	pg_assert_same(array(), $plan['vectors'], 'no vector fetched');
+	pg_assert_same(true, $plan['fills'], 'image fills to ask for');
+}
+
+// A frame whose picture step never ended (the request failed) still has its
+// pictures listed at finish: each is a note, so the report does not call
+// the frame carried whole while its pictures are missing.
+function test_figma_report_notes_pictures_never_fetched()
+{
+	$frame = array('name' => 'Home', 'failed' => false, 'report' => array(),
+		'tree' => array('_id' => 'sd_1', 'type' => 'root', 'props' => array(), 'children' => array(
+			array('_id' => 'sd_2', 'type' => 'image', 'props' => array('customName' => 'Hero', 'src' => ''), 'children' => array()))),
+		'pictures' => array(array('node' => 'sd_2', 'figma' => '1:2', 'kind' => 'image', 'image_ref' => 'abc')));
+	$left = pg_figma_frame_unfetched($frame);
+	pg_assert_same(array(), $left['pictures'], 'no picture is left to fetch');
+	pg_assert_same('picture', $left['report'][0]['code'], 'the missing picture is a note');
+	pg_assert_same('Hero', $left['report'][0]['name'], 'naming its layer');
+	pg_assert_same('notes', pg_figma_report_frame($left)['state'], 'not carried whole');
+	$done = $frame;
+	$done['pictures'] = array();
+	pg_assert_same($done, pg_figma_frame_unfetched($done), 'a frame fetched is as it was');
+}
+
+// The import's reads mark a token Figma refuses, as the file read does, so
+// Connections shows "Figma no longer accepts the stored token" too. A
+// source check: the reads need Figma.
+function test_figma_import_start_marks_a_refused_token()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
+	$start = substr($source, strpos($source, 'function pg_figma_import_start('));
+	$start = substr($start, 0, strpos($start, "\n}\n"));
+	pg_assert_contains('pg_figma_connection_refused()', $start, 'the start marks the token');
+}
+
+// What a stop may delete: the files the import fetched (each once, a real
+// id only), the shared rows it made, and its Figma/<file name> folder only
+// when the import made it.
+function test_figma_stop_targets()
+{
+	$data = array(
+		'files'       => array(array('id' => 7, 'name' => 'a.png'), array('id' => '8', 'name' => 'b.svg'), array('id' => 7, 'name' => 'a.png'), array('id' => 0, 'name' => 'x.png')),
+		'folder'      => 41,
+		'made_folder' => true,
+		'ready'       => array('shared' => array(array('id' => 3, 'name' => 'Card'), array('id' => '0'))),
+	);
+	$t = pg_figma_stop_targets($data);
+	pg_assert_same(array(array('id' => 7, 'name' => 'a.png'), array('id' => 8, 'name' => 'b.svg')), $t['files'], 'each fetched file once');
+	pg_assert_same(array(3), $t['shared'], 'the shared rows made');
+	pg_assert_same(41, $t['folder'], 'the folder the import made');
+
+	$data['made_folder'] = false;
+	pg_assert_same(0, pg_figma_stop_targets($data)['folder'], 'a folder found, not made, stays');
+	$none = pg_figma_stop_targets(array('files' => array(), 'folder' => 0));
+	pg_assert_same(array('files' => array(), 'shared' => array(), 'folder' => 0), $none, 'nothing fetched yet');
+}
+
+// The clean-up sweep knows a work file left behind by its name only.
+function test_figma_work_file_name()
+{
+	pg_assert_true(pg_figma_is_work_file('figma_' . sha1('x') . '.json'), 'a work file');
+	pg_assert_same(false, pg_figma_is_work_file('figma_' . sha1('x') . '.json.bak'), 'not a work file');
+	pg_assert_same(false, pg_figma_is_work_file('figma_../x.json'), 'never a path');
+	pg_assert_same(false, pg_figma_is_work_file('hash_reference.json'), 'another file');
+}
+
+// An abandoned start does what Stop does: the window's close and a failed
+// finish call the stop step, and Stop clears the empty import folder. A
+// source check: the window's close is a browser event.
+function test_figma_abandoned_start_stops()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_figma.js');
+	pg_assert_contains("pgUI.dialog.on(win, 'hidden'", $js, 'the window\'s close is heard');
+	pg_assert_true(substr_count($js, 'abandon(s)') >= 3, 'close, a failed finish and Back abandon the import');
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
+	pg_assert_contains('pg_figma_stop_targets(', $php);
+	$sweep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php');
+	pg_assert_contains('pg_figma_import_stop_path(', $sweep, 'the sweep stops a work file before removing it');
+}

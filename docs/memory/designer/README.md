@@ -26,6 +26,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Build a design template's missing sector sections first as a palette block family, then give its home and signature pages their own composition and `_fx` motion where it fits; never copy another template's builders or band sequence (`design-template-own-look.md`).
 - Redraw a one-node text, property or style edit with `_sdRenderNode(node, …)`; a structure change, or a prop another node reads, keeps the full `render()` (`designer-incremental-canvas.md`).
 - Start a new panel's drawing function with `_sdPanelDefer(name)` and debounce per-keystroke panel draws with `_sdPanelsSoon(node)`; the canvas stays live (`designer-panels-on-demand.md`).
+- Add an Options row in the section of its kind, copying a row kind the panel has; unset it draws byte for byte as before, one writer shared with its twin, written to the element's class in User Styles or a Bootstrap class, never a new inline style (`designer-options-new-row.md`).
 <!-- key-rules:end -->
 
 ## Clusters
@@ -37,23 +38,23 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `custom-form-*`: 22 files; start at `custom-form-overview.md`.
 - `design-template-*`: 119 files; start at `design-template-overview.md`.
 - `design-variables-*`: 8 files; start at `design-variables-overview.md`.
-- `designer-activity-*`: 6 files.
+- `designer-activity-*`: 8 files; start at `designer-activity.md`.
 - `designer-blocks-*`: 58 files; start at `designer-blocks-overview.md`.
 - `designer-canvas-*`: 23 files; start at `designer-canvas-overview.md`.
 - `designer-code-*`: 6 files.
 - `designer-content-*`: 6 files.
 - `designer-interactions-*`: 7 files; start at `designer-interactions.md`.
-- `designer-options-*`: 20 files; start at `designer-options-overview.md`.
+- `designer-options-*`: 40 files; start at `designer-options-overview.md`.
 - `designer-panels-*`: 7 files; start at `designer-panels-overview.md`.
 - `designer-phone-*`: 7 files.
-- `designer-preview-*`: 11 files; start at `designer-preview-overview.md`.
+- `designer-preview-*`: 14 files; start at `designer-preview-overview.md`.
 - `designer-prototype-*`: 9 files.
 - `designer-publish-*`: 12 files; start at `designer-publish-overview.md`.
 - `designer-sketch-*`: 7 files.
 - `designer-start-*`: 7 files.
 - `email-designs-*`: 6 files; start at `email-designs.md`.
 - `form-list-*`: 8 files.
-- `layout-type-*`: 12 files; start at `layout-type-overview.md`.
+- `layout-type-*`: 17 files; start at `layout-type-overview.md`.
 - `legacy-bootstrap-*`: 11 files; start at `legacy-bootstrap-overview.md`.
 - `legacy-layouts-*`: 8 files.
 - `options-panel-*`: 6 files.

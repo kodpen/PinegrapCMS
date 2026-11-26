@@ -11,11 +11,11 @@ module: prototype_verdicts
 - Pins, their numbers and states stay as they are. A new verdict drops `changes` and the button.
 
 ## What does the viewer's page list say?
-- On a link asking approval, each option ends in " · Approved", " · Changes requested", " · Not reviewed" or " · Changed since": `pg_proto_link_review_states()` → `pg_proto_review_page_states()` (pure), the newest verdict of this link per draft page against the draft's fingerprint now.
+- On a link asking approval, each option ends in " · Approved", " · Changes requested", " · Not reviewed" or " · Changed since": `pg_proto_link_review_states()` → `pg_proto_review_page_states()` (pure), the newest verdict of this link per draft page against the draft's fingerprint now; only pages the link shows (`pg_proto_review_pages_shown()`), so a page a link for anyone does not show gets no mark (#11701).
 
 ## What does the designer see?
 - Comments list (`style_designer_comments.js`): `pg_proto_comments_list_of_style()` adds `verdicts` per page group (`pg_proto_comment_list_verdicts()`, pure): the standing verdict of each link, link order, with `link_hint` and `older`. A page with verdicts and no comment gets a group. The head shows a chip per verdict (hint, Approved / Changes requested, day, "older version"); a Request changes note is the page's first thread on the Open tab, with a pencil instead of a number and no pin.
 - The presence stamp is the newest comment id plus the newest verdict id (`pg_proto_verdicts_style_stamp()`): both only grow, so a verdict refreshes the list.
-- Share prototype dialog: a link asking approval carries `review` {approved, pages, changes} (`pg_proto_review_tally()` over the design's drafts); the row says "Approved n of m pages" and a "Changes requested" badge when a page has that verdict on the draft as it is.
+- Share prototype dialog: a link asking approval carries `review` {approved, pages, changes} (`pg_proto_review_tally()` over the design's drafts the link shows, as the hold and the reminder count them); the row says "Approved n of m pages" and a "Changes requested" badge when a page has that verdict on the draft as it is.
 
 Related: docs/memory/designer/prototype-approval-review.md, docs/memory/designer/designer-prototype-comments-viewer.md, docs/memory/designer/designer-prototype-comments-list.md

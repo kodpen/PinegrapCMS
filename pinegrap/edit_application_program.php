@@ -294,7 +294,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($ap_list);
     }
 
-    if (isset($_POST['submit_open']) && ($ap_program['status'] === 0)) {
+    // A press on a page drawn before the status changed ends here too, with
+    // a word, and never reaches the Set-up save below.
+    if (isset($_POST['submit_open'])) {
+        if ($ap_program['status'] !== 0) {
+            $liveform->add_error(h(lang('The programme is no longer a draft.')));
+            go($ap_back);
+        }
+
         $ap_missing_words = array('period' => lang('Period'), 'criteria' => lang('Rounds and criteria'));
         $ap_missing = array_map(function ($code) use ($ap_missing_words) {
             return $ap_missing_words[$code];
@@ -312,9 +319,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($ap_back);
     }
 
-    if (isset($_POST['submit_close']) && ($ap_program['status'] === 1)) {
-        pg_application_program_set_status($ap_program, 2);
-        $liveform->add_notice(h(lang('The programme is closed: the form takes no new entries.')));
+    if (isset($_POST['submit_close'])) {
+        if ($ap_program['status'] === 1) {
+            pg_application_program_set_status($ap_program, 2);
+            $liveform->add_notice(h(lang('The programme is closed: the form takes no new entries.')));
+        } else {
+            $liveform->add_error(h(lang('The programme is not open.')));
+        }
+
         go($ap_back);
     }
 

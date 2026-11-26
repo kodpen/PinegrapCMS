@@ -2050,12 +2050,13 @@ function pg_proto_links_panel($sub, $request, $user)
     $links = pg_proto_links_panel_rows($rows, $pages, $now);
 
     $fingerprints = null;
+    $access = array();
 
     foreach ($links as $i => $link) {
         $links[$i]['comment_count'] = isset($counts[$link['id']]) ? $counts[$link['id']] : 0;
 
         // A link asking approval: "Approved n of m pages" over the design's
-        // drafts as they are now.
+        // drafts the link shows, as they are now.
         if (!empty($link['approval']) && pg_proto_approval_ready()) {
             if ($fingerprints === null) {
                 $found = pg_proto_draft_fingerprints(array_map(function ($page) { return (int) $page['id']; }, $pages));
@@ -2063,10 +2064,17 @@ function pg_proto_links_panel($sub, $request, $user)
 
                 foreach ($pages as $page) {
                     $fingerprints[(int) $page['id']] = isset($found[(int) $page['id']]) ? $found[(int) $page['id']] : '';
+                    $access[(int) $page['id']] = pg_proto_link_page_access((int) $page['id']);
                 }
             }
 
-            $links[$i]['review'] = pg_proto_review_tally(pg_proto_review_page_states(pg_proto_verdicts_of_link((int) $link['id']), $fingerprints));
+            $shown = array();
+
+            foreach (pg_proto_review_pages_shown(array_keys($fingerprints), isset($link['audience']) ? (string) $link['audience'] : '', $access) as $page_id) {
+                $shown[$page_id] = $fingerprints[$page_id];
+            }
+
+            $links[$i]['review'] = pg_proto_review_tally(pg_proto_review_page_states(pg_proto_verdicts_of_link((int) $link['id']), $shown));
         }
     }
 

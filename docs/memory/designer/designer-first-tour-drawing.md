@@ -4,7 +4,7 @@ description: The first tour's drawing (DD14), boards T1 to T3 and T7: the first 
 ---
 
 ## Where is the sheet?
-- `designer/designer-first-tour-drawing/first-tour.html` with `drawing.css`, pictures `first-tour-dark.jpg` and `first-tour-light.jpg`. Boards T1 to T3 and T7 are step FT2 of `plans/designer-first-tour.md`; T4 to T6 are FT3 (`designer-first-tour-help-drawing.md`). Where a plan line differs, the drawing wins (`workflow/screen-follows-drawing.md`).
+- `designer/designer-first-tour-drawing/first-tour.html` with `drawing.css`, pictures `first-tour-dark.jpg` and `first-tour-light.jpg`. Boards T1 to T3 and T7 were built in #11646 (`designer-first-tour-card.md`); T4 to T6 in #11689 (`designer-first-tour-help-drawing.md`, `designer-first-tour-help.md`).
 - The window is drawn as a plan at the places measured in a 1440 by 900 px window; the anchors are FT1's (`designer-first-tour-model.md`).
 
 ## What is the first card (T1)?

@@ -138,3 +138,39 @@ function test_design_tokens_own_variables_stop_at_the_limit()
 	pg_assert_same(24, count($r['model']['custom']), 'at most 24 own variables');
 	pg_assert_same(array('limit' => 6), $r['left_kinds'], 'the rest are counted as over the limit');
 }
+
+// A file's token whose name is one of the design's own variables of another
+// kind does not turn it into that kind: the places that read it would get a
+// colour for a size. It is left out.
+function test_design_tokens_own_variable_keeps_its_kind()
+{
+	$d = _dvt_defaults();
+	$m = $d;
+	$m['custom'] = array(array('key' => 'gap', 'name' => 'Gap', 'kind' => 'size', 'value' => '2rem'));
+	$text = json_encode(array('own' => array('gap' => array('$type' => 'color', '$value' => '#ff0000'),
+		'sand' => array('$type' => 'color', '$value' => '#e0c9a6'))));
+	$r = pg_design_variables_tokens_import($text, $m, $d);
+	pg_assert_true($r['ok']);
+	pg_assert_same(array('key' => 'gap', 'name' => 'Gap', 'kind' => 'size', 'value' => '2rem'), $r['model']['custom'][0], 'the size stays a size');
+	pg_assert_same(1, $r['own'], 'the new colour comes as own');
+	pg_assert_same(1, $r['left'], 'the colour for the size is left out');
+	pg_assert_same(0, $r['groups']['own'], 'no own variable reported as changed');
+}
+
+// The design's own variables are written under "own": read back they stay
+// own variables even when their key reads as a built-in name (size-base,
+// border-width, muted), so a round trip changes nothing.
+function test_design_tokens_own_group_never_maps_to_a_built_in()
+{
+	$d = _dvt_defaults();
+	$m = $d;
+	$m['custom'] = array(
+		array('key' => 'size-base', 'name' => 'Size base', 'kind' => 'size', 'value' => '3rem'),
+		array('key' => 'muted', 'name' => 'Muted', 'kind' => 'color', 'light' => '#123456', 'dark' => '#654321'),
+	);
+	$r = pg_design_variables_tokens_import(pg_design_variables_tokens_text($m), $m, $d);
+	pg_assert_true($r['ok']);
+	pg_assert_same($m['values'], $r['model']['values'], 'no built-in value changes');
+	pg_assert_same($m['custom'], $r['model']['custom'], 'the own variables stay');
+	pg_assert_same(0, $r['changed'], 'nothing changes');
+}

@@ -13,6 +13,8 @@ module: prototype_phone
 - Answer: `link` (id, audience, start_page_id, start_page, hint, expires_at, seconds_left), `url`, `qr` (inline SVG by `pg_qr_svg()`, #11578), sent with `Cache-Control: no-store`.
 - A page whose publish folder is not public or guest (`pg_proto_link_page_shown()`) answers `team_only: true` (with `start_page`, its name) for anyone and makes nothing; the window offers the team link.
 - A found link whose address cannot be shown again (no key, key changed) is revoked and a new one made: one phone link per person, design and audience.
+- So is a found link whose own start page no longer opens for its audience or is no longer a draft, before the page being edited is checked (`pg_proto_phone_found_keeps()`); one that passes keeps its start page.
+- Architect (2026-11-26, agent channel request 3040): "It is ended and a new one is made."
 - `prototype_phone_end` (link_id) revokes it: only a phone link of the asking person. The design's delete revokes it as every share link.
 
 ## What is the changed-since address?

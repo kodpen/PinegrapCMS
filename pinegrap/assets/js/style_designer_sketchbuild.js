@@ -198,6 +198,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     // ── Drawing on the frame ──
 
     function seen() {
+        if (K._sdTipsOff()) return true;
         try { return window.localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return false; }
     }
 
@@ -497,12 +498,38 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         return host.shared(part.kind, made, part.section);
     }
 
-    function parts(r, kept) {
-        var out = window.PGSketchBuilder.build(r.sections, { make: host.make, node: host.node, words: host.words(), kept: kept || null });
+    // What the site knows, for the builder: its name, the year, the site
+    // path and the Prototype view's pages; the page's "Page details"; the
+    // kinds' names as headings of sections with no typed word.
+    function known(page) {
+        var site = host.site ? host.site() : null;
+        var d = (page && page.details) || {};
+        var names = {};
+        host.kinds().forEach(function (k) { names[k.key] = host.kindLabel(k.key); });
+        names.form = _sdT('Contact');
+        return {
+            site: site ? { name: site.name || _sdT('Your site'), year: new Date().getFullYear(), path: site.path, pages: site.pages, toggle: _sdT('Toggle navigation') } : null,
+            page: { title: d.title || '', description: d.description || '', name: page ? host.name(page) : '' },
+            names: names
+        };
+    }
+
+    // The parts in page order; list.blocks the starters made, whose block
+    // styles join the design only once the page is built.
+    function parts(r, kept, page) {
+        var k = known(page);
+        var blocks = [];
+        var make = function (type) {
+            var node = host.make(type);
+            if (node) blocks.push(type);
+            return node;
+        };
+        var out = window.PGSketchBuilder.build(r.sections, { make: make, node: host.node, words: host.words(), kept: kept || null, site: k.site, page: k.page, names: k.names });
         var list = [];
         if (out.header) list.push(out.header);
         list = list.concat(out.body);
         if (out.footer) list.push(out.footer);
+        list.blocks = blocks;
         return list;
     }
 
@@ -541,7 +568,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     function first(frameId, page) {
         var name = host.name(page);
         var r = read(page);
-        var list = parts(r);
+        var list = parts(r, null, page);
         busy = frameId;
         setSeen();
         host.redraw();
@@ -553,6 +580,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             var key = host.addPage(page, name, made, meta(uid, page, r, r.sections.map(function (s) { return byId[String(s.id)]; })));
             busy = null;
             if (!key) { failed(frameId, name); return; }
+            host.blockStyles(list.blocks);
             page.built = { uid: uid, sig: boxSig(page) };
             var count = made.length;
             var html = bold(count === 1 ? _sdT('{var:1} is built: 1 section, as a draft.', '\u0001') : _sdT('{var:1} is built: {var:2} sections, as a draft.', ['\u0001', count]), name);
@@ -587,7 +615,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         if (!host.history(p, name)) { failed(frameId, name); return; }
         var keep = {};
         pl.stay.concat(pl.clash).forEach(function (id) { if (!ticked[id]) keep[id] = onPage[id]; });
-        var list = parts(r, keep);
+        var list = parts(r, keep, page);
         busy = frameId;
         host.redraw();
         host.announce(_sdT('Building the page…'));
@@ -599,6 +627,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             var m = meta(root.props._sketch.uid, page, r, r.sections.map(function (s) { return byId[String(s.id)]; }));
             busy = null;
             if (!host.setChildren(p, children, m)) { failed(frameId, name); return; }
+            host.blockStyles(list.blocks);
             page.built = { uid: m.uid, sig: m.sig };
             var changed = pl.rebuild.length + pl.add.length + pl.remove.length + Object.keys(ticked).filter(function (id) { return ticked[id]; }).length;
             host.changed(_sdT('The page is built again.'));

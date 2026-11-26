@@ -467,6 +467,29 @@ function pg_explorer_handle_rename($type, $request, $user)
     respond(array('status' => 'error', 'message' => lang('Invalid request.')));
 }
 
+// Why a page may not be moved, '' when it may: a draft leaves the Drafts
+// folder only through Publish in the Page Design Studio, which reads its
+// approval, experiment and bundle holds; a page moved into the Drafts folder
+// would be a draft with no folder to return to. Pure.
+function pg_explorer_move_page_refusal($page_folder, $target_id, $draft_folder)
+{
+    $draft_folder = (int) $draft_folder;
+
+    if ($draft_folder <= 0) {
+        return '';
+    }
+
+    if ((int) $page_folder === $draft_folder) {
+        return 'draft';
+    }
+
+    if ((int) $target_id === $draft_folder) {
+        return 'into_drafts';
+    }
+
+    return '';
+}
+
 // Folders, pages and files moved into another folder (drag & drop, cut and
 // paste). Each item is checked on its own; the answer names what failed.
 function pg_explorer_handle_move($type, $request, $user)
@@ -555,6 +578,18 @@ function pg_explorer_handle_move($type, $request, $user)
 
                 if (check_edit_access($page['page_folder']) == false) {
                     $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $page['page_name']));
+                    break;
+                }
+
+                $refusal = pg_explorer_move_page_refusal($page['page_folder'], $target_id, pg_page_draft_folder_id(false));
+
+                if ($refusal === 'draft') {
+                    $errors[] = lang(array('string' => '{var:1} is a draft. A draft is published in the Page Design Studio.', 'vars' => array($page['page_name'])));
+                    break;
+                }
+
+                if ($refusal === 'into_drafts') {
+                    $errors[] = lang(array('string' => '{var:1} was not moved to the Drafts folder. A page becomes a draft in the Page Design Studio.', 'vars' => array($page['page_name'])));
                     break;
                 }
 

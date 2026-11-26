@@ -10,9 +10,14 @@
  * (pg_designer_tour.js, the part's first source). Under 576 px the card and
  * the bubble are a sheet across the window's foot (or top).
  *
+ * It also draws the Help window's "How do I…" rows and its "Tips" switch,
+ * a task's three pointers (the tour's ring and bubble), the one-line
+ * first-use tip a feature asks for, and an empty page's starts.
+ *
  * Not needed to open a page: the core runs this file when the card is due
- * (_sdTourInit()) or when "Take the tour" is chosen in the command palette.
- * While neither the card nor the tour is up it holds no listener or timer.
+ * (_sdTourInit()), when the Help window opens, when "Take the tour" is
+ * chosen, when a first-use tip is due or when a page is empty. While none
+ * of them is up it holds no listener or timer.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,6 +44,12 @@ StyleDesigner.definePart('tour', function (K) {
     // running tour looks whether its control moved or a dialog opened.
     var WAIT_MS = 1500;
     var FOLLOW_MS = 400;
+    // After a press on a pointer's control: how long its own work is given,
+    // and how often the next pointer's control is looked for.
+    var PRESS_MS = 150;
+    var WAIT_TRIES = 8;
+    // Under this width of canvas an empty page's starts stand in a column.
+    var NARROW_CANVAS = 620;
 
     // Each stop's sentence: its bold first words, then the rest.
     function sentence(id) {
@@ -55,9 +66,70 @@ StyleDesigner.definePart('tour', function (K) {
         return ['', ''];
     }
 
+    // A "How do I…" task's name, as its row and its pointers' bold words
+    // say it, and its row's icon.
+    function taskName(id) {
+        switch (id) {
+            case 'section': return _sdT('Add a section');
+            case 'text': return _sdT('Change a text or a picture');
+            case 'colours': return _sdT('Change the colours');
+            case 'phone': return _sdT('Make it fit a phone');
+            case 'page': return _sdT('Add a page');
+            case 'list': return _sdT('Show a list of records');
+            case 'form': return _sdT('Add a form');
+            case 'shared': return _sdT('Use one part on every page');
+            case 'history': return _sdT('Go back to an earlier version');
+            case 'publish': return _sdT('Publish');
+        }
+        return '';
+    }
+
+    var TASK_ICONS = {
+        section: 'bi-plus-square', text: 'bi-fonts', colours: 'bi-palette', phone: 'bi-phone',
+        page: 'bi-file-earmark-plus', list: 'bi-list-ul', form: 'bi-ui-checks', shared: 'bi-puzzle',
+        history: 'bi-clock-history', publish: 'bi-rocket-takeoff'
+    };
+
+    // A pointer's sentence: one short sentence on its control.
+    function pointerText(id) {
+        switch (id) {
+            case 'section.1': return _sdT('Open “Blocks” here.');
+            case 'section.2': return _sdT('Drag a block onto the page, or click it.');
+            case 'section.3': return _sdT('It lands where the line shows. Click its words to write your own.');
+            case 'text.1': return _sdT('Click the words or the picture you want to change.');
+            case 'text.2': return _sdT('Its words and its link are under “Content”.');
+            case 'text.3': return _sdT('Pick another picture here, or upload one.');
+            case 'colours.1': return _sdT('Open “Design” beside Options.');
+            case 'colours.2': return _sdT('“Themes” holds the colours of the whole design.');
+            case 'colours.3': return _sdT('Every page shows the new colours at once.');
+            case 'phone.1': return _sdT('Pick a phone’s width here.');
+            case 'phone.2': return _sdT('The page shows as a phone shows it. Change what does not fit.');
+            case 'phone.3': return _sdT('Look at it on a real phone from here.');
+            case 'page.1': return _sdT('Press “Add Page”, then “New Page”.');
+            case 'page.2': return _sdT('The new page opens in a tab of its own.');
+            case 'page.3': return _sdT('Rename, copy or set it up from the tab’s menu.');
+            case 'list.1': return _sdT('Open “System” here.');
+            case 'list.2': return _sdT('Drag “Form List View” onto the page.');
+            case 'list.3': return _sdT('Choose here which records it shows.');
+            case 'form.1': return _sdT('Open “System” here.');
+            case 'form.2': return _sdT('Drag “Custom Form” onto the page.');
+            case 'form.3': return _sdT('Choose its fields and where the answers go here.');
+            case 'shared.1': return _sdT('Right-click its row here, then “Convert to Shared Component”.');
+            case 'shared.2': return _sdT('Every shared component waits here.');
+            case 'shared.3': return _sdT('Drag it onto any page. A change to it shows on every page.');
+            case 'history.1': return _sdT('Undo takes back the last change.');
+            case 'history.2': return _sdT('Open “History” for every save and snapshot.');
+            case 'history.3': return _sdT('Open one to look at it, or bring it back.');
+            case 'publish.1': return _sdT('Look at the page as a visitor will first.');
+            case 'publish.2': return _sdT('Press this to put the page on the site.');
+            case 'publish.3': return _sdT('The page’s tab says whether it is still a draft.');
+        }
+        return '';
+    }
+
     // card: the card's element while it is up; waitTimer: a card waiting
     // for a quiet moment. tour: the running tour, else null.
-    var S = { card: null, waitTimer: 0, held: false, tour: null, docs: [] };
+    var S = { card: null, waitTimer: 0, held: false, tour: null, docs: [], tip: null, empty: null };
 
     function access() {
         return K._sdAccess();
@@ -239,16 +311,34 @@ StyleDesigner.definePart('tour', function (K) {
 
     // ── The tour (boards T2, T3, T7) ──────────────────────────────────────
 
-    function start() {
+    // The tour from its first stop, or with `taskId` a "How do I…" task's
+    // three pointers on the same ring and bubble. A task started while
+    // another runs takes its place; the tour asked again while it runs
+    // stays where it is.
+    function start(taskId) {
         var back = document.activeElement;
         if (own(back)) back = null;
         closeCard();
-        if (S.tour) return true;
-        var list = M.stops(access());
+        var how = '';
+        var list;
+        if (typeof taskId === 'string' && taskId) {
+            var task = M.tasks(access()).filter(function (x) { return x.id === taskId; })[0];
+            if (!task) return false;
+            how = task.id;
+            list = task.pointers;
+        } else {
+            list = M.stops(access());
+        }
+        if (S.tour) {
+            if (!how && !S.tour.how) return true;
+            if (!back) back = S.tour.back;
+            teardown();
+        }
+        tipHide();
         var at = M.first(list, has);
-        if (!at) { finish(); return false; }
+        if (!at) { if (!how) finish(); return false; }
         var t = S.tour = {
-            list: list, at: at, back: back, hidden: false, timer: 0, key: '',
+            list: list, at: at, back: back, hidden: false, timer: 0, key: '', how: how, docs: [],
             ring: document.createElement('div'), bubble: document.createElement('div')
         };
         t.ring.className = 'sd-tour-ring' + (reduced() ? '' : ' is-gliding');
@@ -257,15 +347,59 @@ StyleDesigner.definePart('tour', function (K) {
         t.bubble.className = 'sd-tour-bubble';
         t.bubble.setAttribute('role', 'dialog');
         t.bubble.setAttribute('aria-modal', 'false');
-        t.bubble.setAttribute('aria-label', _sdT('Tour'));
+        t.bubble.setAttribute('aria-label', how ? _sdT('How do I') : _sdT('Tour'));
         t.bubble.addEventListener('click', onBubbleClick);
         t.bubble.addEventListener('keydown', onBubbleKey);
         placeAfterBar(t.bubble);
         document.addEventListener('keydown', onTourKey, true);
         window.addEventListener('resize', follow);
         t.timer = setInterval(follow, FOLLOW_MS);
+        if (how) pressWatch(t, true);
         draw(true);
         return true;
+    }
+
+    // A pointer shows where and never does the step: pressing the ringed
+    // control (a click, or the start of a drag from it) moves to the next
+    // pointer once the press has done what it does.
+    function pressWatch(t, on) {
+        var docs = on ? [document, K.canvasDoc].filter(Boolean) : t.docs;
+        docs.forEach(function (d) {
+            var f = on ? 'addEventListener' : 'removeEventListener';
+            d[f]('click', onPress, true);
+            d[f]('dragstart', onPress, true);
+        });
+        t.docs = on ? docs : [];
+    }
+
+    function onPress(e) {
+        var t = S.tour;
+        if (!t || !t.how || t.hidden || own(e.target)) return;
+        var el = document.querySelector(t.at.anchor);
+        var doc = e.target && e.target.ownerDocument;
+        if (!el) return;
+        var inside = doc === document
+            ? el.contains(e.target)
+            : (String(el.tagName).toLowerCase() === 'iframe' && el.contentDocument === doc);
+        if (!inside) return;
+        var i = t.at.i;
+        setTimeout(function () { if (S.tour === t && t.at.i === i) goSoon(t); }, PRESS_MS);
+    }
+
+    // Next after a press: the next pointer's control may come a moment
+    // later (a list the press opened, rows read from the server), so it is
+    // looked for a few times before it is skipped.
+    function goSoon(t) {
+        var tries = 0;
+        (function look() {
+            if (S.tour !== t) return;
+            var next = t.list[t.at.i + 1];
+            if (next && !M.anchor(next, has) && tries++ < WAIT_TRIES) {
+                setTimeout(look, PRESS_MS);
+                return;
+            }
+            go(1);
+        })();
     }
 
     function onBubbleClick(e) {
@@ -300,36 +434,52 @@ StyleDesigner.definePart('tour', function (K) {
         draw(true);
     }
 
-    // Ends the tour as seen: by its last stop, Skip or Escape alike.
+    // Ends the tour as seen: by its last stop, Skip or Escape alike. A
+    // task's pointers end the same way and leave the tour as it was.
     function finish() {
-        save(M.seen(load(), access()));
         var t = S.tour;
-        S.tour = null;
+        if (!t || !t.how) save(M.seen(load(), access()));
         if (!t) return;
-        clearInterval(t.timer);
-        document.removeEventListener('keydown', onTourKey, true);
-        window.removeEventListener('resize', follow);
-        [t.ring, t.bubble].forEach(function (el) { if (el.parentNode) el.parentNode.removeChild(el); });
+        teardown();
         var back = t.back;
         if (back && back.isConnected && typeof back.focus === 'function') {
             try { back.focus({ preventScroll: true }); } catch (e) { back.focus(); }
         }
     }
 
+    // Takes the ring, the bubble and their listeners away.
+    function teardown() {
+        var t = S.tour;
+        S.tour = null;
+        if (!t) return;
+        clearInterval(t.timer);
+        pressWatch(t, false);
+        document.removeEventListener('keydown', onTourKey, true);
+        window.removeEventListener('resize', follow);
+        [t.ring, t.bubble].forEach(function (el) { if (el.parentNode) el.parentNode.removeChild(el); });
+    }
+
     // Draws the bubble's parts for the current stop; `moved` gives the Next
     // button the focus and announces the stop.
     function draw(moved) {
         var t = S.tour;
+        var how = t.how;
         var shown = M.shown(t.list, has);
         var place = 0;
         shown.forEach(function (s, n) { if (s.i === t.at.i) place = n; });
         var total = shown.length || 1;
+        // A task counts its three pointers as drawn ("1 of 3"): a later
+        // pointer's control often comes only with the press before it.
+        if (how) {
+            place = t.at.i;
+            total = t.list.length;
+        }
         // Back before the first stop answers the stop itself.
         var prev = M.move(t.list, t.at.i, -1, has);
         var first = !prev || prev.i === t.at.i;
-        var last = !M.move(t.list, t.at.i, 1, has);
-        var words = sentence(t.at.id);
-        var count = _sdT('Tour · {n} of {total}').replace('{n}', String(place + 1)).replace('{total}', String(total));
+        var last = how ? t.at.i === t.list.length - 1 : !M.move(t.list, t.at.i, 1, has);
+        var words = how ? [taskName(how) + '.', pointerText(t.at.id)] : sentence(t.at.id);
+        var count = (how ? _sdT('How do I · {n} of {total}') : _sdT('Tour · {n} of {total}')).replace('{n}', String(place + 1)).replace('{total}', String(total));
         var dots = '';
         for (var d = 0; d < total; d++) dots += '<i' + (d === place ? ' class="is-on"' : '') + '></i>';
         t.bubble.innerHTML =
@@ -337,7 +487,7 @@ StyleDesigner.definePart('tour', function (K) {
             '<div class="sd-tour-count"><span>' + esc(count) + '</span><span class="sd-tour-dots" aria-hidden="true">' + dots + '</span></div>' +
             '<p class="sd-tour-text"><b>' + esc(words[0]) + '</b> ' + esc(words[1]) + '</p>' +
             '<div class="sd-tour-btns">' +
-                (last ? '' : '<button type="button" class="sd-btn sd-tour-skip" data-sd-tour="skip">' + esc(_sdT('Skip')) + '</button>') +
+                (last && !how ? '' : '<button type="button" class="sd-btn sd-tour-skip" data-sd-tour="skip">' + esc(how ? _sdT('Close') : _sdT('Skip')) + '</button>') +
                 '<span class="sd-tour-space"></span>' +
                 (first ? '' : '<button type="button" class="sd-btn" data-sd-tour="back">' + esc(_sdT('Back')) + '</button>') +
                 (last
@@ -354,7 +504,7 @@ StyleDesigner.definePart('tour', function (K) {
         }
         // Read out whole: "Tour, 3 of 5. See it. Look at the page…"
         var said = t.bubble.querySelector('.sd-tour-said');
-        var spoken = _sdT('Tour, {n} of {total}.').replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];
+        var spoken = (how ? _sdT('How do I, {n} of {total}.') : _sdT('Tour, {n} of {total}.')).replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];
         setTimeout(function () { if (said.isConnected) said.textContent = spoken; }, 50);
     }
 
@@ -460,12 +610,229 @@ StyleDesigner.definePart('tour', function (K) {
         return Math.max(lo, Math.min(hi, v));
     }
 
+    // ── "How do I…" and "Tips" in the Help window (board T4) ─────────────
+
+    // Fills the Help window's "How do I…" part and the "Tips" switch at its
+    // foot. host: { how, foot, close } (close() shuts the window). Drawn
+    // again at every opening, so the rows follow the access and the switch
+    // what is stored now.
+    function help(host) {
+        if (!host || !host.how) return false;
+        var rows = '<button type="button" class="sd-help-row is-tour" data-sd-help="tour">' +
+            '<span class="bi bi-signpost-2" aria-hidden="true"></span><span class="sd-help-row-txt">' + esc(_sdT('Take the tour')) + '</span>' +
+            '<span class="bi bi-chevron-right sd-help-row-go" aria-hidden="true"></span></button>' +
+            '<div class="sd-help-sep" role="presentation"></div>';
+        M.tasks(access()).forEach(function (t) {
+            rows += '<button type="button" class="sd-help-row" data-sd-help="' + esc(t.id) + '">' +
+                '<span class="bi ' + (TASK_ICONS[t.id] || 'bi-dot') + '" aria-hidden="true"></span>' +
+                '<span class="sd-help-row-txt">' + esc(taskName(t.id)) + '</span>' +
+                '<span class="bi bi-chevron-right sd-help-row-go" aria-hidden="true"></span></button>';
+        });
+        host.how.innerHTML = '<div class="sd-help-rows">' + rows + '</div>';
+        if (!host.how.getAttribute('data-sd-help-wired')) {
+            host.how.setAttribute('data-sd-help-wired', '1');
+            host.how.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-sd-help]');
+                if (!b) return;
+                var what = b.getAttribute('data-sd-help');
+                if (typeof host.close === 'function') host.close();
+                // Once the window is gone: the tour waits while a dialog is open.
+                setTimeout(function () { start(what === 'tour' ? undefined : what); }, 60);
+            });
+            // The arrows move over the rows; Enter presses the focused one.
+            host.how.addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+                var list = Array.prototype.slice.call(host.how.querySelectorAll('.sd-help-row'));
+                if (!list.length) return;
+                e.preventDefault();
+                var at = list.indexOf(document.activeElement);
+                var to = at === -1 ? 0 : (at + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length;
+                list[to].focus();
+            });
+        }
+        if (host.foot) tipsSwitch(host.foot);
+        return true;
+    }
+
+    function tipsSwitch(foot) {
+        var on = !load().tipsOff;
+        foot.innerHTML = '<button type="button" class="sd-help-tips' + (on ? ' is-on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '">' +
+            '<span class="sd-help-tips-txt"><b>' + esc(_sdT('Tips')) + '</b><span>' + esc(_sdT('One line the first time you open a feature')) + '</span></span>' +
+            '<span class="sd-help-tips-knob" aria-hidden="true"></span></button>';
+        foot.querySelector('.sd-help-tips').addEventListener('click', function () {
+            // Off, no first-use line is shown; the tips seen stay seen.
+            var now = load();
+            save(M.tipsOn(now, now.tipsOff));
+            if (!now.tipsOff) tipHide();
+            tipsSwitch(foot);
+            var again = foot.querySelector('.sd-help-tips');
+            if (again) again.focus();
+        });
+    }
+
+    // ── A first-use tip (board T5) ────────────────────────────────────────
+
+    // One line under a window's or a panel's head, the first time a
+    // feature opens: cfg { name, text, head, box }. `head` is the element
+    // the line goes under; `box` the feature (the head's parent when not
+    // given): a press inside it, outside the line, counts as the feature
+    // used and puts the line away for good. Never two at once, never while
+    // the tour or a pointer is up, never with "Tips" off. Asked again by a
+    // feature that drew its head anew, the line shown goes under the new one.
+    function tip(cfg) {
+        if (!cfg || !cfg.head || !cfg.head.parentNode || !cfg.text) return false;
+        var name = String(cfg.name || '');
+        if (S.tip && S.tip.name === name) {
+            if (!S.tip.line.isConnected || S.tip.line.previousElementSibling !== cfg.head) {
+                cfg.head.insertAdjacentElement('afterend', S.tip.line);
+                tipBox(cfg.box || cfg.head.parentNode);
+            }
+            return true;
+        }
+        if (S.tip && !S.tip.line.isConnected) tipHide();
+        if (S.tip || S.tour || !storageKey() || !M.tipDue(load(), name)) return false;
+        var line = document.createElement('div');
+        line.className = 'sd-tip-line';
+        line.setAttribute('role', 'status');
+        line.innerHTML = '<span class="sd-tip-text">' + esc(cfg.text) + '</span>' +
+            '<button type="button" class="sd-tip-got">' + esc(_sdT('Got it')) + '</button>';
+        line.querySelector('.sd-tip-got').addEventListener('click', function () { tipDone(); });
+        cfg.head.insertAdjacentElement('afterend', line);
+        S.tip = { name: name, line: line, box: null };
+        tipBox(cfg.box || cfg.head.parentNode);
+        return true;
+    }
+
+    function tipBox(box) {
+        if (!S.tip) return;
+        if (S.tip.box) S.tip.box.removeEventListener('click', onTipUse, true);
+        S.tip.box = box || null;
+        if (box) box.addEventListener('click', onTipUse, true);
+    }
+
+    // A press inside the feature, outside the line and its head: used.
+    function onTipUse(e) {
+        var tp = S.tip;
+        if (!tp || tp.line.contains(e.target)) return;
+        var head = tp.line.previousElementSibling;
+        if (head && head.contains(e.target)) return;
+        tipDone();
+    }
+
+    // "Got it", or the feature used: seen for good.
+    function tipDone() {
+        if (!S.tip) return;
+        save(M.tipSeen(load(), S.tip.name));
+        tipHide();
+    }
+
+    // Takes the line away; it is due again on the feature's next opening.
+    function tipHide() {
+        var tp = S.tip;
+        S.tip = null;
+        if (!tp) return;
+        if (tp.box) tp.box.removeEventListener('click', onTipUse, true);
+        if (tp.line.parentNode) tp.line.parentNode.removeChild(tp.line);
+    }
+
+    // ── An empty page's starts (board T6) ─────────────────────────────────
+
+    // host: { area, starts: { section, sketch, document }, run(id) } to show
+    // them over `area` (the canvas's frame area), or null to take them away.
+    // Drawn over the canvas, never in the page.
+    function empty(host) {
+        var list = host ? M.starts(access(), host.starts) : [];
+        if (!host || !host.area || !list.length) { emptyHide(); return false; }
+        var sig = list.join(',');
+        if (S.empty && S.empty.area === host.area && S.empty.sig === sig && S.empty.el.isConnected) {
+            S.empty.run = host.run;
+            emptyNarrow();
+            return true;
+        }
+        emptyHide();
+        var words = {
+            section: [_sdT('Add a section'), _sdT('Pick a ready block and make it yours.'), 'bi-plus-square'],
+            sketch: [_sdT('Sketch it'), _sdT('Draw boxes, get a layout.'), 'bi-vector-pen'],
+            document: [_sdT('From a document'), _sdT('Turn a file into a page.'), 'bi-file-earmark-text']
+        };
+        var ask = list.length > 1 ? _sdT('This page is empty. How do you want to start?') : _sdT('This page is empty.');
+        var el = document.createElement('div');
+        el.className = 'sd-empty-starts';
+        el.setAttribute('role', 'group');
+        el.setAttribute('aria-label', ask);
+        var cards = list.map(function (id) {
+            var w = words[id];
+            return '<button type="button" class="sd-empty-card" data-sd-start="' + id + '">' +
+                '<span class="sd-empty-card-ic bi ' + w[2] + '" aria-hidden="true"></span>' +
+                '<span class="sd-empty-card-name">' + esc(w[0]) + '</span>' +
+                '<span class="sd-empty-card-line">' + esc(w[1]) + '</span></button>';
+        }).join('');
+        var said = ask + (list.length > 1 ? ' ' + _sdT('{n} choices.').replace('{n}', String(list.length)) : '');
+        el.innerHTML = '<p class="sd-empty-ask" aria-hidden="true">' + esc(ask) + '</p><div class="sd-empty-cards">' + cards + '</div>' +
+            '<span class="sd-tour-said" role="status"></span>';
+        el.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-sd-start]');
+            if (b && S.empty && typeof S.empty.run === 'function') S.empty.run(b.getAttribute('data-sd-start'));
+        });
+        host.area.appendChild(el);
+        S.empty = { el: el, area: host.area, sig: sig, run: host.run, docs: [] };
+        emptyDragWatch(true);
+        emptyNarrow();
+        // Read out once, after the live region is in the page.
+        setTimeout(function () {
+            var live = el.querySelector('.sd-tour-said');
+            if (live && el.isConnected) live.textContent = said;
+        }, 50);
+        return true;
+    }
+
+    // While something is dragged the cards fade and let the drop through.
+    function onEmptyDrag(e) {
+        if (S.empty) S.empty.el.classList.toggle('is-faded', e.type === 'dragstart' || e.type === 'dragenter');
+    }
+
+    function emptyDragWatch(on) {
+        var em = S.empty;
+        if (!em) return;
+        var docs = on ? [document, K.canvasDoc].filter(Boolean) : em.docs;
+        docs.forEach(function (d) {
+            var f = on ? 'addEventListener' : 'removeEventListener';
+            d[f]('dragstart', onEmptyDrag, true);
+            d[f]('dragenter', onEmptyDrag, true);
+            d[f]('dragend', onEmptyDrag, true);
+            d[f]('drop', onEmptyDrag, true);
+        });
+        em.docs = on ? docs : [];
+        window[on ? 'addEventListener' : 'removeEventListener']('resize', emptyNarrow);
+    }
+
+    // Under 620 px of canvas the cards stand one under the other.
+    function emptyNarrow() {
+        if (!S.empty) return;
+        var w = S.empty.area.getBoundingClientRect().width;
+        S.empty.el.classList.toggle('is-narrow', w > 0 && w < NARROW_CANVAS);
+    }
+
+    function emptyHide() {
+        if (!S.empty) return;
+        emptyDragWatch(false);
+        if (S.empty.el.parentNode) S.empty.el.parentNode.removeChild(S.empty.el);
+        S.empty = null;
+    }
+
     return {
         // The core's first quiet look found the card due: show it now, or at
         // the next quiet moment of this visit.
         offer: offer,
-        // "Take the tour": the tour from its first stop, card or no card.
+        // "Take the tour": the tour from its first stop, card or no card;
+        // with a task's id, that "How do I…" task's pointers.
         start: start,
+        // The Help window's "How do I…" rows and its "Tips" switch.
+        help: help,
+        // A feature's first-use line under its head.
+        tip: tip,
+        // An empty page's starts over the canvas, or none (null).
+        empty: empty,
         // The model alone (window.PGDesignerTour), for a part that keeps a
         // first-use tip: running this part defines it.
         model: function () { return M; }

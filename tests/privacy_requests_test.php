@@ -185,3 +185,19 @@ function test_privacy_requests_closed_rule()
 	pg_assert_contains("(`email` <> '')", $where, 'still personal');
 	pg_assert_same('', pg_privacy_rule_candidate_where('requests', array('period' => 3), $now, array('pending' => '')), 'nothing personal left: nothing');
 }
+
+// "Received on" before 1970 (a mistyped year: 0202, 1925) would store
+// received_at 0, so the open request would be read as unproven and never
+// shown, counted or reminded: it is refused as a day that cannot be.
+function test_privacy_request_received_on_not_before_1970()
+{
+	$now = 1795996800;
+
+	foreach (array('0202-11-20', '1925-11-20', '1970-01-01') as $day) {
+		$out = pg_privacy_request_from_input(array('kind' => 'information', 'email' => 'a@example.com', 'received_on' => $day), $now, 4);
+		pg_assert_true(isset($out['errors']['received_on']), $day . ' refused');
+	}
+
+	$out = pg_privacy_request_from_input(array('kind' => 'information', 'email' => 'a@example.com', 'received_on' => '2025-11-20'), $now, 4);
+	pg_assert_false(isset($out['errors']['received_on']), 'a year ago is a day');
+}

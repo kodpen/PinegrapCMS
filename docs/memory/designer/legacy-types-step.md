@@ -25,4 +25,4 @@ module: legacy_to_designer_run, legacy_to_designer_plan
 ## Tests?
 - `tests/legacy_editable_types_test.php`: kinds, posted trees dropped, settings put in, a missing kind, the splice, the row, the wiring. `tests/legacy_to_designer_run_test.php`: the steps with `types`.
 
-Related: docs/memory/designer/legacy-stock-types.md, docs/memory/designer/legacy-to-designer-run.md, docs/memory/plans/legacy-editable-steps.md
+Related: docs/memory/designer/legacy-stock-types.md, docs/memory/designer/legacy-to-designer-run.md, docs/memory/designer/legacy-editable-overview.md

@@ -70,6 +70,25 @@ function test_canva_colors_from_pixels()
 	pg_assert_same(array(), pg_canva_colors_from_pixels(array()), 'no pixels');
 }
 
+// A picture the upload cap shrank on its way in is measured whole: the
+// size given is the one before the shrink, the stored file is smaller.
+function test_canva_measure_reads_the_stored_size()
+{
+	if (!function_exists('imagecreatetruecolor') || !function_exists('imagepng')) {
+		return;
+	}
+	$path = @tempnam(sys_get_temp_dir(), 'pgcvm');
+	$img = imagecreatetruecolor(128, 64);
+	imagefilledrectangle($img, 0, 0, 63, 63, 0x2563EB);
+	imagefilledrectangle($img, 64, 0, 127, 63, 0xF59E0B);
+	imagepng($img, $path);
+	pg_image_destroy($img);
+	$colors = pg_canva_measure($path, 'png', 256, 128);
+	@unlink($path);
+	pg_assert_same(2, count($colors), 'both halves are measured');
+	pg_assert_true($colors[0]['w'] > 0.45 && $colors[1]['w'] > 0.45, 'each half is half of the picture');
+}
+
 // Every picture counts the same; close colours join the more used one.
 function test_canva_pick_colors()
 {
@@ -90,7 +109,7 @@ function test_canva_start_row_and_pane()
 {
 	$kinds = pg_designer_start_kinds(true, true);
 	$keys = array_map(function ($k) { return $k['key']; }, $kinds);
-	pg_assert_same(array('blank', 'template', 'figma', 'canva', 'import', 'paste'), $keys, 'the plan\'s order');
+	pg_assert_same(array('blank', 'template', 'figma', 'canva', 'document', 'import', 'paste'), $keys, 'the plan\'s order');
 	pg_assert_same('add_system_style.php?framework=bootstrap5&start=canva', pg_designer_start_go_href('canva', 'bootstrap5', false), 'opens a Bootstrap 5 design in the Sketch tool');
 
 	$html = pg_designer_start_window(array(), false);
@@ -132,4 +151,26 @@ function test_canva_sketch_of_pages()
 	pg_assert_same(20000, $r['sketch']['pages'][1]['pic']['h'], 'a very tall picture is held to the sketch\'s limit');
 	pg_assert_true($r['sketch']['pages'][1]['x'] > $r['sketch']['pages'][0]['x'], 'side by side');
 	pg_assert_same(array('', 'pdf', 'notPng', 'tooBig'), $r['refusals'], 'what the browser refuses before sending');
+}
+
+// A drop deletes only ids this start stored in this session: an id asked
+// for that the session did not store is never deleted.
+function test_canva_drop_ids()
+{
+	pg_assert_same(array(4, 9), pg_canva_drop_ids(array(4, '9', 12, 4, 0, -3, 'x', array(1)), array(9, 4, 5)), 'only stored ids, each once');
+	pg_assert_same(array(), pg_canva_drop_ids(array(4), array()), 'nothing stored');
+	pg_assert_same(array(), pg_canva_drop_ids('4', array(4)), 'a list only');
+}
+
+// The bin, the cross on an upload that reached the server, Cancel and the
+// window's close drop the start's pages; Create design keeps them. A source
+// check: the window is a browser.
+function test_canva_abandoned_start_drops()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_canva.js');
+	pg_assert_contains("sub_action: 'canva_drop'", $js);
+	pg_assert_contains("pgUI.dialog.on(win, 'hidden'", $js, 'the window\'s close is heard');
+	pg_assert_true(substr_count($js, 'drop(s, ') >= 3, 'the bin, the cross and the close drop pages');
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	pg_assert_contains("case 'canva_drop':", $php);
 }

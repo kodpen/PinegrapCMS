@@ -12044,6 +12044,11 @@
                 self.hasMore = data.has_more;
                 self.tab = (self.pendingTab && !messageId) ? self.pendingTab : 'messages';
                 self.pendingTab = null;
+
+                // ?view=board opens the Board view, whatever view the
+                // browser kept; ?view=list and ?view=tasks come as the Tasks
+                // tab and open the List view in drawCenter().
+                self.boardView = (self.tab === 'board') ? 'board' : '';
                 self.drawCenter();
                 self.drawSide();
 
@@ -33272,6 +33277,9 @@
                 channelForm(channel, { tab: tab }, function () { app.refreshInfo(); });
             },
             peoplePicker: peoplePicker,
+            // A drawer from the right: made once by its id, shown, hidden
+            // (with what comes after it once it has closed).
+            drawer: { make: offcanvas, show: showOffcanvas, hide: hideOffcanvas },
             api: api,
             toast: toast,
             fail: fail,

@@ -1212,6 +1212,8 @@ function bs6_scope_kind($path)
 		'assets/js/pg_search_highlight.js', 'assets/js/pg_civ_variants.js', 'assets/js/pg_scroller.js', 'assets/js/pg_page_scroll.js',
 		'assets/js/pg_theme_switcher.js', 'assets/js/pg_booking.js', 'assets/js/pg_map.js', 'assets/js/pg_course.js', 'assets/css/pg_carousel_layout.css', 'assets/css/pg_consent.css',
 		'assets/css/pg_lightbox.css', 'assets/css/pg_datetime_site.css',
+		// The page built from a document's rows (the designer's starters).
+		'assets/js/pg_document_page.js',
 	);
 	// The designer's block family files build palette blocks: site markup.
 	if (in_array($path, $site_assets, true) || preg_match('/^(frontend|chat_site)\.(src|min)\.js$/', $base) || preg_match('#^assets/js/chat_site#', $path)

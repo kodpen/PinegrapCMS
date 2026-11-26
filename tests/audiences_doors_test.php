@@ -63,6 +63,7 @@ function test_audiences_doors_every_hand_door_asks_the_guard()
 		'edit_contacts.php' => 'pg_audience_hand_ids(',
 		'import_contacts.php' => 'pg_audience_hand_sql(',
 		'import_users.php' => 'pg_audience_hand_sql(',
+		'includes/import/write_contact.php' => 'pg_audience_group_is_dynamic(',
 		'custom_form.php' => 'pg_audience_hand_sql(',
 		'submit_order.php' => 'pg_audience_door_join(',
 		'express_order.php' => 'pg_audience_door_join(',

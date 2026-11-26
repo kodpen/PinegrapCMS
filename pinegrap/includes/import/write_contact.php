@@ -9,7 +9,8 @@
  *   skipped and named, the existing contact is left as it is.
  * - opt_in is what the export says the person accepted, and a consent log
  *   line (source "import") records it, granted or refused, as exported.
- * - Each tag is a contact group, found by name or made.
+ * - Each tag is a contact group, found by name or made; a group filled by
+ *   rules is skipped.
  * - Undo deletes the contact as the contact list does, unless a user account
  *   or an order points at it since: then it stays and the report names it.
  *
@@ -176,7 +177,9 @@ function pg_import_write_contact($item, $import)
     foreach ((array) ($data['tags'] ?? array()) as $tag) {
         $group_id = pg_import_contact_group($tag, $user_id);
 
-        if ($group_id > 0) {
+        // A tag named as a group filled by rules is skipped: its rules
+        // decide who is in it, and a hand row would stay there for good.
+        if (($group_id > 0) && !pg_audience_group_is_dynamic($group_id)) {
             db("INSERT IGNORE INTO contacts_contact_groups_xref (contact_id, contact_group_id)
                 VALUES ('" . $contact_id . "', '" . $group_id . "')");
         }

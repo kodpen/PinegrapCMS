@@ -502,7 +502,7 @@ function test_referral_account_wired_in_my_account()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_account.php');
 
-	pg_assert_contains("pg_referral_account((int)USER_ID", $source, 'the my account extras read the part');
+	pg_assert_contains('pg_referral_account($viewer[\'id\']', $source, 'the my account extras read the part');
 	pg_assert_contains("'has_referral' => false", $source, 'the flag has a default');
 	pg_assert_contains("'referral' => ''", $source, 'the section has a default');
 }

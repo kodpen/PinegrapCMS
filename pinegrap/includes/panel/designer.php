@@ -233,6 +233,9 @@ function pg_panel_designer($request, $action)
         // calls check pg_library_may() themselves.
         $content_ok[] = 'library_list';
         $content_ok[] = 'library_prepare';
+        // A bound element's row "Edit this record's content" / "Open the
+        // record": the answer checks the record's own rights.
+        $content_ok[] = 'preview_record_open';
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -502,6 +505,15 @@ function pg_panel_designer($request, $action)
                 isset($request['folder_id']) ? (int)$request['folder_id'] : 0,
                 isset($request['exclude_style_id']) ? (int)$request['exclude_style_id'] : 0
             ));
+            break;
+
+        // "New collection with pages" (includes/fn/collection_pages.php):
+        // the collections there are, which addresses are taken, and one of
+        // the collection, its list page and its detail page made. Design-
+        // level, like adding a page.
+        case 'collection_pages':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/collection_pages.php');
+            respond(pg_coll_pages_panel($request, $user));
             break;
 
         // "Page details" of a sketch page in the Prototype view: the menus,
@@ -1009,6 +1021,24 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // A bound element's canvas row: the record its widget shows in the
+        // Preview (the one kept in "Preview as", else the default) and
+        // whether it is edited in place or opened on its own screen
+        // (pg_rec_edit_open()).
+        case 'preview_record_open':
+            $po_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ($po_page > 0 && pg_designer_page_access($po_page, $user) === 'hidden') $po_page = 0;
+            $po_widget = (isset($request['widget']) && is_array($request['widget'])) ? $request['widget'] : array();
+            $po_rows   = pg_designer_preview_override_rows(array($po_widget));
+            $po_sid    = isset($po_widget['id']) ? (int)$po_widget['id'] : 0;
+            $po_cfg    = isset($po_rows[$po_sid]) ? $po_rows[$po_sid]['cfg'] : null;
+            if (!is_array($po_cfg) && $po_sid > 0) {
+                $po_cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . $po_sid . "' LIMIT 1"), true);
+            }
+            $po_record = (isset($request['record']) && is_scalar($request['record'])) ? (int)$request['record'] : 0;
+            respond(array('status' => 'success', 'open' => pg_rec_edit_open($user, $po_cfg, $po_page, $po_record)));
+            break;
+
         case 'template_prepare':
             $tp = pg_design_template_prepare(isset($request['template']) ? (string)$request['template'] : '', $user);
             if (empty($tp['ok'])) {
@@ -1161,6 +1191,13 @@ function pg_panel_designer($request, $action)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
             respond(pg_canva_store_page(isset($_FILES['file']) ? $_FILES['file'] : null));
             break;
+        // The pages a Canva start leaves (the bin, Cancel, the window's
+        // close): only ids this session's start stored, never one a saved
+        // page uses (pg_canva_drop_pages()).
+        case 'canva_drop':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(array('status' => 'success', 'deleted' => pg_canva_drop_pages(isset($request['ids']) ? $request['ids'] : array())));
+            break;
         case 'canva_colors':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
             respond(array(
@@ -1254,7 +1291,7 @@ function pg_panel_designer($request, $action)
         // The design's events for History's Activity tab
         // (includes/fn/designer_activity.php), fifty at a time. Every role
         // that opens the editor may ask; the reader keeps a content editor
-        // to the pages they may edit.
+        // to the pages they may edit. `person`, `page` and `kind` narrow it.
         case 'activity_list':
             $ac_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
             if ($ac_style <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$ac_style'")) {
@@ -1262,7 +1299,14 @@ function pg_panel_designer($request, $action)
             }
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_activity.php');
             $ac_before = isset($request['before']) ? (string)$request['before'] : '';
-            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before));
+            // The tab's three choosers: person, page, kind.
+            $ac_filter = pg_designer_activity_filter(
+                isset($request['person']) ? (string)$request['person'] : '',
+                isset($request['page']) ? (string)$request['page'] : '',
+                isset($request['kind']) ? (string)$request['kind'] : '',
+                $user
+            );
+            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before, $ac_filter));
             break;
 
         case 'revision_get':
@@ -1279,6 +1323,31 @@ function pg_panel_designer($request, $action)
             unset($rv['tree_json'], $rv['revision_id']);
             $rv['tree'] = is_object($rv_tree) ? $rv_tree : null;
             respond(array('status' => 'success', 'revision' => $rv));
+            break;
+
+        // One picture of Compare's Look tab: a tree of the page (the page on
+        // the site, a revision or the draft) drawn as a whole page the way a
+        // signed-out visitor is served it, with each element's tree id
+        // (data-pg-node), through the SEO check's draft render. Nothing is
+        // written and no visit is counted. An empty html tells the editor to
+        // draw the picture itself (a page it may only view, a tree the save
+        // would refuse, a render that failed).
+        case 'compare_render':
+            $cr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            $cr_tree = (isset($request['tree_json']) && is_string($request['tree_json'])) ? $request['tree_json'] : '';
+            if ($cr_page <= 0 || !pg_designer_revision_page_ok($cr_page, $user)) {
+                respond(array('status' => 'error', 'message' => lang('Page not found.')));
+            }
+            $cr_html = '';
+            if ($cr_tree !== '' && strlen($cr_tree) <= 4000000) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+                $cr_render = pg_seo_check_draft_render($cr_page, array(), $cr_tree,
+                    (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(), $user);
+                if ($cr_render !== null && $cr_render['error'] === '' && stripos((string)$cr_render['html'], '<html') !== false) {
+                    $cr_html = (string)$cr_render['html'];
+                }
+            }
+            respond(array('status' => 'success', 'html' => $cr_html));
             break;
 
         // Save a stylesheet as a theme: a design CSS file in the file

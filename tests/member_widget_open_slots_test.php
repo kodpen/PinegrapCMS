@@ -92,7 +92,7 @@ function test_member_editor_wiring()
 	pg_assert_contains("if (kind === 'login_form' && section === 'register_link') return ['__register_url'", $js);
 	pg_assert_contains("if (kind === 'registration' && section === 'login_link') return ['__login_url'", $js);
 	pg_assert_contains("if (kind === 'membership' && section === 'login_link') return ['__login_url'", $js);
-	pg_assert_contains('password_rules: 1 };', $js);
+	pg_assert_contains('password_rules: 1, guest: 1 };', $js);
 	pg_assert_contains('function _sdPasswordRulesStarter(bs) {', $js);
 	pg_assert_contains("if (_sdMemberOpens(kind, section, node)) return _sdMemberOpenRow();", $js);
 }

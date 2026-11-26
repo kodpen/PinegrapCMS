@@ -62,6 +62,28 @@ function test_workspace_agent_queue_expired_where()
 	pg_assert_contains("created_at < '" . (1700000000 - WS_AI_QUEUE_TTL) . "'", $where, 'a day old');
 }
 
+function test_workspace_agent_queue_stalled()
+{
+	$now = 1700000000;
+	$where = ws_agent_queue_stalled_where($now);
+	pg_assert_contains("agent LIKE 'agent:%'", $where, 'only app agents');
+	pg_assert_contains("status = 'running'", $where, 'only a claimed one');
+	pg_assert_contains("claimed_at < '" . ($now - WS_AI_QUEUE_TTL) . "'", $where, 'claimed a day ago or more');
+
+	$row = array('status' => 'running', 'claimed_at' => $now - WS_AI_QUEUE_TTL - 10, 'ai_state' => null);
+	pg_assert_true(ws_agent_request_stalled($row, $now), 'a day of silence since the claim');
+	pg_assert_true(!ws_agent_request_stalled(array('claimed_at' => $now - 60) + $row, $now), 'claimed a minute ago');
+
+	$noted = array('ai_state' => ws_agent_progress_state(null, 'back by 22:30', $now - 3600)) + $row;
+	pg_assert_true(!ws_agent_request_stalled($noted, $now), 'a note an hour ago starts the day again');
+
+	$old_note = array('ai_state' => ws_agent_progress_state(null, 'still on it', $now - WS_AI_QUEUE_TTL - 1)) + $row;
+	pg_assert_true(ws_agent_request_stalled($old_note, $now), 'the last note a day old too');
+
+	pg_assert_true(!ws_agent_request_stalled(array('status' => 'queued') + $row, $now), 'never one nobody claimed: that expiry is the other one');
+	pg_assert_true(!ws_agent_request_stalled(array('claimed_at' => 0) + $row, $now), 'no claim time read');
+}
+
 function test_workspace_agent_wake_matches()
 {
 	$row = array('handle' => 'ci', 'app_id' => 7, 'wake_rule' => 'mention', 'wake_prefix' => '');
@@ -267,4 +289,68 @@ function test_workspace_agent_queue_wiring()
 
 	$answer = workspace_agent_queue_test_source('ws_api_agent_request_answer');
 	pg_assert_true(strpos($answer, 'api_dry_run_stop(') < strpos($answer, 'ws_message_send($'), 'the answer is rehearsed before it is written');
+}
+
+// An answer closes the request before it writes the reply, so a second
+// answer (a retried call, a second run) or one after a person's Cancel, the
+// day's expiry or a clear finds it closed and writes nothing.
+function test_workspace_agent_answer_closes_before_writing()
+{
+	$answer = workspace_agent_queue_test_source('ws_api_agent_request_answer');
+	$close = strpos($answer, "UPDATE ws_ai_requests SET status = 'answered'");
+	$write = strpos($answer, 'ws_message_send($');
+	$checked = ($close === false) ? false : strpos($answer, 'mysqli_affected_rows(db::$con) < 1', $close);
+
+	pg_assert_true(($close !== false) && ($write !== false) && ($close < $write), 'closed before the reply is written');
+	pg_assert_true(strrpos(substr($answer, 0, (int) $close), 'api_dry_run_stop(') !== false, 'a dry run stops before the close');
+	pg_assert_true(($checked !== false) && ($checked < $write), 'a request closed meanwhile answers 409');
+	pg_assert_contains("'closed'", (string) substr($answer, (int) $checked, 200));
+	pg_assert_contains('ws_agent_request_reopen_sql(', $answer, 'a reply that cannot be written opens the request again');
+
+	$sql = ws_agent_request_reopen_sql(array('id' => 7, 'status' => 'running', 'claimed_at' => 100, 'answered_at' => 0, 'error' => ''), 'answered');
+	pg_assert_contains("status = 'running'", $sql);
+	pg_assert_contains("claimed_at = '100'", $sql);
+	pg_assert_contains("answered_at = '0'", $sql);
+	pg_assert_contains("WHERE id = '7' AND status = 'answered' AND reply_message_id = 0", $sql, 'only the close this call made');
+}
+
+// A fail closes the request before its reason is written under the asking
+// message: a second fail, or one after an answer or a Cancel, writes no
+// second line and answers 409 closed.
+function test_workspace_agent_fail_closes_before_writing()
+{
+	$fail = workspace_agent_queue_test_source('ws_api_agent_request_fail');
+	$close = strpos($fail, "UPDATE ws_ai_requests SET status = 'failed'");
+	$write = strpos($fail, 'ws_message_send(');
+	$checked = ($close === false) ? false : strpos($fail, 'mysqli_affected_rows(db::$con) < 1', $close);
+
+	pg_assert_true(($close !== false) && ($write !== false) && ($close < $write), 'closed before the reason is written');
+	pg_assert_true(strpos($fail, 'api_dry_run_stop(') < $close, 'a dry run stops before the close');
+	pg_assert_true(($checked !== false) && ($checked < $write), 'a request closed meanwhile answers 409');
+	pg_assert_contains("'closed'", (string) substr($fail, (int) $checked, 200));
+	pg_assert_true(strpos($fail, "ws_task_delegation_told(\$row, 'failed')") > $checked, 'the task\'s asker is told once');
+}
+
+// A request the agent never took is cancelled after a day, and its message
+// is stamped, so the line under it changes on the open screens as well.
+function test_workspace_agent_queue_expire_redraws()
+{
+	$expire = workspace_agent_queue_test_source('ws_agent_queue_expire');
+
+	pg_assert_contains('ws_agent_queue_expired_where($now)', $expire);
+	pg_assert_contains('ws_message_touch(', $expire, 'the message is stamped');
+	pg_assert_true(strpos($expire, "status = 'cancelled'") < strpos($expire, 'ws_message_touch('), 'after the cancel');
+}
+
+function test_workspace_agent_queue_expire_closes_stalled()
+{
+	$expire = workspace_agent_queue_test_source('ws_agent_queue_expire');
+
+	pg_assert_contains('ws_agent_queue_stalled_where($now)', $expire);
+	pg_assert_contains('ws_agent_request_stalled($row, $now)', $expire, 'each row decided by its last note');
+	pg_assert_contains("status = 'failed'", $expire);
+	pg_assert_contains("status = 'running'", $expire, 'closed only while still running: a late answer or a Cancel wins');
+	pg_assert_contains("The agent did not finish it within a day.", $expire);
+	pg_assert_contains("'👀', false", $expire, 'the eye taken off');
+	pg_assert_contains('ws_step_agent_request_closed(', $expire);
 }

@@ -29,6 +29,24 @@ function test_supplier_feed_choice_stock_and_lowest_buy()
 	pg_assert_same(3, pg_supplier_feed_pick_item(array(array('id' => 3, 'stock' => 0, 'buy' => 500)), 0), 'one feed alone is followed, even with no stock');
 }
 
+// The other items a product's choice weighs: other feeds that are on, and
+// this feed's own items outside the step (two records of one feed on one
+// product), never the items the step itself brings.
+function test_supplier_feed_choice_others()
+{
+	$rows = array(
+		array('id' => 1, 'feed_id' => 7, 'product_id' => 50, 'feed_status' => 1),
+		array('id' => 2, 'feed_id' => 7, 'product_id' => 50, 'feed_status' => 1),
+		array('id' => 3, 'feed_id' => 8, 'product_id' => 50, 'feed_status' => 1),
+		array('id' => 4, 'feed_id' => 9, 'product_id' => 50, 'feed_status' => 2),
+		array('id' => 5, 'feed_id' => 8, 'product_id' => 60, 'feed_status' => 1),
+	);
+	$others = pg_supplier_feed_choice_others($rows, 7, array(1));
+
+	pg_assert_same(array(2, 3), array_keys($others[50]), 'this feed\'s item from another step and the other feed that is on; not the step\'s own, not a paused feed');
+	pg_assert_same(array(5), array_keys($others[60]), 'by product');
+}
+
 function test_supplier_feed_choice_ties_and_no_stock()
 {
 	pg_assert_same(2, pg_supplier_feed_pick_item(array(

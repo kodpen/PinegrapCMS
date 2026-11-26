@@ -148,11 +148,12 @@ function test_design_canvas_icon_on_the_remaining_buttons()
 	pg_assert_contains("return doc ? { icon: icon('pg-design-canvas'), label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;", $workspace, 'a note\'s canvas picture uses it');
 	pg_assert_contains('go.appendChild(offered.icon);', file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js'), 'the note\'s media action takes a drawn icon');
 
-	// Page Design Studio: three buttons and two menu entries, from the canvas's config.
+	// Page Design Studio: two buttons and two menu entries, from the canvas's config
+	// (a background picture is a layer of the background list, with the file picker only).
 	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("return (cfg && cfg.canvasIcon) || '<i class=\"bi bi-brush\" aria-hidden=\"true\"></i>';", $designer, 'the designer reads it from the canvas config');
-	pg_assert_same(3, substr_count($designer, "title=\"' + esc(_sdT('Edit in Artifact Canvas')) + '\" aria-label=\"' + esc(_sdT('Edit in Artifact Canvas')) + '\"") , 'three buttons say where they open');
-	pg_assert_same(3, substr_count($designer, "\">' + _sdCanvasIcon() + '</button>'"), 'the three buttons draw it');
+	pg_assert_same(2, substr_count($designer, "title=\"' + esc(_sdT('Edit in Artifact Canvas')) + '\" aria-label=\"' + esc(_sdT('Edit in Artifact Canvas')) + '\"") , 'two buttons say where they open');
+	pg_assert_same(2, substr_count($designer, "\">' + _sdCanvasIcon() + '</button>'"), 'the two buttons draw it');
 	pg_assert_same(2, substr_count($designer, "iconHtml: _sdCanvasIcon(), label: _sdT('Edit in Artifact Canvas')"), 'both edit entries');
 	pg_assert_false(strpos($designer, "icon: 'bi-brush', label: _sdT('Edit") !== false, 'no brush glyph left on an edit entry');
 	pg_assert_contains('.pg-mi.pg-dc-mono .pg-mi-at { fill: none; }', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css'), 'the designer sizes it and drops the tint itself');

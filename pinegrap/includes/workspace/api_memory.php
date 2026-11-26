@@ -266,6 +266,20 @@ function ws_api_memory_writer($viewer)
     return ($app_id > 0) ? array('kind' => 'app', 'id' => $app_id) : array('kind' => 'user', 'id' => (int) $viewer['id']);
 }
 
+/**
+ * Whether this call reaches the general memory: its owner keeps it, and the
+ * application Claude works through only while Claude may be asked in one of
+ * the agent channels, so a private channel's records moved there leave the
+ * site only as its channels' own words do.
+ *
+ * @param array $viewer
+ * @return bool
+ */
+function ws_api_memory_general_can($viewer)
+{
+    return ws_memory_general_can($viewer, function_exists('ws_api_is_claude') && ws_api_is_claude());
+}
+
 function ws_api_memory_ready_or_503()
 {
     if (!ws_memory_ready()) {
@@ -287,7 +301,7 @@ function ws_api_memory_or_404($viewer, $id)
     $row = ws_memory_row($id);
 
     if ($row && ws_memory_is_general($row)) {
-        if (!ws_memory_general_can($viewer)) {
+        if (!ws_api_memory_general_can($viewer)) {
             api_fail_not_found(lang('Memory entry'));
         }
 
@@ -354,7 +368,7 @@ function ws_api_memory_list($params)
 {
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
-    $tag = mb_strtolower(ltrim(trim((string) ($params['tag'] ?? '')), '#'));
+    $tag = ws_memory_tag($params['tag'] ?? '');
     $out = array();
 
     foreach (ws_memory_rows($channel['id'], !empty($params['expired'])) as $row) {
@@ -383,7 +397,7 @@ function ws_api_memory_general_or_403($viewer)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    if (!ws_memory_general_can($viewer)) {
+    if (!ws_api_memory_general_can($viewer)) {
         api_fail(403, 'forbidden', lang('The general memory is kept by whoever may post in an agent channel.'));
     }
 
@@ -394,7 +408,7 @@ function ws_api_memory_general_list($params)
 {
     $viewer = ws_api_viewer();
     ws_api_memory_general_or_403($viewer);
-    $tag = mb_strtolower(ltrim(trim((string) ($params['tag'] ?? '')), '#'));
+    $tag = ws_memory_tag($params['tag'] ?? '');
     $project = ws_memory_project($params['project'] ?? '');
     $out = array();
 

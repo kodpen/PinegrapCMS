@@ -1,6 +1,6 @@
 ---
 name: designer-screens-side-by-side-drawing
-description: The drawing of "Side by side" (plans/designer-screens-side-by-side.md, SS2 and SS3): the sheet, its six boards, which step builds which, the measures and the texts it fixes
+description: The drawing of "Side by side" (SS2 #11647, SS3 #11676; what was built: designer-side-by-side.md): the sheet, its six boards, which step builds which, the measures and the texts it fixes
 ---
 
 ## Where is the drawing?

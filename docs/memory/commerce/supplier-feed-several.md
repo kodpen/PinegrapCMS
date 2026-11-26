@@ -7,7 +7,7 @@ module: supplier_feed_choice
 ## Which feed does a product in several feeds follow? (F9)
 - `includes/fn/supplier_feed_choice.php`, loaded by `supplier_feed_sync.php`. `pg_supplier_feed_choose()` runs in each pull's apply and close steps, before the records write; the choice is `supplier_feed_items.active`, one item per product.
 - `pg_supplier_feed_pick_item()` (pure): of the items with stock, the lowest buy price in the home currency (`pg_supplier_feed_buy_home()`, the store's rate); no buy price comes last; a tie keeps the item in use, then the oldest. No stock anywhere: the item in use stays, so its feed closes the product.
-- This pull's items count with this pull's stock and buy price (net of VAT, a held price not taken); other feeds' items with what their last pull kept. Only feeds that are on take part; a paused or off feed's item loses its place at the next pull of another feed.
+- This pull's items count with this pull's stock and buy price (net of VAT, a held price not taken); other feeds' items, and this feed's items outside the step, with what was kept (`pg_supplier_feed_choice_others()`). Before #11784 two records of one feed on one product, in different steps, took it from each other: closed and reopened every pull. Only feeds that are on take part; a paused or off feed's item loses its place at the next pull of another feed.
 
 ## What happens when the choice moves?
 - To this pull's item: it writes the product as usual (its price by its own feed's rule).

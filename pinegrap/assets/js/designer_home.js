@@ -1131,6 +1131,10 @@
             });
         }
 
+        // A start with its own part (the document start) asks the questions
+        // before the address its own button leads to.
+        window.sdStartAsk = askQuestions;
+
         if (go) {
             go.addEventListener('click', function (event) {
                 var pane = win.querySelector('.sd-ns-pane:not([hidden])');

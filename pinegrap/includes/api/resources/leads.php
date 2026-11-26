@@ -457,7 +457,7 @@ function api_lead_source_present($by, $group, $revenue_shown) {
 
 	return array(
 		'key'       => (string)$group['key'],
-		'label'     => pg_lead_sources_label($by, (string)$group['key']),
+		'label'     => pg_lead_sources_label($by, (string)$group['key'], !empty($group['gone'])),
 		'leads'     => (int)$group['leads'],
 		'converted' => (int)$group['converted'],
 		'share'     => ($group['share'] === null) ? null : (int)$group['share'],

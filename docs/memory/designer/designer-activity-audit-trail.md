@@ -23,4 +23,4 @@ description: The designer's events that leave no page version go to the audit tr
 - A shared component's versions (Compare and Load for a component, the `shared_id` question of `page-revisions.md`): a feature of its own, asked of the owner when a plan wants it.
 - A design brought back from the Recycle Bin writes no `restore` line yet.
 
-Related: docs/memory/designer/designer-activity-audit-lines.md, docs/memory/designer/designer-activity-reader.md, docs/memory/core/audit-trail-writers.md, docs/memory/plans/designer-activity.md
+Related: docs/memory/designer/designer-activity-audit-lines.md, docs/memory/designer/designer-activity-reader.md, docs/memory/core/audit-trail-writers.md, docs/memory/designer/designer-activity.md

@@ -57,7 +57,10 @@ function test_application_juror_link_states()
 	pg_assert_same('open', pg_application_juror_link_state($juror, 1, $now - 10, $now), 'open programme: a past round end does not stop it');
 	pg_assert_same('open', pg_application_juror_link_state($juror, 2, $now + 60, $now), 'closed but the round runs');
 	pg_assert_same('expired', pg_application_juror_link_state($juror, 2, $now, $now), 'closed and the round ended');
-	pg_assert_same('expired', pg_application_juror_link_state($juror, 2, 0, $now), 'closed with no round end');
+	// Closing ends the entries, not the reviewing: with no round end set the
+	// link stays open, or jurors could never score a closed programme's
+	// round, and every round from the second runs on a closed programme.
+	pg_assert_same('open', pg_application_juror_link_state($juror, 2, 0, $now), 'closed with no round end');
 }
 
 function test_application_reminder_goes_to_user_or_juror_with_their_link()

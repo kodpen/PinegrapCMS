@@ -14,6 +14,11 @@
  * every sample is the real thing, unsaved changes included. It reads and
  * never writes: opening the sheet makes no page, file or setting.
  *
+ * A name that is a variable opens it in Settings, Theme, Variables; a
+ * component's name opens the component on its own. "Print or save as PDF"
+ * prints the frame alone, with the design's name, the day, the site's
+ * address and the page count on every page.
+ *
  * Not needed to open a page: the core runs this file the first time the row
  * is pressed (_sdStyleGuideOpen()) and hands it a host. While the sheet is
  * closed it holds no listener, timer or observer.
@@ -36,8 +41,9 @@ StyleDesigner.definePart('styleguide', function (K) {
     // The most stylesheet text sent to the server (PG_STYLE_GUIDE_CSS_MAX).
     var CSS_MAX = 262144;
 
-    // The open sheet: { el, host, guide, frame, doc, dark, hasDark, io,
-    // off: [] (the listeners to take away on close) }; null while closed.
+    // The open sheet: { el, host, guide, frame, doc, dark, hasDark, io, day,
+    // off: [] (the listeners to take away on close), stay (focus is not
+    // given back to the Preview button), printing }; null while closed.
     var W = null;
 
     function attr(v) {
@@ -72,6 +78,7 @@ StyleDesigner.definePart('styleguide', function (K) {
             '.sd-sg-seg{display:inline-flex;border:1px solid var(--sd-panel-border);border-radius:6px;overflow:hidden}' +
             '.sd-sg-seg button{border:0;background:none;color:var(--sd-text-muted);font-size:12px;padding:4px 10px;display:inline-flex;gap:5px;align-items:center}' +
             '.sd-sg-seg button[aria-pressed="true"]{background:var(--sd-accent-soft);color:var(--sd-text)}' +
+            '.sd-sg-print{white-space:nowrap}.sd-sg-print .sd-sg-short{display:none}' +
             '.sd-sg-strip{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--sd-panel-border);overflow-x:auto;scrollbar-width:none;flex-shrink:0}' +
             '.sd-sg-strip button{border:0;background:none;color:var(--sd-text-muted);font-size:13px;padding:9px 10px;border-bottom:2px solid transparent;white-space:nowrap}' +
             '.sd-sg-strip button[aria-current="true"]{color:var(--sd-text);border-bottom-color:var(--sd-accent)}' +
@@ -88,6 +95,7 @@ StyleDesigner.definePart('styleguide', function (K) {
             '@media (max-width:767.98px){' +
                 'dialog.sd-sg-dialog{width:100vw;height:100vh;height:100dvh;margin:0;border-radius:0}' +
                 '.sd-sg-name{display:none}' +
+                '.sd-sg-print .sd-sg-long{display:none}.sd-sg-print .sd-sg-short{display:inline}' +
                 '.sd-sg-wait{padding:20px 16px}' +
             '}';
         document.head.appendChild(st);
@@ -113,13 +121,14 @@ StyleDesigner.definePart('styleguide', function (K) {
                     '<button type="button" data-sg-mode="light" aria-pressed="' + !canvasDark + '"><span class="bi bi-sun" aria-hidden="true"></span>' + esc(_sdT('Light')) + '</button>' +
                     '<button type="button" data-sg-mode="dark" aria-pressed="' + canvasDark + '"><span class="bi bi-moon" aria-hidden="true"></span>' + esc(_sdT('Dark')) + '</button>' +
                 '</span>' : '') +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary sd-sg-print" data-sg-print disabled>' + printLabel() + '</button>' +
                 '<button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' + attr(_sdT('Close')) + '"></button>' +
             '</div>' +
             '<div class="sd-sg-strip" role="toolbar" aria-label="' + attr(_sdT('Style guide')) + '"></div>' +
             '<div class="sd-sg-line" hidden></div>' +
             '<div class="sd-sg-body">' + waitHtml() + '</div>';
         document.body.appendChild(d);
-        W = { el: d, host: host, guide: null, frame: null, doc: null, dark: canvasDark, hasDark: hasDark, io: null, off: [], seq: 0 };
+        W = { el: d, host: host, guide: null, frame: null, doc: null, dark: canvasDark, hasDark: hasDark, io: null, off: [], seq: 0, day: today(), stay: false, printing: false };
         var mine = W;
 
         d.addEventListener('click', function (e) {
@@ -127,11 +136,9 @@ StyleDesigner.definePart('styleguide', function (K) {
             if (m) { setMode(m.getAttribute('data-sg-mode') === 'dark'); return; }
             var b = e.target.closest('[data-sg-block]');
             if (b) { goTo(b.getAttribute('data-sg-block')); return; }
-            if (e.target.closest('[data-sg-ask]')) {
-                var ask = host.askQuestions;
-                close();
-                if (typeof ask === 'function') ask();
-            }
+            var p = e.target.closest('[data-sg-print]');
+            if (p) { printSheet(p); return; }
+            if (e.target.closest('[data-sg-ask]')) leave(host.askQuestions, []);
         });
         d.querySelector('.sd-sg-strip').addEventListener('keydown', stripKeys);
         pgUI.dialog.on(d, 'hidden', function () { if (W === mine) cleanup(); });
@@ -152,6 +159,26 @@ StyleDesigner.definePart('styleguide', function (K) {
             sdToast(esc(_sdT('Network error.')), 'error', 5000);
             close();
         });
+    }
+
+    // "Print or save as PDF", and "Print" alone at a phone's width.
+    function printLabel() {
+        return '<span class="bi bi-printer me-1" aria-hidden="true"></span><span class="sd-sg-long">' + esc(_sdT('Print or save as PDF')) +
+            '</span><span class="sd-sg-short">' + esc(_sdT('Print')) + '</span>';
+    }
+
+    // The day the sheet is drawn, as the sheet and the printed pages say it.
+    function today() {
+        try { return new Date().toLocaleDateString(document.documentElement.lang || undefined, { day: 'numeric', month: 'long', year: 'numeric' }); }
+        catch (e) { return new Date().toDateString(); }
+    }
+
+    // Closes the sheet for somewhere else in the designer: focus goes there,
+    // not back to the Preview button.
+    function leave(fn, args) {
+        if (W) W.stay = true;
+        close();
+        if (typeof fn === 'function') fn.apply(null, args);
     }
 
     // Grey lines in the blocks' places until the frame is drawn.
@@ -217,7 +244,7 @@ StyleDesigner.definePart('styleguide', function (K) {
         if (w.io) w.io.disconnect();
         if (w.el.parentNode) w.el.parentNode.removeChild(w.el);
         var b = w.host.button;
-        if (b && b.isConnected) b.focus();
+        if (!w.stay && b && b.isConnected) b.focus();
     }
 
     // The strip of block names and, for a design without variables, the
@@ -351,6 +378,8 @@ StyleDesigner.definePart('styleguide', function (K) {
             frame.style.visibility = '';
             var wait = body.querySelector('.sd-sg-wait');
             if (wait) wait.parentNode.removeChild(wait);
+            var pb = W.el.querySelector('[data-sg-print]');
+            if (pb) pb.disabled = false;
             watchComponents();
         };
         // Shown once every stylesheet has loaded (the forced states read
@@ -372,6 +401,15 @@ StyleDesigner.definePart('styleguide', function (K) {
         ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (n) { listen(doc, n, own, { passive: true }); });
         listen(doc, 'keydown', function (e) {
             if (e.key === 'Escape') { e.preventDefault(); close(); }
+        });
+        // A name opens its variable or its component; Enter on a name is
+        // its click.
+        listen(doc, 'click', function (e) {
+            var a = e.target.closest('a.pgsg-link');
+            if (!a) return;
+            e.preventDefault();
+            if (a.hasAttribute('data-sg-var')) leave(W.host.openVariable, [a.getAttribute('data-sg-var')]);
+            else if (a.hasAttribute('data-sg-comp-open')) leave(W.host.openComponent, [parseInt(a.getAttribute('data-sg-comp-open'), 10) || 0]);
         });
         if (left <= 0) show();
     }
@@ -430,13 +468,58 @@ StyleDesigner.definePart('styleguide', function (K) {
             '.pgsg-more{display:block;width:100%;border:0;border-top:1px solid var(--bs-border-color,#dee2e6);background:none;padding:8px;font-size:13px;color:inherit}' +
             '.pgsg-ghost{padding:14px}.pgsg-ghost i{display:block;height:10px;border-radius:4px;background:var(--bs-secondary-bg,#e9ecef);margin:0 0 10px}' +
             '.pgsg-note{padding:14px;font-size:13px}' +
-            '@media (max-width:719.98px){.pgsg-crow{grid-template-columns:repeat(2,minmax(0,1fr))}.pgsg-crow>.pgsg-cn{grid-column:1/-1}}' +
-            '@media (max-width:767.98px){' +
+            '.pgsg a.pgsg-link{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer}' +
+            '.pgsg a.pgsg-link:hover{text-decoration-thickness:2px}' +
+            '.pgsg a.pgsg-link:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:2px}' +
+            // The phone's one column is the screen's only: on paper the
+            // page's width keeps the sheet's own grid.
+            '@media screen and (max-width:719.98px){.pgsg-crow{grid-template-columns:repeat(2,minmax(0,1fr))}.pgsg-crow>.pgsg-cn{grid-column:1/-1}}' +
+            '@media screen and (max-width:767.98px){' +
                 '.pgsg{padding:20px 16px 60px}' +
                 '.pgsg-sw{grid-template-columns:repeat(2,minmax(0,1fr))}' +
                 '.pgsg-comps{grid-template-columns:minmax(0,1fr)}' +
                 '.pgsg-trow{flex-direction:column;align-items:stretch;gap:4px}.pgsg-tm{flex:none;text-align:left}' +
                 '.pgsg-sn{flex-basis:96px}' +
+            '}' + printCss();
+    }
+
+    // A text in a CSS string: quotes, backslashes and line ends escaped.
+    function cssStr(v) {
+        return '"' + String(v == null ? '' : v).replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ').replace(/<\//g, '<\\/') + '"';
+    }
+
+    // "1 of 3" as a CSS content list: the translated words around the two
+    // page counters, in the order the language puts them.
+    function pageCountCss() {
+        var t = String(_sdT('{var:1} of {var:2}', ['\u0001', '\u0002']));
+        return t.split(/(\u0001|\u0002)/).filter(function (x) { return x !== ''; }).map(function (x) {
+            return x === '\u0001' ? 'counter(page)' : (x === '\u0002' ? 'counter(pages)' : cssStr(x));
+        }).join(' ');
+    }
+
+    // The printed sheet: every page carries the design's name, "Style
+    // guide" and the day at the top, the site's address and the page count
+    // at the foot; colours print as colours in the mode the sheet shows; a
+    // row, a card and a control's row are never split, a heading never ends
+    // a page; components are printed whole and the names' underlines left
+    // out.
+    function printCss() {
+        var box = 'font-family:system-ui,sans-serif;font-size:8.5pt;color:#6b7280;';
+        return '@page{size:A4 portrait;margin:18mm 14mm 16mm;' +
+                '@top-left{' + box + 'font-weight:600;color:#111827;content:' + cssStr(W.host.name || _sdT('Style guide')) + '}' +
+                '@top-center{' + box + 'content:' + cssStr(_sdT('Style guide')) + '}' +
+                '@top-right{' + box + 'content:' + cssStr(W.day) + '}' +
+                '@bottom-left{' + box + 'content:' + cssStr(location.hostname) + '}' +
+                '@bottom-right{' + box + 'content:' + pageCountCss() + '}' +
+            '}' +
+            '@media print{' +
+                'html,body.pgsg-body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:var(--bs-body-bg,#fff)}' +
+                '.pgsg{padding:0}' +
+                '.pgsg-block{padding:4px 0 20px}' +
+                '.pgsg-h,.pgsg-h3{break-after:avoid}' +
+                '.pgsg-card,.pgsg-trow,.pgsg-crow,.pgsg-srow,.pgsg-pair,.pgsg-scale,.pgsg-fonts{break-inside:avoid}' +
+                '.pgsg-cbody.is-cut{max-height:none}.pgsg-cbody.is-cut:after,.pgsg-more{display:none}' +
+                '.pgsg a.pgsg-link{text-decoration:none}' +
             '}';
     }
 
@@ -444,9 +527,7 @@ StyleDesigner.definePart('styleguide', function (K) {
 
     function sheetHtml() {
         var g = W.guide;
-        var day = '';
-        try { day = new Date().toLocaleDateString(document.documentElement.lang || undefined, { day: 'numeric', month: 'long', year: 'numeric' }); }
-        catch (e) { day = new Date().toDateString(); }
+        var day = W.day;
         var h = '<div class="pgsg"><div class="pgsg-top"><strong>' + esc(W.host.name || _sdT('Style guide')) + '</strong>' +
             '<span class="pgsg-mute">' + esc(_sdT('Style guide')) + '</span><span class="pgsg-day pgsg-mute">' + esc(day) + '</span></div>';
         h += block('colours', coloursHtml(g.blocks.colours));
@@ -464,6 +545,14 @@ StyleDesigner.definePart('styleguide', function (K) {
             '<div class="pgsg-h" role="heading" aria-level="2" id="pgsg-h-' + key + '">' + esc(b.title || '') + '</div>' + inner + '</section>';
     }
 
+    // A name that is a variable, as a link to it in Settings, Theme,
+    // Variables; plain while the design has no variables file (its blocks
+    // show the Theme pane's values) or for a name without a variable.
+    function varName(name, key) {
+        if (!key || !W.guide.has_variables) return '<span class="pgsg-name">' + esc(name) + '</span>';
+        return '<a href="#" class="pgsg-name pgsg-link" data-sg-var="' + attr(key) + '" title="' + attr(_sdT('Open in Variables')) + '">' + esc(name) + '</a>';
+    }
+
     // A colour's value in the mode the sheet shows.
     function colourOf(rows, key) {
         for (var i = 0; i < rows.length; i++) if (rows[i].key === key) return rows[i];
@@ -475,7 +564,7 @@ StyleDesigner.definePart('styleguide', function (K) {
         (b.rows || []).forEach(function (r) {
             h += '<div class="pgsg-card"><div class="pgsg-swt" aria-hidden="true"><i style="background:' + attr(cssVal(r.light)) + '"></i>' +
                 (W.hasDark ? '<i style="background:' + attr(cssVal(r.dark)) + '"></i>' : '') + '</div>' +
-                '<div class="pgsg-tx"><span class="pgsg-name">' + esc(r.name) + '</span>' +
+                '<div class="pgsg-tx">' + varName(r.name, r.key) +
                 (r.custom ? '<span class="pgsg-tag">' + esc(_sdT('Your own')) + '</span>' : '') +
                 '<br><span class="pgsg-code pgsg-mute">' + esc(r.light) + (W.hasDark ? ' · ' + esc(r.dark) : '') + '</span></div></div>';
         });
@@ -518,14 +607,14 @@ StyleDesigner.definePart('styleguide', function (K) {
         var h = '<div class="pgsg-fonts">';
         (b.fonts || []).forEach(function (f) {
             h += '<div class="pgsg-card pgsg-font"><div class="pgsg-aa2" style="font-family:' + attr(cssVal(f.value)) + '" aria-hidden="true">Aa Bb Cc 123</div>' +
-                '<span class="pgsg-name">' + esc(f.name) + '</span><br><span class="pgsg-code pgsg-mute">' + esc(f.value) + '</span></div>';
+                varName(f.name, f.key) + '<br><span class="pgsg-code pgsg-mute">' + esc(f.value) + '</span></div>';
         });
         h += '</div>';
         (b.styles || []).forEach(function (s) {
             var meta = [s.size, s.px != null ? s.px + ' px' : '', s.weight].filter(function (x) { return x !== '' && x != null; }).join(' · ');
             var note = s.source === 'stylesheet' ? _sdT('changed in the stylesheet') : (s.source === 'class' ? _sdT('your own class') : '');
             h += '<div class="pgsg-trow"><div class="pgsg-ts pgsg-live" inert>' + styleSample(s, sample) + '</div>' +
-                '<div class="pgsg-tm"><span class="pgsg-name">' + esc(s.name) + '</span><br><span class="pgsg-code pgsg-mute">' + esc(meta) + '</span>' +
+                '<div class="pgsg-tm">' + varName(s.name, s.size_var) + '<br><span class="pgsg-code pgsg-mute">' + esc(meta) + '</span>' +
                 (note ? '<br><span class="pgsg-mute">' + esc(note) + '</span>' : '') + '</div></div>';
         });
         var heading = (b.fonts && b.fonts[0]) ? b.fonts[0].value : '';
@@ -545,7 +634,7 @@ StyleDesigner.definePart('styleguide', function (K) {
         var h = '<div id="pgsg-spacing">';
         (b.rows || []).forEach(function (r) {
             var px = (r.px == null) ? 0 : Number(r.px);
-            h += '<div class="pgsg-srow' + (r.custom ? ' is-own' : '') + '"><span class="pgsg-sn">' + esc(r.name) + '</span>' +
+            h += '<div class="pgsg-srow' + (r.custom ? ' is-own' : '') + '"><span class="pgsg-sn">' + varName(r.name, r.key) + '</span>' +
                 '<span class="pgsg-sb"><i style="width:' + Math.max(1, Math.round(px * 3)) + 'px' + (r.custom && own ? ';color:' + attr(own) : '') + '"></i></span>' +
                 '<span class="pgsg-sp pgsg-mute">' + esc(r.px != null ? r.px + ' px' : r.size) + '</span></div>';
         });
@@ -562,7 +651,7 @@ StyleDesigner.definePart('styleguide', function (K) {
             if (r.key === 'radius') tile = '<u style="border-radius:' + attr(v) + '"></u>';
             else if (r.key === 'border_width') tile = '<u style="border:' + attr(v || '1px') + ' solid currentColor;opacity:.8"></u>';
             else tile = '<u class="shadow" style="border-color:transparent"></u>';
-            h += '<div class="pgsg-card pgsg-tile">' + tile + '<span class="pgsg-name">' + esc(r.name) + '</span><br>' +
+            h += '<div class="pgsg-card pgsg-tile">' + tile + varName(r.name, r.key) + '<br>' +
                 '<span class="pgsg-code pgsg-mute">' + esc(r.label != null && r.label !== '' ? r.label : '—') + '</span></div>';
         });
         return h + '</div>';
@@ -619,8 +708,12 @@ StyleDesigner.definePart('styleguide', function (K) {
         if (!rows.length) return '<p class="pgsg-mute">' + esc(_sdT('This design has no shared component yet.')) + '</p>';
         var h = '<div class="pgsg-comps">';
         rows.forEach(function (c) {
-            h += '<div class="pgsg-card" data-sg-comp="' + (parseInt(c.id, 10) || 0) + '"><div class="pgsg-chead">' +
-                '<span class="bi bi-puzzle" aria-hidden="true"></span><span class="pgsg-name">' + esc(c.name) + '</span>' +
+            var id = parseInt(c.id, 10) || 0;
+            var name = id > 0
+                ? '<a href="#" class="pgsg-name pgsg-link" data-sg-comp-open="' + id + '" title="' + attr(_sdT('Open the component')) + '">' + esc(c.name) + '</a>'
+                : '<span class="pgsg-name">' + esc(c.name) + '</span>';
+            h += '<div class="pgsg-card" data-sg-comp="' + id + '"><div class="pgsg-chead">' +
+                '<span class="bi bi-puzzle" aria-hidden="true"></span>' + name +
                 '<span class="pgsg-mute">' + esc(pagesText(c.pages)) + '</span></div>' +
                 '<div class="pgsg-ghost" aria-hidden="true"><i style="width:90%"></i><i style="width:72%"></i><i style="width:54%"></i></div></div>';
         });
@@ -629,26 +722,31 @@ StyleDesigner.definePart('styleguide', function (K) {
 
     // ── Components, drawn as they come within a screen of the view ──────
 
+    // Draws the cards given, fetching the trees not loaded yet first; then
+    // `then`, if given.
+    function drawCards(list, then) {
+        var mine = W;
+        var ids = [];
+        list.forEach(function (card) {
+            var id = parseInt(card.getAttribute('data-sg-comp'), 10);
+            var c = K.sharedCache[id];
+            if (id > 0 && !(c && c.tree)) ids.push(id);
+        });
+        var done = function () {
+            if (W !== mine) return;
+            list.forEach(drawCard);
+            if (then) then();
+        };
+        if (ids.length) K.prefetchShared(ids, done);
+        else done();
+    }
+
     function watchComponents() {
         var doc = W.doc;
         var cards = doc.querySelectorAll('[data-sg-comp]');
         if (!cards.length) return;
         var win = doc.defaultView;
-        var mine = W;
-        var draw = function (list) {
-            var ids = [];
-            list.forEach(function (card) {
-                var id = parseInt(card.getAttribute('data-sg-comp'), 10);
-                var c = K.sharedCache[id];
-                if (id > 0 && !(c && c.tree)) ids.push(id);
-            });
-            var done = function () {
-                if (W !== mine) return;
-                list.forEach(drawCard);
-            };
-            if (ids.length) K.prefetchShared(ids, done);
-            else done();
-        };
+        var draw = function (list) { drawCards(list); };
         if (!win.IntersectionObserver) { draw(Array.prototype.slice.call(cards)); return; }
         W.io = new win.IntersectionObserver(function (entries) {
             var list = [];
@@ -698,6 +796,48 @@ StyleDesigner.definePart('styleguide', function (K) {
             more.textContent = _sdT('Show all of it');
             card.appendChild(more);
         }
+    }
+
+    // ── Print ───────────────────────────────────────────────────────────
+
+    // "Print or save as PDF": every component not drawn yet is drawn and
+    // its pictures loaded (6 s at most), then the browser's print window
+    // opens on the frame alone. The button reads "Getting it ready…" until
+    // then.
+    function printSheet(btn) {
+        if (!W || !W.doc || W.printing) return;
+        var mine = W;
+        W.printing = true;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        btn.textContent = _sdT('Getting it ready…');
+        var finish = function () {
+            if (W !== mine || !W.printing) return;
+            W.printing = false;
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+            btn.innerHTML = printLabel();
+            var win = W.frame.contentWindow;
+            try { win.focus(); win.print(); } catch (e) { sdToast(esc(_sdT('The sheet could not be printed.')), 'error', 5000); }
+        };
+        var t = setTimeout(finish, 6000);
+        W.off.push(function () { clearTimeout(t); });
+        var ghosts = Array.prototype.filter.call(W.doc.querySelectorAll('[data-sg-comp]'), function (c) {
+            if (!c.querySelector('.pgsg-ghost')) return false;
+            if (W.io) W.io.unobserve(c);
+            return true;
+        });
+        drawCards(ghosts, function () {
+            var imgs = Array.prototype.filter.call(W.doc.images, function (i) { return !i.complete; });
+            var left = imgs.length;
+            if (!left) { finish(); return; }
+            var one = function () { if (--left <= 0) finish(); };
+            imgs.forEach(function (i) {
+                i.loading = 'eager';
+                i.addEventListener('load', one);
+                i.addEventListener('error', one);
+            });
+        });
     }
 
     // ── Forced states ────────────────────────────────────────────────────

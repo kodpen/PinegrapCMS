@@ -184,6 +184,7 @@ StyleDesigner.definePart('overrides', function (K) {
     }
 
     function firstSeen() {
+        if (K._sdTipsOff()) return true;
         try { return localStorage.getItem(FIRST_KEY) === '1'; } catch (e) { return true; }
     }
 

@@ -239,7 +239,7 @@ function select_similar_test_part($code)
 		'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "similar") factory = f; } };' . "\n"
 		. $part . "\n"
 		. 'function fmt(s, v) { var l = Array.isArray(v) ? v : [v]; return String(s).replace(/\{var(?::(\d+))?\}/g, function (m, i) { return String(l[i ? i - 1 : 0]); }); }'
-		. 'var P = factory({ _sdT: fmt, esc: function (s) { return String(s); } });'
+		. 'var P = factory({ _sdT: fmt, esc: function (s) { return String(s); }, _sdTipsOff: function () { return false; } });'
 		. 'function find(t, id) { if (t._id === id) return t; for (var i = 0; i < t.children.length; i++) { var f = find(t.children[i], id); if (f) return f; } return null; }'
 		. 'var got = { ids: null, said: "" };'
 		. 'function host(id, mayEdit) { return { node: find(T, id), tree: T, mayEdit: mayEdit || function () { return true; },'

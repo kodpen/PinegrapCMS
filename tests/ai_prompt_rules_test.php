@@ -28,6 +28,7 @@ if (!defined('PG_INIT_LOADED')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_sort.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/store.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/context.php');
 
@@ -56,6 +57,7 @@ function ai_prompt_rules_test_builders()
 		'includes/workspace/scheduled_draft.php' => array('ws_scheduled_draft_messages', 'writer'),
 		'includes/translate/engine_ai.php'       => array('pg_tr_ai_instructions', 'writer'),
 		'includes/fn/ai_write.php'               => array('pg_ai_write_messages', 'writer'),
+		'includes/fn/document_sort.php'          => array('pg_document_sort_messages', 'writer'),
 		'includes/workspace/flow_draft.php'      => array('ws_flow_ai_sketch_messages', 'writer'),
 		'includes/workspace/mail_triage.php'     => array('ws_mail_triage_prompt', 'writer'),
 		'includes/workspace/flow_ai_box.php'     => array('ws_step_ai_messages', 'writer'),

@@ -4754,16 +4754,20 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     // it alone: no form state read or used up, no CAPTCHA issued, no token.
     $search = defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
     $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+    $as = pg_preview_as_viewer();
     $audience = pg_comments_widget_audience($search, $background, check_edit_access($page['page_folder']) == true, _pg_acct_signed_in());
+    // A Preview widget draws for the visitor the operator chose, still as a
+    // background render with no session of its own.
+    if ($as['preview'] && !$search) $audience['signed_in'] = $as['signed_in'];
     $record_form = ($record !== null)
         ? array('form_editor_user_id' => $record['form']['form_editor_user_id'], 'form_editor_username' => $record['form']['form_editor_username'])
         : null;
     $viewer = pg_comments_viewer($audience['staff'], $audience['session'] ? $record_form : null, !$audience['session']);
     $staff = $is_staff = $audience['staff'];
     $signed_in = $audience['signed_in'];
-    $user_id = ($audience['session'] && defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
-    $role = ($audience['session'] && defined('USER_ROLE')) ? USER_ROLE : '';
-    $email = ($audience['session'] && defined('USER_EMAIL_ADDRESS')) ? (string) USER_EMAIL_ADDRESS : '';
+    $user_id = $audience['session'] ? $as['id'] : 0;
+    $role = ($audience['session'] && $as['role'] !== null) ? $as['role'] : '';
+    $email = $audience['session'] ? $as['email'] : '';
     $form_editor = !empty($viewer['form_editor']) && $audience['session'];
 
     // Which comments, and which page of them. A page asked for by number
@@ -4922,7 +4926,8 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $submitter_email = ($record !== null) ? (string) get_submitter_email_address($post_id) : '';
         $same_as_submitter = ($email !== '') && ($submitter_email !== '') && (mb_strtolower($email) === mb_strtolower($submitter_email));
 
-        if ($signed_in) {
+        // The sample account of a Preview watches nothing.
+        if ($signed_in && !$as['sample']) {
             $who = "(user_id = '" . $user_id . "')" . (($email !== '') ? " || (email_address = '" . e($email) . "')" : '');
             $is_watcher = ((int) db_value("SELECT COUNT(*) FROM watchers WHERE (" . $who . ") AND (page_id = '" . $page_id . "')" . pg_comments_thread_sql($post_thread)) > 0);
 
@@ -4965,7 +4970,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     $author = '';
 
     if (($name_mode === 'fixed') && $can_comment) {
-        $author = pg_comment_member_name(defined('USER_USERNAME') ? USER_USERNAME : '', pg_comment_member_contact($user_id), pg_sw_page_is_visual($page_id), false);
+        $author = pg_comment_member_name($as['username'], pg_comment_member_contact($user_id), pg_sw_page_is_visual($page_id), false);
     }
 
     $reply_name = '';
@@ -5045,7 +5050,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
 
     if (($name_mode === 'chosen') && $can_comment) {
         $options_html = pg_comments_name_options_html(
-            pg_comment_name_choices(defined('USER_USERNAME') ? USER_USERNAME : '', pg_comment_member_contact($user_id), pg_sw_page_is_visual($page_id)),
+            pg_comment_name_choices($as['username'], pg_comment_member_contact($user_id), pg_sw_page_is_visual($page_id)),
             $field('name_type'),
             lang('Anonymous'));
     }

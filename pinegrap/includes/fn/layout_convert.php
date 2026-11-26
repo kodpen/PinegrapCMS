@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences', 'registration entrance', 'membership entrance', 'my account', 'update address book', 'search results');
 }
 
 /**
@@ -720,7 +720,10 @@ function pg_layout_convert_types()
  * control's name), 'form:<action>' (the attributes of a <form>: it is
  * bound to that action, or with 'strip' its tags go), 'section:<name>'
  * (the node bound to that section in its place), 'state:<key>' (the page
- * setting's words, pg_layout_convert_state()).
+ * setting's words, pg_layout_convert_state()), 'drop:<code>' (no element:
+ * reported with that code), 'unlink:<code>' (a link's address with no
+ * element: the link goes, reported with that code), 'cut:<code>' (the form printing it goes, with
+ * the wrappers around it that hold no other form: reported with that code).
  *
  * 'if': a condition: array('becomes' => 'widget' (the widget draws what it
  * holds: skipped), 'flag' (shown only under the widget's flag 'flag'),
@@ -734,7 +737,9 @@ function pg_layout_convert_types()
  * only, before the bare key. 'flag' may list flags: each nested in the
  * one before. 'section' (a block the widget fills with its own markup:
  * the node bound to that section stands in its place, what the block
- * holds is the widget's; 'wrap' => markup holding it at '%s', 'inner' the
+ * holds is the widget's, unless 'hold' is true: then the block is read and
+ * held inside the section's node, its first submit button bound to the
+ * action 'button' names; 'drop' takes a 'code' to report it with; 'wrap' => markup holding it at '%s', 'inner' the
  * same inside its flags, 'flag' as for 'token'). A 'flag' inside a tag's
  * attributes is dropped, or with 'in_tag' => 'keep' drawn always.
  * 'token' (a block the widget prints whole as the
@@ -777,9 +782,16 @@ function pg_layout_convert_types()
  * it: no list is added), 'cross_sell' => the id of the classic cross-sell
  * container (its element becomes the widget's cross-sell part), 'lists'
  * => true (every 'list' loop is a place of the widget's list, its rows
- * told apart by row flags; otherwise a second one is dropped), 'scripts'
+ * told apart by row flags, a 'list:<row flag>' loop's body under that
+ * flag; otherwise a second one is dropped), 'scripts'
  * => 'keep' (a <script> of the layout is kept as a raw block), 'replace'
- * => array(text => text) (put in the markup before it is read).
+ * => array(text => text) (put in the markup before it is read),
+ * 'page_links' => array(token => page setting) (a link bound to the token
+ * is bound to the page the setting names instead: '__page_link'),
+ * 'when' => array(flag => array('tokens' => list, 'op' => operator, 'value'
+ * => operand)) (a flag of the map that is no widget flag: what it covers is
+ * shown only when a value passes the test, show_if; several tokens are
+ * joined by 'any', at most three).
  *
  * @param string $type
  * @return array|null
@@ -843,6 +855,32 @@ function pg_layout_piece_map($type)
 
         case 'order preview':
             return _pg_lc_order_preview_map($none);
+
+        case 'view order':
+            return _pg_lc_view_order_map($none);
+
+        case 'login':
+        case 'forgot password':
+        case 'set password':
+        case 'change password':
+            return _pg_lc_password_map($type, $none);
+
+        case 'my account profile':
+        case 'email preferences':
+            return _pg_lc_account_form_map($type, $none);
+
+        case 'registration entrance':
+        case 'membership entrance':
+            return _pg_lc_entrance_map($type, $none);
+
+        case 'update address book':
+            return _pg_lc_address_book_map($none);
+
+        case 'my account':
+            return _pg_lc_my_account_map($none);
+
+        case 'search results':
+            return _pg_lc_search_results_map($none);
 
         case 'form item view':
             return array(
@@ -1612,6 +1650,521 @@ function _pg_lc_order_preview_map($none)
     );
 }
 
+// The view order (_render_system_widget_order_view()): one record, so no
+// list is added. The recipients are read once, their heading the first
+// recipient's values (a site shipping to several reports it); the items
+// the widget's order.items list, their event, schedule and shipped
+// quantity its row values; the parcels its order.parcels list; the
+// product form and gift card blocks the widget's parts. The totals,
+// billing and payment under the widget's flags; the recurring charges,
+// applied offers and gift cards, the receipt messages and the custom
+// forms' answers have no element and are reported.
+function _pg_lc_view_order_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $keep = array('becomes' => 'keep');
+    $widget = array('becomes' => 'widget');
+    $full = array('becomes' => 'keep', 'state' => array('full_description'));
+    $echo = array(
+        '$order_number' => 'token:__order_no',
+        '$reference_code' => 'token:__reference_code',
+        "get_absolute_time(array('timestamp' => \$order_date, 'size' => 'long'))" => 'token:__order_date',
+        "h(\$recipient['ship_to_name'])" => 'token:__ship_to_name',
+        // The one-line address starts with the name.
+        "h(\$recipient['name'])" => 'none',
+        "h(\$recipient['address'])" => 'token:__shipping_full_address',
+        "get_absolute_time(array('timestamp' => strtotime(\$recipient['arrival_date']), 'type' => 'date', 'size' => 'long'))" => 'token:__arrival_date',
+        "get_shipping_tracking_url(\$shipping_tracking_number['number'],\$recipient['shipping_method_code'])" => 'token:__tracking_link',
+        "h(\$shipping_tracking_number['number'])" => 'token:__tracking_code',
+        "h(\$item['name'])" => 'token:__item_name',
+        "h(\$item['short_description'])" => 'token:__item_short_description',
+        "h(\$item['calendar_event']['name'])" => 'token:__item_event_name',
+        "\$item['calendar_event']['date_and_time_range']" => 'token:__item_event_date',
+        "h(\$item['recurring_payment_period'])" => 'token:__item_payment_period',
+        "pg_format_number(\$item['recurring_number_of_payments'], 0)" => 'token:__item_payment_count',
+        "get_absolute_time(array('timestamp' => strtotime(\$item['recurring_start_date']), 'type' => 'date', 'size' => 'long'))" => 'token:__item_first_payment_date',
+        "pg_format_number(\$item['quantity'], 0)" => 'token:__item_qty',
+        "pg_format_number(\$item['shipped_quantity'], 0)" => 'token:__item_shipped_qty',
+        "\$item['price_info']" => 'token:__item_price',
+        "\$item['amount_info']" => 'token:__item_total',
+        // The shipping row's first cell spans the item and its description.
+        '(2+$number_of_shipped_quantity_columns)' => 'text:2',
+        "h(\$recipient['shipping_method_name'])" => 'token:__shipping_method',
+        "\$recipient['shipping_cost_info']" => 'token:__order_shipping',
+        '$subtotal_info' => 'token:__order_subtotal',
+        '$discount_info' => 'token:__order_discount',
+        '$tax_info' => 'token:__order_tax',
+        '$shipping_info' => 'token:__order_shipping',
+        '$gift_card_discount_info' => 'token:__order_gift_card_discount',
+        '$surcharge_info' => 'token:__order_surcharge',
+        'h($number_of_installment)' => 'token:__installment_count',
+        '$installment_charges_info' => 'token:__installment_charges',
+        '$total_info' => 'token:__order_total',
+        'h($custom_field_1_label)' => 'token:__order_custom_field_1_label',
+        'h($custom_field_1)' => 'token:__order_custom_field_1',
+        'h($custom_field_2_label)' => 'token:__order_custom_field_2_label',
+        'h($custom_field_2)' => 'token:__order_custom_field_2',
+        'h($billing_zip_code)' => 'token:__billing_zip',
+        'h($billing_phone_number)' => 'token:__billing_phone',
+        'h($billing_fax_number)' => 'token:__billing_fax',
+        'h($billing_email_address)' => 'token:__billing_email',
+        'h($po_number)' => 'token:__order_po_number',
+        'h($payment_method_label)' => 'token:__payment_method_pretty',
+        'h($card_type)' => 'token:__card_type',
+        'h($card_number)' => 'token:__card_number_masked',
+        'h($my_account_url)' => 'token:__my_account_url',
+        // The reorder link's address, put together below ('replace').
+        'OUTPUT_PATH' => 'none',
+        'OUTPUT_SOFTWARE_DIRECTORY' => 'none',
+        '$order_id' => 'token:__order_id',
+        'get_token_query_string_field()' => 'none',
+    );
+    foreach (array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'country') as $part) {
+        $echo['h($billing_' . $part . ')'] = 'token:__billing_' . $part;
+    }
+    return array(
+        'echo' => $none + $echo,
+        'if' => array(
+            // The widget shows a completed order: its number, never the
+            // reference code of an incomplete one, nor its buttons.
+            "\$status != 'incomplete'" => $keep,
+            "\$status === 'incomplete'" => $widget,
+            // Today's and the recurring charges apart: the widget's items
+            // are one list, with no recurring totals.
+            '$recurring_items' => array('becomes' => 'drop'),
+            // Opens the items' column in one block and closes it in another.
+            '$nonrecurring_items' => $keep,
+            "\$recipient['in_nonrecurring']" => $keep,
+            "\$item['in_nonrecurring']" => $keep,
+            // A heading per recipient: the first recipient's values.
+            "\$recipient['ship_to_heading']" => array('becomes' => 'flag', 'flag' => 'has_shipping', 'drop_when' => array('multi_recipient' => 'recipients')),
+            "ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'" => array('becomes' => 'keep', 'state' => array('multi_recipient')),
+            "\$status != 'incomplete' and \$recipient['shipping_tracking_numbers']" => $flag('has_tracking_code'),
+            // The plural's "s": the list holds many.
+            "count(\$recipient['shipping_tracking_numbers']) > 1" => $keep,
+            // The comma between numbers: the list's rows stand side by side.
+            '$key != 0' => $widget,
+            // The number is the link; an unknown carrier's link is empty.
+            "get_shipping_tracking_url(\$shipping_tracking_number['number'],\$recipient['shipping_method_code']) != ''" => $keep,
+            "\$recipient['address']" => $keep,
+            "\$recipient['name']" => $widget,
+            '$arrival_dates' => $flag('has_arrival_date'),
+            // The date itself, also for a named arrival date.
+            "\$recipient['arrival_date_custom']" => $keep,
+            "\$recipient['non_donations_in_nonrecurring']" => $keep,
+            '$shipped_quantities_exist == TRUE' => $flag('shows_shipped_quantity'),
+            '$shipped_quantities_exist' => $flag('shows_shipped_quantity'),
+            "\$item['shipped_quantity'] > 0" => $flag('item_shipped_qty'),
+            "\$product_description_type == 'full_description'" => $full,
+            "\$item['image_url']" => $keep,
+            "\$item['image_url'] and (\$product_description_type == 'full_description')" => $full,
+            "\$item['calendar_event']" => $flag('item_event_name'),
+            "\$item['recurring_schedule']" => $flag('item_payment_period'),
+            "\$item['recurring_number_of_payments']" => $flag('item_payment_count'),
+            '$start_date' => $flag('item_first_payment_date'),
+            "\$item['gift_card']" => array('becomes' => 'token', 'token' => '__item_gift_card_html'),
+            "\$item['form']" => array('becomes' => 'token', 'token' => '__item_form_data_html'),
+            // A donation's quantity and price are shown too.
+            "\$item['selection_type'] != 'donation'" => $keep,
+            "\$recipient['shipping']" => $flag('has_shipping'),
+            "\$recipient['shipping_method_description']" => $widget,
+            '$show_subtotal' => $keep,
+            '$discount_info' => $flag('has_discount'),
+            '$tax_info' => $flag('has_tax'),
+            '$shipping_info' => $flag('has_shipping_cost'),
+            '$gift_card_discount_info' => $flag('has_gift_card_discount'),
+            '$number_of_applied_gift_cards > 1' => $keep,
+            '$surcharge_info' => $flag('has_surcharge'),
+            '$installment_charges_info' => $flag('has_installment_charges'),
+            // The widget shows the amounts charged: no converted total.
+            '$base_currency_total_info' => $widget,
+            '$total_disclaimer' => $widget,
+            '$custom_field_1_label and $custom_field_1' => $flag('shows_custom_field_1'),
+            '$custom_field_2_label and $custom_field_2' => $flag('shows_custom_field_2'),
+            '$billing_company' => $flag('billing_has_company'),
+            '$billing_address_2' => $flag('billing_has_address_2'),
+            '$billing_fax_number' => $flag('billing_has_fax'),
+            '$po_number' => $flag('has_po_number'),
+            '$tax_exempt' => $flag('is_tax_exempt'),
+            '$payment_method' => $flag('has_payment_method'),
+            "\$payment_method == 'Credit/Debit Card'" => $flag('has_card_number'),
+        ),
+        'else' => array(
+            "\$status != 'incomplete'" => 'widget',
+            "\$product_description_type == 'full_description'" => 'unless',
+            "get_shipping_tracking_url(\$shipping_tracking_number['number'],\$recipient['shipping_method_code']) != ''" => 'widget',
+            "\$recipient['arrival_date_custom']" => 'widget',
+        ),
+        'loop' => array(
+            "\$recipient['shipping_tracking_numbers'] as \$key => \$shipping_tracking_number" => 'source:order.parcels',
+            '$recipients as $recipient' => 'keep',
+            "\$recipient['items'] as \$item" => 'source:order.items',
+        ),
+        'replace' => array('/order_history_reorder.php?id=^^__order_id^^' => '^^__reorder_url^^'),
+        'record' => true,
+    );
+}
+
+// The login page and the three password pages (login_form,
+// forgot_password, set_password, change_password widgets): one form each,
+// whose <form> tags go (the widget draws its own, posting to the classic
+// handler, so the controls keep their classic names). The widget fills,
+// drops and checks the controls itself: a password hint box goes while
+// the site asks for none, the current password while the account has
+// none. The strong password rules are the widget's password_rules section.
+function _pg_lc_password_map($type, $none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $map = array(
+        'echo' => $none,
+        'if' => array(
+            '$strong_password_help' => array('becomes' => 'section', 'section' => 'password_rules'),
+            // The widget drops the hint box (and a wrapper left empty)
+            // while the site asks for no hint.
+            'PASSWORD_HINT' => array('becomes' => 'keep'),
+        ),
+        'else' => array(),
+        'loop' => array(),
+        'forms' => 'strip',
+        'record' => true,
+    );
+    switch ((string)$type) {
+        case 'login':
+            $map['echo'] += array(
+                "\$google_signin ?? ''" => 'section:google_signin',
+                'h($forgot_password_url)' => 'token:__forgot_password_url',
+            );
+            // The box's label holds words of its own: a flag, not the
+            // widget's drop of the control alone.
+            $map['if']['REMEMBER_ME'] = $flag('shows_remember_me');
+            $map['if']['$forgot_password_url'] = $flag('has_forgot_password_link');
+            break;
+        case 'forgot password':
+            $map['if']['!$screen'] = array('becomes' => 'keep');
+            // The hint screen: forgot_password.php shows it no more (a
+            // hint would tell which addresses hold an account), so the
+            // setting it needs is never on.
+            $map['if']["elseif:\$screen == 'password_hint'"] = array('becomes' => 'drop', 'state' => array('password_hint_screen'));
+            break;
+        case 'set password':
+            $map['echo']['h($email)'] = 'token:__email';
+            break;
+        case 'change password':
+            $map['echo']['h($my_account_url)'] = 'token:__my_account_url';
+            // The widget drops a link bound to an empty address.
+            $map['if']['$my_account_url'] = array('becomes' => 'keep');
+            $map['if']['!empty($password_not_set)'] = $flag('password_not_set');
+            $map['else']['!empty($password_not_set)'] = 'has_password';
+            break;
+    }
+    return $map;
+}
+
+// The profile and e-mail preferences pages (account_profile,
+// email_preferences widgets): the member's own form, its <form> tags gone
+// as on the password pages. The widget fills the controls by their classic
+// names and drops a link bound to an empty address.
+function _pg_lc_account_form_map($type, $none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $map = array(
+        'echo' => $none + array('h($my_account_url)' => 'token:__my_account_url'),
+        'if' => array('$my_account_url' => array('becomes' => 'keep')),
+        'else' => array(),
+        'loop' => array(),
+        'forms' => 'strip',
+        'record' => true,
+    );
+    if ((string)$type === 'my account profile') {
+        // The time zone row: every PHP the site runs on offers it.
+        $map['if']['$timezone'] = array('becomes' => 'keep');
+        return $map;
+    }
+    // E-mail preferences: the mailing lists are the widget's list, a row's
+    // box named by the widget; the SMS box under the widget's flag (its
+    // label holds words of its own).
+    $map['echo'] += array(
+        'h(OPT_IN_LABEL)' => 'token:__opt_in_label',
+        'h(pg_sms_opt_in_label())' => 'token:__opt_in_sms_label',
+        "\$contact_group['id']" => 'token:__group_id',
+        "h(\$contact_group['name'])" => 'token:__group_name',
+        "h(\$contact_group['description'])" => 'token:__group_description',
+    );
+    $map['if'] += array(
+        '$sms_opt_in' => $flag('shows_opt_in_sms'),
+        '$contact_groups' => $flag('has_contact_groups'),
+        "\$contact_group['description']" => $flag('group_has_description'),
+    );
+    $map['loop'] = array('$contact_groups as $contact_group' => 'list');
+    $map['flag_list'] = true;
+    unset($map['record']);
+    // The classic page's script shows the lists once the opt-in is ticked;
+    // the widget always shows them.
+    $map['replace'] = array(' style="display: none"' => '');
+    return $map;
+}
+
+// The registration and membership entrance pages (registration,
+// membership widgets): the sign-up form is the widget, its <form> tags
+// gone (the widget draws its own, posting to the classic handler, so the
+// controls keep their classic names). The login form beside it is a second
+// form the widget never holds (no form inside a form): it goes with the
+// wrappers that hold nothing else, reported as the Login widget's, and so
+// do its forgot password link and sign-in buttons. The guest block is the
+// registration widget's guest section, read and held: the server gives its
+// button a small form of its own.
+function _pg_lc_entrance_map($type, $none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $login = array('becomes' => 'drop', 'code' => 'login_form');
+    $map = array(
+        'echo' => $none + array(
+            '$login_attributes' => 'form:strip',
+            '$register_attributes' => 'form:strip',
+            '$guest_attributes' => 'form:strip',
+            '$attributes' => 'form:strip',
+            '$login_system' => 'cut:login_form',
+            '$register_system' => 'none',
+            '$guest_system' => 'none',
+            "\$google_signin ?? ''" => 'drop:login_form',
+            'h($opt_in_label)' => 'token:__opt_in_label',
+        ),
+        'if' => array(
+            '$strong_password_help' => array('becomes' => 'section', 'section' => 'password_rules'),
+            // The widget drops the hint box (and a wrapper left empty)
+            // while the site asks for no hint.
+            'PASSWORD_HINT' => array('becomes' => 'keep'),
+            // The box's label holds words of its own: a flag.
+            'REMEMBER_ME' => $flag('shows_remember_me'),
+            '$forgot_password_url' => $login,
+        ),
+        'else' => array(),
+        'loop' => array(),
+        'record' => true,
+    );
+    if ((string)$type === 'membership entrance') {
+        $map['echo']['h(MEMBER_ID_LABEL)'] = 'token:__member_id_label';
+        // The membership entrance asks no CAPTCHA question: given empty.
+        $map['if']['$captcha_question'] = array('becomes' => 'widget');
+        return $map;
+    }
+    $map['if'] += array(
+        '$captcha_question' => array('becomes' => 'section', 'section' => 'captcha'),
+        '$guest' => array('becomes' => 'section', 'section' => 'guest', 'hold' => true, 'button' => 'continue_as_guest'),
+        // The script that opens the register tab after a refused sign-up:
+        // the widget prints its errors where its Messages block stands.
+        '$register_form->check_form_errors()' => array('becomes' => 'widget'),
+    );
+    return $map;
+}
+
+// The update address book page (address_book widget): the recipient's
+// form, its <form> tags gone (the widget draws its own, posting to
+// update_address_book.php, so the controls keep their classic names). The
+// address type radios are shown under the widget's flag (its setting
+// cfg.address_type, carried from the type row); "What is this?" is a link
+// bound to the page the type row names, left out when it names none.
+function _pg_lc_address_book_map($none)
+{
+    return array(
+        'echo' => $none + array(
+            'h($address_type_url)' => 'token:__address_type_url',
+            'h($my_account_url)' => 'token:__my_account_url',
+        ),
+        'if' => array(
+            '$address_type' => array('becomes' => 'flag', 'flag' => 'has_address_type'),
+            '$address_type_url' => array('becomes' => 'keep', 'state' => array('address_type_page_id')),
+        ),
+        'else' => array(),
+        'loop' => array(),
+        'forms' => 'strip',
+        'record' => true,
+        'page_links' => array('__address_type_url' => 'address_type_page_id'),
+    );
+}
+
+// The my account page (my_account widget): the member's values are the
+// widget's account tokens, each line shown when its value is there (a value
+// condition, not a flag: the widget reads its values after its flags); the
+// links to the other account pages its link tokens, a link with nowhere to
+// go dropped by the widget. The complete orders are the widget's
+// account.orders list. The member's start page, the business address lines
+// and fax (not among the account values a widget shows), the affiliate
+// block, the incomplete orders and the saved recipients (lists of their
+// own) have no element: dropped and reported; so is the Google sign-in
+// notice of the stock template (the account security widget's).
+function _pg_lc_my_account_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $keep = array('becomes' => 'keep');
+    $drop = array('becomes' => 'drop');
+    $when = function ($f) { return array('becomes' => 'flag', 'flag' => 'when_' . $f); };
+    return array(
+        'echo' => $none + array(
+            'h(USER_USERNAME)' => 'token:username',
+            'h(USER_EMAIL_ADDRESS)' => 'token:email_address',
+            'h($first_name)' => 'token:first_name',
+            'h($last_name)' => 'token:last_name',
+            'h($title)' => 'token:__member_job_title',
+            'h($company)' => 'token:__member_company',
+            'h($business_city)' => 'token:__member_business_city',
+            'h($business_country)' => 'token:__member_business_country',
+            'h($business_phone)' => 'token:__member_business_phone',
+            'h($mobile_phone)' => 'token:__member_mobile_phone',
+            'h($home_phone)' => 'token:__member_home_phone',
+            'h($timezone)' => 'token:__member_time_zone',
+            'h(MEMBER_ID_LABEL)' => 'token:__member_id_label',
+            'h(USER_MEMBER_ID)' => 'token:member_id',
+            "get_absolute_time(array('timestamp' => strtotime(USER_EXPIRATION_DATE), 'type' => 'date'))" => 'token:__member_expiry_date',
+            'h(number_format($reward_points))' => 'token:__member_reward_points',
+            'h(pg_format_number($reward_points, 0))' => 'token:__member_reward_points',
+            'h($my_account_profile_url)' => 'token:__profile_url',
+            'h($email_preferences_url)' => 'token:__email_preferences_url',
+            'h($change_password_url)' => 'token:__change_password_url',
+            'h($logout_url)' => 'token:__logout_url',
+            'h($update_address_book_url)' => 'token:__address_book_url',
+            "h(\$order['order_number'])" => 'token:__order_no',
+            "get_relative_time(array('timestamp' => \$order['order_date']))" => 'token:__order_date',
+            "\$order['total_info']" => 'token:__order_total',
+            "h(\$order['view_url'])" => 'token:__order_url',
+            "h(\$privacy_request['url'])" => 'token:__privacy_request_url',
+            // The list's rows have no reorder address: the button goes.
+            "h(\$order['reorder_url'])" => 'unlink:value',
+        ),
+        'if' => array(
+            // The contact lines: each shows on its own value.
+            '$first_name or $last_name or $title or $company or $business_address_1 or $business_address_2 or $business_city or $business_state or $business_zip_code or $business_country' => $keep,
+            '$first_name or $last_name' => $when('name'),
+            '$title' => $when('job_title'),
+            '$company' => $when('company'),
+            '$business_address_1' => $drop,
+            '$business_address_2' => $drop,
+            '$business_state or $business_zip_code' => $drop,
+            '$business_state' => $drop,
+            '$business_zip_code' => $drop,
+            '$business_city' => $when('city'),
+            '$business_city or $business_state or $business_zip_code' => $when('city'),
+            '$business_country' => $when('country'),
+            '$business_phone' => $when('business_phone'),
+            '$mobile_phone' => $when('mobile_phone'),
+            '$home_phone' => $when('home_phone'),
+            '$business_fax' => $drop,
+            '$timezone' => $when('time_zone'),
+            'USER_MEMBER_ID' => $when('member_id'),
+            "defined('USER_MEMBER_ID') && USER_MEMBER_ID" => $when('member_id'),
+            "USER_EXPIRATION_DATE == '0000-00-00'" => $when('no_expiry'),
+            '$reward_points' => $when('reward_points'),
+            // A link the widget drops when it has nowhere to go.
+            '$my_account_profile_url' => $keep,
+            '$email_preferences_url' => $keep,
+            '$change_password_url' => $keep,
+            '$logout_url' => $keep,
+            '$update_address_book_url' => $keep,
+            '$complete_orders or $incomplete_orders' => $flag('has_orders'),
+            '$complete_orders' => $flag('has_orders'),
+            "\$order['view_url']" => $when('order_url'),
+            // The store credit block: the widget's two sections.
+            "!empty(\$store_credit['shown'])" => array('becomes' => 'section', 'section' => 'store_credit', 'flag' => array('has_store_credit'),
+                'inner' => '<h2>Store credit</h2>%s<pg-section data-section="store_credit_convert"></pg-section>'),
+            "!empty(\$privacy_request['shown'])" => $when('privacy_request'),
+        ),
+        'else' => array("USER_EXPIRATION_DATE == '0000-00-00'" => 'when_expiry'),
+        'loop' => array('$complete_orders as $order' => 'source:account.orders'),
+        'record' => true,
+        'when' => array(
+            'when_name' => array('tokens' => array('first_name', 'last_name')),
+            'when_job_title' => array('tokens' => array('__member_job_title')),
+            'when_company' => array('tokens' => array('__member_company')),
+            'when_city' => array('tokens' => array('__member_business_city')),
+            'when_country' => array('tokens' => array('__member_business_country')),
+            'when_business_phone' => array('tokens' => array('__member_business_phone')),
+            'when_mobile_phone' => array('tokens' => array('__member_mobile_phone')),
+            'when_home_phone' => array('tokens' => array('__member_home_phone')),
+            'when_time_zone' => array('tokens' => array('__member_time_zone')),
+            'when_member_id' => array('tokens' => array('member_id')),
+            'when_no_expiry' => array('tokens' => array('__member_expiry_date'), 'op' => 'empty'),
+            'when_expiry' => array('tokens' => array('__member_expiry_date')),
+            'when_reward_points' => array('tokens' => array('__member_reward_points'), 'op' => 'gt', 'value' => '0'),
+            'when_order_url' => array('tokens' => array('__order_url'), 'op' => 'neq', 'value' => '#'),
+            'when_privacy_request' => array('tokens' => array('__privacy_request_url')),
+        ),
+    );
+}
+
+
+// The search results page (widgets.php, search_results): the featured, the
+// catalog and the other results loops are places of the widget's one list
+// ('lists'), each showing its kind of rows (result_is_featured,
+// result_is_catalog, result_is_page); a result's values its row tokens; the
+// search box the widget's bound search form; the sentences about the search
+// its heading; the rest under the widget's flags.
+function _pg_lc_search_results_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $heading = 'token:__results_heading';
+    $echo = array(
+        '$attributes' => 'form:search_form',
+        '$page_id' => 'text:page',
+        'h($query)' => 'token:__search_query',
+        'number_format($number_of_results)' => 'token:__result_count',
+        'pg_format_number($number_of_results, 0)' => 'token:__result_count',
+        // The stock template's sentences: the widget's heading says them.
+        "lang(array('string' => 'No results were found for: {var:1}', 'vars' => array(h(\$query))))" => $heading,
+        "lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(pg_format_number(\$number_of_results, 0), h(\$query))))" => $heading,
+        "(\$number_of_results > 1) ? lang(array('string' => 'Found {var:1} results for: {var:2}', 'vars' => array(pg_format_number(\$number_of_results, 0), h(\$query)))) : lang(array('string' => 'Found {var:1} result for: {var:2}', 'vars' => array(pg_format_number(\$number_of_results, 0), h(\$query))))" => $heading,
+    );
+    // A featured or catalog item and an other result: the same row values.
+    foreach (array('item', 'result') as $v) {
+        $echo += array(
+            "h(\$" . $v . "['url'])" => 'token:__result_url',
+            "h(\$" . $v . "['title'])" => 'token:__result_title',
+            "h(\$" . $v . "['full_url'])" => 'token:__result_full_url',
+            "h(\$" . $v . "['description'])" => 'token:__result_excerpt',
+            "h(\$" . $v . "['image_url'])" => 'token:__result_image',
+            "h(\$" . $v . "['short_description'])" => 'token:__result_title',
+            "\$" . $v . "['price_info']" => 'token:__result_price',
+        );
+    }
+    $if = array(
+        "\$query == ''" => $flag('no_query'),
+        '$number_of_results == 0' => $flag('no_results'),
+        '$limited' => $flag('is_limited'),
+        '$number_of_results > 1' => $flag('many_results'),
+        '$featured_items' => $flag('has_featured_results'),
+        '$catalog_items' => $flag('has_catalog_results'),
+        '$results' => $flag('has_page_results'),
+        '$featured_items or $catalog_items' => $flag('has_featured_or_catalog_results'),
+        // A link around the picture and the words, opened and closed in two
+        // blocks: every row has its address. A catalog row's title is its
+        // short description, else its name.
+        "\$item['url']" => array('becomes' => 'keep'),
+        "\$item['short_description']" => array('becomes' => 'keep'),
+        "\$item['image_url']" => $flag('result_has_image'),
+        "\$item['price_info']" => $flag('result_has_price'),
+        "\$item['description']" => $flag('result_has_excerpt'),
+        "\$result['description']" => $flag('result_has_excerpt'),
+    );
+    return array(
+        // The layout's own form is the widget's search form.
+        'echo' => array_merge($none, $echo),
+        'if' => $if,
+        'else' => array(
+            '$number_of_results == 0' => 'has_results',
+            '$limited' => 'not_limited',
+        ),
+        'loop' => array(
+            '$featured_items as $item' => 'list:result_is_featured',
+            '$catalog_items as $item' => 'list:result_is_catalog',
+            '$results as $result' => 'list:result_is_page',
+        ),
+        'lists' => true,
+        'flag_list' => true,
+        // "result<s>" in a line of text: the line once for each.
+        'opposite' => array('many_results' => 'one_result'),
+        'controls' => array('page_query' => 'bind:search_query'),
+    );
+}
+
 /**
  * A widget starter's row template: what its first loop area holds, or the
  * content of the loop area's one column (the layout's own loop body lays
@@ -1744,9 +2297,15 @@ function pg_layout_convert($type, $code, $ctx = array())
                 }
                 return array('mode' => 'flag', 'key' => $p['key'], 'open' => $open, 'close' => $close);
             case 'section':
+                if ($in_tag()) break;
+                if (!empty($p['hold'])) {
+                    // The block is read and held in the section's node.
+                    return array('mode' => 'keep', 'key' => $p['key'],
+                        'open' => '<pg-section data-section="' . h($p['section']) . '" data-hold="' . h((string)($p['button'] ?? '')) . '">',
+                        'close' => '</pg-section>');
+                }
                 // The section's node is written whole at the start; what
                 // the block holds is the widget's, never read.
-                if ($in_tag()) break;
                 $lead = '<pg-section data-section="' . h($p['section']) . '"></pg-section>';
                 if (isset($p['inner'])) $lead = sprintf((string)$p['inner'], $lead);
                 foreach (array_reverse((array)($p['flag'] ?? array())) as $f) $lead = '<pg-vis data-flag="' . h($f) . '">' . $lead . '</pg-vis>';
@@ -1759,7 +2318,7 @@ function pg_layout_convert($type, $code, $ctx = array())
                 foreach (array_reverse((array)($p['flag'] ?? array())) as $f) $lead = '<pg-vis data-flag="' . h($f) . '">' . $lead . '</pg-vis>';
                 return array('mode' => 'skip', 'key' => $p['key'], 'lead' => $lead);
         }
-        $drop($raw, $at, 'condition');
+        $drop($raw, $at, ($p['becomes'] === 'drop' && isset($p['code'])) ? (string)$p['code'] : 'condition');
         return array('mode' => 'skip', 'key' => $p['key']);
     };
     $write = function ($text) use (&$stack, &$html) {
@@ -1889,9 +2448,13 @@ function pg_layout_convert($type, $code, $ctx = array())
     }
     $nodes = _pg_lfc_parse($html);
     if ($raw) $nodes = _pg_lc_raw($nodes, $raw);
+    if (strpos($html, '<pg-cut') !== false) $nodes = _pg_lc_cut($nodes);
     $row = array_values((array)($ctx['row'] ?? array()));
     $nodes = _pg_lc_finish($nodes, $row, $map);
     foreach ((array)($map['media'] ?? array()) as $token => $flag) $nodes = _pg_lc_media($nodes, $token, $flag);
+    if (!empty($map['when'])) $nodes = _pg_lc_when($nodes, (array)$map['when']);
+    if (strpos($html, '^^__pg_unlinked^^') !== false) $nodes = _pg_lc_unlink($nodes);
+    foreach ((array)($map['page_links'] ?? array()) as $token => $key) $nodes = _pg_lc_page_link($nodes, $token, (int)($state[$key] ?? 0));
     if ($lists && empty($map['lists'])) {
         // The kinds' loops side by side are the one list; a loop elsewhere
         // has no list of its own to be.
@@ -1957,6 +2520,7 @@ function pg_layout_dropped_rows($dropped)
             case 'code':      $what = lang(array('string' => 'PHP code {var:1}', 'vars' => array($piece))); break;
             case 'browse':    $what = lang('the browse form'); break;
             case 'recipients': $what = lang('the ship-to heading of each recipient'); break;
+            case 'login_form': $what = lang(array('string' => 'the login form ({var:1}): the Login widget draws it', 'vars' => array($piece))); break;
             default:          $what = $piece;
         }
         $line = (int)($d['line'] ?? 0);
@@ -1992,6 +2556,22 @@ function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
         if (strpos($v, 'form:') === 0) return ' data-pg-form="' . h(substr($v, 5)) . '"';
         if (strpos($v, 'section:') === 0) return '<pg-section data-section="' . h(substr($v, 8)) . '"></pg-section>';
         if (strpos($v, 'state:') === 0) return h((string)($ctx['state'][substr($v, 6)] ?? ''));
+        if (strpos($v, 'drop:') === 0) {
+            $drop($src, $at, substr($v, 5));
+            return '';
+        }
+        if (strpos($v, 'unlink:') === 0) {
+            // A link's address the widget has not: reported, and the link
+            // goes once the markup is read (_pg_lc_unlink()).
+            $drop($src, $at, substr($v, 7));
+            return '^^__pg_unlinked^^';
+        }
+        if (strpos($v, 'cut:') === 0) {
+            // Reported here, in line order; the form goes once the markup
+            // is read (_pg_lc_cut()).
+            $drop($src, $at, substr($v, 4));
+            return '<pg-cut></pg-cut>';
+        }
     }
     // Interface words the template prints: the words themselves, which
     // the page's translation reads like any text.
@@ -2089,11 +2669,15 @@ function _pg_lc_finish($nodes, $row, $map = array())
             // One kind of the list's records: shown in that kind's rows.
             $kind = (string)_pg_lfc_attr($n, 'data-row-flag');
             if ($kind !== '') foreach ($kids as $i => $k) $kids[$i] = _pg_lc_flag($k, $kind);
-            $out[] = pg_di_mk('loop_area', $kind !== '' ? array('_kinds' => true) : array(), $kids);
+            $out[] = pg_di_mk('loop_area', ($kind !== '' && empty($map['lists'])) ? array('_kinds' => true) : array(), $kids);
             continue;
         }
         if ($tag === 'pg-source') {
             $out[] = pg_di_mk('loop_area', array('source' => (string)_pg_lfc_attr($n, 'data-source')), $kids);
+            continue;
+        }
+        if ($tag === 'pg-section' && _pg_lfc_attr($n, 'data-hold') !== null) {
+            $out[] = _pg_lc_held_section($kids, (string)_pg_lfc_attr($n, 'data-section'), (string)_pg_lfc_attr($n, 'data-hold'));
             continue;
         }
         if ($tag === 'pg-section') {
@@ -2145,6 +2729,99 @@ function _pg_lc_finish($nodes, $row, $map = array())
     return $out;
 }
 
+// A held section's node: the block's one element bound to the section, or
+// a box bound to it holding the block; its first submit button (a button
+// or a submit input) bound to $action.
+function _pg_lc_held_section($kids, $section, $action)
+{
+    $kids = array_values($kids);
+    if ($action !== '') {
+        $done = false;
+        $bind = function (&$nodes) use (&$bind, &$done, $action) {
+            foreach ($nodes as &$n) {
+                if ($done) return;
+                $tag = _pg_lfc_tag($n);
+                $type = strtolower((string)_pg_lfc_attr($n, 'type'));
+                if (($tag === 'button' && $type !== 'button' && $type !== 'reset') || ($tag === 'input' && $type === 'submit')) {
+                    $n['props']['_bindings']['action'] = $action;
+                    $done = true;
+                    return;
+                }
+                if (!empty($n['children'])) $bind($n['children']);
+            }
+            unset($n);
+        };
+        $bind($kids);
+    }
+    if (count($kids) === 1 && _pg_lfc_tag($kids[0]) !== '' && !isset($kids[0]['props']['_bindings']['section'])) {
+        $kids[0]['props']['_bindings']['section'] = $section;
+        return $kids[0];
+    }
+    return pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_bindings' => array('section' => $section)), $kids);
+}
+
+// The form holding a cut marker (pg-cut) goes, with every wrapper around it
+// that holds no other form (a column, a tab): a second form beside the
+// widget's, which the widget never holds. A marker in no form goes alone.
+function _pg_lc_cut($nodes)
+{
+    $path = _pg_lc_path_to($nodes, 'pg-cut', array());
+    while ($path !== null) {
+        // The form around the marker, then up while the wrapper holds no
+        // other form.
+        $at = null;
+        for ($i = count($path) - 1; $i >= 0; $i--) {
+            if (_pg_lfc_tag(_pg_lc_node_at($nodes, array_slice($path, 0, $i + 1))) === 'form') { $at = $i; break; }
+        }
+        if ($at === null) {
+            $at = count($path) - 1;
+        } else {
+            while ($at > 0 && _pg_lc_forms_in(_pg_lc_node_at($nodes, array_slice($path, 0, $at))) === 1) $at--;
+        }
+        $nodes = _pg_lc_remove_at($nodes, array_slice($path, 0, $at + 1));
+        $path = _pg_lc_path_to($nodes, 'pg-cut', array());
+    }
+    return $nodes;
+}
+
+// The index path to the first node of tag $tag, or null.
+function _pg_lc_path_to($nodes, $tag, $path)
+{
+    foreach (array_values((array)$nodes) as $i => $n) {
+        if (_pg_lfc_tag($n) === $tag) return array_merge($path, array($i));
+        $p = _pg_lc_path_to((array)($n['children'] ?? array()), $tag, array_merge($path, array($i)));
+        if ($p !== null) return $p;
+    }
+    return null;
+}
+
+function _pg_lc_node_at($nodes, $path)
+{
+    $n = array('children' => $nodes);
+    foreach ($path as $i) $n = array_values((array)($n['children'] ?? array()))[$i];
+    return $n;
+}
+
+function _pg_lc_remove_at($nodes, $path)
+{
+    $nodes = array_values((array)$nodes);
+    $i = array_shift($path);
+    if (!$path) {
+        array_splice($nodes, $i, 1);
+        return $nodes;
+    }
+    $nodes[$i]['children'] = _pg_lc_remove_at((array)($nodes[$i]['children'] ?? array()), $path);
+    return $nodes;
+}
+
+// The <form> elements in a node, itself included.
+function _pg_lc_forms_in($n)
+{
+    $count = (_pg_lfc_tag($n) === 'form') ? 1 : 0;
+    foreach ((array)($n['children'] ?? array()) as $c) $count += _pg_lc_forms_in($c);
+    return $count;
+}
+
 // The widget's list node a list's children are, beside a table's heading
 // rows (a row of heading cells only), or null.
 function _pg_lc_listed($kids)
@@ -2166,7 +2843,8 @@ function _pg_lc_listed($kids)
 function _pg_lc_text_flags($n, $map)
 {
     $text = preg_replace('~%5[eE]%5[eE](__[a-z0-9_]+)%5[eE]%5[eE]~', '^^$1^^', (string)$n['props']['text']);
-    $re = '~<pg-vis data-flag="([a-z0-9_]+)">(.*?)</pg-vis>~s';
+    // An "otherwise" branch's marker carries an attribute more.
+    $re = '~<pg-vis data-flag="([a-z0-9_]+)"[^>]*>(.*?)</pg-vis>~s';
     preg_match_all($re, $text, $m);
     $flags = array_values(array_unique($m[1]));
     $opposite = (string)($map['opposite'][$flags[0]] ?? '');
@@ -2177,10 +2855,24 @@ function _pg_lc_text_flags($n, $map)
         return array(_pg_lc_flag(_pg_lc_bind($with, $map), $flags[0]), _pg_lc_flag(_pg_lc_bind($without, $map), $opposite));
     }
     $kids = array();
-    foreach (preg_split('~(<pg-vis data-flag="[a-z0-9_]+">.*?</pg-vis>)~s', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) as $b) {
-        $flag = preg_match('~^<pg-vis data-flag="([a-z0-9_]+)">(.*)</pg-vis>$~s', $b, $x) ? $x[1] : '';
-        $span = pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => '', 'text' => ($flag !== '') ? $x[2] : $b));
+    foreach (preg_split('~(<pg-vis data-flag="[a-z0-9_]+"[^>]*>.*?</pg-vis>)~s', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) as $b) {
+        $flag = preg_match('~^<pg-vis data-flag="([a-z0-9_]+)"[^>]*>(.*)</pg-vis>$~s', $b, $x) ? $x[1] : '';
+        $part = ($flag !== '') ? $x[2] : $b;
+        // A span's text is plain: a part holding markup (a line break, an
+        // italic word) is read into the span's elements.
+        $span = (strpos($part, '<') === false) ? pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => '', 'text' => $part))
+            : pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => ''), array_map(function ($k) use ($map) { return _pg_lc_bind($k, $map); }, _pg_lfc_parse($part)));
         $kids[] = ($flag !== '') ? _pg_lc_flag($span, $flag) : _pg_lc_bind($span, $map);
+    }
+    if (($n['type'] ?? '') === 'content') {
+        // A text block draws no children: the element of its tag holds
+        // the spans instead, its class and bindings kept.
+        $props = array('tag' => (string)($n['props']['tag'] ?? (($n['props']['contentType'] ?? '') === 'paragraph' ? 'p' : 'div')),
+            'cssClass' => (string)($n['props']['cssClass'] ?? ''));
+        foreach (array('_bindings', '_bindParams', 'id') as $k) {
+            if (isset($n['props'][$k])) $props[$k] = $n['props'][$k];
+        }
+        return array(pg_di_mk('semantic', $props, $kids));
     }
     $n['props']['text'] = '';
     $n['children'] = $kids;
@@ -2249,6 +2941,55 @@ function _pg_lc_bind($n, $map = array())
         _pg_lfc_set_attr($n, 'name', ($to === '' || strpos($to, 'bind:') === 0 || strpos($to, 'action:') === 0 || strpos($to, 'eo:') === 0) ? null : $to);
     }
     return $n;
+}
+
+// Each link bound to ^^$token^^ bound to page $page_id instead (the shape
+// of a link to a page, '__page_link' with no values): the widget draws its
+// current address. Pure.
+function _pg_lc_page_link($nodes, $token, $page_id)
+{
+    foreach ($nodes as $i => $n) {
+        if ((string)($n['props']['_bindings']['href'] ?? '') === $token) {
+            $nodes[$i]['props']['_bindings']['href'] = '__page_link';
+            $nodes[$i]['props']['_bindParams']['href'] = array('page_id' => (int)$page_id, 'params' => array());
+        }
+        if (!empty($n['children'])) $nodes[$i]['children'] = _pg_lc_page_link($n['children'], $token, $page_id);
+    }
+    return $nodes;
+}
+
+// The nodes whose link the map unlinked ('unlink:') taken out. Pure.
+function _pg_lc_unlink($nodes)
+{
+    $out = array();
+    foreach ($nodes as $n) {
+        if ((string)($n['props']['_bindings']['href'] ?? '') === '__pg_unlinked') continue;
+        if (!empty($n['children'])) $n['children'] = _pg_lc_unlink($n['children']);
+        $out[] = $n;
+    }
+    return $out;
+}
+
+// Each node shown under a flag of $when shown instead when its value passes
+// the test (the widget's value conditions, show_if, show_if_2, show_if_3
+// joined by 'any'). Pure.
+function _pg_lc_when($nodes, $when)
+{
+    foreach ($nodes as $i => $n) {
+        $flag = (string)($n['props']['_bindings']['eo_visible_if'] ?? '');
+        if ($flag !== '' && isset($when[$flag])) {
+            unset($nodes[$i]['props']['_bindings']['eo_visible_if']);
+            $test = array('op' => (string)($when[$flag]['op'] ?? 'not_empty'));
+            if (isset($when[$flag]['value'])) $test['value'] = (string)$when[$flag]['value'];
+            foreach (array_slice(array_values((array)$when[$flag]['tokens']), 0, 3) as $k => $token) {
+                $name = pg_sw_cond_names()[$k];
+                $nodes[$i]['props']['_bindings'][$name] = (string)$token;
+                $nodes[$i]['props']['_bindParams'][$name] = ($k === 0 && count((array)$when[$flag]['tokens']) > 1) ? $test + array('join' => 'any') : $test;
+            }
+        }
+        if (!empty($n['children'])) $nodes[$i]['children'] = _pg_lc_when($n['children'], $when);
+    }
+    return $nodes;
 }
 
 // The raw blocks put back in place of their pg-raw markers.
