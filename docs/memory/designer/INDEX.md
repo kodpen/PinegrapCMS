@@ -712,6 +712,7 @@
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
 - layout-type-converter-order-preview.md: Order preview layout files into the order preview widget (LE9d, #11667): its map, the new flags and tokens, the converter rules it added, differences, starting sites
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
+- layout-type-converter-search-results.md: A search results page's layout file into the Search Results widget (LE10d, #11764): the three lists as places of one list, row and layout flags, the search box, starting sites
 - layout-type-converter-view-order.md: View order layout files into the order view widget (LE9e, #11688): its map, the widget's new flags and tokens, what is reported, the known differences
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
 - layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10d): what the converter is, the rules kept, which file holds each type's map [decision: here]
