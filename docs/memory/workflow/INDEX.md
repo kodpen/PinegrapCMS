@@ -60,6 +60,7 @@
 - bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
+- bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, two faults left as one task [decision: here]
 - bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
 - bug-hunt-areas-file-manager-permissions.md: Bug hunt 53, File Manager permissions (2026-11-24, PR #11492): who sees, moves, renames and deletes a file or folder, the Recycle Bin, design files, path checks; three faults fixed
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
@@ -84,6 +85,7 @@
 - bug-hunt-areas-parasut-devhub-connect.md: The bug hunt in Paraşüt through a Developer Portal client (agent channel request 3016, 2026-11-26, #11741): the faults fixed, what was read clean and what was left
 - bug-hunt-areas-payment-gateways-callbacks.md: Bug hunt of the payment gateways' return and notify endpoints (area 49, 2026-11-24): repeated messages, a message before the return, amounts; what it fixed and read clean
 - bug-hunt-areas-phone-dark-new-screens.md: Bug hunt 15 (2026-11-24): the 2026.11.0 screens at 390 px and in the dark theme on a sandbox; the five faults fixed in #11382, what read clean, what was not reached
+- bug-hunt-areas-phone-preview.md: Bug hunt in "Preview on a phone" (2026-11-26): failing asks that never stopped and a found link opening on the lock note, fixed; what was read clean and left [decision: here]
 - bug-hunt-areas-pick-pack.md: The bug hunt of pick and pack (PP1-PP7, 2026-11-24, #11341): six faults fixed, two issues opened for a decision, what was read clean
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-price-rounding.md: The bug hunt of price rounding (area 17, 2026-11-24): money in checkout, cart, offers, tax, shipping, refunds, the payment request and the ERP; four faults fixed, what was read clean

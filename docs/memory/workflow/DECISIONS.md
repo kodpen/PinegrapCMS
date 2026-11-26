@@ -1255,6 +1255,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-panels-overview.md: Start file of the Page Design Studio's redrawn chrome (plan designer-panels, ended #10760): Options panel, Overview tree, page strip, canvas bar; what binds them, which file holds what
 - designer/designer-parts-on-demand.md: The designer's parts not needed to open a page: one file each in includes/designer_parts/, their conditions, the loader _sdPartLoad(), definePart and the sorted kit for parts cut from the core
 - designer/designer-phone-preview-rules.md: "Preview on a phone": why it exists, the rules every change keeps (QR code a secret, bounded asking, Share prototype rights), which file holds which part
+- designer/designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
 - designer/designer-preview-as-rules.md: What binds "Preview as" (Record, Visitor, Case, "Check all cases" in the designer's Preview): why it exists, what it may never do, which step built which part (PW1 to PW4)
 - designer/designer-preview-as-visitor.md: How a widget of the Preview is drawn for the chosen visitor (PW2c, architect 2026-11-26): one viewer reader in place of the USER_ constants, the sample account with no row, what is never read
 - designer/designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design
@@ -1582,11 +1583,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
 - workflow/bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean
+- workflow/bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, two faults left as one task
 - workflow/bug-hunt-areas-marketplace-repricer.md: The bug hunt in the marketplace repricer RP1 to RP5 (architect, 2026-11-26, request 3034): what was fixed, what was read clean, what is left
 - workflow/bug-hunt-areas-my-library.md: Bug hunt of the designer's My library (2026-11-26): an item saved, inserted as a copy, managed, exported and imported as a file; what was fixed, what read clean, what was left
 - workflow/bug-hunt-areas-notifications-bell.md: The bug hunt of the panel's bell and the mails it sends (2026-11-24, #11438): the seven faults fixed, what was read clean, what was judged decided
 - workflow/bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet
 - workflow/bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean
+- workflow/bug-hunt-areas-phone-preview.md: Bug hunt in "Preview on a phone" (2026-11-26): failing asks that never stopped and a found link opening on the lock note, fixed; what was read clean and left
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean

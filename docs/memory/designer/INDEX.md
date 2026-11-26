@@ -486,6 +486,7 @@
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
 - designer-option-change-panels.md: One Options panel select or switch change draws the Options panel and the node now; Layers rows, status bar, Attributes, HTML tree after the pause; badges of the redrawn element (#10013)
+- designer-options-bg-layers.md: Background layers in Color and background as built (DO13, #11737): the layers and their rows, palette stops, what is written, old and hand-written backgrounds, the part
 - designer-options-collection-drawing-made.md: What "Create" of "New collection with pages" makes, as drawn for DO23 (boards N4, N5, Z1): the three pages, a stop half way, the closing line, keys, read-out, measures
 - designer-options-collection-drawing-steps.md: "New collection with pages" as drawn for DO23 (options-collection.html, boards N1 to N3): the row, step 1 (name, fields, a collection that is there), step 2 (the two pages), the refusals
 - designer-options-collection-drawing.md: The drawing of "New collection with pages" (plan designer-options-census, DO23): the sheet, its six boards, what is new, what is left to the step, where it differs from the plan
@@ -544,7 +545,7 @@
 - designer-phone-preview-drawing.md: The drawing of "Preview on a phone" (steps PP2 and PP3): the sheet, its six boards, which step builds which, what is new
 - designer-phone-preview-phone.md: "Preview on a phone" on the phone (PP3): the page a phone link opens, its 32 px line, the page list, the asking and its stop rules, the redraw after a save keeping the scroll
 - designer-phone-preview-rules.md: "Preview on a phone": why it exists, the rules every change keeps (QR code a secret, bounded asking, Share prototype rights), which file holds which part [decision: decisions-made-product-106.md]
-- designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
+- designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read [decision: here]
 - designer-phone-preview-window.md: The "Preview on a phone" window as built (PP2, #11578): its row in the Preview menu and the command palette, the part phone, its states, what it asks the server, the cost
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-position-presets.md: Options panel Size and display: Position's "Fill the parent" and "Centre" presets of the four offsets, Z Index as a typed number with Bootstrap's layers by name (DO7, #11566)

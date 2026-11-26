@@ -310,7 +310,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_report`: [[order-report-filters]], [[order-report-screen]], [[order-report-totals]]
 - `order_status`: [[shipworks-order-feed]]
 - `order_view`: [[order-invoice-print]], [[order-screen-head]], [[order-screen-redraw-rules]], [[order-screen-shipment-card]], [[order-screen-shipping-input]], [[order-screen-side-panel]], [[order-screen-wide-layout]], [[order-view-screen-rows]], [[print-order-shipping-card]]
-- `output`: [[agent-guide-panel-door]], [[designer-first-tour-card]], [[designer-first-tour-help]], [[designer-left-panel-hide]], [[designer-parts-on-demand]], [[list-status-words]], [[look-erp-lists]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[main-menu-icon-cite]], [[main-menu-icon-motion]], [[main-menu-icon-rows]], [[main-menu-icons]], [[main-menu-system-tools-row]], [[panel-old-browser-notice]], [[picture-text-auto-panel]], [[settings-pane-stale-page]]
+- `output`: [[agent-guide-panel-door]], [[designer-first-tour-card]], [[designer-first-tour-help]], [[designer-left-panel-hide]], [[designer-options-bg-layers]], [[designer-parts-on-demand]], [[list-status-words]], [[look-erp-lists]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[main-menu-icon-cite]], [[main-menu-icon-motion]], [[main-menu-icon-rows]], [[main-menu-icons]], [[main-menu-system-tools-row]], [[panel-old-browser-notice]], [[picture-text-auto-panel]], [[settings-pane-stale-page]]
 - `pack`: [[pick-pack-pack]], [[pick-pack-short-count]]
 - `page_audience`: [[audience-conditions]]
 - `page_base_version`: [[designer-collab-base-version]]
