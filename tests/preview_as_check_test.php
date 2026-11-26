@@ -104,7 +104,7 @@ function test_preview_as_check_runs_each_case_for_each_visitor()
 function test_preview_as_check_text_leaves_its_box()
 {
 	$res = preview_as_check_test_run(array('textLeaves'),
-		'var m = function (o) { var b = { display: "block", overflowX: "visible", overflowY: "visible", textOverflow: "clip", sw: 200, cw: 200, sh: 40, ch: 40, right: 300, viewW: 742 };'
+		'var m = function (o) { var b = { display: "block", overflowX: "visible", overflowY: "visible", textOverflow: "clip", sw: 200, cw: 200, sh: 40, ch: 40, left: 100, right: 300, viewW: 742 };'
 		. ' for (var k in o) b[k] = o[k]; return textLeaves(b); };'
 		. 'console.log(JSON.stringify({'
 		. ' fits: m({}),'
@@ -116,7 +116,8 @@ function test_preview_as_check_text_leaves_its_box()
 		. ' scroller: m({ overflowX: "auto", sw: 400 }),'
 		. ' ellipsis: m({ overflowX: "hidden", textOverflow: "ellipsis", sw: 400 }),'
 		. ' inline: m({ display: "inline", sw: 400, cw: 0 }),'
-		. ' hidden: m({ cw: 0, ch: 0, sw: 0, right: 0 })'
+		. ' hidden: m({ cw: 0, ch: 0, sw: 0, right: 0 }),'
+		. ' slide: m({ left: 800, right: 1100 })'
 		. '}));');
 
 	if ($res === null) {
@@ -133,6 +134,7 @@ function test_preview_as_check_text_leaves_its_box()
 	pg_assert_false($res['ellipsis'], 'an ellipsis is a chosen cut');
 	pg_assert_false($res['inline'], 'its block is measured');
 	pg_assert_false($res['hidden'], 'not drawn');
+	pg_assert_false($res['slide'], 'a slide waiting beyond the window');
 }
 
 // A picture is missing when it has no address or its file could not be

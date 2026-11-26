@@ -5723,6 +5723,7 @@
     "StopForumSpam checked": "StopForumSpam denetleniyor",
     "Stopped": "Durduruldu",
     "Stopped after many requests; press Run now to carry on.": "Çok sayıda istekten sonra durdu; devam etmek için Şimdi çalıştır'a basın.",
+    "Stopped after {var:1} of {var:2}.": "{var:2} durumdan {var:1} tanesinden sonra durduruldu.",
     "Stopped by {var:1}.": "{var:1} durdurdu.",
     "Stopped: {n} left": "Durduruldu: {n} kaldı",
     "Stopped: {var:1}.": "Duran: {var:1}.",
