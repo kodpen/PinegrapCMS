@@ -95,6 +95,19 @@ function test_document_start_refusals()
 	pg_assert_same(null, pg_document_start_refusal('a.txt', 10, array('ok' => true, 'paragraphs' => array(), 'text' => 'Hello')), 'a text');
 }
 
+// A file taken from the file manager is read only when the picker offers
+// it: no attachment (a team chat's or a form's upload), nothing in the
+// Recycle Bin, only the start's kinds, and only the granted folders.
+function test_document_start_file_condition()
+{
+	$where = pg_document_start_file_condition(42, array(7, 8), null);
+	pg_assert_contains("(id = '42')", $where, 'the one file asked for');
+	pg_assert_contains('(attachment = 0)', $where, 'no attachment');
+	pg_assert_contains('(folder NOT IN (7, 8))', $where, 'not in the Recycle Bin');
+	pg_assert_contains("(type IN ('docx', 'md', 'txt'))", $where, 'only the kinds the start reads');
+	pg_assert_contains('(folder IN (3))', pg_document_start_file_condition(42, array(), array(3)), 'only the folders a role 3 user may use');
+}
+
 // The answer keeps the pictures' place in the package on the server.
 function test_document_start_answer()
 {
