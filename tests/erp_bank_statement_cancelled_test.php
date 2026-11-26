@@ -46,3 +46,22 @@ function test_erp_bank_line_cancelled_movement_read_and_undone()
 	pg_assert_contains("if (erp_bank_line_reopenable(\$line) && !\$readonly) {", $screen, 'the button follows the rule');
 	pg_assert_contains("lang('Record again')", $screen, 'a recorded line is recorded again');
 }
+
+function test_erp_bank_statement_build_and_delete_hold_the_statement()
+{
+	$import = erp_bank_statement_cancelled_source('includes/erp/bank_import.php');
+
+	// Two "Take the lines in" at once (two tabs) both read the statement as
+	// waiting for its columns: the second, with other columns, added every
+	// line again under other hashes, or reset the line count to 0.
+	$build = substr($import, strpos($import, 'function erp_bank_statement_build('), 6000);
+	pg_assert_contains("SELECT status FROM erp_bank_statements WHERE id = '\" . (int) \$statement['id'] . \"' LIMIT 1 FOR UPDATE", $build, 'build claims the statement');
+	pg_assert_true(strpos($build, 'erp_tx_begin()') !== false, 'build runs in a transaction');
+	pg_assert_true(strpos($build, 'erp_bank_statement_match((int) $statement[\'id\']);') < strpos($build, 'erp_tx_commit()'), 'lines are matched before the commit');
+
+	// A delete during the build removed the statement and left the lines
+	// added after its read behind, holding their hashes: the file could not
+	// be taken in again ("taken in before").
+	$delete = substr($import, strpos($import, 'function erp_bank_statement_delete('), 2500);
+	pg_assert_contains("SELECT id FROM erp_bank_statements WHERE id = '\" . (int) \$statement['id'] . \"' LIMIT 1 FOR UPDATE", $delete, 'delete waits for a build');
+}

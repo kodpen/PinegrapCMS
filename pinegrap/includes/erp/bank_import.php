@@ -838,6 +838,10 @@ function erp_bank_statement_delete($statement_id)
         return array('success' => false, 'error' => lang('Could not start a database transaction.'));
     }
 
+    // The statement first: a build running now holds it until its lines
+    // are in and matched, and they are then read below.
+    db_value("SELECT id FROM erp_bank_statements WHERE id = '" . (int) $statement['id'] . "' LIMIT 1 FOR UPDATE");
+
     // Locked, so a line recorded at the same moment is either seen here or
     // finds its statement gone.
     $lines = (array) db_items("SELECT id, doc_date, amount, status FROM erp_bank_statement_lines
@@ -917,6 +921,22 @@ function erp_bank_statement_build($statement_id, $mapping)
     }
 
     $mapping['separator'] = erp_bank_csv_separator_key($mapping['separator'] ?? 'auto');
+
+    if (!erp_tx_begin()) {
+        return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // Claimed under the statement's row lock: two builds at once (two tabs)
+    // both read it as waiting for its columns, and the second added every
+    // line again under other columns' hashes or reset the line count to 0.
+    // A delete waits here too, so it never leaves lines behind.
+    $claimed = (string) db_value("SELECT status FROM erp_bank_statements WHERE id = '" . (int) $statement['id'] . "' LIMIT 1 FOR UPDATE");
+
+    if ($claimed !== 'mapping') {
+        erp_tx_rollback();
+        return $fail(lang('The statement could not be found.'));
+    }
+
     $rows = erp_bank_statement_rows($statement['raw_rows'], $mapping['separator']);
 
     if (!empty($mapping['header'])) {
@@ -973,12 +993,18 @@ function erp_bank_statement_build($statement_id, $mapping)
         }
     }
 
-    db("UPDATE erp_bank_statements SET status = 'open', raw_rows = NULL,
+    $ok = db("UPDATE erp_bank_statements SET status = 'open', raw_rows = NULL,
             mapping = '" . escape(json_encode($mapping)) . "',
             line_count = '" . $added . "'
         WHERE id = '" . (int) $statement['id'] . "'");
 
-    $matched = erp_bank_statement_match((int) $statement['id']);
+    $matched = ($ok !== false) ? erp_bank_statement_match((int) $statement['id']) : 0;
+
+    if (($ok === false) || !erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
 
     return array('success' => true, 'added' => $added, 'skipped' => $skipped, 'matched' => $matched, 'error' => '');
 }
