@@ -124,6 +124,38 @@
         });
     }
 
+    // The row's heading in the starter's own heading outside its item row;
+    // a starter without one (stats-counter) gets one over the row.
+    function headingOver(root, heading, node) {
+        var row = itemRow(root);
+        var own = null;
+        walk(root, function (n) {
+            if (own || n === row) {
+                return false;
+            }
+            if (n.type === 'content' && n.props && n.props.contentType === 'heading' && !n._filled) {
+                own = n;
+                return false;
+            }
+        });
+        if (own) {
+            own.props.text = escapeText(heading);
+            own._filled = true;
+            return;
+        }
+        var parent = null;
+        walk(root, function (n) {
+            if (row && (n.children || []).indexOf(row) !== -1) {
+                parent = n;
+            }
+        });
+        if (parent) {
+            var h = node('content', {contentType: 'heading', tag: 'h2', text: escapeText(heading), cssClass: 'fw-bold mb-4 text-center'});
+            h._filled = true;
+            parent.children.splice(parent.children.indexOf(row), 0, h);
+        }
+    }
+
     function withRhythm(root) {
         var p = root.props = root.props || {};
         if (p.inlineStyle === undefined || String(p.inlineStyle).indexOf('--pg-var-space-section') === -1) {
@@ -177,11 +209,17 @@
         return null;
     }
 
-    // Text items as paragraphs and subheadings; a table among them as a table.
-    function textBody(row, node) {
+    // Text items as paragraphs and subheadings; a table or a picture among
+    // them where it stands.
+    function textBody(row, o) {
+        var node = o.node;
         return row.items.map(function (i) {
             if (i.rows) {
                 return table(i.rows, node, false);
+            }
+            if (i.src) {
+                var src = o.src(i.src);
+                return src ? node('content', {contentType: 'image', src: src, alt: i.alt || '', cssClass: 'img-fluid rounded my-4'}) : null;
             }
             if (i.type === 'heading') {
                 return node('content', {contentType: 'heading', tag: 'h3', text: escapeText(i.text), cssClass: 'h5 fw-semibold mt-4'});
@@ -204,7 +242,7 @@
             }
             root = copyTree(root, node);
             if (row.heading) {
-                put(root, 'heading', row.heading);
+                headingOver(root, row.heading, node);
             }
             if (row.kind === 'figures') {
                 fillColumns(root, row.items, node, function (col, f) {
@@ -282,7 +320,7 @@
                 });
                 if (parent) {
                     var at = parent.children.indexOf(para);
-                    var body = textBody(row, node);
+                    var body = textBody(row, o);
                     body.forEach(function (n) { n._filled = true; });
                     parent.children.splice.apply(parent.children, [at, 1].concat(body));
                 }
@@ -312,7 +350,25 @@
         }).filter(Boolean);
     }
 
+    // The pictures the page places, by their src: those of the kept rows
+    // of kind picture, gallery and text (an intro's picture is not shown),
+    // so a picture is stored in the file manager only when it is used.
+    function pictures(rows) {
+        var out = [];
+        (rows || []).forEach(function (r) {
+            if (r && !r.out && (r.kind === 'picture' || r.kind === 'gallery' || r.kind === 'text')) {
+                (r.items || []).forEach(function (i) {
+                    if (i.src && out.indexOf(String(i.src)) === -1) {
+                        out.push(String(i.src));
+                    }
+                });
+            }
+        });
+        return out;
+    }
+
     window.PGDocumentPage = {
-        build: build
+        build: build,
+        pictures: pictures
     };
 })();

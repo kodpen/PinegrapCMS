@@ -217,3 +217,40 @@ function test_document_start_page_words()
 	pg_assert_same(true, $result[3], 'an e-mail is a mailto link');
 	pg_assert_same(true, $result[4], 'a stored picture in the gallery');
 }
+
+// A picture among a text's paragraphs is placed where it stands; only the
+// pictures the page places are stored (none of a left-out row, none of the
+// intro, which the hero does not show).
+function test_document_start_page_pictures()
+{
+	$result = document_start_test_node('var rows = ['
+		. '{id: "p0", kind: "intro", heading: "Lake", items: [{type: "paragraph", text: "Calm."}, {type: "picture", src: "picture:0", alt: "Shore"}]},'
+		. '{id: "p3", kind: "text", heading: "Rooms", items: [{type: "paragraph", text: "Six rooms."}, {type: "picture", src: "picture:1", alt: "Room"}, {type: "paragraph", text: "All quiet."}]},'
+		. '{id: "p7", kind: "gallery", heading: "", out: true, items: [{src: "picture:2", alt: "Gone"}]},'
+		. '{id: "p8", kind: "picture", heading: "", items: [{src: "picture:3", alt: "Dock"}]}'
+		. ']; var nodes = P.build(rows, {make: make, src: function (s) { return "/" + s.replace(":", "-") + ".png"; }});'
+		. 'var kinds = []; (function walk(n) { if (n.type === "content") kinds.push(n.props.contentType === "image" ? "image:" + n.props.src : n.props.text); (n.children || []).forEach(walk); })(nodes[1]);'
+		. 'out = [kinds, P.pictures(rows)];');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('Rooms', 'Six rooms.', 'image:/picture-1.png', 'All quiet.'), $result[0], 'the picture between its paragraphs');
+	pg_assert_same(array('picture:1', 'picture:3'), $result[1], 'only the pictures the page places are stored');
+}
+
+// A starter without a heading of its own (stats-counter) still shows the
+// row's heading over its figures.
+function test_document_start_page_figures_heading()
+{
+	$result = document_start_test_node('function bare(type) { return type === "stats-counter" ? n("semantic", {tag: "section"}, [n("container", {}, [n("row", {}, [n("col", {md: "3"}, [c("heading", "10+", {tag: "div"}), c("paragraph", "Users")]), n("col", {md: "3"}, [c("heading", "5", {tag: "div"}), c("paragraph", "Years")])])])]) : null; }'
+		. 'var nodes = P.build([{id: "p4", kind: "figures", heading: "In numbers", items: [{value: "12", label: "rooms"}, {value: "3", label: "boats"}]}], {make: bare});'
+		. 'out = texts(nodes[0], []);');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('In numbers', '12', 'rooms', '3', 'boats'), $result, 'the heading over the figures, every figure in its column');
+}
