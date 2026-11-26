@@ -20,6 +20,7 @@ description: Where a plan step's state is kept: the PR titled for the plan, neve
 ## Who shows the state in the agent channel?
 - The coordinator that gives the step out: `php tools/plan_state.php <plan> --tasks` when it starts a worker on the plan and when one of the plan's PRs has landed. The channel's Tasks tab and Board then show every running plan's steps as todo, doing, waiting or done.
 - The tasks are written from the PR titles, so GitHub stays the record: after dev is set up again one run puts the board back. A state kept only in the channel would be lost with it.
+- The run is one command inside a turn the coordinator has anyway (a worker's start, the check-in that saw the landing), chained to that turn's own command where it can be (`… && php tools/plan_state.php <plan> --tasks`). Never a wake, a `send_later` or a turn of its own for it: the script calls no model, its cost is its few printed lines, and a turn of its own would have the session read its whole context again. Owner (2026-11-26): the board stays on that condition.
 
 ## Why?
 - Owner (2026-11-23): asked whether memory and plans kept in git slow the work, he took the architect's answer and had the two slow places fixed (`decisions-made-workspace-49.md`). One was a docs-only PR's full check ([[docs-only-pr-checks]], #11196); the other was the plan file shared by its workers and the architect.
