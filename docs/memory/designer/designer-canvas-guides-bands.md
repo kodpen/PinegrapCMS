@@ -16,12 +16,12 @@ description: The spacing bands and handles over the designer canvas (CG3 #11568,
 ## What does a change write?
 - What the Spacing box writes: `PGSpacingBox.write()` with `B.sides(side, shift, alt)`, through `_sdSpBoxHost()`'s commit (one `saveState()`, `_sdRenderNode()`), one undo step per drag or key change.
 - For the screen size the canvas shows: `PGCanvasBands.sizeFor(canvas width)` (xs below 576 … xxl from 1400), not the Spacing box's own chooser.
-- The start step is the nearest scale step of the computed value. While dragging, the canvas element carries the value inline with `!important` (utilities are `!important`), taken off before the commit; nothing enters the tree.
+- Start: `designer-canvas-bands-drag-start.md`. While dragging, the canvas element carries the value inline with `!important`, taken off before the commit; nothing enters the tree.
 
 ## How is it built?
 - Pure: `assets/js/pg_canvas_bands.js` (`window.PGCanvasBands`): `layout(box, margin, padding, k, rtl)` bands and handles, `growth()`, `keyStep()`, `reach()`, `labelAt()` (flips at the layer's edge), `sizeFor()`; tests `tests/designer_canvas_bands_test.php`.
 - Part `bands`: `assets/js/style_designer_bands.js`, bundle `style_designer_bands.min.js` = `pg_canvas_bands.js`, the part. Its first-use line's state comes with the part `tour` (#11646).
-- A source sits in one bundle only (`tests/js_bundles_test.php`): `PGSpacingBox` comes with the part `spacing`, loaded first (`_sdPartLoad('spacing').then(…)`); `pg_canvas_guides.js` is Measure's part `guides` (CG2 #11570), so the bands keep their own `scale()` and `nearestStep()`. CG4 kept the two parts apart; its column handles and equal gaps live in this part (`designer-canvas-guides-columns.md`). Handed to every editor (`designer_screen.php`).
+- A source sits in one bundle only (`tests/js_bundles_test.php`): `PGSpacingBox` comes with the part `spacing`, loaded first (`_sdPartLoad('spacing').then(…)`), read late; `pg_canvas_guides.js` is Measure's part `guides` (CG2 #11570), so the bands keep their own `scale()` and `nearestStep()`. CG4 kept the two parts apart; its column handles and equal gaps live in this part (`designer-canvas-guides-columns.md`). Handed to every editor (`designer_screen.php`).
 - Core (`// ── Spacing bands` in `style_designer.src.js`): `_positionSizeBadge()` (selection, render, canvas scroll) calls `_sdBandsSoon()`, one rAF, then `_sdBandsDraw()`: the `spacing` part, then `_sdPartCall('bands', 'draw', [_sdBandsHost(node)])` or, once loaded, `_sdPartApis.bands.hide()`. `_sdBandsGeo()` gives the layer's place as the link marks read it.
 - The layer `.sd-cgb-layer` sits in `.sd-canvas-wrapper` (z-index 21, clicks pass through but on handles). While hidden the part holds no listener; shown, only the canvas area's scroll and the canvas's `dragstart`.
 

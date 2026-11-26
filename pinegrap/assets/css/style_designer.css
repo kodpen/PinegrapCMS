@@ -2052,6 +2052,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     cursor: ns-resize; pointer-events: auto; touch-action: none;
 }
 .sd-cgb-h::before { content: ''; position: absolute; inset: -6px; }
+/* A side handle reaches 6 px out only away from its pair: an outer handle
+   outwards, an inner one inwards. With one reach all round the inner pill's
+   (later in the layer) covered the outer pill's middle where the two sit a
+   handle apart, so a margin handle could not be held. */
+.sd-cgb-h[data-k="m"][data-e="top"]::before, .sd-cgb-h[data-k="p"][data-e="bottom"]::before { bottom: 0; }
+.sd-cgb-h[data-k="m"][data-e="bottom"]::before, .sd-cgb-h[data-k="p"][data-e="top"]::before { top: 0; }
+.sd-cgb-h[data-k="m"][data-e="left"]::before, .sd-cgb-h[data-k="p"][data-e="right"]::before { right: 0; }
+.sd-cgb-h[data-k="m"][data-e="right"]::before, .sd-cgb-h[data-k="p"][data-e="left"]::before { left: 0; }
 .sd-cgb-h.is-v { width: 6px; height: 22px; cursor: ew-resize; }
 .sd-cgb-h.is-faint { opacity: .45; }
 .sd-cgb-h:hover, .sd-cgb-h.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35); }

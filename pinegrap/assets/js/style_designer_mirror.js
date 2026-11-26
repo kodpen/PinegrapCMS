@@ -632,7 +632,7 @@ StyleDesigner.definePart('mirror', function (K) {
     // ── The first-use line ───────────────────────────────────────────────
     // Once per person, under the canvas bar; "Got it" ends it for good
     // (the tour's tip state, PGDesignerTour, which comes with the part
-    // 'bands': cfg.tour() runs it when it has not run yet).
+    // 'tour': cfg.tour() runs it when it has not run yet).
     function tip(cfg) {
         var T = window.PGDesignerTour;
         if (!row) return;

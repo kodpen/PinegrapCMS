@@ -8116,8 +8116,10 @@ const StyleDesigner = (function () {
             email: now.email,
             userId: (_design && _design.userId) || 0,
             canvasWidth: _sdSideCanvasW,
-            // The first-use line's state module comes with the part 'bands'.
-            tour: function () { return _sdPartLoad('bands'); },
+            // The first-use line's state module (PGDesignerTour) comes with
+            // the part 'tour'. Loading 'bands' here ran that part before the
+            // Spacing box's part and left its handles without a writer.
+            tour: function () { return _sdPartCall('tour', 'model', []); },
             choose: function (widths) {
                 _sdSideStore('pg_sd_side_w', widths.join(','));
                 _sdSideSync();
@@ -80393,8 +80395,10 @@ const StyleDesigner = (function () {
 
     function _sdProtoButtonState() {
         // The canvas's link marks hide while the view is open and are read
-        // again when it closes (an arrow may have changed a link).
+        // again when it closes (an arrow may have changed a link); so do
+        // the selection's spacing bands, which nothing else draws again.
         _sdLinkMarksSoon();
+        _sdBandsSoon();
         var btn = document.getElementById('sd-vb-proto');
         if (!btn) return;
         btn.classList.toggle('active', _sdProto.open);

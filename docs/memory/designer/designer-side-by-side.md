@@ -17,7 +17,7 @@ description: "Side by side" in the designer's View menu (SS2, SS3): the switch, 
 - Too little room: the menu row is dimmed (`aria-disabled`) with "Not enough room here. Close a side panel or use a wider window." under it. The room is checked when the View menu opens, and while the switch is on by a ResizeObserver on `#sd-canvas`.
 - The canvas area gets a right margin of the strip's width (`--sd-side-w` on `#sd-canvas.sd-side-on`), so Fit and the canvas's measures read the canvas alone; the strip `.sd-side` is placed absolutely from the area's offsets (`#sd-canvas` stays unpositioned).
 - A head (28 px, then 6 px) holds the width button: the bar's icon and "375 px", opening a menu of the bar's five widths under the bar's names. The one shown is ticked; the canvas's and the other mirror's are dimmed with "on the canvas" / "in the other mirror" (`PGMirrorSchedule.sizes()`, `pick()`). An e-mail design's head has no list.
-- The first-use line under the bar, once per person: the tour's tip `side-by-side` (`PGDesignerTour`, from the part `bands`, which `cfg.tour()` runs when it has not run yet).
+- The first-use line under the bar, once per person: the tour's tip `side-by-side` (`PGDesignerTour`, from the part `tour`: `cfg.tour()` asks its `model`; #11921).
 
 ## How does a mirror follow the chosen element (SS3, #11676)?
 - Each mirror frames the canvas's `.sd-selected` elements: a div `[data-sd-mirror-mark="chosen"]` in the mirror's document over the picture, 2 px on screen at its scale, `#0d6efd`. An element that width hides has none. No frame while a redraw waits; the redraw frames again. Followed from the part's MutationObserver (`PGMirrorSchedule.selectionMoved()`), at the next animation frame.
