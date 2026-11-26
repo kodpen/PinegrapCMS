@@ -333,7 +333,8 @@ StyleDesigner.definePart('styleguide', function (K) {
         W.doc.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
         var pairs = W.doc.getElementById('pgsg-pairs');
         if (pairs) pairs.innerHTML = pairsHtml(W.guide.blocks.colours);
-        var spacing = W.doc.getElementById('pgsg-spacing');
+        // The bars' own wrapper: the block around it keeps its heading.
+        var spacing = W.doc.getElementById('pgsg-spacing-bars');
         if (spacing) spacing.outerHTML = spacingHtml(W.guide.blocks.spacing);
     }
 
@@ -631,7 +632,7 @@ StyleDesigner.definePart('styleguide', function (K) {
     function spacingHtml(b) {
         var accent = colourOf(W.guide.blocks.colours.rows || [], 'accent');
         var own = accent ? cssVal(accent[W.dark ? 'dark' : 'light']) : '';
-        var h = '<div id="pgsg-spacing">';
+        var h = '<div id="pgsg-spacing-bars">';
         (b.rows || []).forEach(function (r) {
             var px = (r.px == null) ? 0 : Number(r.px);
             h += '<div class="pgsg-srow' + (r.custom ? ' is-own' : '') + '"><span class="pgsg-sn">' + varName(r.name, r.key) + '</span>' +
