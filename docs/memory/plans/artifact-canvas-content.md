@@ -22,7 +22,7 @@ priority: 6
 - Add to the canvas's first load: ready content is asked for when its panel opens.
 
 ## Which steps?
-- AC1 (S, no product code) The content census, into `plans/artifact-canvas-content-census.md`. What a person meets on an empty board, tool by tool. What Canva, Adobe Express and two other tools give at the same point: ready designs by purpose, text styles, sets of elements, a photo library, a brand's colours and fonts, one design in other sizes.
+- AC1 Done (#11833): the content census, `plans/artifact-canvas-content-census.md` and its `-tools`, `-gaps` and `-proposals` files. What a person meets on an empty board, tool by tool. What Canva, Adobe Express and two other tools give at the same point: ready designs by purpose, text styles, sets of elements, a photo library, a brand's colours and fonts, one design in other sizes.
   - For each gap: what it takes in own code, where its content comes from and under which licence, a size. It ends with ten proposals, the most use for the least work first.
 - AC2 Done by the architect on the owner's files (2026-11-26, agent channel request 3136): `plans/artifact-canvas-canva-census.md`. The route is the .pptx; the .pdf and the .svg are not read.
 - AC3 (architect) after AC1: the owner's choice of content by poll; this file gains its build steps.
