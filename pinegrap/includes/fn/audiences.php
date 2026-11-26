@@ -558,7 +558,9 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
     $op = $c['op'];
     $value = isset($c['value']) ? $c['value'] : null;
     $since = isset($c['value']) && is_int($c['value']) ? $now - ($c['value'] * 86400) : 0;
-    $complete = "orders.status <> 'incomplete' AND orders.contact_id <> 0";
+    // A finished order: a cart is no purchase and a cancelled order is none
+    // either, as customer value and customer rhythm read them.
+    $complete = "orders.status IN ('complete', 'exported') AND orders.contact_id <> 0";
 
     switch ($c['key']) {
         case 'country':

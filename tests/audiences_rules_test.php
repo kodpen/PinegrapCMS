@@ -147,7 +147,7 @@ function test_audiences_all_and_any_nesting()
 
 	pg_assert_same(
 		"SELECT contacts.id FROM contacts WHERE ((COALESCE(contacts.business_country, '') = ? OR COALESCE(contacts.home_country, '') = ?)"
-		. " AND ((contacts.id NOT IN (SELECT orders.contact_id FROM orders WHERE orders.status <> 'incomplete' AND orders.contact_id <> 0))"
+		. " AND ((contacts.id NOT IN (SELECT orders.contact_id FROM orders WHERE orders.status IN ('complete', 'exported') AND orders.contact_id <> 0))"
 		. " OR (COALESCE(contacts.member_id, '') <> '')))",
 		$query['sql']
 	);
@@ -426,4 +426,25 @@ function test_audiences_group_loops()
 	pg_assert_true(!pg_audience_group_loops(5, $in(6), array()), 'a hand group is no loop');
 	pg_assert_true(!pg_audience_group_loops(5, $in(6), array(6 => $in(7), 7 => $in(6))), 'a loop that does not reach this group is not this group\'s');
 	pg_assert_true(!pg_audience_group_loops(5, $bought, array(5 => $in(5))), 'the rule being saved replaces the stored one');
+}
+
+// A cancelled order is no purchase: "Has bought", the order count, the total
+// spent, the last order and a bought product read only complete and
+// exported orders, as customer value and customer rhythm do.
+function test_audiences_order_conditions_leave_cancelled_orders_out()
+{
+	foreach (array(
+		array('key' => 'customer', 'op' => 'yes'),
+		array('key' => 'order_count', 'op' => 'gte', 'value' => 2),
+		array('key' => 'order_count', 'op' => 'lte', 'value' => 1),
+		array('key' => 'order_total', 'op' => 'gte', 'value' => 5000),
+		array('key' => 'last_order', 'op' => 'within', 'value' => 30),
+		array('key' => 'bought_product', 'op' => 'yes', 'value' => 3),
+		array('key' => 'bought_product_group', 'op' => 'no', 'value' => 4),
+	) as $condition) {
+		$query = pg_audience_sql(array('match' => 'all', 'conditions' => array($condition)), 1800000000);
+
+		pg_assert_contains("orders.status IN ('complete', 'exported')", $query['sql'], $condition['key'] . ' reads finished orders');
+		pg_assert_true(strpos($query['sql'], "orders.status <> 'incomplete'") === false, $condition['key'] . ' does not take a cancelled order');
+	}
 }
