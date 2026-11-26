@@ -597,6 +597,29 @@ function erp_cheque_bank_till_refusal($till, $cheque, $kept_currency, $bank_curr
 }
 
 /**
+ * erp_cheque_bank_till_refusal() for a till by its id, with the currencies of
+ * that till and the cheque's portfolio read from the database: what the step
+ * and the API both ask.
+ *
+ * @param int   $bank_till_id
+ * @param array $cheque  erp_cheques row: bank_till_id, portfolio_till_id
+ * @return string
+ */
+function erp_cheque_bank_till_id_refusal($bank_till_id, $cheque)
+{
+    $bank_row = db_item("SELECT id, is_active, currency FROM erp_cash_accounts WHERE id = '" . (int) $bank_till_id . "' LIMIT 1");
+    $portfolio_row = db_item("SELECT id, currency FROM erp_cash_accounts WHERE id = '" . (int) ($cheque['portfolio_till_id'] ?? 0) . "' LIMIT 1");
+    $base = erp_base_currency();
+    $currency_of = function ($row) use ($base) {
+        $currency = (is_array($row) && erp_fx_enabled()) ? strtoupper(trim((string) ($row['currency'] ?? ''))) : '';
+
+        return ($currency !== '') ? $currency : $base;
+    };
+
+    return erp_cheque_bank_till_refusal($bank_row, $cheque, $currency_of($portfolio_row), $currency_of($bank_row));
+}
+
+/**
  * The tills a cheque's bank step may choose, as a WHERE condition on
  * erp_cash_accounts: the active ones but its portfolio, and the bank it was
  * handed to even when that bank was taken off since, the one
@@ -688,19 +711,9 @@ function erp_cheque_step($id, $step, $options, $user_id)
         return $fail(lang('Choose the bank account.'));
     }
 
-    if (in_array($step, array('deposit', 'collect', 'pay'), true)) {
-        $bank_row = db_item("SELECT id, is_active, currency FROM erp_cash_accounts WHERE id = '" . $bank_till . "' LIMIT 1");
-        $base = erp_base_currency();
-        $currency_of = function ($row) use ($base) {
-            $currency = (is_array($row) && erp_fx_enabled()) ? strtoupper(trim((string) ($row['currency'] ?? ''))) : '';
-
-            return ($currency !== '') ? $currency : $base;
-        };
-        $portfolio_row = db_item("SELECT id, currency FROM erp_cash_accounts WHERE id = '" . (int) $cheque['portfolio_till_id'] . "' LIMIT 1");
-
-        if (($refusal = erp_cheque_bank_till_refusal($bank_row, $cheque, $currency_of($portfolio_row), $currency_of($bank_row))) !== '') {
-            return $fail($refusal);
-        }
+    if (in_array($step, array('deposit', 'collect', 'pay'), true)
+        && (($refusal = erp_cheque_bank_till_id_refusal($bank_till, $cheque)) !== '')) {
+        return $fail($refusal);
     }
 
     if ($step === 'deposit') {

@@ -409,24 +409,11 @@ function erp_api_cheques_step($params)
             api_fail_validation(lang('Choose the bank account.'), 'cash_account_id');
         }
 
-        $bank = erp_api_cash_till($bank_till, 'cash_account_id');
-
-        if ((int) $bank['id'] === (int) $cheque['portfolio_till_id']) {
-            api_fail_validation(lang('Choose two different accounts.'), 'cash_account_id');
-        }
-
-        // Collecting and paying move the money between the two tills, which
-        // has to stay in one currency.
-        if ($step !== 'deposit') {
-            $kept = erp_cheque_till_rate((int) $cheque['portfolio_till_id'], $date)['currency'];
-            $bank_currency = erp_api_cash_till_currency($bank);
-
-            if ($kept !== $bank_currency) {
-                api_fail_validation(lang(array(
-                    'string' => 'The two accounts are kept in different currencies ({var:1} and {var:2}); a transfer has to stay in one.',
-                    'vars' => array($kept, $bank_currency),
-                )), 'cash_account_id');
-            }
+        // The screen's check: a bank taken off after the cheque went to it
+        // still collects that cheque, and a deposit keeps the portfolio's
+        // currency too, or the cheque could never be collected.
+        if (($refusal = erp_cheque_bank_till_id_refusal($bank_till, $cheque)) !== '') {
+            api_fail_validation($refusal, 'cash_account_id');
         }
     }
 

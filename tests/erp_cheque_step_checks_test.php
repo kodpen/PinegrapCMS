@@ -56,3 +56,15 @@ function test_erp_cheque_bank_till_choices_keep_the_stored_bank()
 	pg_assert_contains('erp_cheque_bank_till_choices_where(', $screen, 'the cheque screen lists the tills by it');
 }
 
+// The API asks the screen's bank check: it refused a stored bank taken off
+// later, which the screen still collects at, and let a deposit into a till of
+// another currency through its dry run.
+function test_erp_api_cheque_step_asks_the_bank_till_refusal()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
+	$step = substr($src, (int) strpos($src, 'function erp_api_cheques_step('));
+	$step = substr($step, 0, (int) strpos($step, 'api_dry_run_stop('));
+
+	pg_assert_contains('erp_cheque_bank_till_id_refusal(', $step, 'the API step checks the bank till as the screen does');
+	pg_assert_false(strpos($step, 'erp_api_cash_till(') !== false, 'the API step does not refuse every inactive till');
+}
