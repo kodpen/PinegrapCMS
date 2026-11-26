@@ -3234,20 +3234,41 @@ function erp_edoc_parasut_cancellable($invoice)
 }
 
 /**
- * The invoice on Paraşüt's own screen, for the operator.
+ * The invoice on Paraşüt's own screen, for the operator, in the environment
+ * the requests go to.
  *
  * @param string $external_id
  * @return string
  */
 function erp_edoc_parasut_panel_url($external_id)
 {
-    $company = defined('PARASUT_COMPANY_ID') ? trim((string) PARASUT_COMPANY_ID) : '';
+    $company = defined('PARASUT_COMPANY_ID') ? (string) PARASUT_COMPANY_ID : '';
 
-    if (($company === '') || (trim((string) $external_id) === '')) {
+    return erp_edoc_parasut_panel_address($company, $external_id, _parasut_api_environment());
+}
+
+/**
+ * The address of a sales invoice on Paraşüt's screen:
+ * uygulama.parasut.com for live, uygulama-staging.parasut.com for staging.
+ * Empty without a company or a record. Pure.
+ *
+ * @param string $company      Paraşüt company number
+ * @param string $external_id  Paraşüt sales invoice id
+ * @param string $environment  'live' | 'staging'
+ * @return string
+ */
+function erp_edoc_parasut_panel_address($company, $external_id, $environment)
+{
+    $company = trim((string) $company);
+    $external_id = trim((string) $external_id);
+
+    if (($company === '') || ($external_id === '')) {
         return '';
     }
 
-    return 'https://uygulama.parasut.com/' . rawurlencode($company) . '/satislar/' . rawurlencode((string) $external_id);
+    $host = ($environment === 'staging') ? 'https://uygulama-staging.parasut.com' : 'https://uygulama.parasut.com';
+
+    return $host . '/' . rawurlencode($company) . '/satislar/' . rawurlencode($external_id);
 }
 
 /**
