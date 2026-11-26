@@ -200,7 +200,7 @@
 - decisions-made-product-110.md: Decisions made, product part 110 (2026-11-25 on): all eleven packages of the Options panel census go into the designer; the architect draws the designer plans' sheets while no design session runs
 - decisions-made-product-111.md: Decisions made, product part 111 (2026-11-25 on): the Sketch tool's "Read the picture" runs on the browser's built-in model; no picture path to Pinegrap AI until the owner says it is good enough
 - decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item says how many pictures the site lacks; a payment way in test on a live shop gets a System Status warning row
-- decisions-made-product-113.md: Decisions made, product part 113 (2026-11-26 on): a translated picture text grows into free room, then wraps, then shrinks; one language's texts can be corrected by hand in the Artifact Canvas
+- decisions-made-product-113.md: Decisions made, product part 113 (2026-11-26 on): a translated picture text grows, wraps, then shrinks, corrected by hand per language; a Canva .pptx opens in the Artifact Canvas by a page chooser
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
