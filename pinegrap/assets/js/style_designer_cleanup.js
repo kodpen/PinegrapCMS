@@ -7,8 +7,8 @@
  * ticked at the start and nothing leaves by itself: "Remove" first keeps
  * the snapshot "Before clean-up" (History, Local snapshots), then files go
  * to the Recycle Bin and shared components are deleted on the server, and
- * the rules and variables leave the design's fields, saved as Save does. Opened from the command
- * palette's "Clean up" and from the Publish check's list of unused rules
+ * the rules and variables leave the design's fields, saved as Save does.
+ * Opened from the command palette's "Clean up" and from the Publish check's list of unused rules
  * (over the Publish sheet, the rules list open). Not needed to open a page:
  * the core runs this file the first time the window is asked for
  * (_sdPartLoad(), pg_designer_parts()) and hands it the design through a
