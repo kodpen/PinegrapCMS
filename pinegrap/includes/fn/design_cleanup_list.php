@@ -54,6 +54,71 @@ function pg_cleanup_refs_add(&$refs, $text)
 }
 
 /**
+ * The kinds of file whose text may name another file of the site: a
+ * stylesheet's url() and @import, a script, an SVG's image, a page of
+ * markup.
+ *
+ * @return array extensions, lower case
+ */
+function pg_cleanup_text_file_types()
+{
+    return array('css', 'js', 'mjs', 'json', 'svg', 'html', 'htm', 'xml', 'txt');
+}
+
+/**
+ * Adds the file names the site's own text files refer to (a design
+ * stylesheet's background picture or font), read from $dir one at a time.
+ * A name with a folder, of another kind, missing or over 8 MB is skipped.
+ *
+ * @param array  $refs  pg_cleanup_refs_add()
+ * @param array  $names file names
+ * @param string $dir   the files directory
+ * @return void
+ */
+function pg_cleanup_refs_add_files(&$refs, $names, $dir)
+{
+    $types = array_flip(pg_cleanup_text_file_types());
+    foreach ((array) $names as $name) {
+        $name = (string) $name;
+        if ($name === '' || $name !== basename($name) || $name[0] === '.'
+            || !isset($types[strtolower(pathinfo($name, PATHINFO_EXTENSION))])) {
+            continue;
+        }
+        $path = rtrim((string) $dir, '/') . '/' . $name;
+        if (!is_file($path) || filesize($path) > 8388608) {
+            continue;
+        }
+        pg_cleanup_refs_add($refs, (string) file_get_contents($path));
+    }
+}
+
+/**
+ * Adds one page: its tree and code as classes, and the file names and
+ * variables they, its meta tags and its structured data refer to (a share
+ * picture, a logo). The last two are read when the row carries them.
+ *
+ * @param array $state
+ * @param array $refs
+ * @param array $row page_name, page_tree_json, page_tree_code, optional page_meta_tags, custom_jsonld
+ * @return void
+ */
+function pg_cleanup_add_page_row(&$state, &$refs, $row)
+{
+    $name = isset($row['page_name']) ? (string) $row['page_name'] : '';
+    $json = isset($row['page_tree_json']) ? (string) $row['page_tree_json'] : '';
+    $code = isset($row['page_tree_code']) ? (string) $row['page_tree_code'] : '';
+    pg_cleanup_add_tree($state, json_decode($json, true), $name);
+    pg_cleanup_add_markup($state, $code, $name);
+    $text = array($json, $code);
+    foreach (array('page_meta_tags', 'custom_jsonld') as $col) {
+        if (isset($row[$col])) {
+            $text[] = (string) $row[$col];
+        }
+    }
+    pg_cleanup_refs_add($refs, implode("\n", $text));
+}
+
+/**
  * The classes a framework stylesheet defines: never counted as unused, as a
  * widget or a node setting draws them without naming them in a tree.
  *
@@ -332,12 +397,16 @@ function pg_cleanup_design_lists($style_id)
     pg_cleanup_add_script($state, is_file($fx) ? file_get_contents($fx) : '', 'pg_fx.js');
 
     // Every page's tree and code: another design's page counts too.
+    // A page's meta tags and structured data may name a share picture.
     if (pg_schema_has('page', 'page_tree_json')) {
-        pg_cleanup_each_row('page', 'page_id', array('page_name', 'page_tree_json', 'page_tree_code'), function ($row) use (&$state, &$refs) {
-            $tree = json_decode((string) $row['page_tree_json'], true);
-            pg_cleanup_add_tree($state, $tree, (string) $row['page_name']);
-            pg_cleanup_add_markup($state, (string) $row['page_tree_code'], (string) $row['page_name']);
-            pg_cleanup_refs_add($refs, $row['page_tree_json'] . "\n" . $row['page_tree_code']);
+        $page_cols = array('page_name', 'page_tree_json', 'page_tree_code');
+        foreach (array('page_meta_tags', 'custom_jsonld') as $col) {
+            if (pg_schema_has('page', $col)) {
+                $page_cols[] = $col;
+            }
+        }
+        pg_cleanup_each_row('page', 'page_id', $page_cols, function ($row) use (&$state, &$refs) {
+            pg_cleanup_add_page_row($state, $refs, $row);
         });
     }
 
@@ -403,6 +472,17 @@ function pg_cleanup_design_lists($style_id)
     // Settings that hold a file name (a share image, a logo, an icon).
     $config = db_item("SELECT * FROM config LIMIT 1");
     pg_cleanup_refs_add($refs, is_array($config) ? implode("\n", array_map('strval', $config)) : '');
+
+    // The site's own text files: a design stylesheet's background picture
+    // or font is named only inside it.
+    if (defined('FILE_DIRECTORY_PATH')) {
+        $likes = array();
+        foreach (pg_cleanup_text_file_types() as $ext) {
+            $likes[] = "files.name LIKE '%." . $ext . "'";
+        }
+        $text_files = db_values("SELECT files.name FROM files WHERE " . implode(' OR ', $likes));
+        pg_cleanup_refs_add_files($refs, is_array($text_files) ? $text_files : array(), FILE_DIRECTORY_PATH);
+    }
 
     $usage = pg_shared_component_usage(array_map(function ($c) {
         return $c['id'];

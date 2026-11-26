@@ -175,3 +175,41 @@ function test_design_cleanup_window_ticks_sizes_and_views()
 	pg_assert_same(array('412 B', '1.1 KB', '1.8 MB', '25 KB'), $got['sizes']);
 	pg_assert_same(array('save', 'busy', 'failed', 'empty', 'lists'), $got['views'], 'unsaved changes come before everything');
 }
+
+function test_design_cleanup_list_refs_read_inside_the_site_text_files()
+{
+	$dir = sys_get_temp_dir() . '/pgcu_files_' . getmypid();
+	@mkdir($dir);
+	file_put_contents($dir . '/theme.css', "@font-face { src: url('brand-font.woff2'); }\n.hero { background: url(\"hero-bg.jpg\"); }");
+	file_put_contents($dir . '/site.js', "img.src = '/slide-2.webp';");
+	file_put_contents($dir . '/photo.jpg', 'not-a-text.png');
+	$refs = array('files' => array(), 'vars' => array());
+	pg_cleanup_refs_add_files($refs, array('theme.css', 'site.js', 'photo.jpg', 'gone.css', '../outside.css'), $dir);
+	pg_assert_true(isset($refs['files']['hero-bg.jpg']), 'a picture a design stylesheet loads');
+	pg_assert_true(isset($refs['files']['brand-font.woff2']), 'a font a design stylesheet loads');
+	pg_assert_true(isset($refs['files']['slide-2.webp']), 'a picture a script loads');
+	pg_assert_true(!isset($refs['files']['not-a-text.png']), 'a picture is not read as text');
+	$list = pg_cleanup_file_list(array(array('id' => 1, 'name' => 'hero-bg.jpg', 'size' => 10, 'timestamp' => 1)), $refs);
+	pg_assert_same(array(), $list['rows'], 'so the picture is not listed');
+	@unlink($dir . '/theme.css');
+	@unlink($dir . '/site.js');
+	@unlink($dir . '/photo.jpg');
+	@rmdir($dir);
+}
+
+function test_design_cleanup_list_page_row_reads_meta_tags_and_structured_data()
+{
+	$state = pg_cleanup_state();
+	$refs = array('files' => array(), 'vars' => array());
+	pg_cleanup_add_page_row($state, $refs, array(
+		'page_name'      => 'Home',
+		'page_tree_json' => '{"type":"semantic","props":{"cssClass":"intro"}}',
+		'page_tree_code' => '<div class="intro-code"></div>',
+		'page_meta_tags' => '[{"property":"og:image","content":"https:\/\/example.com\/share-card.png"}]',
+		'custom_jsonld'  => '{"@type":"Organization","logo":"https://example.com/brand-logo.svg"}',
+	));
+	pg_assert_true(pg_cleanup_class_used($state, 'intro'), 'the tree');
+	pg_assert_true(pg_cleanup_class_used($state, 'intro-code'), 'the page code');
+	pg_assert_true(isset($refs['files']['share-card.png']), 'a share picture of the page meta tags');
+	pg_assert_true(isset($refs['files']['brand-logo.svg']), 'a logo of the page structured data');
+}
