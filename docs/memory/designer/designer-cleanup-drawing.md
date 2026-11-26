@@ -1,10 +1,10 @@
 ---
 name: designer-cleanup-drawing
-description: The drawing of the designer's "Clean up" window (plan designer-cleanup, CU2 and CU3): boards U1 what opens it and U2 the window with its four lists and rows
+description: The drawing of the designer's "Clean up" window (built in #11668 and #11864): boards U1 what opens it and U2 the window with its four lists and rows
 ---
 
 ## Where is the drawing?
-- `designer/designer-cleanup-drawing/cleanup.html` on `ui/look-sheet/sheet.css`, with `cleanup-dark.jpg` and `-light.jpg`. CU2 builds boards U1 to U4; CU3 the foot of U3, the closing line and the row that stayed of U4. What is listed comes from the finder (`design-cleanup-finder.md`). Boards U3 and U4: `designer-cleanup-states-drawing.md`.
+- `designer/designer-cleanup-drawing/cleanup.html` on `ui/look-sheet/sheet.css`, with `cleanup-dark.jpg` and `-light.jpg`. Boards U1 to U4 were built in #11668; the foot of U3, the closing line and the row that stayed of U4 in #11864 (`designer-cleanup.md`). What is listed comes from the finder (`design-cleanup-finder.md`). Boards U3 and U4: `designer-cleanup-states-drawing.md`.
 
 ## What opens it? (U1)
 - The command palette's row "Clean up", for whoever may save the design. No button in the page bar or the canvas bar, no menu row, no key (`designer-light-and-simple.md`).

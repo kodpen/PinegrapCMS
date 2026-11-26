@@ -1,6 +1,6 @@
 ---
 name: designer-cleanup-removal
-description: "Remove" of the Clean up window (CU3): the snapshot first, what the server re-checks and removes, rules and variables saved by the editor, the closing line, rows that stay
+description: "Remove" of the Clean up window (#11864): the snapshot first, what the server re-checks and removes, rules and variables saved by the editor, the closing line, rows that stay
 module: design_cleanup_remove
 ---
 

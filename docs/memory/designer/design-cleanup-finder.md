@@ -5,7 +5,7 @@ module: design_cleanup
 ---
 
 ## What is it?
-- The pure part of "Clean up" (plan `designer-cleanup`, CU1): a state of the classes in use is filled from every place that can name one, then `pg_cleanup_unused_rules($css, $state)` lists the rules of one of the design's own stylesheets that nothing uses. No database, no output; the window (CU2) gathers the inputs and draws the rows.
+- The pure part of "Clean up" (`designer-cleanup.md`, #11560): a state of the classes in use is filled from every place that can name one, then `pg_cleanup_unused_rules($css, $state)` lists the rules of one of the design's own stylesheets that nothing uses. No database, no output; the window (`designer-cleanup-window.md`) gathers the inputs and draws the rows.
 - It always errs towards "used": a row it is unsure of is never listed.
 
 ## What fills the state?
@@ -22,7 +22,7 @@ module: design_cleanup
 - Read: rules inside `@media`, `@supports`, `@layer`, `@container` (row's `media` is the chain); `@keyframes`, `@font-face`, `@import` hold no class rule and are skipped.
 
 ## What is a row?
-- `selector`, `classes` (the ones nothing uses), `media`, `start`/`end` (byte range of the whole rule, for the removal in CU3), `bytes`; the result's `bytes` is what all rows would free. A rule is listed when every alternative of its selector needs a class nothing uses.
+- `selector`, `classes` (the ones nothing uses), `media`, `start`/`end` (byte range of the whole rule, for the removal, `designer-cleanup-removal.md`), `bytes`; the result's `bytes` is what all rows would free. A rule is listed when every alternative of its selector needs a class nothing uses.
 - What the caller must pass for a page with interactions: the `pg_fx` script among the scripts, so the classes it sets count.
 
 ## Tests?
