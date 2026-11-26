@@ -720,6 +720,14 @@ function ws_api_agent_request_answer($params)
 
         $text = ws_agent_answer_text(trim((string) $params['text']), (int) $row['requested_by'], ws_agent_wake_of($row) || ws_agent_request_asker_app($row));
 
+        // An answer to another agent that would not wake it reaches nobody:
+        // refused with the words that say what to write.
+        $unheard = ws_agent_answer_wake_refusal(ws_agent_answer_asker_row($place['channel'], $row, $agent), ws_tokens_normalise($text));
+
+        if ($unheard !== '') {
+            api_fail_validation($unheard, 'text');
+        }
+
         $options = array('parent_id' => (int) $row['message_id'], 'app_id' => (int) $agent['app_id']);
         $checked = ws_message_send_check($place['writer'], $place['channel'], $text, $options);
 

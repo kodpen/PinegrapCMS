@@ -9575,6 +9575,7 @@
     "This answer token has expired.": "Bu yanıt anahtarının süresi doldu.",
     "This answer token is not valid.": "Bu yanıt anahtarı geçerli değil.",
     "This answer was already sent.": "Bu yanıt zaten gönderildi.",
+    "This answer would not wake @{var:1}, which asked: it wakes only when it is named. Begin the answer with @{var:1}, or close the request with no_answer.": "Bu yanıt, soran @{var:1} ajanını uyandırmaz: o yalnızca adı anılınca uyanır. Yanıta @{var:1} ile başlayın ya da isteği no_answer ile kapatın.",
     "This app could not be found. It may have been renamed or taken out of the stores.": "Bu uygulama bulunamadı. Adı değişmiş ya da mağazalardan kaldırılmış olabilir.",
     "This application belongs to an account above yours, so only that account or one above it can change it.": "Bu uygulama sizden üst bir hesaba ait; yalnızca o hesap veya ondan üstteki bir hesap değiştirebilir.",
     "This application could not be found, or it is not yours to see.": "Bu başvuru bulunamadı ya da görme yetkiniz yok.",
