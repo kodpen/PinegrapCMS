@@ -133,3 +133,15 @@ function test_workspace_channel_board_recent_closed_read_apart()
 	pg_assert_contains("'status'        => 'closed',", $php, 'the closed tasks of the last days are read apart');
 	pg_assert_contains("if (count(\$briefs) >= WS_CHANNEL_BOARD_READ_LIMIT) {", $php, 'only when the first read was full');
 }
+
+function test_workspace_channel_board_zero_due_date_is_not_overdue()
+{
+	// The List view paints a brief's overdue red; the Overdue figure reads
+	// a 0000-00-00 due date as none, so the brief must too.
+	pg_assert_false(ws_task_is_overdue('0000-00-00', 'todo', '2026-11-26'), 'a 0000-00-00 due date is no due date');
+	pg_assert_false(ws_task_is_overdue('', 'todo', '2026-11-26'), 'no due date');
+	pg_assert_false(ws_task_is_overdue(null, 'doing', '2026-11-26'), 'a null due date');
+	pg_assert_true(ws_task_is_overdue('2026-11-25', 'waiting', '2026-11-26'), 'an open task due yesterday');
+	pg_assert_false(ws_task_is_overdue('2026-11-26', 'todo', '2026-11-26'), 'due today is not late');
+	pg_assert_false(ws_task_is_overdue('2026-11-20', 'done', '2026-11-26'), 'a closed task is never late');
+}
