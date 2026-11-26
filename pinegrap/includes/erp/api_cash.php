@@ -398,6 +398,12 @@ function erp_api_cheques_step($params)
     $bank_till = 0;
     $to_account = 0;
 
+    // The step's own date check, asked before the dry run so a rehearsal of a
+    // step dated before the cheque is refused on the date as the step is.
+    if (($refusal = erp_cheque_step_date_refusal($date, (string) $cheque['doc_date'])) !== '') {
+        api_fail_validation($refusal, 'date');
+    }
+
     if ($step !== 'deposit') {
         erp_api_cash_lock_check($date, 'date');
     }

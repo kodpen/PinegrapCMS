@@ -81,3 +81,14 @@ function test_erp_cheque_typed_step_date()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_cheque.php');
 	pg_assert_contains('erp_cheque_typed_step_date(', $screen, 'the cheque screen reads the date by it');
 }
+
+// The API asks the step's date check before its dry run, so a rehearsal of a
+// step dated before the cheque is refused on the date field, as the step is.
+function test_erp_api_cheque_step_asks_the_date_refusal()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
+	$step = substr($src, (int) strpos($src, 'function erp_api_cheques_step('));
+	$step = substr($step, 0, (int) strpos($step, 'api_dry_run_stop('));
+
+	pg_assert_contains('erp_cheque_step_date_refusal(', $step, 'the API step checks the date before the dry run');
+}
