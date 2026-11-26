@@ -312,7 +312,7 @@ function pg_cleanup_each_row($table, $id, $columns, $fn, $from = '')
  * design; null for a design that is not a visual designer one.
  *
  * @param int $style_id
- * @return array|null design, rules, files, components, variables
+ * @return array|null design, rules, files, components, variables, model
  */
 function pg_cleanup_design_lists($style_id)
 {
@@ -428,6 +428,8 @@ function pg_cleanup_design_lists($style_id)
         'files'      => pg_cleanup_file_list($files, $refs, $skip),
         'components' => pg_cleanup_component_list($components, $usage, $nested),
         'variables'  => pg_cleanup_variable_list(is_array($stored) && isset($stored['custom']) ? $stored['custom'] : array(), $refs),
+        // The stored variables model, kept in the snapshot "Before clean-up".
+        'model'      => is_array($stored) ? $stored : null,
     );
 }
 

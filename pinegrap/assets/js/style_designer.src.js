@@ -85207,7 +85207,10 @@ const StyleDesigner = (function () {
         try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(arr)); } catch(e) {}
     }
 
-    function saveSnapshot(name) {
+    // vars: a design variables model kept with the snapshot ("Before
+    // clean-up"); Load puts it back into the Variables tab's input. Returns
+    // whether the snapshot is stored (the browser's storage may be full).
+    function saveSnapshot(name, vars) {
         var snaps = _loadSnapshots();
         var nameEl = document.querySelector('[name="name"]');
         // v2 snapshots also capture asset fields (Styles panel content,
@@ -85224,8 +85227,17 @@ const StyleDesigner = (function () {
             timestamp: Date.now(),
             styleName: nameEl ? nameEl.value.trim() : ''
         });
+        var id = snaps[snaps.length - 1].id;
+        if (vars) snaps[snaps.length - 1].vars = vars;
         while (snaps.length > MAX_SNAPSHOTS) snaps.shift();
         _saveSnapshots(snaps);
+        return _loadSnapshots().some(function (one) { return one.id === id; });
+    }
+
+    // The Variables tab's input set to a whole model: the next save writes it.
+    function _sdVarsInputSet(model) {
+        var input = document.getElementById('sd-style-variables');
+        if (input && model) input.value = JSON.stringify(model);
     }
 
     // ========================= FIND & REPLACE =========================
@@ -85644,6 +85656,7 @@ const StyleDesigner = (function () {
                     // (older v1 snapshots) are no-ops — nothing breaks.
                     if (snap.assets) _restoreAssetFields(snap.assets);
                     if (snap.shared) _restoreShared(snap.shared);
+                    if (snap.vars) _sdVarsInputSet(snap.vars);
                     _replaceTreeWithPrefetch(cloneTree(snap.tree), {
                         selectedNodeId: snap.selectedNodeId || null
                     });
@@ -91032,6 +91045,27 @@ const StyleDesigner = (function () {
             styleId: _design.styleId,
             dirty: function () { return isDirty() || Object.keys(_sharedDirty).some(function (k) { return !!_sharedDirty[k]; }); },
             save: phone.save,
+            // "Remove": the snapshot "Before clean-up" (true when stored),
+            // the design's stylesheets and variables without the removed
+            // ones (returns what puts the fields back), and a save that
+            // tells whether it went.
+            snapshot: function (name, vars) { return saveSnapshot(name, vars); },
+            apply: function (css, model) {
+                var cur = _snapshotAssetFields();
+                var input = document.getElementById('sd-style-variables');
+                var was = input ? input.value : '';
+                if (css) _restoreAssetFields({ css: css, js: cur.js, fonts: cur.fonts });
+                _sdVarsInputSet(model);
+                return function () {
+                    _restoreAssetFields(cur);
+                    if (input) input.value = was;
+                };
+            },
+            saveNow: function (done) {
+                var b = document.getElementById('sd-ajax-save');
+                if (!b) { done(false); return; }
+                saveAjax({ button: b, onSuccess: function () { done(true); }, onError: function () { done(false); } });
+            },
             draw: function (tree) { try { return _sdEmitNode(tree, 0, 0); } catch (e) { return ''; } },
             styles: function () {
                 var out = '';
