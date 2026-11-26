@@ -101,13 +101,21 @@ StyleDesigner.definePart('document', function (K) {
         loadTexts().then(function (t) {
             if (!win) {
                 var el = document.createElement('dialog');
-                el.className = 'dialog dialog-lg pg-dialog-centered dialog-scrollable';
+                el.className = 'dialog dialog-lg pg-dialog-centered dialog-scrollable sd-doc-win';
                 el.setAttribute('aria-labelledby', 'sd-doc-title');
                 el.innerHTML = '<div class="dialog-header"><h2 class="dialog-title fs-lg" id="sd-doc-title"><i class="bi bi-file-earmark-text me-3" aria-hidden="true"></i>' + esc(_sdT('Page from a document')) + '</h2>'
                     + '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>'
                     + '<div class="dialog-body"></div><div class="dialog-footer"></div>';
                 document.body.appendChild(el);
                 win = {el: el, form: null};
+                // The form's first field takes the focus, not Close: a
+                // paste or a typed word goes straight in.
+                window.pgUI.dialog.on(el, 'shown', function () {
+                    var first = el.querySelector('.dialog-body textarea, .dialog-body .pg-doc-read, .dialog-body button');
+                    if (first && !el.querySelector('.dialog-body').contains(document.activeElement)) {
+                        first.focus();
+                    }
+                });
                 window.pgUI.dialog.on(el, 'hidden', function () {
                     if (win.form) {
                         win.form.destroy();

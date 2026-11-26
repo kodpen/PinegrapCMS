@@ -6,7 +6,7 @@ description: "Save to my library" (element menu, command palette) and its window
 ## Where does "Save to my library" sit?
 - One row in the three-dot menu of the Options panel's element row (`_sdIdentityBind()`) and the command palette row `act_library_save`. No button. Shown to the designer roles only (`_sdLibMaySave()`: full access and the part handed over), for one element that holds others (`_sdLibOffered()`); with two or more selected it is not in the menu.
 - The window (part `mylibrary`, `assets/js/style_designer_mylibrary.js`): Name (the element's label), Group (the group used last, `localStorage` `pinegrap_designer_library_group`; offers the groups in use, nearest first, and "New group …"), the line "A copy you start from…", Cancel / Save. Enter saves, an empty name keeps Save off, 60 characters each.
-- A name the library has: "The library has an item of this name in "…". Both are kept." A server refusal shows its reason in the window, which stays open. Saved: one line with "Show", which opens Blocks on the item.
+- A name the library has: "The library has an item of this name in "…". Both are kept." A server refusal shows its reason; the window stays open. Saved: one line with "Show", which opens Blocks on the item, opening the drawer below 992 px (#11856).
 
 ## What does the server do?
 - Sub actions of the `designer` panel action, in `pg_library_editor()` (`includes/fn/designer_library.php`): `library_list` (cards: `pg_library_card()`), `library_save`, `library_prepare`. List and prepare are open to content roles; each call checks `pg_library_may()`.

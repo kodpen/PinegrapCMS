@@ -56,6 +56,7 @@ function make(type) {
 		kids.push(n('row', {gutter: '4'}, [col, col, col]));
 	} else {
 		kids.push(c('link', 'Get started'));
+		kids.push(n('semantic', {tag: 'div', customName: 'Hero CTA Group'}, [n('component', {componentType: 'btn', text: 'Get Started', href: '#'}), n('component', {componentType: 'btn', text: 'More Info', href: '#'})]));
 	}
 	return n('semantic', {tag: 'section', cssClass: 'py-5'}, [n('container', {}, kids)]);
 }
@@ -218,7 +219,8 @@ function test_document_start_page_words()
 		. '{id: "p12", kind: "gallery", heading: "", items: [{src: "picture:0", alt: "Lake"}, {src: "javascript:x", alt: "Bad"}]}'
 		. ']; var nodes = P.build(rows, {make: make, src: function (s) { return s === "picture:0" ? "/lake.png" : ""; }});'
 		. 'out = [nodes.length, nodes.map(function (x) { return texts(x, []); }), nodes.every(function (x) { return /--pg-var-space-section/.test(x.props.inlineStyle); }),'
-		. ' JSON.stringify(nodes[5]).indexOf("mailto:hi@lake.com") !== -1, JSON.stringify(nodes[6]).indexOf("/lake.png") !== -1];');
+		. ' JSON.stringify(nodes[5]).indexOf("mailto:hi@lake.com") !== -1, JSON.stringify(nodes[6]).indexOf("/lake.png") !== -1,'
+		. ' /Get Started|More Info|Hero CTA Group/.test(JSON.stringify(nodes[0]))];');
 
 	if ($result === null) {
 		return;
@@ -233,6 +235,7 @@ function test_document_start_page_words()
 	pg_assert_same(array('hi@lake.com', 'Shore 1'), $result[1][5], 'the contact lines');
 	pg_assert_same(true, $result[2], 'the section rhythm on each');
 	pg_assert_same(true, $result[3], 'an e-mail is a mailto link');
+	pg_assert_same(false, $result[5], 'the hero\'s sample buttons gone with their group');
 	pg_assert_same(true, $result[4], 'a stored picture in the gallery');
 }
 
