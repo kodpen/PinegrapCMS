@@ -322,7 +322,7 @@ function test_designer_grid_tracks_wiring()
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_grid.min.js', isset($parts['grid']) ? $parts['grid'] : '', 'grid is a part');
 	$bundles = pg_js_bundles();
-	pg_assert_same(array('assets/js/pg_grid_tracks.js', 'assets/js/style_designer_grid.js'),
+	pg_assert_same(array('assets/js/pg_grid_tracks.js', 'assets/js/pg_grid_areas.js', 'assets/js/style_designer_grid.js'),
 		isset($bundles['assets/js/style_designer_grid.min.js']) ? $bundles['assets/js/style_designer_grid.min.js'] : null, 'its bundle');
 	pg_assert_same('always', pg_designer_part_files()['grid']['when'], 'the editor is handed the part');
 

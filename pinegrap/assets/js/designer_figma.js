@@ -99,6 +99,23 @@
         root.appendChild(s.run);
         pane.addEventListener('sd-figma-frames', function (event) { importStart(s, event.detail); });
 
+        // Closing the window before "Open the design" does what Stop does.
+        if (window.pgUI && pgUI.dialog && pgUI.dialog.on) {
+            pgUI.dialog.on(win, 'hidden', function () {
+                s.shut = true;
+
+                if (s.leaving) {
+                    return;
+                }
+
+                abandon(s);
+
+                if (s.view === 'vars' || s.view === 'run' || s.view === 'report') {
+                    backToList(s);
+                }
+            });
+        }
+
         s.list.addEventListener('click', function (event) {
             var tile = event.target.closest('.sd-fg-tile');
             var all = event.target.closest('[data-fg-all]');
@@ -170,7 +187,7 @@
         } else if (s.view === 'report') {
             s.count.hidden = true;
             s.foot.innerHTML = '<button type="button" class="pg-button pg-button-ghost me-auto" data-fg-copy="1">' + esc(s.T.copy) + '</button>'
-                + '<a class="pg-button pg-button-fill" href="' + esc(s.openHref) + '">' + esc(s.T.open) + '</a>';
+                + '<a class="pg-button pg-button-fill" data-fg-open="1" href="' + esc(s.openHref) + '">' + esc(s.T.open) + '</a>';
         } else if (s.view === 'list') {
             var file = s.files[s.link];
             var n = ticked(s).length;
@@ -191,6 +208,11 @@
             var act = event.target.closest('[data-fg-act]');
             var copy = event.target.closest('[data-fg-copy]');
 
+            if (event.target.closest('[data-fg-open]')) {
+                s.leaving = true;
+                return;
+            }
+
             if (copy && s.reportText && navigator.clipboard) {
                 navigator.clipboard.writeText(s.reportText).then(function () { copy.textContent = s.T.copied; }, function () { });
                 return;
@@ -207,6 +229,7 @@
             } else if (what === 'back') {
                 showAsk(s);
             } else if (what === 'list') {
+                abandon(s);
                 backToList(s);
             } else if (what === 'create') {
                 importRun(s);
@@ -420,6 +443,13 @@
         api({ sub_action: 'figma_import', step: 'start', link: detail.link, ids: detail.ids }).then(function (answer) {
             s.busy = false;
 
+            // The window was closed while the frames were read.
+            if (s.shut && answer && answer.status === 'success') {
+                api({ sub_action: 'figma_import', step: 'stop', id: answer.id }).then(function () { }, function () { });
+                backToList(s);
+                return;
+            }
+
             if (!answer || answer.status !== 'success') {
                 backToList(s);
                 say(s, answer && answer.message, answer && answer.detail, true);
@@ -482,6 +512,7 @@
 
         s.view = 'run';
         s.stopping = false;
+        s.leaving = false;
         showRun(s, '<h3 class="pg-section-title">' + esc(fill(s.T.making, [frames.length])) + '</h3>'
             + '<progress class="sd-fg-bar" max="' + (frames.length + 1) + '" value="0"></progress>'
             + '<ol class="pg-card-inner sd-fg-steps" aria-live="polite">' + rows + '</ol>');
@@ -536,6 +567,7 @@
             }
 
             if (!answer || answer.status !== 'success') {
+                abandon(s);
                 backToList(s);
                 say(s, (answer && answer.message) || s.T.network, '', true);
                 return;
@@ -546,9 +578,23 @@
             s.view = 'report';
             drawFoot(s);
         }).catch(function () {
+            abandon(s);
             backToList(s);
             say(s, s.T.network, '', true);
         });
+    }
+
+    // An import left before "Open the design" (the window closed, Back
+    // from the variables, a failed finish) is stopped as Stop stops it:
+    // the server takes back the pictures, the shared rows and the folder.
+    function abandon(s) {
+        if (!s.imp) {
+            return;
+        }
+
+        s.stopping = true;
+        api({ sub_action: 'figma_import', step: 'stop', id: s.imp.id }).then(function () { }, function () { });
+        s.imp = null;
     }
 
     function drawReport(s, r) {
@@ -594,10 +640,8 @@
                 return;
             }
 
-            s.stopping = true;
+            abandon(s);
             drawFoot(s);
-            api({ sub_action: 'figma_import', step: 'stop', id: s.imp.id }).then(function () { }, function () { });
-            s.imp = null;
             backToList(s);
         });
     }
@@ -609,6 +653,7 @@
             }
 
             if (state) {
+                state.shut = false;
                 drawFoot(state);
             } else {
                 // Not connected: the pane is its empty state, the foot has

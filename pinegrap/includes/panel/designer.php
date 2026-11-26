@@ -1182,6 +1182,13 @@ function pg_panel_designer($request, $action)
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
             respond(pg_canva_store_page(isset($_FILES['file']) ? $_FILES['file'] : null));
             break;
+        // The pages a Canva start leaves (the bin, Cancel, the window's
+        // close): only ids this session's start stored, never one a saved
+        // page uses (pg_canva_drop_pages()).
+        case 'canva_drop':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(array('status' => 'success', 'deleted' => pg_canva_drop_pages(isset($request['ids']) ? $request['ids'] : array())));
+            break;
         case 'canva_colors':
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
             respond(array(

@@ -336,7 +336,7 @@ StyleDesigner.definePart('bglayers', function (K) {
             } else if (a('data-bgl-del')) {
                 var gone = layers.splice(+a('data-bgl-del'), 1)[0];
                 ui.open = -1;
-                commit(host, layers, _sdT('“{var}” removed.', kindName(gone)));
+                commit(host, layers, _sdT('“{var}” is removed.', kindName(gone)));
             } else if (a('data-bgl-line') && !e.target.closest('.sd-bgl-bin')) {
                 var i = +a('data-bgl-line');
                 ui.open = ui.open === i ? -1 : i; ui.cur = i; ui.stop = 0; ui.pal = '';
@@ -450,7 +450,7 @@ StyleDesigner.definePart('bglayers', function (K) {
                 e.preventDefault();
                 var gone = layers.splice(ui.cur, 1)[0];
                 ui.open = -1;
-                commit(host, layers, _sdT('“{var}” removed.', kindName(gone)));
+                commit(host, layers, _sdT('“{var}” is removed.', kindName(gone)));
                 refocus(host, '.sd-bgl-list');
             } else if (strip) {
                 var l = layers[ui.open], s = chosen(l);
