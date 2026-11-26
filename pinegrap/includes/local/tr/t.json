@@ -7181,6 +7181,7 @@
     "The root folder cannot be moved.": "Kök klasör taşınamaz.",
     "The rota two weeks ahead, and swaps agreed within the team.": "Vardiya çizelgesi iki hafta önceden; değişiklikler ekip içinde anlaşarak.",
     "The round has ended": "Tur bitti",
+    "The round is over: this review can no longer be changed.": "Tur bitti: bu değerlendirme artık değiştirilemez.",
     "The routine calls this site at {var:1}, but its address is now {var:2}.": "Rutin bu siteyi {var:1} adresinden çağırıyor, ama sitenin adresi artık {var:2}.",
     "The routine calls this site at {var:1}, but the site's address is now {var:2}. Copy the prompt below into the routine on claude.ai again.": "Rutin bu siteyi {var:1} adresinden çağırıyor, ancak sitenin adresi artık {var:2}. Aşağıdaki istemi claude.ai'deki rutine yeniden kopyalayın.",
     "The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.": "Yeni gizli anahtar claude.ai'ye girilene kadar rutin oturum açamaz; bu anahtarı kullanan başka her şey de durur.",

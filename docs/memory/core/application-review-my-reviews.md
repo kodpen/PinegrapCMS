@@ -9,16 +9,16 @@ module: application_my_reviews
 - Any signed-in panel user who is an active reviewer (`revoked_at` 0) of an open or closed programme (`pg_application_review_member()`); no Forms right, no `validate_forms_access()`. A non-member gets 403 on the list.
 - Every read is the user's own: `pg_application_my_review()` joins the reviewer row on `user_id` and refuses a conflict (status 3) or a draft programme (404).
 - Menu row 28 "My reviews" (forms icon), untitled group after 27, built by membership (`ui/main-menu-categories.md`).
-- The role 3 ladder is unchanged (architect, 2026-11-20): a member with no other right gets "Access denied" on the dashboard and opens the screen by its address, e.g. the reminder's link (sign-in keeps `send_to`).
+- The role 3 ladder is unchanged (architect, 2026-11-20): a member with no other right opens the screen by its address, e.g. the reminder's link (sign-in keeps `send_to`).
 
 ## How is the list laid out?
 - A programme a card: name, days left in the round ("The round has ended" at 0), "Round N · X of Y sent", a progress bar, then the queue as rows with a pill: To do (0), Started (1), Sent (2). Conflicts are not listed.
 
 ## What does the scoring screen show?
 - Shared with the outside juror's page (`application-review-jurors.md`).
-- Two columns (`lg:col-7` / `lg:col-5`, one column on a phone): Answers, Scores. Each criterion a 1 to 10 radio segmented control, its weight, a folded Note; the Weighted total under them.
+- Two columns (`lg:col-7` / `lg:col-5`): Answers, Scores. Each criterion a 1 to 10 radio segmented control, its weight, a folded Note; the Weighted total under them.
 - Foot: "Send the review" (the one fill, confirmed), Previous and Next (they save what is typed, then move), "I know this applicant" opening a reason card.
-- A sent review, or one of a round no longer current, is read-only.
+- A sent review, one of a round no longer current, or one whose round is over (`pg_application_review_open()`) is read-only.
 
 ## What does blind review hide?
 - Off: nothing. On: the title is "Entry <entry id>" instead of the reference code; fields with a contact field, `email address` fields and the programme's `blind_fields` read "Hidden" (`pg_application_blind_hides()`).
