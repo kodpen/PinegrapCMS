@@ -152,3 +152,25 @@ function test_canva_sketch_of_pages()
 	pg_assert_true($r['sketch']['pages'][1]['x'] > $r['sketch']['pages'][0]['x'], 'side by side');
 	pg_assert_same(array('', 'pdf', 'notPng', 'tooBig'), $r['refusals'], 'what the browser refuses before sending');
 }
+
+// A drop deletes only ids this start stored in this session: an id asked
+// for that the session did not store is never deleted.
+function test_canva_drop_ids()
+{
+	pg_assert_same(array(4, 9), pg_canva_drop_ids(array(4, '9', 12, 4, 0, -3, 'x', array(1)), array(9, 4, 5)), 'only stored ids, each once');
+	pg_assert_same(array(), pg_canva_drop_ids(array(4), array()), 'nothing stored');
+	pg_assert_same(array(), pg_canva_drop_ids('4', array(4)), 'a list only');
+}
+
+// The bin, the cross on an upload that reached the server, Cancel and the
+// window's close drop the start's pages; Create design keeps them. A source
+// check: the window is a browser.
+function test_canva_abandoned_start_drops()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_canva.js');
+	pg_assert_contains("sub_action: 'canva_drop'", $js);
+	pg_assert_contains("pgUI.dialog.on(win, 'hidden'", $js, 'the window\'s close is heard');
+	pg_assert_true(substr_count($js, 'drop(s, ') >= 3, 'the bin, the cross and the close drop pages');
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	pg_assert_contains("case 'canva_drop':", $php);
+}
