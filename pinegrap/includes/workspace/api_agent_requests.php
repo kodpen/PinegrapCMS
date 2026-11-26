@@ -728,14 +728,33 @@ function ws_api_agent_request_answer($params)
         }
 
         api_dry_run_stop('answered', 'workspace_agent_request', array('id' => (int) $row['id'], 'channel_id' => (int) $place['channel']['id']) + $concluding);
+    } else {
+        api_dry_run_stop('answered', 'workspace_agent_request', array('id' => (int) $row['id'], 'no_answer' => true) + $concluding);
+    }
 
+    // Closed before anything is written: of two answers sent at once (a
+    // retried call, a second run), or one racing a person's Cancel, the
+    // day's expiry or a clear, only the call that closes it writes.
+    db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = 0,
+            answered_at = '" . $now . "', claimed_at = IF(claimed_at = 0, '" . $now . "', claimed_at), error = ''
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        api_fail(409, 'closed', lang('This request is already closed.'));
+    }
+
+    if (empty($params['no_answer'])) {
         $sent = ws_message_send($place['writer'], $place['channel'], $text, $options);
 
         if (!$sent['ok']) {
+            // Nothing was written: the request waits for another answer.
+            db(ws_agent_request_reopen_sql($row, 'answered'));
             api_fail_validation($sent['error'], 'text');
         }
 
         $reply_id = (int) $sent['message_id'];
+
+        db("UPDATE ws_ai_requests SET reply_message_id = '" . $reply_id . "' WHERE id = '" . (int) $row['id'] . "'");
 
         if ($offer_problem === '') {
             ws_thread_offer_store($reply_id, (int) $place['channel']['id']);
@@ -748,13 +767,7 @@ function ws_api_agent_request_answer($params)
         }
 
         ws_api_log(lang(array('string' => '@{var:1} answered a request in #{var:2}', 'vars' => array((string) $agent['handle'], (string) $place['channel']['name']))));
-    } else {
-        api_dry_run_stop('answered', 'workspace_agent_request', array('id' => (int) $row['id'], 'no_answer' => true) + $concluding);
     }
-
-    db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = '" . $reply_id . "',
-            answered_at = '" . $now . "', claimed_at = IF(claimed_at = 0, '" . $now . "', claimed_at), error = ''
-        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
     // The answer takes the progress note's place.
     ws_agent_progress_clear((int) $row['id']);
@@ -795,6 +808,22 @@ function ws_api_agent_request_answer($params)
         'conclude' => array('asked' => (bool) $conclude, 'done' => $conclude ? $conclude['ok'] : false, 'error' => $conclude ? $conclude['error'] : ''),
         'offer'    => array('asked' => ($offer_problem !== null), 'done' => ($offer_problem === ''), 'error' => (string) $offer_problem),
     ));
+}
+
+/**
+ * Puts a request back as it was read, after the answer or failure that
+ * closed it could not be written: only while it is still closed with that
+ * status and no reply, so a later close is never undone. Pure.
+ *
+ * @param array  $row    ws_ai_requests as read before the close
+ * @param string $closed the status the close wrote
+ * @return string SQL
+ */
+function ws_agent_request_reopen_sql($row, $closed)
+{
+    return "UPDATE ws_ai_requests SET status = '" . e((string) $row['status']) . "', answered_at = '" . (int) ($row['answered_at'] ?? 0) . "',
+            claimed_at = '" . (int) ($row['claimed_at'] ?? 0) . "', error = '" . e((string) ($row['error'] ?? '')) . "'
+        WHERE id = '" . (int) $row['id'] . "' AND status = '" . e((string) $closed) . "' AND reply_message_id = 0";
 }
 
 /**

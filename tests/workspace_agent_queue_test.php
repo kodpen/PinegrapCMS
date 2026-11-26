@@ -268,3 +268,26 @@ function test_workspace_agent_queue_wiring()
 	$answer = workspace_agent_queue_test_source('ws_api_agent_request_answer');
 	pg_assert_true(strpos($answer, 'api_dry_run_stop(') < strpos($answer, 'ws_message_send($'), 'the answer is rehearsed before it is written');
 }
+
+// An answer closes the request before it writes the reply, so a second
+// answer (a retried call, a second run) or one after a person's Cancel, the
+// day's expiry or a clear finds it closed and writes nothing.
+function test_workspace_agent_answer_closes_before_writing()
+{
+	$answer = workspace_agent_queue_test_source('ws_api_agent_request_answer');
+	$close = strpos($answer, "UPDATE ws_ai_requests SET status = 'answered'");
+	$write = strpos($answer, 'ws_message_send($');
+	$checked = ($close === false) ? false : strpos($answer, 'mysqli_affected_rows(db::$con) < 1', $close);
+
+	pg_assert_true(($close !== false) && ($write !== false) && ($close < $write), 'closed before the reply is written');
+	pg_assert_true(strrpos(substr($answer, 0, (int) $close), 'api_dry_run_stop(') !== false, 'a dry run stops before the close');
+	pg_assert_true(($checked !== false) && ($checked < $write), 'a request closed meanwhile answers 409');
+	pg_assert_contains("'closed'", (string) substr($answer, (int) $checked, 200));
+	pg_assert_contains('ws_agent_request_reopen_sql(', $answer, 'a reply that cannot be written opens the request again');
+
+	$sql = ws_agent_request_reopen_sql(array('id' => 7, 'status' => 'running', 'claimed_at' => 100, 'answered_at' => 0, 'error' => ''), 'answered');
+	pg_assert_contains("status = 'running'", $sql);
+	pg_assert_contains("claimed_at = '100'", $sql);
+	pg_assert_contains("answered_at = '0'", $sql);
+	pg_assert_contains("WHERE id = '7' AND status = 'answered' AND reply_message_id = 0", $sql, 'only the close this call made');
+}
