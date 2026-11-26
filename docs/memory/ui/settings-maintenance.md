@@ -19,10 +19,14 @@ module: maintenance_settings_fold
 - Sales watch: "Watching, normal sensitivity" (and "· 1 channel paused"), "Paused until 02.01.2027" (the store's pause, its last day), Off when every alert is off, or "Off with Operations alerts".
 - Chat notifications: the targets' labels (the service's name for one without), at most three then "and N more", or None.
 
+## Why was it redrawn?
+- Owner (2026-11-21, 2026-11-26): the old settings screens made modern (`plans/settings-tidy-census.md`). The survey left three things here: the cron card's long Setup Instructions, two sets of S3 fields, the sales watch hidden inside Alerts (K2).
+- Built in the plan settings-maintenance-tidy: the fold and the Sales watch card #11876, Scheduled jobs #11891, the other rows opened #11910.
+
 ## Why is the sales watch a card of its own?
 - The survey found it hidden inside Alerts (K2). Its behaviour stays: it stops with Operations alerts (`workflow/decisions-made-product-84.md`). Its fields still hide with that switch; a note and the button Open Operations alerts (`data-pg-set-goto="pgset-alerts"`) show instead.
 
 ## What stayed?
-- Every card id, field name and value, `sales_watch_card` and `object_storage_card`, the named Save and test buttons, the save module and the legacy anchors. The two S3 sets stay apart (`platform/object-storage-decisions.md`).
+- Every card id, field name and value, `sales_watch_card` and `object_storage_card`, the named Save and test buttons, the save module and the legacy anchors. One Save a pane. The two S3 sets, the `s3` backup type's and the store's, are only drawn alike and stay apart (`platform/object-storage-decisions.md`); neither goes to Connections (`ui/connections-one-place.md`). A secret box stays empty with "Saved".
 
-Related: docs/memory/ui/settings-fold-rows.md, docs/memory/commerce/sales-watch-settings.md
+Related: docs/memory/ui/settings-fold-rows.md, docs/memory/ui/settings-maintenance-cron.md, docs/memory/ui/settings-maintenance-open-rows.md, docs/memory/commerce/sales-watch-settings.md
