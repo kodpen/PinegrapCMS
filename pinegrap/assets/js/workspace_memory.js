@@ -64,6 +64,10 @@
         var projects = [];
         // Which headings the reader folded, kept while the tab is open.
         var folded = {};
+        // The words searched, kept while the tab is open.
+        var query = '';
+        // Which answer of ws_memory_list is the newest asked for.
+        var asked = 0;
 
         pane.appendChild(root);
 
@@ -195,7 +199,7 @@
             return box;
         }
 
-        function partNode(info, alone) {
+        function partNode(info, alone, searching) {
             var general = info.key === 'general';
             var section = el('section', 'ws-memory-part');
             var head = el('div', 'ws-memory-part-head');
@@ -215,8 +219,8 @@
 
             if (!info.groups.length) {
                 var empty = el('div', 'ws-empty');
-                empty.appendChild(h.icon('bi-bookmark'));
-                empty.appendChild(document.createTextNode(general ? t('mem_general_empty') : t('mem_empty')));
+                empty.appendChild(h.icon(searching ? 'bi-search' : 'bi-bookmark'));
+                empty.appendChild(document.createTextNode(searching ? t('mem_search_none') : (general ? t('mem_general_empty') : t('mem_empty'))));
                 section.appendChild(empty);
                 return section;
             }
@@ -225,34 +229,79 @@
                 section.appendChild(groupNode(group, info));
             });
 
+            if (info.more) {
+                section.appendChild(el('p', 'ws-memory-more pg-text-meta mb-0', t('mem_search_more')));
+            }
+
             return section;
         }
 
-        function list() {
-            h.clear(root);
+        // The parts, filled from ws_memory_list with the words searched;
+        // an answer overtaken by a newer search is dropped.
+        function fill(results) {
+            var fields = target(!!channel.general);
+            var mine = ++asked;
 
-            h.api('ws_memory_list', target(!!channel.general)).then(function (data) {
+            fields.search = query;
+
+            h.api('ws_memory_list', fields).then(function (data) {
+                if (mine !== asked) {
+                    return;
+                }
+
                 var parts = data.parts || [];
 
-                h.clear(root);
-                projects = [];
-                parts.forEach(function (info) {
-                    info.groups.forEach(function (group) {
-                        if (group.project && projects.indexOf(group.project) < 0) {
-                            projects.push(group.project);
-                        }
+                h.clear(results);
+
+                // The projects offered by the form: every one, not the hits'.
+                if (!data.search) {
+                    projects = [];
+                    parts.forEach(function (info) {
+                        info.groups.forEach(function (group) {
+                            if (group.project && projects.indexOf(group.project) < 0) {
+                                projects.push(group.project);
+                            }
+                        });
                     });
-                });
+                }
 
                 // With two parts the channel's hint opens the tab once.
                 if (parts.length > 1) {
-                    root.appendChild(el('p', 'pg-text-meta mb-0', t('mem_help')));
+                    results.appendChild(el('p', 'pg-text-meta mb-0', t('mem_help')));
                 }
 
                 parts.forEach(function (info) {
-                    root.appendChild(partNode(info, parts.length === 1));
+                    results.appendChild(partNode(info, parts.length === 1, !!data.search));
                 });
             }).catch(h.fail);
+        }
+
+        // The search box over both parts, then the parts.
+        function list() {
+            var bar = el('div', 'pg-toolbar ws-pane-toolbar ws-memory-bar');
+            var search = el('label', 'pg-input pg-input-sm ws-bar-search');
+            var input = el('input', '');
+            var results = el('div', 'ws-memory-results');
+
+            h.clear(root);
+            search.appendChild(h.icon('bi-search', ''));
+            input.type = 'search';
+            input.value = query;
+            input.placeholder = t('mem_search');
+            input.setAttribute('aria-label', t('mem_search'));
+            search.appendChild(input);
+            bar.appendChild(search);
+            root.appendChild(bar);
+            root.appendChild(results);
+
+            input.addEventListener('input', h.debounce(function () {
+                if (input.value.trim() !== query) {
+                    query = input.value.trim();
+                    fill(results);
+                }
+            }, 300));
+
+            fill(results);
         }
 
         function form(entry, given, general) {

@@ -555,8 +555,8 @@ function test_workspace_memory_tab_parts_wiring()
 
 	// The general part comes first, only in an agent channel for whoever keeps it.
 	pg_assert_contains("\$general = !ws_memory_is_general(\$channel, 'id') && ws_memory_brief_general(\$viewer, \$channel);", $actions);
-	pg_assert_contains("\$parts[] = ws_memory_panel_part('general', 0, true);", $actions);
-	pg_assert_true(strpos($actions, "ws_memory_panel_part('general', 0, true)") < strpos($actions, "ws_memory_panel_part(ws_memory_is_general(\$channel, 'id') ? 'general' : 'channel'"), 'the general part before the channel\'s');
+	pg_assert_contains("\$parts[] = ws_memory_panel_part('general', 0, true, false, \$terms);", $actions);
+	pg_assert_true(strpos($actions, "ws_memory_panel_part('general', 0, true, false, \$terms)") < strpos($actions, "ws_memory_panel_part(ws_memory_is_general(\$channel, 'id') ? 'general' : 'channel'"), 'the general part before the channel\'s');
 	// Moving goes through GM2's check before the write.
 	pg_assert_true(strpos($actions, '$check = ws_memory_move_check($viewer, $row);') < strpos($actions, "ws_memory_move_general(\$row, 'user', \$viewer['id']);"), 'checked before it moves');
 
@@ -577,7 +577,8 @@ function test_workspace_memory_general_drawer_wiring()
 	pg_assert_contains("window.PGWsMemory.mount(body, { general: true });", $script, 'the general part alone');
 
 	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
-	pg_assert_contains("h.api('ws_memory_list', target(!!channel.general))", $memory, 'listed with general=1');
+	pg_assert_contains("var fields = target(!!channel.general);", $memory, 'listed with general=1');
+	pg_assert_contains("h.api('ws_memory_list', fields)", $memory);
 
 	$nav = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 	pg_assert_contains("'memory'        => function_exists('ws_memory_general_can') && ws_memory_general_can(\$viewer),", $nav, 'under the general memory\'s gate');
