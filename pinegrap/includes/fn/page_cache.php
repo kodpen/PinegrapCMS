@@ -1799,7 +1799,7 @@ function pg_page_cache_panel_sub_actions()
                 'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',
                 'prototype_phone', 'prototype_phone_end',
                 'proto_comments', 'proto_comment_answer', 'proto_comment_resolve', 'proto_comment_delete', 'proto_comment_task',
-                'page_clicks', 'sketch_details', 'figma_file', 'figma_pictures', 'figma_import', 'canva_page', 'canva_colors', 'canva_drop',
+                'page_clicks', 'sketch_details', 'sketch_ai', 'figma_file', 'figma_pictures', 'figma_import', 'canva_page', 'canva_colors', 'canva_drop',
                 'ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'),
         ),
         'designer_file' => array(

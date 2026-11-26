@@ -523,6 +523,13 @@ function pg_panel_designer($request, $action)
             respond(pg_designer_sketch_details($request));
             break;
 
+        // "Describe the page" and "Write the texts" of a sketch page: one
+        // Pinegrap AI call, nothing written on the server.
+        case 'sketch_ai':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/sketch_ai.php');
+            respond(pg_sketch_ai_request($request, $user));
+            break;
+
         // Pages the "Select Page" picker may offer: every visual-designer
         // page not already on this design, with the design it belongs to
         // now so the picker can say what attaching it will change.

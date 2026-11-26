@@ -81130,6 +81130,7 @@ const StyleDesigner = (function () {
         node.appendChild(body);
         if (_sdPartLoaded('sketchread') && _sdPartApis.sketchread) _sdPartApis.sketchread.fill(item.id, node, head, body);
         if (_sdPartLoaded('sketchbuild') && _sdPartApis.sketchbuild && _sdPartApis.sketchbuild.fill) _sdPartApis.sketchbuild.fill(_sdSketchBuildHost(), item.id, node, head, body);
+        if (_sdPartLoaded('sketchai') && _sdPartApis.sketchai) _sdPartApis.sketchai.fill(item.id, node, head, body);
     }
 
     function _sdSketchBoxName(b) {
@@ -81507,6 +81508,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.sketchOn) return false;
         if (event.key === 'Escape' && _sdPartLoaded('sketchread') && _sdPartApis.sketchread && _sdPartApis.sketchread.escape()) return true;
         if (event.key === 'Escape' && _sdPartLoaded('sketchbuild') && _sdPartApis.sketchbuild && _sdPartApis.sketchbuild.escape()) return true;
+        if (event.key === 'Escape' && _sdPartLoaded('sketchai') && _sdPartApis.sketchai && _sdPartApis.sketchai.escape()) return true;
         var name = String(event.key || '');
         var ctrl = event.ctrlKey || event.metaKey;
         if (ctrl && (name.toLowerCase() === 'z' || name.toLowerCase() === 'y')) {
@@ -81740,9 +81742,57 @@ const StyleDesigner = (function () {
         }
         rows.push({ sep: true });
         rows.push({ icon: 'bi-card-list', text: _sdT('Page details'), run: function () { _sdSketchDetails(frameId); } });
+        if (_design && _design.sketchAi) rows = rows.concat(_sdSketchAiRows(page, frameId));
         rows.push({ sep: true });
         rows.push({ icon: 'bi-trash', text: _sdT('Delete the page'), key: 'Del', run: function () { _sdSketchDropPage(page); } });
         return rows;
+    }
+
+    // The Pinegrap AI rows of "More", on a site where Pinegrap AI is on:
+    // "Describe the page", and "Write the texts" once the page is built
+    // ("Stop writing the texts" first while it runs).
+    function _sdSketchAiRows(page, frameId) {
+        var api = _sdPartLoaded('sketchai') ? _sdPartApis.sketchai : null;
+        var writing = !!(api && api.writing(frameId));
+        var rows = [{ sep: true }, { caption: _sdT('Pinegrap AI') }];
+        if (writing) rows.push({ icon: 'bi-stop-circle', text: _sdT('Stop writing the texts'), run: function () { api.stop(); } });
+        rows.push({ icon: 'bi-chat-square-text', text: _sdT('Describe the page'), run: function () { _sdPartCall('sketchai', 'describe', [_sdSketchAiHost(), frameId]).catch(_sdPartFailed); } });
+        if (page.built && _sdSketchBuiltPage(page.built.uid)) {
+            rows.push({ icon: 'bi-pencil', text: _sdT('Write the texts'), off: writing, run: function () { _sdPartCall('sketchai', 'texts', [_sdSketchAiHost(), frameId]).catch(_sdPartFailed); } });
+        }
+        return rows;
+    }
+
+    // What the part 'sketchai' reads and writes: the sketch as "Read the
+    // picture" does, the built page's tree with one undo step of its tab,
+    // the server and the switch taken away when Pinegrap AI is off.
+    function _sdSketchAiHost() {
+        var h = _sdSketchReadHost();
+        var build = _sdSketchBuildHost();
+        h.name = build.name;
+        h.treeOf = _pgTreeOf;
+        h.pageOf = _sdSketchBuiltPage;
+        h.fp = function (node) { return (_sdPartApis.sketchbuild && _sdPartApis.sketchbuild.pure) ? _sdPartApis.sketchbuild.pure.nodeFp(node) : ''; };
+        h.post = function (extra) { return _pgApiPost('sketch_ai', extra); };
+        h.undoSketch = function () { _sdSketchUndo(true); };
+        h.off = function () { if (_design) _design.sketchAi = false; };
+        // One undo step of the page's tab before the texts are written.
+        h.step = function (p) {
+            if (p.key === _activeKey) { saveState(); return; }
+            p.undoStack.push({ tree: JSON.stringify(p.tree), shared: _snapshotShared(), assets: _snapshotAssetFields() });
+            p.redoStack = [];
+        };
+        h.undoPage = function (p) {
+            if (p.key === _activeKey) { undo(); return; }
+            var was = p.undoStack.pop();
+            if (was) p.tree = JSON.parse(was.tree);
+            _pgTabsRender();
+        };
+        h.drawPage = function (p) {
+            if (p.key === _activeKey) render();
+            else _pgTabsRender();
+        };
+        return h;
     }
 
     // Whether the browser's built-in model reads pictures, asked once when
@@ -82060,6 +82110,7 @@ const StyleDesigner = (function () {
             item.setAttribute('role', 'menuitem');
             item.innerHTML = '<span class="bi ' + row.icon + ' sd-proto-icon" aria-hidden="true"></span>';
             item.appendChild(_sdProtoEl('span', 'sd-proto-label', row.text));
+            if (row.off) item.disabled = true;
             if (row.key) {
                 item.appendChild(_sdProtoEl('kbd', 'sd-sketch-menu-key', row.key));
                 item.setAttribute('aria-keyshortcuts', 'Delete');
@@ -82071,7 +82122,7 @@ const StyleDesigner = (function () {
             el.appendChild(item);
         });
         el.addEventListener('keydown', function (event) {
-            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item:not(:disabled)'));
             var at = items.indexOf(document.activeElement);
             var go = -1;
             event.stopPropagation();

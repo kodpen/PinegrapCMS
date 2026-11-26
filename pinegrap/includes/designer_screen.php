@@ -387,6 +387,9 @@ function pg_designer_screen_render($ctx)
         // The "Clicks" layer (pg_page_clicks_designer_config()); null hides
         // its toggle.
         'clicks'        => $sd_clicks,
+        // The Sketch tool's Pinegrap AI actions (includes/fn/sketch_ai.php):
+        // designers, on a site where Pinegrap AI writes the drafts.
+        'sketchAi'      => $access === PG_DESIGNER_ACCESS_FULL && pg_ai_write_engine() === 'pinegrap',
         // The editor's parts not needed to open a page, run on first use:
         // their file addresses by name, for every part whose file's 'when'
         // holds (includes/designer_parts/, pg_designer_parts_for()).

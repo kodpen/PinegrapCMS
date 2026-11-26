@@ -1136,6 +1136,7 @@
     "{var:1} e-mails": "{var:1} e-posta",
     "{var:1} e-mails go now.": "{var:1} e-posta şimdi gider.",
     "{var:1} earlier version(s)": "Düzenlendi · {var:1} önceki sürüm",
+    "{var:1} edited sections were left as they are.": "Düzenlenmiş {var:1} bölüm olduğu gibi bırakıldı.",
     "{var:1} email address(es) already exist. ({var:2})": "{var:1} e-posta adresi zaten var. ({var:2})",
     "{var:1} email address(es) were invalid. ({var:2})": "{var:1} e-posta adresi geçersiz. ({var:2})",
     "{var:1} empty heading tag{suffix:1}": "{var:1} boş başlık etiketi",

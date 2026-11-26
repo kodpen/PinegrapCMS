@@ -24,7 +24,7 @@ priority: 7
 - SK3 (M) after SK1: the builder, pure: a section list to a tree from starters, with variables. Done #11532 (`designer/sketch-builder.md`; header and footer handed back for SK4 to make shared components, widgets placed by the caller, sample words given by the caller).
 - SK4 (M) after SK2, SK3: "Build the page", "Build again", the sketch kept with the draft. Done #11642 (`designer/sketch-build.md`).
 - SK5 (M) after SK2: "Page details". Done #11545 (`designer/sketch-page-details.md`; the More menu on a sketch page, values kept with the sketch).
-- SK6 (S) after SK4: the two AI actions.
+- SK6 (S) after SK4: the two AI actions. Done #11682 (`designer/sketch-ai.md`).
 - SK7 (S) after SK2: the reference picture and "Read the picture". Picture done #11557 (designer/prototype-sketch-picture.md; "More" rows in `_sdSketchMoreRows()`); "Read the picture" done #11584 (designer/sketch-read-picture.md).
 - SK8 (M) after SK4: the feel round, measured. Done #11749 (`designer/sketch-feel.md`).
 - SK9 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
