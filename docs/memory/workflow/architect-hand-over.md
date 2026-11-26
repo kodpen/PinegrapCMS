@@ -23,7 +23,8 @@ description: Hand-over note of the architect session of 2026-11-24 to 26, writte
 - EC5's open point: where the seller's identity stands, General › Organization or Product feeds.
 - Three plans have no coordinator (the Paraşüt DevHub connection, the security scan, the Claude plugin bundle): whose they are is his call. SEO, Languages and Translation, Fediverse, Integrations, Channels and Team have no tidy plan yet (`plans/settings-scan-findings.md`).
 - AH4 waits for his yes to the `addons` table.
-- Paraşüt: PS1 has landed (#11819). Next, dev is connected with his staging client; he enters the client secret himself. The staging sign-in mail to his address with a "+" does not arrive, and Paraşüt's account form refuses that character. What is found goes into `erp/erp-parasut-devhub-connection.md` and `erp-parasut-devhub-client.md`, then the plan is deleted; the partner approval is his poll.
+- Paraşüt: PS1 has landed (#11819). The connect of dev with his staging client and the live round are k2's, in a local session on the dev machine he started on 2026-11-26 (agent channel request 3220 says what it may touch); he enters the client secret himself.
+- The staging sign-in mail to his address with a "+" does not arrive, and Paraşüt's account form refuses that character. k2's close-out PR writes what is found into `erp/` and deletes the two DevHub plans; the partner approval is his poll.
 - Carried from the note of 2026-11-25, not looked at again: the lists' look (14 px rows and quiet row actions of the accepted All Orders drawing against the list table driver's 16 px rows), a question for him before any plan; automations on other screens, nothing planned until he opens it.
 
 ## What was he asked and has not answered? (none of it holds work)
