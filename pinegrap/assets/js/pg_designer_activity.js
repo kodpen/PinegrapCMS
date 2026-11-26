@@ -10,8 +10,11 @@
  *   this year or another year.
  * - groups(events, now): the events under their day, in the order given.
  * - mark(event): the Bootstrap icon of the event's action.
- * - opens(event): whether the row is a button that opens Compare (a page's
- *   version with a version before it).
+ * - opens(event) / before(event): whether the row is a button that opens
+ *   Compare (a page's version with a kept version before it), and that
+ *   version's number.
+ * - blank(count, more, narrowed): the list's empty state, none while older
+ *   events remain to be read.
  * - count(read, rows): the code of the count after the hour, from what the
  *   change reader found (PgCompareChanges.read() and the rows' length).
  * - people(events, selfId, known): the people named in the rows read so
@@ -95,8 +98,23 @@
         return !!event && event.kind === 'version' && Number(event.page_id) > 0 && Number(event.revision_no) > 0;
     }
 
+    // The version before a page's version, the left side of Compare: the
+    // reader's before_no (0 when the page's retention trimmed it), else n-1.
+    function before(event) {
+        if (!isVersion(event)) return 0;
+        var no = (event.before_no !== undefined && event.before_no !== null) ? Number(event.before_no) || 0 : Number(event.revision_no) - 1;
+        return no > 0 ? no : 0;
+    }
+
     function opens(event) {
-        return isVersion(event) && Number(event.revision_no) > 1;
+        return before(event) > 0;
+    }
+
+    // The empty state of a list read so far: 'none', 'narrowed' (the three
+    // choosers keep nothing) or '' while rows show or older ones remain.
+    function blank(count, more, narrowed) {
+        if (Number(count) > 0 || more) return '';
+        return narrowed ? 'narrowed' : 'none';
     }
 
     // read: PgCompareChanges.read() of the version before against this one,
@@ -167,6 +185,8 @@
         groups: groups,
         mark: mark,
         opens: opens,
+        before: before,
+        blank: blank,
         isVersion: isVersion,
         count: count,
         people: people,
