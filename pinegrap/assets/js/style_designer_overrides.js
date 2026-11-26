@@ -13,7 +13,9 @@
  * Where the component is placed, "This place" lists the open fields for
  * this place only (props._place on the placing node, saved with the page),
  * with the changed dot and "Reset to the component", and an open text is
- * typed in place on the canvas. Not
+ * typed in place on the canvas. Variants: named sets of the component's
+ * classes and options (props._variants on its root), listed, added and
+ * edited in its settings; a place picks one by name (props._variant). Not
  * needed to open a page: the core runs this file the first time one of
  * these is asked for (_sdPartLoad(), pg_designer_parts()); the pure model
  * (window.PGComponentOverrides) comes in the same bundle.
@@ -635,7 +637,9 @@ StyleDesigner.definePart('overrides', function (K) {
         var fields = placeFields(sid);
         var values = placeValuesOf(ref);
         var changed = [];
-        var h = '';
+        var vrow = opts.variants ? placeVariantRow(ref, sid, ro) : { html: '', changed: false };
+        var h = vrow.html;
+        if (vrow.changed) changed.push({ id: '_variant', kind: 'variant', label: _sdT('Variant') });
         fields.forEach(function (f) {
             var ch = placeChanged(values, f);
             if (ch) changed.push(f);
@@ -650,7 +654,7 @@ StyleDesigner.definePart('overrides', function (K) {
             (opts.mayEdit ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-co-edit>' + esc(_sdT('Edit the component')) + '</button>' : '') +
             '</div>';
         holder.innerHTML = h;
-        headSum(holder, changed, values);
+        headSum(holder, changed, values, ref);
         if (opts.focusId) {
             var want = holder.querySelector('[data-co-field="' + opts.focusId + '"]');
             if (want) want.focus();
@@ -678,6 +682,12 @@ StyleDesigner.definePart('overrides', function (K) {
         // The panel's own reset of the changed dot is not run for these rows.
         holder.addEventListener('click', function (e) {
             var t = e.target;
+            var vr = t.closest('[data-co-vreset]');
+            if (vr) {
+                e.stopPropagation();
+                if (!vr.disabled) placeVariant(holder._sdCoPlace.ref, '');
+                return;
+            }
             var rb = t.closest('[data-co-reset]');
             if (rb) {
                 e.stopPropagation();
@@ -696,6 +706,11 @@ StyleDesigner.definePart('overrides', function (K) {
             Promise.resolve(p).then(function (v) { if (v) give(id, v); });
         });
         holder.addEventListener('change', function (e) {
+            if (e.target.hasAttribute && e.target.hasAttribute('data-co-variant')) {
+                e.stopPropagation();
+                placeVariant(holder._sdCoPlace.ref, e.target.value);
+                return;
+            }
             var id = e.target.getAttribute && e.target.getAttribute('data-co-field');
             if (!id) return;
             e.stopPropagation();
@@ -723,7 +738,7 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // The section head: the count of changed fields (none at none) and, while
     // closed, the first changed value.
-    function headSum(holder, changed, values) {
+    function headSum(holder, changed, values, ref) {
         var card = holder.closest('[data-sd-card]');
         var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
         if (!hdr) return;
@@ -731,7 +746,8 @@ StyleDesigner.definePart('overrides', function (K) {
         var sum = null;
         if (changed.length) {
             var first = changed[0], v = values[first.id];
-            var text = first.kind === 'shown' ? _sdT('Hidden') : plainOf(first.kind === 'picture' ? (v && v.src) || v : v);
+            var text = first.kind === 'variant' ? CO.placeVariant(ref)
+                : (first.kind === 'shown' ? _sdT('Hidden') : plainOf(first.kind === 'picture' ? (v && v.src) || v : v));
             sum = { count: changed.length, kind: 'value', text: text, swatch: '' };
         }
         hdr.insertAdjacentHTML('beforeend', K._sdSectHeadExtras(sum));
@@ -772,6 +788,464 @@ StyleDesigner.definePart('overrides', function (K) {
         el.addEventListener('blur', onBlur);
     }
 
+    // ── Variants ─────────────────────────────────────────────────────────
+    // Named sets of the component's nodes' classes and options on its root
+    // (props._variants, read through the model's variants()); a place keeps
+    // only the name (props._variant). A variant is edited on the component
+    // itself: its props are put on the nodes, today's editing changes them,
+    // and "Done" keeps what differs from the component's own
+    // (variantNodes()) and puts that back, as one undo step.
+
+    // The Result line after "Delete", the field of a variant being added or
+    // renamed, its message, and the row to focus after a draw.
+    var vstate = { result: null, adding: 0, renaming: '', err: '', focus: null, keyOn: false };
+
+    function variantsOf(sid) {
+        var root = compTree(sid);
+        return root ? CO.variants(root) : [];
+    }
+
+    function rawVariants(root, create) {
+        var p = propsOf(root);
+        if (!Array.isArray(p._variants)) {
+            if (!create) return [];
+            p._variants = [];
+        }
+        return p._variants;
+    }
+
+    function rawIndex(root, name) {
+        var list = rawVariants(root, false);
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] && CO.cleanVariantName(list[i].name) === name) return i;
+        }
+        return -1;
+    }
+
+    // Why a name cannot be used, or '' when it can.
+    function nameWhy(sid, name, except) {
+        if (name === '') return _sdT('This name is taken.');
+        var low = name.toLowerCase();
+        if (low === _sdT('Default').toLowerCase()) return _sdT('This name is taken.');
+        var taken = variantsOf(sid).some(function (v) { return v.name !== except && v.name.toLowerCase() === low; });
+        return taken ? _sdT('This name is taken.') : '';
+    }
+
+    function changesText(n) {
+        return n === 1 ? _sdT('1 change') : _sdT('{var} changes', n);
+    }
+
+    function nameField(value) {
+        return '<div class="sd-co-vname"><input type="text" class="form-control form-control-sm' + (vstate.err ? ' is-invalid' : '') + '" maxlength="60" data-co-vname' +
+            ' placeholder="' + esc(_sdT('Name of the variant')) + '" aria-label="' + esc(_sdT('Name of the variant')) + '" value="' + esc(value) + '">' +
+            (vstate.err ? '<div class="invalid-feedback d-block">' + esc(vstate.err) + '</div>' : '') + '</div>';
+    }
+
+    function varsHtml(sid) {
+        var ed = K.coVar;
+        var cur = (ed && ed.sid === sid) ? ed.name : '';
+        var h = '';
+        if (vstate.result && vstate.result.sid === sid) {
+            h += '<div class="pg-result sd-co-result" role="status"><span class="pg-icon-tile pg-tone-teal" aria-hidden="true"><i class="bi bi-check-lg"></i></span>' +
+                '<span class="pg-result-line">' + esc(vstate.result.text) + '</span>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-co-vundo>' + esc(_sdT('Undo')) + '</button></div>';
+        }
+        h += '<div class="sd-co-rows" role="listbox" aria-label="' + esc(_sdT('Variants')) + '">';
+        [{ name: '', nodes: {} }].concat(variantsOf(sid)).forEach(function (v) {
+            var on = v.name === cur;
+            if (v.name && vstate.renaming === v.name) { h += nameField(v.name); return; }
+            h += '<div class="sd-co-row sd-co-vrow' + (on ? ' is-on' : '') + '" role="option" tabindex="0" aria-selected="' + (on ? 'true' : 'false') + '" data-co-var="' + esc(v.name) + '">' +
+                '<span class="sd-co-tick bi' + (on ? ' bi-check-lg' : '') + '" aria-hidden="true"></span>' +
+                '<span class="sd-co-ki bi bi-layers" aria-hidden="true"></span>' +
+                '<b class="sd-co-label">' + esc(v.name || _sdT('Default')) + '</b>' +
+                (v.name ? '<small class="sd-co-vcount">' + esc(changesText(CO.variantChanges(v))) + '</small>' +
+                    '<button type="button" class="sd-co-more bi bi-three-dots" data-co-vmore aria-haspopup="menu" aria-label="' + esc(_sdT('More actions')) + '"></button>' : '') +
+            '</div>';
+        });
+        if (vstate.adding === sid) h += nameField('');
+        h += '</div>';
+        return h + '<button type="button" class="btn btn-sm btn-outline theme-secondary sd-co-vadd" data-co-var-add><span class="bi bi-plus-lg" aria-hidden="true"></span> ' + esc(_sdT('Add a variant')) + '</button>';
+    }
+
+    // Draws the variant list into `el` (the "Shared Component" section's holder).
+    function fillVariants(el, sid) {
+        if (vstate.result && vstate.result.sid !== sid) vstate.result = null;
+        if (vstate.adding && vstate.adding !== sid) vstate.adding = 0;
+        el.innerHTML = varsHtml(sid);
+        var field = el.querySelector('[data-co-vname]');
+        if (field) {
+            field.focus();
+            field.setSelectionRange(field.value.length, field.value.length);
+        } else if (vstate.focus !== null) {
+            var again = el.querySelector('.sd-co-vrow[data-co-var="' + (window.CSS && CSS.escape ? CSS.escape(vstate.focus) : vstate.focus) + '"]');
+            if (again) again.focus();
+        }
+        vstate.focus = null;
+        if (el._sdCoVars === sid) return;
+        var bound = !!el._sdCoVars;
+        el._sdCoVars = sid;
+        if (bound) return;
+        var sidOf = function () { return el._sdCoVars; };
+        el.addEventListener('click', function (e) {
+            var t = e.target, id = sidOf();
+            if (t.closest('[data-co-vundo]')) {
+                var res = vstate.result;
+                vstate.result = null;
+                if (res && res.sid === id) res.undo();
+                return;
+            }
+            if (t.closest('[data-co-var-add]')) { addVariant(el, id); return; }
+            if (t.closest('[data-co-vname]')) return;
+            var more = t.closest('[data-co-vmore]');
+            var row = t.closest('.sd-co-vrow');
+            if (more && row) { variantMenu(id, row.getAttribute('data-co-var'), more); return; }
+            if (row) chooseVariant(id, row.getAttribute('data-co-var'));
+        });
+        el.addEventListener('keydown', function (e) {
+            var id = sidOf();
+            var t = e.target;
+            if (t.hasAttribute && t.hasAttribute('data-co-vname')) {
+                e.stopPropagation();
+                if (e.key === 'Enter') { e.preventDefault(); nameDone(id, t.value, true); }
+                else if (e.key === 'Escape') { e.preventDefault(); nameDone(id, '', false); }
+                return;
+            }
+            var row = t.classList && t.classList.contains('sd-co-vrow') ? t : null;
+            if (!row) return;
+            var name = row.getAttribute('data-co-var');
+            var rows = Array.prototype.slice.call(el.querySelectorAll('.sd-co-vrow'));
+            var at = rows.indexOf(row);
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                var to = rows[at + (e.key === 'ArrowDown' ? 1 : -1)];
+                if (to) to.focus();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                chooseVariant(id, name);
+            } else if (e.key === 'F2' && name) {
+                e.preventDefault();
+                renameVariant(id, name);
+            } else if ((e.key === 'Delete' || e.key === 'Backspace') && name) {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteVariant(id, name);
+            }
+        });
+        el.addEventListener('focusout', function (e) {
+            var t = e.target;
+            if (t.hasAttribute && t.hasAttribute('data-co-vname') && !vstate.err) {
+                // A click elsewhere keeps a valid name and drops an empty one.
+                setTimeout(function () { if (document.activeElement !== t && t.isConnected) nameDone(sidOf(), t.value, t.value.trim() !== ''); }, 0);
+            }
+        });
+    }
+
+    // "Add a variant": the name field in the list.
+    function addVariant(el, sid) {
+        vstate.adding = sid;
+        vstate.renaming = '';
+        vstate.err = '';
+        vstate.result = null;
+        if (el && el.isConnected) fillVariants(el, sid);
+        else K.renderProperties();
+    }
+
+    // From the command palette: the place's panel, with the name field.
+    function addVariantFor(sid) {
+        var node = K.selectedNode;
+        if (!(node && node.type === 'shared_ref' && (parseInt(node.props && node.props.sharedId, 10) || 0) === sid)) {
+            var ref = null;
+            (function walk(n) {
+                if (ref || !n || typeof n !== 'object') return;
+                if (n.type === 'shared_ref' && (parseInt(n.props && n.props.sharedId, 10) || 0) === sid) { ref = n; return; }
+                (n.children || []).forEach(walk);
+            })(K.tree);
+            if (!ref) return;
+            if (K.coVar) variantDone();
+            K.selectedNode = ref;
+            K.selectedNodes = [];
+        }
+        vstate.adding = sid;
+        vstate.renaming = '';
+        vstate.err = '';
+        K._sdSelectRender();
+    }
+
+    // The name field's Enter (keep) or Escape: a new variant is added and its
+    // editing starts; a renamed one takes the name. A taken or empty name
+    // keeps the field with its message.
+    function nameDone(sid, raw, keep) {
+        var renaming = vstate.renaming;
+        if (!keep) {
+            vstate.adding = 0;
+            vstate.renaming = '';
+            vstate.err = '';
+            vstate.focus = renaming || null;
+            K.renderProperties();
+            return;
+        }
+        var name = CO.cleanVariantName(raw);
+        if (renaming && name === renaming) { nameDone(sid, '', false); return; }
+        var why = nameWhy(sid, name, renaming);
+        if (why) {
+            vstate.err = why;
+            K.renderProperties();
+            return;
+        }
+        vstate.adding = 0;
+        vstate.renaming = '';
+        vstate.err = '';
+        var root = compTree(sid);
+        if (!root) return;
+        if (renaming) {
+            var i = rawIndex(root, renaming);
+            if (i === -1) return;
+            vstate.focus = name;
+            if (K.coVar && K.coVar.sid === sid && K.coVar.name === renaming) K.coVar.name = name;
+            write(sid, function () { rawVariants(root, false)[i].name = name; });
+            drawLine();
+            return;
+        }
+        write(sid, function () { rawVariants(root, true).push({ name: name, nodes: {} }); });
+        startVariant(sid, name);
+    }
+
+    function renameVariant(sid, name) {
+        vstate.renaming = name;
+        vstate.adding = 0;
+        vstate.err = '';
+        K.renderProperties();
+    }
+
+    function duplicateVariant(sid, name) {
+        var root = compTree(sid);
+        var i = root ? rawIndex(root, name) : -1;
+        if (i === -1) return;
+        var copy = _sdT('{var} copy', name), n = 2;
+        while (nameWhy(sid, CO.cleanVariantName(copy), '')) copy = _sdT('{var} copy', name) + ' ' + (n++);
+        copy = CO.cleanVariantName(copy);
+        vstate.focus = copy;
+        write(sid, function () {
+            var v = CO.variant(root, name);
+            rawVariants(root, false).splice(i + 1, 0, { name: copy, nodes: JSON.parse(JSON.stringify(v ? v.nodes : {})) });
+        });
+    }
+
+    // "Delete" asks nothing: a place keeps only the name and shows the
+    // default when it is gone. The Result line's Undo puts it back.
+    function deleteVariant(sid, name) {
+        var root = compTree(sid);
+        var i = root ? rawIndex(root, name) : -1;
+        if (i === -1) return;
+        if (K.coVar && K.coVar.sid === sid) variantDone();
+        root = compTree(sid);
+        i = root ? rawIndex(root, name) : -1;
+        if (i === -1) return;
+        var kept = JSON.parse(JSON.stringify(rawVariants(root, false)[i]));
+        write(sid, function () {
+            var list = rawVariants(root, false);
+            list.splice(i, 1);
+            if (!list.length) delete root.props._variants;
+        });
+        vstate.result = { sid: sid, text: _sdT('The variant “{var}” was deleted. Places that used it show the default.', name), undo: function () {
+            var r = compTree(sid);
+            if (!r) return;
+            write(sid, function () {
+                var list = rawVariants(r, true);
+                list.splice(Math.min(i, list.length), 0, kept);
+            });
+        } };
+        K.renderProperties();
+    }
+
+    function variantMenu(sid, name, btn) {
+        var r = btn.getBoundingClientRect();
+        K.showCtxMenu(r.left, r.bottom + 4, [
+            { icon: 'bi-pencil', label: esc(_sdT('Rename')), handler: function () { renameVariant(sid, name); } },
+            { icon: 'bi-copy', label: esc(_sdT('Duplicate')), handler: function () { duplicateVariant(sid, name); } },
+            { sep: true },
+            { icon: 'bi-trash', label: esc(_sdT('Delete')), danger: true, handler: function () { deleteVariant(sid, name); } }
+        ]);
+    }
+
+    // A row chosen: "Default" ends the editing of a variant, a variant starts it.
+    function chooseVariant(sid, name) {
+        vstate.focus = name;
+        if (!name) { if (K.coVar && K.coVar.sid === sid) variantDone(); else K.renderProperties(); return; }
+        if (K.coVar && K.coVar.sid === sid && K.coVar.name === name) return;
+        startVariant(sid, name);
+    }
+
+    // The node of `root` with id `id` (a placed component inside not entered).
+    function eachNode(root, fn) {
+        (function walk(n, top) {
+            if (!n || typeof n !== 'object') return;
+            fn(n);
+            if (!top && n.type === 'shared_ref') return;
+            (n.children || []).forEach(function (k) { walk(k, false); });
+        })(root, true);
+    }
+
+    function nodeKey(n) {
+        var id = n._id != null ? n._id : n.id;
+        return (typeof id === 'string' || typeof id === 'number') ? String(id) : '';
+    }
+
+    // The component's shape: its nodes' ids, nested as they are.
+    function shapeOf(root) {
+        return JSON.stringify((function walk(n, top) {
+            if (!n || typeof n !== 'object') return null;
+            var kids = (!top && n.type === 'shared_ref') ? [] : (n.children || []).map(function (k) { return walk(k, false); });
+            return [nodeKey(n), kids];
+        })(root, true));
+    }
+
+    function startVariant(sid, name) {
+        var root = compTree(sid);
+        var v = root ? CO.variant(root, name) : null;
+        if (!v) return;
+        if (K.coVar) variantDone();
+        root = compTree(sid);
+        if (!root) return;
+        var node = K.selectedNode;
+        // The selection moves into the component, so its elements are edited.
+        if (!node || node.type === 'shared_ref' || K._resolveSharedSid(node) !== sid) {
+            var first = Array.isArray(root.children) ? root.children[0] : null;
+            K.selectedNode = first || root;
+            K.selectedNodes = [];
+        }
+        var base = JSON.stringify(root);
+        K._sdCoWrite(sid, function () {
+            eachNode(root, function (n) {
+                var p = v.nodes[nodeKey(n)];
+                if (!p) return;
+                if (!n.props || typeof n.props !== 'object') n.props = {};
+                Object.keys(p).forEach(function (k) { n.props[k] = p[k]; });
+            });
+            K.coVar = { sid: sid, name: name, base: base, sig: shapeOf(root), depth: K.undoDepth };
+            drawLine();
+            listen(true);
+        });
+    }
+
+    // "Done": the variant keeps what differs from the component's own, which
+    // is put back on the nodes.
+    function variantDone() {
+        var ed = K.coVar;
+        if (!ed) return;
+        K.coVar = null;
+        listen(false);
+        var root = compTree(ed.sid);
+        if (!root) { K.render(); return; }
+        var base = JSON.parse(ed.base);
+        var own = {};
+        eachNode(base, function (n) { own[nodeKey(n)] = n.props || {}; });
+        var kept = CO.variantNodes(base, root);
+        vstate.focus = ed.name;
+        K._sdCoVarCommit(ed.sid, ed.depth, function () {
+            eachNode(root, function (n) {
+                var was = own[nodeKey(n)];
+                if (!was || !n.props) return;
+                Object.keys(n.props).forEach(function (k) { if (CO.variantPropOk(k) && !hasOwn(was, k)) delete n.props[k]; });
+                Object.keys(was).forEach(function (k) { if (CO.variantPropOk(k)) n.props[k] = was[k]; });
+            });
+            var i = rawIndex(root, ed.name);
+            if (i !== -1) rawVariants(root, false)[i].nodes = kept;
+        });
+    }
+
+    // After a draw while a variant is edited: an element added, removed or
+    // moved in the component is taken back, with the amber line.
+    function variantGuard() {
+        var ed = K.coVar;
+        var root = ed ? compTree(ed.sid) : null;
+        if (!root || shapeOf(root) === ed.sig || ed.undoing) return;
+        ed.undoing = true;
+        setTimeout(function () {
+            ed.undoing = false;
+            var r = compTree(ed.sid);
+            if (K.coVar !== ed || !r || shapeOf(r) === ed.sig) return;
+            K.undo();
+            drawLine(_sdT('A variant keeps classes and options only. Choose “Done” to add, remove or move an element.'));
+        }, 0);
+    }
+
+    // The line over the canvas while a variant is edited, with "Done"; an
+    // amber line under it when something was refused.
+    function drawLine(warn) {
+        var ed = K.coVar;
+        var line = document.querySelector('.sd-co-vline');
+        if (!ed) { if (line) line.remove(); return; }
+        var wrap = document.querySelector('.sd-canvas-wrapper');
+        if (!wrap) return;
+        if (!line) {
+            line = document.createElement('div');
+            line.className = 'sd-co-vline';
+            line.setAttribute('role', 'status');
+            wrap.insertBefore(line, wrap.firstChild);
+            line.addEventListener('click', function (e) { if (e.target.closest('[data-co-vdone]')) variantDone(); });
+        }
+        var c = K.sharedCache[ed.sid];
+        line.innerHTML = '<div class="sd-co-vline-main"><span class="bi bi-layers" aria-hidden="true"></span><span>' +
+            esc(_sdT('Editing the variant “{var:1}” of “{var:2}”. Classes and options you change are kept in it.', [ed.name, (c && c.name) || ('#' + ed.sid)])) +
+            '</span><button type="button" class="btn btn-sm btn-outline theme-secondary" data-co-vdone>' + esc(_sdT('Done')) + '</button></div>' +
+            (warn ? '<div class="sd-co-vwarn"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' + esc(warn) + '</span></div>' : '');
+    }
+
+    // Escape ends the editing, but not inside a field or an open menu.
+    function onEscape(e) {
+        if (e.key !== 'Escape' || !K.coVar) return;
+        var t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
+        if (document.querySelector('.sd-ctx-menu.show, .sd-ctx-menu[style*="block"]')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        variantDone();
+    }
+
+    function listen(on) {
+        if (on === vstate.keyOn) return;
+        vstate.keyOn = on;
+        if (on) document.addEventListener('keydown', onEscape, true);
+        else document.removeEventListener('keydown', onEscape, true);
+    }
+
+    // ── A place's variant ────────────────────────────────────────────────
+
+    // The variant row of "This place": { html, changed, gone }.
+    function placeVariantRow(ref, sid, ro) {
+        var list = variantsOf(sid);
+        var mine = CO.placeVariant(ref);
+        if (!list.length && !mine) return { html: '', changed: false, gone: '' };
+        var known = list.some(function (v) { return v.name === mine; });
+        var gone = (mine && !known) ? mine : '';
+        var changed = mine !== '';
+        var opts = '<option value=""' + (!known ? ' selected' : '') + '>' + esc(_sdT('Default')) + '</option>';
+        list.forEach(function (v) {
+            opts += '<option value="' + esc(v.name) + '"' + (v.name === mine ? ' selected' : '') + '>' + esc(v.name) + '</option>';
+        });
+        var html = (gone ? '<div class="sd-co-vwarn" role="status"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' +
+                esc(_sdT('The variant “{var}” no longer exists. This place shows the default.', gone)) + '</span></div>' : '') +
+            '<div class="sd-prop-row sd-co-prow" data-co-row="_variant">' +
+            (changed ? '<button type="button" class="sd-chg-reset" data-co-vreset' + (ro ? ' disabled' : '') +
+                ' title="' + esc(_sdT('Reset to the component')) + '" aria-label="' + esc(_sdT('Reset {var} to the component', _sdT('Variant'))) + '"></button>' : '') +
+            '<label class="sd-prop-label' + (changed ? ' sd-prop-modified' : '') + '" for="sd-co-variant">' + esc(_sdT('Variant')) + '</label>' +
+            '<div class="sd-prop-control"><select class="form-control form-control-sm" id="sd-co-variant" data-co-variant' + (ro ? ' disabled' : '') + '>' + opts + '</select></div></div>';
+        return { html: html, changed: changed, gone: gone };
+    }
+
+    // A place picks a variant ('' is "Default"): one undo step, the page changed.
+    function placeVariant(ref, name) {
+        if (!ref || ref.type !== 'shared_ref') return;
+        name = CO.cleanVariantName(name);
+        if (CO.placeVariant(ref) === name) return;
+        K.saveState();
+        if (!ref.props) ref.props = {};
+        if (name) ref.props._variant = name;
+        else delete ref.props._variant;
+        K.render();
+    }
+
     return {
         openFor: openFor,
         fillList: fillList,
@@ -782,6 +1256,15 @@ StyleDesigner.definePart('overrides', function (K) {
         typeIn: typeIn,
         placeChanged: placeChanged,
         placeSet: placeSet,
-        placeReset: placeReset
+        placeReset: placeReset,
+        fillVariants: fillVariants,
+        addVariant: addVariant,
+        addVariantFor: addVariantFor,
+        placeVariant: placeVariant,
+        placeVariantRow: placeVariantRow,
+        nameWhy: nameWhy,
+        variantDone: variantDone,
+        variantGuard: variantGuard,
+        startVariant: startVariant
     };
 });

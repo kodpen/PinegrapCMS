@@ -607,6 +607,7 @@
     "Editing a scheduled message. Esc to stop.": "Zamanlanmış bir mesajı düzenliyorsunuz. Vazgeçmek için Esc.",
     "Editing at {var:1} px.": "{var:1} px genişlikte düzenleniyor.",
     "Editing the animation {var:1}: its frames are drawn from {var:2}.": "{var:1} animasyonu düzenleniyor: kareleri {var:2} dosyasından çiziliyor.",
+    "Editing the variant “{var:1}” of “{var:2}”. Classes and options you change are kept in it.": "“{var:2}” bileşeninin “{var:1}” varyantı düzenleniyor. Değiştirdiğiniz sınıflar ve seçenekler bu varyantta tutulur.",
     "Editing your message. Esc to stop.": "Mesajınızı düzenliyorsunuz. Vazgeçmek için Esc.",
     "Editing, colour grading, sound and graphics, with two rounds of changes on every cut.": "Kurgu, renk düzenleme, ses ve grafik; her kurguda iki tur düzeltme hakkıyla.",
     "Editing, colour grading, sound mixing and motion graphics for footage shot by anyone.": "Kim çekmiş olursa olsun görüntüler için kurgu, renk düzenleme, ses miksajı ve hareketli grafik.",

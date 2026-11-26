@@ -5128,6 +5128,9 @@ const StyleDesigner = (function () {
             shared: _snapshotShared(),
             assets: _snapshotAssetFields()
         });
+        // Stepping back over the start of a variant's editing leaves it,
+        // keeping nothing: the step restores the component as it was.
+        var coVarOut = !!(_sdCoVar && undoStack.length <= _sdCoVar.depth);
         var prev = undoStack.pop();
         // Backwards compat — older snapshots (pre-shared-aware) were bare strings.
         if (typeof prev === 'string') prev = { tree: prev, shared: {}, assets: null };
@@ -5135,6 +5138,7 @@ const StyleDesigner = (function () {
         _restoreShared(prev.shared);
         nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(prev.assets);
+        if (coVarOut) { _sdCoVar = null; redoStack = []; }
         _sdStepReselect(keep);
         updateUndoRedoState();
     }
@@ -10666,7 +10670,11 @@ const StyleDesigner = (function () {
         var _prevSid = _editingSharedSid;
         _editingSharedSid = _resolveSharedSid(selectedNode);
         // "Edit the component" lasts while the selection stays in it.
-        Object.keys(_sdCoEditing).forEach(function (k) { if ((parseInt(k, 10) || 0) !== _editingSharedSid) delete _sdCoEditing[k]; });
+        // So does the editing of one of its variants.
+        Object.keys(_sdCoEditing).forEach(function (k) {
+            var ks = parseInt(k, 10) || 0;
+            if (ks !== _editingSharedSid && !(_sdCoVar && _sdCoVar.sid === ks)) delete _sdCoEditing[k];
+        });
         // A read-only element of a component with open fields is not edited.
         if (_editingSharedSid > 0 && _sdCoLocked(selectedNode)) _editingSharedSid = 0;
         // At content level only a component opened to the operator is
@@ -11168,6 +11176,7 @@ const StyleDesigner = (function () {
         if (selectedNode) _positionSizeBadge();
         _sdLinesSoon();
         _sdCoOutline();
+        _sdCoVarAfterRender();
     }
 
     // The wrapper under the pointer (the canvas mouseover handler).
@@ -12895,22 +12904,41 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // Runs draw(tree) with the place's values in the component's nodes, and
+    // The variant a place names (props._variant), '' for none. While that
+    // component's variant is edited its tree already carries the edited
+    // one, so no other is put over it.
+    function _sdPlaceVariant(refNode) {
+        var name = refNode && refNode.props ? refNode.props._variant : '';
+        if (typeof name !== 'string' || !name.trim()) return '';
+        if (_sdCoVar && _sdCoVar.sid === (parseInt(refNode.props.sharedId, 10) || 0)) return '';
+        if (_sdPartLoaded('overrides') && window.PGComponentOverrides) return name;
+        if (!_sdPlaceAsked) {
+            _sdPlaceAsked = true;
+            _sdPartLoad('overrides').then(function () { render(); }, function () { /* drawn as the component has it */ });
+        }
+        return '';
+    }
+
+    // Runs draw(tree) with the place's variant and values in the component's nodes, and
     // puts the component's own back after: the drawing's handlers keep the
     // component's nodes, never a copy. A node a value hides is left out of
     // its parent's children while draw runs. Answers what draw answers.
     /* @pg-site-output */
     function _sdPlaceDraw(refNode, tree, draw) {
         var values = _sdPlaceValues(refNode);
-        if (!values || !tree) return draw(tree);
-        var C = window.PGComponentOverrides, originals = [], saved = [], placed;
+        var vname = _sdPlaceVariant(refNode);
+        if ((!values && !vname) || !tree) return draw(tree);
+        var C = window.PGComponentOverrides, originals = [], saved = [], placed, vtree;
         (function tag(n) {
             if (!n || typeof n !== 'object') return;
             n.__sdPlace = originals.length;
             originals.push(n);
             if (n.type !== 'shared_ref' && Array.isArray(n.children)) n.children.forEach(tag);
         })(tree);
-        try { placed = C.apply(tree, C.safeValues(tree, values)); }
+        try {
+            vtree = C.applyVariant(tree, vname);
+            placed = values ? C.apply(vtree, C.safeValues(vtree, values)) : vtree;
+        }
         finally { originals.forEach(function (n) { delete n.__sdPlace; }); }
         if (placed === tree) return draw(tree);
         (function swap(c) {
@@ -38202,6 +38230,7 @@ const StyleDesigner = (function () {
         if (_sdCoLocked(node)) _sdCoLockPanel(panel, node);
         var list = panel.querySelector('.sd-co-list[data-sd-co-sid]');
         if (list) _sdPartCall('overrides', 'fillList', [list, parseInt(list.getAttribute('data-sd-co-sid'), 10) || 0]).catch(_sdPartFailed);
+        _sdCoVarsFill(panel);
         var entries = _sdIsContentLevel() ? [] : _sdCoEntries(node);
         if (!entries.length) return;
         var mark = function (holder, e) {
@@ -38263,12 +38292,13 @@ const StyleDesigner = (function () {
         return _sdCoMemo;
     }
 
-    // Whether component `sid` (an ordinary one, loaded) has an open field.
+    // Whether component `sid` (an ordinary one, loaded) has an open field
+    // or a variant: its places get "This place".
     function _sdCoHasSid(sid) {
         var m = _sdCoMemoNow();
         if (!Object.prototype.hasOwnProperty.call(m.has, sid)) {
             var c = _sharedCache[sid];
-            m.has[sid] = !!(c && c.tree && !c.system_region_config && _sdCoHas(c.tree));
+            m.has[sid] = !!(c && c.tree && !c.system_region_config && (_sdCoHas(c.tree) || _sdCoVariants(c.tree).length > 0));
         }
         return m.has[sid];
     }
@@ -38324,7 +38354,7 @@ const StyleDesigner = (function () {
         var focus = _sdCoFocus;
         _sdCoFocus = '';
         _sdPartCall('overrides', 'fillPlace', [holder, node, at.sid,
-            { readOnly: !_collab.mayEdit, mayEdit: _sdCoMayEditComp(at.sid), focusId: focus }]).catch(_sdPartFailed);
+            { readOnly: !_collab.mayEdit, mayEdit: _sdCoMayEditComp(at.sid), focusId: focus, variants: !_sdIsContentLevel() }]).catch(_sdPartFailed);
     }
 
     // The panel of a read-only element: its fields disabled, dimmed, and the
@@ -38408,6 +38438,120 @@ const StyleDesigner = (function () {
             if (tag) tag.textContent = (text.label || _sdT('Text')) + ' · ' + _sdT('This place');
             _sdPartCall('overrides', 'typeIn', [inner, ref, sid, text.id]).catch(_sdPartFailed);
         }, true);
+    }
+
+    // ── Variants (the part 'overrides') ──────────────────────────────────
+    // A component may keep named sets of its nodes' classes and options on
+    // its root (props._variants); a place names one (props._variant). One is
+    // edited on the component itself: the part puts its props on the nodes,
+    // today's editing changes them, and "Done" keeps what differs from the
+    // component's own and puts that back. While a variant is edited:
+    // { sid, name, base (the component's tree as JSON before), sig (its
+    // shape), depth (the undo steps up to its start) }.
+    var _sdCoVar = null;
+
+    function _sdCoVariants(t) {
+        var l = t && t.props && t.props._variants;
+        return Array.isArray(l) ? l.filter(function (v) { return v && typeof v.name === 'string' && v.name.trim(); }) : [];
+    }
+
+    // The "Variants" rows of the "Shared Component" section: the holder the
+    // part fills, or, with none and the part not run, "Default" and the
+    // button that loads it.
+    function _sdCoVarsHtml(sid, ctree) {
+        var head = '<p class="sd-co-sub">' + esc(_sdT('Variants')) + '</p>';
+        var body = '';
+        if (!_sdCoVariants(ctree).length && !_sdPartLoaded('overrides')) {
+            body = '<div class="sd-co-rows" role="listbox" aria-label="' + esc(_sdT('Variants')) + '">' +
+                '<div class="sd-co-row sd-co-vrow is-on" role="option" aria-selected="true"><span class="sd-co-tick bi bi-check-lg" aria-hidden="true"></span>' +
+                '<span class="sd-co-ki bi bi-layers" aria-hidden="true"></span><b class="sd-co-label">' + esc(_sdT('Default')) + '</b></div></div>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary sd-co-vadd" data-co-var-add><span class="bi bi-plus-lg" aria-hidden="true"></span> ' + esc(_sdT('Add a variant')) + '</button>';
+        }
+        return head + '<div class="sd-co-vars" data-sd-co-vars="' + sid + '">' + body + '</div>';
+    }
+
+    function _sdCoVarsFill(panel) {
+        var box = panel.querySelector('.sd-co-vars[data-sd-co-vars]');
+        if (!box) return;
+        var sid = parseInt(box.getAttribute('data-sd-co-vars'), 10) || 0;
+        if (_sdPartLoaded('overrides') || !box.querySelector('[data-co-var-add]')) {
+            _sdPartCall('overrides', 'fillVariants', [box, sid]).catch(_sdPartFailed);
+            return;
+        }
+        box.querySelector('[data-co-var-add]').addEventListener('click', function () {
+            _sdPartCall('overrides', 'addVariant', [box, sid]).catch(_sdPartFailed);
+        });
+    }
+
+    // Ends a variant's editing done by the part: `fn` puts the component's
+    // own props back and keeps the variant; the steps taken inside it
+    // become the one step its start took, and the component is changed.
+    function _sdCoVarCommit(sid, depth, fn) {
+        fn();
+        if (depth > 0 && undoStack.length >= depth) undoStack.length = depth;
+        redoStack = [];
+        updateUndoRedoState();
+        _sharedDirty[sid] = true;
+        render();
+    }
+
+    // Keeps the variant being edited now (before the components are sent).
+    function _sdCoVarFinish() {
+        if (_sdCoVar && _sdPartApis.overrides) _sdPartApis.overrides.variantDone();
+    }
+
+    // After a draw: the line over the canvas goes with the editing; a change
+    // of the component's elements while a variant is edited is refused.
+    function _sdCoVarAfterRender() {
+        if (!_sdCoVar) {
+            var line = _sdPartLoaded('overrides') ? document.querySelector('.sd-co-vline') : null;
+            if (line) line.remove();
+            return;
+        }
+        if (_sdPartApis.overrides) _sdPartApis.overrides.variantGuard();
+    }
+
+    // The Options panel's dot while a variant is edited: a row differs from
+    // the component's own value, and its reset puts that back.
+    function _sdCoVarDefaults(node, defs) {
+        if (!_sdCoVar || !node || !window.PGComponentOverrides || _sdNodeSharedSid(node) !== _sdCoVar.sid) return defs;
+        if (!_sdCoVar.baseMap) {
+            var map = {};
+            (function walk(n, top) {
+                if (!n || typeof n !== 'object') return;
+                if (n._id != null) map[String(n._id)] = n.props || {};
+                if (n.type === 'shared_ref' && !top) return;
+                (n.children || []).forEach(function (k) { walk(k, false); });
+            })(JSON.parse(_sdCoVar.base), true);
+            _sdCoVar.baseMap = map;
+        }
+        var own = _sdCoVar.baseMap[String(node._id)];
+        if (!own) return defs;
+        var out = {};
+        Object.keys(defs || {}).forEach(function (k) { out[k] = defs[k]; });
+        Object.keys(own).forEach(function (k) { if (window.PGComponentOverrides.variantPropOk(k)) out[k] = own[k]; });
+        return out;
+    }
+
+    // The command palette: "Add a variant" for the component the selection
+    // places or sits in, one "Variant: name" per variant for a place.
+    function _sdCoVarPaletteRows() {
+        if (!selectedNode || !_collab.mayEdit || _sdIsContentLevel()) return [];
+        var isRef = selectedNode.type === 'shared_ref';
+        var sid = isRef ? (parseInt(selectedNode.props && selectedNode.props.sharedId, 10) || 0) : _sdNodeSharedSid(selectedNode);
+        var c = sid > 0 ? _sharedCache[sid] : null;
+        if (!c || !c.tree || c.system_region_config) return [];
+        var ref = selectedNode;
+        var rows = [{ id: 'act_add_variant', label: _sdT('Add a variant'), icon: 'bi-layers', hint: c.name || ('#' + sid),
+            action: function () { _sdPartCall('overrides', 'addVariantFor', [sid]).catch(_sdPartFailed); } }];
+        if (!isRef) return rows;
+        var names = [''].concat(_sdCoVariants(c.tree).map(function (v) { return v.name.trim(); }));
+        if (names.length < 2) return rows;
+        names.forEach(function (name, i) {
+            rows.push({ id: 'act_variant_' + i, label: _sdT('Variant: {var}', name || _sdT('Default')), icon: 'bi-layers', hint: _sdT('This place'),
+                action: function () { _sdPartCall('overrides', 'placeVariant', [ref, name]).catch(_sdPartFailed); } });
+        });
+        return rows;
     }
 
     // A held-back body put into a detached copy, with the bodies of the
@@ -42829,7 +42973,7 @@ const StyleDesigner = (function () {
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
                 row(_sdT('Status'), statusHtml) +
                 contentHtml +
-                ((!_cfg && sid > 0 && cached && cached.tree && !_sdIsContentLevel()) ? _sdCoSectHtml(sid, cached.tree) : '') +
+                ((!_cfg && sid > 0 && cached && cached.tree && !_sdIsContentLevel()) ? _sdCoSectHtml(sid, cached.tree) + _sdCoVarsHtml(sid, cached.tree) : '') +
                 usageHtml +
                 actionHtml
             );
@@ -67254,7 +67398,7 @@ const StyleDesigner = (function () {
         if (!root) return;
 
         // Resolve defaults for direct [data-prop] controls
-        var defaults = _sdPropDefaults(selectedNode);
+        var defaults = _sdCoVarDefaults(selectedNode, _sdPropDefaults(selectedNode));
         var SKIP_PROPS = _SD_CHG_SKIP_PROPS;
         var DS_DEFAULTS = _SD_DS_DEFAULTS;
 
@@ -91864,6 +92008,8 @@ const StyleDesigner = (function () {
     // that follows reads the widget trees on the server (a custom form's
     // fields come from there), so it must not overtake them.
     function _flushDirtyShared() {
+        // A variant being edited is kept first: its props are on the nodes.
+        _sdCoVarFinish();
         var dirtyIds = Object.keys(_sharedDirty);
         if (!dirtyIds.length) return Promise.resolve();
         var apiBase = (typeof path !== 'undefined' ? path : '') +
@@ -92372,7 +92518,7 @@ const StyleDesigner = (function () {
             { id: 'act_select_similar', label: _sdT('Select similar'), icon: 'bi-ui-checks-grid', meta: _sdMcKindName(selectedNode), hint: 'S', action: function() { if (_sdSimOffered(selectedNode)) _sdSimOpen(selectedNode); } }
         ] : []).concat(((_sdCoPlaceOf(selectedNode) || _sdCoLocked(selectedNode)) && _sdCoMayEditComp(_sdCoPlaceOf(selectedNode) ? _sdCoPlaceOf(selectedNode).sid : _sdNodeSharedSid(selectedNode))) ? [
             { id: 'act_edit_component', label: _sdT('Edit the component'), icon: 'bi-puzzle', hint: getNodeLabel(selectedNode), action: function() { _sdCoEditComponent(selectedNode); } }
-        ] : []).concat([
+        ] : []).concat(_sdCoVarPaletteRows()).concat([
             { id: 'act_copy', label: _sdT('Copy'), icon: 'bi-clipboard', hint: 'Ctrl+C', action: function() {
                 var _tc = selectedNodes.length > 1 ? selectedNodes.slice() : (selectedNode ? [selectedNode] : []);
                 if (_tc.length) clipboardNodes = _tc.map(function(n) { return cloneTree(n); });
@@ -98419,6 +98565,7 @@ const StyleDesigner = (function () {
             _sdCanvasInnerOf: _sdCanvasInnerOf,
             _sdCleanupOpen: _sdCleanupOpen,
             _sdCoEditComponent: _sdCoEditComponent,
+            _sdCoVarCommit: _sdCoVarCommit,
             _sdCoWrite: _sdCoWrite,
             _sdCode: _sdCode,
             _sdCodeActiveTab: _sdCodeActiveTab,
@@ -98548,11 +98695,13 @@ const StyleDesigner = (function () {
             setAttrStyleProp: setAttrStyleProp,
             showCtxMenu: showCtxMenu,
             swAttr: swAttr,
+            undo: undo,
             validateTree: validateTree,
         };
         Object.defineProperties(kit, {
             activeKey: { get: function () { return _activeKey; } },
             canvasDoc: { get: function () { return canvasDoc; } },
+            coVar: { get: function () { return _sdCoVar; }, set: function (v) { _sdCoVar = v; } },
             design: { get: function () { return _design; } },
             newTabSeq: { get: function () { return _pgNewTabSeq; }, set: function (v) { _pgNewTabSeq = v; } },
             optState: { get: function () { return _sdOptState; } },
@@ -98561,6 +98710,7 @@ const StyleDesigner = (function () {
             selectedNodes: { get: function () { return selectedNodes; }, set: function (v) { selectedNodes = v; } },
             sharedCache: { get: function () { return _sharedCache; } },
             tree: { get: function () { return tree; }, set: function (v) { tree = v; } },
+            undoDepth: { get: function () { return undoStack.length; } },
         });
         _sdPartKitCache = kit;
         return kit;

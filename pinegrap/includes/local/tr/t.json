@@ -8576,6 +8576,8 @@
     "The variant draft was deleted.": "Varyant taslağı silinmiş.",
     "The variant is published on the live page and the experiment ended. The draft stays in Drafts.": "Varyant canlı sayfada yayımlandı ve deney bitti. Taslak, Taslaklar'da kalıyor.",
     "The variant {var:1} in this variant set already has these attribute options.": "Bu varyant setindeki {var:1} varyantı bu özellik seçeneklerine zaten sahip.",
+    "The variant “{var}” no longer exists. This place shows the default.": "“{var}” varyantı artık yok. Bu yer varsayılanı gösterir.",
+    "The variant “{var}” was deleted. Places that used it show the default.": "“{var}” varyantı silindi. Onu kullanan yerler varsayılanı gösterir.",
     "The variant's share of visitors is a whole number from 1 to 99.": "Varyantın ziyaretçi payı 1 ile 99 arasında bir tam sayıdır.",
     "The vehicle": "Araç bilgisi",
     "The vehicle is published.": "Araç yayınlandı.",

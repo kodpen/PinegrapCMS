@@ -5063,6 +5063,20 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-rcol-narrow .sd-co-foot { flex-direction: column; align-items: flex-start; }
 .sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .7rem; }
 .sd-co-result .pg-result-line { flex: 1 1 auto; }
+/* Variants: the list in the component's settings, the line over the
+   canvas while one is edited, the amber line of a refused change or a
+   variant that is gone. */
+.sd-co-vrow { cursor: pointer; }
+.sd-co-tick { width: 13px; flex: 0 0 13px; color: var(--sd-accent); }
+.sd-co-vcount { flex: 0 0 auto; font-size: .66rem; color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
+.sd-co-vname { padding: 2px 0 2px 8px; }
+.sd-co-vadd { margin-bottom: 8px; }
+.sd-co-vline { flex: 0 0 auto; z-index: 5; background: var(--sd-raised-bg-2); border-bottom: 1px solid rgba(var(--sd-accent-rgb), .35); font-size: .72rem; color: var(--sd-text); }
+.sd-co-vline-main { display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
+.sd-co-vline-main > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.sd-co-vline-main > .bi { color: var(--sd-accent); }
+.sd-co-vwarn { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; background: var(--sd-warning-soft); color: var(--sd-warning); font-size: .7rem; line-height: 1.4; }
+.sd-co-place .sd-co-vwarn { margin-bottom: 6px; border-radius: 4px; padding: 6px 8px; }
 
 /* ========================= SHARED COMPONENTS PALETTE TAB ========================= */
 .sd-shared-tab-loading, .sd-shared-tab-empty {
