@@ -482,6 +482,7 @@
 - designer-interactions.md: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (every effect), head style, fail-safe, twins, tests.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
+- designer-left-column-heads.md: Left column heads of the Page Design Studio (board F4): the palette tab holder as its head, rail icons under 230 px, the Overview in one row, Recently used as a label
 - designer-left-panel-hide.md: The Page Design Studio toolbar's menu button (#sd-left-toggle) opens and shuts the panel's main menu as the phone drawer at every width (#9712); the old left panel hide (sd-hide-left) is gone
 - designer-library-export-import.md: My library's Export and Import (ML4): the export file and its name, names kept beside, the import's report, the endpoints and the part
 - designer-library-import-checks.md: The checks an import into My library runs (script, event attribute, address kinds), all or nothing, and the refusal's words
