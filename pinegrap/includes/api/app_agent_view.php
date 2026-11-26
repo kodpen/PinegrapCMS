@@ -394,6 +394,16 @@ function api_app_agent_script($data, $back_id) {
 		}
 	});
 
+	// Return in a field of the tab posts the tab\'s own button: the drawer\'s
+	// default button would post api_action=update and save the application.
+	document.addEventListener("keydown", function (e) {
+		if (e.key !== "Enter" || e.target.tagName !== "INPUT" || !e.target.closest("#d_agent")) { return; }
+		e.preventDefault();
+		if (e.target.hasAttribute("data-agent-search")) { return; }
+		var save = document.getElementById("da_save");
+		if (!save.hidden) { document.getElementById("da_save").click(); }
+	});
+
 	document.addEventListener("input", function (e) {
 		if (!e.target.hasAttribute("data-agent-search")) { return; }
 		var words = e.target.value.trim().toLowerCase();

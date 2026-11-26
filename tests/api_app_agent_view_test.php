@@ -79,3 +79,15 @@ function test_api_app_agent_view_screen_branch()
 	// The row-rank check runs before every branch on an existing row.
 	pg_assert_true(strpos($screen, 'api_app_row_locked($rank_row') < strpos($screen, "\$action === 'agent_setup'"), 'the locked row refused first');
 }
+
+// Return in a field of the AI agent tab saves the agent. The drawer's form
+// starts with a hidden default button and posts api_action=update, so Return
+// saved the application and said so, and the agent was not made.
+function test_api_app_agent_view_return_saves_the_agent()
+{
+	$script = api_app_agent_script(array(), 0);
+
+	pg_assert_contains('e.key !== "Enter"', $script, 'Return is caught');
+	pg_assert_contains('e.target.closest("#d_agent")', $script, 'in the AI agent tab only');
+	pg_assert_contains('document.getElementById("da_save").click()', $script, 'the agent\'s own button posts');
+}
