@@ -89,7 +89,8 @@ function erp_quote_link_expires_at($valid_until)
  * Where a link stands now, against the quote as it is now.
  *
  *   revoked   a newer link replaced it, or staff took it back
- *   used      the customer accepted through it
+ *   used      the customer accepted through it, and the quote still
+ *             stands accepted or invoiced
  *   expired   past expires_at
  *   accepted  the quote was accepted another way
  *   closed    the quote is expired, invoiced, cancelled or rejected, or
@@ -110,8 +111,12 @@ function erp_quote_link_state(array $link, array $quote, $now)
         return 'revoked';
     }
 
+    // A used link says "accepted" only while the quote stands accepted, or
+    // went on to an invoice from there; a quote cancelled or rejected since
+    // reads as closed, as the page would otherwise thank the customer for an
+    // acceptance the quote no longer carries.
     if ((int) ($link['used_at'] ?? 0) > 0) {
-        return 'used';
+        return in_array(erp_quote_state($quote), array('accepted', 'invoiced'), true) ? 'used' : 'closed';
     }
 
     $expires = (int) ($link['expires_at'] ?? 0);
@@ -343,8 +348,9 @@ function erp_quote_link_shown_matches($shown_hash, array $quote)
 /**
  * The customer accepts through a link: the link is claimed (used_at) so a
  * second submit does nothing, the drawing is kept with its evidence, and the
- * quote is accepted by the panel's writer. A refused step releases the
- * claim.
+ * quote is accepted by the panel's writer, all in one transaction under the
+ * quote's row lock. A refused step, the status move included, rolls back
+ * the claim and the signature.
  *
  * The signature binds the quote the page showed: when it was changed on the
  * panel after the page was opened, the customer is sent back to read it
@@ -358,12 +364,64 @@ function erp_quote_link_shown_matches($shown_hash, array $quote)
  */
 function erp_quote_link_accept($token, $png, $signer_name, $shown_hash)
 {
-    $fail = function ($message) {
+    $refuse = function ($message) {
+        return array('success' => false, 'error' => $message);
+    };
+
+    if (erp_quote_link_for_token($token) === null) {
+        return $refuse(lang('This quote can no longer be accepted through this link.'));
+    }
+
+    if (!is_string($png) || ($png === '')) {
+        return $refuse(lang('The signature could not be read. Sign again.'));
+    }
+
+    // The claim, the signature row and the status move are one transaction
+    // under the quote's row lock, as erp_quote_to_invoice() takes it: a
+    // cancel or an invoice pressed in the same instant waits, or is waited
+    // for, and the state below is read after it. A move refused all the
+    // same rolls everything back, so no signature stays on a quote the
+    // customer was told is closed.
+    if (!erp_tx_begin()) {
+        return $refuse(lang('Could not start a database transaction.'));
+    }
+
+    $stored = null;
+    $link_id = 0;
+
+    $fail = function ($message) use (&$stored, &$link_id) {
+        $file_id = is_array($stored) ? (int) $stored['record']['file_id'] : 0;
+        // The drawing's path as erp_signature_store() kept it, read before
+        // the rollback takes its files row away.
+        $file = is_array($stored) ? erp_archive_file('quote_signature', (int) $stored['record']['doc_id']) : null;
+        $file_path = (is_array($file) && ((int) $file['id'] === $file_id)) ? (string) $file['path'] : '';
+
+        erp_tx_rollback();
+
+        // Undone again by hand for a table that is still MyISAM, which a
+        // rollback leaves standing; on InnoDB these find nothing to change.
+        if (is_array($stored)) {
+            db("DELETE FROM erp_signatures WHERE id = '" . (int) $stored['record']['id'] . "'");
+            db("DELETE FROM files WHERE id = '" . $file_id . "'");
+
+            if ($file_path !== '') {
+                @unlink($file_path);
+            }
+        }
+
+        if ($link_id > 0) {
+            db("UPDATE erp_quote_links SET used_at = 0 WHERE id = '" . (int) $link_id . "'");
+        }
+
         return array('success' => false, 'error' => $message);
     };
 
     $link = erp_quote_link_for_token($token);
-    $quote = is_array($link) ? erp_quote_link_quote((int) $link['quote_id']) : null;
+    $quote_id = is_array($link) ? (int) $link['quote_id'] : 0;
+
+    db("SELECT id FROM erp_quotes WHERE id = '" . $quote_id . "' LIMIT 1 FOR UPDATE");
+
+    $quote = ($quote_id > 0) ? erp_quote_link_quote($quote_id) : null;
 
     if (($link === null) || ($quote === null) || (erp_quote_link_state($link, $quote, time()) !== 'open')) {
         return $fail(lang('This quote can no longer be accepted through this link.'));
@@ -379,10 +437,6 @@ function erp_quote_link_accept($token, $png, $signer_name, $shown_hash)
         return $fail(lang('The quote was changed after this page was opened. Read it again before signing.'));
     }
 
-    if (!is_string($png) || ($png === '')) {
-        return $fail(lang('The signature could not be read. Sign again.'));
-    }
-
     $claimed = db("UPDATE erp_quote_links SET used_at = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $link['id'] . "' AND used_at = 0 AND revoked_at = 0");
 
@@ -390,19 +444,33 @@ function erp_quote_link_accept($token, $png, $signer_name, $shown_hash)
         return $fail(lang('This quote can no longer be accepted through this link.'));
     }
 
-    $stored = erp_signature_store('quote', (int) $quote['id'], $png, array(
+    $link_id = (int) $link['id'];
+
+    $signature = erp_signature_store('quote', (int) $quote['id'], $png, array(
         'signer_name' => $signer_name,
         'document_hash' => erp_signature_document_hash_quote($quote),
         'label' => (string) $quote['full_number'],
         'user_id' => 0,
     ));
 
-    if (!$stored['success']) {
-        db("UPDATE erp_quote_links SET used_at = 0 WHERE id = '" . (int) $link['id'] . "'");
-        return $fail($stored['error']);
+    if (!$signature['success']) {
+        return $fail($signature['error']);
     }
 
-    erp_quote_set_status((int) $quote['id'], 'accepted', 0);
+    $stored = $signature;
+
+    $moved = erp_quote_set_status((int) $quote['id'], 'accepted', 0);
+
+    if (!$moved['success']) {
+        // The panel's refusal speaks to staff; the customer is told the link
+        // no longer accepts, as the page then shows it.
+        return $fail(lang('This quote can no longer be accepted through this link.'));
+    }
+
+    if (!erp_tx_commit()) {
+        return $fail(lang('The signature could not be saved.'));
+    }
+
     erp_event_quote((int) $quote['id'], 'erp.quote.signed');
 
     log_activity(pg_log_lang(array(
