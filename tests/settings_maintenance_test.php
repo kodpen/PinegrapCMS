@@ -112,7 +112,7 @@ function test_settings_maintenance_cards_moved_out_of_general()
 		pg_assert_contains('id="' . $section . '"', $cards, $section . ' drawn here');
 	}
 
-	pg_assert_contains("pg_settings_drawer('cron_jobs',", $cards, 'the setup drawer goes with Cron Jobs');
+	pg_assert_contains('pg_maintenance_cron_guide_drawer(', $cards, 'the jobs\' steps drawers go with Scheduled jobs');
 	pg_assert_same(false, strpos($general, 'id="cron_jobs"'), 'and leaves General');
 
 	$names = settings_maintenance_test_names($cards);
