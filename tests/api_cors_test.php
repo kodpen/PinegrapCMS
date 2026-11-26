@@ -144,3 +144,15 @@ function test_api_cors_token_route_refused()
 	pg_assert_true(!api_cors_token_route_refused($token, '', $list), 'no origin');
 	pg_assert_true(!api_cors_token_route_refused($other, 'https://b.example.com', $list), 'not a token route');
 }
+
+// A refused list comes back in the box as it was typed: the box was drawn
+// from the saved list, so a list of twenty origins with one mistyped had to
+// be typed again whole.
+function test_api_cors_refused_list_stays_in_the_box()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	pg_assert_contains("\$_SESSION['software']['api_cors_typed'] = ", $screen, 'the refused text is kept for the next request');
+	pg_assert_contains("unset(\$_SESSION['software']['api_cors_typed'])", $screen, 'read once');
+	pg_assert_contains('h($cors_box_text)', $screen, 'the box shows it');
+}

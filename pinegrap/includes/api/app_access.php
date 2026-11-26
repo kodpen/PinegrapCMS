@@ -233,25 +233,42 @@ function api_app_log_group($rows, $time_label) {
 
 }
 
-// How a log row's moment is written: the time alone for today (a site day),
-// the date as well for an older one, its year only when it is another year's.
-// The result is the type and year get_absolute_time() is asked for.
-function api_app_log_time_type($timestamp, $now) {
+// How a log row's moment is written: the time alone for today, the date as
+// well for an older one, its year only when it is another year's. The day is
+// told in $zone, the zone get_absolute_time() prints the label in (the
+// person's own or the site's); '' is PHP's default zone. The result is the
+// type and year get_absolute_time() is asked for.
+function api_app_log_time_type($timestamp, $now, $zone = '') {
 
-	if (date('Y-m-d', (int)$timestamp) === date('Y-m-d', (int)$now)) {
+	try {
+		$tz = new DateTimeZone(($zone !== '') ? (string)$zone : date_default_timezone_get());
+	} catch (Exception $exception) {
+		$tz = new DateTimeZone(date_default_timezone_get());
+	}
+
+	$day = function ($moment, $format) use ($tz) {
+		$date = new DateTime('@' . (int)$moment);
+		$date->setTimezone($tz);
+		return $date->format($format);
+	};
+
+	if ($day($timestamp, 'Y-m-d') === $day($now, 'Y-m-d')) {
 
 		return array('type' => 'time', 'year' => false);
 
 	}
 
-	return array('type' => '', 'year' => (date('Y', (int)$timestamp) !== date('Y', (int)$now)));
+	return array('type' => '', 'year' => ($day($timestamp, 'Y') !== $day($now, 'Y')));
 
 }
 
-// The text of a log row's moment, in the site's date and time format.
+// The text of a log row's moment, in the site's date and time format and the
+// zone get_absolute_time() uses (pg_time_uses_user_zone()).
 function api_app_log_time_label($timestamp) {
 
-	$shape = api_app_log_time_type($timestamp, time());
+	$zone = pg_time_uses_user_zone(array()) ? (string)USER_TIMEZONE : '';
+
+	$shape = api_app_log_time_type($timestamp, time(), $zone);
 
 	return get_absolute_time(array(
 		'timestamp' => (int)$timestamp,

@@ -104,6 +104,10 @@ if ($_POST) {
 
 		} elseif ($cors_parsed['invalid']) {
 
+			// The box shows the refused list again, not the saved one, so
+			// only the named entries have to be corrected.
+			$_SESSION['software']['api_cors_typed'] = mb_substr($cors_text, 0, 20000);
+
 			$liveform->add_error(lang(array(
 				'string' => 'These are not browser origins: {var:1}. An origin is https:// and a host, such as https://app.example.com, or the fixed origin of an app shell.',
 				'vars'   => h(implode(', ', $cors_parsed['invalid']))
@@ -1441,6 +1445,11 @@ $agent_back = isset($_SESSION['software']['api_agent_back']) ? (int)$_SESSION['s
 
 unset($_SESSION['software']['api_agent_back']);
 
+// What a refused AI agent save typed, shown again on the tab (read once).
+$agent_typed = isset($_SESSION['software']['api_agent_typed']) ? $_SESSION['software']['api_agent_typed'] : null;
+
+unset($_SESSION['software']['api_agent_typed']);
+
 // The Events tab's "New subscription": every event of the catalogue with its
 // module and its line, for the list the form searches.
 $hook_catalogue = array();
@@ -1699,6 +1708,17 @@ if (!empty($webhook_all)) {
 // origins, which is the site's decision, not one application's.
 $cors_card = '';
 
+// What a refused save typed, read once; else the saved list.
+$cors_box_text = api_cors_origins_text(api_cors_origins());
+
+if (isset($_SESSION['software']['api_cors_typed'])) {
+
+	$cors_box_text = (string)$_SESSION['software']['api_cors_typed'];
+
+	unset($_SESSION['software']['api_cors_typed']);
+
+}
+
 if ((int)$user['role'] <= 1) {
 
 	$cors_card = '
@@ -1711,7 +1731,7 @@ if ((int)$user['role'] <= 1) {
 					<label class="pg-field-label" for="cors_origins">' . lang('Origins') . '</label>
 					<textarea class="pg-input" name="cors_origins" id="cors_origins" rows="4" maxlength="20000"
 						spellcheck="false" autocomplete="off" aria-describedby="cors_origins_help"
-						placeholder="https://app.example.com">' . h(api_cors_origins_text(api_cors_origins())) . '</textarea>
+						placeholder="https://app.example.com">' . h($cors_box_text) . '</textarea>
 					<div class="pg-field-help" id="cors_origins_help">'
 						. lang('One origin per line. A web page on a listed origin may call the API with a bearer token; with the list empty no web page can, and servers and native apps call as before. An origin is https:// and a host, such as https://app.example.com. A native app shell loads its pages from a fixed origin: capacitor://localhost and https://localhost (Capacitor), ionic://localhost, tauri://localhost or http://localhost.') . '
 					</div>
@@ -2226,6 +2246,13 @@ echo '
 		if (chosen) { chosen.checked = true; }
 	}
 
+	// The line a bulk button left names the rows it ticked; rows set for
+	// another application or starting point take it away.
+	function clearPickNote(root) {
+		var note = document.querySelector(root + " [data-pick-note]");
+		if (note) { note.textContent = ""; }
+	}
+
 	// The read position is held open, not checked, when write is chosen: the
 	// rule lives in one place on the server and this only shows it.
 	function paintImplied() {
@@ -2410,6 +2437,7 @@ echo '
 			setRadio("scope[" + group + "]", app.scopes[group]);
 		});
 		paintImplied();
+		clearPickNote("#api_drawer");
 
 		document.getElementById("d_log_errors").checked = false;
 		renderLog(app.log, false);
@@ -2930,6 +2958,7 @@ echo '
 				if (input) { input.checked = true; }
 			});
 			paintImplied();
+			clearPickNote("#api_new");
 			startPicked = card.id;
 		}
 		newStep(2);
@@ -3021,4 +3050,4 @@ echo '
 	window.pgApiOpenApp = openApp;
 
 })();
-</script>' . ($agent_ready ? api_app_agent_script(api_app_agent_tab_data($app_data, $user), $agent_back) : '') . output_footer();
+</script>' . ($agent_ready ? api_app_agent_script(api_app_agent_tab_data($app_data, $user), $agent_back, $agent_typed) : '') . output_footer();

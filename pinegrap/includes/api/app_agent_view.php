@@ -281,6 +281,8 @@ function api_app_agent_setup_post($user, $app_id, $post, $liveform) {
 
 	if (!$ok['ok']) {
 		$liveform->add_error(h($ok['error']));
+		// The tab opens again with what was typed, not the saved agent.
+		$_SESSION['software']['api_agent_typed'] = api_app_agent_typed($posted);
 		return;
 	}
 
@@ -320,17 +322,39 @@ function api_app_agent_after_create($user, $made, $post, $liveform) {
 
 }
 
+// The fields of ws_agent_app_setup_posted() the tab draws, for a refused
+// save to show again; null when $posted is no such array. Pure.
+function api_app_agent_typed($posted) {
+
+	if (!is_array($posted)) {
+		return null;
+	}
+
+	$typed = array();
+
+	foreach (array('handle', 'name', 'role', 'door_kind', 'door_url') as $field) {
+		$typed[$field] = isset($posted[$field]) ? (string)$posted[$field] : '';
+	}
+
+	$typed['channels'] = array_values(array_map('intval', isset($posted['channels']) ? (array)$posted['channels'] : array()));
+
+	return $typed;
+
+}
+
 // The tab's and the sheet's script: fills the tab from the application the
 // drawer opened (the pg:api-app-open event), shows the push address with a
 // push door, filters the channels, shows the sheet's agent fields while its
-// card is picked, and opens the tab again after its save.
-function api_app_agent_script($data, $back_id) {
+// card is picked, and opens the tab again after its save, with $typed
+// (api_app_agent_typed()) in the fields when that save was refused.
+function api_app_agent_script($data, $back_id, $typed = null) {
 
 	return '
 <script>
 (function () {
 	var AGENTS = ' . json_encode((object)$data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
 	var BACK = ' . (int)$back_id . ';
+	var TYPED = ' . json_encode(is_array($typed) ? $typed : null, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
 	var pane = document.getElementById("d_agent");
 	var tab = document.getElementById("d_agent_label");
 
@@ -343,6 +367,19 @@ function api_app_agent_script($data, $back_id) {
 	function setField(id, value) {
 		var el = document.getElementById(id);
 		if (el) { el.value = value || ""; }
+	}
+
+	// What a refused save typed, over what the agent has.
+	function fillTyped(typed) {
+		setField("da_handle", typed.handle);
+		setField("da_name", typed.name);
+		setField("da_role", typed.role);
+		setField("da_door_url", typed.door_url);
+		pane.querySelectorAll("input[name=agent_door_kind]").forEach(function (r) { r.checked = (r.value === typed.door_kind); });
+		pushShown(pane);
+		pane.querySelectorAll("input[name=\'agent_channels[]\']").forEach(function (box) {
+			box.checked = typed.channels.indexOf(parseInt(box.value, 10)) !== -1;
+		});
 	}
 
 	document.addEventListener("pg:api-app-open", function (e) {
@@ -394,6 +431,25 @@ function api_app_agent_script($data, $back_id) {
 		}
 	});
 
+	// Return in a field of the tab posts the tab\'s own button: the drawer\'s
+	// default button would post api_action=update and save the application.
+	document.addEventListener("keydown", function (e) {
+		if (e.key !== "Enter" || e.target.tagName !== "INPUT" || !e.target.closest("#d_agent")) { return; }
+		e.preventDefault();
+		if (e.target.hasAttribute("data-agent-search")) { return; }
+		var save = document.getElementById("da_save");
+		if (!save.hidden) { document.getElementById("da_save").click(); }
+	});
+
+	// The sheet\'s Agent name follows Application name (step 2) until a name
+	// is typed for the agent itself.
+	document.addEventListener("input", function (e) {
+		var agentName = document.getElementById("na_name");
+		if (!agentName) { return; }
+		if (e.target === agentName) { agentName.dataset.agentTyped = (agentName.value !== "") ? "1" : ""; return; }
+		if (e.target.id === "n_name" && !agentName.dataset.agentTyped) { agentName.value = e.target.value.slice(0, 100); }
+	});
+
 	document.addEventListener("input", function (e) {
 		if (!e.target.hasAttribute("data-agent-search")) { return; }
 		var words = e.target.value.trim().toLowerCase();
@@ -405,6 +461,7 @@ function api_app_agent_script($data, $back_id) {
 	if (BACK && window.pgApiOpenApp) {
 		window.addEventListener("load", function () {
 			window.pgApiOpenApp(BACK);
+			if (TYPED) { fillTyped(TYPED); }
 			pgUI.tab.show(tab);
 			document.getElementById("d_save").hidden = true;
 			document.getElementById("d_close").hidden = false;

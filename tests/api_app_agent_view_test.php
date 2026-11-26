@@ -79,3 +79,45 @@ function test_api_app_agent_view_screen_branch()
 	// The row-rank check runs before every branch on an existing row.
 	pg_assert_true(strpos($screen, 'api_app_row_locked($rank_row') < strpos($screen, "\$action === 'agent_setup'"), 'the locked row refused first');
 }
+
+// Return in a field of the AI agent tab saves the agent. The drawer's form
+// starts with a hidden default button and posts api_action=update, so Return
+// saved the application and said so, and the agent was not made.
+function test_api_app_agent_view_return_saves_the_agent()
+{
+	$script = api_app_agent_script(array(), 0);
+
+	pg_assert_contains('e.key !== "Enter"', $script, 'Return is caught');
+	pg_assert_contains('e.target.closest("#d_agent")', $script, 'in the AI agent tab only');
+	pg_assert_contains('document.getElementById("da_save").click()', $script, 'the agent\'s own button posts');
+}
+
+// The sheet's Agent name follows Application name until it is typed in. It
+// was copied when the card was picked in step 1, before Application name
+// (step 2) held anything, so Create refused the agent for a missing name.
+function test_api_app_agent_view_sheet_name_follows_the_application_name()
+{
+	$script = api_app_agent_script(array(), 0);
+
+	pg_assert_contains('e.target.id === "n_name"', $script, 'Application name is followed as it is typed');
+	pg_assert_contains('dataset.agentTyped', $script, 'a name typed for the agent is kept');
+}
+
+// A refused agent comes back with what was typed: the tab was filled again
+// from the saved agent (or left empty for a new one), so a handle someone
+// else had took the name, role, door and channels with it.
+function test_api_app_agent_view_refused_values_come_back()
+{
+	$typed = api_app_agent_typed(array('handle' => 'sales<b>', 'name' => 'Sales', 'role' => 'worker', 'door_kind' => 'push',
+		'door_url' => 'https://agent.example.com/knock', 'channels' => array(4, 7), 'channels_sent' => true));
+
+	pg_assert_same(array('handle' => 'sales<b>', 'name' => 'Sales', 'role' => 'worker', 'door_kind' => 'push',
+		'door_url' => 'https://agent.example.com/knock', 'channels' => array(4, 7)), $typed, 'the fields the tab draws');
+	pg_assert_same(null, api_app_agent_typed('x'), 'nothing posted');
+
+	$script = api_app_agent_script(array(), 5, $typed);
+
+	pg_assert_contains('var TYPED = {"handle":"sales' . '\\u003Cb' . '\\u003E"', $script, 'handed to the script, escaped for it');
+	pg_assert_contains('fillTyped(', $script, 'the tab takes them after it opens');
+	pg_assert_contains('var TYPED = null', api_app_agent_script(array(), 5), 'none by default');
+}

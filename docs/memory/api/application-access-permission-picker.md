@@ -23,7 +23,7 @@ description: Application Access permission picker: areas with icons, a row per s
 
 ## How are rows that move money shown?
 - A row whose scope has a `moves_money` route (`api_app_permission_money_scopes()`: `api_schema()` and the modules' routes) carries the pill "Moves money"; `data-money` says whether its read or only its write moves money.
-- All and All write show beside them how many such rows they would tick (`api_app_bulk_money_count()`, twin `pgAppAccess.moneyCount()`); after one is used the line "{n} permissions that move money are ticked." says it.
+- All and All write show beside them how many such rows they would tick (`api_app_bulk_money_count()`, twin `pgAppAccess.moneyCount()`); after one is used the line "{n} permissions that move money are ticked." says it, until another application is opened or a starting point ticks its rows (`clearPickNote()`, #11826).
 
 ## What did it not take on?
 - A permission the owner's account lacks is not shown off: the screen has never done so; the API caps the key at the owner's rights (`external-api-authorization.md`).
