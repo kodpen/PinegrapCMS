@@ -7,7 +7,7 @@ module: office
 ## What does a .pptx show?
 - Since PR #10585: Quick Look and the file window in the File Manager, and a channel's Preview, draw a presentation as a list of its slides: "Slide N" and its title, its text and pictures in reading order, a table's rows (cells apart by a tab), its speaker notes under "Speaker notes", a hidden slide marked "Hidden slide". Before it, it had no preview and the browser downloaded it.
 - Not read: slide layout and positions, the layout's and master's text, themes, fonts, colours, animation, transitions, charts, SmartArt, shapes without text, comments, audio and video.
-- Forms: .pptx, .ppsx, .potx and .pptm (`pg_office_preview_kind()` gives `pptx`); `pg_office_kind()`, which every edit asks, gives '', so it is never edited (`plans/office-own-code.md`). A channel still refuses .pptm uploads (`workspace/workspace-upload-refusals.md`). The binary .ppt has no preview.
+- Forms: .pptx, .ppsx, .potx and .pptm (`pg_office_preview_kind()` gives `pptx`); `pg_office_kind()`, which every edit asks, gives '', so it is never edited (`office-files-scope.md`). A channel still refuses .pptm uploads (`workspace/workspace-upload-refusals.md`). The binary .ppt has no preview.
 
 ## How is it read?
 - `pg_office_pptx_read()` in `includes/fn/office.php`, no library: the presentation part named by `_rels/.rels` (ppt/presentation.xml when none), its `sldIdLst` through the presentation's relationships (the `r:id`, not the bare `id`) for the order, each slide a DOM through `pg_office_xml()`.
@@ -23,4 +23,4 @@ module: office
 ## How is it tested?
 - `tests/office_pptx_test.php` on presentations the test writes: order, titles, reading order, groups, a table, levels, line breaks, notes, a hidden slide, the picture limits, the slide limit, refusals. A python-pptx file read the same by hand.
 
-Related: docs/memory/platform/office-files.md, docs/memory/plans/office-own-code-steps.md
+Related: docs/memory/platform/office-files.md, docs/memory/platform/office-overview.md

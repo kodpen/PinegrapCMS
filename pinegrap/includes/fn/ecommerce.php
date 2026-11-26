@@ -13317,11 +13317,7 @@ function pg_erp_open_account()
 
     require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
-    $pending = (int) db_value("SELECT COALESCE(SUM(total), 0) FROM orders
-        WHERE erp_on_account = 1
-          AND erp_account_id = '" . (int) $account['id'] . "'
-          AND erp_invoice_id = 0
-          AND status IN ('complete', 'exported')");
+    $pending = erp_storefront_on_account_pending((int) $account['id']);
 
     $standing = erp_storefront_on_account((int) $row['credit_limit'], (int) $row['balance'], $pending, 0);
 
@@ -13338,7 +13334,10 @@ function pg_erp_open_account()
 
 /**
  * Why an order of this total cannot go on the member's account, or '' when
- * it can (pg_erp_open_account(), erp_storefront_on_account()).
+ * it can (pg_erp_open_account(), erp_storefront_on_account_hold()). The
+ * figures are read again under the account's credit lock, which an allowed
+ * order keeps until submit_order.php has written it, so a second checkout of
+ * the same account at the same moment weighs its order with this one in.
  *
  * @param int $total  The order's total (kurus)
  * @return string
@@ -13351,10 +13350,18 @@ function pg_erp_open_account_refusal($total)
         return lang('The selected payment method is not available.');
     }
 
-    $check = erp_storefront_on_account($open['limit'], $open['balance'], $open['pending'], (int) $total);
+    $check = erp_storefront_on_account_hold($open['id'], (int) $total);
 
     if ($check['allowed']) {
+        // A checkout sent back after this point leaves no lock behind, even
+        // over a persistent connection that outlives the request.
+        register_shutdown_function('erp_credit_unlock', (int) $open['id']);
+
         return '';
+    }
+
+    if ($check['busy']) {
+        return lang('Another order is being put on your account. Please try again in a moment.');
     }
 
     return lang(array(

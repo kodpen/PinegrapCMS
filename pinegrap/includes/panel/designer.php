@@ -523,6 +523,13 @@ function pg_panel_designer($request, $action)
             respond(pg_designer_sketch_details($request));
             break;
 
+        // "Describe the page" and "Write the texts" of a sketch page: one
+        // Pinegrap AI call, nothing written on the server.
+        case 'sketch_ai':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/sketch_ai.php');
+            respond(pg_sketch_ai_request($request, $user));
+            break;
+
         // Pages the "Select Page" picker may offer: every visual-designer
         // page not already on this design, with the design it belongs to
         // now so the picker can say what attaching it will change.
@@ -760,6 +767,12 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'error', 'message' => lang('SEO scoring is not available on this installation.')));
             }
             $page_id = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            // The stored findings, link score and speed below are read by
+            // this id: a page the operator may not know is there is refused,
+            // as page_load refuses it.
+            if ($page_id > 0 && pg_designer_page_access($page_id, $user) === 'hidden') {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
             $folder_id = isset($request['page_folder']) ? (int)$request['page_folder'] : 0;
             $folder = $folder_id > 0 ? db_item("SELECT folder_access_control_type, folder_archived FROM folder WHERE folder_id = '$folder_id' LIMIT 1") : null;
             $row = array(
@@ -1494,6 +1507,21 @@ function pg_panel_designer($request, $action)
                 $lists['files']['rows'][$i]['url'] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . rawurlencode($f['name']) . '?v=' . $f['time'];
             }
             respond(array('status' => 'success') + $lists);
+            break;
+
+        // "Remove" of the Clean up window
+        // (includes/fn/design_cleanup_remove.php): what is ticked and still
+        // unused. Files go to the Recycle Bin and shared components are
+        // deleted here; the rules and variables come back without the
+        // ticked ones, for the editor to save after its snapshot.
+        case 'cleanup_remove':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_cleanup_remove.php');
+            $cu_ticked = isset($request['ticked']) && is_array($request['ticked']) ? $request['ticked'] : array();
+            $cu_done = pg_cleanup_remove(isset($request['style_id']) ? (int)$request['style_id'] : 0, $cu_ticked, $user);
+            if ($cu_done === null) {
+                respond(array('status' => 'error', 'message' => lang('Not found.')));
+            }
+            respond(array('status' => 'success') + $cu_done);
             break;
 
         // The Style guide sheet of the Preview menu

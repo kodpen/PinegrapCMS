@@ -6,6 +6,7 @@ description: The New design window (#sdStartModal) on the Page Design Studio hom
 ## What is the New design window?
 - One dialog for every way to start a design (`pg_designer_start_window()`, includes/designer_screen.php); it replaced the framework dialog and the separate template gallery dialog (ST2 of the start plan, `designer-start-import.md`).
 - Left: the starts as a vertical tab list, each row a small drawing (`pg_designer_home_drawing()`), a title and one line; the rows are the settings rail's `.pg-sm-link`. Right: the chosen start's pane. Foot: Cancel quiet and one filled button.
+- Each pane opens with the Design examples' pane head (`.pg-sm-heading.sd-ns-head`: `.pg-title-section` and `.pg-sm-desc`). From 768 px the window keeps one height whatever the start (UR2, #11839).
 - Opened by the home's "New design" button and by each start card, on the card's own start (`data-sd-start`); `view_system_styles.php?start=<key>` opens it on load.
 
 ## Which starts does it list today?
@@ -20,7 +21,8 @@ description: The New design window (#sdStartModal) on the Page Design Studio hom
 - The start questions come after a Bootstrap 5 start's own form, before the design opens (`design-variables-questions.md`).
 
 ## Where is the script?
-- `assets/js/designer_home.js`: tab choice, Up/Down/Home/End, the foot's button, `?start=`. After "Turn into a template" the gallery printed with the page is stale: choosing the Template start reloads `?start=template`.
+- `assets/js/designer_home.js`: tab choice, Up/Down/Home/End, the foot's button, `?start=`. On open the chosen start has the focus; on a phone a chosen pane is scrolled into view.
+- A start's own foot (`.sd-ns-part-foot`) draws no Cancel: the window's stays beside the filled button, and the part's `.me-auto` words come first. After "Turn into a template" the gallery printed with the page is stale: choosing the Template start reloads `?start=template`.
 
 ## Tests?
 - `tests/designer_home_test.php`: the starts' order, the template start waiting for a template, the start key, the button's address, the window's tabs and panes.

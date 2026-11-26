@@ -685,10 +685,16 @@ function pg_publish_weight_findings($measure, $unused, $texts, $budget = null)
         }
     }
 
+    // A node that draws several pictures (a gallery, a widget) gives each
+    // its own id: the nth picture of that node, so one Ignore hides one.
     foreach (array('oversized' => 'img_oversized', 'unsized' => 'img_no_size') as $list => $code) {
+        $nth = array();
+
         foreach (isset($measure[$list]) ? $measure[$list] : array() as $img) {
+            $node = (string)$img['node'];
+            $nth[$node] = isset($nth[$node]) ? $nth[$node] + 1 : 0;
             $out[] = pg_publish_weight_finding($code, array('text' => pg_publish_weight_text($code, $texts),
-                'node' => $img['node'], 'index' => ($img['node'] === '') ? $img['index'] : 0, 'detail' => $img['src']));
+                'node' => $node, 'index' => ($node === '') ? $img['index'] : $nth[$node], 'detail' => $img['src']));
         }
     }
 
@@ -750,7 +756,14 @@ function pg_publish_weight_local_files($urls, $root, $base)
             continue;
         }
 
-        $file = realpath($real_root . '/' . rawurldecode(substr($path, strlen($base))));
+        // A decoded null byte names no file; PHP 8 throws on such a path.
+        $relative = rawurldecode(substr($path, strlen($base)));
+
+        if (strpos($relative, "\0") !== false) {
+            continue;
+        }
+
+        $file = realpath($real_root . '/' . $relative);
 
         if ($file === false || strpos($file, $real_root . DIRECTORY_SEPARATOR) !== 0 || !is_file($file)) {
             continue;

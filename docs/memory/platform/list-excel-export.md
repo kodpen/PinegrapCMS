@@ -5,13 +5,17 @@ module: list_excel
 ---
 
 ## What does Export to Excel do?
-- Beside each panel list's CSV export (census: `plans/office-own-code-os1-census.md`) an "Export to Excel" action gives the same file as a one-sheet .xlsx: bold, frozen heading row, money with two decimals, dates as dates, numbers as numbers, the rest text.
+- Beside each panel list's CSV export (the lists below) an "Export to Excel" action gives the same file as a one-sheet .xlsx: bold, frozen heading row, money with two decimals, dates as dates, numbers as numbers, the rest text.
 - Written by the shared writer `pg_xlsx_write_plain()` (`includes/fn/xlsx_write.php`); no library.
 
 ## How does a list get it?
 - The list asks for the Excel form of its own CSV: `pg_list_excel_capture($types, $sheet_title)` (`includes/fn/list_excel.php`) where its CSV export starts. With `excel=1` in the request it holds back all output (`ob_start` handler into `php://temp`); a shutdown function reads the CSV back and sends the workbook. Same rows, filters and permission as the CSV, by construction; no new permission.
 - `$types` maps a heading text (or a zero-based column index) to `number`, `money` or `date`; unlisted columns are text. A cell that is not of its type stays text (e.g. a gift card's "Immediate" delivery date).
 - The action: `pg_list_excel_action($csv_url)` (a `pg_screen_toolbar()` button), `pg_list_excel_link($csv_url, $class)` (a link with the CSV link's classes, `menu-item` in a menu), or `pg_list_excel_button($class, $attributes)` for a CSV export that is a button of a filter form (sends `excel=1` with the form's fields; the list's branch also opens on `pg_list_excel_asked()`: Orders, Contacts, Submitted Forms).
+
+## Which lists have it?
+- All Orders (Single file), Contacts, Submitted Forms, Visitor Report, Gift Cards, Audit Trail, Customers Report (top customers), ERP Aging, Cash Flow and Audit Trail, Key Codes, Short Links, Campaign Profiles, a course's learners, Translations (both exports).
+- Not: Products > Export (its own xlsx), the ERP export profiles, the orders zip and Paraşüt export, workflow tables (already .xlsx), import reports and sample files.
 
 ## What is read back from the CSV?
 - The byte order mark is skipped; the separator is the comma, semicolon or tab most used in the heading line outside quotes. Read with an empty escape character from PHP 7.4 (exact RFC 4180), `\\` before.

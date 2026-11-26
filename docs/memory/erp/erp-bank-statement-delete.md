@@ -5,6 +5,7 @@ description: A bank statement with no recorded or matched line deletes with its 
 
 ## When can a statement be deleted? (#5649, PR #6372)
 - When none of its lines is `recorded` or `matched`. The statement row and its `new` and `ignored` lines are deleted in one transaction (`erp_bank_statement_delete()` in `includes/erp/bank_import.php`, lines read `FOR UPDATE`).
+- The delete locks the statement row before its lines, so it waits for a build in progress and then sees its lines. Before (bug hunt, 2026-11-26) a delete during the build left the lines added after its read without a statement, and their hashes turned the same file away as "taken in before".
 - Otherwise it is refused and the lines are named by date and amount: "The statement cannot be deleted: these lines are recorded or matched to the books: …" (`erp_bank_statement_delete_refusal()`, pure). A recorded line wrote a till movement for it and a matched line points at one; deleting would cut the movement off from its source. Undo a match first ("Not this movement") to free a matched line.
 - Why: a wrong file, or one taken into the wrong bank account, stayed in the list for good.
 

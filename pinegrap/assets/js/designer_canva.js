@@ -62,6 +62,22 @@
         }).then(function (response) { return response.json(); });
     }
 
+    // Files chosen or dropped together, in their names' number order: Canva
+    // numbers a design's pages (1.png … 10.png) and a browser may list them
+    // as text sorts ("10" before "2"). Equal names keep their order. Pure.
+    function inPageOrder(files) {
+        var list = Array.prototype.map.call(files || [], function (file, at) {
+            return { file: file, at: at };
+        });
+
+        list.sort(function (a, b) {
+            var by = String(a.file.name || '').localeCompare(String(b.file.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+            return by || (a.at - b.at);
+        });
+
+        return list.map(function (item) { return item.file; });
+    }
+
     // What the browser can tell before sending: '' to send, else the
     // refusal's text key. The server reads the type from the bytes again.
     function refusalOf(file, T) {
@@ -279,7 +295,7 @@
     function add(s, files) {
         var room = s.T.max - s.pages.length - s.queue.length - (s.busy ? 1 : 0);
 
-        Array.prototype.forEach.call(files || [], function (file) {
+        inPageOrder(files).forEach(function (file) {
             var why = refusalOf(file, s.T);
 
             if (!why && room <= 0) {
@@ -627,6 +643,7 @@
             }
         },
         // The pure parts, for tests/canva_start_test.php.
+        inPageOrder: inPageOrder,
         refusalOf: refusalOf,
         sketchOf: sketchOf
     };

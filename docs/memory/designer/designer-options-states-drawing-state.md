@@ -4,7 +4,7 @@ description: The Options panel's State row as drawn (options-states.html, boards
 ---
 
 ## Where is the State row and what does it hold?
-- First in the Style tab's body, above the section cards: the label "State" and one group, Normal, Hover, Focus, Pressed. Under 300 px the group stands under its label.
+- First in the Style tab's body, above the section cards: the label "State" and one group, Normal, Hover, Focus, Pressed. A group wider than the row (four states in Turkish) stands under its label; under 300 px always, its segments two to a line (UR4).
 - An element that takes no focus and no press (a card, a section, a text) has Normal and Hover only.
 - A press chooses a state; a press on the chosen one, or Escape, goes back to Normal.
 - The state is held while this element and the Style tab are open: another element, another tab, typing in the search and "Only what I changed" go back to Normal.

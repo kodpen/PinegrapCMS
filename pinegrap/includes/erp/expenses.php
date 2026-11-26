@@ -1090,6 +1090,19 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
         return $fail(lang('Could not start a database transaction.'));
     }
 
+    // Read again under the lock: an expense paid or cancelled since the check
+    // (another tab, the API) is not changed or paid on what the check saw. A
+    // second "Paid now" would take the money out of the till twice, and new
+    // figures would no longer match the till movement that paid it.
+    if ($id > 0) {
+        $locked = db_item("SELECT id, status FROM erp_expenses WHERE id = '" . $id . "' LIMIT 1 FOR UPDATE");
+
+        if (!is_array($locked) || ((string) $locked['status'] !== (string) $existing['status'])) {
+            erp_tx_rollback();
+            return $fail(is_array($locked) ? lang('The expense was paid or cancelled meanwhile; open it again to see it as it is now.') : lang('The expense could not be found.'));
+        }
+    }
+
     $sets = array();
     foreach ($columns as $column => $value) {
         $sets[] = $column . " = '" . escape((string) $value) . "'";
@@ -1280,9 +1293,12 @@ function erp_expense_cancel_check($id, $reason)
  * @param int    $id
  * @param string $reason
  * @param int    $user_id
+ * @param bool   $may_refund  Whether the caller holds the right to the tills,
+ *                            which a paid expense's cancel needs: it puts
+ *                            money back into a till
  * @return array ['success' => bool, 'error' => string]
  */
-function erp_expense_cancel($id, $reason, $user_id = 0)
+function erp_expense_cancel($id, $reason, $user_id = 0, $may_refund = true)
 {
     $reason = trim((string) $reason);
     $checked = erp_expense_cancel_check($id, $reason);
@@ -1312,6 +1328,13 @@ function erp_expense_cancel($id, $reason, $user_id = 0)
     }
     if ((string) $expense['status'] !== (string) $checked['expense']['status']) {
         return $fail(lang('The expense could not be cancelled.'));
+    }
+
+    // Judged on the locked row: a caller that read the expense as unpaid
+    // before it was paid would otherwise put its money back into the till
+    // without the right to the tills.
+    if (((string) $expense['status'] === 'paid') && !$may_refund) {
+        return $fail(lang('Cancelling a paid expense needs the right to the tills.'));
     }
 
     if ((string) $expense['status'] === 'paid') {

@@ -109,3 +109,24 @@ function test_erp_recurring_date_ok()
 	pg_assert_same(false, erp_recurring_date_ok('2026-1-5'), 'not Y-m-d');
 	pg_assert_same(false, erp_recurring_date_ok(array('2026-01-31')), 'an array');
 }
+
+// A repeat is started under one lock per family: the first expense the
+// stopped repeat came from, whichever of its expenses it is started from.
+// Locked by the expense, two tabs restarting it from two of its expenses
+// both passed the "repeats already" look and left two active repeats, each
+// writing every period.
+function test_erp_expense_recurrence_lock_id_is_the_family()
+{
+	pg_assert_same(12, erp_expense_recurrence_lock_id(12, null), 'a first start locks its own expense');
+	pg_assert_same(12, erp_expense_recurrence_lock_id(30, array('id' => 4, 'source_expense_id' => 12)), 'a restart from a written expense locks the first one');
+	pg_assert_same(12, erp_expense_recurrence_lock_id(12, array('id' => 4, 'source_expense_id' => 12)), 'a restart from the first expense locks the same');
+	pg_assert_same(30, erp_expense_recurrence_lock_id(30, array('id' => 4, 'source_expense_id' => 0)), 'a repeat without a source falls back to the expense');
+}
+
+function test_erp_expense_recurrence_create_locks_the_family()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/expense_recurring.php');
+
+	pg_assert_contains("erp_start_lock('expense_recurrence', \$lock_id)", $source, 'the lock is taken on the family');
+	pg_assert_contains("erp_start_unlock('expense_recurrence', \$lock_id)", $source, 'and given back on it');
+}

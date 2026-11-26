@@ -338,6 +338,33 @@ console.log(JSON.stringify([activityTokens(950), activityTokens(412000), activit
 	pg_assert_same(array('950', '412k', '1M', '1.5M', '12k'), $tokens, 'tokens in short words');
 }
 
+// The context with no size (none typed on the agent's form, none
+// reported): the used tokens alone, no ring, no percent, no 90% mark; used
+// above the size is drawn as full.
+function test_workspace_channel_activity_js_context_without_size()
+{
+	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . workspace_channel_activity_js_test_agents() . '
+var unsized = Object.assign({}, working, { context: { used: 412000, size: null } });
+var facts = {}; agentsFacts(unsized, t).forEach(function (fact) { facts[fact.key] = fact; });
+console.log(JSON.stringify({
+	context: activityContext({ used: 412000, size: null }, t), ring: agentsRing({ used: 412000, size: null }), fact: facts.context,
+	over: activityContext({ used: 300000, size: 250000 }, t), overRing: agentsRing({ used: 300000, size: 250000 })
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('words' => 'act_context_used(412k)', 'percent' => null, 'high' => false), $result['context'], 'the used tokens alone');
+	pg_assert_same(null, $result['ring'], 'no ring without a size');
+	pg_assert_same('act_context_used(412k)', $result['fact']['text'], 'the opened row says the used tokens');
+	pg_assert_same(null, $result['fact']['percent'], 'with no bar');
+	pg_assert_false($result['fact']['high'], 'and no 90% mark');
+	pg_assert_same(100, $result['over']['percent'], 'used above the size is full');
+	pg_assert_same(100, $result['overRing']['percent']);
+	pg_assert_contains('fact.percent !== null', workspace_channel_activity_js_test_function('factsNode'), 'the bar only with a percent');
+}
+
 // 7. and 8. No badge, pill or button in a row; the old lists and their styles gone.
 function test_workspace_channel_activity_js_block_source()
 {

@@ -1,6 +1,6 @@
 ---
 name: erp-cheque-form-checks
-description: Cheque and note form and step checks (PR #5636): the amount limit, the step reason in the notes, the full status filter, required and labelled fields, action-named step buttons.
+description: Cheque and note form and step checks (PR #5636, #11844): amount limit, step reason, status filter, labelled fields, step buttons, endorse account, typed step date.
 ---
 
 ## How large may a cheque's amount be? (#5569, PR #5636)
@@ -17,3 +17,9 @@ description: Cheque and note form and step checks (PR #5636): the amount limit, 
 - The new-cheque form marks Account, Amount, Date, Due Date and Kept in as `required`. An empty account is refused in `erp_cheque_create()` on `account_id`, before the receipt is posted, so the Account box is marked.
 - The step forms repeat their fields, so each id includes the step (`erp_<step>_date`, `erp_<step>_bank_till_id`, `erp_bounce_reason`), with a `label for` pointing at it. The date input also has an `aria-label`, because the text box that `pg_fields.js` draws next to it takes its name only from that attribute.
 - The step buttons name the action (Hand to the bank, Mark as collected, Mark as bounced, Mark as paid). They are separate keys from the status labels: reusing the status words made a button read as if the step had already been taken.
+
+## Who may a cheque be passed on to? (PR #11844)
+- An existing, active account other than the one it came from: `erp_cheque_endorse_account_refusal()` in `erp_cheque_step()`, shared by the API. Before, only the API refused, and the screen could pay a cheque back to its customer, leaving the invoices it closed reading as paid.
+
+## How is a step's date read? (PR #11844)
+- A date the screen cannot read is passed on and refused by `erp_cheque_step_date_refusal()` (`erp_cheque_typed_step_date()`); before, it became today. The API asks the same refusal before its dry run, on the `date` field.

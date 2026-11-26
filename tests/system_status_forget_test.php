@@ -133,3 +133,19 @@ function test_system_status_forget_is_the_one_way_to_drop_the_cache()
 
 	pg_assert_true(strpos($branch, 'pg_system_status_forget();') !== false, 'the Maintenance Mode switch uses the helper');
 }
+
+function test_system_status_forget_after_a_payment_key_or_going_live()
+{
+	$code = system_status_forget_code('connections.php');
+
+	foreach (array("in_array(\$action, array('gateway_save', 'gateway_remove'), true)", "in_array(\$action, array('driver_save', 'driver_remove'), true)") as $start) {
+		$branch = system_status_forget_between($code, $start, 'exit();');
+
+		pg_assert_true($branch !== '', 'connections.php has the branch ' . $start);
+		pg_assert_true(strpos($branch, 'pg_system_status_forget();') !== false, 'a payment key saved or removed drops the System Status cache (Payment Mode)');
+	}
+
+	pg_assert_same(2, substr_count(system_status_forget_between($code, "in_array(\$action, array('driver_save', 'driver_remove'), true)", 'exit();'), 'pg_system_status_forget();'), 'both the driver save and its remove');
+
+	pg_assert_true(strpos(pg_test_function_source('pg_launch_journey_go_live'), '($applied || $first)') !== false, 'the first Go live drops the cache: Payment Mode reads the go-live time');
+}

@@ -258,6 +258,22 @@ function erp_expense_recurrences($active_only = true)
 }
 
 /**
+ * The id a repeat of an expense is started under (erp_start_lock()): the
+ * first expense of its family when it has repeated before, so every expense
+ * of one repeat shares the lock; else the expense itself.
+ *
+ * @param int        $expense_id
+ * @param array|null $current  erp_expense_recurrence_of() for the expense
+ * @return int
+ */
+function erp_expense_recurrence_lock_id($expense_id, $current)
+{
+    $source = is_array($current) ? (int) ($current['source_expense_id'] ?? 0) : 0;
+
+    return ($source > 0) ? $source : (int) $expense_id;
+}
+
+/**
  * Start repeating an expense. The next one is due the given number of months
  * after the expense's date, on the same day of the month; started again
  * after a stop, it goes on from where the stopped one was due and does not
@@ -281,12 +297,19 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
         return $fail(lang('Repeating expenses come with the software update; run the update to use them.'));
     }
 
-    if (!erp_start_lock('expense_recurrence', (int) $expense_id)) {
+    // One lock for the whole family: a restart sent from two of its
+    // expenses at once (two tabs) would otherwise take two locks, both pass
+    // the "repeats already" look and leave two active repeats, each writing
+    // every period. The family is asked again under the lock.
+    $expense = erp_expense((int) $expense_id);
+    $lock_id = erp_expense_recurrence_lock_id((int) $expense_id, is_array($expense) ? erp_expense_recurrence_of($expense) : null);
+
+    if (!erp_start_lock('expense_recurrence', $lock_id)) {
         return $fail(lang('This expense repeats already.'));
     }
 
     $made = erp_expense_recurrence_create_locked((int) $expense_id, $options, $user_id, $fail);
-    erp_start_unlock('expense_recurrence', (int) $expense_id);
+    erp_start_unlock('expense_recurrence', $lock_id);
 
     return $made;
 }

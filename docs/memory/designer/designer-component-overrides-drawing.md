@@ -1,6 +1,6 @@
 ---
 name: designer-component-overrides-drawing
-description: The drawing of a component's open fields, "This place" and variants (plans/designer-component-overrides.md, CO3 to CO5): the sheet, its seven boards and what each step builds from it
+description: The drawing of a component's open fields, "This place" and variants (component-overrides-overview.md, CO3 to CO5): the sheet, its seven boards and what each step builds from it
 ---
 
 ## Where is the drawing?

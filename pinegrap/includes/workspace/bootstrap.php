@@ -46,6 +46,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/conversation_timeline.php')
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/person_card.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/message_seen_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_channel.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_tiers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/github_links.php');

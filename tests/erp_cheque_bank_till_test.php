@@ -46,5 +46,8 @@ function test_erp_cheque_step_asks_the_bank_till_refusal()
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/cheques.php');
 	$step = substr($src, (int) strpos($src, 'function erp_cheque_step('));
 
-	pg_assert_contains('erp_cheque_bank_till_refusal(', $step, 'the step checks the bank till');
+	pg_assert_contains('erp_cheque_bank_till_id_refusal(', $step, 'the step checks the bank till');
+
+	$by_id = substr($src, (int) strpos($src, 'function erp_cheque_bank_till_id_refusal('));
+	pg_assert_contains('erp_cheque_bank_till_refusal(', substr($by_id, 0, (int) strpos($by_id, "\n}\n")), 'the check by id asks the till refusal');
 }

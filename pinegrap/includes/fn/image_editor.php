@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -6951,4 +6951,192 @@ function pg_image_editor_action_folders($request, $user, $grants = null)
     return array(array('status' => 'success', 'folders' => pg_image_editor_folder_choices($folders, function ($id) {
         return check_edit_access($id) && !pg_folder_binned($id);
     }, $closed)), 200);
+}
+
+// -- Site colours (pg_image_editor_colors.js) --
+
+/**
+ * The site colours row of the shared swatches: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_colors()
+{
+    return array(
+        'siteColors' => lang('Site colours'),
+    );
+}
+
+/**
+ * The site's colours for the row before the shared swatches: the palette
+ * colours of its visual designs, then their colour variables, newest edited
+ * design first. Empty on a site whose designs set neither.
+ *
+ *   { token, action: 'site_colors' } -> { status, colors: [{ color, name }, ...] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_site_colors($request, $user)
+{
+    $designs = array();
+
+    if (pg_design_look_ready()) {
+        $framework = function_exists('pg_style_framework_ready') && pg_style_framework_ready();
+        $rows = db_items("SELECT style_id, style_look, style_palette" . ($framework ? ', style_framework' : '')
+            . " FROM style WHERE style_type = 'system' ORDER BY style_timestamp DESC, style_id DESC LIMIT 50");
+
+        foreach (is_array($rows) ? $rows : array() as $row) {
+            // Only a Bootstrap design wears a palette and variables.
+            if ($framework) {
+                $fw = pg_design_framework(isset($row['style_framework']) ? $row['style_framework'] : '');
+
+                if (empty($fw['bootstrap'])) {
+                    continue;
+                }
+            }
+
+            $design = array('palette' => array(), 'variables' => array());
+            $palette = pg_design_palette_key($row['style_palette']);
+
+            // No palette is plain Bootstrap: not a colour the site chose.
+            if ($palette !== '') {
+                $design['palette'] = pg_image_editor_site_palette_colors(pg_image_editor_site_palette_name($palette), pg_design_palette_colors($palette));
+            }
+
+            $stored = pg_design_variables_stored((int) $row['style_id']);
+
+            if ($stored !== null) {
+                $design['variables'] = pg_image_editor_site_variable_colors($stored, pg_design_variables_defaults($row['style_look'], $palette));
+            }
+
+            $designs[] = $design;
+        }
+    }
+
+    return array(array('status' => 'success', 'colors' => pg_image_editor_site_colors_list($designs)), 200);
+}
+
+/**
+ * A palette choice's name: a built-in palette's, a palette file's, or ''
+ * when its file has gone.
+ *
+ * @return string
+ */
+function pg_image_editor_site_palette_name($palette)
+{
+    $fid = pg_design_theme_file_id($palette);
+
+    if ($fid > 0) {
+        $files = pg_design_theme_files('palette');
+
+        return isset($files[$fid]) ? (string) $files[$fid]['name'] : '';
+    }
+
+    $all = pg_design_palettes();
+
+    return isset($all[$palette]) ? (string) $all[$palette]['name'] : '';
+}
+
+/**
+ * A palette's two colours as swatches, each named after the palette.
+ *
+ * @param string $name   the palette's name
+ * @param array  $colors array('primary' => hex, 'secondary' => hex)
+ * @return array of array(color, name)
+ */
+function pg_image_editor_site_palette_colors($name, $colors)
+{
+    $out = array();
+
+    foreach (array('primary' => '{var:1}: primary colour', 'secondary' => '{var:1}: secondary colour') as $role => $label) {
+        if (isset($colors[$role])) {
+            $out[] = array('color' => strtolower((string) $colors[$role]), 'name' => lang(array('string' => $label, 'vars' => array((string) $name))));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A design's colour variables in their light form: the built-in ones named
+ * by their label, own when they differ from the design's default, then the
+ * designer's own colours, always own.
+ *
+ * @param array $model    a stored variables model (pg_design_variables_stored())
+ * @param array $defaults the design's defaults (pg_design_variables_defaults())
+ * @return array of array(color, name, own)
+ */
+function pg_image_editor_site_variable_colors($model, $defaults)
+{
+    $model = pg_design_variables_normalize($model, $defaults);
+    $out = array();
+
+    foreach (pg_design_variable_list() as $key => $def) {
+        if ($def['kind'] !== 'color') {
+            continue;
+        }
+
+        $light = $model['values'][$key]['light'];
+        $base = isset($defaults['values'][$key]['light']) ? strtolower((string) $defaults['values'][$key]['light']) : '';
+        $out[] = array('color' => strtolower($light), 'name' => (string) $def['label'], 'own' => (strtolower($light) !== $base));
+    }
+
+    foreach ($model['custom'] as $custom) {
+        if ($custom['kind'] === 'color') {
+            $out[] = array('color' => strtolower($custom['light']), 'name' => (string) $custom['name'], 'own' => true);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The row's swatches from every design: the palettes' colours first, then
+ * the variables a designer set, then the untouched ones; each colour once
+ * (#rgb written out), anything but a hex colour dropped, twelve at most.
+ *
+ * @param array $designs list of array('palette' => rows, 'variables' => rows)
+ * @param int   $max
+ * @return array of array(color, name)
+ */
+function pg_image_editor_site_colors_list($designs, $max = 12)
+{
+    $groups = array(array(), array(), array());
+
+    foreach (is_array($designs) ? $designs : array() as $design) {
+        foreach (isset($design['palette']) ? (array) $design['palette'] : array() as $row) {
+            $groups[0][] = $row;
+        }
+
+        foreach (isset($design['variables']) ? (array) $design['variables'] : array() as $row) {
+            $groups[empty($row['own']) ? 2 : 1][] = $row;
+        }
+    }
+
+    $out = array();
+    $seen = array();
+
+    foreach ($groups as $rows) {
+        foreach ($rows as $row) {
+            $hex = strtolower(trim(isset($row['color']) ? (string) $row['color'] : ''));
+
+            if (preg_match('/^#([0-9a-f])([0-9a-f])([0-9a-f])$/', $hex, $m)) {
+                $hex = '#' . $m[1] . $m[1] . $m[2] . $m[2] . $m[3] . $m[3];
+            }
+
+            if (!preg_match('/^#[0-9a-f]{6}$/', $hex) || isset($seen[$hex])) {
+                continue;
+            }
+
+            if (count($out) >= $max) {
+                return $out;
+            }
+
+            $seen[$hex] = true;
+            $name = isset($row['name']) ? trim((string) $row['name']) : '';
+            $out[] = array('color' => $hex, 'name' => ($name !== '') ? mb_substr($name, 0, 60) : $hex);
+        }
+    }
+
+    return $out;
 }

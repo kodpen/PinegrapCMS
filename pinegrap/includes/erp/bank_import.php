@@ -838,6 +838,10 @@ function erp_bank_statement_delete($statement_id)
         return array('success' => false, 'error' => lang('Could not start a database transaction.'));
     }
 
+    // The statement first: a build running now holds it until its lines
+    // are in and matched, and they are then read below.
+    db_value("SELECT id FROM erp_bank_statements WHERE id = '" . (int) $statement['id'] . "' LIMIT 1 FOR UPDATE");
+
     // Locked, so a line recorded at the same moment is either seen here or
     // finds its statement gone.
     $lines = (array) db_items("SELECT id, doc_date, amount, status FROM erp_bank_statement_lines
@@ -917,6 +921,22 @@ function erp_bank_statement_build($statement_id, $mapping)
     }
 
     $mapping['separator'] = erp_bank_csv_separator_key($mapping['separator'] ?? 'auto');
+
+    if (!erp_tx_begin()) {
+        return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // Claimed under the statement's row lock: two builds at once (two tabs)
+    // both read it as waiting for its columns, and the second added every
+    // line again under other columns' hashes or reset the line count to 0.
+    // A delete waits here too, so it never leaves lines behind.
+    $claimed = (string) db_value("SELECT status FROM erp_bank_statements WHERE id = '" . (int) $statement['id'] . "' LIMIT 1 FOR UPDATE");
+
+    if ($claimed !== 'mapping') {
+        erp_tx_rollback();
+        return $fail(lang('The statement could not be found.'));
+    }
+
     $rows = erp_bank_statement_rows($statement['raw_rows'], $mapping['separator']);
 
     if (!empty($mapping['header'])) {
@@ -973,12 +993,18 @@ function erp_bank_statement_build($statement_id, $mapping)
         }
     }
 
-    db("UPDATE erp_bank_statements SET status = 'open', raw_rows = NULL,
+    $ok = db("UPDATE erp_bank_statements SET status = 'open', raw_rows = NULL,
             mapping = '" . escape(json_encode($mapping)) . "',
             line_count = '" . $added . "'
         WHERE id = '" . (int) $statement['id'] . "'");
 
-    $matched = erp_bank_statement_match((int) $statement['id']);
+    $matched = ($ok !== false) ? erp_bank_statement_match((int) $statement['id']) : 0;
+
+    if (($ok === false) || !erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
 
     return array('success' => true, 'added' => $added, 'skipped' => $skipped, 'matched' => $matched, 'error' => '');
 }
@@ -1083,14 +1109,16 @@ function erp_bank_statement_match($statement_id)
 }
 
 /**
- * A statement's lines, with the movement each one is matched or recorded as.
+ * A statement's lines, with the movement each one is matched or recorded as
+ * and whether that movement was cancelled since (cash_cancelled).
  *
  * @param int $statement_id
  * @return array
  */
 function erp_bank_statement_lines($statement_id)
 {
-    return (array) db_items("SELECT l.*, t.description AS cash_description, t.doc_type AS cash_doc_type, a.title AS account_title
+    return (array) db_items("SELECT l.*, t.description AS cash_description, t.doc_type AS cash_doc_type, a.title AS account_title,
+            (l.cash_id > 0 AND EXISTS (SELECT 1 FROM erp_cash_transactions r WHERE r.doc_type = 'cancel' AND r.doc_id = l.cash_id)) AS cash_cancelled
         FROM erp_bank_statement_lines l
         LEFT JOIN erp_cash_transactions t ON t.id = l.cash_id
         LEFT JOIN erp_accounts a ON a.id = t.account_id
@@ -1428,17 +1456,40 @@ function erp_bank_line_post($line, $what, $user_id)
 }
 
 /**
+ * Whether a line can go back to the open lines: a matched one (the wrong
+ * movement of the same amount), or a recorded one whose movement was
+ * cancelled since. A cancel takes the money out of the books while the bank
+ * still shows it, and a line left recorded could never be recorded again.
+ *
+ * @param array $line  erp_bank_statement_lines() row: status, cash_id, cash_cancelled
+ * @return bool
+ */
+function erp_bank_line_reopenable($line)
+{
+    $status = (string) ($line['status'] ?? '');
+
+    if ($status === 'matched') {
+        return true;
+    }
+
+    return ($status === 'recorded') && ((int) ($line['cash_id'] ?? 0) > 0) && !empty($line['cash_cancelled']);
+}
+
+/**
  * Undo a line's match: the line goes back to the open lines and the till
- * movement can be matched again. A recorded line is not touched: its
+ * movement can be matched again. A recorded line goes back only when its
+ * movement was cancelled (erp_bank_line_reopenable()); otherwise its
  * movement was written for it.
  *
  * @param int $line_id
- * @return bool  Whether a matched line was undone
+ * @return bool  Whether a line was opened again
  */
 function erp_bank_line_unmatch($line_id)
 {
     db("UPDATE erp_bank_statement_lines SET status = 'new', cash_id = 0
-        WHERE id = '" . (int) $line_id . "' AND status = 'matched'");
+        WHERE id = '" . (int) $line_id . "'
+          AND (status = 'matched'
+            OR (status = 'recorded' AND EXISTS (SELECT 1 FROM erp_cash_transactions r WHERE r.doc_type = 'cancel' AND r.doc_id = erp_bank_statement_lines.cash_id)))");
 
     return mysqli_affected_rows(db::$con) > 0;
 }

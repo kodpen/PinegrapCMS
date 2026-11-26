@@ -11,6 +11,7 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 ## What state is a quote in?
 - Stored status: open, accepted, rejected, cancelled, invoiced. Screens and API show `erp_quote_state()`: an open quote past `valid_until` is expired; an invoiced one whose draft was deleted or whose invoice was cancelled reads as accepted again and can be invoiced once more.
 - Status changes go through `erp_quote_status_refusal()`, shared by the screen and the API.
+- Running out is announced hourly, once per quote (`expiry_notified_at`), with an optional follow-up: erp-alerts.md.
 
 ## How is it printed and invoiced?
 - With the invoice template: `erp_invoice_document_data(0, erp_quote_document_source($quote))` (title QUOTE, the account as it reads today).
@@ -18,15 +19,13 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 - The invoice names its quote in `erp_invoices.quote_id` (8.58), written only when the key is given (`array_key_exists`). `erp_quotes.invoice_id`, the other way, is cleared when the quote is opened again.
 
 ## How does the signature work? (`includes/erp/signatures.php`, 2026.4.8 step 8.58)
-- Drawn on the screen or a tablet; it marks the quote accepted (`erp.quote.signed`). One per document in `erp_signatures` (`UNIQUE (doc_type, doc_id)`); the drawing is a `files` row with `erp_doc_type = 'quote_signature'`, served to the ERP right only and embedded in the PDF as a data URI.
+- Drawn on the screen or a tablet; it marks the quote accepted (`erp.quote.signed`). The screen's form refuses a quote saved since it was shown (`d`). One per document in `erp_signatures` (`UNIQUE (doc_type, doc_id)`); the drawing is a `files` row with `erp_doc_type = 'quote_signature'`, served to the ERP right only, embedded in the PDF.
 - Never deleted, never drawn again. `document_hash` (lines and totals), `image_hash` and an HMAC `seal` show tampering: a quote changed after signing no longer matches, the screen says so and the PDF prints no signature.
 - An ordinary electronic signature, not a qualified one. Guest link: erp-quote-guest-link.md.
 
-## When is a quote about to run out announced?
-- Hourly, once per quote (`erp_quotes.expiry_notified_at`), with an optional follow-up: erp-alerts.md.
 
 ## How is a quote tagged in the Workspace?
-- Tag kind `erp_quote`, "Sales quote" / "Satış teklifi" (never a bare "quote": an Offer is "Teklif", a quoted message "Alıntı"); `#satis` or `#salesquote` picks it, Offer keeps `#teklif`. Shown with the ERP right (`manage_erp`), as the quote screens; read over the API and by the assistants with `erp:read`.
+- Tag kind `erp_quote`, "Sales quote" / "Satış teklifi" (never a bare "quote": an Offer is "Teklif", a quoted message "Alıntı"); `#satis` or `#salesquote` picks it, Offer keeps `#teklif`. Shown with the ERP right (`manage_erp`),; API and assistants: `erp:read`.
 - The chip: number, account, total in the quote's own currency (`erp_money_out_currency()`; `ws_money_out()` prints base amounts only), state (`erp_quote_state()`); it opens edit_erp_quote.php, which draws the Workspace button. refs.php loads quotes.php and money.php alone (`ws_erp_quotes_readable()`), not the bootstrap. Other ERP chips: ui/panel-money-base-currency.md.
 - Its menu's "Copy as a new sales quote" opens add_erp_quote.php `?copy=<id>`, offered to whoever may write ERP documents (not `manage_erp_readonly`).
 - The Workspace adds a quote (kind `erp_quote`, #1705) or invoices one (action `invoice`, #1907) only from a change card the person applies; it changes or sends none: workspace/workspace-sales-quote-change.md.

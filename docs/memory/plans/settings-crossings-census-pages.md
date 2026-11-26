@@ -26,7 +26,7 @@ description: Crossings census, the pages: for each service page of Connections t
 - Google Analytics and Merchant Center without Google's application: "Connections › Google" (`connections.php:3295`, `3683`).
 - Every page of a Google or Microsoft account service with no Connection details of its own (the calendars, the drives, Gmail and Microsoft 365 mail, OneNote): "Accounts are connected on the Google (Microsoft) page of Connections, where its application is set up." (`connections.php:4376`); Dropbox's says its panel of the Connections list.
 - Google Drive, OneDrive, Dropbox show that sentence and, below it, their own "Connect a … account for backups" button: two answers on one card.
-- GA4 MP: the Measurement ID is on Google Analytics' page (`ad_conversions_ga4.php:714`).
+- The GA4 Measurement Protocol: the Measurement ID is on Google Analytics' page (`ad_conversions_ga4.php:714`).
 - Google's page: its sign-in part leads to "Accounts and sign-in ›"; its "Where it is used" lists each served service's page, never a card.
 
 Related: docs/memory/plans/settings-crossings-census.md
