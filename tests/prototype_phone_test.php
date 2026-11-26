@@ -327,3 +327,38 @@ function test_prototype_phone_window_gets_its_code_inline_and_never_cached()
 	pg_assert_true(strpos($case, "includes/fn/qr.php") !== false, 'the generator is loaded for the answer');
 	pg_assert_true(strpos($case, "Cache-Control: no-store") !== false, 'the answer is never kept');
 }
+
+// A found phone link is handed out again only while its own start page
+// opens for its audience and is still a draft of the design: a link made on
+// a page later moved behind a sign-in, binned or deleted is ended and the
+// press goes on as if none was found.
+function test_prototype_phone_found_link_keeps_only_while_its_start_page_opens()
+{
+	$drafts = array(11, 12, 13);
+
+	pg_assert_same(11, pg_proto_phone_found_start(prototype_phone_test_row(), $drafts), 'its own start page');
+	pg_assert_same(11, pg_proto_phone_found_start(prototype_phone_test_row(array('start_page_id' => 0)), $drafts), 'the first draft for none');
+	pg_assert_same(0, pg_proto_phone_found_start(prototype_phone_test_row(array('start_page_id' => 99)), $drafts), 'a page no longer a draft (binned, deleted, of another design)');
+	pg_assert_same(0, pg_proto_phone_found_start(prototype_phone_test_row(), array()), 'a design with no drafts');
+
+	pg_assert_true(pg_proto_phone_found_keeps(prototype_phone_test_row(), $drafts, 'public'));
+	pg_assert_true(pg_proto_phone_found_keeps(prototype_phone_test_row(), $drafts, 'guest'));
+	pg_assert_false(pg_proto_phone_found_keeps(prototype_phone_test_row(), $drafts, 'registration'), 'a start page behind a sign-in on a link for anyone');
+	pg_assert_true(pg_proto_phone_found_keeps(prototype_phone_test_row(array('audience' => 'team')), $drafts, 'registration'), 'a team link draws it');
+	pg_assert_false(pg_proto_phone_found_keeps(prototype_phone_test_row(array('start_page_id' => 99)), $drafts, 'public'), 'its start page is gone');
+	pg_assert_false(pg_proto_phone_found_keeps(null, $drafts, 'public'));
+}
+
+// The endpoint asks it of the found link before handing it out, and ends a
+// link that fails before the page being edited is checked.
+function test_prototype_phone_panel_ends_a_found_link_whose_start_page_does_not_open()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+	$panel = substr($source, strpos($source, 'function pg_proto_phone_panel('));
+
+	$keeps = strpos($panel, 'pg_proto_phone_found_keeps(');
+	$shown = strpos($panel, 'pg_proto_link_page_shown($audience');
+
+	pg_assert_true($keeps !== false, 'the found link is checked');
+	pg_assert_true(($shown !== false) && ($keeps < $shown), 'before the page being edited is answered team_only');
+}
