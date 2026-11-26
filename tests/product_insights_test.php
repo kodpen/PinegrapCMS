@@ -336,6 +336,20 @@ function test_product_insights_returns_held_sql()
 	pg_assert_true(strpos($sql, "<> 'rejected'") === false, 'no longer every status but rejected');
 }
 
+// Revenue is shown in the store's currency, so a marketplace order in
+// another unit (pg_customer_value_order_unit()) adds its units and its order
+// but no money.
+function test_product_insights_base_unit_sql()
+{
+	$sql = pg_product_insights_base_unit_sql('try', true);
+
+	pg_assert_true(strpos($sql, "orders.type <> 'marketplace'") !== false);
+	pg_assert_true(strpos($sql, "TRIM(COALESCE(orders.currency_code, '')) = ''") !== false, 'no code is the base unit');
+	pg_assert_true(strpos($sql, "UPPER(TRIM(orders.currency_code)) = 'TRY'") !== false, 'the base code in any case');
+	pg_assert_same('1 = 1', pg_product_insights_base_unit_sql('TRY', false), 'no type column: every order is a web order');
+	pg_assert_true(strpos(pg_product_insights_base_unit_sql("X'Y", true), "= 'XY'") !== false, 'only the letters of the code reach the SQL');
+}
+
 function test_product_insights_head_pills()
 {
 	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));
