@@ -121,6 +121,7 @@
 - channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep [decision: decisions-made-schema-27.md, decisions-made-workspace-39.md]
 - channel-memory-mark.md: The decision mark on a message by a person or an agent (ws_messages.marked_by_kind): who marks, what is markable, naming the marker
 - channel-memory-note.md: The system note when a channel's or the general memory changes (#10546): text, writer, the burst rule, the write path, no agent woken [decision: here]
+- channel-memory-search.md: Memory search (search= on the two memory lists) and GET /workspace/memory/projects: word match, page, snippet, the measure that kept it without an index
 - channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab [decision: decisions-made-schema-27.md, decisions-made-workspace-39.md, decisions-made-workspace-7.md, decisions-made-workspace-9.md]
 - channel-note-card.md: A note's card in a channel and its windows: look (plain card, full width), Show all, the foot, the card menu, Write a note, Edit, the Versions drawer (workspace_channel_notes.js)
 - channel-note-move.md: Move to this channel (ws_note_move(), POST /workspace/notes/{id}/move) makes a person's note the channel's; Copy to my notes (ws_note_copy_mine()) is the way back [decision: here]

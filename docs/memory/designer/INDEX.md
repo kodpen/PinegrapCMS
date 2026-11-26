@@ -929,6 +929,7 @@
 - site-search-translated.md: What the site search reads on a page served in another language (pages, products and groups, form records, a list's own search box), the words and ı/i, the order, the fences, and what it leaves out [decision: decisions-made-product-50.md]
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
+- sketch-ai.md: The Sketch tool's two Pinegrap AI actions (SK6): "Describe the page" and "Write the texts" in "More", when they show, the sketch_ai endpoint, limits, what is sent, undo, stop
 - sketch-build-again.md: "Build again" of a built sketch page (SK4): which sections stay, are built again, added or removed, when it asks, the History snapshot first, what was not done
 - sketch-build-starters.md: How "Build the page" gets the palette starters (#11794): the host's maker, block styles after the build, h1 not badge, rhythm only on py-5, pages built before the fix
 - sketch-build.md: "Build the page" of a Prototype view sketch page (SK4): the part sketchbuild, the chip marks, the list of boxes to check, the draft tab built, the sketch kept in props._sketch

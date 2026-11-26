@@ -425,6 +425,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_search_stats`: [[site-search-rollup]]
 - `site_search_tuning`: [[search-synonyms-promoted]]
 - `site_time_sql`: [[visitor-report-site-time]]
+- `sketch_ai`: [[sketch-ai]]
 - `sms`: [[connections-sms-providers-page]]
 - `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaign-screen-layout]], [[sms-campaigns]], [[sms-campaigns-module-load]]
 - `sms_codes`: [[sms-codes]]
