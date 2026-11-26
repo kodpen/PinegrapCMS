@@ -161,7 +161,7 @@ function test_record_edit_save_order()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/record_edit.php');
 
-	$save = substr($source, strpos($source, 'function pg_rec_edit_save('));
+	$save = substr($source, strpos($source, 'function pg_rec_edit_save_locked('));
 	$save = substr($save, 0, strpos($save, "\n}\n"));
 	$order = array('pg_rec_edit_rights(', "['waits']", 'pg_rec_edit_changes(', 'pg_rec_edit_plan(', "['conflicts']", 'pg_rec_edit_check(', 'pg_rec_edit_write(');
 	$last = -1;
@@ -208,9 +208,84 @@ function test_record_edit_fields_out()
 	));
 
 	pg_assert_same(array(
-		array('id' => 5, 'name' => 'cover', 'label' => 'Cover', 'control' => 'picture', 'required' => true, 'rss' => 'media', 'value' => '12', 'file_name' => 'a.jpg'),
-		array('id' => 6, 'name' => 'note', 'label' => 'Note', 'control' => 'text', 'required' => false, 'rss' => '', 'value' => 'x', 'file_name' => ''),
+		array('id' => 5, 'name' => 'cover', 'label' => 'Cover', 'control' => 'picture', 'required' => true, 'rss' => 'media', 'value' => '12', 'file_name' => 'a.jpg', 'multiline' => false),
+		array('id' => 6, 'name' => 'note', 'label' => 'Note', 'control' => 'text', 'required' => false, 'rss' => '', 'value' => 'x', 'file_name' => '', 'multiline' => false),
 	), $out);
+}
+
+// A plain text area is named as more than one line, so the Preview keeps its line breaks when it is typed in.
+function test_record_edit_fields_out_multiline()
+{
+	$out = pg_rec_edit_fields_out(array(
+		7 => array('id' => '7', 'name' => 'about', 'label' => 'About', 'type' => 'text area', 'wysiwyg' => '0', 'control' => 'text', 'required' => '0', 'rss_field' => '', 'value' => "a\nb", 'file_name' => ''),
+		8 => array('id' => '8', 'name' => 'name', 'label' => 'Name', 'type' => 'text box', 'wysiwyg' => '0', 'control' => 'text', 'required' => '0', 'rss_field' => '', 'value' => 'a', 'file_name' => ''),
+		9 => array('id' => '9', 'name' => 'body', 'label' => 'Body', 'type' => 'text area', 'wysiwyg' => '1', 'control' => 'rich', 'required' => '0', 'rss_field' => '', 'value' => '<p>a</p>', 'file_name' => ''),
+	));
+
+	pg_assert_true($out[0]['multiline'], 'a plain text area');
+	pg_assert_false($out[1]['multiline'], 'a text box');
+	pg_assert_false($out[2]['multiline'], 'a formatted text area keeps its own tags');
+}
+
+// A formatted text is read as the site draws it: cleaned as staff text, {path} filled; so no handler or script runs in the Preview.
+function test_record_edit_rich_out()
+{
+	$out = pg_rec_edit_rich_out('<p onclick="x()">Hi <img src="{path}a.jpg" onerror="y()"><a href="{path}b">b</a></p><script>z()</script>', '/site/');
+
+	pg_assert_true(strpos($out, 'onclick') === false && strpos($out, 'onerror') === false, 'no event handler');
+	pg_assert_true(strpos($out, '<script') === false && strpos($out, 'z()') === false, 'no script');
+	pg_assert_true(strpos($out, 'src="/site/a.jpg"') !== false, 'the picture address filled');
+	pg_assert_true(strpos($out, 'href="/site/b"') !== false, 'the link address filled');
+	pg_assert_true(strpos($out, '<p>') !== false && strpos($out, 'Hi') !== false, 'the text and its tags stay');
+	pg_assert_same('', pg_rec_edit_rich_out('', '/'));
+	pg_assert_same(pg_rec_edit_rich_out('<p><b>a</b></p>', '/'), pg_rec_edit_rich_out(pg_rec_edit_rich_out('<p><b>a</b></p>', '/'), '/'), 'read twice reads the same');
+}
+
+// A required field emptied and a value over the field's length are refused before anything is written.
+function test_record_edit_value_refusal()
+{
+	$text = array('label' => 'Name', 'control' => 'text', 'required' => '1', 'maxlength' => '5');
+	$rich = array('label' => 'Body', 'control' => 'rich', 'required' => '1', 'maxlength' => '5');
+	$free = array('label' => 'Note', 'control' => 'text', 'required' => '0', 'maxlength' => '0');
+
+	pg_assert_same('', pg_rec_edit_value_refusal($text, 'Ab'));
+	pg_assert_true(pg_rec_edit_value_refusal($text, '  ') !== '', 'a required text emptied');
+	pg_assert_true(pg_rec_edit_value_refusal($rich, '<p><br></p>') !== '', 'a required formatted text with tags only');
+	pg_assert_same('', pg_rec_edit_value_refusal($rich, '<p><img src="/a.jpg"></p>'), 'a picture alone is content');
+	pg_assert_true(pg_rec_edit_value_refusal($text, 'Abcdef') !== '', 'over the field\'s length');
+	pg_assert_same('', pg_rec_edit_value_refusal($text, 'Çğışö'), 'the length counts letters, not bytes');
+	pg_assert_same('', pg_rec_edit_value_refusal($rich, '<p>Abcdefgh</p>'), 'the operator\'s length is not applied to formatted text');
+	pg_assert_same('', pg_rec_edit_value_refusal($free, ''), 'not required, no length');
+	pg_assert_true(pg_rec_edit_value_refusal($free, str_repeat('a', PG_REC_EDIT_MAX_LENGTH + 1)) !== '', 'over the ceiling');
+	pg_assert_true(pg_rec_edit_value_refusal($rich, str_repeat('a', PG_REC_EDIT_MAX_LENGTH + 1)) !== '', 'formatted text over the ceiling');
+}
+
+// Two saves of one item run one after the other, so a field checked against its base is not written over meanwhile.
+function test_record_edit_save_locks_the_item()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/record_edit.php');
+	$save = substr($source, strpos($source, 'function pg_rec_edit_save('));
+	$save = substr($save, 0, strpos($save, "\n}\n"));
+
+	$lock = strpos($save, 'GET_LOCK');
+	$inner = strpos($save, 'pg_rec_edit_save_locked(');
+	$release = strpos($save, 'RELEASE_LOCK');
+
+	pg_assert_true($lock !== false && $inner !== false && $release !== false && $lock < $inner && $inner < $release, 'the item is locked around the read, check and write');
+	pg_assert_true(strpos($save, 'pg_rec_edit_lock_name(') !== false, 'one lock per item');
+	pg_assert_same('pg_rec_edit_12', pg_rec_edit_lock_name(12));
+}
+
+// A record whose collection is in the Recycle Bin, and a picture in the bin, are not written in place.
+function test_record_edit_refuses_the_recycle_bin()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/record_edit.php');
+
+	foreach (array('function pg_rec_edit_record(', 'function pg_rec_edit_picture_refusal(') as $name) {
+		$body = substr($source, strpos($source, $name));
+		$body = substr($body, 0, strpos($body, "\n}\n"));
+		pg_assert_true(strpos($body, 'pg_folder_binned(') !== false, $name . ' asks whether the folder is in the bin');
+	}
 }
 
 // The read names the item's form page, so the Preview finds the spots of that form's detail widget (PGRecordEditSpots formId).
