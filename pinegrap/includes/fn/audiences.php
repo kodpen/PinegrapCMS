@@ -1370,6 +1370,64 @@ function pg_audience_recompute($group_id, $budget)
     }
 
     $group_id = (int) $group_id;
+
+    // One pass of a group at a time: the job's tick, Refresh now and the
+    // API's refresh would otherwise read the same page and both insert its
+    // new rule rows (the xref has no unique key). The cursor is read inside
+    // the lock, so the second run goes on from where the first one stopped.
+    // Only a plain 0 means another run holds it; a server that cannot answer
+    // runs without the lock.
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value('SELECT DATABASE()');
+    $lock = pg_audience_lock_name($group_id, $database);
+    $got = db_value("SELECT GET_LOCK('" . $lock . "', 0)");
+
+    if (($got !== null) && ($got !== false) && ((string) $got === '0')) {
+        return pg_audience_busy_answer();
+    }
+
+    $run = pg_audience_recompute_pass($group_id, $budget);
+
+    db_value("SELECT RELEASE_LOCK('" . $lock . "')");
+
+    return $run;
+}
+
+/**
+ * The name of a group's recompute lock. GET_LOCK names belong to the whole
+ * database server, so the database is part of the name; hashed, so the name
+ * stays within the 64 characters a lock name may have. Pure.
+ *
+ * @param int    $group_id
+ * @param string $database the database and its host
+ * @return string
+ */
+function pg_audience_lock_name($group_id, $database)
+{
+    return 'pg_audience_' . md5((string) $database) . '_' . (int) $group_id;
+}
+
+/**
+ * What a recompute answers when another run holds the group: not done and
+ * nothing changed, so the general job ends its turn and the screen asks
+ * again. Pure.
+ *
+ * @return array
+ */
+function pg_audience_busy_answer()
+{
+    return array('done' => false, 'added' => 0, 'removed' => 0, 'cursor' => 0, 'busy' => true);
+}
+
+/**
+ * The pass of pg_audience_recompute(), run while its lock is held.
+ *
+ * @param int $group_id
+ * @param int $budget seconds
+ * @return array|null
+ */
+function pg_audience_recompute_pass($group_id, $budget)
+{
+    $group_id = (int) $group_id;
     $result = db_q("SELECT name, rules, compute_cursor FROM contact_groups WHERE id = ? AND kind = 'dynamic'", array($group_id));
     $group = $result ? mysqli_fetch_assoc($result) : null;
 
