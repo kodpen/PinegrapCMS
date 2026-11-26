@@ -289,6 +289,9 @@
     var TRANS_LOOK_MS = 'var(--pg-duration, 0.15s)';
     var TRANS_LOOK_EASE = 'var(--pg-ease, ease-in-out)';
     var EASES = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
+    // A curve as the editor writes it (_sdEaseClean()): its own numbers, or
+    // a stored curve of the design with its numbers as the fallback.
+    var CURVE = /^(var\(--pg-var-c-[a-z0-9-]+, )?cubic-bezier\([-0-9., ]+\)\)?$/;
     var TRANS_PROPS = ['transition-property', 'transition-duration', 'transition-timing-function'];
     var MS_MAX = 1000;
 
@@ -369,7 +372,7 @@
             return dropBlock(text, rule);
         }
         var ms = msClean(t.ms);
-        var ease = (EASES.indexOf(t.ease) !== -1 || (t.ease && t.ease === was.ease)) ? t.ease : '';
+        var ease = (EASES.indexOf(t.ease) !== -1 || CURVE.test(t.ease || '') || (t.ease && t.ease === was.ease)) ? t.ease : '';
         keep = [
             ['transition-property', prop],
             ['transition-duration', ms === '' ? TRANS_LOOK_MS : ms + 'ms'],

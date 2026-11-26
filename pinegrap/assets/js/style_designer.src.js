@@ -26369,10 +26369,7 @@ const StyleDesigner = (function () {
                 '<input type="range" class="form-range-input" min="0" max="1000" step="10" value="' + Math.min(ms, 1000) + '" data-sd-trans="ms-range" aria-label="' + esc(_sdT('Duration')) + '">' +
                 '<div class="input-group input-group-sm"><input type="number" class="form-control form-control-sm" min="0" max="1000" step="10" data-sd-trans="ms" value="' + (t.ms === '' ? '' : t.ms) + '" placeholder="' + look + '">' +
                 '<span class="input-group-text">ms</span></div></div>');
-            var eases = [['', _sdT('Default')], ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
-                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]];
-            if (t.ease && !eases.some(function (e) { return e[0] === t.ease; })) eases.push([t.ease, t.ease]);
-            h += row(_sdT('Easing'), list('ease', eases, t.ease));
+            h += row(_sdT('Easing'), _sdEaseHtml('data-sd-trans="ease"', t.ease, [['', _sdT('Default')]]));
         }
         return h + '</div>';
     }
@@ -26413,6 +26410,141 @@ const StyleDesigner = (function () {
             var k = t && t.getAttribute ? t.getAttribute('data-sd-trans') : null;
             if (!k) return;
             _sdTransSet(k === 'ms-range' ? 'ms' : k, t.value);
+        });
+    }
+
+    // ── Options: the easing curve ──
+    // Every Easing row (Transition here, Interactions in its part) is one
+    // list and the small button "Edit the curve": the list keeps its lines,
+    // then the design's stored curves ("This design's curves") and "Custom
+    // curve…". The editor opens under the row; it is the part 'curve',
+    // loaded on first use. A stored curve is one of the design's own
+    // variables (kind curve), written as its variable with its numbers as
+    // the fallback, so a removed one keeps moving as it did.
+    // The row whose editor is open ('trans:<id>' or 'fx:<id>'): a panel
+    // draw opens it again.
+    var _sdEaseOpenAt = '';
+
+    // The stored curves, [{ key, name, value }]: from the model the
+    // Variables tab holds, else the saved one (sdDesign.curves).
+    function _sdCurves() {
+        var input = document.getElementById('sd-style-variables'), m = null;
+        try { m = input && input.value ? JSON.parse(input.value) : null; } catch (e) { m = null; }
+        var list = m ? m.custom || [] : (_design && _design.curves) || [];
+        return list.filter(function (c) { return (!m || c.kind === 'curve') && _sdCurveNums(String(c.value)); });
+    }
+    function _sdCurveVar(c) {
+        return 'var(--pg-var-c-' + c.key + ', cubic-bezier(' + _sdCurveNums(String(c.value)).join(', ') + '))';
+    }
+    // The stored curve an easing names, or null.
+    function _sdCurveOf(ease) {
+        var m = /^var\(--pg-var-c-([a-z0-9-]+),/.exec(String(ease || ''));
+        return m ? _sdCurves().filter(function (c) { return c.key === m[1]; })[0] || null : null;
+    }
+
+    // The curve's small sign (18 by 14 px), blue for a stored curve.
+    function _sdCurveSign(value, stored) {
+        var p = _sdCurveNums(String(value || ''));
+        if (!p) return '';
+        var X = function (x) { return (2 + Number(x) * 14).toFixed(1); };
+        var Y = function (y) { return (14 - (Number(y) + 0.5) * 7).toFixed(1); };
+        return '<svg class="sd-curve-sign' + (stored ? ' is-stored' : '') + '" width="18" height="14" viewBox="0 0 18 14" aria-hidden="true">' +
+            '<path d="M2 10.5C' + X(p[0]) + ' ' + Y(p[1]) + ' ' + X(p[2]) + ' ' + Y(p[3]) + ' 16 3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+
+    // The Easing list and its button. `attr` names the select for its
+    // writer, `cur` the easing written, `first` the lines before the
+    // named ones (Transition's Default).
+    function _sdEaseHtml(attr, cur, first) {
+        cur = _sdEaseClean(cur) || String(cur || '');
+        var lines = (first || []).concat([['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
+            ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]]);
+        var stored = _sdCurveOf(cur), curves = _sdCurves();
+        var opt = function (v, l, on) { return '<option value="' + esc(v) + '"' + (on ? ' selected' : '') + '>' + esc(l) + '</option>'; };
+        var known = lines.some(function (l) { return l[0] === cur; });
+        var h = lines.map(function (l) { return opt(l[0], l[1], l[0] === cur); }).join('');
+        if (curves.length) {
+            h += '<optgroup label="' + esc(_sdT('This design\'s curves')) + '">' + curves.map(function (c) {
+                return opt(_sdCurveVar(c), c.name, !!stored && stored.key === c.key);
+            }).join('') + '</optgroup>';
+        }
+        if (!known && !stored && cur) h += opt(cur, /cubic-bezier/.test(cur) ? _sdT('Custom curve') : cur, true);
+        h += opt('__curve', _sdT('Custom curve…'), false);
+        var label = stored ? _sdT('Easing, {var}, a stored curve', stored.name) : _sdT('Easing');
+        return '<div class="sd-ease"><select class="form-control form-control-sm" ' + attr + ' aria-label="' + esc(label) + '">' + h + '</select>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary sd-ease-edit" data-sd-ease-edit aria-expanded="false" title="' +
+            esc(_sdT('Edit the curve')) + '" aria-label="' + esc(_sdT('Edit the curve')) + '"><span class="bi bi-bezier2" aria-hidden="true"></span></button></div>';
+    }
+
+    // Binds a drawn Easing list: "Custom curve…" and the button open the
+    // editor; ctx is { at, value, write(easing), play() }. The capture
+    // listener runs before the row's own writer and stops it.
+    function _sdEaseWire(box, ctx) {
+        var wrap = box ? box.querySelector('.sd-ease') : null;
+        if (!wrap) return;
+        var sel = wrap.querySelector('select'), btn = wrap.querySelector('[data-sd-ease-edit]');
+        sel.addEventListener('change', function (e) {
+            if (sel.value !== '__curve') return;
+            e.stopImmediatePropagation();
+            _sdEaseOpen(wrap, ctx, true);
+        }, true);
+        btn.addEventListener('click', function () {
+            if (_sdEaseOpenAt === ctx.at) { _sdPartCall('curve', 'close', []).catch(_sdPartFailed); return; }
+            _sdEaseOpen(wrap, ctx, false);
+        });
+        if (_sdEaseOpenAt === ctx.at) _sdEaseOpen(wrap, ctx, false);
+    }
+
+    // The editor under the row. `custom`: "Custom curve…" was chosen, so
+    // the curve of the moment is written as the element's own.
+    function _sdEaseOpen(wrap, ctx, custom) {
+        _sdEaseOpenAt = ctx.at;
+        var btn = wrap.querySelector('[data-sd-ease-edit]');
+        btn.setAttribute('aria-expanded', 'true');
+        var look = '';
+        try { look = canvasDoc.defaultView.getComputedStyle(canvasDoc.documentElement).getPropertyValue('--pg-ease').trim(); } catch (e) { look = ''; }
+        var host = {
+            at: ctx.at,
+            row: wrap.closest('.sd-prop-row') || wrap,
+            value: _sdEaseClean(ctx.value) || '',
+            look: _sdEaseClean(look) || 'ease-in-out',
+            custom: custom,
+            stored: _sdCurveOf(ctx.value),
+            curves: _sdCurves(),
+            reduced: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+            write: function (v) { ctx.write(_sdEaseClean(v)); },
+            play: ctx.play,
+            varOf: _sdCurveVar,
+            // Stored curves are the design's variables, which only a full
+            // designer reaches: the parts of condition 'designer' are
+            // handed to them alone (styleguide is one).
+            mayStore: !!(_design && _design.parts && _design.parts.styleguide),
+            store: function (op, c) {
+                return _sdPartCall('variables', 'curve', [_sdVarsHost(null), op, c]);
+            },
+            closed: function () {
+                if (_sdEaseOpenAt === ctx.at) _sdEaseOpenAt = '';
+                if (btn.isConnected) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+            }
+        };
+        _sdPartCall('curve', 'open', [host]).catch(_sdPartFailed);
+    }
+
+    // Transition's Easing: written as the rule's timing function; Play
+    // shows Hover for the transition's time, then Normal again.
+    function _sdTransEaseWire(panel) {
+        var node = _sdStateNode();
+        if (!node || !panel) return;
+        _sdEaseWire(panel.querySelector('[data-sd-trans-box]'), {
+            at: 'trans:' + node._id,
+            value: _sdTransOf(node).ease,
+            write: function (v) { _sdTransSet('ease', v); },
+            play: function () {
+                if (_sdOptState || _sdStatesFor(_sdIdTag(node), node.props.cssClass).indexOf('hover') === -1) return;
+                var t = _sdTransOf(node);
+                _sdStateGo('hover');
+                setTimeout(function () { if (selectedNode === node && _sdOptState === 'hover') _sdStateGo('hover'); }, (t.ms === '' ? _sdTransLookMs() : t.ms) + 600);
+            }
         });
     }
 
@@ -38587,6 +38719,7 @@ const StyleDesigner = (function () {
         markModifiedProps();
         _sdStateAfter(panel);
         _sdTransBind(panel);
+        _sdTransEaseWire(panel);
         _sdTfBind(panel);
         _sdEffBind(panel);
         _sdTxBind(panel);
@@ -58709,10 +58842,12 @@ const StyleDesigner = (function () {
             if (!n) continue;
             var attrs = (n.props && n.props._attrs) || [];
             var seen = {};
-            for (var i = 0; i < attrs.length; i++) {
-                if (!attrs[i] || attrs[i].name !== 'style') continue;
+            // Its style, and an Interactions easing that names a stored curve.
+            var texts = attrs.filter(function (a) { return a && a.name === 'style'; }).map(function (a) { return String(a.value || ''); });
+            if (n.props && n.props._fx && typeof n.props._fx.easing === 'string') texts.push(n.props._fx.easing);
+            for (var i = 0; i < texts.length; i++) {
                 var re = /--pg-var-([a-z0-9][a-z0-9-]*)/g, m;
-                while ((m = re.exec(String(attrs[i].value || '')))) {
+                while ((m = re.exec(texts[i]))) {
                     if (!seen[m[1]]) { seen[m[1]] = 1; out[m[1]] = (out[m[1]] || 0) + 1; }
                 }
             }
@@ -78279,6 +78414,39 @@ const StyleDesigner = (function () {
             count: { duration: [100, 5000, 2000], delay: [0, 5000, 0] }
         };
     }
+    // An easing in its written form: a named one, cubic-bezier(x1, y1, x2,
+    // y2) with x1 and x2 from 0 to 1 and y1, y2 held from -0.5 to 1.5, or a
+    // stored curve var(--pg-var-c-<key>, cubic-bezier(...)); '' for
+    // anything else. Twin of pg_fx_easing_clean().
+    function _sdEaseClean(easing) {
+        if (typeof easing !== 'string') return '';
+        var s = easing.trim().toLowerCase(), key = '', m;
+        if (_sdFxSpec().easings.indexOf(s) !== -1) return s;
+        if ((m = /^var\(\s*--pg-var-c-([a-z0-9][a-z0-9-]{0,29})\s*,\s*([\s\S]+)\)$/.exec(s))) { key = m[1]; s = m[2].trim(); }
+        if (!(m = /^cubic-bezier\(([^()]*)\)$/.exec(s))) return '';
+        var p = _sdCurveNums(m[1]);
+        if (!p) return '';
+        var curve = 'cubic-bezier(' + p.join(', ') + ')';
+        return key ? 'var(--pg-var-c-' + key + ', ' + curve + ')' : curve;
+    }
+    // The four numbers of a curve from "x1, y1, x2, y2", each in its
+    // shortest form, or null. Twin of pg_fx_curve_numbers().
+    function _sdCurveNums(text) {
+        var parts = String(text).split(',');
+        if (parts.length !== 4) return null;
+        var out = [];
+        for (var i = 0; i < 4; i++) {
+            var t = parts[i].trim();
+            if (!/^-?(\d{1,3}(\.\d*)?|\.\d+)$/.test(t)) return null;
+            var n = Number(t);
+            if (i % 2 === 0 && (n < 0 || n > 1)) return null;
+            if (i % 2 === 1) n = Math.max(-0.5, Math.min(1.5, n));
+            // PHP's round() rounds halves away from zero.
+            n = (n < 0 ? -Math.round(-n * 1000) : Math.round(n * 1000)) / 1000;
+            out.push(String(n === 0 ? 0 : n));
+        }
+        return out;
+    }
     function _sdFxNormalize(fx) {
         if (!fx || typeof fx !== 'object' || typeof fx.effect !== 'string') return null;
         var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
@@ -78299,13 +78467,13 @@ const StyleDesigner = (function () {
         if (effect === 'count') { out.duration = num('duration'); out.delay = num('delay'); return out; }
         if (effect === 'chapter') { out.duration = num('duration'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
-        var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
+        var easing = _sdEaseClean(fx.easing);
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
         // Reveal is an entrance only.
         if (effect === 'reveal' && (out.trigger === 'hover' || out.trigger === 'click')) out.trigger = spec.triggers[0];
         out.duration = num('duration');
         out.delay = num('delay');
-        out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
+        out.easing = easing || spec.easings[0];
         if (['fade', 'zoom-out', 'reveal'].indexOf(effect) === -1) out.distance = num('distance');
         if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
         if (out.trigger === 'view') out.repeat = !!fx.repeat;
@@ -78987,7 +79155,14 @@ const StyleDesigner = (function () {
             // Whether the canvas reads a variables stylesheet: the saved
             // file or one being tried.
             hasCss: function () { return !!(_sdThemeTry.variables || th.variables); },
-            usage: function () { return _sdVarUsage(_pages.map(_pgTreeOf)); }
+            usage: function () {
+                // A stored curve's Transition rules in User Styles count too,
+                // one per rule that names it.
+                var out = _sdVarUsage(_pages.map(_pgTreeOf));
+                var re = /--pg-var-(c-[a-z0-9-]*[a-z0-9])\s*,\s*cubic-bezier/g, m, text = _userStylesGet() || '';
+                while ((m = re.exec(text))) out[m[1]] = (out[m[1]] || 0) + 1;
+                return out;
+            }
         };
     }
 
@@ -98232,8 +98407,12 @@ const StyleDesigner = (function () {
             _sdCodeTabFind: _sdCodeTabFind,
             _sdCodeTabsRender: _sdCodeTabsRender,
             _sdContentSizingNode: _sdContentSizingNode,
+            _sdCurveNums: _sdCurveNums,
+            _sdCurveSign: _sdCurveSign,
             _sdDecodeEntities: _sdDecodeEntities,
             _sdDocLang: _sdDocLang,
+            _sdEaseHtml: _sdEaseHtml,
+            _sdEaseWire: _sdEaseWire,
             _sdEmitNode: _sdEmitNode,
             _sdFrameRowText: _sdFrameRowText,
             _sdFxAttrs: _sdFxAttrs,
