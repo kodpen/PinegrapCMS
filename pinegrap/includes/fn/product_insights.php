@@ -324,8 +324,26 @@ function pg_product_insights_keep($kept, $key, $data, $now)
 }
 
 /**
- * The conditions of the product's sales lines: product, status, an active
- * line and an optional date floor, over order_items joined to orders. Pure.
+ * The orders that sell: pg_customer_value_order_counts() in SQL, so the card
+ * counts what the Customers report counts. Complete or exported, not
+ * cancelled, not refunded in full; a column not yet migrated is left out of
+ * the test. Pure.
+ *
+ * @param bool $has_cancelled_at     orders.cancelled_at exists
+ * @param bool $has_refunded_amount  orders.refunded_amount exists
+ * @return string  SQL for a WHERE
+ */
+function pg_product_insights_counted_sql($has_cancelled_at, $has_refunded_amount)
+{
+    return "orders.status IN ('complete', 'exported')"
+        . ($has_cancelled_at ? " AND COALESCE(orders.cancelled_at, 0) = 0" : '')
+        . ($has_refunded_amount ? " AND (orders.refunded_amount <= 0 OR orders.refunded_amount < orders.total)" : '');
+}
+
+/**
+ * The conditions of the product's sales lines: product, a counted order
+ * (pg_product_insights_counted_sql()), an active line and an optional date
+ * floor, over order_items joined to orders.
  *
  * @param int $product_id
  * @param int $from  unix time, 0 for none
@@ -334,7 +352,7 @@ function pg_product_insights_keep($kept, $key, $data, $now)
 function pg_product_insights_sales_where($product_id, $from)
 {
     return "order_items.product_id = '" . (int) $product_id . "'
-            AND orders.status IN ('complete', 'exported')"
+            AND " . pg_product_insights_counted_sql(pg_schema_has('orders', 'cancelled_at'), pg_schema_has('orders', 'refunded_amount'))
         . pg_order_item_active_sql('order_items')
         . (((int) $from > 0) ? " AND orders.order_date >= '" . (int) $from . "'" : '');
 }
