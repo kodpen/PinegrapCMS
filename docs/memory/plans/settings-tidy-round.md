@@ -25,7 +25,7 @@ priority: 6
 - TR3c (M) after TR3b: the page finishes it: the application's fields on the page of a Google or Microsoft account service, the drives' two answers made one, Sign in with Microsoft given its anchor and button (paths 1 to 6).
 - TR3d (S) after TR3c: no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.
 - TR4 Done by the architect (2026-11-26): Ecommerce's plan is `settings-ecommerce-tidy.md`, steps EC1 to EC6, free beside TR3 (another file).
-- TR5 (architect, then steps) Accounting's ERP card and Updates and maintenance (cron steps, one S3, K2): their plans.
+- TR5 Done by the architect (2026-11-26): Accounting's plan is `settings-accounting-tidy.md` (SA1 to SA4), Updates and maintenance's `settings-maintenance-tidy.md` (SM1 to SM4; SM3 after TR3a). The two S3 sets stay apart.
 - TR6 (S) Close-out: the rule into `ui/`, the survey files corrected or deleted, this file deleted.
 
 ## What about the other panes?
