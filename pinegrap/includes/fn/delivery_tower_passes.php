@@ -419,7 +419,11 @@ function pg_delivery_tower_parcel_changes($parcels, $labels, $open, $figures, $n
             $status = 'delivered';
         }
         $parcel['label_at'] = $label ? (int) $label['created_at'] : 0;
-        $parcel['status_read'] = pg_delivery_tower_status_is_read($parcel['source'], $label && in_array((string) $label['driver'], (array) $tracking, true));
+        // The label path writes its parcel with source carrier itself, so on
+        // a labelled parcel that source says nothing: only a driver that
+        // tracks (or a marketplace) reads its status.
+        $source = ($label && ((string) $parcel['source'] === 'carrier')) ? '' : $parcel['source'];
+        $parcel['status_read'] = pg_delivery_tower_status_is_read($source, $label && in_array((string) $label['driver'], (array) $tracking, true));
         $parcel['status'] = $status;
 
         $found = $status === 'delivered' ? array() : pg_delivery_tower_problems_found($parcel, $figures, $now, $settings, $timezone);

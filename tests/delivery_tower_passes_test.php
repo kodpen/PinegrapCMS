@@ -170,6 +170,18 @@ function test_delivery_tower_parcel_changes()
 	$changes = pg_delivery_tower_parcel_changes(array(11 => $parcels[11]), $labels, array(), $figures, $now, $settings, array(), $tz);
 	pg_assert_same(array(), $changes['open'], 'a status nobody reads is not judged');
 
+	// A label made through a driver that does not track: the label path
+	// wrote the row with source carrier, but nothing reads its status, so
+	// "still created" means nothing either.
+	$labelled = array(11 => array_merge($parcels[11], array('source' => 'carrier')));
+	$changes = pg_delivery_tower_parcel_changes($labelled, $labels, array(), $figures, $now, $settings, array(), $tz);
+	pg_assert_same(array(), $changes['open'], 'a label nobody tracks is not judged as not handed over');
+	$changes = pg_delivery_tower_parcel_changes($labelled, $labels, array(), $figures, $now, $settings, array('yurtici'), $tz);
+	pg_assert_same(2, $changes['open'][0]['kind'] ?? 0, 'the same label of a tracking driver is');
+	$sold = array(11 => array_merge($parcels[11], array('source' => 'marketplace')));
+	$changes = pg_delivery_tower_parcel_changes($sold, $labels, array(), $figures, $now, $settings, array(), $tz);
+	pg_assert_same(2, $changes['open'][0]['kind'] ?? 0, 'a marketplace reports the status of its own labels');
+
 	// A kind switched off in the settings opens nothing.
 	$off = pg_delivery_tower_settings_clean(array('stuck' => 0));
 	$changes = pg_delivery_tower_parcel_changes(array(10 => $parcels[10]), array(), array(), $figures, $now, $off, array(), $tz);

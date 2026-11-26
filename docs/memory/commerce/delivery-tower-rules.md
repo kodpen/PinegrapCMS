@@ -24,7 +24,7 @@ module: delivery_tower
 ## How is each problem found?
 - `pg_delivery_tower_problems_found($parcel, $figures, $now, $settings, $tz)`.
 - stuck: status `in_transit` or `out_for_delivery`, calendar days since shipping greater than its own carrier and province's p90 plus `stuck_extra_days` (default 1). Exactly p90 + 1 is not yet stuck.
-- not_handed_over: status `created`, a label (`label_at`), the status is read (`pg_delivery_tower_status_is_read()`: source `carrier` or `marketplace`, or the carrier has a driver or webhook), and `not_handed_over_days` (default 1) working days fully passed since the label; the running day does not count. A Friday label is flagged on Tuesday.
+- not_handed_over: status `created`, a label (`label_at`), the status is read (`pg_delivery_tower_status_is_read()`: source `carrier` or `marketplace`, or the carrier has a driver or webhook; on a labelled parcel source `carrier` does not count, as the label path writes it itself, so only a tracking driver or a marketplace makes it read, `bug-hunt-areas-delivery-tower.md`), and `not_handed_over_days` (default 1) working days fully passed since the label; the running day does not count. A Friday label is flagged on Tuesday.
 - problem: status `exception`. returned: status `returned`. A marketplace parcel's problems are found and listed like any other; no message goes to its buyer.
 
 ## How does a problem close?
