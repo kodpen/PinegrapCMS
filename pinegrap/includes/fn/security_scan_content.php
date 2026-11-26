@@ -269,7 +269,8 @@ function pg_security_content_frame_hidden($attributes)
 }
 
 /**
- * The value of an attribute inside a tag's attributes, quoted or not.
+ * The value of an attribute inside a tag's attributes, quoted or not, with
+ * its character references decoded.
  *
  * @param string $attributes
  * @param string $name
@@ -283,7 +284,9 @@ function pg_security_content_attribute($attributes, $name)
         return '';
     }
 
-    return implode('', array_slice($match, 1));
+    // The browser decodes character references in a value before it reads
+    // the address: src="https&#58;//host/" loads from that host.
+    return html_entity_decode(implode('', array_slice($match, 1)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
 
 /**

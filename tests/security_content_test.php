@@ -69,6 +69,25 @@ function test_security_content_rules_find_a_script_from_an_unknown_host()
 	pg_assert_same(array('content_script_host' => array('evil.example')), $found);
 }
 
+function test_security_content_rules_read_entities_in_an_attribute_value()
+{
+	$known = array('mysite.example');
+
+	// The browser decodes character references inside an attribute value.
+	foreach (array(
+		'<script src="https&#58;//evil.example/a.js"></script>',
+		'<script src="&#x2F;&#x2F;evil.example/a.js"></script>',
+		'<script src="https:&sol;&sol;evil.example/a.js"></script>',
+	) as $html) {
+		pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules($html, $known), $html);
+	}
+
+	pg_assert_same(array('content_redirect' => array('evil.example')), pg_security_content_rules('<meta http-equiv="refresh" content="0;url=https&#x3A;&#x2F;&#x2F;evil.example/">', $known));
+	pg_assert_same(array(), pg_security_content_rules('&lt;script src="//evil.example/a.js"&gt;&lt;/script&gt;', $known), 'an escaped tag is text');
+	pg_assert_same(array(), pg_security_content_rules('<iframe src="https://www.youtube.com/embed/x?a=1&amp;b=2" width="560"></iframe>', array('youtube.com')));
+}
+
+
 function test_security_content_rules_find_a_script_added_by_code()
 {
 	$known = array('mysite.example');
