@@ -64,10 +64,36 @@ function test_ad_conversions_consent_taken_back()
 	pg_assert_false(pg_ad_conversion_marketing_refused(array(array('channel' => 'cookie', 'purpose' => 'marketing', 'status' => 'granted'))), 'marketing granted');
 	pg_assert_false(pg_ad_conversion_marketing_refused(null), 'a malformed answer');
 
-	$sql = pg_ad_conversion_withdraw_sql();
-	pg_assert_contains('ids = NULL', $sql, 'ids cleared');
-	pg_assert_contains('person = 0', $sql, 'person cleared');
-	pg_assert_contains('status IN (0, 1)', $sql, 'a sent row is left as it is');
+}
+
+// Marketing refused after a row was due: the row is not sent without the
+// person unless the service sends that event without the person; a row
+// still waiting for the order only loses the ids, completion decides.
+function test_ad_conversions_withdraw_plan()
+{
+	$settings = array(
+		'meta_capi' => pg_ad_conversion_settings_parse('{"connected":true,"events":["purchase","add_to_cart"],"without_person":["purchase"]}'),
+		'ga4_mp' => pg_ad_conversion_settings_parse('{"connected":true,"events":["purchase","add_to_cart"]}'),
+		'tiktok_events' => pg_ad_conversion_settings_parse('{"connected":true,"events":["purchase"],"without_person":["purchase"]}'),
+	);
+
+	$rows = array(
+		array('id' => '1', 'service' => 'ga4_mp', 'event' => 'purchase', 'status' => '0', 'person' => '1'),
+		array('id' => '2', 'service' => 'ga4_mp', 'event' => 'purchase', 'status' => '1', 'person' => '1'),
+		array('id' => '3', 'service' => 'tiktok_events', 'event' => 'purchase', 'status' => '1', 'person' => '1'),
+		array('id' => '4', 'service' => 'meta_capi', 'event' => 'purchase', 'status' => '1', 'person' => '1'),
+		array('id' => '5', 'service' => 'ga4_mp', 'event' => 'add_to_cart', 'status' => '1', 'person' => '1'),
+		array('id' => '6', 'service' => 'ga4_mp', 'event' => 'refund', 'status' => '1', 'person' => '0'),
+		array('id' => '7', 'service' => 'ga4_mp', 'event' => 'begin_checkout', 'status' => '2', 'person' => '1'),
+	);
+
+	pg_assert_same(array(1 => 'clear', 2 => 'give_up', 3 => 'clear', 4 => 'give_up', 5 => 'give_up'), pg_ad_conversion_withdraw_plan($rows, $settings),
+		'waiting: cleared; due: given up unless the service sends that purchase without the person, never Meta; a visitor event given up; no person or sent: left');
+
+	$module = ad_conversions_test_source('includes/fn/ad_conversions.php');
+	$start = strpos($module, 'function pg_ad_conversion_consent_changed(');
+	$end = strpos($module, 'function pg_ad_conversion_sender(');
+	pg_assert_contains('pg_ad_conversion_withdraw_plan(', substr($module, $start, $end - $start), 'consent taken back reads the plan');
 }
 
 // A marketplace order is never sent; a counter sale never from the site's
