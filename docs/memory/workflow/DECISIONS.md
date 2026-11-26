@@ -183,6 +183,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-113.md: How does a design made in Canva open in the Artifact Canvas? (owner, 2026-11-26, agent channel poll 230, message 14151)
 - decisions-made-product-114.md: Where are the rules and the earlier parts?
 - decisions-made-product-114.md: Which ready content does the Artifact Canvas get, and in which order? (owner, 2026-11-26, agent channel poll 231, message 14182)
+- decisions-made-product-114.md: How does a Site Settings card hand over to its Connections page and back? (owner, 2026-11-26, agent channel poll 232, message 14187)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1218,6 +1219,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/comments-widget-open-slots.md: Comments widget slots opened (CB2, #9716): Pagination as page links a designer builds, shared with Search results; CAPTCHA, star rating, publish options drawn true
 - designer/common-region-component-usage.md: A converted common region's shared component counts as used on every page printing the region's tag; the delete confirmations and delete_many read it
 - designer/common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
+- designer/component-overrides-overview.md: Start file for "Can change per place" and variants of a shared component: what a place may change, the owner decision, what it keeps, which file holds what
 - designer/content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list
 - designer/content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same
 - designer/content-proposals-overview.md: Start file of waiting content changes (publish approval, card "Content Approval"): what it is, the owner's and architect's decisions that bind it, what is left out, which file holds each part
@@ -1403,7 +1405,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/messages-area-sends-speed.md: How fast Communication › Sends reads 500,000 rows a queue (MA2 #9252, MA2b #9275): the architect's 300 ms, keyset bounds per branch, measured batches, the slow search and heading sorts left open
 - platform/messages-area-sends.md: Communication › Sends (MA2 #9252, MA2b #9275, WA2b #9409): the list of six branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
+- platform/office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (formula engine, charts, layout), the rules every edit keeps
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
+- platform/office-overview.md: Start file for the office-* files: Office files shown and edited by own code in the File Manager and channels; decisions, parts by screen label, which file holds what
 - platform/office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format
 - platform/panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913)
 - platform/place-coordinates.md: Coordinates of a collection's places (#10000): fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
