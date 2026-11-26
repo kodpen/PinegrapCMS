@@ -562,6 +562,10 @@ function pg_security_quarantine_move(array $row, $action)
             return lang('The file is no longer at its place. Run a scan to update the list.');
         }
 
+        if (!pg_security_place_folder_real($row['place'])) {
+            return lang('The folder of this file is no longer the folder the scan found it in. Run a scan to update the list.');
+        }
+
         return @rename($path, $kept) ? '' : lang('The file could not be moved. Check the permissions of its folder.');
     }
 
@@ -575,6 +579,10 @@ function pg_security_quarantine_move(array $row, $action)
 
     if (!is_dir(dirname($path))) {
         return lang('The folder the file came from is gone.');
+    }
+
+    if (!pg_security_place_folder_real($row['place'])) {
+        return lang('The folder of this file is no longer the folder the scan found it in. Run a scan to update the list.');
     }
 
     return @rename($kept, $path) ? '' : lang('The file could not be moved back. Check the permissions of its folder.');

@@ -408,6 +408,42 @@ function test_security_scan_round_quarantine_and_restore_leave_the_file_as_befor
 	}
 }
 
+function test_security_scan_round_quarantine_never_goes_through_a_folder_turned_into_a_link()
+{
+	$outside = _test_scan_round_folder('link_target');
+	$folder = PG_FUNCTIONS_DIR . '/' . PG_SECURITY_QUARANTINE_FOLDER;
+	$made_folder = !is_dir($folder);
+	$link = PG_FUNCTIONS_DIR . '/data/temp/pg_scan_link_' . getmypid();
+	$place = 'data/temp/pg_scan_link_' . getmypid() . '/shell.php';
+	$row = array('kind' => 'file_php_unknown', 'place' => $place);
+
+	file_put_contents($outside . '/shell.php', '<?php echo 1;');
+	@unlink($link);
+	symlink($outside, $link);
+
+	pg_assert_true(pg_security_quarantine_move($row, 'quarantine') !== '', 'a file reached through a link is not moved');
+	clearstatcache();
+	pg_assert_true(is_file($outside . '/shell.php'), 'the file outside the site stays');
+
+	$kept = pg_security_quarantine_folder() . '/' . pg_security_quarantine_name($place);
+	file_put_contents($kept, 'kept');
+	unlink($outside . '/shell.php');
+	pg_assert_true(pg_security_quarantine_move($row, 'restore') !== '', 'nothing is moved back through a link');
+	clearstatcache();
+	pg_assert_false(file_exists($outside . '/shell.php'));
+	pg_assert_true(pg_security_place_folder_real('data/temp/x.php'), 'a real folder passes');
+
+	@unlink($kept);
+	unlink($link);
+	_test_scan_round_remove($outside);
+
+	if ($made_folder) {
+		@unlink($folder . '/.htaccess');
+		@unlink($folder . '/index.html');
+		@rmdir($folder);
+	}
+}
+
 function test_security_scan_round_a_cut_walk_resumes_where_it_stopped()
 {
 	$site = _test_scan_round_folder('resume');

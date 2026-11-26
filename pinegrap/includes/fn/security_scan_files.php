@@ -699,6 +699,30 @@ function pg_security_files_roots()
 }
 
 /**
+ * The root folder on disk a file place lies in and the place's part inside
+ * it, or null when it is not a file place.
+ *
+ * @param string $place
+ * @return array|null array(folder, relative)
+ */
+function pg_security_place_disk_parts($place)
+{
+    $place = pg_security_place_path($place);
+
+    if ($place === '') {
+        return null;
+    }
+
+    foreach (array_reverse(pg_security_files_roots(), true) as $prefix => $folder) {
+        if (($prefix !== '') && (strpos($place, $prefix . '/') === 0)) {
+            return array(rtrim($folder, '/\\'), substr($place, strlen($prefix) + 1));
+        }
+    }
+
+    return array(rtrim(PG_FUNCTIONS_DIR, '/\\'), $place);
+}
+
+/**
  * The file on disk a file finding's place names (for the section's
  * Quarantine), '' when it is not a file place.
  *
@@ -707,19 +731,39 @@ function pg_security_files_roots()
  */
 function pg_security_place_disk_path($place)
 {
-    $place = pg_security_place_path($place);
+    $parts = pg_security_place_disk_parts($place);
 
-    if ($place === '') {
-        return '';
+    return ($parts === null) ? '' : $parts[0] . '/' . $parts[1];
+}
+
+/**
+ * Is the folder a file place names on disk still the folder the walk found
+ * it in: no segment of it turned into a symbolic link since? A folder
+ * swapped for a link between the scan and a click would let Quarantine move
+ * a file from anywhere, or Restore write one there.
+ *
+ * @param string $place
+ * @return bool
+ */
+function pg_security_place_folder_real($place)
+{
+    $parts = pg_security_place_disk_parts($place);
+
+    if ($parts === null) {
+        return false;
     }
 
-    foreach (array_reverse(pg_security_files_roots(), true) as $prefix => $folder) {
-        if (($prefix !== '') && (strpos($place, $prefix . '/') === 0)) {
-            return rtrim($folder, '/\\') . '/' . substr($place, strlen($prefix) + 1);
-        }
+    $root = realpath($parts[0]);
+    $slash = strrpos($parts[1], '/');
+    $folder = realpath(($slash === false) ? $parts[0] : $parts[0] . '/' . substr($parts[1], 0, $slash));
+
+    if (!is_string($root) || !is_string($folder)) {
+        return false;
     }
 
-    return rtrim(PG_FUNCTIONS_DIR, '/\\') . '/' . $place;
+    $expected = rtrim(str_replace('\\', '/', $root), '/') . (($slash === false) ? '' : '/' . substr($parts[1], 0, $slash));
+
+    return str_replace('\\', '/', $folder) === $expected;
 }
 
 /**
