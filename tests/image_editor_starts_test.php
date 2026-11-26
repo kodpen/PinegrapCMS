@@ -259,3 +259,68 @@ function test_image_editor_starts_open()
 	pg_assert_same(array('image', 'data:image/png;base64,AAAA', 'photo.png', 540, 0, 540, 1080), $r['put'], 'a picture layer in the box');
 	pg_assert_same(1, $r['steps'], 'one undo step');
 }
+
+// Every shipped design opened on an editor as the New image dialog's Create
+// does, its document kept as a canvas save keeps it in Files, then opened
+// again: the same board, every layer back, the texts editable words.
+function test_image_editor_starts_each_opened_and_saved()
+{
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$js = PG_FUNCTIONS_DIR . '/assets/js/';
+	$head = 'global.document = { activeElement: null, addEventListener: function () {} }; global.navigator = { platform: "Linux" };' . "\n"
+		. 'window.PgImageEditorModel = M;' . "\n";
+
+	foreach (array('', '_layers', '_sticker', '_artboard', '_svg', '_starts') as $part) {
+		$head .= 'require(' . json_encode($js . 'pg_image_editor' . $part . '.js') . ');' . "\n";
+	}
+
+	$r = image_editor_starts_node($head
+		. 'var X = window.PgImageEditor.parts, Editor = X.Editor;' . "\n"
+		. 'X.t = function (k) { return "[" + k + "]"; };' . "\n"
+		. 'var e = Object.create(Editor.prototype); e.opts = {}; e.tools = { list: ["select", "image"] };' . "\n"
+		. 'Editor.inits.forEach(function (fn) { try { fn.call(e); } catch (err) {} });' . "\n"
+		. 'e.textLayout = function (l) { return { w: l.text.length * l.size * 0.5, h: l.size * 1.2 }; };' . "\n"
+		. 'console.log(JSON.stringify(M.startIndex(I).map(function (entry) { var design = M.startDesign(D(entry.id), entry, known);' . "\n"
+		. ' if (!design) { return { id: entry.id, doc: null }; }' . "\n"
+		. ' var doc = M.newDocument({ blank: { width: 1080, height: 1080 } }), made = e.startDocument(design);' . "\n"
+		. ' doc.artboard.width = made.artboard.width; doc.artboard.height = made.artboard.height; doc.artboard.background = made.artboard.background; doc.layers = made.layers;' . "\n"
+		. ' return { id: entry.id, doc: doc }; })));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true(count($r) >= 6, 'the shipped designs');
+
+	$kept = array();
+
+	foreach ($r as $d) {
+		pg_assert_true(is_array($d['doc']), $d['id'] . ': opens');
+		$json = pg_image_editor_canvas_doc_json(json_decode(json_encode($d['doc'], JSON_UNESCAPED_SLASHES)));
+		pg_assert_true($json !== '', $d['id'] . ': its document is kept as a canvas save keeps it');
+		$kept[$d['id']] = $json;
+	}
+
+	$back = image_editor_starts_node('var K = ' . json_encode($kept) . ', out = {};' . "\n"
+		. 'Object.keys(K).forEach(function (id) { var doc = M.canvasOpenDoc(JSON.parse(K[id]));' . "\n"
+		. ' out[id] = doc ? { board: [doc.artboard.width, doc.artboard.height, doc.artboard.background], types: doc.layers.map(function (l) { return l.type; }),'
+		. ' texts: doc.layers.filter(function (l) { return l.type === "text"; }).map(function (l) { return l.text; }), slots: doc.layers.filter(function (l) { return l.slot; }).length } : null; });' . "\n"
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	pg_assert_false(isset($back['error']), isset($back['error']) ? $back['error'] : 'ran');
+
+	foreach ($r as $d) {
+		$o = $back[$d['id']];
+		pg_assert_true(is_array($o), $d['id'] . ': opens again');
+		pg_assert_same(array($d['doc']['artboard']['width'], $d['doc']['artboard']['height'], $d['doc']['artboard']['background']), $o['board'], $d['id'] . ': the same board');
+		pg_assert_same(array_map(function ($l) { return $l['type']; }, $d['doc']['layers']), $o['types'], $d['id'] . ': every layer back in its order');
+		pg_assert_same(array_values(array_map(function ($l) { return $l['text']; }, array_filter($d['doc']['layers'], function ($l) { return $l['type'] === 'text'; }))), $o['texts'], $d['id'] . ': the texts as words');
+		pg_assert_same(count(array_filter($d['doc']['layers'], function ($l) { return !empty($l['slot']); })), $o['slots'], $d['id'] . ': the "Your picture" boxes kept');
+	}
+}
