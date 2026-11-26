@@ -16,6 +16,7 @@ description: Incoming e-invoices (4.67): reading the provider's list into erp_ed
 - The proposal (`erp_edoc_inbox_proposal()`) is built with the typed-invoice rules (`erp_manual_lines_build()`, which recomputes it at issue) and compared with the document line by line; any difference is shown before anything is written.
 - What the ERP cannot hold is refused with the reason: taxes other than VAT, a discount on the whole document, a withholding written only for the whole document. A line's withholding is carried (`includes/erp/withholding.php`).
 - `erp_edoc_inbox_import()` opens the supplier's account when none matches and writes only a DRAFT purchase invoice (`erp_invoice_draft_save()`, then `invoice_type`, `gib_uuid`, `gib_number`): no number, nothing in the ledger until it is issued like any other. A purchase invoice typed by hand can be linked instead (`erp_edoc_inbox_link()`).
+- Link locks the row and asks `erp_edoc_inbox_link_refusal()`: a document whose draft or invoice stands goes to no other one. Fixed a stale page putting one ETTN on two invoices (2026-11-26).
 - States (`erp_edoc_inbox_state()`): new, drafted, imported, ignored (set aside). A document whose invoice was deleted or cancelled is new again.
 - Sales-only e-document rules (date order, Move to today, the send card) never apply to these purchase invoices (erp-edoc-send-readiness.md).
 
