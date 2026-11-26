@@ -18,5 +18,5 @@ description: An application agent's context window size typed on its form (ws_ag
 - Used above the size: percent 100, drawn full; the report is never refused for it.
 
 ## What does the agent send?
-- The tokens it uses: `"context": {"used": n}` on the report or the answer route, `php tools/ws_profile.php --context=USED`. It reads them from its transcript (the last message's input, cache creation and cache read tokens together).
+- The tokens it uses: `"context": {"used": n}` on the report or the answer route, `php tools/ws_profile.php --context=USED`, or `--context=auto`, which reads them from a Claude Code session's transcript (the last message's input, cache creation and cache read tokens together; `workflow/claude-context-reader.md`).
 - The instructions and the brief say never to guess the window's size. `{used, size}` is still taken from a harness that reads its own.

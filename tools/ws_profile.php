@@ -11,7 +11,7 @@
  *
  * Usage:  php tools/ws_profile.php [--model=NAME]
  *                                  [--windows=NAME:PERCENT:RESETS[,…]]
- *                                  [--context=USED]
+ *                                  [--context=USED|auto]
  *                                  [--project=NAME] [--branch=NAME]
  *                                  [--skip-missing]
  *         NAME of a window is five_hour, daily, weekly, weekly_model or
@@ -20,7 +20,10 @@
  *         USED of --context is the whole number of tokens the session uses,
  *         e.g. --context=412000; the window's size is typed on the agent's
  *         form, never guessed (USED:SIZE is still sent for a harness that
- *         reads its own). A project is at most 80 characters, a branch at
+ *         reads its own). --context=auto reads the used tokens from the
+ *         session's own Claude Code transcript (tools/claude_context.php,
+ *         run from the session's folder); nothing found sends no context,
+ *         and nothing at all when it was the only field. A project is at most 80 characters, a branch at
  *         most 120.
  *         A report needs one of them; leave out what cannot be read.
  * Exit:   0 reported (or skipped with --skip-missing while settings are
@@ -42,6 +45,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once(__DIR__ . '/ws_client.php');
+require_once(__DIR__ . '/claude_context.php');
 
 /**
  * The request body of a report, or an error line. The site checks the
@@ -124,6 +128,46 @@ function ws_profile_body($options)
 	return array('body' => $body, 'error' => '');
 }
 
+/**
+ * The options with --context=auto replaced by the used tokens read, or the
+ * context dropped when nothing was read.
+ *
+ * @param array<string,string|bool> $options
+ * @param int|null $used
+ * @return array<string,string|bool>
+ */
+function ws_profile_context_auto($options, $used)
+{
+	if (!isset($options['context']) || !is_string($options['context']) || trim($options['context']) !== 'auto') {
+		return $options;
+	}
+
+	if ($used === null) {
+		unset($options['context']);
+	} else {
+		$options['context'] = (string) $used;
+	}
+
+	return $options;
+}
+
+/**
+ * Whether a field beside the context is given.
+ *
+ * @param array<string,string|bool> $options
+ * @return bool
+ */
+function ws_profile_other_fields($options)
+{
+	foreach (array('model', 'windows', 'project', 'branch') as $name) {
+		if (isset($options[$name]) && is_string($options[$name]) && trim($options[$name]) !== '') {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 function ws_profile_main($argv)
 {
 	list($options) = ws_client_options($argv);
@@ -139,7 +183,14 @@ function ws_profile_main($argv)
 		return WS_CLIENT_EXIT_USAGE;
 	}
 
+	$auto = isset($options['context']) && $options['context'] === 'auto';
+	$options = ws_profile_context_auto($options, $auto ? claude_context_current() : null);
 	$built = ws_profile_body($options);
+
+	// --context=auto alone with nothing read: nothing to send, no error.
+	if ($built['body'] === null && $auto && !isset($options['context']) && !ws_profile_other_fields($options)) {
+		return WS_CLIENT_EXIT_OK;
+	}
 
 	if ($built['body'] === null) {
 		fwrite(STDERR, 'ws_profile: ' . $built['error'] . "\n");
