@@ -16,11 +16,11 @@ module: whatsapp_webhook
 
 ## What happens to a customer's message?
 - `whatsapp_inbox` (step 11.0.198, approved in #9085): one row per wamid (`INSERT IGNORE` on the UNIQUE key, so Meta's second delivery is neither kept nor announced again). Kept only while the card's switch is on.
-- No read mark: 11.0.237 drops the unused `read_user_id`, `read_at` (#10402).
 - Text: the text, a caption, a document's file name, a button's or list item's title, a reaction's emoji, a place's name; cut at 4096 characters. Media keeps Meta's media id and type only (not downloaded).
 - Contact: the newest contact whose mobile phone is the number however typed (`pg_sms_number_variants()`, `pg_sms_number_sql()`), else the contact of the same WhatsApp user id's last message (a username without a number).
-- Bell: action `whatsapp_message` (title the text, order_total the sender, form_id the row), for role below 3; the user role needs the contacts right and the row's contact in one of its contact groups (`pg_notification_whatsapp_visible()`, `pg_contact_owner_sql()`), so an unmatched number is staff only; module Shop (`pg_notification_module()`); it opens the contact, else Contacts. No device banner.
-- History: source `whatsapp` of the Workspace customer history (`workspace-customer-history.md`) under the contacts right and only for a contact the reader may open (`ws_customer_history_whatsapp_contact()`, `ws_viewer_contacts_open()`; `customers:read` over the API), kind `whatsapp`, at the arrival time, detail sender and text, opening the contact.
+- Bell: action `whatsapp_message` (title the text, order_total the sender, form_id the row), role below 3; the user role needs the contacts right and the row's contact in one of its contact groups (`pg_notification_whatsapp_visible()`, `pg_contact_owner_sql()`), so an unmatched number is staff only; module Shop (`pg_notification_module()`); it opens the contact, else Contacts. No device banner.
+- History: source `whatsapp` of the Workspace customer history (`workspace-customer-history.md`), contacts right and a contact the reader may open (`ws_customer_history_whatsapp_contact()`; `customers:read` over the API), detail sender and text.
+- A new text message that is a stop word alone (`pg_whatsapp_inbox_stops()`, `pg_sms_is_stop_word()`) from a number writes the SMS marketing refusal (`pg_sms_stop_refusal()`, owner #9286); a second delivery writes none.
 - With the Workspace on and a channel named on the card it also becomes a conversation there (`workspace/mail-phone-conversations.md`).
 - Kept two years (`pg_whatsapp_inbox_sweep()` in `job.php`, 1000 rows a run); a contact holder (merge move, erase find) and erased by number or contact as "WhatsApp messages received".
 
