@@ -1,15 +1,18 @@
 ---
 name: designer-home-screen
-description: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+description: Page Design Studio home (view_system_styles.php): the head row, the first visit's three starts, the site's design shown large, tiles, the grouped menu, rename (designer/design_rename)
 ---
 
 ## Which colours may the screen use?
 - Greys plus the panel's primary as the one accent; previews keep theirs (`designer-home-colours.md`, tooltips there too).
 
 ## What does the home show?
-- Top: the "New design" button and four start cards of one height: a drawing (3:1), icon, title, one sentence (`pg_designer_home_start_card()`, `pg_designer_home_drawing()`): blank canvas, ZIP into tabs, pasted markup, and the template card with three templates' home pages side by side (`designer-home-pictures.md`). Each opens the New design window on its start (`new-design-window.md`). Designers only; others get a one-line alert. Phones: two by two, title only.
-- Below: no DataTable (#584). `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles. The large card: preview in a browser frame, name, status, the home-page line, facts as a label/value grid (framework, template, theme, last modified), page chips (12, then "+n more") and at most four buttons. Tiles: preview, name, status, pages, time.
-- No designs: a dashed box with three steps (start, build, publish). Over six designs: a name search (accent and dotless-i folding).
+- One head row (`pg_designer_home_head()`): "Designs" with the count and the sentence of what a design is, "Find a design" from seven designs (accent and dotless-i folding; it filters the tiles, the large card stays; nothing found: "No design matches “…”." and "Clear the search"), "Shared components and system widgets" (ghost), "New design" (filled, the window on Blank). Below designer: no "New design", one grey line saying designers create designs.
+- No design yet: the first visit (`pg_designer_home_first_visit()`): "Start your first design", the sentence, three cards Blank, Template, "Bring your own" (`pg_designer_home_first_starts()`), each opening the New design window on its start (`new-design-window.md`); no templates: Template at 50% with "There are no templates."; the three steps as one grey line. Never shown once a design exists; the four start cards and their drawings that once headed the home are gone.
+- `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles.
+- The large card: preview in a browser frame, name and ⋯, the state line, the home-page line, four facts in one row (Framework, Template, Theme, Last modified; who changed it is the time's tooltip), one row of page chips then "+n more" (the script keeps as many as fit, `fitChips()`; opens in place), the buttons Edit (filled), Add page, View on site (ghost, arrow after), Put on the site while drafts exist.
+- Tiles (`.sdh-tiles` grid: four a row from 1400 px, three from 1000, two from 560, one below): preview, name and ⋯, one line of state mark and words, page count and time at the right; a design with no page shows "No pages yet" in the picture's place.
+- No hint line: right click and long press still open the menu; the ⋯ button is what a person sees.
 
 ## What do the pictures show?
 - Real pages, drawings as fallback: `designer-home-pictures.md`.
@@ -19,13 +22,8 @@ description: Page Design Studio home (view_system_styles.php): one-accent colour
 - `pg_designer_list_status_cell($d)` is the status block (badge + one line + data-pages/drafts/home/offable); `designer/design_publish` answers it as `cell`. Counts from `pg_designer_design_draft_counts()`, state from `pg_designer_design_state()` (`empty` / `live` / `draft` / `mixed`; `offable` = pages that can go off: not drafts, not home).
 - Put on / take off the site: `designer/design_publish` → `pg_designer_design_set_draft()` moves every page (the home page stays); refused while the design is open in the editor, whose next save would put its tabs' state back (`page-drafts.md`). The shared components panel above the list: `shared-components-panel.md`.
 
-## How does the menu work (`assets/js/designer_home.js`)?
-- Right click on a card or a page chip, its ⋯ button, a 550 ms long press, the menu key or Shift+F10. A focused card: Enter opens, F2 renames, Delete deletes.
-- Design: edit, new tab, add page (`&new_page=1`), view on site, put on / take off the site, rename, turn into a template (`designer/template_from_design`, the panel dialog `pg_designer_home_template_dialog()`), delete. Page: edit (`&page=`), new tab, view, copy address.
-- "Take off the site" is in the menu only; the large card shows "Put on the site" while drafts exist.
-- After a template is made, choosing the Template start reloads the page with `?start=template` (the gallery is printed with the page).
-- Texts: `pg_designer_home_texts()` in `#sdh-config`; the script has none.
-- The menu is a `.dropdown-menu` not opened by Bootstrap: keys are taken on the window's capture phase (`ui/own-menu-dropdown-keydown.md`).
+## How does the menu work?
+- `designer-home-menu.md`.
 
 ## How does rename work?
 - `api.php designer/design_rename` -> `pg_designer_rename_design()` (includes/fn/designer.php): designers only, visual designs only, name cleaned by `pg_designer_design_name_clean()` (one line, 100 chars), a name another style has is refused, refused while the design is open in the editor (its save would write the old name back). Logged as "{var:1} was renamed to {var:2}".

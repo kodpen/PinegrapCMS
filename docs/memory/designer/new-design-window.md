@@ -9,7 +9,7 @@ description: The New design window (#sdStartModal): the grouped rail of starts, 
 - Left: the 256 px rail, the starts in three groups with a grey label ("Start new", "From a design tool", "From what you have"); a row (`.pg-sm-link`) is one 32 px icon tile, the title and one line that never wraps; no small drawing. Grey tiles, the accent on the chosen row's. Right: the chosen start's pane. Foot: Cancel quiet and one filled button.
 - One icon a start: `pg_designer_start_icon($key)`, the same in the rail, the pane's head and the home's cards; the list is in `designer-home-tidy-drawing.md`.
 - A pane's head (`.sd-ns-head`): the icon as a 44 px accent tile, the kind's `heading` (the act) and `lead` (what happens next, never the row's line).
-- Opened by the home's "New design" button and by each start card, on the card's own start (`data-sd-start`); `view_system_styles.php?start=<key>` opens it on load.
+- Opened by the home's "New design" (Blank) and its first-visit cards (`data-sd-start`, `designer-home-screen.md`); `view_system_styles.php?start=<key>` opens it on load.
 
 ## Which starts does it list today?
 - In order (`pg_designer_start_kinds()`): Blank, Template, Figma (once its import is there), Canva, From a document (`document-start.md`), ZIP file, Pasted markup.
