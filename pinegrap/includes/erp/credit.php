@@ -168,6 +168,29 @@ function erp_credit_refusal($account, $adding)
 }
 
 /**
+ * erp_credit_refusal() for an invoice being issued inside its transaction,
+ * with the account's limit and balance read by a locking read: a plain read
+ * misses an invoice another request issued to the account meanwhile, and two
+ * invoices that each fit alone would both be issued. The row stays locked
+ * until the transaction ends, so the next issue waits and reads this one's
+ * balance. Only in block mode; in warn mode nothing is refused or locked.
+ *
+ * @param int $account_id
+ * @param int $adding      The invoice total in the base currency
+ * @return string
+ */
+function erp_credit_refusal_locked($account_id, $adding)
+{
+    if (erp_credit_mode() !== 'block') {
+        return '';
+    }
+
+    $account = db_item("SELECT id, credit_limit, balance FROM erp_accounts WHERE id = '" . (int) $account_id . "' LIMIT 1 FOR UPDATE");
+
+    return is_array($account) ? erp_credit_refusal($account, $adding) : '';
+}
+
+/**
  * The warning a screen shows for an account that is, or would be, past its
  * limit, or ''.
  *
