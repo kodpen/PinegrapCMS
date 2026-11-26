@@ -482,14 +482,15 @@ function ws_agent_wakes_run($now = null)
 
 /**
  * The rows of an agent's wakes still waiting to be claimed: queued or
- * knocked, made by a schedule (no message). Pure.
+ * knocked, made by a schedule (no message and no task: a run on a task
+ * handed to the agent has neither, and holds no wake). Pure.
  *
  * @param string $value ws_agent_request_value()
  * @return string SQL condition on ws_ai_requests
  */
 function ws_agent_wake_waiting_where($value)
 {
-    return "agent = '" . e((string) $value) . "' AND message_id = 0 AND status IN ('queued', 'sent')";
+    return "agent = '" . e((string) $value) . "' AND message_id = 0 AND task_id = 0 AND status IN ('queued', 'sent')";
 }
 
 /**
