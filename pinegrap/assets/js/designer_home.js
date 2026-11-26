@@ -509,7 +509,8 @@
 
     // ── One row of page chips ───────────────────────────────────────────
 
-    // A folded row shows as many chips as fit it, then "+n more"
+    // A folded box shows as many chips as fit its rows (one, two on a
+    // phone: --sdh-chip-rows in designer_home.css), then "+n more"
     // (pg_designer_home_page_chips() prints a first guess).
     function fitChips(box) {
         var toggle = box.querySelector('.sdh-pages-toggle');
@@ -533,7 +534,17 @@
             chip.classList.remove('is-extra');
         });
 
-        var top = chips.length ? chips[0].offsetTop : 0;
+        var rows = parseInt(window.getComputedStyle(box).getPropertyValue('--sdh-chip-rows'), 10) || 1;
+        var tops = [];
+
+        chips.forEach(function (chip) {
+            if (tops.indexOf(chip.offsetTop) < 0) {
+                tops.push(chip.offsetTop);
+            }
+        });
+
+        // The top of the last row allowed: a chip below it is folded.
+        var top = tops.length ? tops[Math.min(rows, tops.length) - 1] : 0;
         var count = chips.length;
 
         for (var i = 1; i < chips.length; i++) {
@@ -931,6 +942,13 @@
 
         var tabs = Array.prototype.slice.call(win.querySelectorAll('.sd-ns-item'));
         var go = document.getElementById('sd-ns-go');
+        var back = document.getElementById('sd-ns-back');
+
+        // Below 768 px the list and the chosen pane are two screens of the
+        // window (.is-pane); the pane adds a history entry, so the phone's
+        // Back returns to the list as "All starts" does.
+        var narrow = window.matchMedia('(max-width: 767.98px)');
+        var pushed = false;
 
         function open(tab) {
             return tab.getAttribute('aria-disabled') !== 'true';
@@ -1113,9 +1131,9 @@
                 var on = (t === tab);
                 t.setAttribute('aria-selected', on ? 'true' : 'false');
                 t.tabIndex = on ? 0 : -1;
-                t.classList.toggle('is-active', on);
                 paneOf(t).hidden = !on;
             });
+            paintChosen();
 
             if (focus) {
                 tab.focus();
@@ -1124,14 +1142,61 @@
             syncGo();
         }
 
-        // On a phone the list stands over the pane: the chosen start's pane
-        // is brought into view, or a tap would seem to do nothing.
-        function showPane(tab) {
-            var list = win.querySelector('.sd-ns-list');
-            var pane = paneOf(tab);
+        // The chosen row wears the accent beside its pane; the narrow list
+        // stands alone, so none of its rows is marked.
+        function paintChosen() {
+            var alone = narrow.matches && !win.classList.contains('is-pane');
 
-            if (pane && !pane.hidden && list && pane.getBoundingClientRect().top >= list.getBoundingClientRect().bottom) {
-                pane.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            tabs.forEach(function (t) {
+                t.classList.toggle('is-active', !alone && t.getAttribute('aria-selected') === 'true');
+            });
+        }
+
+        function toPane(focus) {
+            win.classList.add('is-pane');
+            paintChosen();
+
+            if (!narrow.matches) {
+                return;
+            }
+
+            if (!pushed && window.history && window.history.pushState) {
+                window.history.pushState({ sdStartPane: true }, '');
+                pushed = true;
+            }
+
+            var body = win.querySelector('.sd-ns');
+
+            if (body) {
+                body.scrollTop = 0;
+            }
+
+            if (focus && back) {
+                back.focus();
+            }
+        }
+
+        // fromHistory: the phone's Back already left the pane's entry.
+        function toList(fromHistory) {
+            if (!win.classList.contains('is-pane')) {
+                return;
+            }
+
+            win.classList.remove('is-pane');
+            paintChosen();
+
+            if (pushed) {
+                pushed = false;
+
+                if (!fromHistory) {
+                    window.history.back();
+                }
+            }
+
+            var at = win.querySelector('.sd-ns-item[aria-selected="true"]');
+
+            if (at && narrow.matches && win.open) {
+                at.focus();
             }
         }
 
@@ -1139,10 +1204,29 @@
             tab.addEventListener('click', function () {
                 if (open(tab)) {
                     choose(tab.getAttribute('data-start'), false);
-                    showPane(tab);
+                    if (narrow.matches) {
+                        toPane(true);
+                    }
                 }
             });
         });
+
+        if (back) {
+            back.addEventListener('click', function () {
+                toList(false);
+            });
+        }
+
+        window.addEventListener('popstate', function () {
+            if (pushed) {
+                pushed = false;
+                toList(true);
+            }
+        });
+
+        if (narrow.addEventListener) {
+            narrow.addEventListener('change', paintChosen);
+        }
 
         // Up and down walk the open starts, Home and End go to the ends.
         win.querySelector('.sd-ns-list').addEventListener('keydown', function (event) {
@@ -1314,15 +1398,24 @@
 
         pgUI.dialog.on(win, 'hidden', leaveQuestions);
 
+        // Narrow, the head's "New design" opens on the list of starts; a
+        // start asked by name (a first-visit card, ?start=) on its pane.
         pgUI.dialog.on(win, 'show', function (event) {
             var source = event.relatedTarget;
-            choose((source && source.dataset && source.dataset.sdStart) || win.dataset.sdStart || 'blank', false);
+            var data = (source && source.dataset) || {};
+
+            win.classList.remove('is-pane');
+            choose(data.sdStart || win.dataset.sdStart || 'blank', false);
+
+            if (data.sdNarrow !== 'list') {
+                toPane(false);
+            }
         });
 
         // The keyboard starts on the chosen start, where Up and Down work,
         // not on the window's Close button.
         pgUI.dialog.on(win, 'shown', function () {
-            var at = win.querySelector('.sd-ns-item[aria-selected="true"]');
+            var at = (narrow.matches && win.classList.contains('is-pane')) ? back : win.querySelector('.sd-ns-item[aria-selected="true"]');
 
             if (at && win.contains(document.activeElement) && !document.activeElement.closest('.sd-ns-panes')) {
                 at.focus();
@@ -1331,6 +1424,12 @@
 
         pgUI.dialog.on(win, 'hidden', function () {
             delete win.dataset.sdStart;
+            win.classList.remove('is-pane');
+
+            if (pushed) {
+                pushed = false;
+                window.history.back();
+            }
         });
 
         var asked = new URLSearchParams(window.location.search).get('start');
