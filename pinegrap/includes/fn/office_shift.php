@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Rows and columns of an Excel workbook inserted and deleted on the server,
- * in the file itself (the file window and a channel's preview send one such
- * change as their whole save, through pg_office_xlsx_save()).
+ * in the file itself (the file window and a channel's preview send such
+ * changes in a save's ordered list, through pg_office_xlsx_save()).
  *
  * Every row or cell past the line moves by one, and with it the references
  * in the sheet's own formulas, its merged ranges, its dimension, its views'

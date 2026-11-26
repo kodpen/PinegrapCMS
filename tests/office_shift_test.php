@@ -312,7 +312,7 @@ function test_office_shift_save_refusals()
 
 	$path = office_shift_test_package(office_shift_test_parts());
 	$mixed = pg_office_xlsx_save($path, array($insert, array('sheet' => 0, 'name' => 'Liste', 'cell' => 'A1', 'value' => 'x')), pg_office_version($path), sys_get_temp_dir());
-	pg_assert_same('none', $mixed['code'], 'an insert is a save of its own');
+	pg_assert_true($mixed['ok'], 'an insert and a cell go in one save: ' . $mixed['error']);
 	$stale = pg_office_xlsx_save($path, array($insert), sha1('another version'), sys_get_temp_dir());
 	pg_assert_same('changed', $stale['code'], 'only into the version opened');
 	$renamed = pg_office_xlsx_save($path, array(array('sheet' => 0, 'name' => 'Başka', 'op' => 'insert', 'row' => 3)), pg_office_version($path), sys_get_temp_dir());

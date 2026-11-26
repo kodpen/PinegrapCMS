@@ -21,6 +21,6 @@ module: office
 - Across the panel: Export to Excel on lists `list-excel-export.md`; importers taking .xlsx, .ods and .xls with the sheet question `sheet-import-upload.md`.
 
 ## How is a new part added?
-- One change a save, in the save entry of its file kind; a new writer module is named in its memory file's `module:`.
+- A workbook save is an ordered list of changes of every kind (`office-save-list.md`); a new kind of workbook change is a step kind of that list. A new writer module is named in its memory file's `module:`.
 - Same doors and rights as the edit beside it, every text through `lang()`, controls copied from the bar that is already there (look A).
 - Unit tests build their fixture files in the test, then read the written file back with the product's reader (`tests/office_test.php` and the module's own test).

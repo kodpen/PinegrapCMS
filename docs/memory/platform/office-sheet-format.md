@@ -5,9 +5,9 @@ module: office_format
 ---
 
 ## How is the format of selected cells changed?
-- A save whose `cells` list holds one entry `{op: format, sheet, name, range: "B2:D5", set: {...}}`, sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`). `pg_office_xlsx_save()` hands it to `pg_office_xlsx_format_save()`, under the same lock, version check and package rebuild. Mixed with other changes it is refused (`none`). No new endpoint, permission or schema.
+- An entry `{op: format, sheet, name, range: "B2:D5", set: {...}}` in a save's `cells` list, sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`). `pg_office_xlsx_save()` applies it in its place in the list with `pg_office_xlsx_format_parts()` (`office-save-list.md`). No new endpoint, permission or schema.
 - `set` holds one or more of: `bold`, `italic` (true/false), `color`, `fill` (`RRGGBB` or `#RRGGBB`; `""` takes it off), `align` (`""` general, `left`, `center`, `right`), `number` (`general`, `number`, `money`, `percent`, `date`) with an optional `symbol` for money. Anything else: `none`.
-- At most 5000 cells a save (`PG_OFFICE_EDIT_MAX_CHANGES`, `many`), columns inside the grid's 200.
+- At most 5000 cells a range (`PG_OFFICE_EDIT_MAX_CHANGES`, `many`), columns inside the grid's 200.
 
 ## How are the styles written?
 - A style is never changed in place (other cells share it). For each style the range uses, `pg_office_format_styles()` copies its `cellXfs` entry, applies the set and adds the copy after the others; its border, protection, cell style and other alignment (wrap, vertical) are kept. The font or fill it needs is a copy of its own with the change, added after the others.

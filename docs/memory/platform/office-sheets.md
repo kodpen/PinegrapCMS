@@ -1,12 +1,12 @@
 ---
 name: office-sheets
-description: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one change a save
+description: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one entry of a save's list
 module: office_sheets
 ---
 
 ## How is a sheet added, renamed, deleted or moved?
-- A save whose `cells` list holds one entry: `{op: sheet_add, to: "Name"}`, `{op: sheet_rename, sheet, name, to: "New"}`, `{op: sheet_delete, sheet, name}` or `{op: sheet_move, sheet, name, to: 2}` (`sheet` and `to` are places in the preview's sheet list, `name` the sheet's name as opened). Sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`).
-- `pg_office_xlsx_save()` hands it to `pg_office_xlsx_sheets_save()`, under the same lock, version check and package rebuild as cell and row saves. Mixed with other changes it is refused (`none`). No new endpoint, permission or schema.
+- An entry of a save's `cells` list: `{op: sheet_add, to: "Name"}`, `{op: sheet_rename, sheet, name, to: "New"}`, `{op: sheet_delete, sheet, name}` or `{op: sheet_move, sheet, name, to: 2}` (`sheet` and `to` are places in the preview's sheet list, `name` the sheet's name as opened). Sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`).
+- `pg_office_xlsx_save()` applies it in its place in the list with `pg_office_xlsx_sheets_parts()` (`office-save-list.md`); a later entry names the sheets as this one left them. No new endpoint, permission or schema.
 - `pg_office_save_package()` takes a `removed` list from its `$prepare` too: the parts a delete takes out of the package.
 - The preview of a workbook read for editing carries `sheets_edit` {ok, why: signed|password|protected}: whether the tabs may offer sheet changes.
 - The sheet tabs' menu that sends it: `office-sheet-tabs.md`.

@@ -11429,6 +11429,7 @@
     "Too many attempts. Please wait fifteen minutes and try again.": "Çok fazla deneme yapıldı. Lütfen on beş dakika bekleyip yeniden deneyin.",
     "Too many calls started. Please wait a minute and try again.": "Çok fazla görüşme başlatıldı. Lütfen bir dakika bekleyip yeniden deneyin.",
     "Too many cells were changed at once. Save at most {var:1} cells at a time.": "Bir seferde çok fazla hücre değişti. Her seferinde en çok {var:1} hücre kaydedin.",
+    "Too many changes of formats, rows, columns and sheets were made at once. Save at most {var:1} at a time.": "Biçim, satır, sütun ve sayfalarda aynı anda çok fazla değişiklik yapıldı. Bir seferde en çok {var:1} değişiklik kaydedin.",
     "Too many checks from your address. Try again in a few minutes.": "Adresinizden çok fazla doğrulama yapıldı. Birkaç dakika sonra yeniden deneyin.",
     "Too many codes were asked for. Please wait a few minutes and try again.": "Çok fazla kod istendi. Lütfen birkaç dakika bekleyip yeniden deneyin.",
     "Too many codes were sent. Please wait an hour and try again.": "Çok fazla kod gönderildi. Lütfen bir saat bekleyip yeniden deneyin.",
