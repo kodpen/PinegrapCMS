@@ -1650,6 +1650,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
 - workspace/agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback
+- workspace/agent-gone-request-and-schedule.md: Decided, not built yet: a claimed app agent request silent for a day is closed as failed; an agent in no channel keeps its schedule but gets no wake
 - workspace/agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
