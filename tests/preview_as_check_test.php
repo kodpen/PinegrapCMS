@@ -206,3 +206,36 @@ function test_preview_as_check_core_hooks()
 	$live = substr($core, (int) strpos($core, 'function _sdLivePreviewRefresh() {'), 600);
 	pg_assert_contains('if (_sdPvAs.running) { _sdLive.again = true; return; }', $live, 'no live redraw under a run');
 }
+
+// "Sold out" chooses the product itself, as "Long" does: the "Record"
+// chooser is dimmed for a widget that has the case, and stays free for one
+// that draws its chosen record anyway (a form item view has no sold out).
+function test_preview_as_check_sold_out_chooses_the_record()
+{
+	$res = preview_as_check_test_run(array('recordSids', 'recordSet'),
+		'var S = { setups: { 5: { source: "product", cases: ["typical", "long", "sold_out"] }, 9: { source: "", cases: ["typical", "empty", "long", "sold_out"] } } };'
+		. 'var c = function (k) { return { case: k, records: {} }; };'
+		. 'var out = { product: recordSet(c("sold_out")), productSid: recordSet(c("sold_out"), "5"), long: recordSet(c("long")), typical: recordSet(c("typical")) };'
+		. 'S.setups = { 7: { source: "form", cases: ["typical", "long"] }, 9: { source: "", cases: ["typical", "empty", "long", "sold_out"] } };'
+		. 'out.form = recordSet(c("sold_out")); out.formSid = recordSet(c("sold_out"), "7");'
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['product'], 'a product page under "Sold out"');
+	pg_assert_true($res['productSid'], 'per widget too');
+	pg_assert_true($res['long']);
+	pg_assert_false($res['typical']);
+	pg_assert_false($res['form'], 'a form item view draws its chosen record under "Sold out"');
+	pg_assert_false($res['formSid']);
+
+	// The answer forgets a kept record only where the record drawn is the
+	// chosen one's to draw.
+	$part = preview_as_check_test_source('assets/js/style_designer_previewas.js');
+	$answer = preview_as_check_test_fn($part, 'answer');
+	pg_assert_contains('!recordSet(c, sid)', $answer);
+	pg_assert_false(strpos($answer, "c.case !== 'sold_out'") !== false, 'one rule for the cases that choose the record');
+}
+

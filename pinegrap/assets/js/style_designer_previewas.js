@@ -147,8 +147,17 @@ StyleDesigner.definePart('previewas', function (K) {
         return c.case === 'typical' && c.who === 'signed_out' && c.visit === 'first_visit' && !Object.keys(c.records).length;
     }
 
-    // "Long" and "Empty" choose the record themselves.
-    function recordSet(c) { return c.case === 'long' || c.case === 'empty'; }
+    // "Long" and "Empty" choose the record themselves; "Sold out" does for
+    // a widget that has the case (a product), and a widget without it (a
+    // form item view) draws its chosen record under it. `sid`: one widget,
+    // else any record widget of the page.
+    function recordSet(c, sid) {
+        if (c.case === 'long' || c.case === 'empty') return true;
+        if (c.case !== 'sold_out') return false;
+        return (sid ? [String(sid)] : recordSids()).some(function (s) {
+            return ((S.setups[s] || {}).cases || []).indexOf('sold_out') !== -1;
+        });
+    }
 
     // ── Icons (the Preview's page may have no icon font) ──
     function svg(d, size) {
@@ -836,8 +845,8 @@ StyleDesigner.definePart('previewas', function (K) {
             var s = S.setups[sid] || {};
             if (!s.source) return;
             var want = parseInt(c.records[sid], 10) || 0;
-            if (!want && !recordSet(c) && c.case !== 'sold_out') S.defaults[sid] = parseInt(s.record, 10) || 0;
-            if (want && !recordSet(c) && c.case !== 'sold_out' && (parseInt(s.record, 10) || 0) !== want) {
+            if (!want && !recordSet(c, sid)) S.defaults[sid] = parseInt(s.record, 10) || 0;
+            if (want && !recordSet(c, sid) && (parseInt(s.record, 10) || 0) !== want) {
                 gone = String(c.labels[sid] || ('#' + want));
                 delete c.records[sid];
                 delete c.labels[sid];
