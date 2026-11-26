@@ -970,11 +970,21 @@ function pg_customer_rhythm_contact_due($row, $summary, $settings, $now)
         return array();
     }
 
+    $rows = array();
+
+    foreach ((array) db_items("SELECT order_id, id, product_id, quantity FROM order_items WHERE order_id IN (" . implode(',', array_keys($times)) . ") AND (product_id > 0)" . pg_order_item_active_sql('order_items')) as $item) {
+        $rows[] = array((int) $item['order_id'], (int) $item['id'], (int) $item['product_id'], (int) $item['quantity']);
+    }
+
     $lines = array();
 
-    foreach ((array) db_items("SELECT order_id, product_id, quantity FROM order_items WHERE order_id IN (" . implode(',', array_keys($times)) . ") AND (product_id > 0)" . pg_order_item_active_sql('order_items')) as $item) {
-        $time = $times[(int) $item['order_id']];
-        $lines[] = array('customer' => $key, 'product_id' => (int) $item['product_id'], 'quantity' => (int) $item['quantity'], 'time' => $time[0], 'type' => $time[1]);
+    // Units given back through a refunded return were not kept, as in the pass.
+    foreach (pg_customer_rhythm_items_kept($rows, pg_customer_rhythm_returned_units(array_keys($times))) as $order_id => $items) {
+        $time = $times[(int) $order_id];
+
+        foreach ($items as $item) {
+            $lines[] = array('customer' => $key, 'product_id' => $item[0], 'quantity' => $item[1], 'time' => $time[0], 'type' => $time[1]);
+        }
     }
 
     $ids = array();

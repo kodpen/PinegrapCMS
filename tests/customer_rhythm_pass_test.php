@@ -412,3 +412,22 @@ function test_customer_rhythm_pass_erased_customer_is_not_written_back()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_pass.php');
 	pg_assert_contains('pg_customer_rhythm_pass_gone(', $source);
 }
+
+// A unit given back through a refunded return was not kept: it is not a
+// purchase, so it neither makes a product due nor counts in its rhythm.
+function test_customer_rhythm_pass_returned_units_are_not_bought()
+{
+	$rows = array(
+		array(10, 101, 5, 3),
+		array(10, 102, 6, 1),
+		array(11, 103, 5, 2),
+	);
+
+	pg_assert_same(array(10 => array(array(5, 1)), 11 => array(array(5, 2))), pg_customer_rhythm_items_kept($rows, array(101 => 2, 102 => 1)), 'two of three units and the whole line given back');
+	pg_assert_same(array(10 => array(array(5, 3), array(6, 1)), 11 => array(array(5, 2))), pg_customer_rhythm_items_kept($rows, array()), 'nothing given back');
+
+	foreach (array('customer_rhythm_pass.php', 'customer_rhythm_report.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $file);
+		pg_assert_contains('pg_customer_rhythm_returned_units(', $source, $file);
+	}
+}
