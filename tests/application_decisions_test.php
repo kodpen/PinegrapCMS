@@ -145,3 +145,29 @@ function test_application_decisions_tab_markup_follows_the_description()
 	pg_assert_false(strpos($tab, 'btn btn-') !== false, 'look A buttons only');
 	pg_assert_contains("\$ap_tab('decisions', lang('Decisions'))", $source, 'the Decisions tab');
 }
+
+// Two "Call the next" presses on one declined row ran side by side, both
+// passed the waitlist_call check and each accepted a waitlisted entry: the
+// call holds the declined entry's lock and checks and picks inside it.
+function test_application_decisions_waitlist_call_runs_under_the_declined_entry_s_lock()
+{
+	$name = pg_application_waitlist_lock_name(12);
+
+	pg_assert_contains('_12', $name, 'the lock names the declined entry');
+	pg_assert_true($name !== pg_application_waitlist_lock_name(13), 'each declined entry has its own lock');
+	pg_assert_true(strlen($name) <= 64, 'GET_LOCK takes at most 64 characters');
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/application_decisions.php');
+	$call = substr($module, strpos($module, 'function pg_application_waitlist_call('));
+	$call = substr($call, 0, strpos($call, "\n}\n"));
+	pg_assert_contains('GET_LOCK', $call);
+	pg_assert_contains('RELEASE_LOCK', $call);
+	pg_assert_true(strpos($call, 'GET_LOCK') < strpos($call, 'pg_application_waitlist_call_locked('), 'the call runs inside the lock');
+	pg_assert_false(strpos($call, 'pg_application_waitlist_called(') !== false, 'the call is not checked before the lock');
+	pg_assert_false(strpos($call, 'pg_application_waitlist_next(') !== false, 'the next is not picked before the lock');
+
+	$locked = substr($module, strpos($module, 'function pg_application_waitlist_call_locked('));
+	$locked = substr($locked, 0, strpos($locked, "\n}\n"));
+	pg_assert_contains('pg_application_waitlist_called(', $locked, 'the call is checked inside the lock');
+	pg_assert_true(strpos($locked, 'pg_application_waitlist_called(') < strpos($locked, 'pg_application_waitlist_next('), 'checked before the next is picked');
+}

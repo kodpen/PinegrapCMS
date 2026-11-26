@@ -19,6 +19,7 @@ module: application_decisions
 - On: recording Declined calls at once. Off: the declined row shows "Call the next" (disabled when nobody waits in its category).
 - `pg_application_waitlist_next()`: the declined entry's category; among waitlisted entries the latest round, then the higher score by the current round's "Rank by", then the earlier entry. The called entry becomes Accepted with its e-mail waiting.
 - Once per declined entry: the call is the `audit_log` line `waitlist_call` (after `called`) on the declined entry, and `pg_application_waitlist_called()` reads it; the called entry gets a `decision` line with `called_for`.
+- The call runs under the declined entry's `GET_LOCK` (`pg_application_waitlist_lock_name()`, 10 s; none got calls nobody): check, pick and accept inside it. Before #NNNN two presses at once accepted two for one place (#11758).
 
 ## How do the decision e-mails go?
 - Only on a press (`application-review.md`): the fill "Send the decision e-mails" opens a drawer: 1. counts per decision (e-mails, those with no address, "No text written"), 2. a preview per decision rendered with its first recipient's answers, 3. Send with the number that goes.
