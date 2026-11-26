@@ -9,12 +9,13 @@ module: security_scan_content
 - `content_iframe_hidden` (high): an `<iframe>` on an unknown host that is hidden: the `hidden` attribute, width or height 0 or 1, `display:none`, `visibility:hidden`, `opacity:0`, `left`/`top` of -100 or less. A visible map or video frame is no finding.
 - `content_redirect` (critical): a `<meta http-equiv="refresh">` URL, or `location =`, `location.href =`, `location.replace()` / `.assign()` in script code, to an unknown host.
 - A link or an `onclick` is never a finding: following it is a visitor's click. Script code is the bodies of `<script>` elements; a field with no markup at all (custom JavaScript) is read whole.
-- JSON and JS string escapes (`\/`, `<`, `\"`) are undone first, so a design's JSON is read like plain code; HTML entities are not (`&lt;script` is text).
+- JSON and JS string escapes (`\/`, `<`, `\"`) are undone first, so a design's JSON is read like plain code; HTML entities are not (`&lt;script` is text), but inside an attribute value they are decoded, as the browser does (`src="https&#58;//host/"`).
+- An address is read as a browser reads it: a backslash is a slash and two or more slashes start the host (`https:\\host`, `/\host`); a tag cut at the end of a field (no `>`) still counts, since the page's markup after it closes it.
 
 ## Which host is known?
 - The site's `HOSTNAME_SETTING` (and without `www.`), every host source of `waf_csp_policy()` (the software's CDNs, payment and CAPTCHA services, the operator's own policy) and `pg_security_content_builtin_hosts()` (Google, YouTube, Vimeo, social networks, the common CDNs, Clarity, Hotjar, Yandex Metrica). A host covers its subdomains, never its parent.
 - A third party the operator added on purpose: Ignore on the finding, or the host in the Security settings' CSP policy.
-- Limit: the fingerprint is rule and record, so a new host appearing in an ignored record stays ignored; the detail still names it.
+- A new host appearing in an ignored record opens it again: the detail (its hosts and fields) changed (`security-scan-findings.md`).
 
 ## What does it read?
 - `pg_security_content_sources()`: `page` (`page_custom_js`, `page_meta_tags`), `pregion_content`, `cregion_content`, `dregion_code`, `style` (`style_head`, `style_code`, `style_custom_js`), and `config.social_networking_code` as `config:1`. A field a migration added is read only when `pg_schema_has()` finds it. Edit screens per type: `data/content-tables.md`.
@@ -23,7 +24,7 @@ module: security_scan_content
 
 ## How does the scan runner call it?
 - `pg_security_content_pass($cursor, $deadline, $now)`: reads batches of 50 per source until the `microtime(true)` deadline, writes each sighting through `pg_security_finding_merge()`, returns `cursor`, `done`, `found`, `read`. The runner stores the cursor and gives it back next tick; null starts a new pass, a broken cursor too (`pg_security_content_cursor()`).
-- When the last source is read the pass is done and `pg_security_content_close($started)` moves this pass's kinds not seen since it started: open and ignored to gone, quarantined and gone stay.
+- When the last source is read the pass is done and `pg_security_content_close($started, $unread)` moves this pass's kinds not seen since it started: open and ignored to gone, quarantined and gone stay. A source whose query failed is named in the cursor's `unread` and its records' findings stay as they were (`pg_security_place_unread()`).
 - Reasons and "What to do" for the section: `pg_security_content_rule_text($kind)`.
 - The joined run `pg_security_scan_run()` calls it after the files and keeps its cursor in the `security_scan` row (`security-scan-section.md`).
 

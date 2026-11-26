@@ -284,7 +284,9 @@ function pg_security_section_detail($kind, $detail)
     }
 
     if ($kind === 'file_server_config') {
-        return ($detail === 'new') ? lang('New since the first scan') : lang('Changed since the first scan');
+        $words = pg_security_detail_parts($detail);
+
+        return ($words[0] === 'new') ? lang('New since the first scan') : lang('Changed since the first scan');
     }
 
     return '';
@@ -364,22 +366,38 @@ function pg_security_alert_text(array $counts)
 
 /**
  * Mark a finished part's findings that the run did not see as gone (open and
- * ignored ones; pg_security_state_unseen()).
+ * ignored ones; pg_security_state_unseen()), but for those in a part the run
+ * could not read (pg_security_place_unread()): they were not looked at.
  *
  * @param string[] $kinds
  * @param int $started
+ * @param string[] $unread Folder places or record types the run could not read
  * @return void
  */
-function pg_security_scan_close_kinds(array $kinds, $started)
+function pg_security_scan_close_kinds(array $kinds, $started, array $unread = array())
 {
     if (empty($kinds)) {
         return;
     }
 
-    db_q(
-        "UPDATE security_finding SET state = ? WHERE kind IN (" . implode(', ', array_fill(0, count($kinds), '?')) . ") AND state IN (?, ?) AND last_seen < ?",
-        array_merge(array(PG_SECURITY_STATE_GONE), array_values($kinds), array(PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started))
+    $rows = db_items(
+        (string) pg_db_bind(
+            "SELECT id, place FROM security_finding WHERE kind IN (" . implode(', ', array_fill(0, count($kinds), '?')) . ") AND state IN (?, ?) AND last_seen < ?",
+            array_merge(array_values($kinds), array(PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started)),
+            'escape'
+        )
     );
+    $ids = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        if (!pg_security_place_unread($row['place'], $unread)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    foreach (array_chunk($ids, 500) as $chunk) {
+        db_q("UPDATE security_finding SET state = '" . PG_SECURITY_STATE_GONE . "' WHERE id IN (" . implode(', ', $chunk) . ")");
+    }
 }
 
 /**
@@ -562,6 +580,24 @@ function pg_security_quarantine_move(array $row, $action)
             return lang('The file is no longer at its place. Run a scan to update the list.');
         }
 
+        if (!pg_security_place_folder_real($row['place'])) {
+            return lang('The folder of this file is no longer the folder the scan found it in. Run a scan to update the list.');
+        }
+
+        // A file planted again at a place quarantined before: the earlier
+        // copy is kept under a numbered name, not written over.
+        if (file_exists($kept)) {
+            $number = 1;
+
+            while (file_exists(substr($kept, 0, -strlen('.quarantine')) . '.' . $number . '.quarantine')) {
+                $number++;
+            }
+
+            if (!@rename($kept, substr($kept, 0, -strlen('.quarantine')) . '.' . $number . '.quarantine')) {
+                return lang('The file could not be moved. Check the permissions of its folder.');
+            }
+        }
+
         return @rename($path, $kept) ? '' : lang('The file could not be moved. Check the permissions of its folder.');
     }
 
@@ -575,6 +611,10 @@ function pg_security_quarantine_move(array $row, $action)
 
     if (!is_dir(dirname($path))) {
         return lang('The folder the file came from is gone.');
+    }
+
+    if (!pg_security_place_folder_real($row['place'])) {
+        return lang('The folder of this file is no longer the folder the scan found it in. Run a scan to update the list.');
     }
 
     return @rename($kept, $path) ? '' : lang('The file could not be moved back. Check the permissions of its folder.');
