@@ -918,7 +918,7 @@ StyleDesigner.definePart('code', function (K) {
 
     function _sdCodeParseElement(node, text) {
         var open = node.getChild('OpenTag') || node.getChild('SelfClosingTag');
-        if (!open) return null;
+        if (!open || _sdCodeHasError(open)) return null;
         var tagNode = open.getChild('TagName');
         if (!tagNode) return null;
         var item = {
@@ -959,6 +959,16 @@ StyleDesigner.definePart('code', function (K) {
         }
         item.items = inner;
         return item;
+    }
+
+    // Whether the parser left an error inside a syntax node: an attribute
+    // still being typed (`name=` with no value yet, a quote typed inside a
+    // value) is not read until it is finished, as the lint shows.
+    function _sdCodeHasError(node) {
+        for (var c = node.firstChild; c; c = c.nextSibling) {
+            if (c.type.isError || _sdCodeHasError(c)) return true;
+        }
+        return false;
     }
 
     function _sdCodeDecode(s) {
@@ -1084,7 +1094,7 @@ StyleDesigner.definePart('code', function (K) {
 
     function _sdCodeParseElementShallow(node, text) {
         var open = node.getChild('OpenTag');
-        if (!open) return null;
+        if (!open || _sdCodeHasError(open)) return null;
         var item = { kind: 'element', from: node.from, to: node.to, tag: 'body', open: { from: open.from, to: open.to }, attrs: [], children: [], texts: [] };
         var attrs = open.getChildren('Attribute');
         for (var i = 0; i < attrs.length; i++) {
