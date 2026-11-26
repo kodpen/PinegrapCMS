@@ -80880,8 +80880,9 @@ const StyleDesigner = (function () {
     // the smallest box, the first box's size; how many pages, boxes and
     // heading characters are kept; how long the hand rests (ms) before
     // the frames are drawn again after a drag or a nudge; how near a
-    // handle (screen pixels) a finger or a pen takes it.
-    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000, rest: 300, touch: 16 };
+    // handle (screen pixels) a finger or a pen takes it; the height of a
+    // box added by the keyboard and the room above it.
+    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000, rest: 300, touch: 16, addH: 96, addGap: 16 };
 
     // What a box can be. A box without a kind chosen is read from the
     // sketch; until the reader runs its chip says so.
@@ -81195,7 +81196,7 @@ const StyleDesigner = (function () {
         var body = _sdProtoEl('div', 'sd-sketch-body');
         body.style.height = (item.h - SD_SKETCH.head) + 'px';
         if (page.pic && !page.pic.off) body.appendChild(_sdSketchPicEl(page.pic));
-        if (!page.boxes.length) body.appendChild(_sdProtoEl('p', 'sd-sketch-hint', on ? _sdT('Drag here to draw a box') : _sdT('Turn on Sketch to draw boxes')));
+        if (!page.boxes.length) body.appendChild(_sdProtoEl('p', 'sd-sketch-hint', on ? _sdT('Drag to draw a box, or press B') : _sdT('Turn on Sketch to draw boxes')));
         var sel = _sdProto.sk.sel;
         page.boxes.forEach(function (b) {
             var picked = !!(sel && sel.frame === item.id && sel.box === b.id);
@@ -81606,6 +81607,12 @@ const StyleDesigner = (function () {
             if (_sdProto.ui) _sdProto.ui.viewport.focus({ preventScroll: true });
             return true;
         }
+        // B on a selected sketch page (not on a box, where a letter starts
+        // its heading) adds a box under the lowest one.
+        if (!boxEl && name.toLowerCase() === 'b' && !ctrl && !event.altKey) {
+            var onPage = frameEl ? frameEl.getAttribute('data-node') : _sdSketchSelected();
+            if (onPage && _sdSketchPage(onPage)) return _sdSketchAddBox(onPage);
+        }
         if (!boxEl || (t.closest && t.closest('.sd-sketch-chip') && name !== 'Delete')) return false;
         var frameId = boxEl.closest('[data-node]').getAttribute('data-node');
         var page = _sdSketchPage(frameId);
@@ -81627,6 +81634,15 @@ const StyleDesigner = (function () {
         }
         var step = event.shiftKey ? SD_SKETCH.grid * 4 : SD_SKETCH.grid;
         var mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[name];
+        // Alt and an arrow size the box by its right or bottom edge.
+        if (mv && !ctrl && event.altKey) {
+            var size = _sdSketchSize(b, mv[0], mv[1]);
+            b.w = size.w;
+            b.h = size.h;
+            _sdProto.sk.sel = { frame: frameId, box: b.id };
+            _sdSketchChanged(true);
+            return true;
+        }
         if (mv && !ctrl) {
             b.x = Math.max(0, Math.min(SD_SKETCH.w - b.w, b.x + mv[0]));
             b.y = Math.max(0, b.y + mv[1]);
@@ -81638,6 +81654,48 @@ const StyleDesigner = (function () {
         // A letter starts the heading; the map's zoom keys stay its own.
         if (name.length === 1 && ' +=-_0'.indexOf(name) === -1 && !ctrl && !event.altKey) return _sdSketchEdit(frameId, b, name);
         return false;
+    }
+
+    // The box "Add a box" (B) puts on a page: as wide as the page, under
+    // the lowest box with a little room, at the top of an empty page.
+    function _sdSketchAddRect(page) {
+        var low = null;
+        page.boxes.forEach(function (b) { low = Math.max(low === null ? 0 : low, b.y + b.h); });
+        return { x: 0, y: low === null ? 0 : low + SD_SKETCH.addGap, w: SD_SKETCH.w, h: SD_SKETCH.addH };
+    }
+
+    // A box sized by the keyboard: its right or bottom edge moved by dx
+    // and dy, never under the smallest box, never past the page's width.
+    function _sdSketchSize(b, dx, dy) {
+        return {
+            w: Math.max(SD_SKETCH.min, Math.min(SD_SKETCH.w - b.x, b.w + dx)),
+            h: Math.max(SD_SKETCH.min, b.h + dy)
+        };
+    }
+
+    // "Add a box" (B, the page's "More", the command palette): a box under
+    // the lowest one on the page, selected and focused; one step of the
+    // sketch's undo. The switch goes on, as boxes are drawn only then.
+    function _sdSketchAddBox(frameId) {
+        var page = _sdSketchPage(frameId);
+        if (!page) return false;
+        if (page.boxes.length >= SD_SKETCH.boxes) {
+            sdToast(esc(_sdT('A sketch page can have at most {var:1} boxes.', SD_SKETCH.boxes)), 'warning', 4000);
+            return true;
+        }
+        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
+        var r = _sdSketchAddRect(page);
+        var data = _sdSketchData();
+        var b = { id: data.n++, x: r.x, y: r.y, w: r.w, h: r.h, kind: '', text: '' };
+        page.boxes.push(b);
+        frameId = 'k:' + page.id;
+        _sdProto.sk.sel = { frame: frameId, box: b.id };
+        if (_sdProto.canvas && String(_sdProto.canvas.focused()) !== frameId) {
+            _sdProto.canvas.focus(frameId);
+            _sdProtoSelect({ type: 'node', id: frameId });
+        }
+        _sdSketchChanged(false, _sdT('Box added. Type its heading; the chip says what it is.'));
+        return true;
     }
 
     // The heading typed into a box: an input over it, `seed` its first
@@ -81802,6 +81860,8 @@ const StyleDesigner = (function () {
     function _sdSketchMoreRows(page) {
         var frameId = 'k:' + page.id;
         var rows = [];
+        rows.push({ icon: 'bi-plus-square', text: _sdT('Add a box'), key: 'B', run: function () { _sdSketchAddBox(frameId); } });
+        rows.push({ sep: true });
         if (!page.pic) {
             rows.push({ icon: 'bi-image', text: _sdT('Reference picture'), run: function () { _sdSketchPicChoose(frameId); } });
         } else {
@@ -82872,7 +82932,7 @@ const StyleDesigner = (function () {
         var picked = _sdProto.link ? _sdProto.link.frame + '|' + _sdProto.link.port : '';
         ui.list.textContent = '';
         if (!data) {
-            ui.list.appendChild(_sdProtoEl('p', 'sd-proto-list-empty', _sdT('Select a page to see its links.')));
+            ui.list.appendChild(_sdProtoEl('p', 'sd-proto-list-empty', _sdSketchSelected() ? _sdT('A sketch page has no links until it is built.') : _sdT('Select a page to see its links.')));
             return;
         }
         var item = _sdProto.byId[data.id];
@@ -92537,6 +92597,10 @@ const StyleDesigner = (function () {
                     ['Alt+←  /  Alt+→',     _sdT('Move the element one level out / in')],
                     ['Ctrl+X, Ctrl+V',      _sdT('Cut the element, then put it after another row')]
                 ]},
+                { title: _sdT('Sketch'), rows: [
+                    ['B',                   _sdT('Add a box to the selected sketch page')],
+                    ['Alt+Arrows  /  Shift+Alt+Arrows', _sdT('Size the selected sketch box by 8 / 32 units')]
+                ]},
                 { title: _sdT('Help'), rows: [
                     ['?  /  F1',            _sdT('Show this window')],
                     ['Esc',                 _sdT('Clear the selection (canvas)')]
@@ -92747,6 +92811,7 @@ const StyleDesigner = (function () {
         if (sketchId) {
             var skBuilt = !!(_sdSketchPage(sketchId) || {}).built;
             items.unshift({ id: 'act_sketch_build', label: skBuilt ? _sdT('Build again') : _sdT('Build the page'), icon: 'bi-hammer', action: function () { _sdSketchBuild(sketchId); } });
+            items.unshift({ id: 'act_sketch_add_box', label: _sdT('Add a box'), icon: 'bi-plus-square', hint: 'B', action: function () { _sdSketchAddBox(sketchId); } });
         }
         // My library's Import, for the designers its part is handed to: the
         // part runs on the first choice.

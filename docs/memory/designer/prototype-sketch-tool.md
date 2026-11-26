@@ -1,6 +1,6 @@
 ---
 name: prototype-sketch-tool
-description: The Prototype view's Sketch tool (SK2): Sketch and New page, frames k:<n>, boxes with snapping (snapRect) and guides, chips and kinds, typed headings, keys, undo, where it is kept
+description: The Prototype view's Sketch tool (SK2): Sketch and New page, frames k:<n>, boxes with snapping (snapRect) and guides, chips and kinds, typed headings, where it is kept; keys in prototype-sketch-keys
 ---
 
 ## What is it?
@@ -10,6 +10,7 @@ description: The Prototype view's Sketch tool (SK2): Sketch and New page, frames
 
 ## How are boxes drawn?
 - Only while the switch is on (off: a press on the body moves the frame). The view's adapter hands a press inside `.sd-sketch-body` to `_sdSketchPress()` first: on a handle `skresize`, on a box `skmove`, on the empty body `skdraw`; `move`, `release` and `cancel` go to the sketch for kinds starting with `sk`.
+- An empty page says "Drag to draw a box, or press B" while the switch is on ("Turn on Sketch to draw boxes" while off); the line leaves with the first box.
 - Units are the frame's: 480 wide, a body at least 640 high that grows 80 under the lowest box. A box is at least 24 by 24; a smaller drawing is dropped.
 - `_sdSketchRect()` lines a box up with `PGGraphCanvas.snapRect()` (ui/graph-canvas-core-module.md): edges and middles of the frame and the other boxes within 6 screen pixels, else the 8-unit grid; Alt held is free. A drawn box's pressed corner lines up the same way, not only the dragged one (#11884: boxes drawn side by side started at 17, 170, 324). Guides (`.sd-sketch-guide`) show while it moves. A box stays inside the frame's width and below its top.
 
@@ -18,12 +19,10 @@ description: The Prototype view's Sketch tool (SK2): Sketch and New page, frames
 - A heading (`text`, one line, at most 80 characters): a letter typed on a selected box starts it, Enter, F2 or a double-click edits it; Enter or leaving the input keeps it, Esc drops the edit.
 
 ## Which keys?
-- On a selected box: Delete or Backspace takes it out, the arrows move it 8 (Shift 32), Esc selects its frame. `+`, `-`, `=`, `_`, `0` and Space stay the map's keys.
-- On a selected sketch frame: Delete takes the page out.
-- While the switch is on, Ctrl+Z and Ctrl+Y undo and redo the sketch (`G.historyOf()`, arrow nudges fold into one step), not the open tab; with the switch off they undo the tab as before (designer/prototype-view-rules.md K4).
+- B, the arrows, Alt and the arrows, Delete, Esc, the undo and "Add a box": `prototype-sketch-keys.md`.
 
 ## Where is a sketch kept?
 - In this browser only, `localStorage` `pg_proto_sketch_<style id>`: `{ n, pages: [{ id, name, x, y, boxes: [{ id, x, y, w, h, kind, text }] }] }`, read through `_sdSketchClean()` (at most 50 pages and 200 boxes a page, unknown kinds dropped). A built page also keeps it in its draft's root (`props._sketch`, `designer/sketch-build.md`); no table or column was added.
 
 ## How is it checked?
-- The pure parts (`snapRect()`, `_sdSketchClean()`, `_sdSketchRect()`, `_sdSketchNearSide()`) are tested in Node. The drags, touch, pen, the chip menu and every key run in Chromium by hand (`tests/js/sketch_feel.js`, `sketch-feel.md`).
+- The pure parts (`snapRect()`, `_sdSketchClean()`, `_sdSketchRect()`, `_sdSketchNearSide()`, `_sdSketchAddRect()`, `_sdSketchSize()`) are tested in Node. The drags, touch, pen, the chip menu and every key run in Chromium by hand (`tests/js/sketch_feel.js`, `sketch-feel.md`).
