@@ -32,7 +32,6 @@ function test_settings_group_names_headings_name_their_groups()
 		'includes/settings/accounting.php' => array(
 			'erp_edoc_provider_title' => 'e-Document Provider',
 			'erp_fx_currencies_title' => 'Currencies allowed on documents',
-			'erp_overdue_notify_title' => 'Overdue receivable reminders',
 		),
 		'includes/settings/firewall.php' => array(
 			'waf_country_exempt_title' => 'Always let in',

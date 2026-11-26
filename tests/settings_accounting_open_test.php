@@ -108,3 +108,81 @@ function test_settings_accounting_sales_and_orders_drawn_open()
 	pg_assert_true(strpos($orders, "pg_accounting_settings_switch('erp_invoice_mail_auto'") < strpos($orders, 'name="erp_invoice_mail_message"'), 'the message under its switch');
 	pg_assert_true(strpos($orders, "pg_accounting_settings_choice('erp_auto_invoice_on'") < strpos($orders, 'name="erp_auto_invoice_min_total"'), 'the filters under the choice');
 }
+
+function test_settings_accounting_tick_is_an_inline_check_posting_one()
+{
+	$html = pg_accounting_settings_tick('erp_overdue_notify_email', true, 'E-mail & more');
+
+	pg_assert_contains('<div class="form-field d-inline-grid me-5">', $html, 'an inline tick');
+	pg_assert_contains('<input value="1" class="check" type="checkbox" id="erp_overdue_notify_email" name="erp_overdue_notify_email" checked="checked"/>', $html, 'a ticked box posting 1');
+	pg_assert_contains('<label for="erp_overdue_notify_email">E-mail &amp; more</label>', $html, 'its label, escaped');
+	pg_assert_false(strpos(pg_accounting_settings_tick('erp_overdue_notify_push', false, 'Device'), 'checked') !== false, 'off is not ticked');
+
+	$group = pg_accounting_settings_ticks('erp_overdue_notify_channels', 'Sent by', $html, 'Each one on its own.');
+	pg_assert_contains('<fieldset aria-describedby="erp_overdue_notify_channels_help"><legend class="form-label pg-field-label">Sent by</legend>', $group, 'the ticks under one legend');
+	pg_assert_contains($html, $group, 'holding the ticks');
+	pg_assert_contains('<p class="pg-field-help pg-text-meta fg-secondary mb-0" id="erp_overdue_notify_channels_help">Each one on its own.</p>', $group, 'one line of help');
+	pg_assert_contains('<fieldset><legend', pg_accounting_settings_ticks('x', 'X', $html), 'no help, no reference');
+}
+
+// The E-Invoice card starts with a class that depends on the country.
+function settings_accounting_open_test_invoice_card()
+{
+	$pane = settings_accounting_open_test_source('includes/settings/accounting.php');
+	$start = strpos($pane, '<div id="pgset-invoice" class="pg-set-card');
+	$end = strpos($pane, '<div id="pgset-erp-rules" class="pg-set-card">');
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end), 'the E-Invoice card before the rules');
+
+	return substr($pane, $start, $end - $start);
+}
+
+function test_settings_accounting_accounts_currency_notices_drawn_open()
+{
+	$accounts = settings_accounting_open_test_card('pgset-erp-accounts', 'pgset-erp-currency');
+	$currency = settings_accounting_open_test_card('pgset-erp-currency', 'pgset-erp-notices');
+	$pane = settings_accounting_open_test_source('includes/settings/accounting.php');
+	$notices = substr($pane, strpos($pane, '<div id="pgset-erp-notices" class="pg-set-card">'), strpos($pane, '// ── E-Invoice ──') - strpos($pane, '<div id="pgset-erp-notices" class="pg-set-card">'));
+	$invoice = settings_accounting_open_test_invoice_card();
+
+	foreach (array('Customer accounts' => $accounts, 'Foreign currency' => $currency, 'Reminders and notices' => $notices, 'E-Invoice' => $invoice) as $row => $html) {
+		pg_assert_false(strpos($html, '<div class="switch">') !== false, $row . ': no Bootstrap switch');
+		pg_assert_false(strpos($html, 'popover') !== false, $row . ': no popover');
+		pg_assert_false(strpos($html, 'class="collapse-switcher"') !== false, $row . ': no switch folds a part away');
+	}
+
+	// Customer accounts: the limit as radio rows posting warn or block.
+	pg_assert_contains("pg_accounting_settings_choice('erp_credit_limit_mode', lang('A sale past a customer\\'s credit limit')", $accounts, 'the limit as radio rows');
+	pg_assert_false(strpos($accounts, 'name="erp_credit_limit_mode"') !== false, 'no select left');
+	pg_assert_contains("'value' => 'warn'", $accounts, 'warn still posted');
+	pg_assert_contains("'value' => 'block'", $accounts, 'block still posted');
+
+	foreach (array('erp_storefront_account_prices', 'erp_open_account_payment') as $name) {
+		pg_assert_contains("pg_accounting_settings_switch('" . $name . "'", $accounts, $name . ' a pg-switch');
+	}
+
+	// Foreign currency: the currencies and the exchange difference under the switch.
+	pg_assert_contains("pg_accounting_settings_switch('erp_fx_enabled'", $currency, 'the switch a pg-switch');
+	pg_assert_contains("pg_accounting_settings_switch('erp_fx_auto_diff'", $currency, 'the difference a pg-switch');
+	pg_assert_true(strpos($currency, "pg_accounting_settings_switch('erp_fx_enabled'") < strpos($currency, '$output_erp_fx_currencies'), 'the currencies under the switch');
+
+	// Reminders and notices: two groups, the channels ticked, Frequency and Hour side by side.
+	pg_assert_same(2, substr_count($notices, 'pg-group-label'), 'a group label for each part');
+
+	foreach (array('erp_overdue_notify_panel', 'erp_overdue_notify_email', 'erp_overdue_notify_push') as $name) {
+		pg_assert_contains("pg_accounting_settings_tick('" . $name . "'", $notices, $name . ' a tick');
+	}
+
+	foreach (array('erp_overdue_notify_customer', 'erp_notify_collections', 'erp_notify_low_stock', 'erp_notify_quote_expiry', 'erp_quote_expiry_followup') as $name) {
+		pg_assert_contains("pg_accounting_settings_switch('" . $name . "'", $notices, $name . ' a pg-switch');
+	}
+
+	pg_assert_true(preg_match('~<div class="row gy-5">\s*<div class="col-6">\s*<label class="form-label" for="erp_overdue_notify_frequency">.*?<div class="col-6">\s*<label class="form-label" for="erp_overdue_notify_hour">~s', $notices) === 1, 'Frequency and Hour side by side in one row');
+	pg_assert_true(strpos($notices, "pg_accounting_settings_switch('erp_notify_collections'") < strpos($notices, 'name="erp_notify_collection_min"'), 'the amount under its switch');
+	pg_assert_true(strpos($notices, "pg_accounting_settings_switch('erp_notify_quote_expiry'") < strpos($notices, 'name="erp_notify_quote_expiry_days"'), 'the days under their switch');
+
+	// E-Invoice: the hand-over and Paraşüt switches, Paraşüt's fields under it.
+	pg_assert_contains("pg_accounting_settings_switch('erp_edoc_autosend'", $invoice, 'the hand-over a pg-switch');
+	pg_assert_contains("pg_accounting_settings_switch('enable_parasut'", $invoice, 'Paraşüt a pg-switch');
+	pg_assert_true(strpos($invoice, "pg_accounting_settings_switch('enable_parasut'") < strpos($invoice, 'name="parasut_default_product_id"'), 'its fields under it');
+}

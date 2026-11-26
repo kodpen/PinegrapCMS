@@ -33,7 +33,7 @@ priority: 6
 ## Which steps? (one at a time: one file; tests red first)
 - SA1 (M) Done (#11875). The fold and the cut: the ERP card's fields into the six cards, the rows' order, names, icons, lines and pills as pure functions in `includes/fn/accounting_settings_fold.php` with `tests/settings_accounting_fold_test.php`; anchors and registry.
 - SA2 (M) Done (#11887): Documents, Sales and Web orders opened.
-- SA3 (M) after SA2: Customer accounts, Foreign currency, Reminders and notices opened; the six short rows' buttons and labels.
+- SA3 (M) Done (#11908): Customer accounts, Foreign currency, Reminders and notices opened; the short rows' buttons and labels.
 - SA4 (S) Close-out: `ui/settings-accounting.md`, the survey's lines corrected, this file deleted.
 
 Related: docs/memory/plans/settings-tidy-round.md, docs/memory/ui/settings-fold-rows.md, docs/memory/erp/erp-edoc-settings-card.md
