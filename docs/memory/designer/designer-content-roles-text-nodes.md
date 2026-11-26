@@ -13,8 +13,8 @@ description: Which designer nodes a manager or user may edit as text outside a m
 - Symptom fixed: a manager or user who double-clicked a block's button label, on the page or in an opened shared component, got "You can edit text, and anything inside an area marked as editable."; the panel had no Text row and the button was faded, while a semantic `<a class="btn">` beside it was editable (PR #1479).
 
 ## What does the code view offer a content role?
-- A text island only where `_sdCodeApplyText()` writes it back: `_sdCodeLockOf()` asks `_sdCodeTextKind(node) !== 'none'` too, so a content or semantic node. A btn or badge component prints its own label, so there it stays fully locked and a keystroke gets the lock toast; before, the island took it and the next redraw dropped it unsaved (PR #1479).
-- A designer's code view still takes a typed btn label and drops it at the redraw (no component text kind); the panel and the double-click save it.
+- A text island only where `_sdCodeApplyText()` writes it back: `_sdCodeLockOf()` asks `_sdCodeTextKind(node) !== 'none'` too, so a content or semantic node and a btn component that is a link or a `<button>` (text kind `inner`, its label printed as it is). A badge escapes its label and an `<input>` button's label is its `value`: those stay fully locked and a keystroke gets the lock toast; before PR #1479 the island took it and the next redraw dropped it unsaved.
+- Before the Code view bug hunt a btn had no text kind: a designer's typed label was dropped at the redraw and a content role's btn was fully locked ([[bug-hunt-areas-code-view]], #12006).
 
 ## Why not every component with a text prop?
 - An older opaque component (card, pricing, hero, features, still in trees saved before palette components were exploded) is edited in place through props the save does not take (`title`, `subtitle`, `btnText`). Offering it would show a change on the canvas that the save drops.

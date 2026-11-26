@@ -13,7 +13,7 @@ description: Typing into the designer's code view on an empty page: the empty bo
 
 ## What does the Edit switch do with text that is not on the page?
 - `_sdCodeHoldsUnapplied()` runs before the view switches off: what waits for the 400 ms timer is applied first. If the editor's text still differs from what the tree prints (`_sdCode.text`), the view stays on and a warning toast names the reason: HTML not finished yet (the span is still dirty), or text outside the page content.
-- A second switch within 6 s (`_SD_CODE_LEAVE_MS`) leaves the text out and switches off. A read-only session is never held.
+- A second switch within 6 s (`_SD_CODE_LEAVE_MS`) leaves the text out and switches off; typing between the two starts over (`_sdCodeOnChange()` clears `leaveAt`). A read-only session is never held.
 
 ## How was it checked?
 - `tests/designer_code_view_empty_page_test.php` cuts `_sdCodeDocument()` and `_sdCodeScopeOf()` and moves the ranges the way the facade does for one insertion (red on the old code).
