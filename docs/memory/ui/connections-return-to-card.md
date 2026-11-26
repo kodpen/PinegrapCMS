@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## What is it?
-- Step TR3a of `plans/settings-tidy-round.md` (#11862), the rule's return part (`plans/settings-crossings-rule.md`; owner poll 232, `workflow/decisions-made-product-114.md`): a lead carries its card, the page shows the way back and returns by itself once the service is done.
+- Built in #11862, the rule's return part (`settings-crossings-rule.md`; owner poll 232, `workflow/decisions-made-product-114.md`): a lead carries its card, the page shows the way back and returns by itself once the service is done.
 
 ## How does a lead name its card?
 - `pg_connections_lead_url($service, $category, $card, $anchor, $drawer)`: `connections.php?service=<key>&from=<category>%2F<card>[%2F<drawer>]#<anchor>`, registry keys, never an address. Every lead from a card uses it, in the same tab.
@@ -30,6 +30,6 @@ module: connections_screen
 - E-mail sending's "Set up the application on Connections first." opens Google's or Microsoft's page (`#connections-details`), not the list.
 - Backups' "Connected accounts" link became "Set up the {var:1} application": the drive's own page, which asks for the application (`connections-page-finishes.md`); Dropbox, with no page, its drawer on the list.
 - MCP servers' Manage in Connections opens in the same tab; with no connector picked, Open in Connections still opens the list's MCP group.
-- A box's set-up drawer on Mailboxes and Claude's set-up step 4 open the page in the same tab too (TR3b); what the pane held and the drawers open come back: `connections-lead-keeps-pane.md`.
+- A box's set-up drawer on Mailboxes and Claude's set-up step 4 open the page in the same tab too (#11880); what the pane held and the drawers open come back: `connections-lead-keeps-pane.md`.
 
 Tests: `tests/connections_back_test.php`.

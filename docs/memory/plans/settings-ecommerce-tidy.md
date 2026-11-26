@@ -1,11 +1,11 @@
 ---
 name: settings-ecommerce-tidy
-description: Plan (step TR4 of settings-tidy-round): Site Settings › Ecommerce redrawn as folded rows, its ten cards without popovers or plain radios, steps EC1 to EC6
+description: Plan (step TR4 of the settings tidy round): Site Settings › Ecommerce redrawn as folded rows, its ten cards without popovers or plain radios, steps EC1 to EC6
 priority: 6
 ---
 
 ## What is asked?
-- Owner (2026-11-21, 2026-11-26): old settings screens made modern, the tidy rounds going on (`settings-tidy-round.md`). Ecommerce is the oldest pane left: 127 fields in ten cards, switches that open popovers two deep, plain radios, one long scroll (`settings-tidy-census-order.md`).
+- Owner (2026-11-21, 2026-11-26): old settings screens made modern, the tidy rounds going on (`settings-tidy-census.md`). Ecommerce is the oldest pane left: 127 fields in ten cards, switches that open popovers two deep, plain radios, one long scroll (`settings-tidy-census-order.md`).
 
 ## What is there today? (`includes/settings/commerce.php`, 1,041 lines, read 2026-11-26)
 - Cards in this order: Store (15 fields), Shipping (12, with the carriers' fields drawn by `pg_carrier_api_settings_fields()`), Stock locations, Address Autocomplete (`pg_addr_settings_fields()`), Gift Cards & Rewards (13), Payment Methods (28, eleven radios), Reference Price, Affiliate Program, Referral programme, Product Feeds.
@@ -33,4 +33,4 @@ priority: 6
 ## What waits for the architect?
 - Seller identity is in General › Organization and again in Product feeds (`settings-tidy-census.md`): EC5 writes down what each is read for and asks before joining them.
 
-Related: docs/memory/plans/settings-tidy-round.md, docs/memory/ui/settings-fold-rows.md, docs/memory/ui/screen-composition-rules.md
+Related: docs/memory/plans/settings-tidy-census.md, docs/memory/ui/settings-fold-rows.md, docs/memory/ui/screen-composition-rules.md
