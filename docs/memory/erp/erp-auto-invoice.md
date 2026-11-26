@@ -4,7 +4,7 @@ description: An order's invoice issued on its own once it is paid or shipped (co
 ---
 
 ## What does the setting do?
-- ERP settings card, "The invoice of a web order" (PR #697): `config.erp_auto_invoice_on` (ENUM since 2026.4.4, `ERP_AUTO_INVOICE_ON`) is `off` (the order screen's Issue the Invoice, default), `order_paid` or `order_shipped`; any other value is stored as `off`.
+- Web orders row, "The invoice of a web order" (#697): `config.erp_auto_invoice_on` (ENUM since 2026.4.4, `ERP_AUTO_INVOICE_ON`) is `off` (the order screen's Issue the Invoice, default), `order_paid` or `order_shipped`; any other value is stored as `off`.
 - Two filters under it (11.0.58, PR #958): `erp_auto_invoice_min_total` (BIGINT, minor units; typed in whole units, 0-10,000,000) and `erp_auto_invoice_tax_number_only`, read by `erp_auto_invoice_filters()`.
 - Marketplace orders too: `erp_auto_invoice_marketplace` (11.0.62, default off), erp-auto-invoice-marketplace.md.
 - All are written only when the card posted the select.

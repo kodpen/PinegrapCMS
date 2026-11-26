@@ -9,8 +9,8 @@ priority: 6
 - It continues his request of 2026-11-21 (`settings-tidy-census.md`): contradictions fixed, scattered settings gathered, old screens made modern.
 
 ## What is there today?
-- Done since the survey: E-mail, Mailboxes, Assistants and agents, Features, Visitors and privacy, Bookings, Communication, Firewall and HTTPS, Accounts and sign-in, General, Appearance (`settings-tidy-census-order.md`).
-- Left by it: Ecommerce (127 fields), Accounting's ERP card, Updates and maintenance. They waited for the CX11 steps, which all landed by 2026-11-24 (`ui/connections-one-place.md`).
+- Done since the survey: E-mail, Mailboxes, Assistants and agents, Features, Visitors and privacy, Bookings, Communication, Firewall and HTTPS, Accounts and sign-in, General, Appearance (`settings-tidy-census-order.md`), Accounting (`ui/settings-accounting.md`).
+- Left by it: Ecommerce (127 fields), Updates and maintenance. They waited for the CX11 steps, which all landed by 2026-11-24 (`ui/connections-one-place.md`).
 - Keys moved to Connections, the behaviour stayed on the cards (owner polls 146, 149, 222). A card leads to its service's page and the page leads back; how each end hands over was written service by service, in seventeen steps, and nobody has read them as one path.
 
 ## What must it never do?
@@ -25,7 +25,7 @@ priority: 6
 - TR3c Done #11894 (`ui/connections-page-finishes.md`): the page finishes it: the application's fields on the page of a Google or Microsoft account service, the drives' two answers made one, Sign in with Microsoft given its anchor and button (paths 1 to 6).
 - TR3d Done #11911 (`ui/connections-list-opens-card.md`): no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.
 - TR4 Done by the architect (2026-11-26): Ecommerce's plan is `settings-ecommerce-tidy.md`, steps EC1 to EC6, free beside TR3 (another file).
-- TR5 Done by the architect (2026-11-26): Accounting's plan is `settings-accounting-tidy.md` (SA1 to SA4), Updates and maintenance's `settings-maintenance-tidy.md` (SM1 to SM4; SM3 after TR3a). The two S3 sets stay apart.
+- TR5 Done by the architect (2026-11-26): Accounting's plan (SA1 to SA4) is done (`ui/settings-accounting.md`), Updates and maintenance's `settings-maintenance-tidy.md` (SM1 to SM4; SM3 after TR3a). The two S3 sets stay apart.
 - TR6 (S) Close-out: the rule into `ui/`, the survey files corrected or deleted, this file deleted.
 
 ## What about the other panes?

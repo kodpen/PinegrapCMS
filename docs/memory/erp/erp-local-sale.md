@@ -5,7 +5,7 @@ description: Counter sale (add_order.php) and the ERP: customer in the session, 
 
 ## How is the customer of a counter sale kept?
 - `initialize_order()` writes the operator's contact into `orders.contact_id` at every cart change. So the chosen customer is NOT put on the order; it lives in `$_SESSION['ecommerce']['local_sale_customer']` (`local_sale_customer()`), and only at completion are `orders.contact_id` / `erp_account_id` written. No customer → `contact_id = 0` (the sale does not go under the operator's name).
-- Walk-in account: `config.erp_walkin_account_id` (4.59, INT UNSIGNED, `ERP_WALKIN_ACCOUNT_ID`, ERP settings card). When none is named, the first sale that needs one opens (or reuses) an active customer account titled "Retail customer" in the operator's language and names it on the card (`local_sale_walkin_account()`, logged), so a counter sale is never left without an invoice.
+- Walk-in account: `config.erp_walkin_account_id` (4.59, INT UNSIGNED, `ERP_WALKIN_ACCOUNT_ID`, Sales row). When none is named, the first sale that needs one opens (or reuses) an active customer account titled "Retail customer" in the operator's language and names it on the row (`local_sale_walkin_account()`, logged), so a counter sale is never left without an invoice.
 - An account opened at the till (`local_sale_quick_account()`) goes through `erp_account_quick_create()`, as on the document screens.
 
 ## How is VAT set on a counter-sale line?
