@@ -5,7 +5,7 @@ description: The line after a voice request that was written out (ws_voice_heard
 
 ## What symptom did it fix?
 - On dev (2026-11-26) a voice message to `@ai` whose browser transcript asked "can you hear me?" got the answer that Pinegrap AI is text-only and cannot process voice.
-- The transcript was in the request block (`[voice message, machine transcript: …]`), but nothing told the model that this is how it hears voice messages, so it answered the literal question with no.
+- The transcript was in the request block (`[voice message, machine transcript: …]`), but nothing told the model that this is how it hears voice messages, so it answered the literal question with no. Fixed by the heard line (#11918).
 
 ## What does the assistant read now?
 - After the request block, when the request is a recording written out, `ws_ai_briefing()` and `ws_mcp_ask_start()` add `ws_voice_request_heard_line($message)` outside the data blocks, as the site's own line.
