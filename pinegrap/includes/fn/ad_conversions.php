@@ -1397,8 +1397,30 @@ function pg_ad_conversion_add_to_cart($order_id, $sku, $quantity, $unit_price)
 }
 
 /**
+ * What a begin checkout says: the cart's lines and their value (price times
+ * quantity, minor units). The order's total column is written only when the
+ * payment starts or the order completes, after the payment step, so it is
+ * not read. Pure.
+ *
+ * @param array  $lines    product_name, quantity, price
+ * @param string $currency
+ * @param int    $time
+ * @return array as pg_ad_conversion_purchase_detail()
+ */
+function pg_ad_conversion_begin_checkout_detail(array $lines, $currency, $time)
+{
+    $value = 0;
+
+    foreach ($lines as $line) {
+        $value += (int) round((float) ($line['price'] ?? 0)) * (int) ($line['quantity'] ?? 0);
+    }
+
+    return pg_ad_conversion_purchase_detail($value, $currency, '', $time, $lines);
+}
+
+/**
  * Begin checkout, at the payment step: once per order (the event id is the
- * order's), with the cart's lines and total.
+ * order's), with the cart's lines and their value.
  *
  * @param int $order_id
  * @return void
@@ -1424,10 +1446,7 @@ function pg_ad_conversion_begin_checkout($order_id)
         $lines[] = $line;
     }
 
-    $result = db_q("SELECT total FROM orders WHERE id = ?", array((int) $order_id));
-    $row = $result ? mysqli_fetch_row($result) : null;
-    $total = (int) round((float) ($row[0] ?? 0));
-    $detail = pg_ad_conversion_purchase_detail($total, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', '', time(), $lines);
+    $detail = pg_ad_conversion_begin_checkout_detail($lines, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', time());
 
     pg_ad_conversion_visitor_write('begin_checkout', array_fill_keys($services, pg_ad_conversion_visitor_event_id('begin_checkout', $order['reference_code'])), (int) $order_id, $detail);
 }
