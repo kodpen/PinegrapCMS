@@ -257,3 +257,88 @@ function test_designer_a11y_view_reads_shared_component_content()
 
 	pg_assert_same(array(false, true, true, false, false), $res, 'only the editor\'s own elements that hold nothing of the page are left out');
 }
+
+// Fakes for listen(): event targets that count their listeners, and a
+// MutationObserver that keeps what it watches so a test can call it.
+function designer_a11y_view_fake_listen()
+{
+	return 'function Target() { this.on = {}; }' . "\n"
+		. 'Target.prototype.addEventListener = function (t, f) { (this.on[t] = this.on[t] || []).push(f); };' . "\n"
+		. 'Target.prototype.removeEventListener = function (t, f) { this.on[t] = (this.on[t] || []).filter(function (g) { return g !== f; }); };' . "\n"
+		. 'Target.prototype.fire = function (t, e) { (this.on[t] || []).slice().forEach(function (f) { f(e || {}); }); };' . "\n"
+		. 'Target.prototype.count = function () { var o = this.on; return Object.keys(o).reduce(function (n, k) { return n + o[k].length; }, 0); };' . "\n"
+		. 'var observers = [];' . "\n"
+		. 'function MutationObserver(cb) { this.cb = cb; this.seen = []; this.off = false; observers.push(this); }' . "\n"
+		. 'MutationObserver.prototype.observe = function (n, o) { this.seen.push({ n: n, o: o }); };' . "\n"
+		. 'MutationObserver.prototype.disconnect = function () { this.off = true; };' . "\n"
+		. 'function watching(n) { return observers.filter(function (m) { return !m.off && m.seen.some(function (s) { return s.n === n; }); })[0]; }' . "\n"
+		. 'var window = new Target(), document = new Target();' . "\n"
+		. 'var calls = { rest: 0, soon: 0 };' . "\n"
+		. 'function rest() { calls.rest++; } function soon() { calls.soon++; }' . "\n"
+		. 'function onKey() {} function onCanvasMove() {} function onCanvasOut() {} function onDown() {} function onResize() {}' . "\n";
+}
+
+// Another screen size resizes the canvas window; a zoom writes the canvas's
+// <html> and Fit the frame's box: each moves the marks and reads the page
+// again, since what shows and where differ at another width.
+function test_designer_a11y_view_follows_screen_size_zoom_and_fit()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('chrome', 'inChrome', 'pageChange', 'relayout', 'listen'),
+		designer_a11y_view_fake_dom() . designer_a11y_view_fake_listen()
+		. 'var box = new Target(); var win = new Target(); win.frameElement = { parentNode: box };' . "\n"
+		. 'var html = new Target(); var body = new Target();' . "\n"
+		. 'var doc = new Target(); doc.defaultView = win; doc.documentElement = html; doc.body = body;' . "\n"
+		. 'var V = { doc: doc };' . "\n"
+		. 'listen(true);' . "\n"
+		. 'var out = {};' . "\n"
+		. 'win.fire("resize"); out.size = [calls.soon, calls.rest];' . "\n"
+		. 'calls = { rest: 0, soon: 0 }; watching(html).cb([{ type: "attributes", target: html }]); out.zoom = [calls.soon, calls.rest];' . "\n"
+		. 'calls = { rest: 0, soon: 0 }; watching(box).cb([{ type: "attributes", target: box }]); out.fit = [calls.soon, calls.rest];' . "\n"
+		. 'out.watched = [watching(html).seen[0].o.attributeFilter, watching(box).seen[0].o.attributeFilter];' . "\n"
+		. 'listen(false);' . "\n"
+		. 'out.left = [win.count(), doc.count(), window.count(), document.count(), observers.filter(function (m) { return !m.off; }).length];' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, 1), $res['size'], 'another screen size moves the marks and reads the page again');
+	pg_assert_same(array(1, 1), $res['zoom'], 'a zoom moves the marks');
+	pg_assert_same(array(1, 1), $res['fit'], 'Fit moves the marks');
+	pg_assert_same(array(array('style'), array('style')), $res['watched'], 'only the style of <html> and of the frame\'s box are watched');
+	pg_assert_same(array(0, 0, 0, 0, 0), $res['left'], 'nothing is left listening once the view is off');
+}
+
+// The editor writes its own chrome in the canvas on every hover and scroll
+// (a toolbar filled, a chip placed): that is no change of the page, and the
+// page is not read again for it.
+function test_designer_a11y_view_ignores_the_editors_own_changes()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('chrome', 'inChrome', 'pageChange', 'relayout', 'listen'),
+		designer_a11y_view_fake_dom() . designer_a11y_view_fake_listen()
+		. 'var btn = new El("button", {}); var tb = new El("div", { "class": "sd-tb" }, [btn]);' . "\n"
+		. 'var a = new El("a", { "href": "/" }); var wrap = new El("div", { "class": "sd-wrap", "data-sd-id": "n1" }, [tb, a]);' . "\n"
+		. 'var text = { nodeType: 3, parentElement: a };' . "\n"
+		. 'var win = new Target(); win.frameElement = { parentNode: new Target() };' . "\n"
+		. 'var body = new Target(); var doc = new Target(); doc.defaultView = win; doc.documentElement = new Target(); doc.body = body;' . "\n"
+		. 'var V = { doc: doc };' . "\n"
+		. 'listen(true);' . "\n"
+		. 'var mo = watching(body), out = [];' . "\n"
+		. 'function n(recs) { calls.rest = 0; mo.cb(recs); return calls.rest; }' . "\n"
+		. 'out.push(n([{ type: "childList", target: tb, addedNodes: [btn], removedNodes: [] }]));' . "\n"
+		. 'out.push(n([{ type: "attributes", target: tb }]));' . "\n"
+		. 'out.push(n([{ type: "childList", target: wrap, addedNodes: [tb], removedNodes: [] }]));' . "\n"
+		. 'out.push(n([{ type: "attributes", target: a }]));' . "\n"
+		. 'out.push(n([{ type: "characterData", target: text }]));' . "\n"
+		. 'out.push(n([{ type: "childList", target: wrap, addedNodes: [], removedNodes: [a] }]));' . "\n"
+		. 'out.push(n([{ type: "attributes", target: tb }, { type: "attributes", target: a }]));' . "\n"
+		. 'out.push(mo.seen[0].o.attributeFilter.indexOf("contenteditable") !== -1);' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, 0, 0, 1, 1, 1, 1, true), $res, 'a toolbar filled or placed reads nothing; a change of the page is read');
+}

@@ -803,20 +803,57 @@ StyleDesigner.definePart('accessview', function (K) {
         drawMarks();
     }
 
+    // Whether an element or text sits in the editor's chrome.
+    function inChrome(n) {
+        for (var el = (n && n.nodeType === 1) ? n : (n ? n.parentElement : null); el; el = el.parentElement) {
+            if (chrome(el)) return true;
+        }
+        return false;
+    }
+
+    // Whether a change seen in the canvas is the page's. The editor writes
+    // its own chrome on every hover and scroll (a toolbar filled, a chip
+    // placed); reading the whole page again for that would cost a read per
+    // pointer move.
+    function pageChange(rec) {
+        if (inChrome(rec.target)) return false;
+        if (rec.type !== 'childList') return true;
+        var nodes = Array.prototype.slice.call(rec.addedNodes || []).concat(Array.prototype.slice.call(rec.removedNodes || []));
+        return !nodes.length || nodes.some(function (n) { return n.nodeType !== 1 || !chrome(n); });
+    }
+
+    // The canvas laid out again with no change of its page: another screen
+    // size, a zoom, Fit. The marks move now, and the page is read again
+    // once it rests, since what shows and where differ at another width.
+    function relayout() {
+        soon();
+        rest();
+    }
+
     function listen(on) {
         var doc = V.doc;
         var win = doc.defaultView;
         var fn = on ? 'addEventListener' : 'removeEventListener';
         if (on) {
-            V.mo = new MutationObserver(rest);
-            if (doc.body) V.mo.observe(doc.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['alt', 'aria-label', 'aria-labelledby', 'aria-hidden', 'aria-level', 'hidden', 'href', 'role', 'style', 'tabindex', 'title', 'disabled', 'inert', 'open', 'for', 'id'] });
-        } else if (V.mo) {
-            V.mo.disconnect();
+            V.mo = new MutationObserver(function (recs) {
+                if (recs.some(pageChange)) rest();
+            });
+            if (doc.body) V.mo.observe(doc.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['alt', 'aria-label', 'aria-labelledby', 'aria-hidden', 'aria-level', 'hidden', 'href', 'role', 'style', 'tabindex', 'title', 'disabled', 'inert', 'open', 'for', 'id', 'contenteditable'] });
+            // A zoom is written on the canvas's <html>, Fit and a screen
+            // size on the frame's box; neither scrolls the canvas.
+            V.mz = new MutationObserver(relayout);
+            if (doc.documentElement) V.mz.observe(doc.documentElement, { attributes: true, attributeFilter: ['style'] });
+            var box = (win && win.frameElement) ? win.frameElement.parentNode : null;
+            if (box) V.mz.observe(box, { attributes: true, attributeFilter: ['style'] });
+        } else {
+            if (V.mo) V.mo.disconnect();
+            if (V.mz) V.mz.disconnect();
             V.mo = null;
+            V.mz = null;
         }
         if (win) {
             win[fn]('scroll', soon, { passive: true, capture: true });
-            win[fn]('resize', soon);
+            win[fn]('resize', relayout);
             win[fn]('keydown', onKey, true);
         }
         doc[fn]('mousemove', onCanvasMove, true);
@@ -848,7 +885,7 @@ StyleDesigner.definePart('accessview', function (K) {
         var see = V ? V.see : '';
         hide();
         var kind = host.state.kind;
-        V = { host: host, doc: host.doc, kind: KINDS.indexOf(kind) === -1 ? '' : kind, see: see, seeFrame: null, r: null, named: null, narrow: narrow(), layer: null, card: null, tip: null, pop: null, popRef: null, menu: null, pill: null, tipFor: null, frame: 0, rest: 0, mo: null };
+        V = { host: host, doc: host.doc, kind: KINDS.indexOf(kind) === -1 ? '' : kind, see: see, seeFrame: null, r: null, named: null, narrow: narrow(), layer: null, card: null, tip: null, pop: null, popRef: null, menu: null, pill: null, tipFor: null, frame: 0, rest: 0, mo: null, mz: null };
         listen(true);
         if (see) applySee();
         refresh();
