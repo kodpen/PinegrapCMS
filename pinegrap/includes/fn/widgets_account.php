@@ -1122,7 +1122,10 @@ function pg_sw_address_book_fields()
 // ^^__recipient_edit_url^^, ^^__recipient_remove_url^^.
 //
 // Visibility flags: is_signed_in, is_signed_out, has_recipients,
-// no_recipients, is_editing, is_adding. Tokens: ^^__site_name^^,
+// no_recipients, is_editing, is_adding, has_address_type (the address type
+// switch is on). A link bound to a page ('__page_link', a converted classic
+// layout's "What is this?") gets the page's address; with no page it goes.
+// Tokens: ^^__site_name^^,
 // ^^__recipient_count^^, ^^__add_url^^ (the empty form),
 // ^^__my_account_url^^, ^^__login_url^^, ^^__not_logged_in^^.
 // Errors and the notice: liveform 'update_address_book'.
@@ -1137,7 +1140,7 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
     if (!is_array($tree)) return '';
 
     $no_state = array('is_signed_in' => false, 'is_signed_out' => true, 'has_recipients' => false,
-                      'no_recipients' => true, 'is_editing' => false, 'is_adding' => false);
+                      'no_recipients' => true, 'is_editing' => false, 'is_adding' => false, 'has_address_type' => false);
     if (!_pg_acct_signed_in()) {
         return _pg_acct_render_signed_out($tree, $cfg, $no_state, array('__my_account_url', '__add_url'), 'update_address_book');
     }
@@ -1194,8 +1197,14 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
         'no_recipients'  => count($recipients) === 0,
         'is_editing'     => $editing !== null,
         'is_adding'      => $editing === null,
+        'has_address_type' => $type_on,
     ));
-    _pg_member_drop_empty_links($tree, array('__my_account_url' => $account_url, '__login_url' => ''));
+    // Links to a page of the site: each its own token, the pages read once.
+    $page_links = pg_sw_page_link_bindings($tree);
+    pg_sw_page_link_resolve($page_links);
+    $drop_links = array('__my_account_url' => $account_url, '__login_url' => '');
+    foreach ($page_links as $token => $link) $drop_links[$token] = (string)$link['base'];
+    _pg_member_drop_empty_links($tree, $drop_links);
     pg_cf_link_labels($tree);
     _pg_inject_messages_node($tree, 'update_address_book');
 
@@ -1256,7 +1265,7 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
         '__recipient_count' => (string)count($recipients),
         '__add_url'         => h($self),
         '__my_account_url'  => h($account_url),
-    ));
+    ) + pg_sw_page_link_values($page_links, array(), array(), array()));
 }
 
 // ============================================================================

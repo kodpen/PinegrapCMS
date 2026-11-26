@@ -15,7 +15,7 @@ description: Plan legacy-editable, steps LE1 to LE12 with size and order: the me
 - LE5b (M) done (#11290) the run's `types` step, a "Page types" row (`designer/legacy-types-step.md`).
 - LE6 (M) done (#11308) `pg_layout_convert()`, `pg_layout_piece_map()`, a file page dropping nothing converts in the run; form list and item view.
 - LE6b (M) done (#11331) the Region panel's dropped list and confirm, its Convert on a file page.
-- LE7 (M) done (#11335) order form. LE8a-c done (#11362 gallery, #11393 catalog, #11436 catalog detail). LE9a-e done (#11466 cart, #11486 express order, #11628 the three steps, #11667 order preview, #11688 view order). LE10a done (#11710) login, password pages, profile, e-mail preferences. LE10b done (#11730) registration, membership entrance. LE10c (M) my account, address book (its address type). LE10d (S) search results.
+- LE7 (M) done (#11335) order form. LE8a-c done (#11362 gallery, #11393 catalog, #11436 catalog detail). LE9a-e done (#11466 cart, #11486 express order, #11628 the three steps, #11667 order preview, #11688 view order). LE10a done (#11710) login, password pages, profile, e-mail preferences. LE10b done (#11730) registration, membership entrance. LE10c done (#11748) my account, address book (its address type). LE10d (S) search results.
 - LE11 (S) done (#11309) the "Designs moved earlier" card, its dry run drawer and run.
 - LE12 (S) close-out: `designer/legacy-editable-overview.md` written with the last numbers; `designer/legacy-overview.md`, `classic-style-to-design.md`, `canvas-closed-blocks-regions.md` and `layout-widget-offer.md` corrected; this plan's five files deleted; the changelog `[NEW]` line named in its PR.
 
