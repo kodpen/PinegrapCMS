@@ -97,6 +97,18 @@ function erp_edoc_parasut_info()
 }
 
 /**
+ * Test or live, for the screens: a document sent while the site is
+ * connected to Paraşüt's test environment (staging) is not a real one
+ * (parasut_environment_mark()).
+ *
+ * @return array ['is_test' => bool, 'label' => string]
+ */
+function erp_edoc_parasut_environment()
+{
+    return parasut_environment_mark(parasut_environment(), parasut_devhub_connection());
+}
+
+/**
  * Connected while a token is kept that works or can be renewed, or the
  * user name and password grant can fetch one (parasut_connection_status()).
  */

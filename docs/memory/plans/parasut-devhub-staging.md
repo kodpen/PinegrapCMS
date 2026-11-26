@@ -20,5 +20,5 @@ priority: 6
 - Every text through `lang()` with `tr_add.php`; the look from the Design examples screen.
 
 ## Steps
-- PS1 (S): the row, the provider's hosts, the select and its read-only state, the pill. Tests, red first: the authorize and token addresses for each environment, the select's two states, the pill only when connected in staging, the older way untouched. What no test reaches is said in the PR: a connect against Paraşüt's staging.
+- PS1 (S, done #11819): the row, the provider's hosts, the select and its read-only state, the pill. Tests, red first: the authorize and token addresses for each environment, the select's two states, the pill only when connected in staging, the older way untouched. What no test reaches is said in the PR: a connect against Paraşüt's staging.
 - Claim as `[plan:parasut-devhub-staging] PS1 — test environment`. When PS1 has landed and dev is connected with the staging client, the facts go into `erp/erp-parasut-devhub-connection.md` and `erp-parasut-devhub-client.md` and this plan is deleted.

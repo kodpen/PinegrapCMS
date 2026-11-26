@@ -311,7 +311,21 @@ function _parasut_base()
     // sandbox offered to customers: it does not answer to a merchant's
     // credentials, and because the OAuth call goes through here too, turning the
     // switch on stopped the integration working at all.
-    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : 'https://api.parasut.com';
+    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : parasut_api_base(parasut_environment());
+}
+
+/**
+ * The API address of an environment. Paraşüt's pages name no API address of
+ * its own for the test environment (staging): their examples read
+ * api.parasut.com for both, so both answer it until a connect with a staging
+ * client shows otherwise. Pure.
+ *
+ * @param string $environment  'live' | 'staging'
+ * @return string
+ */
+function parasut_api_base($environment)
+{
+    return 'https://api.parasut.com';
 }
 
 /**
@@ -1829,6 +1843,126 @@ function parasut_devhub_after_connect($connection_id)
         'email' => $me['email'],
         'replaced_company_id' => $company['replaced'],
     ));
+}
+
+/**
+ * The environment a stored value names: 'staging' for the word staging,
+ * 'live' for anything else, no row included. Pure.
+ *
+ * @param mixed $stored
+ * @return string  'live' | 'staging'
+ */
+function parasut_environment_value($stored)
+{
+    return (is_string($stored) && (trim($stored) === 'staging')) ? 'staging' : 'live';
+}
+
+/**
+ * The site's Paraşüt environment for a client from the Developer Portal,
+ * kept in the config_text row parasut_environment (no row is live).
+ *
+ * @return string  'live' | 'staging'
+ */
+function parasut_environment()
+{
+    return parasut_environment_value(function_exists('pg_config_text') ? pg_config_text('parasut_environment') : '');
+}
+
+/**
+ * Where a client from the Developer Portal signs in: Paraşüt's OpenID
+ * Connect server of the environment, id.parasut.com for live and
+ * id-staging.parasut.com for staging, on the same paths. Pure.
+ *
+ * @param string $environment  'live' | 'staging'
+ * @return array ['authorize' => string, 'token' => string, 'issuer' => string]
+ */
+function parasut_sign_in($environment)
+{
+    $issuer = (($environment === 'staging') ? 'https://id-staging.parasut.com' : 'https://id.parasut.com') . '/realms/parasut';
+
+    return array(
+        'authorize' => $issuer . '/protocol/openid-connect/auth',
+        'token' => $issuer . '/protocol/openid-connect/token',
+        'issuer' => $issuer,
+    );
+}
+
+/**
+ * The Environment select of the portal client's boxes on Paraşüt's page of
+ * Connections. While the site holds a connection it is read-only: a token of
+ * one environment is never used against the other. Pure.
+ *
+ * @param string $environment  parasut_environment()
+ * @param bool   $locked       the site holds a portal connection
+ * @return string
+ */
+function parasut_environment_field_html($environment, $locked)
+{
+    $options = '';
+
+    foreach (array('live' => lang('Live'), 'staging' => lang('Test (staging)')) as $value => $label) {
+        $options .= '<option value="' . $value . '"' . (($environment === $value) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    return '
+			<div>
+				<label class="pg-field-label" for="parasut_environment">' . h(lang('Environment')) . '</label>
+				<select class="pg-input" id="parasut_environment" name="parasut_environment"' . ($locked ? ' disabled aria-describedby="parasut_environment_locked"' : '') . '>' . $options . '</select>
+				<div class="pg-field-help">' . h(lang('A test client from Paraşüt\'s Developer Portal works only with the test environment. Documents made there are not real.')) . '</div>
+				' . ($locked ? '<div class="pg-field-help" id="parasut_environment_locked">' . h(lang('Disconnect to change the environment.')) . '</div>' : '') . '
+			</div>';
+}
+
+/**
+ * The environment a Save writes, or null when it writes none: the select was
+ * not posted, or the site holds a portal connection (the select is read-only
+ * then). Pure.
+ *
+ * @param mixed      $posted      the select as posted
+ * @param array|null $connection  parasut_devhub_connection()
+ * @return string|null  'live' | 'staging' | null
+ */
+function parasut_environment_save_value($posted, $connection)
+{
+    if (!is_string($posted) || is_array($connection)) {
+        return null;
+    }
+
+    return parasut_environment_value($posted);
+}
+
+/**
+ * Saves the posted environment while the site is not connected.
+ *
+ * @param mixed $posted
+ * @return bool  whether the environment changed
+ */
+function parasut_environment_save($posted)
+{
+    $value = parasut_environment_save_value($posted, parasut_devhub_connection());
+
+    if (($value === null) || ($value === parasut_environment())) {
+        return false;
+    }
+
+    return pg_config_text_save('parasut_environment', ($value === 'staging') ? 'staging' : '');
+}
+
+/**
+ * The test environment's mark, in the shape of erp_edoc_environment(): only
+ * while the site is connected in staging, so a test document is never taken
+ * for a real one. Pure.
+ *
+ * @param string     $environment  parasut_environment()
+ * @param array|null $connection   parasut_devhub_connection()
+ * @return array ['is_test' => bool, 'label' => string]
+ */
+function parasut_environment_mark($environment, $connection)
+{
+    $is_test = ($environment === 'staging') && is_array($connection)
+        && ((string) ($connection['status'] ?? '') === 'active');
+
+    return array('is_test' => $is_test, 'label' => $is_test ? lang('Test environment') : '');
 }
 
 /**

@@ -1035,6 +1035,7 @@
     "Disconnect Google": "Google Bağlantısını Kes",
     "Disconnect Microsoft": "Microsoft Bağlantısını Kes",
     "Disconnect my account": "Hesabımın bağlantısını kes",
+    "Disconnect to change the environment.": "Ortamı değiştirmek için önce bağlantıyı kesin.",
     "Disconnect your own account from @{var:1}? Calls that wait for your approval cannot run until you connect it again.": "Kendi hesabınızın @{var:1} bağlantısı kesilsin mi? Onayınızı bekleyen çağrılar, yeniden bağlayana kadar çalışamaz.",
     "Disconnect {var:1}": "{var:1} Bağlantısını Kes",
     "Disconnect {var:2} from {var:1}? {var:1} can no longer sign in with {var:2} until they connect it again themselves.": "{var:2} bağlantısı {var:1} hesabından kaldırılsın mı? {var:1}, bağlantıyı kendisi yeniden kurana kadar {var:2} ile giriş yapamaz.",
