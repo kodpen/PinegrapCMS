@@ -1586,6 +1586,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone
+- workflow/bug-hunt-areas-agent-guide.md: The bug hunt in the AI agent guide and the refused calls (built in #10709 to #11236), PR #11805: the faults fixed, what was read clean and what was seen and left
 - workflow/bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left
 - workflow/bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run
 - workflow/bug-hunt-areas-application-review.md: Bug hunt of the application review desk (Forms › Application programmes, named by the architect 2026-11-26, request 3016): five faults fixed in #11757, what was read clean, what was left
@@ -1595,6 +1596,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
 - workflow/bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left
 - workflow/bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean
+- workflow/bug-hunt-areas-flow-waits.md: The bug hunt in Workspace flows that wait, the run side (architect 2026-11-26, request 3068): one fault fixed (the claim time a waiting box counts from), what was read clean, what was left
 - workflow/bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left
 - workflow/bug-hunt-areas-marketplace-repricer.md: The bug hunt in the marketplace repricer RP1 to RP5 (architect, 2026-11-26, request 3034): what was fixed, what was read clean, what is left
 - workflow/bug-hunt-areas-my-library.md: Bug hunt of the designer's My library (2026-11-26): an item saved, inserted as a copy, managed, exported and imported as a file; what was fixed, what read clean, what was left
@@ -1714,6 +1716,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-item-tags.md: A tag in a channel item asks the tagged assistant or wakes the tagged agent; outside a message body (polls, tasks, shared notes, table cells) only in agent channels, by managers
 - workspace/channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2, #11617): agent faces in the head; People, the agents block, Guests in Channel info; last seen for a manager
 - workspace/channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep
+- workspace/channel-memory-note.md: The system note when a channel's or the general memory changes (#10546): text, writer, the burst rule, the write path, no agent woken
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/channel-note-move.md: Move to this channel (ws_note_move(), POST /workspace/notes/{id}/move) makes a person's note the channel's; Copy to my notes (ws_note_copy_mine()) is the way back
 - workspace/channel-note-owned.md: A channel's note (ws_notes.owner_channel_id): access from the channel, off My Notes and its limit (ws_note_own_sql(), guard test), WS_NOTE_CHANNEL_LIMIT, who deletes it, deleted with its channel
