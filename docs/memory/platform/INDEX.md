@@ -165,6 +165,7 @@
 - office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
 - office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
+- office-docx-add-delete.md: Adding a paragraph after another and deleting one in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the bar's buttons, the save entries, the kind a new paragraph takes, the refusals
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals

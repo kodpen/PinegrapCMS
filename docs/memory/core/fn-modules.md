@@ -301,6 +301,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office`: [[office-csv-preview]], [[office-ods-preview]], [[office-pptx-preview]], [[office-sheet-format-controls]], [[office-sheet-tools]], [[office-xls-preview]]
 - `office_docx_format`: [[office-docx-format]]
 - `office_docx_kind`: [[office-docx-paragraph-kind]]
+- `office_docx_paragraphs`: [[office-docx-add-delete]]
 - `office_format`: [[office-sheet-format]]
 - `office_new`: [[office-new-files]]
 - `office_sheets`: [[office-sheets]]
