@@ -8,7 +8,7 @@ priority: 6
 - Owner (2026-11-26, agent channel poll 235, message 14401): all eight abilities offered for the two editors (`workflow/decisions-made-product-115.md`). This plan holds the document's four: format, link, table, picture.
 
 ## When does it start?
-- After OP3 of `plans/office-document-page.md`: every step draws on that plan's page and joins its Undo. Until then no step is free: the architect marks lines `free` when OP3 has landed.
+- After OP3 of the document page (PR #11963; the page `platform/office-docx-page.md`, its Undo `platform/office-docx-undo.md`): every step draws on that page and joins its Undo. Until then no step is free: the architect marks lines `free` when OP3 has landed.
 
 ## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
 - DA1 (M, `includes/fn/office_docx_format.php`): the format entry also takes a text colour, a highlight (Word's own highlight names) and a font size (8 to 72 points) on selected text, split and joined as bold is; a paragraph entry takes its alignment (start, centre, end, justified). The reader gives them in the marks. Tests as for bold: read back, an untouched paragraph byte for byte.
@@ -21,8 +21,8 @@ priority: 6
 - DA8 (S) Close-out: `platform/office-docx-format.md` and `office-overview.md` corrected, new `platform/office-docx-links.md`, `office-docx-tables.md` and `office-docx-pictures.md`; this file deleted.
 
 ## What does every step keep?
-- What `plans/office-document-page.md` keeps: Save a button, no library, no schema, every text through `lang()`, look A.
+- What the document page keeps (`platform/office-overview.md`): Save a button, no library, no schema, every text through `lang()`, look A.
 - A paragraph the editor refuses today stays refused (`platform/office-paragraph-edits.md`); a file the writer cannot carry safely is refused with its reason.
 - DA2, DA3, DA5 and DA7 are tried in a browser on a sandbox, in the file window and a channel's preview, at 1440 and 390 px. The PR says what was tried.
 
-Related: docs/memory/plans/office-document-page.md, docs/memory/platform/office-docx-format.md
+Related: docs/memory/platform/office-docx-page.md, docs/memory/platform/office-docx-format.md

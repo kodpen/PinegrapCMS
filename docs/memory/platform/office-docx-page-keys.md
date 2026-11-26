@@ -19,4 +19,4 @@ description: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter 
 - Tried there: split in a bold run, Enter at an end and after a heading, Backspace and Delete joins, the cell, locked and last-paragraph refusals and the fallback, arrows past a locked one, Tab, three-click typing, typing over a locked paragraph (refused), bold over two paragraphs, Ctrl+A underline, Delete, reset.
 - The edits were saved by `pg_office_docx_save()` and read back as typed. Not tried on a sandbox's file window or channel preview, nor in Firefox or Safari.
 
-Related: docs/memory/platform/office-docx-undo.md, docs/memory/platform/office-docx-page.md, docs/memory/platform/office-docx-add-delete.md, docs/memory/plans/office-document-page.md
+Related: docs/memory/platform/office-docx-undo.md, docs/memory/platform/office-docx-page.md, docs/memory/platform/office-docx-add-delete.md
