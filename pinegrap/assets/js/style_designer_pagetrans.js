@@ -85,17 +85,17 @@ StyleDesigner.definePart('pagetrans', function (K) {
         h += '<div class="btn-group btn-group-sm flex-wrap" role="radiogroup" aria-label="' + esc(_sdT('Page transition')) + '">';
         [['', _sdT('None'), 'bi-dash-circle'], ['fade', _sdT('Fade'), 'bi-circle-half'], ['slide', _sdT('Slide'), 'bi-arrow-left-right']].forEach(function (o) {
             var on = kind === o[0];
-            h += '<button type="button" class="btn btn-outline-light' + (on ? ' active' : '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '" data-pt-kind="' + o[0] + '">' +
+            h += '<button type="button" class="btn btn-outline theme-secondary' + (on ? ' active' : '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '" data-pt-kind="' + o[0] + '">' +
                 '<span class="bi ' + o[2] + ' me-1" aria-hidden="true"></span>' + esc(o[1]) + '</button>';
         });
         h += '</div>';
         if (!page) {
-            h += '<p class="sd-th-hint mt-2">' + esc(_sdT('None: a page opens as before.')) + '</p>';
+            h += '<p class="sd-th-hint mt-3">' + esc(_sdT('None: a page opens as before.')) + '</p>';
             host.el.innerHTML = h;
             bind(host, page);
             return;
         }
-        h += '<p class="sd-th-hint mt-2">' + esc(kind === 'fade'
+        h += '<p class="sd-th-hint mt-3">' + esc(kind === 'fade'
             ? _sdT('The old page fades out as the new one fades in.')
             : _sdT('The new page comes in from one side while the old one leaves the other way.')) + '</p>';
         h += '<div class="sd-pt-fields">';
@@ -260,7 +260,7 @@ StyleDesigner.definePart('pagetrans', function (K) {
             h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
                 esc(_sdT('An element with the same name on the page that opens takes this one\'s place in one move.')) + '</div></div>';
             if (all[name] && all[name].here > 1) {
-                h += '<div class="sd-prop-row"><div class="form-text small mb-0 text-warning"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                h += '<div class="sd-prop-row"><div class="form-text small mb-0 fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' +
                     esc(_sdT('Two elements on this page are named “{var}”. A name is used once a page, so neither is kept.', name)) + '</div></div>';
             }
             if (!page) {
