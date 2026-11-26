@@ -1,6 +1,6 @@
 ---
 name: image-editor-resize
-description: The Canvas tool's "Resize to other sizes" (AC9): the rule placing and scaling layers on another size, the panel, each size saved as a new canvas in Files, the texts under the floor
+description: The Canvas tool's "Resize to other sizes" (AC9, #11975): the rule placing and scaling layers on another size, the panel, each size saved as a new canvas in Files, the texts under the floor
 module: image_editor
 ---
 
