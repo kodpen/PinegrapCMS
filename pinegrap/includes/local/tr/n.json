@@ -2509,6 +2509,7 @@
     "No shipping method serves this address yet, so the order cannot be completed. Check the country and the address, or contact us.": "Bu adrese gönderim yapan bir kargo yöntemi henüz yok, bu yüzden sipariş tamamlanamıyor. Ülkeyi ve adresi kontrol edin ya da bizimle iletişime geçin.",
     "No shipping method serves this address.": "Bu adrese gönderim yapan bir kargo yöntemi yok.",
     "No shipping methods available for this address.": "Bu adres için kargo yöntemi mevcut değil.",
+    "No shipping methods message": "Kargo yöntemi yok mesajı",
     "No shipping recipient could be resolved for this order.": "Bu sipariş için kargo alıcısı belirlenemedi.",
     "No shore power": "Elektrik gerekmiyor",
     "No short link was imported: {var:1} line(s) skipped because a short link has the name already, {var:2} line(s) could not be used.": "Hiç kısa bağlantı içe aktarılmadı: adı zaten bir kısa bağlantıda olduğu için {var:1} satır atlandı, {var:2} satır kullanılamadı.",
