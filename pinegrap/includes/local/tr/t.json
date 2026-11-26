@@ -2152,6 +2152,7 @@
     "The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.": "Platformun gelen webhook için verdiği adres. Kaydedilirken denetlenir: çözümlenen ve bu ağın dışında kalan bir https adresi olmalıdır.",
     "The address the sale was made at is on the ERP card of the accounting settings.": "Satışın yapıldığı adres, muhasebe ayarlarındaki ERP kartındadır.",
     "The address the visitor asked for": "Ziyaretçinin istediği adres",
+    "The address type is asked for": "Adres türü soruluyor",
     "The address uses ${var:1}, but the name has {var:2} wildcard(s) (*).": "Adres ${var:1} kullanıyor, ama adda {var:2} joker (*) var.",
     "The address was not found.": "Adres bulunamadı.",
     "The address was not found. Check it, or type the coordinates.": "Adres bulunamadı. Adresi kontrol edin ya da koordinatları elle yazın.",
