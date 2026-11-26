@@ -14,6 +14,7 @@ description: Pinegrap AI and model assistants make, read and edit live pages as 
 - The maker in the version: `ws_canvas_ai_by()` (model assistant `{id, kind: model, handle}`, Pinegrap AI `{id: 0, kind: ai, handle: ai}`); the version's `user_id` is the writer `ws_assistant_writer()` finds.
 - A stale `version` is refused with the newest one named; the model reads again.
 - A page made or edited sets `$state['live_page_done']`, so "I made it" is not sent back as a claim of a change nobody proposed (`ws_ai_finish_answer()`).
+- A live page tool that answers with an error holds back the answer of the same turn (`workspace-ai-turn-calls.md`).
 
 ## Why replacements, and how do they work?
 - A page may be longer than the model writes in one answer, so `edit_live_page` takes either `html` (the whole document) or `replacements`, a JSON list (at most 20) of `{find, replace}` (`ws_page_ai_replacements()`). Applied in order (`ws_page_ai_apply()`), each find must stand exactly once in the text the ones before left, else nothing changes. The result is kept as the whole new document, as on the API.
