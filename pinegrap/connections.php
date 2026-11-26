@@ -248,6 +248,64 @@ function connections_maintenance_may_manage($user) {
 
 }
 
+// What the viewer may open of a service's page: the gates of the cards
+// pg_connections_screen_page_cards() draws, each the gate of the place the
+// card came from. $app_provider is pg_connections_screen_app_here()'s
+// answer; $ws_viewer the Workspace viewer, read for GitHub's page only.
+function connections_page_can($page_id, $user, $is_manager, $app_provider, $ws_viewer) {
+
+	return array(
+		'manager'      => $is_manager,
+		'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
+		'ai'           => isset(pg_ai_connection_services()[$page_id]) && connections_ai_may_manage($user),
+		'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
+		'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
+		'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
+		'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
+		'mail_sending' => ($page_id === 'mailchimp') && connections_mail_sending_may_manage($user),
+		'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
+		'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
+		'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
+		'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
+		'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
+		'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
+		'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
+		'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
+		'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
+		'figma'        => ($page_id === 'figma') && $is_manager,
+		'app'          => ($app_provider !== ''),
+	);
+
+}
+
+// Does the list's row of a service open its card instead of its page? The
+// page would show the viewer only its state (pg_connections_screen_opens_card()).
+function connections_list_opens_card($id, $row, $registry, $user, $is_manager, $provider_apps, $ai_services) {
+
+	if (!isset($registry[$id]) || !isset($row['url'])) {
+		return false;
+	}
+
+	$here = pg_connections_screen_page_here($id, array_merge(array_keys($ai_services), pg_ad_conversion_services()));
+
+	if ($here) {
+		return false;
+	}
+
+	$apps_ready = array();
+
+	foreach ($provider_apps as $app_provider => $app) {
+		$apps_ready[$app_provider] = pg_connect_app_ready($app);
+	}
+
+	$app_provider = pg_connections_screen_app_here($id, $registry[$id], $apps_ready, $is_manager);
+	$ws_viewer = ($id === 'github') ? connections_workspace_viewer($user) : null;
+	$cards = pg_connections_screen_page_cards($id, connections_page_can($id, $user, $is_manager, $app_provider, $ws_viewer));
+
+	return pg_connections_screen_opens_card($id, $cards, false, $row['url']);
+
+}
+
 // May the user change Google Analytics' tag and figures? They came from
 // Site Settings › Visitors and privacy, so they keep that category's gate.
 function connections_privacy_may_manage($user) {
@@ -4892,6 +4950,14 @@ foreach ($order as $group_key => $ids) {
 				. $inner . '
 			</a>';
 
+		} elseif (connections_list_opens_card($id, $row, $registry, $user, $is_manager, $provider_apps, $ai_services)) {
+
+			// The page would only show its state: the row opens the card.
+			$group_rows .= '
+			<a class="pg-card-inner-row connections-row" href="' . h($row['url']) . '"' . $hidden . '>'
+				. $inner . '
+			</a>';
+
 		} else {
 
 			// A service opens its own page.
@@ -5166,37 +5232,14 @@ if ($provider_page !== '') {
 	$app_provider = isset($providers[$app_provider]) ? $app_provider : '';
 
 	$page = array(
-		'cards'   => pg_connections_screen_page_cards($page_id, array(
-			'manager'      => $is_manager,
-			'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
-			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
-			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
-			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
-			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
-			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
-			'mail_sending' => ($page_id === 'mailchimp') && connections_mail_sending_may_manage($user),
-			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
-			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
-			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
-			'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
-			'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
-			'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
-			'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
-			'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
-			'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
-			'figma'        => ($page_id === 'figma') && $is_manager,
-			'app'          => ($app_provider !== ''),
-		)),
+		'cards'   => pg_connections_screen_page_cards($page_id, connections_page_can($page_id, $user, $is_manager, $app_provider, $ws_viewer)),
 		'app'          => '',
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
-			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews')
-			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || in_array($page_id, array('claude', 'figma'), true)
-			|| (pg_connections_screen_mcp_connector($page_id) !== ''),
+		'here'         => pg_connections_screen_page_here($page_id, array_merge(array_keys($ai_services), pg_ad_conversion_services())),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.

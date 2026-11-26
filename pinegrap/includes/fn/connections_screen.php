@@ -954,6 +954,59 @@ function pg_connections_screen_page_cards($id, $can)
 }
 
 /**
+ * Whether a service's page holds settings of its own, typed on it (keys,
+ * accounts, targets), whether or not the viewer may change them: then its
+ * page never says "here only its state is shown". Pure.
+ *
+ * @param string $id    the service's registry key
+ * @param array  $extra more such pages the caller knows (the AI providers
+ *                      of pg_ai_connection_services(), the ad services of
+ *                      pg_ad_conversion_services())
+ * @return bool
+ */
+function pg_connections_screen_page_here($id, $extra)
+{
+    $id = (string) $id;
+
+    return in_array($id, (array) $extra, true)
+        || in_array($id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio',
+            'signin_apple', 'turnstile', 'hcaptcha', 'google_reviews', 'slack', 'teams', 'telegram', 'claude', 'figma'), true)
+        || in_array($id, pg_connections_screen_commerce_pages(), true)
+        || in_array($id, pg_connections_screen_accounting_pages(), true)
+        || (pg_connections_screen_mcp_connector($id) !== '');
+}
+
+/**
+ * Whether a row of the Connections list opens the service's card (or its
+ * screen) straight away instead of its page: the page would only show its
+ * state and "Open its settings", one hop for nothing. Its cards are Status
+ * and Where it is used alone, it holds no settings of its own, it is no
+ * provider's page, and its place is a screen of the panel other than the
+ * Connections list. The page's own address still answers. Pure.
+ *
+ * @param string $id    the service's registry key
+ * @param array  $cards its page's cards for the viewer (pg_connections_screen_page_cards())
+ * @param bool   $here  pg_connections_screen_page_here()
+ * @param string $url   the place of its settings (a panel screen's address)
+ * @return bool
+ */
+function pg_connections_screen_opens_card($id, $cards, $here, $url)
+{
+    if ($here || isset(pg_connections_screen_page_providers()[(string) $id])) {
+        return false;
+    }
+
+    if (array_diff((array) $cards, array('status', 'uses')) !== array()) {
+        return false;
+    }
+
+    $url = (string) $url;
+
+    // A panel screen's relative address only, never the list itself.
+    return ($url !== '') && (bool) preg_match('~^[a-z0-9_]+\.php(?:[?#]|$)~D', $url) && (strpos($url, 'connections.php') !== 0);
+}
+
+/**
  * The Site Settings card a lead to a service's page came from (from=), by
  * the settings registry's keys: category, card and, where there is one, a
  * drawer's key. Never an address: the page builds the way back from these
