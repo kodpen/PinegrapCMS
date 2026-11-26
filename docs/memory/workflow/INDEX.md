@@ -105,6 +105,7 @@
 - bug-hunt-areas-rights-new-screens.md: Bug hunt of rights by role on the 2026.11.0 screens (volunteers, queue, pick and pack, Hot Contacts, launch journey, share links, prototype settings): two faults fixed in #11374
 - bug-hunt-areas-satisfaction-surveys.md: Bug hunt of the satisfaction surveys (architect, 2026-11-26, request 3016, K2): faults fixed, what was read clean, what was left and asked [decision: here]
 - bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
+- bug-hunt-areas-security-scan.md: The bug hunt in the Security Scan (built in #11425 to #11672, SC1 to SC9), PR #11777: the faults fixed, what was read clean and what was seen and left [decision: here]
 - bug-hunt-areas-seo-meta-output.md: Bug hunt of what a page puts in its head (area 47, 2026-11-24): six faults fixed in the hunt's PR (#11459), what was read clean, what is left as it is
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
 - bug-hunt-areas-shipping-rates.md: The bug hunt of shipping rates (area 34, 2026-11-24): zones, base rate bands, free shipping offers, a method for an address it does not serve; three faults fixed, what was read clean

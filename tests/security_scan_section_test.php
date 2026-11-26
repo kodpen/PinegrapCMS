@@ -213,3 +213,10 @@ function test_ops_alerts_security_finding_code()
 	pg_assert_same('settings_firewall.php#pgset-scan', $codes['security_finding']['url']);
 	pg_assert_same('pg_ops_alerts_check_security', pg_ops_alert_sources()['security']);
 }
+
+function test_security_scan_section_detail_of_a_server_settings_file_with_its_digest()
+{
+	pg_assert_same(lang('New since the first scan'), pg_security_section_detail('file_server_config', 'new sha1:' . str_repeat('a', 40)));
+	pg_assert_same(lang('Changed since the first scan'), pg_security_section_detail('file_server_config', 'changed sha1:' . str_repeat('a', 40)));
+	pg_assert_same(lang('New since the first scan'), pg_security_section_detail('file_server_config', 'new'), 'a row stored before the digest');
+}
