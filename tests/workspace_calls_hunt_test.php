@@ -56,3 +56,16 @@ function test_workspace_calls_hunt_a_party_taken_out_of_the_channel_loses_its_pl
 
 	pg_assert_contains('ws_call_leave(ws_call_party_person($viewer, null)', $route, 'a person who no longer reads a private channel leaves its call at once, not 90 seconds later');
 }
+
+function test_workspace_calls_hunt_a_decline_never_ends_a_call_a_guest_is_in()
+{
+	$person = array('user_id' => 3, 'guest_id' => 0);
+	$guest = array('user_id' => 0, 'guest_id' => 9);
+
+	pg_assert_false(ws_call_has_guest(array($person)), 'the caller alone: no guest');
+	pg_assert_true(ws_call_has_guest(array($person, $guest)), 'a guest of a shared channel came into the call');
+
+	$decline = workspace_calls_hunt_test_function('includes/workspace/calls.php', 'ws_call_decline');
+
+	pg_assert_contains('ws_call_has_guest($members)', $decline, 'a conversation of two shared with a guest: the other person\'s Decline would end the call the guest is in, so it is refused');
+}

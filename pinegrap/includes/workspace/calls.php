@@ -1311,6 +1311,23 @@ function ws_call_live_users($members)
 }
 
 /**
+ * Is a guest among a call's live members? Pure.
+ *
+ * @param array[] $members ws_call_members rows
+ * @return bool
+ */
+function ws_call_has_guest($members)
+{
+    foreach ((array) $members as $member) {
+        if ((int) $member['guest_id'] > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * People with a membership row in a channel.
  *
  * @param int $channel_id
@@ -1375,11 +1392,14 @@ function ws_call_decline($party, $call)
         return array('ok' => true, 'error' => '');
     }
 
-    $live_users = ws_call_live_users(ws_call_members_live($call['id']));
+    $members = ws_call_members_live($call['id']);
+    $live_users = ws_call_live_users($members);
 
     // A guest room's call is never rung, so never declined: its guest may
-    // be in it while the caller is the room's only person.
-    if (ws_channel_is_guest(ws_channel((int) $call['channel_id'])) || !ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))) {
+    // be in it while the caller is the room's only person. The same holds
+    // for a conversation of two shared with a guest who came into the call.
+    if (ws_channel_is_guest(ws_channel((int) $call['channel_id'])) || !ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))
+        || ws_call_has_guest($members)) {
         return array('ok' => false, 'error' => lang('This call is not open to you.'));
     }
 
