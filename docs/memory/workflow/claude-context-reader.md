@@ -1,6 +1,6 @@
 ---
 name: claude-context-reader
-description: tools/claude_context.php reads a Claude Code session's used context from its newest transcript; ws_profile.php --context=auto sends it (#PR)
+description: tools/claude_context.php reads a Claude Code session's used context from its newest transcript; ws_profile.php --context=auto sends it (#11871)
 ---
 
 ## What does it read?
