@@ -41,11 +41,9 @@ function page_designer_retired_actions()
 
 function test_page_designer_retired_files_are_gone_and_cleaned_up()
 {
-	$clean_up = (string) file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php');
-
 	foreach (page_designer_retired_files() as $path) {
 		pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/' . $path), $path . ' is not shipped');
-		pg_assert_contains("    '" . $path . "',\n", $clean_up, 'Cleanup deletes ' . $path . ' on an updated site');
+		pg_assert_true(in_array($path, pg_clean_up_file_list(), true), 'Cleanup deletes ' . $path . ' on an updated site');
 	}
 }
 

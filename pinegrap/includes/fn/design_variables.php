@@ -29,7 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // The model (an array) has: name, look and palette (the choice the defaults
 // were taken from), values (key => value; a colour is array(light, dark)) and
-// custom (the designer's own colours and sizes).
+// custom (the designer's own colours, sizes and easing curves), and page
+// (the design's page transition) only when one is chosen.
 //
 // Every variable writes its own --pg-var-<key> token. A value that differs
 // from the default it was made from also writes the theme tokens it drives
@@ -160,10 +161,23 @@ function pg_design_variable_value($def, $value)
     switch ($def['kind']) {
         case 'font':
             // A font stack: names, quotes and commas only, so nothing can end
-            // the declaration or the rule.
-            return (preg_match('/^[A-Za-z0-9 ,"\'\-]{1,200}$/', $value) && strpos($value, '""') === false) ? $value : null;
+            // the declaration or the rule; each name bare or in one closed
+            // pair of quotes, as an open one runs on over the declarations
+            // after it.
+            if (!preg_match('/^[A-Za-z0-9 ,"\'\-]{1,200}$/', $value)) return null;
+            foreach (explode(',', $value) as $part) {
+                if (!preg_match('/^(?:[A-Za-z0-9 \-]+|"[A-Za-z0-9 \-]+"|\'[A-Za-z0-9 \-]+\')$/', trim($part))) return null;
+            }
+            return $value;
         case 'length':
-            if ($value === '0') return '0';
+            // A bare 0 only where each unit's bounds start at 0: a base size
+            // or a base unit of 0 is outside the row, and hides the text.
+            if ($value === '0') {
+                foreach (array('rem', 'px') as $u) {
+                    if (isset($def[$u]) && $def[$u][0] > 0) return null;
+                }
+                return '0';
+            }
             if (!preg_match('/^(\d{1,3}(?:\.\d{1,4})?)(rem|px)$/', $value, $m) || !isset($def[$m[2]])) return null;
             $n = (float)$m[1];
             return ($n >= $def[$m[2]][0] && $n <= $def[$m[2]][1]) ? _pg_design_variable_num($n) . $m[2] : null;
@@ -238,6 +252,11 @@ function pg_design_variables_normalize($model, $defaults)
             $dark = pg_design_variable_value($color, isset($c['dark']) ? $c['dark'] : '');
             $row['light'] = $light;
             $row['dark']  = ($dark === null) ? $light : $dark;
+        } elseif ($row['kind'] === 'curve') {
+            // An easing curve: its four numbers (pg_fx_curve_numbers()).
+            $nums = pg_fx_curve_numbers(isset($c['value']) ? $c['value'] : '');
+            if ($nums === null) continue;
+            $row['value'] = implode(', ', $nums);
         } elseif ($row['kind'] === 'size') {
             $row['value'] = pg_design_variable_value($size, isset($c['value']) ? $c['value'] : '');
             if ($row['value'] === null) continue;
@@ -245,6 +264,26 @@ function pg_design_variables_normalize($model, $defaults)
             continue;
         }
         $out['custom'][] = $row;
+    }
+    $page = pg_design_page_transition_clean(isset($model['page']) ? $model['page'] : null);
+    if ($page !== null) $out['page'] = $page;
+    return $out;
+}
+
+// The easing curves among a model's own variables, for the editor's
+// Easing lists: array of array(key, name, value) with value "x1, y1, x2,
+// y2". A stored model is read as written, so each row is checked here.
+function pg_design_variables_curves($model)
+{
+    $out = array();
+    $custom = (is_array($model) && isset($model['custom']) && is_array($model['custom'])) ? $model['custom'] : array();
+    foreach ($custom as $c) {
+        if (!is_array($c) || !isset($c['kind'], $c['key'], $c['value']) || $c['kind'] !== 'curve') continue;
+        if (!is_string($c['key']) || !preg_match('/^[a-z0-9][a-z0-9-]{0,29}$/', $c['key'])) continue;
+        $nums = pg_fx_curve_numbers($c['value']);
+        if ($nums === null) continue;
+        $name = isset($c['name']) && is_scalar($c['name']) ? mb_substr(trim((string)$c['name']), 0, 40) : '';
+        $out[] = array('key' => $c['key'], 'name' => $name !== '' ? $name : $c['key'], 'value' => implode(', ', $nums));
     }
     return $out;
 }
@@ -285,6 +324,8 @@ function pg_design_variables_css($model, $defaults)
         if ($c['kind'] === 'color') {
             $light[pg_design_variable_token($c['key'], true)] = $c['light'];
             $dark[pg_design_variable_token($c['key'], true)]  = $c['dark'];
+        } elseif ($c['kind'] === 'curve') {
+            $all[pg_design_variable_token($c['key'], true)] = 'cubic-bezier(' . $c['value'] . ')';
         } else {
             $all[pg_design_variable_token($c['key'], true)] = $c['value'];
         }
@@ -297,13 +338,126 @@ function pg_design_variables_css($model, $defaults)
     };
     $head = array('kind' => 'variables', 'version' => 1, 'name' => $m['name'], 'look' => $m['look'],
                   'palette' => $m['palette'], 'values' => $m['values'], 'custom' => $m['custom']);
+    $page = isset($m['page']) ? $m['page'] : null;
+    if ($page !== null) $head['page'] = $page;
     return pg_design_theme_header($head) . "\n"
         . '/* Pinegrap design variables' . ($m['name'] !== '' ? ': ' . pg_design_theme_comment_text($m['name']) : '') . ". */\n"
         . $block(":root,\n[data-bs-theme]", $all)
         . "\n"
         . $block(":root,\n[data-bs-theme=light]", $light)
         . "\n"
-        . $block('[data-bs-theme=dark]', $dark);
+        . $block('[data-bs-theme=dark]', $dark)
+        . ($page !== null ? "\n" . pg_design_page_transition_css($page) : '');
+}
+
+// ── Page transition ─────────────────────────────────────────────────────
+//
+// One transition for every page of the design (Settings, Theme, "Page
+// transition"): None, Fade or Slide, kept as the model's "page" entry and
+// written into the variables file as a cross-document view transition.
+// None keeps no entry, so the file stays what it was. A browser without
+// view transitions ignores the rules, and everything sits inside the
+// no-preference block: a visitor who asks for less motion gets none.
+
+// The sides Slide can come from.
+function pg_design_page_transition_sides()
+{
+    return array('right', 'left', 'below');
+}
+
+// A page transition made safe: array(kind, [from], [duration], [easing])
+// or null for None and anything refused. duration is ms (0 to 1,000) and,
+// like easing, left out to follow the look (--pg-duration, --pg-ease).
+function pg_design_page_transition_clean($page)
+{
+    if (!is_array($page) || !isset($page['kind']) || !is_string($page['kind'])) return null;
+    $kind = strtolower(trim($page['kind']));
+    if ($kind !== 'fade' && $kind !== 'slide') return null;
+    $out = array('kind' => $kind);
+    if ($kind === 'slide') {
+        $from = isset($page['from']) && is_string($page['from']) ? strtolower(trim($page['from'])) : '';
+        $out['from'] = in_array($from, pg_design_page_transition_sides(), true) ? $from : 'right';
+    }
+    if (isset($page['duration']) && is_numeric($page['duration'])) {
+        $out['duration'] = max(0, min(1000, (int)round((float)$page['duration'])));
+    }
+    if (isset($page['easing'])) {
+        $easing = pg_fx_easing_clean($page['easing']);
+        if ($easing !== '') $out['easing'] = $easing;
+    }
+    return $out;
+}
+
+// The stylesheet of a page transition, '' for None. Fade is the browser's
+// own cross-fade with the design's timing; Slide moves the new page in
+// from its side while the old one leaves the other way. The timing is set
+// on the old and new pictures too: they inherit the group's duration but
+// not its easing.
+function pg_design_page_transition_css($page)
+{
+    $page = pg_design_page_transition_clean($page);
+    if ($page === null) return '';
+    $duration = isset($page['duration']) ? $page['duration'] . 'ms' : 'var(--pg-duration, 0.25s)';
+    $easing = isset($page['easing']) ? $page['easing'] : 'var(--pg-ease, ease)';
+    $css = "/* Page transition. */\n"
+        . "@media (prefers-reduced-motion: no-preference) {\n"
+        . "    @view-transition {\n        navigation: auto;\n    }\n"
+        . "    ::view-transition-group(*),\n    ::view-transition-old(*),\n    ::view-transition-new(*) {\n"
+        . '        animation-duration: ' . $duration . ";\n"
+        . '        animation-timing-function: ' . $easing . ";\n"
+        . "    }\n";
+    if ($page['kind'] === 'slide') {
+        $moves = array('right' => array('100%, 0', '-100%, 0'), 'left' => array('-100%, 0', '100%, 0'), 'below' => array('0, 100%', '0, -100%'));
+        list($in, $out) = $moves[$page['from']];
+        $css .= "    ::view-transition-old(root) {\n        animation-name: pg-page-out;\n        mix-blend-mode: normal;\n    }\n"
+            . "    ::view-transition-new(root) {\n        animation-name: pg-page-in;\n        mix-blend-mode: normal;\n    }\n"
+            . "    @keyframes pg-page-out {\n        to { transform: translate(" . $out . "); }\n    }\n"
+            . "    @keyframes pg-page-in {\n        from { transform: translate(" . $in . "); }\n    }\n";
+    }
+    return $css . "}\n";
+}
+
+// The page transition a variables file holds, null for none.
+function pg_design_variables_page($css)
+{
+    if (!preg_match('~^/\*! pg-theme (\{.*?\}) \*/~s', (string)$css, $hit)) return null;
+    $meta = json_decode($hit[1], true);
+    if (!is_array($meta) || !isset($meta['kind'], $meta['page']) || $meta['kind'] !== 'variables') return null;
+    return pg_design_page_transition_clean($meta['page']);
+}
+
+// Whether a posted model carries the page transition alone: the Look tab
+// sets it while the Variables tab never ran, so the stored values must be
+// kept rather than reset to the defaults.
+function pg_design_variables_page_only($model)
+{
+    return is_array($model) && !empty($model['page_only']);
+}
+
+// The stored model (null: no file) with a page-only post's transition.
+// null when nothing is to be written: no file and None.
+function pg_design_variables_with_page($stored, $post)
+{
+    $page = pg_design_page_transition_clean(is_array($post) && isset($post['page']) ? $post['page'] : null);
+    if (!is_array($stored)) {
+        return $page === null ? null : array('page' => $page);
+    }
+    unset($stored['page']);
+    if ($page !== null) $stored['page'] = $page;
+    return $stored;
+}
+
+// The name that keeps an element across pages ("Keep across pages"):
+// small letters, digits and hyphens, at most 40, starting with a letter
+// (a digit first takes "n-"). '' for none, and for the CSS keywords none
+// and auto, which name nothing.
+function pg_design_view_transition_name_clean($name)
+{
+    if (!is_string($name)) return '';
+    $s = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name))), '-');
+    if ($s === '' || $s === 'none' || $s === 'auto') return '';
+    if (!preg_match('/^[a-z]/', $s)) $s = 'n-' . $s;
+    return rtrim(substr($s, 0, 40), '-');
 }
 
 // The model of a variables stylesheet, normalized against $defaults; null
@@ -638,4 +792,359 @@ function pg_design_variables_start($raw, $look, $palette)
     $defaults = pg_design_variables_defaults($look, $palette);
     $model = pg_design_variables_from_answers(null, $a, $defaults);
     return array('look' => $look, 'model' => $model, 'css' => pg_design_variables_css($model, $defaults));
+}
+
+// ── Export and Import: a Design Tokens file ─────────────────────────────
+//
+// The Variables tab's "Export" writes the model as a JSON file in the Design
+// Tokens community format (a tree of groups whose leaves carry "$value" and
+// "$type"); "Import" reads such a file, from this editor or another tool,
+// into the model. A colour's dark value rides in the token's
+// "$extensions"."com.pinegrap".dark; the shadow preset in the shape group's
+// own "$extensions". Nothing is written here: the tab tries the imported
+// model on and the design's save writes the file.
+
+// The largest file Import reads, in bytes.
+if (!defined('PG_DESIGN_TOKENS_MAX')) {
+    define('PG_DESIGN_TOKENS_MAX', 262144);
+}
+
+// The name of an exported file: the design's name made a slug.
+function pg_design_variables_tokens_file_name($design_name)
+{
+    $slug = strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', (string)$design_name), '-'));
+    return ($slug === '' ? 'design' : trim(substr($slug, 0, 60), '-')) . '.tokens.json';
+}
+
+// One value as a token, or null when it has no token form.
+function _pg_design_token_out($kind, $v)
+{
+    switch ($kind) {
+        case 'color':
+            return array('$type' => 'color', '$value' => $v['light'],
+                         '$extensions' => array('com.pinegrap' => array('dark' => $v['dark'])));
+        case 'font':
+            $names = array();
+            foreach (explode(',', (string)$v) as $n) {
+                $n = trim($n, " \t\"'");
+                if ($n !== '') $names[] = $n;
+            }
+            if (!$names) return null;
+            return array('$type' => 'fontFamily', '$value' => count($names) === 1 ? $names[0] : $names);
+        case 'length':
+        case 'size':
+            if ((string)$v === '0') return array('$type' => 'dimension', '$value' => array('value' => 0, 'unit' => 'px'));
+            if (!preg_match('/^([\d.]+)(rem|px)$/', (string)$v, $m)) return null;
+            return array('$type' => 'dimension', '$value' => array('value' => $m[1] + 0, 'unit' => $m[2]));
+        case 'number':
+            return ((string)$v === '') ? null : array('$type' => 'number', '$value' => (float)$v + 0);
+        case 'weight':
+            return ((string)$v === '') ? null : array('$type' => 'fontWeight', '$value' => (int)$v);
+        case 'curve':
+            $nums = pg_fx_curve_numbers((string)$v);
+            return $nums === null ? null : array('$type' => 'cubicBezier', '$value' => array_map('floatval', $nums));
+    }
+    return null;
+}
+
+// The tokens of a model: array('tokens' => the tree, 'count' => variables
+// written). The groups are the tab's (color, type, spacing, shape) and "own".
+function pg_design_variables_tokens_export($model)
+{
+    $tree  = array('$description' => 'Design variables of a Pinegrap design');
+    $count = 0;
+    foreach (pg_design_variable_list() as $key => $def) {
+        $v = isset($model['values'][$key]) ? $model['values'][$key] : null;
+        if ($v === null) continue;
+        if ($key === 'shadow') {
+            if ($v === '') continue;
+            $tree['shape']['$extensions']['com.pinegrap']['shadow'] = $v;
+            $count++;
+            continue;
+        }
+        $t = _pg_design_token_out($def['kind'], $v);
+        if ($t === null) continue;
+        $tree[$def['group']][str_replace('_', '-', $key)] = $t;
+        $count++;
+    }
+    foreach ((isset($model['custom']) && is_array($model['custom'])) ? $model['custom'] : array() as $c) {
+        $t = _pg_design_token_out($c['kind'], $c['kind'] === 'color' ? $c : $c['value']);
+        if ($t === null) continue;
+        $t['$description'] = $c['name'];
+        $tree['own'][$c['key']] = $t;
+        $count++;
+    }
+    return array('tokens' => $tree, 'count' => $count);
+}
+
+// The text of an exported file.
+function pg_design_variables_tokens_text($model)
+{
+    $e = pg_design_variables_tokens_export($model);
+    return json_encode($e['tokens'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+}
+
+// Every token of a parsed file, in file order: path (list of names), type
+// (its own or the nearest group's "$type"), value, description, extensions.
+function _pg_design_tokens_walk($node, $path, $type, &$out, $depth)
+{
+    if (!is_array($node) || $depth > 12 || count($out) >= 2000) return;
+    if (isset($node['$type']) && is_string($node['$type'])) $type = $node['$type'];
+    if (array_key_exists('$value', $node)) {
+        $out[] = array(
+            'path'  => $path,
+            'type'  => $type,
+            'value' => $node['$value'],
+            'desc'  => isset($node['$description']) && is_string($node['$description']) ? $node['$description'] : '',
+            'ext'   => isset($node['$extensions']['com.pinegrap']) && is_array($node['$extensions']['com.pinegrap'])
+                ? $node['$extensions']['com.pinegrap'] : array(),
+        );
+        return;
+    }
+    foreach ($node as $name => $child) {
+        if ((string)$name === '' || $name[0] === '$') continue;
+        $p = $path;
+        $p[] = (string)$name;
+        _pg_design_tokens_walk($child, $p, $type, $out, $depth + 1);
+    }
+}
+
+// A "{group.token}" reference followed to its value (at most eight steps),
+// or the value itself; null when it leads nowhere.
+function _pg_design_tokens_resolve($value, $index)
+{
+    for ($i = 0; $i < 8; $i++) {
+        if (!is_string($value) || !preg_match('/^\{([^{}]+)\}$/', trim($value), $m)) return $value;
+        if (!isset($index[$m[1]])) return null;
+        $value = $index[$m[1]]['value'];
+    }
+    return null;
+}
+
+// A colour value (a hex string, or the 2025 object with "hex" or sRGB
+// "components") as #rrggbb, or null.
+function _pg_design_tokens_color($v)
+{
+    if (is_array($v)) {
+        if (isset($v['hex']) && is_string($v['hex'])) {
+            $v = $v['hex'];
+        } elseif (isset($v['components']) && is_array($v['components']) && count($v['components']) === 3
+            && (!isset($v['colorSpace']) || $v['colorSpace'] === 'srgb')) {
+            $rgb = array();
+            foreach ($v['components'] as $c) {
+                if (!is_numeric($c)) return null;
+                $rgb[] = max(0, min(1, (float)$c)) * 255;
+            }
+            return _pg_theme_hex($rgb);
+        } else {
+            return null;
+        }
+    }
+    if (!is_string($v)) return null;
+    $v = trim($v);
+    // #rrggbbaa: the alpha is dropped, a variable is an opaque colour.
+    if (preg_match('/^#([0-9a-f]{6})[0-9a-f]{2}$/i', $v, $m)) $v = '#' . $m[1];
+    $rgb = _pg_theme_rgb($v);
+    return $rgb ? _pg_theme_hex($rgb) : null;
+}
+
+// A dimension ("16px", or the 2025 object {value, unit}) as written in a
+// model ("16px", "1rem"), or null.
+function _pg_design_tokens_dimension($v)
+{
+    if (is_array($v) && isset($v['value'], $v['unit']) && is_numeric($v['value']) && is_string($v['unit'])) {
+        $v = _pg_design_variable_num($v['value']) . $v['unit'];
+    }
+    if (is_int($v) || is_float($v)) return ((float)$v == 0) ? '0' : null;
+    if (!is_string($v)) return null;
+    $v = strtolower(trim($v));
+    if ($v === '0') return '0';
+    if (!preg_match('/^(\d{1,3}(?:\.\d{1,4})?)(rem|px)$/', $v, $m)) return null;
+    // Zero has one form, so a file read back compares equal.
+    return ((float)$m[1] == 0) ? '0' : $v;
+}
+
+// The built-in variable a token's name stands for: its key in
+// pg_design_variable_list(), or ''. Our own export's names and a few common
+// names of other tools. A token of the "own" group is one of the design's
+// own variables, whatever its key reads as.
+function _pg_design_tokens_key($path)
+{
+    if (count($path) > 1 && $path[0] === 'own') return '';
+    $name = strtolower((string)preg_replace('/[^a-zA-Z0-9]+/', '_', (string)end($path)));
+    $name = trim($name, '_');
+    $aliases = array(
+        'primary' => 'brand', 'secondary' => 'accent', 'background' => 'surface', 'foreground' => 'text',
+        'error' => 'danger', 'muted' => 'neutral', 'gray' => 'neutral', 'grey' => 'neutral',
+        'font_headings' => 'font_heading', 'font_text' => 'font_body', 'border_radius' => 'radius', 'corners' => 'radius',
+    );
+    if (isset($aliases[$name])) $name = $aliases[$name];
+    $list = pg_design_variable_list();
+    return (isset($list[$name]) && $name !== 'shadow') ? $name : '';
+}
+
+// The kind of a token the model would take: color, size, font, number or
+// weight; otherwise the token's own type (gradient, duration ...).
+function _pg_design_tokens_kind($type, $value)
+{
+    $map = array('color' => 'color', 'dimension' => 'size', 'fontfamily' => 'font', 'number' => 'number', 'fontweight' => 'weight');
+    $t = strtolower((string)$type);
+    if (isset($map[$t])) return $map[$t];
+    if ($t !== '') return $t;
+    if (_pg_design_tokens_color($value) !== null) return 'color';
+    if (_pg_design_tokens_dimension($value) !== null) return 'size';
+    return 'other';
+}
+
+// Reads the text of a tokens file into a model ($model the tab's, $defaults
+// its look and palette's).
+// Refused: array('ok' => false, 'reason' => the line the tab shows); nothing
+// changes. Read: array('ok' => true, 'model', 'tokens' (all in the file),
+// 'changed' (values of this design that change), 'groups' (changed per
+// group, 'own' for own variables the file rewrites), 'own' (new own variables), 'own_kinds' (color, size), 'left' and
+// 'left_kinds' (kind => count of the tokens without a place)).
+function pg_design_variables_tokens_import($text, $model, $defaults)
+{
+    $text = (string)$text;
+    if (strlen($text) > PG_DESIGN_TOKENS_MAX) {
+        return array('ok' => false, 'reason' => lang('It is larger than a tokens file can be.'));
+    }
+    if (strncmp($text, "\xEF\xBB\xBF", 3) === 0) $text = substr($text, 3);
+    $data = json_decode($text, true);
+    if (!is_array($data)) {
+        return array('ok' => false, 'reason' => lang('It is not a JSON file.'));
+    }
+    $tokens = array();
+    _pg_design_tokens_walk($data, array(), '', $tokens, 0);
+    $shadow = isset($data['shape']['$extensions']['com.pinegrap']['shadow']) ? $data['shape']['$extensions']['com.pinegrap']['shadow'] : null;
+    if (!$tokens && $shadow === null) {
+        return array('ok' => false, 'reason' => lang('It is not a Design Tokens file: no entry in it has a "$value".'));
+    }
+    $index = array();
+    foreach ($tokens as $t) $index[implode('.', $t['path'])] = $t;
+
+    $m = pg_design_variables_normalize($model, $defaults);
+    $old = $m;
+    $list = pg_design_variable_list();
+    $size_def = array('kind' => 'length', 'rem' => array(0, 20), 'px' => array(0, 320));
+    $color_def = array('kind' => 'color');
+    $used = 0;
+    $own = array('color' => 0, 'size' => 0);
+    $left = array();
+    $own_keys = array();
+    foreach ($m['custom'] as $i => $c) $own_keys[$c['key']] = $i;
+
+    foreach ($tokens as $t) {
+        $value = _pg_design_tokens_resolve($t['value'], $index);
+        $kind  = _pg_design_tokens_kind($t['type'], $value);
+        if ($value === null) {
+            $left['reference'] = (isset($left['reference']) ? $left['reference'] : 0) + 1;
+            continue;
+        }
+        $key = _pg_design_tokens_key($t['path']);
+        $ok = null;
+        if ($key !== '') {
+            $def = $list[$key];
+            $want = $def['kind'] === 'length' ? 'size' : $def['kind'];
+            if ($want === $kind) {
+                if ($kind === 'color') {
+                    $light = _pg_design_tokens_color($value);
+                    if ($light !== null) {
+                        $dark = isset($t['ext']['dark']) ? _pg_design_tokens_color($t['ext']['dark']) : null;
+                        $m['values'][$key] = array('light' => $light, 'dark' => $dark !== null ? $dark : $m['values'][$key]['dark']);
+                        $ok = true;
+                    }
+                } else {
+                    if ($kind === 'font' && is_array($value)) {
+                        $names = array();
+                        foreach ($value as $n) {
+                            if (is_string($n)) $names[] = (preg_match('/\s/', trim($n)) ? '"' . trim($n) . '"' : trim($n));
+                        }
+                        $value = implode(', ', $names);
+                    } elseif ($kind === 'size') {
+                        $value = _pg_design_tokens_dimension($value);
+                    } elseif (is_int($value) || is_float($value)) {
+                        $value = _pg_design_variable_num($value);
+                    }
+                    $v = ($value === null) ? null : pg_design_variable_value($def, $value);
+                    if ($v !== null) {
+                        $m['values'][$key] = $v;
+                        $ok = true;
+                    }
+                }
+            }
+        } elseif ($kind === 'color' || $kind === 'size') {
+            $slug = trim(substr(trim(strtolower((string)preg_replace('/[^a-zA-Z0-9]+/', '-', implode('-', $t['path'] && $t['path'][0] === 'own' ? array_slice($t['path'], 1) : $t['path']))), '-'), 0, 30), '-');
+            $row = null;
+            if ($slug !== '' && $kind === 'color') {
+                $light = _pg_design_tokens_color($value);
+                $dark = isset($t['ext']['dark']) ? _pg_design_tokens_color($t['ext']['dark']) : null;
+                if ($light !== null) $row = array('kind' => 'color', 'light' => $light, 'dark' => $dark !== null ? $dark : $light);
+            } elseif ($slug !== '') {
+                $v = _pg_design_tokens_dimension($value);
+                $v = ($v === null) ? null : pg_design_variable_value($size_def, $v);
+                if ($v !== null) $row = array('kind' => 'size', 'value' => $v);
+            }
+            if ($row !== null) {
+                $name = $t['desc'] !== '' ? $t['desc'] : implode(' ', $t['path'] && $t['path'][0] === 'own' ? array_slice($t['path'], 1) : $t['path']);
+                $row = array('key' => $slug, 'name' => mb_substr($name, 0, 40)) + $row;
+                if (isset($own_keys[$slug]) && $m['custom'][$own_keys[$slug]]['kind'] !== $row['kind']) {
+                    // The design's own variable of another kind keeps it:
+                    // the places that read it would get a colour for a size.
+                    $ok = false;
+                } elseif (isset($own_keys[$slug])) {
+                    $m['custom'][$own_keys[$slug]] = $row;
+                    $ok = true;
+                } elseif (count($m['custom']) < 24) {
+                    $own_keys[$slug] = count($m['custom']);
+                    $m['custom'][] = $row;
+                    $own[$row['kind']]++;
+                    $ok = true;
+                } else {
+                    $left['limit'] = (isset($left['limit']) ? $left['limit'] : 0) + 1;
+                    continue;
+                }
+            }
+        }
+        if ($ok) {
+            $used++;
+        } else {
+            $left[$kind] = (isset($left[$kind]) ? $left[$kind] : 0) + 1;
+        }
+    }
+    if ($shadow !== null) {
+        $v = is_scalar($shadow) ? pg_design_variable_value($list['shadow'], $shadow) : null;
+        if ($v !== null) {
+            $m['values']['shadow'] = $v;
+            $used++;
+        } else {
+            $left['shadow'] = (isset($left['shadow']) ? $left['shadow'] : 0) + 1;
+        }
+    }
+    if ($used === 0) {
+        return array('ok' => false, 'reason' => lang('None of its tokens is a colour, a size, a font or a number.'));
+    }
+    $m = pg_design_variables_normalize($m, $defaults);
+
+    $groups = array('color' => 0, 'type' => 0, 'spacing' => 0, 'shape' => 0, 'own' => 0);
+    foreach ($list as $key => $def) {
+        if ($m['values'][$key] !== $old['values'][$key]) $groups[$def['group']]++;
+    }
+    foreach ($old['custom'] as $c) {
+        foreach ($m['custom'] as $n) {
+            if ($n['key'] === $c['key'] && $n !== $c) $groups['own']++;
+        }
+    }
+    $changed = array_sum($groups);
+    return array(
+        'ok'         => true,
+        'model'      => $m,
+        'tokens'     => count($tokens) + ($shadow !== null ? 1 : 0),
+        'changed'    => $changed,
+        'groups'     => $groups,
+        'own'        => $own['color'] + $own['size'],
+        'own_kinds'  => $own,
+        'left'       => array_sum($left),
+        'left_kinds' => $left,
+    );
 }

@@ -61,11 +61,9 @@ function pg_lead_request_consent()
  */
 function pg_lead_request_panel_user()
 {
-    if (!empty($_SESSION['software']['ghost'])) {
-        return true;
-    }
+    $software = (isset($_SESSION['software']) && is_array($_SESSION['software'])) ? $_SESSION['software'] : array();
 
-    return function_exists('pg_user_has_panel_access') && pg_user_has_panel_access();
+    return pg_lead_session_is_staff($software, function_exists('pg_user_has_panel_access') && pg_user_has_panel_access());
 }
 
 /**
@@ -350,6 +348,7 @@ function pg_lead_tie($act, $contact_id, $ref_id = 0)
         'has_key' => $browser !== null,
         'browser_contact_id' => $browser ? $browser['contact_id'] : 0,
         'contact_id' => (int) $contact_id,
+        'contact_gone' => ((int) $contact_id > 0) && ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . (int) $contact_id . "'") === 0),
         'act' => (string) $act,
         'panel_user' => pg_lead_request_panel_user(),
     ));
@@ -374,6 +373,27 @@ function pg_lead_tie($act, $contact_id, $ref_id = 0)
 
     if ($ids) {
         db_q("UPDATE lead_visits SET contact_id = ? WHERE id IN (" . implode(',', array_map('intval', $ids)) . ") AND contact_id = 0", array((string) $contact_id));
+    }
+
+    // A move splits the open visit: the earlier contact keeps its row as it
+    // stands, the new contact gets a row of its own from this page on, with
+    // no campaign or referrer of the visit's start.
+    $split = pg_lead_move_split($decision['verdict'], $session, $now);
+
+    if ($split !== null) {
+        // get_file.php signs in without functions.php: a visit with neither
+        // campaign nor referrer is direct.
+        $flag = defined('PAY_PER_CLICK_FLAG') ? (string) PAY_PER_CLICK_FLAG : '';
+        $channel = function_exists('pg_visitor_channel') ? pg_visitor_channel(array(), $flag) : 'direct';
+        $copy = pg_lead_visit_copy(array(), $channel, $split['landing_page']);
+
+        db_q(
+            "INSERT INTO lead_visits (browser_id, contact_id, visitor_id, started_at, channel, campaign, referrer_host, landing_page, pages) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            array((string) $browser['id'], (string) $contact_id, (string) $session['visitor_id'], (string) $now, $copy['channel'], $copy['campaign'], $copy['referrer_host'], $copy['landing_page'], json_encode($split['pages']))
+        );
+
+        $session = array('browser_id' => $browser['id'], 'visitor_id' => $session['visitor_id'], 'visit_id' => (int) mysqli_insert_id(db::$con), 'pages' => $split['pages']);
+        pg_lead_session_store($session);
     }
 
     if (pg_schema_has('contact_journey', 'kind')) {

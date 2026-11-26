@@ -379,14 +379,17 @@ function pg_delivery_tower_problems_found($parcel, $figures, $now, $settings, $t
  * open kind closes once the status left that kind's statuses: "scanned"
  * for a label that moved, "status_changed" for the rest. A kind whose
  * status still holds stays open even when no longer found (a figure moved),
- * so the desk keeps its record.
+ * so the desk keeps its record. A found kind that is held (closed by hand
+ * since the last status change, pg_delivery_tower_held_kinds()) is not
+ * opened again.
  *
  * @param string $status the parcel's status now
  * @param array $open kinds open on the parcel
  * @param array $found kinds from pg_delivery_tower_problems_found()
+ * @param array $held kinds from pg_delivery_tower_held_kinds()
  * @return array array('open' => list, 'close' => array(kind => reason))
  */
-function pg_delivery_tower_pass($status, $open, $found)
+function pg_delivery_tower_pass($status, $open, $found, $held = array())
 {
     $status = (string) $status;
     $kinds = pg_delivery_tower_kinds();
@@ -401,12 +404,35 @@ function pg_delivery_tower_pass($status, $open, $found)
     }
     if ($status !== 'delivered') {
         foreach ((array) $found as $kind) {
-            if (!in_array($kind, (array) $open, true) && !in_array($kind, $result['open'], true)) {
+            if (!in_array($kind, (array) $open, true) && !in_array($kind, (array) $held, true) && !in_array($kind, $result['open'], true)) {
                 $result['open'][] = $kind;
             }
         }
     }
     return $result;
+}
+
+/**
+ * The kinds staff closed by hand that stay closed: a kind whose latest hand
+ * close (closed_by > 0, any of the desk's reasons) is at or after the
+ * parcel's last status change. status_at moves only when the status changes,
+ * so a parcel whose status held since the close is not judged again for that
+ * kind; a status_at of 0 (a label never scanned) holds as well. A status read
+ * late and dated before the close keeps the kind held.
+ *
+ * @param array $hand_closed kind => the latest closed_at of a hand close
+ * @param int   $status_at   shipping_tracking_numbers.status_at
+ * @return array list of kinds
+ */
+function pg_delivery_tower_held_kinds($hand_closed, $status_at)
+{
+    $held = array();
+    foreach ((array) $hand_closed as $kind => $closed_at) {
+        if ((int) $closed_at > 0 && (int) $closed_at >= (int) $status_at) {
+            $held[] = (string) $kind;
+        }
+    }
+    return $held;
 }
 
 /**

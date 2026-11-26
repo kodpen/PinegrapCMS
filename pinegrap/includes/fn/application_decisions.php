@@ -297,10 +297,30 @@ function pg_application_waitlist_called($entry_id)
 }
 
 /**
+ * The name of the lock a declined entry's waitlist call runs under. GET_LOCK
+ * names are server-wide, so the database name keeps two sites on one server
+ * apart; at most 64 characters.
+ *
+ * @param int $declined_id
+ * @return string
+ */
+function pg_application_waitlist_lock_name($declined_id)
+{
+    $database = defined('DB_DATABASE') ? (string) DB_DATABASE : '';
+
+    return 'pg_app_waitlist_' . substr(md5($database), 0, 8) . '_' . (int) $declined_id;
+}
+
+/**
  * Gives a declined entry's place to the next on the waitlist of its
  * category (pg_application_waitlist_next()): accepted, its e-mail waiting
  * for the press. Once per declined entry; an audit_log line on both, and
  * application.decided for the called one.
+ *
+ * Two presses at the same moment (two managers, two tabs, or the automatic
+ * call) would both pass the waitlist_call check, which is written only after
+ * the accept, and accept two entries for one place: the check, the pick and
+ * the accept run under the declined entry's lock.
  *
  * @param array $program  decoded
  * @param int   $declined_id
@@ -308,6 +328,28 @@ function pg_application_waitlist_called($entry_id)
  * @return int the called entry's id; 0 when nobody was called
  */
 function pg_application_waitlist_call(array $program, $declined_id, $user_id)
+{
+    $lock = pg_application_waitlist_lock_name($declined_id);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 10)") !== 1) {
+        return 0;
+    }
+
+    $called = pg_application_waitlist_call_locked($program, $declined_id, $user_id);
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+    return $called;
+}
+
+/**
+ * pg_application_waitlist_call()'s work, run while its lock is held.
+ *
+ * @param array $program  decoded
+ * @param int   $declined_id
+ * @param int   $user_id
+ * @return int the called entry's id; 0 when nobody was called
+ */
+function pg_application_waitlist_call_locked(array $program, $declined_id, $user_id)
 {
     $declined = _pg_application_rows("SELECT id, category FROM application_entries WHERE id = ? AND program_id = ? AND decision = 4", array((int) $declined_id, (int) $program['id']));
 

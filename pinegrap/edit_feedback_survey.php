@@ -49,7 +49,8 @@ $fs_choices = pg_feedback_survey_choices();
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
 $fs_wa_offered = pg_whatsapp_message_templates();
 $fs_known = array('users' => array_keys($fs_choices['users']), 'channels' => array_keys($fs_choices['channels']), 'languages' => $fs_codes,
-    'wa_offered' => $fs_wa_offered, 'wa_before' => ($fs_survey !== null) ? $fs_survey['whatsapp'] : null);
+    'wa_offered' => $fs_wa_offered, 'wa_before' => ($fs_survey !== null) ? $fs_survey['whatsapp'] : null,
+    'kind' => (($fs_survey !== null) && pg_feedback_survey_used($fs_id)) ? (int) $fs_survey['kind'] : 0);
 
 // "Send me a test": the survey's e-mail to the signed-in person, ten an hour.
 $fs_test = function (array $survey, liveform $form) use ($user) {

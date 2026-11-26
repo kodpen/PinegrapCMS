@@ -143,6 +143,10 @@
             dragged: null
         };
 
+        if (window.pgUI && pgUI.dialog && pgUI.dialog.on) {
+            pgUI.dialog.on(win, 'hidden', function () { leave(s); });
+        }
+
         s.input.addEventListener('change', function () {
             add(s, s.input.files);
             s.input.value = '';
@@ -170,7 +174,12 @@
             var stop = event.target.closest('[data-cv-stop]');
             var clear = event.target.closest('[data-cv-clear]');
 
-            if (stop && s.busy) {
+            if (stop && s.busy && s.busy.sent) {
+                // The file has reached the server, which stores it: the
+                // answer is awaited and the page it names dropped.
+                s.busy.dropped = true;
+                drawRows(s);
+            } else if (stop && s.busy) {
                 s.busy.xhr.abort();
             } else if (clear) {
                 var id = parseInt(clear.getAttribute('data-cv-clear'), 10);
@@ -184,7 +193,7 @@
 
             if (bin) {
                 var at = parseInt(bin.getAttribute('data-cv-remove'), 10);
-                s.pages.splice(at, 1);
+                drop(s, s.pages.splice(at, 1));
                 drawTiles(s);
                 drawFoot(s);
                 var next = s.tiles.querySelectorAll('[data-cv-remove]')[Math.min(at, s.pages.length - 1)];
@@ -331,6 +340,11 @@
                 drawRows(s);
             }
         };
+        xhr.upload.onload = function () {
+            if (s.busy) {
+                s.busy.sent = true;
+            }
+        };
         xhr.onload = function () {
             var answer = xhr.response;
 
@@ -339,8 +353,12 @@
                 return;
             }
 
-            if (s.pages.length < s.T.max) {
+            if (s.busy && s.busy.dropped) {
+                drop(s, [answer.page]);
+            } else if (s.pages.length < s.T.max) {
                 s.pages.push(answer.page);
+            } else {
+                drop(s, [answer.page]);
             }
             drawTiles(s);
             finish('');
@@ -357,8 +375,9 @@
 
     function drawRows(s) {
         var html = '';
+        var live = (s.busy && !s.busy.dropped) ? s.busy : null;
 
-        if (s.busy) {
+        if (live) {
             html += '<div class="sd-cv-row"><i class="bi bi-file-earmark-image" aria-hidden="true"></i>'
                 + '<span class="sd-cv-row-text"><strong>' + esc(s.busy.name) + '</strong><span class="pg-text-meta">' + esc(s.T.reading) + '</span>'
                 + '<span class="progress" role="progressbar" aria-label="' + esc(s.busy.name) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + s.busy.done + '">'
@@ -373,15 +392,15 @@
         });
 
         // A progress update redraws only the bar.
-        var bar = s.busy ? s.rows.querySelector('.progress') : null;
+        var bar = live ? s.rows.querySelector('.progress') : null;
 
-        if (bar && s.rows.getAttribute('data-busy') === String(s.busy.id) && s.rows.childElementCount === 1 + s.bad.length) {
+        if (bar && s.rows.getAttribute('data-busy') === String(live.id) && s.rows.childElementCount === 1 + s.bad.length) {
             bar.setAttribute('aria-valuenow', String(s.busy.done));
             bar.firstChild.style.width = s.busy.done + '%';
             return;
         }
 
-        s.rows.setAttribute('data-busy', s.busy ? String(s.busy.id) : '');
+        s.rows.setAttribute('data-busy', live ? String(live.id) : '');
         s.rows.innerHTML = html;
     }
 
@@ -477,7 +496,45 @@
         return out;
     }
 
+    // Pages the start stored and the person left: the server deletes the
+    // files by the ids this session stored, never one a saved page uses.
+    function drop(s, pages) {
+        var ids = (pages || []).map(function (p) { return p && p.id ? parseInt(p.id, 10) : 0; }).filter(function (id) { return id > 0; });
+
+        if (ids.length) {
+            api({ sub_action: 'canva_drop', ids: ids }).then(function () { }, function () { });
+        }
+    }
+
+    // Cancel and the window's close leave the start: its pages are dropped,
+    // an upload under way is dropped when its answer comes, the rest of the
+    // queue is not sent.
+    function leave(s) {
+        if (s.leaving) {
+            return;
+        }
+
+        drop(s, s.pages);
+        s.pages = [];
+        s.queue = [];
+
+        if (s.busy) {
+            if (s.busy.sent) {
+                s.busy.dropped = true;
+            } else {
+                s.busy.xhr.abort();
+            }
+        }
+
+        s.view = 'add';
+        drawTiles(s);
+        drawRows(s);
+    }
+
     function keep(s) {
+        // The window leaves for the design: its pages are the sketch now.
+        s.leaving = true;
+
         try {
             window.localStorage.setItem('pg_proto_sketch_new', JSON.stringify(sketchOf(s.pages)));
         } catch (e) { }

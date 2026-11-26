@@ -18,6 +18,12 @@
  * out to a typed value;
  * and Detach, which puts the value of that moment in the control's place.
  *
+ * "Export" and "Import" of the tab's "More" menu: a JSON file in the Design
+ * Tokens community format, written and read by the server; a file that is
+ * read is asked about (what changes, what comes as the designer's own,
+ * what is left out) before the model takes it, a refused one leaves a red
+ * line with the reason under the tab row.
+ *
  * Not needed to open a page: the core runs this file the first time the tab
  * is shown, a control's list or Detach is asked for, or when the look or
  * palette of a design with a saved variables file changes
@@ -50,13 +56,75 @@ StyleDesigner.definePart('variables', function (K) {
         return esc(String(v == null ? '' : v)).replace(/"/g, '&quot;');
     }
 
+    // ── Pure helpers (tests/design_variables_tab_test.php) ───────────────
+
+    // The bounds of an own size (pg_design_variables_normalize()).
+    var OWN_SIZE = { kind: 'length', rem: [0, 20], px: [0, 320] };
+
+    // Whether a typed value is one the model keeps, twin of
+    // pg_design_variable_value() for the kinds typed in a field. The server
+    // puts the default in place of a refused value and drops an own size
+    // whose value it refuses, with every place that reads it. A bare 0 only
+    // where each unit's bounds start at 0: a base size of 0 hides the text.
+    function _sdVarsTypedOk(row, v) {
+        v = String(v == null ? '' : v).trim();
+        var b = row.kind === 'size' ? OWN_SIZE : row;
+        if (b.kind === 'length') {
+            if (v === '0') return (!b.rem || b.rem[0] === 0) && (!b.px || b.px[0] === 0);
+            var m = /^(\d{1,3}(?:\.\d{1,4})?)(rem|px)$/.exec(v);
+            if (!m || !b[m[2]]) return false;
+            var n = parseFloat(m[1]);
+            return n >= b[m[2]][0] && n <= b[m[2]][1];
+        }
+        if (b.kind === 'number') {
+            if (!/^\d(?:\.\d{1,3})?$/.test(v)) return false;
+            var x = parseFloat(v);
+            return x >= b.min && x <= b.max;
+        }
+        if (b.kind === 'font') {
+            // Names, each bare or in one pair of quotes: an open quote
+            // would run on over the next declaration of the stylesheet.
+            if (!/^[A-Za-z0-9 ,"'\-]{1,200}$/.test(v)) return false;
+            return v.split(',').every(function (part) {
+                return /^(?:[A-Za-z0-9 \-]+|"[A-Za-z0-9 \-]+"|'[A-Za-z0-9 \-]+')$/.test(part.trim());
+            });
+        }
+        return true;
+    }
+
+    // The line under a field that holds a refused value.
+    function _sdVarsTypedHint(row) {
+        var b = row.kind === 'size' ? OWN_SIZE : row;
+        if (b.kind === 'number') return _sdT('A number from {var:1} to {var:2}.', [b.min, b.max]);
+        if (b.kind === 'font') return _sdT('Font names, separated by commas.');
+        var rem = b.rem ? b.rem[0] + 'rem' : '', px = b.px ? b.px[0] + 'px' : '';
+        if (rem && px) return _sdT('From {var:1} to {var:2}, or from {var:3} to {var:4}.', [rem, b.rem[1] + 'rem', px, b.px[1] + 'px']);
+        return _sdT('From {var:1} to {var:2}.', rem ? [rem, b.rem[1] + 'rem'] : [px, b.px[1] + 'px']);
+    }
+
+    // The token a variable writes (pg_design_variable_token()).
+    function _sdVarsToken(key, custom) {
+        return (custom ? 'c-' : '') + String(key).replace(/_/g, '-');
+    }
+
+    // The elements whose style reads an own colour or size: Remove leaves
+    // them without a value, so a used one is asked about first. A curve's
+    // places keep their numbers (the fallback written with it).
+    function _sdVarsUsedBy(c, used) {
+        if (!c || c.kind === 'curve') return 0;
+        return (used || {})[_sdVarsToken(c.key, true)] || 0;
+    }
+
+    // ── end of the pure helpers ──────────────────────────────────────────
+
     // Asks the server for the state of a model (null: the stored one, or
     // the defaults) on the look and palette of the moment.
-    function ask(model) {
+    function ask(model, extra) {
         var my = ++seq;
         var body = { look: H.look(), palette: H.palette() };
         if (model) body.model = model;
         else if (H.styleId) body.style_id = H.styleId;
+        for (var k in extra || {}) body[k] = extra[k];
         return _pgApiPost('variables_state', body).then(function (res) {
             if (my !== seq) return null;
             if (!res || res.status !== 'success') {
@@ -115,10 +183,7 @@ StyleDesigner.definePart('variables', function (K) {
         return '<span class="sd-vars-sample" aria-hidden="true"></span>';
     }
 
-    // The token a variable writes (pg_design_variables_token()).
-    function tokenOf(key, custom) {
-        return (custom ? 'c-' : '') + String(key).replace(/_/g, '-');
-    }
+    var tokenOf = _sdVarsToken;
 
     // "Used in n places", words and never a button.
     function usedHtml(used, token) {
@@ -134,8 +199,12 @@ StyleDesigner.definePart('variables', function (K) {
                 '<input type="color" class="sd-vars-color" data-custom="' + i + '" data-mode="dark" value="' + attr(c.dark) + '" aria-label="' + attr(c.name) + ', ' + attr(_sdT('Dark')) + '" title="' + attr(_sdT('Dark')) + '">' +
               '</span>'
             : '<input type="text" class="form-control form-control-sm sd-vars-input" data-custom="' + i + '" value="' + attr(c.value) + '" aria-label="' + attr(c.name) + '" spellcheck="false">';
-        return '<div class="sd-vars-row">' +
-            (c.kind === 'color' ? '<span class="sd-vars-swatch" style="background:' + attr(c.light) + '" aria-hidden="true"></span>' : '<span class="sd-vars-sample" aria-hidden="true"></span>') +
+        // A curve: its sign where a colour has its swatch, its four numbers
+        // in the field (checked here: the server drops a refused one).
+        var lead = c.kind === 'color' ? '<span class="sd-vars-swatch" style="background:' + attr(c.light) + '" aria-hidden="true"></span>'
+            : c.kind === 'curve' ? '<span class="sd-vars-sample">' + K._sdCurveSign(c.value, true) + '</span>'
+            : '<span class="sd-vars-sample" aria-hidden="true"></span>';
+        return '<div class="sd-vars-row" data-var-row="' + attr(c.key) + '">' + lead +
             '<input type="text" class="form-control form-control-sm sd-vars-name" data-custom-name="' + i + '" value="' + attr(c.name) + '" maxlength="40" aria-label="' + attr(_sdT('Name')) + '">' +
             value + usedHtml(used || {}, tokenOf(c.key, true)) +
             '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-act="remove" data-custom="' + i + '" title="' + attr(_sdT('Remove')) + '" aria-label="' + attr(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
@@ -161,7 +230,7 @@ StyleDesigner.definePart('variables', function (K) {
         if (!shown() || !S) return;
         var m = current() || S.model;
         var used = H.usage ? H.usage() : {};
-        var h = '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Variables')) + '</span>' +
+        var h = noteHtml() + '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Variables')) + '</span>' +
                 '<span class="sd-th-sub">' + esc(_sdT('The named colours, type, spacing and shape of the design. Change one here and every page that uses it follows.')) + '</span></div>';
         (S.list.groups || []).forEach(function (g) {
             h += '<details class="sd-vars-group" data-group="' + attr(g.key) + '"' + (open[g.key] ? ' open' : '') + '>' +
@@ -169,7 +238,7 @@ StyleDesigner.definePart('variables', function (K) {
             S.list.rows.forEach(function (vr) {
                 if (vr.group !== g.key) return;
                 var v = m.values[vr.key];
-                h += '<div class="sd-vars-row">' + sample(vr, v) +
+                h += '<div class="sd-vars-row" data-var-row="' + attr(vr.key) + '">' + sample(vr, v) +
                      '<span class="sd-vars-label">' + esc(vr.label) + '</span>' + field(vr, v) + usedHtml(used, tokenOf(vr.key, false)) + '</div>';
             });
             h += '</details>';
@@ -200,14 +269,19 @@ StyleDesigner.definePart('variables', function (K) {
 
     // ── Changing ─────────────────────────────────────────────────────────
 
+    // Changes made, so the answer to an older one is not taken once a
+    // newer one is in the hidden input.
+    var edits = 0;
+
     // A change: the model goes into the hidden input at once (Save posts
     // it), the server's stylesheet follows when the hand rests.
     function change(m, redraw) {
+        var mine = ++edits;
         H.setModel(m);
         clearTimeout(timer);
         timer = setTimeout(function () {
             ask(m).then(function (res) {
-                if (!res) return;
+                if (!res || mine !== edits) return;
                 H.setModel(res.model);
                 H.tryCss(res.css);
                 if (redraw) draw(); else redrawContrast();
@@ -245,12 +319,27 @@ StyleDesigner.definePart('variables', function (K) {
             // Text waits for the field to be left; a list answers at once.
             inp.addEventListener('change', function () {
                 var m = copyModel();
+                var row = inp.hasAttribute('data-var') ? rowOf(inp.getAttribute('data-var')) : m.custom[+inp.getAttribute('data-custom')];
+                if (row && row.kind !== 'curve' && inp.tagName === 'INPUT') {
+                    var ok = _sdVarsTypedOk(row, inp.value);
+                    inp.classList.toggle('is-invalid', !ok);
+                    inp.title = ok ? '' : _sdVarsTypedHint(row);
+                    if (!ok) return;
+                }
                 if (inp.hasAttribute('data-var')) {
                     m.values[inp.getAttribute('data-var')] = inp.value.trim();
                 } else {
                     var c = m.custom[+inp.getAttribute('data-custom')];
                     if (!c) return;
-                    c.value = inp.value.trim();
+                    if (c.kind === 'curve') {
+                        var nums = K._sdCurveNums(inp.value);
+                        inp.classList.toggle('is-invalid', !nums);
+                        inp.title = nums ? '' : _sdT('Four numbers. The first and the third stay between 0 and 1.');
+                        if (!nums) return;
+                        c.value = nums.join(', ');
+                    } else {
+                        c.value = inp.value.trim();
+                    }
                 }
                 change(m, true);
             });
@@ -266,6 +355,7 @@ StyleDesigner.definePart('variables', function (K) {
         el.querySelectorAll('[data-vars-act]').forEach(function (b) {
             b.addEventListener('click', function () { act(b.getAttribute('data-vars-act'), b); });
         });
+        bindNote();
     }
 
     function act(what, b) {
@@ -287,6 +377,13 @@ StyleDesigner.definePart('variables', function (K) {
                 : { key: key, name: _sdT('Size {var}', n - 1), kind: 'size', value: '1rem' });
             open.custom = true;
         } else if (what === 'remove') {
+            var gone = m.custom[+b.getAttribute('data-custom')];
+            var used = H.usage ? H.usage() : {};
+            var n = gone && gone.kind === 'curve' ? used[tokenOf(gone.key, true)] || 0 : _sdVarsUsedBy(gone, used);
+            // A used variable is asked about: a curve's elements keep its
+            // numbers (the fallback written with it), a colour's or a
+            // size's are left without the value.
+            if (n && !b.hasAttribute('data-sure')) { askRemove(b, gone, n); return; }
             m.custom.splice(+b.getAttribute('data-custom'), 1);
         } else {
             return;
@@ -295,6 +392,198 @@ StyleDesigner.definePart('variables', function (K) {
         S.model = m;
         draw();
         change(m, true);
+    }
+
+    // "Remove" on a used curve: the question in place, under the row.
+    function askRemove(b, c, n) {
+        var row = b.closest('.sd-vars-row');
+        if (!row || row.nextElementSibling && row.nextElementSibling.hasAttribute('data-vars-sure')) return;
+        var q = document.createElement('div');
+        q.className = 'sd-vars-sure';
+        q.setAttribute('data-vars-sure', '');
+        q.setAttribute('role', 'alert');
+        var line = c.kind === 'curve'
+            ? _sdT('“{var:1}” is used in {var:2} places. Each keeps the curve as its own.', [c.name, n])
+            : _sdT('“{var:1}” is used in {var:2} places. They lose its value.', [c.name, n]);
+        q.innerHTML = '<span>' + esc(line) + '</span>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-danger" data-sure>' + esc(_sdT('Remove')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-cancel>' + esc(_sdT('Cancel')) + '</button>';
+        row.parentNode.insertBefore(q, row.nextSibling);
+        q.querySelector('[data-sure]').addEventListener('click', function () { b.setAttribute('data-sure', ''); act('remove', b); });
+        q.querySelector('[data-cancel]').addEventListener('click', function () { q.remove(); b.focus(); });
+        q.querySelector('[data-cancel]').focus();
+    }
+
+    // The curve editor's "Save as…" (op 'add', c { name, value }) and
+    // "Update" (op 'update', c { key, value }): the model of the moment
+    // (asked once when the tab never ran) takes the curve as one of the
+    // design's own variables. Answers { key } or { refused: reason }.
+    function curve(host, op, c) {
+        return ready(host).then(function (res) {
+            if (!res) return { refused: _sdT('Network error.') };
+            var m = copyModel();
+            m.custom = m.custom || [];
+            var value = (K._sdCurveNums(String(c.value)) || []).join(', ');
+            if (!value) return { refused: _sdT('Four numbers. The first and the third stay between 0 and 1.') };
+            var row;
+            if (op === 'update') {
+                row = m.custom.filter(function (x) { return x.kind === 'curve' && x.key === c.key; })[0];
+                if (!row) return { refused: _sdT('Network error.') };
+                row.value = value;
+            } else {
+                var name = String(c.name || '').trim().slice(0, 40);
+                if (!name) return { refused: _sdT('Give the curve a name.') };
+                if (m.custom.some(function (x) { return x.kind === 'curve' && x.name.toLowerCase() === name.toLowerCase(); })) {
+                    return { refused: _sdT('A curve named “{var}” is there already.', name) };
+                }
+                if (m.custom.length >= 24) return { refused: _sdT('A design keeps at most 24 of its own variables.') };
+                var base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'curve', key = base, i = 2;
+                while (m.custom.some(function (x) { return x.key === key; })) key = base + '-' + i++;
+                row = { key: key, name: name, kind: 'curve', value: value };
+                m.custom.push(row);
+            }
+            H.setModel(m);
+            S.model = m;
+            draw();
+            change(m, true);
+            return { key: row.key };
+        });
+    }
+
+    // ── Export and Import ────────────────────────────────────────────────
+
+    // The result line under the tab row: { ok, html }, kept until closed or
+    // the next Export or Import.
+    var note = null;
+    // The largest file read (PG_DESIGN_TOKENS_MAX).
+    var MAX = 262144;
+
+    function noteHtml() {
+        if (!note) return '';
+        return '<p class="sd-vars-note ' + (note.ok ? 'is-ok' : 'is-bad') + '" role="status">' +
+            '<span class="bi ' + (note.ok ? 'bi-check-circle' : 'bi-x-circle') + '" aria-hidden="true"></span>' +
+            '<span class="sd-vars-note-text">' + note.html + '</span>' +
+            (note.ok
+                ? '<button type="button" class="btn btn-sm btn-link theme-secondary" data-vars-note-x aria-label="' + attr(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>'
+                : '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-note-again>' + esc(_sdT('Choose another file')) + '</button>') +
+            '</p>';
+    }
+
+    function bindNote() {
+        var x = H.el.querySelector('[data-vars-note-x]');
+        if (x) x.addEventListener('click', function () { note = null; draw(); });
+        var again = H.el.querySelector('[data-vars-note-again]');
+        if (again) again.addEventListener('click', function () { importTokens(H); });
+    }
+
+    function showNote(ok, html) {
+        note = { ok: ok, html: html };
+        if (shown()) draw();
+    }
+
+    // Saves the design's variables as <design>.tokens.json at once.
+    function exportTokens(host) {
+        H = host;
+        return ask(current(), { 'export': 1, name: host.name ? host.name() : '' }).then(function (res) {
+            if (!res || !res['export']) return;
+            var x = res['export'];
+            var url = URL.createObjectURL(new Blob([x.text], { type: 'application/json' }));
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = x.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+            showNote(true, '<b>' + esc(x.count === 1 ? _sdT('1 variable exported') : _sdT('{var} variables exported', x.count)) + '</b> ' +
+                esc(_sdT('to {var}, in the Design Tokens format.', x.name)));
+        });
+    }
+
+    function refuse(file, reason) {
+        showNote(false, '<b>' + esc(_sdT('{var} was not imported.', file)) + '</b> ' + esc(reason));
+    }
+
+    // The browser's file box, then the file read and asked about.
+    function importTokens(host) {
+        H = host;
+        var inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.json,application/json';
+        inp.addEventListener('change', function () {
+            var f = inp.files && inp.files[0];
+            if (!f) return;
+            if (f.size > MAX) { refuse(f.name, _sdT('It is larger than a tokens file can be.')); return; }
+            var rd = new FileReader();
+            rd.onload = function () {
+                ask(current(), { tokens: String(rd.result || '') }).then(function (res) {
+                    if (!res || !res['import']) return;
+                    var r = res['import'];
+                    if (!r.ok) { refuse(f.name, r.reason); return; }
+                    confirmImport(f.name, r);
+                });
+            };
+            rd.onerror = function () { refuse(f.name, _sdT('It is not a JSON file.')); };
+            rd.readAsText(f);
+        });
+        inp.click();
+    }
+
+    // "8 colours, 6 of type, 3 of shape".
+    function groupsText(g) {
+        var parts = [];
+        if (g.color) parts.push(g.color === 1 ? _sdT('1 colour') : _sdT('{var} colours', g.color));
+        if (g.type) parts.push(_sdT('{var} of type', g.type));
+        if (g.spacing) parts.push(_sdT('{var} of spacing', g.spacing));
+        if (g.shape) parts.push(_sdT('{var} of shape', g.shape));
+        if (g.own) parts.push(_sdT('{var} of your own', g.own));
+        return parts.join(', ');
+    }
+
+    function kindsText(k) {
+        var words = {
+            color: _sdT('colour'), size: _sdT('size'), font: _sdT('font'), number: _sdT('number'), weight: _sdT('font weight'),
+            gradient: _sdT('gradient'), duration: _sdT('duration'), shadow: _sdT('shadow'), cubicbezier: _sdT('easing'),
+            typography: _sdT('type style'), border: _sdT('border'), transition: _sdT('transition'), strokestyle: _sdT('line style'),
+            reference: _sdT('reference that leads nowhere'), limit: _sdT('over the limit of 24 of your own')
+        };
+        return Object.keys(k).map(function (key) {
+            var w = words[key] || _sdT('other');
+            return k[key] > 1 ? w + ' (' + k[key] + ')' : w;
+        }).join(', ');
+    }
+
+    // The question of what the file would change, in place of the folds.
+    function confirmImport(file, r) {
+        if (!shown()) return;
+        var li = function (icon, head, rest) {
+            return '<li><span class="bi ' + icon + '" aria-hidden="true"></span><span><b>' + esc(head) + '</b>' + (rest ? ': ' + esc(rest) : '') + '</span></li>';
+        };
+        var own = [];
+        if (r.own_kinds.color) own.push(r.own_kinds.color === 1 ? _sdT('1 colour') : _sdT('{var} colours', r.own_kinds.color));
+        if (r.own_kinds.size) own.push(r.own_kinds.size === 1 ? _sdT('1 size') : _sdT('{var} sizes', r.own_kinds.size));
+        var h = '<div class="sd-vars-ask" role="dialog" aria-label="' + attr(_sdT('Import variables from {var}?', file)) + '">' +
+            '<div class="sd-vars-ask-head"><b>' + esc(_sdT('Import variables from {var}?', file)) + '</b>' +
+            '<span>' + esc(r.tokens === 1 ? _sdT('The file holds 1 token.') : _sdT('The file holds {var} tokens.', r.tokens)) + '</span></div><ul class="sd-vars-eff">' +
+            li('bi-arrow-repeat', r.changed === 1 ? _sdT('1 value of this design changes') : _sdT('{var} values of this design change', r.changed), groupsText(r.groups)) +
+            (r.own ? li('bi-plus-circle', r.own === 1 ? _sdT('1 comes as your own variable') : _sdT('{var} come as your own variables', r.own), own.join(', ')) : '') +
+            (r.left ? li('bi-dash-circle', r.left === 1 ? _sdT('1 is left out') : _sdT('{var} are left out', r.left), kindsText(r.left_kinds)) : '') +
+            '</ul><div class="sd-vars-ask-foot">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-ask="cancel">' + esc(_sdT('Cancel')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-solid theme-primary" data-vars-ask="import">' + esc(_sdT('Import')) + '</button>' +
+            '</div></div>';
+        H.el.innerHTML = h;
+        H.el.querySelector('[data-vars-ask="cancel"]').addEventListener('click', function () { draw(); });
+        var go = H.el.querySelector('[data-vars-ask="import"]');
+        go.addEventListener('click', function () {
+            var n = r.changed + r.own;
+            note = { ok: true, html: '<b>' + esc(n === 1 ? _sdT('1 variable imported') : _sdT('{var} variables imported', n)) + '</b> ' + esc(_sdT('from {var}.', file)) };
+            H.setModel(r.model);
+            S.model = r.model;
+            draw();
+            change(r.model, true);
+        });
+        go.focus();
     }
 
     // ── Entry points ─────────────────────────────────────────────────────
@@ -306,6 +595,26 @@ StyleDesigner.definePart('variables', function (K) {
             return;
         }
         return ask(current()).then(function (res) { if (res) draw(); });
+    }
+
+    // One variable shown: its fold opened, its row marked and scrolled to,
+    // its field focused. The Style guide's names lead here.
+    function reveal(host, key) {
+        return Promise.resolve(render(host)).then(function () {
+            if (!shown() || !S) return;
+            var group = 'custom';
+            (S.list.rows || []).forEach(function (vr) { if (vr.key === key) group = vr.group; });
+            if (!open[group]) { open[group] = true; draw(); }
+            var row = Array.prototype.filter.call(H.el.querySelectorAll('[data-var-row]'), function (r) {
+                return r.getAttribute('data-var-row') === key;
+            })[0];
+            if (!row) return;
+            Array.prototype.forEach.call(H.el.querySelectorAll('.sd-vars-row.is-marked'), function (r) { r.classList.remove('is-marked'); });
+            row.classList.add('is-marked');
+            row.scrollIntoView({ block: 'center' });
+            var f = row.querySelector('input, select');
+            if (f) f.focus({ preventScroll: true });
+        });
     }
 
     // The look or palette changed: the stylesheet is worked out again for
@@ -387,7 +696,7 @@ StyleDesigner.definePart('variables', function (K) {
             }
         }
         (m.custom || []).forEach(function (c) {
-            if ((host.kind === 'color') !== (c.kind === 'color')) return;
+            if (c.kind === 'curve' || (host.kind === 'color') !== (c.kind === 'color')) return;
             own.push({ expr: host.expr({ token: tokenOf(c.key, true) }), name: c.name,
                 value: c.kind === 'color' ? c.light : pxText(px(c.value)) || c.value, color: c.kind === 'color' ? c.light : '' });
         });
@@ -398,12 +707,18 @@ StyleDesigner.definePart('variables', function (K) {
         ].filter(function (g) { return g.items.length; });
     }
 
+    // The tab's row of a built-in variable, or null.
+    function rowOf(key) {
+        return ((S && S.list && S.list.rows) || []).filter(function (vr) { return vr.key === key; })[0] || null;
+    }
+
     function labelOf(key) {
         var r = S.list.rows.filter(function (vr) { return vr.key === key; })[0];
         return r ? r.label : key;
     }
 
     function tipShown() {
+        if (K._sdTipsOff()) return false;
         try { return !localStorage.getItem(TIP); } catch (e) { return false; }
     }
     function tipDone() {
@@ -539,5 +854,5 @@ StyleDesigner.definePart('variables', function (K) {
         });
     }
 
-    return { render: render, refresh: refresh, pick: pick, detach: detach };
+    return { render: render, refresh: refresh, reveal: reveal, pick: pick, detach: detach, exportTokens: exportTokens, importTokens: importTokens, curve: curve };
 });

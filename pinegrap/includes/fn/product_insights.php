@@ -324,8 +324,26 @@ function pg_product_insights_keep($kept, $key, $data, $now)
 }
 
 /**
- * The conditions of the product's sales lines: product, status, an active
- * line and an optional date floor, over order_items joined to orders. Pure.
+ * The orders that sell: pg_customer_value_order_counts() in SQL, so the card
+ * counts what the Customers report counts. Complete or exported, not
+ * cancelled, not refunded in full; a column not yet migrated is left out of
+ * the test. Pure.
+ *
+ * @param bool $has_cancelled_at     orders.cancelled_at exists
+ * @param bool $has_refunded_amount  orders.refunded_amount exists
+ * @return string  SQL for a WHERE
+ */
+function pg_product_insights_counted_sql($has_cancelled_at, $has_refunded_amount)
+{
+    return "orders.status IN ('complete', 'exported')"
+        . ($has_cancelled_at ? " AND COALESCE(orders.cancelled_at, 0) = 0" : '')
+        . ($has_refunded_amount ? " AND (orders.refunded_amount <= 0 OR orders.refunded_amount < orders.total)" : '');
+}
+
+/**
+ * The conditions of the product's sales lines: product, a counted order
+ * (pg_product_insights_counted_sql()), an active line and an optional date
+ * floor, over order_items joined to orders.
  *
  * @param int $product_id
  * @param int $from  unix time, 0 for none
@@ -334,7 +352,7 @@ function pg_product_insights_keep($kept, $key, $data, $now)
 function pg_product_insights_sales_where($product_id, $from)
 {
     return "order_items.product_id = '" . (int) $product_id . "'
-            AND orders.status IN ('complete', 'exported')"
+            AND " . pg_product_insights_counted_sql(pg_schema_has('orders', 'cancelled_at'), pg_schema_has('orders', 'refunded_amount'))
         . pg_order_item_active_sql('order_items')
         . (((int) $from > 0) ? " AND orders.order_date >= '" . (int) $from . "'" : '');
 }
@@ -354,7 +372,32 @@ function pg_product_insights_sales_from($product_id, $from)
 }
 
 /**
+ * The orders whose amounts are in the store's base currency:
+ * pg_customer_value_order_unit() in SQL. A web order always is (its
+ * currency_code is only what the visitor was shown); a marketplace order is
+ * when its code is empty or the base one. Pure.
+ *
+ * @param string $base      BASE_CURRENCY_CODE
+ * @param bool   $has_type  orders.type exists
+ * @return string  SQL for a condition
+ */
+function pg_product_insights_base_unit_sql($base, $has_type)
+{
+    if (!$has_type) {
+        return '1 = 1';
+    }
+
+    $base = (string) preg_replace('/[^A-Z]/', '', strtoupper((string) $base));
+
+    return "(orders.type <> 'marketplace' OR TRIM(COALESCE(orders.currency_code, '')) = ''"
+        . " OR UPPER(TRIM(orders.currency_code)) = '" . $base . "')";
+}
+
+/**
  * Units, revenue and orders of the period, the earlier period and the chart.
+ * Revenue sums only lines of orders in the base currency
+ * (pg_product_insights_base_unit_sql()); units and orders count every
+ * order.
  *
  * @param int   $product_id
  * @param array $window  pg_product_insights_window()
@@ -367,7 +410,8 @@ function pg_product_insights_sales($product_id, $window)
     $from = ((int) $window['prev_start'] > 0) ? (int) $window['prev_start'] : 0;
 
     $result = db_q("SELECT " . $slot . " AS slot, SUM(order_items.quantity) AS units,
-            SUM(CAST(order_items.price AS SIGNED) * CAST(order_items.quantity AS SIGNED)) AS revenue,
+            SUM(CASE WHEN " . pg_product_insights_base_unit_sql(defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', pg_schema_has('orders', 'type')) . "
+                THEN CAST(order_items.price AS SIGNED) * CAST(order_items.quantity AS SIGNED) ELSE 0 END) AS revenue,
             COUNT(DISTINCT order_items.order_id) AS orders
         " . pg_product_insights_sales_from($product_id, $from) . "
         GROUP BY slot");
@@ -444,8 +488,22 @@ function pg_product_insights_views($product_id, $window)
 }
 
 /**
- * Units of the product's lines asked back, for orders of the period: any
- * request but a rejected one, as the sales watch counts them.
+ * The returns whose goods count as back: pg_return_holds_goods() in SQL.
+ * Every open status and refunded; a closed one only when something was sent,
+ * received or paid back (a request withdrawn before that is no return);
+ * rejected never. Pure.
+ *
+ * @return string  SQL for a WHERE
+ */
+function pg_product_insights_returns_held_sql()
+{
+    return "(order_returns.status IN ('requested', 'approved', 'shipped', 'received', 'refunded')
+            OR (order_returns.status = 'closed' AND (order_returns.shipped_at > 0 OR order_returns.received_at > 0 OR order_returns.refunded_at > 0)))";
+}
+
+/**
+ * Units of the product's lines asked back, for orders of the period: the
+ * returns that hold goods (pg_product_insights_returns_held_sql()).
  *
  * @param int   $product_id
  * @param array $window
@@ -463,7 +521,7 @@ function pg_product_insights_returns($product_id, $window)
         INNER JOIN order_return_items ON order_return_items.order_item_id = order_items.id
         INNER JOIN order_returns ON order_returns.id = order_return_items.return_id
         WHERE " . pg_product_insights_sales_where($product_id, (int) $window['start']) . "
-            AND order_returns.status <> 'rejected'");
+            AND " . pg_product_insights_returns_held_sql());
 }
 
 /**

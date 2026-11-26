@@ -28,7 +28,15 @@ function designer_options_controls_test_block()
 	$from = strpos($source, '    // ── The Options panel controls: pure helpers');
 	$to = ($from === false) ? false : strpos($source, '    // ── end of the Options panel controls', $from);
 
-	return ($to === false) ? '' : substr($source, $from, $to - $from);
+	if ($to === false) {
+		return '';
+	}
+
+	// The ratio reader sits with the Sizing style it serves (getNodeExtraStyle()).
+	$ratio = strpos($source, '    // A ratio typed into an Aspect Ratio row');
+	$ratio_end = ($ratio === false) ? false : strpos($source, "\n    }\n", $ratio);
+
+	return substr($source, $from, $to - $from) . (($ratio_end === false) ? '' : substr($source, $ratio, $ratio_end - $ratio + 7));
 }
 
 // Runs $code after the block; its `out` comes back decoded. Null without Node.
@@ -258,4 +266,70 @@ JS
 	}
 
 	pg_assert_same(array('MD', 'LG', 'all', '', '', '', 'SM'), $answer);
+}
+
+// The ratios the Aspect Ratio rows take, written as CSS aspect-ratio: a
+// pair with a colon, an x or a slash, or one number; anything else (a zero
+// side, a length, a second value) is not written. The page writes the
+// same (pg_designer_css_ratio()).
+function designer_options_controls_test_ratios()
+{
+	return array(
+		'16:9' => '16 / 9', '16x9' => '16 / 9', '4/5' => '4 / 5', ' 3 : 2 ' => '3 / 2', '9 / 16' => '9 / 16',
+		'1.5' => '1.5', '2.39:1' => '2.39 / 1', 'auto' => 'auto', '' => '',
+		'16:0' => null, '0' => null, 'abc' => null, '16:9;x' => null, '-1' => null, '16px' => null, '1/2/3' => null
+	);
+}
+
+function test_designer_options_aspect_ratio_value()
+{
+	$cases = designer_options_controls_test_ratios();
+	$answer = designer_options_controls_test_run('var cases = ' . json_encode(array_keys($cases)) . ';' . <<<'JS'
+out = {
+	css: cases.map(function (v) { return _sdRatioCss(v); }),
+	check: [_sdLenCheck('ratio', '16:9'), _sdLenCheck('ratio', ''), _sdLenCheck('ratio', 'abc') !== '', _sdLenCheck('len', '16:9') !== '']
+};
+JS
+	);
+
+	foreach ($cases as $in => $want) {
+		pg_assert_same((string) $want, pg_designer_css_ratio($in), 'page: ' . $in);
+	}
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array_values($cases), $answer['css']);
+	pg_assert_same(array('', '', true, true), $answer['check']);
+}
+
+// An element on today's ratio box shows its ratio as the value it keeps
+// until the ratio is changed: the Sizing switch's preset (16:9 when none
+// was picked) or its percentage, an Image's own ratio box; a ratio of the
+// new kind wins.
+function test_designer_options_aspect_ratio_of_ratio_box()
+{
+	$answer = designer_options_controls_test_run(<<<'JS'
+out = [
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: '4x3' }, false),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: '' }, false),
+	_sdAspectOf({ aspectRatioEnabled: false, aspectRatio: '16x9' }, false),
+	_sdAspectOf({ aspectRatio: '1x1' }, true),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: 'custom', aspectRatioCustom: '56.25%' }, false),
+	_sdAspectOf({ aspectRatioEnabled: true, aspectRatio: 'custom', aspectRatioCustom: 'calc(9 / 16 * 100%)' }, false),
+	_sdAspectOf({ aspect: '3 / 2', aspectRatioEnabled: true, aspectRatio: '4x3' }, false),
+	_sdAspectOf({}, false),
+	_sdRatioBoxed({ aspectRatioEnabled: true }, false),
+	_sdRatioBoxed({ aspectRatio: '16x9' }, false),
+	_sdRatioBoxed({ aspectRatio: '16x9' }, true)
+];
+JS
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('4 / 3', '16 / 9', '', '1 / 1', '100 / 56.25', '', '3 / 2', '', true, false, true), $answer);
 }

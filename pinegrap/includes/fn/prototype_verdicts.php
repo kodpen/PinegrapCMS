@@ -382,6 +382,7 @@ function pg_proto_viewer_review_data($link, $page_name, $standing, $fingerprint,
 
     return array(
         'page' => (string) $page_name,
+        'fingerprint' => (string) $fingerprint,
         'verdict' => is_array($standing) ? pg_proto_verdict_public($standing, $fingerprint) : null,
         'changes' => is_array($changes) ? $changes : null,
         'nameMax' => (int) $limits['name'],
@@ -468,9 +469,34 @@ function pg_proto_draft_fingerprints($page_ids)
 }
 
 /**
+ * The pages a link shows, in the order given: every draft for a team link,
+ * for a link for anyone only those going live in a public or guest folder
+ * (pg_proto_link_page_shown()), as the hold and the reminder read them. Pure.
+ *
+ * @param int[]  $page_ids
+ * @param string $audience prototype_links.audience
+ * @param array  $access   page id => the access control it goes live with
+ * @return int[]
+ */
+function pg_proto_review_pages_shown($page_ids, $audience, $access)
+{
+    $out = array();
+
+    foreach ((array) $page_ids as $id) {
+        $id = (int) $id;
+
+        if (($id > 0) && pg_proto_link_page_shown((string) $audience, isset($access[$id]) ? (string) $access[$id] : '')) {
+            $out[] = $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Each draft page's mark for one link asking approval
- * (pg_proto_review_page_states()), for the given draft pages; empty for a
- * link asking nothing.
+ * (pg_proto_review_page_states()), for the given draft pages the link shows
+ * (pg_proto_review_pages_shown()); empty for a link asking nothing.
  *
  * @param array $link     prototype_links row
  * @param int[] $page_ids the design's draft pages
@@ -482,6 +508,14 @@ function pg_proto_link_review_states($link, $page_ids)
         return array();
     }
 
+    // A page the link does not show cannot be reviewed on it: no mark.
+    $access = array();
+
+    foreach ((array) $page_ids as $id) {
+        $access[(int) $id] = pg_proto_link_page_access((int) $id);
+    }
+
+    $page_ids = pg_proto_review_pages_shown($page_ids, isset($link['audience']) ? (string) $link['audience'] : '', $access);
     $fingerprints = array();
     $found = pg_proto_draft_fingerprints($page_ids);
 
@@ -605,8 +639,9 @@ function pg_proto_comment_list_verdicts($groups, $rows, $names, $hints, $fingerp
 /**
  * Takes a verdict that passed the comment door's gates
  * (pg_proto_comment_door()): the link must ask approval, the fields are
- * checked (pg_proto_verdict_check()), the address counted in the comments'
- * burst, and the verdict sealed with the draft's fingerprints as it is now.
+ * checked (pg_proto_verdict_check()), the draft must be the one the viewer
+ * was drawn with (pg_proto_verdict_seen_ok()), the address counted in the
+ * comments' burst, and the verdict sealed with the draft's fingerprints.
  * Then the link's maker hears of it in the bell, the approver gets a
  * receipt and the verdict is announced (pg_proto_verdict_announce()).
  *
@@ -636,12 +671,27 @@ function pg_proto_verdict_take($link, $page_id, $post, $now)
         return $refuse($checked['error']);
     }
 
+    $draft = pg_proto_verdict_draft_row($page_id);
+    $fingerprint = pg_proto_draft_fingerprint_of_row($draft);
+
+    // Sealed to the draft the guest saw: one changed since the viewer was
+    // drawn is refused, and the guest opens the page again.
+    if ($draft && !pg_proto_verdict_seen_ok(isset($post['seen']) ? $post['seen'] : null, $fingerprint)) {
+        return $refuse('changed');
+    }
+
     if (pg_proto_comment_limit_refusal(pg_proto_comment_burst(), 0) !== '') {
         return $refuse('rate');
     }
 
-    $draft = pg_proto_verdict_draft_row($page_id);
-    $fingerprint = pg_proto_draft_fingerprint_of_row($draft);
+    // The same verdict again (a second tab, a page drawn again): the one
+    // that stands answers, and nobody hears of it twice.
+    $standing = $draft ? pg_proto_verdict_standing((int) $link['id'], (int) $page_id) : null;
+
+    if (pg_proto_verdict_repeats($standing, $checked, $fingerprint)) {
+        return array('status' => 201, 'error' => '', 'verdict' => pg_proto_verdict_public($standing, $fingerprint));
+    }
+
     $row = $draft ? pg_proto_verdict_row($checked, $link, $page_id, $fingerprint, pg_proto_node_fingerprints((string) $draft['page_tree_json'])) : null;
     $id = $row ? pg_proto_verdict_save($row, $now) : 0;
     $saved = ($id > 0) ? db_item("SELECT * FROM prototype_verdicts WHERE id = '" . (int) $id . "'") : null;

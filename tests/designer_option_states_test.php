@@ -226,3 +226,182 @@ function test_designer_option_states_transition()
 	pg_assert_true($r['badWhat'], 'only the four choices');
 	pg_assert_same(array(true, false), $r['maybe']);
 }
+
+// The element's Transform: Move, Scale, Rotate, Skew and Origin written on
+// the custom style class or a state's rule, read back, a state's pair
+// following Normal on the axis it took from it, values no row reads kept.
+function test_designer_option_states_transform()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.tfWrite(base, c, "", "r", "-6");'
+		. 'a = S.tfWrite(a, c, "", "tx", "10");'
+		. 'var h = S.tfWrite(a, c, "hover", "ty", "-2");'
+		. 'h = S.tfWrite(h, c, "hover", "s", "1.02");'
+		. 'var m = S.tfWrite(h, c, "", "tx", "20");'
+		. 'var o = S.tfWrite(S.tfWrite(a, c, "", "o", "0"), c, "", "skx", "5");'
+		. 'var back = S.tfWrite(S.tfWrite(h, c, "hover", "ty", ""), c, "hover", "s", "");'
+		. 'var zero = S.tfWrite(S.tfWrite(a, c, "", "r", "0"), c, "", "tx", "");'
+		. 'var foreign = base.replace("color: red;", "color: red;\n  transform: translate(-50%, -50%);");'
+		. 'console.log(JSON.stringify({ a: a, h: h, readA: S.tfRead(a, c, ""), readH: S.tfRead(h, c, "hover"),'
+		. ' countH: S.count(S.read(h, c, "hover")), sect: S.sections(h, c).styling, readM: S.tfRead(m, c, "hover"),'
+		. ' readO: S.tfRead(o, c, ""), o: o, back: back, zero: zero,'
+		. ' foreign: S.tfWrite(foreign, c, "", "skx", "4") === foreign, foreignRead: S.tfRead(foreign, c, "").skx,'
+		. ' em: S.tfRead(S.tfWrite(base, c, "", "ty", "1.5rem"), c, "").ty, bad: S.tfWrite(base, c, "", "tx", "wide") === base,'
+		. ' big: S.tfRead(S.tfWrite(base, c, "", "s", "40"), c, "").s, maybe: [S.tfMaybe(a, c), S.tfMaybe(base, c)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  rotate: -6deg;\n  translate: 10px 0px;\n}\n", $r['a'], 'Normal writes on the class, a bare number is px');
+	pg_assert_true(strpos($r['h'], ".pgs-abc123:hover {\n  translate: 10px -2px;\n  scale: 1.02;\n}") !== false, 'a state takes Normal\'s other axis');
+	pg_assert_same(array('tx' => '10px', 'ty' => '0px', 's' => '', 'r' => -6, 'skx' => '', 'sky' => '', 'o' => ''), $r['readA']);
+	pg_assert_same(array('tx' => '10px', 'ty' => '-2px', 's' => 1.02, 'r' => '', 'skx' => '', 'sky' => '', 'o' => ''), $r['readH']);
+	pg_assert_same(2, $r['countH'], 'Move and Scale count as two rows of the state');
+	pg_assert_same(array('hover'), $r['sect'], 'Shadow and effect is ringed');
+	pg_assert_same('20px', $r['readM']['tx'], 'the state follows a change of Normal on the axis it took');
+	pg_assert_same('-2px', $r['readM']['ty']);
+	pg_assert_same(0, $r['readO']['o']);
+	pg_assert_same(5, $r['readO']['skx']);
+	pg_assert_true(strpos($r['o'], 'transform-origin: 0% 0%;') !== false && strpos($r['o'], 'transform: skew(5deg, 0deg);') !== false);
+	pg_assert_same($r['a'], $r['back'], 'a state emptied goes with its rule');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n}\n", $r['zero'], 'Normal\'s defaults are not written');
+	pg_assert_true($r['foreign'], 'a transform no row reads is not written over');
+	pg_assert_same('', $r['foreignRead']);
+	pg_assert_same('1.5rem', $r['em']);
+	pg_assert_true($r['bad'], 'a length the field cannot read writes nothing');
+	pg_assert_same(10, $r['big'], 'Scale is kept to 10');
+	pg_assert_same(array(true, false), $r['maybe']);
+}
+
+function test_designer_option_states_effects()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.fxWrite(base, c, "", "gray", "100");'
+		. 'a = S.fxWrite(a, c, "", "blur", "2");'
+		. 'var h = S.fxWrite(a, c, "hover", "gray", "0");'
+		. 'var m = S.fxWrite(h, c, "", "blur", "4");'
+		. 'var back = S.fxWrite(h, c, "hover", "gray", "");'
+		. 'var g = S.fxWrite(S.fxWrite(base, c, "", "bdblur", "12"), c, "", "blend", "multiply");'
+		. 'g = S.fxWrite(g, c, "", "bgblend", "overlay");'
+		. 'var none = S.fxWrite(S.fxWrite(S.fxWrite(g, c, "", "bdblur", "0"), c, "", "blend", "normal"), c, "", "bgblend", "");'
+		. 'var zero = S.fxWrite(S.fxWrite(a, c, "", "gray", "0"), c, "", "blur", "");'
+		. 'var foreign = base.replace("color: red;", "color: red;\n  filter: drop-shadow(0 0 2px red);");'
+		. 'console.log(JSON.stringify({ a: a, h: h, readA: S.fxRead(a, c, ""), readH: S.fxRead(h, c, "hover"), readM: S.fxRead(m, c, "hover"), m: m,'
+		. ' countH: S.count(S.read(h, c, "hover")), sect: S.sections(h, c).styling, back: back, g: g, readG: S.fxRead(g, c, ""),'
+		. ' countG: S.count(S.read(S.fxWrite(S.fxWrite(S.fxWrite(base, c, "hover", "bdblur", "8"), c, "hover", "blend", "screen"), c, "hover", "bgblend", "multiply"), c, "hover")), none: none, zero: zero,'
+		. ' foreign: S.fxWrite(foreign, c, "", "blur", "3") === foreign, foreignRead: S.fxRead(foreign, c, "").blur,'
+		. ' hue: S.fxRead(S.fxWrite(base, c, "", "hue", "-400"), c, "").hue, bad: S.fxWrite(base, c, "", "blend", "glow") === base,'
+		. ' css: S.fxFilter({ blur: 2, bright: 120, contrast: "", gray: "", sat: "", sepia: "", hue: 30 }),'
+		. ' maybe: [S.fxMaybe(a, c), S.fxMaybe(g, c), S.fxMaybe(base, c)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$base_text = ".pgs-abc123 {\n  color: red;\n}\n";
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  filter: blur(2px) grayscale(100%);\n}\n", $r['a'], 'Normal writes one filter in a fixed order');
+	pg_assert_true(strpos($r['h'], ".pgs-abc123:hover {\n  filter: blur(2px) grayscale(0%);\n}") !== false, 'a state writes the whole list with Normal\'s other values');
+	pg_assert_same(array('blur' => 2, 'bright' => '', 'contrast' => '', 'gray' => 100, 'sat' => '', 'sepia' => '', 'hue' => '', 'bdblur' => '', 'blend' => '', 'bgblend' => ''), $r['readA']);
+	pg_assert_same(0, $r['readH']['gray']);
+	pg_assert_same('', $r['readH']['blur'], 'a state\'s value equal to Normal\'s reads as not set');
+	pg_assert_true(strpos($r['m'], ".pgs-abc123:hover {\n  filter: blur(4px) grayscale(0%);\n}") !== false, 'the state follows a change of Normal on a value it took');
+	pg_assert_same(0, $r['readM']['gray']);
+	pg_assert_same(1, $r['countH'], 'Filter counts as one row of the state');
+	pg_assert_same(array('hover'), $r['sect'], 'Shadow and effect is ringed');
+	pg_assert_same($r['a'], $r['back'], 'a state emptied goes with its rule');
+	pg_assert_true(strpos($r['g'], "backdrop-filter: blur(12px);") !== false && strpos($r['g'], "-webkit-backdrop-filter: blur(12px);") !== false, 'background blur with the prefixed twin');
+	pg_assert_true(strpos($r['g'], "mix-blend-mode: multiply;") !== false && strpos($r['g'], "background-blend-mode: overlay;") !== false);
+	pg_assert_same(12, $r['readG']['bdblur']);
+	pg_assert_same('multiply', $r['readG']['blend']);
+	pg_assert_same('overlay', $r['readG']['bgblend']);
+	pg_assert_same(3, $r['countG'], 'background blur counts once with its twin');
+	pg_assert_same($base_text, $r['none'], 'Normal\'s defaults are not written');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n}\n", $r['zero']);
+	pg_assert_true($r['foreign'], 'a filter no row reads is not written over');
+	pg_assert_same('', $r['foreignRead']);
+	pg_assert_same(-180, $r['hue'], 'Hue is kept to a half turn');
+	pg_assert_true($r['bad'], 'an unknown blend writes nothing');
+	pg_assert_same('blur(2px) brightness(120%) hue-rotate(30deg)', $r['css']);
+	pg_assert_same(array(true, true, false), $r['maybe']);
+}
+
+// Text › More (txWrite()/txRead()): Normal's rule only, a row's values
+// written and read back, a value no row writes kept and read as 'own',
+// the line limit's own display and overflow taken out with it.
+function test_designer_option_states_text()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.txWrite(base, c, "shadow", "soft");'
+		. 'a = S.txWrite(a, c, "track", "0.05");'
+		. 'a = S.txWrite(a, c, "font", "heading");'
+		. 'a = S.txWrite(a, c, "lines", "3");'
+		. 'a = S.txWrite(a, c, "grad", "primary-info");'
+		. 'a = S.txWrite(a, c, "strokec", "primary");'
+		. 'var out = a; ["shadow", "track", "font", "lines", "grad", "stroke"].forEach(function (k) { out = S.txWrite(out, c, k, ""); });'
+		. 'var own = base.replace("color: red;", "color: red;\n  display: flex;\n  text-shadow: 1px 1px 0 blue;\n  letter-spacing: 2px;\n  -webkit-line-clamp: 2;");'
+		. 'var ownLines = S.txWrite(own, c, "lines", "");'
+		. 'console.log(JSON.stringify({ a: a, read: S.txRead(a, c), out: out, own: S.txRead(own, c), ownLines: ownLines,'
+		. ' noState: S.txRead(a.replace(".pgs-abc123 {", ".pgs-abc123:hover {"), c).shadow,'
+		. ' bad: [S.txWrite(base, c, "shadow", "huge") === base, S.txWrite(base, c, "font", "Arial") === base, S.txWrite(base, c, "track", "wide") === base, S.txWrite(base, c, "strokec", "pink") === base],'
+		. ' clamp: [S.txRead(S.txWrite(base, c, "lines", "40"), c).lines, S.txRead(S.txWrite(base, c, "track", "-3"), c).track],'
+		. ' width: S.txWrite(base, c, "stroke", "1.5"), zero: S.txWrite(S.txWrite(base, c, "stroke", "2"), c, "stroke", "0"),'
+		. ' maybe: [S.txMaybe(a, c), S.txMaybe(base, c)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$base_text = ".pgs-abc123 {\n  color: red;\n}\n";
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  text-shadow: 0 1px 2px rgb(0 0 0 / .25);\n  letter-spacing: 0.05em;\n  font-family: var(--pg-font-heading);\n"
+		. "  display: -webkit-box;\n  -webkit-box-orient: vertical;\n  overflow: hidden;\n  -webkit-line-clamp: 3;\n  line-clamp: 3;\n"
+		. "  background-image: linear-gradient(90deg, var(--bs-primary), var(--bs-info));\n  -webkit-background-clip: text;\n  background-clip: text;\n"
+		. "  -webkit-text-fill-color: transparent;\n  -webkit-text-stroke: 1px var(--bs-primary);\n  paint-order: stroke fill;\n}\n", $r['a'], 'every row written on the class rule');
+	pg_assert_same(array('shadow' => 'soft', 'track' => 0.05, 'font' => 'heading', 'lines' => 3, 'grad' => 'primary-info', 'stroke' => 1, 'strokec' => 'primary'), $r['read']);
+	pg_assert_same($base_text, $r['out'], 'every row taken out leaves the rule as it was');
+	pg_assert_same(array('shadow' => 'own', 'track' => 'own', 'font' => '', 'lines' => 2, 'grad' => '', 'stroke' => '', 'strokec' => ''), $r['own'], 'a value no row writes reads as own');
+	pg_assert_true(strpos($r['ownLines'], 'display: flex;') !== false && strpos($r['ownLines'], 'line-clamp') === false, 'a display of its own stays when the limit goes');
+	pg_assert_same('', $r['noState'], 'a state\'s rule is not read');
+	pg_assert_same(array(true, true, true, true), $r['bad'], 'an unknown value writes nothing');
+	pg_assert_same(array(10, -0.5), $r['clamp'], 'lines and letter spacing kept to their ends');
+	pg_assert_true(strpos($r['width'], '-webkit-text-stroke: 1.5px currentcolor;') !== false, 'an outline without a colour takes the text\'s');
+	pg_assert_same($base_text, $r['zero'], 'a width of 0 takes the outline out');
+	pg_assert_same(array(true, false), $r['maybe']);
+}
+
+// Cursor (cursorWrite()/cursorRead()): Normal's rule only, the three rows
+// written and read back, a cursor no row writes read as 'own' and replaced
+// by a row's value, an unknown value writing nothing.
+function test_designer_option_states_cursor()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.cursorWrite(base, c, "Pointer");'
+		. 'var own = base.replace("color: red;", "color: red;\n  cursor: zoom-in;");'
+		. 'console.log(JSON.stringify({ a: a, read: S.cursorRead(a, c), out: S.cursorWrite(a, c, ""),'
+		. ' swap: S.cursorWrite(a, c, "not-allowed"), own: S.cursorRead(own, c), ownSwap: S.cursorWrite(own, c, "default"),'
+		. ' none: S.cursorRead(base, c), noState: S.cursorRead(a.replace(".pgs-abc123 {", ".pgs-abc123:hover {"), c),'
+		. ' bad: [S.cursorWrite(base, c, "grab") === base, S.cursorWrite(base, "x", "pointer") === base] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$base_text = ".pgs-abc123 {\n  color: red;\n}\n";
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  cursor: pointer;\n}\n", $r['a'], 'the cursor written on the class rule');
+	pg_assert_same('pointer', $r['read']);
+	pg_assert_same($base_text, $r['out'], 'empty takes the cursor out');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  cursor: not-allowed;\n}\n", $r['swap']);
+	pg_assert_same('own', $r['own'], 'a cursor no row writes reads as own');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  cursor: default;\n}\n", $r['ownSwap'], 'a row replaces a cursor of its own');
+	pg_assert_same('', $r['none']);
+	pg_assert_same('', $r['noState'], 'a state\'s rule is not read');
+	pg_assert_same(array(true, true), $r['bad'], 'an unknown value or class writes nothing');
+}

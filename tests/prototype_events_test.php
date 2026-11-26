@@ -160,3 +160,18 @@ function test_proto_api_routes_are_read_only_tools()
 		}
 	}
 }
+
+// A doubled block start is taken whole: stripping ":::" or a fence once left
+// the second one, which a channel then drew as a block or a code fence.
+function test_proto_event_words_drop_a_doubled_block_start()
+{
+	pg_assert_same('record{id=1}', pg_proto_event_words('::::::record{id=1}', true));
+	pg_assert_same('js', pg_proto_event_words('``````js', true));
+	pg_assert_same("x\nTitle", pg_proto_event_words("x\n  ::: ::: Title", true));
+	pg_assert_same(':', pg_proto_event_words('::::', true), 'four colons leave no block start');
+	pg_assert_same('a :::b', pg_proto_event_words('a :::b', true), 'only a line start is a block start');
+
+	foreach (array('::::::x', '``````', ":::```x", "``` :::y") as $text) {
+		pg_assert_false((bool) preg_match('/^\s*(```|:::)/m', pg_proto_event_words($text, true)), 'no block start left in ' . $text);
+	}
+}

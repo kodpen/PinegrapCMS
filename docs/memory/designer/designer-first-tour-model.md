@@ -5,7 +5,7 @@ description: The first tour's pure model (window.PGDesignerTour, FT1): stops and
 
 ## Where is the model?
 - `assets/js/pg_designer_tour.js`, `window.PGDesignerTour`: pure, no element, no storage. Tested in Node by `tests/designer_tour_model_test.php`.
-- It is in no bundle yet: the part that draws the card and the tour (FT2 of `plans/designer-first-tour.md`) puts it first in its part's sources, as `pg_options_review.js` is first in the `review` part.
+- It is the first source of the part `tour` (`includes/designer_parts/tour.php`), which draws the card and the tour (`designer-first-tour-card.md`).
 
 ## Which stops, on which controls?
 - `stops(access)`: `full` (any access but `content`): add `#sd-components` (the palette), shape `#sd-properties` else `#sd-canvas`, see `#sd-preview-menu-btn`, publish `#sd-ajax-save` else `#sd-publish-page`, find `#sd-status-shortcuts` (the "?" button; the command palette is Ctrl+Shift+P and has no button of its own).
@@ -21,5 +21,6 @@ description: The first tour's pure model (window.PGDesignerTour, FT1): stops and
 - In the browser, per person, as the panel keeps its lists' choices (`commerce/orders-list-figure-strip.md`): localStorage `key(userId)` = `pg.designer.<user id>.tour` (`sdDesign.userId`). No table or column (the plan says so).
 - `read(raw)` / `write(state)`: `{ v: 1, offered, seen: { full, content }, tips: { <name>: true }, tipsOff }`; anything unreadable is a first visit; only `true` values and tip names of `[a-z0-9_-]{1,40}` are read.
 - `offer(state, access, busy)`: the card is shown when never offered, that access's tour not seen, and `busy` has no `dialog`, `typing` or `dragging`. `offered(state)` after the card was shown (once, whatever the answer); `seen(state, access)` after the tour ended by its last stop, Skip or Escape.
-- First-use tips (FT3): `tipDue(state, name)`, `tipSeen(state, name)` ("Got it"), `tipsOn(state, on)` (the "Tips" switch; seen tips stay seen).
+- First-use tips: `tipDue(state, name)`, `tipSeen(state, name)` ("Got it"), `tipsOn(state, on)` (the "Tips" switch; seen tips stay seen).
+- `tasks(access)`: the Help window's ten "How do I…" tasks, each three pointers `{ id: '<task>.<n>', anchors }`; `starts(access, have)`: an empty page's starts (`designer-first-tour-help.md`).
 - Every function returns a new state; the one given is not changed.

@@ -1,11 +1,12 @@
 ---
 name: designer-image-focus-drawing
-description: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its four boards, what each step builds from it and what the sheet settles
+description: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its five boards, what each step builds from it and what the sheet settles
 ---
 
 ## Where is the drawing?
 - `designer/designer-image-focus-drawing/`: `image-focus.html` with a `-dark.jpg` and a `-light.jpg` picture; `drawing.css` sits on top of `ui/look-sheet/sheet.css`. The designer's own parts are dark in both pictures.
 - The sample is an Image of the page "About us" with a drawn photograph and the focus 70% · 32%. Names and numbers are examples; the labels are the steps'. The value itself: `image-focus-value.md`.
+- F5 moves the frames under the picture: `designer-image-focus-drawing-frames.md`.
 
 ## Which board belongs to which step?
 - IF2: F1 "Focus" in an Image's Options panel (Content tab, section "Image", under "Fit"): the whole picture with one point and three frames (phone, tablet, desktop); no focus set, set, while dragged. F2 a phone's own focus, a value typed before, a card bound to records, a background picture in "Color and background".

@@ -93,9 +93,9 @@ function test_lc_piece_map_names_the_first_family()
 		$map = pg_layout_piece_map($type);
 		pg_assert_true(is_array($map) && isset($map['echo'], $map['if'], $map['loop']), $type . ' has a piece map');
 	}
-	pg_assert_same(null, pg_layout_piece_map('order preview'), 'a type of a later family has none yet');
+	pg_assert_same(null, pg_layout_piece_map('calendar view'), 'a type with no widget map has none');
 	pg_assert_same(null, pg_layout_piece_map('custom form'), 'the custom form keeps its own converter');
-	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method'), pg_layout_convert_types());
+	pg_assert_same(array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences', 'registration entrance', 'membership entrance', 'my account', 'update address book', 'search results'), pg_layout_convert_types());
 }
 
 function test_lc_row_template_from_the_starter()
@@ -164,7 +164,7 @@ function test_lc_unknown_code_and_values_are_dropped()
 
 function test_lc_unknown_type()
 {
-	$r = pg_layout_convert('order preview', '<p>x</p>', array());
+	$r = pg_layout_convert('calendar view', '<p>x</p>', array());
 	pg_assert_same(false, $r['ok']);
 }
 
@@ -394,7 +394,7 @@ function test_lc_type_file_convert_keeps_the_dropped_list()
 	pg_assert_same(array('browse'), _test_lc_codes($r['dropped']), 'the Region panel gets what the run refuses');
 	pg_assert_same('theme', $r['tree']['children'][0]['props']['cssClass'], 'the theme\'s wrapper stays');
 	pg_assert_same(1, count(_test_lc_of_type($r['tree'], 'loop_area')));
-	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'order preview'), $code, array())['ok'], 'a type with no map');
+	pg_assert_same(false, pg_layout_type_file_convert(array('type' => 'calendar view'), $code, array())['ok'], 'a type with no map');
 }
 
 function test_lc_dropped_rows()
@@ -924,3 +924,119 @@ function test_lc_checkout_templates()
 		pg_assert_same($codes, _test_lc_codes($r['dropped']), $type);
 	}
 }
+
+// -- order preview ------------------------------------------------------------
+
+// The order preview's starting-site texts: 4 pages, each its own text.
+function _test_lc_order_preview_texts()
+{
+	$out = array();
+	foreach (array('english_default', 'turkish_default') as $site) {
+		foreach (array(101, 1077) as $id) $out[$site . '/' . $id] = _test_lc_site($site, $id);
+	}
+	return $out;
+}
+
+// Every starting-site text: nothing dropped, no marker left; the recipients
+// the widget's section once, the offers and gift cards its lists, the
+// payment methods and billing lines under the widget's flags.
+function test_lc_order_preview_starting_site_texts()
+{
+	$texts = _test_lc_order_preview_texts();
+	pg_assert_same(4, count(array_unique($texts)), 'four distinct texts');
+	$want = array('cart_empty', 'has_items', 'has_recurring', 'shows_subtotal', 'has_discount', 'has_shipping_cost', 'has_surcharge',
+		'has_currency_disclaimer', 'has_applied_offers', 'can_purchase_in_totals', 'shows_custom_field_1', 'billing_has_name',
+		'billing_has_city_line', 'billing_has_city', 'has_billing_form', 'has_billing_form_title', 'has_applied_gift_cards',
+		'has_payment', 'has_gift_card_code', 'pays_by_card', 'one_payment_method', 'many_payment_methods', 'pays_by_paypal',
+		'pays_offline', 'has_card_verification_help', 'surcharge_message', 'has_terms', 'can_purchase');
+	foreach ($texts as $label => $code) {
+		$r = pg_layout_convert('order preview', $code, array('state' => pg_layout_convert_state('order preview', array())));
+		pg_assert_same(true, $r['ok'], $label);
+		pg_assert_same(array(), $r['dropped'], $label . ': nothing dropped');
+		$json = json_encode($r['tree'], JSON_UNESCAPED_SLASHES);
+		pg_assert_same(false, strpos($json, '<?'), $label . ': no PHP');
+		pg_assert_same(false, (bool)preg_match('/pg-(vis|loop|row|section|form|source)|"_list"|%5E/i', $json), $label . ': no marker left');
+		$sections = _test_lc_bound($r['tree'], 'section');
+		pg_assert_same(1, count(array_keys($sections, 'order_recipients')), $label . ': the recipients once');
+		foreach (array('recurring_payments', 'billing_form') as $s) pg_assert_contains($s, $sections, $label . ': section ' . $s);
+		$sources = array_map(function ($n) { return $n['props']['source'] ?? ''; }, _test_lc_of_type($r['tree'], 'loop_area'));
+		pg_assert_same(array('checkout.offers', 'checkout.gift_cards'), $sources, $label . ': the lists');
+		$flags = _test_lc_flags($r['tree']);
+		foreach ($want as $flag) pg_assert_contains($flag, $flags, $label . ': flag ' . $flag);
+		$names = _test_lc_names($r['tree']);
+		foreach (array('gift_card_code', 'submit_apply_gift_card', 'payment_method', 'card_number', 'expiration', 'card_verification_number', 'terms', 'submit_purchase_now') as $name) {
+			pg_assert_contains($name, $names, $label . ': control ' . $name);
+		}
+		pg_assert_contains('__purchase_now_label', _test_lc_bound($r['tree'], 'text'), $label . ': the button\'s words');
+	}
+}
+
+// The Turkish texts' installments and 3-D Secure: under their flags, the
+// installment table the widget's section.
+function test_lc_order_preview_installments()
+{
+	$r = pg_layout_convert('order preview', _test_lc_site('turkish_default', 101), array());
+	$flags = _test_lc_flags($r['tree']);
+	foreach (array('has_installments', 'has_installment_table', 'has_threedsecure', 'no_surcharge') as $flag) pg_assert_contains($flag, $flags, $flag);
+	pg_assert_contains('installment_table', _test_lc_bound($r['tree'], 'section'));
+	pg_assert_contains('threedsecure', _test_lc_names($r['tree']));
+}
+
+// The stock template converts; the words it builds in PHP and the store
+// credit box are reported.
+function test_lc_order_preview_template()
+{
+	$r = pg_layout_convert('order preview', _test_lc_template('order preview'), array());
+	pg_assert_same(true, $r['ok']);
+	pg_assert_same(array('condition', 'value', 'value'), _test_lc_codes($r['dropped']));
+	pg_assert_contains('pays_by_iyzico', _test_lc_flags($r['tree']));
+	pg_assert_contains('Applied Gift Cards', json_encode($r['tree'], JSON_UNESCAPED_UNICODE), 'the plural heading');
+}
+
+// -- view order ---------------------------------------------------------------
+
+// The stock template (no starting-site page has a view order file): the
+// recipients read once, the items and parcels the widget's lists, the
+// totals, billing and payment under its flags; the parts it has not are
+// reported.
+function test_lc_view_order_template()
+{
+	$r = pg_layout_convert('view order', _test_lc_template('view order'), array('state' => pg_layout_convert_state('view order', array())));
+	pg_assert_same(true, $r['ok']);
+	pg_assert_same(array('$order_receipt_messages as $message', '$recurring_items', "\$recipient['form']", 'else', 'else', '$applied_offers', '$recurring_items', '$billing_form', '$applied_gift_cards'),
+		array_column($r['dropped'], 'piece'));
+	$json = json_encode($r['tree'], JSON_UNESCAPED_SLASHES);
+	pg_assert_same(false, strpos($json, '<?'), 'no PHP');
+	pg_assert_same(false, (bool)preg_match('/pg-(vis|loop|row|section|form|source)|"_list"|%5E/i', $json), 'no marker left');
+	$sources = array_map(function ($n) { return $n['props']['source'] ?? ''; }, _test_lc_of_type($r['tree'], 'loop_area'));
+	pg_assert_same(array('order.parcels', 'order.items'), $sources, 'the lists, no main loop');
+	$flags = _test_lc_flags($r['tree']);
+	foreach (array('has_shipping', 'has_tracking_code', 'has_arrival_date', 'shows_shipped_quantity', 'item_shipped_qty', 'item_event_name',
+		'item_payment_period', 'item_payment_count', 'item_first_payment_date', 'has_discount', 'has_gift_card_discount', 'has_installment_charges',
+		'shows_custom_field_1', 'billing_has_company', 'billing_has_fax', 'has_po_number', 'is_tax_exempt', 'has_payment_method', 'has_card_number') as $flag) {
+		pg_assert_contains($flag, $flags, 'flag ' . $flag);
+	}
+	$bound = array_merge(_test_lc_bound($r['tree'], 'text'), _test_lc_bound($r['tree'], 'href'));
+	foreach (array('__order_no', '__order_date', '__shipping_full_address', '__tracking_link', '__tracking_code', '__item_name', '__item_qty',
+		'__item_gift_card_html', '__item_form_data_html', '__order_total', '__payment_method_pretty', '__reorder_url', '__my_account_url') as $token) {
+		pg_assert_contains($token, $bound, 'bound ' . $token);
+	}
+	pg_assert_same(false, strpos($json, 'Reference Code'), 'an incomplete order\'s reference code is not drawn');
+	pg_assert_same(false, strpos($json, 'Retrieve'), 'nor its buttons');
+}
+
+// A site shipping to several recipients: the heading per recipient is
+// reported, the rest converts.
+function test_lc_view_order_multi_recipient()
+{
+	$state = pg_layout_convert_state('view order', array('multi_recipient' => true));
+	pg_assert_same(array('full_description' => false, 'multi_recipient' => true), $state);
+	$code = '<table><?php foreach($recipients as $recipient): ?><?php if ($recipient[\'ship_to_heading\']): ?><tr><td>Ship to</td></tr><?php endif ?>'
+		. '<?php foreach($recipient[\'items\'] as $item): ?><tr><td><?=h($item[\'name\'])?></td></tr><?php endforeach ?><?php endforeach ?></table>';
+	$r = pg_layout_convert('view order', $code, array('state' => $state));
+	pg_assert_same(array('recipients'), _test_lc_codes($r['dropped']));
+	$r = pg_layout_convert('view order', $code, array('state' => pg_layout_convert_state('view order', array())));
+	pg_assert_same(array(), $r['dropped']);
+	pg_assert_contains('has_shipping', _test_lc_flags($r['tree']));
+}
+

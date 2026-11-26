@@ -29,5 +29,5 @@ module: design_style_guide
 - The switch shows when the design's colour mode is dark or auto, or the canvas shows dark; it opens on the canvas's mode and sets only the frame's `data-bs-theme`, redrawing the pairs and the spacing bars.
 - Without variables a line under the strip offers "Answer the questions": the sheet closes, Settings opens on Theme, Variables, and the start questions are asked.
 
-## What is left to SG3?
-- "Print or save as PDF", names as links to their variable or component (G6, G7's click part). Names are plain text until then.
+## Print and names?
+- SG3 (#11678): `designer-style-guide-print-links.md`.

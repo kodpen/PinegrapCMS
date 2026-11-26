@@ -76,6 +76,7 @@ function designer_content_image_test_run($script)
 	$stubs = 'var _collab = { mayEdit: true }; var level = "content"; var area = false;'
 		. 'function _sdIsContentLevel() { return level === "content"; }'
 		. 'function _sdInClosedShared() { return false; }'
+		. 'function _sdCoLocked() { return false; }'
 		. 'function _sdInEditableArea() { return area; }'
 		. 'function _sdIsTextNode(n) { return !!(n && n.props && typeof n.props.text === "string"); }'
 		. 'function getAttrStyleProp(n, p) { return (p === "background-image" && n.bg) ? n.bg : ""; }'

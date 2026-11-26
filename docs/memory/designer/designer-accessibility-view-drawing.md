@@ -1,6 +1,6 @@
 ---
 name: designer-accessibility-view-drawing
-description: The drawing of the designer's accessibility view (plan designer-accessibility-view, AV2 and AV3): boards V1 the View row and the card, V2 Tab order, V6 folded, nothing found, narrow
+description: The drawing of the designer's accessibility view (built by AV2 #11657 and AV3 #11685): boards V1 the View row and the card, V2 Tab order, V6 folded, nothing found, narrow
 ---
 
 ## Where is the drawing?

@@ -234,3 +234,130 @@ function test_designer_panels_on_demand_wiring()
 	pg_assert_true(strpos($js, "if (!isNowCollapsed) _sdPanelsFlush();") !== false, 'unfolding the bottom panel draws what it missed');
 	pg_assert_true(strpos($js, "if (sub === 'tree') _sdPanelsFlush();") !== false, 'the Tree tab draws what it missed');
 }
+
+// Stand-ins for the HTML tree: rows with an id, classes and a chevron; the
+// panel answers the four selectors _sdHtmlTreeSelectInPlace() asks.
+function designer_panels_html_tree_js()
+{
+	return 'function Cls(list) { var s = {}; (list || []).forEach(function (c) { s[c] = true; }); this.s = s; }'
+		. 'Cls.prototype.contains = function (c) { return !!this.s[c]; };'
+		. 'Cls.prototype.add = function (c) { this.s[c] = true; };'
+		. 'Cls.prototype.remove = function (c) { delete this.s[c]; };'
+		. 'function HtRow(nid, node, opts) { opts = opts || {}; this.nid = nid; this._sdNode = node; this.root = !!opts.root;'
+		. ' this.classList = new Cls(["sd-ht-row"].concat(opts.cls || [])); this.chev = null; this.scrolled = 0;'
+		. ' if (opts.chev) { this.chev = { parentNode: this, classList: new Cls([opts.chev === "down" ? "bi-chevron-down" : "bi-chevron-right"]) }; } }'
+		. 'HtRow.prototype.scrollIntoView = function () { this.scrolled++; };'
+		. 'function HtPanel(rows) { this.rows = rows; }'
+		. 'HtPanel.prototype.querySelectorAll = function (sel) {'
+		. ' var m = sel.match(/data-nid="([^"]*)"/);'
+		. ' if (sel === ".sd-ht-chev[data-nid]") return this.rows.filter(function (r) { return r.chev; }).map(function (r) { return r.chev; });'
+		. ' if (sel === "[data-ht-root]") return this.rows.filter(function (r) { return r.root; });'
+		. ' if (sel === ".sd-ht-selected") return this.rows.filter(function (r) { return r.classList.contains("sd-ht-selected"); });'
+		. ' if (m) return this.rows.filter(function (r) { return r.nid === m[1]; });'
+		. ' throw new Error("selector " + sel); };'
+		. 'var codeOn = false; function _sdCodeEnabled() { return codeOn; }'
+		. 'var selectedNode = null, selectedNodes = [];'
+		. 'function marked(p) { return p.rows.filter(function (r) { return r.classList.contains("sd-ht-selected"); }).map(function (r) { return r.nid; }); }';
+}
+
+// A selection with a current HTML tree moves the mark and builds no row:
+// the old row loses it, the new one (not its closing row) gets it and is
+// scrolled into view; the root marks the <html> and <body> rows. A list
+// drawn before the last edit or for another page, a stale list, the code
+// view, a chevron that no longer matches its node and a missing row ask for
+// the whole tree.
+function test_designer_selection_html_tree_in_place()
+{
+	$answer = designer_panels_on_demand_run(designer_panels_html_tree_js()
+		. 'var a = { _id: "a", _expanded: true }, b = { _id: "b" };'
+		. 'var rows = [new HtRow("", null, { root: true, cls: ["sd-ht-locked-row"] }), new HtRow("a", a, { chev: "down", cls: ["sd-ht-selected"] }),'
+		. ' new HtRow("b", b), new HtRow("a", a, { cls: ["sd-ht-close-row"] }), new HtRow("", null, { root: true, cls: ["sd-ht-close-row"] })];'
+		. 'var panel = new HtPanel(rows); panel._sdHtOf = tree; panel._sdHtEpoch = _sdEditEpoch;'
+		. 'panel.getClientRects = function () { return [1]; }; panel.closest = function () { return null; }; hosts["sd-html-tree"] = panel;'
+		. 'var res = {};'
+		. 'selectedNode = b; res.ok = _sdHtmlTreeSelectInPlace(); res.marked = marked(panel); res.scrolled = rows[2].scrolled;'
+		. 'selectedNode = tree; tree.type = "root"; res.root = _sdHtmlTreeSelectInPlace(); res.rootMarked = rows.filter(function (r) { return r.classList.contains("sd-ht-selected"); }).length;'
+		. 'selectedNode = b;'
+		. '_sdEditEpoch++; res.edited = _sdHtmlTreeSelectInPlace(); panel._sdHtEpoch = _sdEditEpoch;'
+		. 'panel._sdHtOf = {}; res.otherPage = _sdHtmlTreeSelectInPlace(); panel._sdHtOf = tree;'
+		. '_sdPanelStale.html = true; res.stale = _sdHtmlTreeSelectInPlace(); delete _sdPanelStale.html;'
+		. 'codeOn = true; res.code = _sdHtmlTreeSelectInPlace(); codeOn = false;'
+		. 'a._expanded = false; res.chevron = _sdHtmlTreeSelectInPlace(); a._expanded = true;'
+		. 'selectedNode = { _id: "zz" }; res.noRow = _sdHtmlTreeSelectInPlace();'
+		. 'selectedNode = b; res.again = _sdHtmlTreeSelectInPlace();'
+		. 'out(res);'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(true, $answer['ok'], 'a current tree is marked in place');
+	pg_assert_same(array('b'), $answer['marked'], 'the old row loses the mark, the new row gets it');
+	pg_assert_same(1, $answer['scrolled'], 'the new row is scrolled into view');
+	pg_assert_same(true, $answer['root'], 'the root is marked in place');
+	pg_assert_same(2, $answer['rootMarked'], 'on the <html> and <body> rows');
+	pg_assert_same(false, $answer['edited'], 'a tree drawn before the last edit is drawn whole');
+	pg_assert_same(false, $answer['otherPage'], 'a tree drawn for another page is drawn whole');
+	pg_assert_same(false, $answer['stale'], 'a stale tree is drawn whole');
+	pg_assert_same(false, $answer['code'], 'the code view is refreshed by the full path');
+	pg_assert_same(false, $answer['chevron'], 'a branch opened or closed since is drawn whole');
+	pg_assert_same(false, $answer['noRow'], 'no row: the whole tree');
+	pg_assert_same(true, $answer['again'], 'a current tree again is marked in place');
+}
+
+// Two selections before the frame draw Attributes and Styles once, after
+// the frame; a pointer in a pane first draws it before it is handled, and
+// an event whose field the draw removed is dropped.
+function test_designer_selection_panes_after_frame()
+{
+	$answer = designer_panels_on_demand_run(
+		'var frames = [];'
+		. 'function requestAnimationFrame(fn) { frames.push(fn); return frames.length; }'
+		. 'var listeners = {};'
+		. 'document.addEventListener = function (t, fn, cap) { listeners[t] = { fn: fn, cap: cap }; };'
+		. '_sdSelPanesSoon(); _sdSelPanesSoon();'
+		. 'var res = { now: painted.slice(), frames: frames.length, capture: listeners.pointerdown && listeners.pointerdown.cap };'
+		. 'frames.shift()(); res.inFrame = painted.slice(); tick(); res.after = painted.slice(); painted = [];'
+		. 'tick(); res.second = painted.slice();'
+		. '_sdSelPanesSoon();'
+		. 'var dropped = 0, ev = { target: { isConnected: false, closest: function () { return {}; } }, cancelable: true, preventDefault: function () { dropped++; }, stopPropagation: function () { dropped++; } };'
+		. 'listeners.mousedown.fn(ev); res.guard = painted.slice(); res.dropped = dropped; painted = [];'
+		. 'frames.shift()(); tick(); res.late = painted.slice();'
+		. 'listeners.keydown.fn(ev); res.idle = painted.slice();'
+		. 'out(res);'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(), $answer['now'], 'nothing is drawn in the click\'s own work');
+	pg_assert_same(1, $answer['frames'], 'one frame asked for two selections');
+	pg_assert_same(true, $answer['capture'], 'the guard listens in the capture phase');
+	pg_assert_same(array(), $answer['inFrame'], 'not before the frame is painted');
+	pg_assert_same(array('attrs', 'styles'), $answer['after'], 'the panes once, after the frame');
+	pg_assert_same(array(), $answer['second'], 'not twice');
+	pg_assert_same(array('attrs', 'styles'), $answer['guard'], 'a pointer in a pane draws it first');
+	pg_assert_same(2, $answer['dropped'], 'an event on a removed field is dropped');
+	pg_assert_same(array(), $answer['late'], 'the waiting draw is not repeated');
+	pg_assert_same(array(), $answer['idle'], 'nothing waits: the guard does nothing');
+}
+
+// The selection takes the in-place paths; the full HTML tree draw records
+// what it was drawn from; the icon picker is built when it opens.
+function test_designer_selection_wiring()
+{
+	$sel = _test_blocks_slice('    function renderSelectionOnly() {', "\n    }\n");
+	pg_assert_true(strpos($sel, 'if (!_sdHtmlTreeSelectInPlace()) renderHtmlTree();') !== false, 'a selection marks the HTML tree in place');
+	pg_assert_true(strpos($sel, '_sdSelPanesSoon();') !== false, 'a selection draws the panes after the frame');
+	pg_assert_true(strpos($sel, 'renderAttrsPanel()') === false && strpos($sel, 'renderStylesPanel()') === false, 'not in the click\'s own work');
+
+	$html = _test_blocks_slice('    function renderHtmlTree() {', "\n    }\n");
+	pg_assert_true(strpos($html, 'panel._sdHtOf = tree;') !== false && strpos($html, 'panel._sdHtEpoch = _sdEditEpoch;') !== false, 'the full draw records its page and epoch');
+	pg_assert_true(strpos($html, 'panel._sdHtOf = null;') !== false, 'the code view forgets the rows');
+
+	$js = _test_blocks_js();
+	pg_assert_same(1, substr_count($js, 'initIconModal();'), 'the icon picker is not built at start');
+	pg_assert_true(strpos(_test_blocks_slice('    function openIconModal(inputEl) {', "\n    }\n"), "if (!document.getElementById('sdIconModal')) initIconModal();") !== false, 'it is built the first time it opens');
+}

@@ -147,7 +147,7 @@ function test_feedback_store_erase()
 	pg_assert_same(array('contact_id' => 'contact_ids', 'person_hash' => 'feedback_hashes'), $tables['feedback_responses']['find'], 'by contact or by the hash of an address or number');
 	pg_assert_same('anonymise', $tables['feedback_responses']['action'], 'the rows stay');
 	pg_assert_same(
-		array('contact_id' => 0, 'person_hash' => '', 'recipient' => '', 'comment' => null, 'answers' => null),
+		array('contact_id' => 0, 'person_hash' => '', 'recipient' => '', 'comment' => null, 'answers' => null, 'token_hash' => null),
 		$tables['feedback_responses']['fields'],
 		'the person and what they wrote go'
 	);

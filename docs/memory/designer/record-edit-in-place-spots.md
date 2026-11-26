@@ -4,7 +4,7 @@ description: Which bound elements of a page the Preview lets a person correct in
 ---
 
 ## Where is it?
-- `assets/js/pg_record_edit_spots.js`, `window.PGRecordEditSpots`: pure, reads a page tree and the item's fields, touches no element. Not in a bundle yet: RE3 adds it as a source of its designer part, as `pg_corner_box.js` is of `spacing`.
+- `assets/js/pg_record_edit_spots.js`, `window.PGRecordEditSpots`: pure, reads a page tree and the item's fields, touches no element. Loaded as the first source of the designer part `recordedit` (`record-edit-in-place-preview.md`), as `pg_corner_box.js` is of `spacing`.
 - `find(tree, fields, opts)` answers each spot in drawing order as `{node, prop, field, control, token, widget}`: `widget` is the `_id` of the outermost `shared_ref` the node is drawn through, '' on the page itself.
 - `opts`: `formId` (the item's form), `lookup(node)` giving a `shared_ref`'s `{kind, formId, tree}` (kind '' for a shared component; in the editor from `_sharedCache`), `scope: 'widget'` for a detail widget's own tree, `pageRecord` to say whether the page opens the item.
 

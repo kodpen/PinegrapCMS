@@ -19,7 +19,8 @@ module: launch_journey
 - Neither (a step, not asked by the go-live check): Analytics not connected while Search Console is; no other user signed in yet (team).
 
 ## How is payment live judged per driver?
-- `pg_launch_journey_payment_live($driver, $settings, $gateway_mode)`: Stripe by its keys' prefix (`pk_`, `sk_`, `rk_` then `test_` or `live_`; one test key is test, no key unknown); PayTR `mode` test, PayPal `mode` sandbox; iyzico and the classic gateways by `ECOMMERCE_PAYMENT_GATEWAY_MODE`.
+- `pg_launch_journey_payment_live($driver, $settings, $gateway_mode)`: Stripe by its keys' prefix (`pk_`, `sk_`, `rk_` then `test_` or `live_`; one test key is test, no key unknown); PayTR `mode` test, PayPal and PayPal Express Checkout `mode` sandbox; iyzico and the other classic gateways by `ECOMMERCE_PAYMENT_GATEWAY_MODE`.
+- Since #11807 the reader gives each way its own mode: a driver's unsaved fields take their defaults (`pg_launch_journey_payment_driver_settings()`), PayPal Express Checkout its `ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_MODE`, the classic Stripe gateway its `ECOMMERCE_STRIPE_API_KEY` (`pg_launch_journey_payment_classic()`). A DKIM record a sending service signs is left out of the mail facts (`pg_launch_journey_mail_facts()`).
 
 ## What do the card and the go-live check get?
 - `pg_launch_journey_state()`: rows blockers first, then warnings, then the rest; done, total, status (blocked, in_progress, ready), finished when every step is done or hidden. A hidden step stays while it blocks and is never counted done.

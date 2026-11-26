@@ -392,3 +392,39 @@ function test_lead_journey_key_is_synced_before_the_page_prints()
 	pg_assert_contains('pg_lead_request_browser();', substr($seo, (int) $start, (int) $end - (int) $start), 'init_tracking() writes the cookie before output');
 	pg_assert_contains('$browser = pg_lead_request_browser();', lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the visit uses the same synced browser');
 }
+
+function test_lead_journey_staff_browsing_as_a_customer_is_a_panel_user()
+{
+	pg_assert_true(pg_lead_session_is_staff(array('logged_in_as_different_user' => true), false), 'Log in as this user from the panel: staff browsing as the customer');
+	pg_assert_true(pg_lead_session_is_staff(array('ghost' => true), false), 'a ghost session');
+	pg_assert_true(pg_lead_session_is_staff(array(), true), 'a panel role');
+	pg_assert_false(pg_lead_session_is_staff(array(), false), 'the customer on their own');
+	pg_assert_false(pg_lead_session_is_staff(array('logged_in_as_different_user' => false), false), 'the flag off');
+	pg_assert_contains('pg_lead_session_is_staff(', lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the store asks the rule');
+}
+
+function test_lead_journey_no_tie_to_a_deleted_contact()
+{
+	$facts = array('consent' => 'yes', 'has_key' => true, 'browser_contact_id' => 4, 'contact_id' => 9, 'act' => 'campaign_click', 'panel_user' => false);
+
+	pg_assert_same('move', pg_lead_tie_decision($facts)['verdict'], 'a contact that is there');
+	pg_assert_same('no_contact', pg_lead_tie_decision(array('contact_gone' => true) + $facts)['verdict'], 'a recipient whose contact was deleted moves nobody');
+	pg_assert_contains("'contact_gone' =>", lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the store reads whether the contact is there');
+}
+
+function test_lead_journey_move_splits_the_open_visit()
+{
+	$session = array('browser_id' => 3, 'visitor_id' => 70, 'visit_id' => 500, 'pages' => array(array('/shop', 12, 1000), array('/sign-in', 0, 1012)));
+
+	$split = pg_lead_move_split('move', $session, 1050);
+	pg_assert_same('/sign-in', $split['landing_page'], 'the new row lands on the page the other person signed in on');
+	pg_assert_same(array(array('/sign-in', 0, 1050)), $split['pages']);
+	pg_assert_same(null, pg_lead_move_split('tie', $session, 1050), 'a first tie takes the open visit back, no split');
+	pg_assert_same(null, pg_lead_move_split('same', $session, 1050));
+	pg_assert_same(null, pg_lead_move_split('move', array('visit_id' => 0, 'visitor_id' => 0, 'pages' => array()) + $session, 1050), 'no visit open, nothing to split');
+
+	$store = lead_journey_test_source('includes/fn/lead_journey_store.php');
+	pg_assert_contains('pg_lead_move_split($decision[\'verdict\'], $session, $now)', $store, 'the store splits on a move');
+	pg_assert_contains('pg_lead_visit_copy(array(), $channel, $split[\'landing_page\'])', $store, 'the new row copies no campaign or referrer');
+	pg_assert_contains('pg_visitor_channel(array(), $flag)', $store, 'channel as for a visit with neither');
+}

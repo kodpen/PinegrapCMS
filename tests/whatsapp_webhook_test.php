@@ -85,6 +85,20 @@ function test_whatsapp_webhook_messages()
 	pg_assert_same(array('kind' => 'unsupported', 'body' => '', 'media_id' => '', 'media_mime' => ''), $odd, 'a type not read');
 }
 
+function test_whatsapp_inbox_stop_word()
+{
+	$text = array('kind' => 'text', 'from' => '905321234567', 'from_user_id' => '', 'body' => 'İptal.');
+
+	pg_assert_true(pg_whatsapp_inbox_stops($text), 'a stop word alone from a number stops marketing');
+	pg_assert_true(pg_whatsapp_inbox_stops(array('body' => 'stop') + $text), 'any case');
+	pg_assert_true(!pg_whatsapp_inbox_stops(array('body' => 'Stop sending me the bill twice') + $text), 'a sentence is no stop word');
+	pg_assert_true(!pg_whatsapp_inbox_stops(array('from' => '', 'from_user_id' => 'TR.1349') + $text), 'a username without a number has no consent to refuse');
+	pg_assert_true(!pg_whatsapp_inbox_stops(array('kind' => 'image') + $text), 'a caption is not a message of its own');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+	pg_assert_contains('pg_sms_stop_refusal((string) $event[\'from\'], $now)', $source, 'a new message\'s stop word writes the refusal');
+}
+
 function test_whatsapp_webhook_template_events()
 {
 	$events = pg_whatsapp_webhook_events(whatsapp_webhook_test_body('message_template_status_update', array(

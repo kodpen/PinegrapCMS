@@ -143,7 +143,7 @@ function test_workspace_calls_the_full_call_and_its_clean_up()
 	pg_assert_true(strpos($end, "DELETE FROM ws_call_signals WHERE call_id = '\" . \$id . \"'") !== false, 'an ended call\'s signals are deleted');
 	pg_assert_true(strpos($end, "SET left_at = '\" . \$now . \"' WHERE call_id") !== false, 'everyone is out of an ended call');
 	pg_assert_true(strpos($sweep, "DELETE FROM ws_call_signals WHERE created_at < '\" . (\$now - WS_CALL_SIGNAL_LIFE) . \"'") !== false, 'a signal older than two minutes is deleted');
-	pg_assert_true(strpos($sweep, 'ws_call_is_silent(') !== false && strpos($sweep, 'ws_call_end_row($call);') !== false, 'the clean-up ends a silent call');
+	pg_assert_true(strpos($sweep, 'ws_call_is_silent(') !== false && strpos($sweep, 'ws_call_end_row($call, 0, ws_call_heard_at(') !== false, 'the clean-up ends a silent call, when it was last heard');
 	pg_assert_same(120, WS_CALL_SIGNAL_LIFE, 'signals live two minutes');
 }
 

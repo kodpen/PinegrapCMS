@@ -188,3 +188,168 @@ function test_security_accounts_reason_reads_the_detail()
 	$reason = pg_security_accounts_reason('api_key_new', json_encode(array('created' => 1800000000, 'name' => '<b>Sync</b>')));
 	pg_assert_contains('<b>Sync</b>', $reason, 'the screen escapes; the reason stays plain text');
 }
+
+// One run of the staff role tracker: the users it reads, the stored map
+// (null before the first run) and now.
+function _test_security_staff_roles($users, $stored, $now)
+{
+	$result = pg_security_staff_roles_track($users, $stored, $now);
+	pg_assert_true(isset($result['sightings'], $result['map']) && is_array($result['sightings']) && is_array($result['map']));
+
+	return $result;
+}
+
+function test_security_staff_roles_first_run_reports_nobody()
+{
+	$now = 1800000000;
+	$users = array(
+		array('user_id' => '1', 'user_role' => '0', 'user_created' => '0'),
+		array('user_id' => '4', 'user_role' => '1', 'user_created' => (string) ($now - 900 * 86400)),
+		array('user_id' => '5', 'user_role' => '2', 'user_created' => '0'),
+	);
+	$result = _test_security_staff_roles($users, null, $now);
+
+	pg_assert_same(array(), $result['sightings']);
+	pg_assert_same(array(
+		'1' => array('role' => 0, 'since' => 0),
+		'4' => array('role' => 1, 'since' => 0),
+	), $result['map']);
+}
+
+function test_security_staff_roles_raise_from_manager_or_user()
+{
+	$now = 1800000000;
+	$stored = array('1' => array('role' => 0, 'since' => 0));
+	$users = array(
+		array('user_id' => '1', 'user_role' => '0', 'user_created' => '0'),
+		array('user_id' => '6', 'user_role' => '0', 'user_created' => (string) ($now - 500 * 86400)),
+		array('user_id' => '7', 'user_role' => '1', 'user_created' => (string) ($now - 500 * 86400)),
+	);
+	$result = _test_security_staff_roles($users, $stored, $now);
+
+	pg_assert_same(array(
+		'account_new_admin user:6' => PG_SECURITY_SEVERITY_HIGH,
+		'account_new_designer user:7' => PG_SECURITY_SEVERITY_MEDIUM,
+	), _test_security_accounts_map($result['sightings']));
+	pg_assert_same(array('raised' => $now), json_decode($result['sightings'][0]['detail'], true));
+	pg_assert_same(array('role' => 0, 'since' => $now), $result['map']['6']);
+	pg_assert_same(array('role' => 0, 'since' => 0), $result['map']['1']);
+}
+
+function test_security_staff_roles_designer_to_administrator()
+{
+	$now = 1800000000;
+	$stored = array('3' => array('role' => 1, 'since' => 0));
+	$result = _test_security_staff_roles(array(array('user_id' => '3', 'user_role' => '0', 'user_created' => '0')), $stored, $now);
+
+	pg_assert_same(array('account_new_admin user:3' => PG_SECURITY_SEVERITY_HIGH), _test_security_accounts_map($result['sightings']));
+	pg_assert_same(array('role' => 0, 'since' => $now), $result['map']['3']);
+
+	// Lowered back to Designer: the time is kept, so it is still a sighting
+	// (of the Designer kind) until the window ends.
+	$later = $now + 86400;
+	$result = _test_security_staff_roles(array(array('user_id' => '3', 'user_role' => '1', 'user_created' => '0')), $result['map'], $later);
+	pg_assert_same(array('role' => 1, 'since' => $now), $result['map']['3']);
+	pg_assert_same(array('account_new_designer user:3' => PG_SECURITY_SEVERITY_MEDIUM), _test_security_accounts_map($result['sightings']));
+}
+
+function test_security_staff_roles_inserted_with_no_creation_time_between_scans()
+{
+	$now = 1800000000;
+	$first = _test_security_staff_roles(array(array('user_id' => '1', 'user_role' => '0', 'user_created' => '0')), null, $now - 86400);
+	$users = array(
+		array('user_id' => '1', 'user_role' => '0', 'user_created' => '0'),
+		array('user_id' => '42', 'user_role' => '0', 'user_created' => '0'),
+	);
+	$result = _test_security_staff_roles($users, $first['map'], $now);
+
+	pg_assert_same(array('account_new_admin user:42' => PG_SECURITY_SEVERITY_HIGH), _test_security_accounts_map($result['sightings']));
+	pg_assert_same(array('raised' => $now), json_decode($result['sightings'][0]['detail'], true));
+}
+
+function test_security_staff_roles_lowered_then_raised_again()
+{
+	$now = 1800000000;
+	$day = 86400;
+	$stored = array('9' => array('role' => 0, 'since' => 0));
+
+	$lowered = _test_security_staff_roles(array(array('user_id' => '9', 'user_role' => '2', 'user_created' => '0')), $stored, $now);
+	pg_assert_same(array(), $lowered['sightings']);
+	pg_assert_same(array(), $lowered['map']);
+
+	$raised = _test_security_staff_roles(array(array('user_id' => '9', 'user_role' => '0', 'user_created' => '0')), $lowered['map'], $now + $day);
+	pg_assert_same(array('account_new_admin user:9' => PG_SECURITY_SEVERITY_HIGH), _test_security_accounts_map($raised['sightings']));
+	pg_assert_same(array('role' => 0, 'since' => $now + $day), $raised['map']['9']);
+}
+
+function test_security_staff_roles_deleted_account_is_dropped()
+{
+	$now = 1800000000;
+	$stored = array(
+		'1' => array('role' => 0, 'since' => 0),
+		'8' => array('role' => 1, 'since' => $now - 86400),
+	);
+	$result = _test_security_staff_roles(array(array('user_id' => '1', 'user_role' => '0', 'user_created' => '0')), $stored, $now);
+
+	pg_assert_same(array('1' => array('role' => 0, 'since' => 0)), $result['map']);
+	pg_assert_same(array(), $result['sightings']);
+}
+
+function test_security_staff_roles_gone_after_the_window()
+{
+	$now = 1800000000;
+	$day = 86400;
+	$stored = array('6' => array('role' => 0, 'since' => $now));
+	$users = array(array('user_id' => '6', 'user_role' => '0', 'user_created' => '0'));
+
+	pg_assert_same(1, count(_test_security_staff_roles($users, $stored, $now + 29 * $day)['sightings']));
+
+	$result = _test_security_staff_roles($users, $stored, $now + 31 * $day);
+	pg_assert_same(array(), $result['sightings']);
+	pg_assert_same(array('role' => 0, 'since' => $now), $result['map']['6']);
+}
+
+function test_security_staff_roles_new_account_left_to_the_created_rule()
+{
+	$now = 1800000000;
+	$stored = array('1' => array('role' => 0, 'since' => 0));
+	$users = array(
+		array('user_id' => '1', 'user_role' => '0', 'user_created' => '0'),
+		array('user_id' => '7', 'user_role' => '0', 'user_created' => (string) ($now - 3600)),
+	);
+	$result = _test_security_staff_roles($users, $stored, $now);
+
+	pg_assert_same(array(), $result['sightings'], 'user_created already gives the sighting');
+	pg_assert_same(array('role' => 0, 'since' => $now), $result['map']['7']);
+}
+
+function test_security_staff_roles_map_holds_no_person()
+{
+	$now = 1800000000;
+	$users = array(array('user_id' => '7', 'user_role' => '0', 'user_created' => '0', 'user_username' => 'mallory', 'user_email' => 'm@example.com'));
+	$result = _test_security_staff_roles($users, array(), $now);
+
+	pg_assert_same(array('7' => array('role' => 0, 'since' => $now)), $result['map']);
+	pg_assert_same(array('raised' => $now), json_decode($result['sightings'][0]['detail'], true));
+}
+
+function test_security_staff_roles_stored_text()
+{
+	pg_assert_same(null, pg_security_staff_roles_decode(''));
+	pg_assert_same(array(), pg_security_staff_roles_decode('[]'));
+
+	$map = array('1' => array('role' => 0, 'since' => 0), '12' => array('role' => 1, 'since' => 1800000000));
+	pg_assert_same($map, pg_security_staff_roles_decode(pg_security_staff_roles_encode($map)));
+	pg_assert_same('{}', pg_security_staff_roles_encode(array()));
+}
+
+function test_security_accounts_raised_reason_and_advice()
+{
+	$detail = json_encode(array('raised' => 1800000000));
+
+	pg_assert_contains(date('Y-m-d', 1800000000), pg_security_accounts_reason('account_new_admin', $detail));
+	pg_assert_contains('became an Administrator', pg_security_accounts_reason('account_new_admin', $detail));
+	pg_assert_contains('became a Designer', pg_security_accounts_reason('account_new_designer', $detail));
+	pg_assert_contains('gave this account its role', pg_security_accounts_advice('account_new_admin', $detail));
+	pg_assert_contains('made this account', pg_security_accounts_advice('account_new_admin', json_encode(array('created' => 1800000000))));
+}

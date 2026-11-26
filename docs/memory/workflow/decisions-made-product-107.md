@@ -9,7 +9,7 @@ description: Decisions made, product part 107 (2026-11-24 on): Figma is connecte
 ## How does a site connect to Figma? (owner, 2026-11-24, in the architect's window)
 - The census of ST1 (`api/figma-canva-census.md`) found that a public Figma app needs Figma's review and a fixed list of return addresses, a private app reaches only its own team, and every site has its own address.
 - Asked among four ways (a pasted personal access token; the site's own Figma app; both; nothing now and one press after the launch through a broker), he chose "Kişisel erişim anahtarı".
-- So the Figma card on Connections takes a personal access token the designer makes in Figma's settings. No Figma app, no return address, no review. ST3 of `plans/designer-start-import.md` builds this.
+- So the Figma card on Connections takes a personal access token the designer makes in Figma's settings. No Figma app, no return address, no review. Built in #11558 (`ui/connections-figma-page.md`).
 - The token is a secret: kept as Connections keeps a service's secret, never shown again, in no log; "Disconnect" removes it. An expired or refused token says so on the card and in the New design window, with where to make a new one.
 - A one-press connection is not planned: it needs a shared broker, which the owner has not opened (his "Şimdi değil" to the same question for Gmail).
 

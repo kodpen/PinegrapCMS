@@ -12,7 +12,7 @@ description: Decisions made, product part 110 (2026-11-25 on): all eleven packag
 - Dressing and moving: hover, focus and pressed states with a transition; the small effects (filters, background blur, blend, text shadow, letter spacing, a line limit, gradient stops from the palette, cursor); background layers and transforms; masks, clip shapes and more entrance motions.
 - From the Bootstrap Studio comparison: the page components (back to top, scroll progress, scrollspy, the navbar's scrolled state); a collection made with its list and detail pages in one action; page transitions and a drawn easing curve; favourites in the palette, find and replace on other pages and in code files, a Markdown component.
 - Not asked, because other plans hold them: one "Check for issues" window (the Publish check, `designer/designer-publish-overview.md`) and a designer's own options on a component (`plans/designer-component-overrides.md`).
-- The steps: `plans/designer-options-census.md`, DO2 to DO27.
+- The steps: DO2 to DO27, done (`designer/options-panel-census.md`).
 
 ## What is the architect's reading, not his words?
 - "Girsin" is read as before the launch, with the other designer plans (part 106). The architect told him the same day that twenty-six more steps make the designer plans tighter still for 1 January 2027; what slips is his to choose.

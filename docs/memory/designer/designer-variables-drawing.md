@@ -1,6 +1,6 @@
 ---
 name: designer-variables-drawing
-description: The drawing of a design's variables (plans/designer-variables.md, DV2 and DV3): the two sheets, their boards, the Variables tab, its "More" menu and the Options chip
+description: The drawing of a design's variables (DV2 and DV3, `design-variables-overview.md`): the two sheets, their boards, the Variables tab, its "More" menu and the Options chip
 ---
 
 ## Where is the drawing?

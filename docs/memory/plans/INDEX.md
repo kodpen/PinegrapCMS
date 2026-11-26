@@ -17,7 +17,8 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-memory-search.md: Plan (owner 2026-11-23), held until he opens it: text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
+- agent-memory-search.md: Plan (owner 2026-11-23, opened 2026-11-26): text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
+- artifact-canvas-content.md: Plan (owner 2026-11-26): the Artifact Canvas gets ready content and a way to open a design made in Canva as editable layers, from the person's own exported file; census steps AC1 and AC2 first
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
@@ -31,28 +32,11 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-accessibility-view.md: Plan (owner 2026-11-24, level 2): the canvas shown as a keyboard, a screen reader and a colour-blind eye meet it: tab order, headings, names, sight filters; steps AV1 to AV4
-- designer-activity.md: Plan (owner 2026-11-24, level 3): an Activity tab in the designer's History: who published, restored, imported or shared what in a design, from rows that exist; steps AC1 to AC4
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
-- designer-compare-live.md: Plan (owner 2026-11-24, level 2): a draft compared with the live page as two pictures under a slider, with what changed listed in plain words; steps CL1 to CL4
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
-- designer-document-to-page.md: Plan (owner 2026-11-24, level 3): a page built from a pasted text or a document: headings, lists, questions, figures and quotes read into sections, checked in a list, then built; steps FD1 to FD5
-- designer-drawings-levels.md: Plan (owner 2026-11-24): the sheets drawn first for the ten levelled designer features, DD12 to DD21, by the design session or the architect; a screen step waits for its sheet's merge, never for a yes
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
-- designer-first-tour.md: Plan (owner 2026-11-24, level 1): the designer's first tour of five stops, "How do I" pointers on the real controls, one-line first-use tips and an empty canvas that offers starts; steps FT1 to FT4
-- designer-options-census-steps-2.md: Plan designer-options-census, DO10 to DO20: states, transition, transform, background layers, clip shape and mask, the small effects, new entrances, the easing curve, page transitions
-- designer-options-census-steps-3.md: Plan designer-options-census, DO21 to DO27 and sheets DD22 to DD26: back to top, scroll progress, scrollspy, scrolled navbar, a collection with its pages, favourites, find and replace, Markdown
-- designer-options-census-steps.md: Plan designer-options-census, DO2 to DO9: a value per screen size, grid columns, rows, spans and areas, the small layout rows (inset presets, layer order, scroll snap, aspect ratio, object fit)
-- designer-options-census.md: Plan (owner 2026-11-24, 2026-11-25): the eleven packages he picked from the Options panel census as DO2 to DO27 in three steps files; how an option enters the panel, the lines, what a step keeps
-- designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
-- designer-record-edit-in-place.md: Plan (owner 2026-11-24, level 3): a collection item's words and pictures corrected in place in the designer's Preview, saved to the record by its own writer, apart from the design; steps RE1 to RE5
-- designer-screens-side-by-side.md: Plan (owner 2026-11-24, level 1): the designer's canvas with a phone and a tablet mirror beside it, redrawn when the hand rests, a click choosing the element; steps SS1 to SS4
-- designer-select-similar.md: Plan (owner 2026-11-24, level 1): "Select similar" in the designer: every element like the chosen one, by kind, classes or component, in a section or the page; steps SE1 to SE3
-- designer-shared-marks.md: Plan (owner 2026-11-25): shared components and system widgets no longer wrapped at rest on the canvas; a frame under the pointer and when chosen, a View switch; steps SM1, SM2
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
-- designer-start-import.md: Plan (owner 2026-11-24, before the launch): the New design window with every start in one place, import from Figma as layers and from Canva as reference pictures and brand; steps ST1 to ST7
-- designer-style-guide.md: Plan (owner 2026-11-24, level 2): a style guide sheet drawn from a design's variables, text styles, controls and shared components, always current, printable; steps SG1 to SG4
-- designer-variables.md: Plan (owner 2026-11-24, before the launch): a design's variables (colour, type, spacing, shape) in one pane, asked at the start, offered by every Options control; steps DV1 to DV6
+- designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
@@ -71,11 +55,6 @@
 - kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
 - launch-summary-files.md: Plan: the agency summary's customer page shows the steps still open, and a "What we need from you" line can ask for one file or several instead of text; LS1, LS2
-- legacy-editable-layouts.md: Plan legacy-editable, layouts: a System region becomes its widget in the run; a stock layout by carried settings, a layout file by a piece map keeping the theme's markup; what stays code
-- legacy-editable-regions.md: Plan legacy-editable, regions: one door through the move screen, the run's new page_parts step, Login, Cart and Comments in the run, the true canvas of every region left, designs moved earlier
-- legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
-- legacy-editable-steps.md: Plan legacy-editable, steps LE1 to LE12 with size and order: the measure, page_parts, one door, the true canvas, stock layouts, the layout converter by families, earlier designs, close-out
-- legacy-editable.md: Plan (owner 2026-11-21): a classic page arrives in the visual designer as editable elements, not name boxes: regions as HTML, a true canvas for code, layouts by a piece map; LE1 to LE12
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
@@ -85,12 +64,23 @@
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
+- parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
+- picture-text-fit-rules.md: Plan picture-text-fit, the fit's rules (architect 2026-11-26): a text's room from the picture's edges and the other layers, the order grow, wrap, shrink, what stays of the old rule
+- picture-text-fit-screens.md: Plan picture-text-fit, one language's texts corrected by hand: what a correction keeps, the Languages list's rows and the language view of the Artifact Canvas, described for PF3 and PF4
+- picture-text-fit.md: Plan (owner 2026-11-26, poll 229): a translated picture text grows into the free room, then wraps, then shrinks; one language's texts corrected by hand in the Artifact Canvas; steps PF1 to PF5
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- security-scan.md: Plan: Security Scan, a rule-based scan of files, stored content, accounts and settings joined to the firewall's screen and card, with quarantine, a manual run, an API and MCP read; SC1 to SC9
+- settings-crossings-census-leads.md: Crossings census, the leads: every Site Settings card (and other screen) that leads to a Connections page, the page and anchor it opens, its label, same or new tab, when the lead shows
+- settings-crossings-census-names.md: Crossings census, the names at both ends: the lead's label words, what the Connections page calls the card it leads back to, and where the two differ
+- settings-crossings-census-pages.md: Crossings census, the pages: for each service page of Connections the way back to its card, and where the person stands after Connect, Save and Disconnect
+- settings-crossings-census-roundtrips.md: Crossings census, the round trips with nothing to do at one end: a card that only points to a page, a page that only points back, a lead that lands on the list, a way back that names the wrong place
+- settings-crossings-census-setups.md: Crossings census, first set-ups: for each feature, the hops from its card to working on a new site, counted as moves between card, Connections page and outside service
+- settings-crossings-census-worst.md: Crossings census, the ten worst paths between Site Settings and Connections, ranked by hops, lost work and dead ends, each with what makes it bad; the examples TR2 asks the owner with
+- settings-crossings-census.md: Census of the crossings between Site Settings cards and Connections pages (plan settings-tidy-round, TR1): their shared shape, what is decided, which file holds what
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
+- settings-tidy-round.md: Plan (owner 2026-11-26): the settings tidy round: first the crossings between Site Settings and Connections, then the categories the 2026-11-21 survey left; steps TR1 to TR6
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
@@ -110,5 +100,3 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
-- workspace-channel-board-screens.md: How the screens of plan workspace-channel-board are put together: the Board tab's figures and toolbar, a column, a card, the List view and the Automations drawer
-- workspace-channel-board.md: Plan (owner 2026-11-24): a channel's Tasks and Board tabs become one tab "Board" with Board and List views, tasks only, a newer look and ready automations; steps BM1 to BM6

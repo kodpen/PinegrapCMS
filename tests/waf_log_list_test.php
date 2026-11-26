@@ -16,6 +16,7 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/waf.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_log_list.php');
 
 foreach (array('PATH' => '/', 'OUTPUT_PATH' => '/', 'OUTPUT_SOFTWARE_DIRECTORY' => 'pinegrap', 'DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $waf_log_list_test_name => $waf_log_list_test_value) {
@@ -129,6 +130,19 @@ function test_waf_log_list_row()
 	$html = pg_list_row_html(pg_waf_log_list_row($event, $now));
 	pg_assert_false(strpos($html, 'fg-danger fw-semibold') !== false, 'stopped ten minutes ago');
 	pg_assert_contains('<span class="badge bg-secondary">unknown</span>', $html, 'an action without a badge');
+}
+
+// A row stored before credential values were masked shows them masked.
+function test_waf_log_list_row_masks_credentials()
+{
+	$html = pg_list_row_html(pg_waf_log_list_row(array(
+		'id' => '5', 'log_timestamp' => '1000', 'last_seen' => '1000', 'hit_count' => '1', 'action' => 'block', 'ip_address' => '203.0.113.7',
+		'rule_id' => 'rate-flow-web', 'reference' => '', 'score' => '1', 'method' => 'GET',
+		'request_url' => '/pinegrap/flow_start.php?flow=3&key=' . str_repeat('f', 64), 'user_agent' => '', 'target' => '', 'matched' => '',
+	), 2000));
+
+	pg_assert_contains('flow_start.php?flow=3&amp;key=*', $html);
+	pg_assert_false(strpos($html, str_repeat('f', 64)) !== false, 'the key is not shown');
 }
 
 function test_waf_log_list_is_a_driver_list()

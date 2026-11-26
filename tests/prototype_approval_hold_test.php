@@ -227,3 +227,59 @@ function test_prototype_approval_hold_no_writer_is_missing()
 		}
 	}
 }
+
+// Every direct write of page.page_folder, by file and function ('' for a
+// screen's own code): each one either keeps a draft in the Drafts folder or
+// goes through the hold. A move out of the Drafts folder past them took a
+// draft live without its approval, experiment or bundle hold.
+function prototype_approval_hold_test_folder_writers()
+{
+	return array(
+		'designer.php pg_page_draft_move' => 'the draft move itself',
+		'designer.php pg_designer_save_page' => 'the save reads the hold',
+		'designer.php pg_designer_delete_design' => 'into the recycle bin',
+		'handle_recycle.php pg_explorer_handle_recycle_delete' => 'into the recycle bin',
+		'handle_recycle.php pg_explorer_handle_recycle_restore' => 'back where it was binned from',
+		'recycle_pages_styles.php pg_recycle_page' => 'into the recycle bin',
+		'handle_items.php pg_explorer_handle_move' => 'pg_explorer_move_page_refusal()',
+		'pages.php api_pages_update' => 'api_page_move_target() refuses a draft',
+		'pages.php api_pages_delete' => 'into the recycle bin',
+		'changes.php ws_change_write_page' => 'into the recycle bin',
+		'legacy.php upgrade_to_2017_2_2' => 'a system page of an old upgrade',
+		'edit_page.php ' => 'pg_page_form_folder_write()',
+	);
+}
+
+function test_prototype_approval_hold_no_folder_writer_is_missing()
+{
+	$known = prototype_approval_hold_test_folder_writers();
+	$dir = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
+	$seen = array();
+
+	foreach ($dir as $file) {
+		$path = (string) $file;
+
+		if (substr($path, -4) !== '.php' || strpos($path, DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR) !== false) {
+			continue;
+		}
+
+		$source = (string) file_get_contents($path);
+
+		if (!preg_match_all('/UPDATE\s+page\s+SET\b(?:(?!WHERE).)*?\bpage_folder\s*=|\$set\[\]\s*=\s*"page_folder\s*=/is', $source, $m, PREG_OFFSET_CAPTURE)) {
+			continue;
+		}
+
+		foreach ($m[0] as $hit) {
+			$key = basename($path) . ' ' . prototype_approval_hold_test_function_at($source, $hit[1]);
+			$seen[$key] = true;
+			pg_assert_true(isset($known[$key]), 'page_folder is written in ' . $key . ' without a check that keeps a draft a draft');
+		}
+	}
+
+	foreach (array_keys($known) as $key) {
+		pg_assert_true(isset($seen[$key]), $key . ' still writes page_folder');
+	}
+
+	pg_assert_contains('pg_explorer_move_page_refusal(', prototype_approval_hold_test_body('includes/explorer/handle_items.php', 'pg_explorer_handle_move'), 'the explorer keeps a draft a draft');
+	pg_assert_contains('pg_page_form_folder_write(', prototype_approval_hold_test_source('edit_page.php'), 'page properties keep a draft a draft');
+}

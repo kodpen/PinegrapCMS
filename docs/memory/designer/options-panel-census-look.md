@@ -1,31 +1,32 @@
 ---
 name: options-panel-census-look
-description: Options panel census, part 3: gaps to dress and move an element (hover/focus/pressed, transitions, gradients, filters, blend, transforms, text effects, masks)
+description: Options panel census, part 3, as built: states, transition, easing curve, background layers, filters, transform, text effects, clip shape and mask, cursor
 ---
 
 ## Hover, focus and pressed states?
-- No Options row is written for a state. Interactions' hover trigger plays one effect (fade, lift, scale); click toggles `pg-fx-on`; Focus Ring is one switch. A hover colour, a focus outline or a pressed shadow is code in "This element" (`.pgs-x:hover { … }`).
-- Missing: a state chooser in the Options panel head (Normal, Hover, Focus, Pressed) under which Color and background, Border and corner, Shadow and effect and transforms write `:hover`, `:focus-visible`, `:active` rules on the element's class; the canvas previews a state on the selected element. M. Reads the theme colours (`--bs-*`, `--pg-primary-fg`), `--pg-shadow*`, `--pg-btn-hover-transform`, `--pg-card-hover-transform`, `--pg-card-shadow-hover`.
+- The "State" row, first in the Style tab's body, never in the panel's head: Normal, Hover, Focus, Pressed (DO10, `designer-options-states.md`). Color and background, Border and corner, Shadow and effect and Transform write `:hover`, `:focus-visible` and `:active` rules on the element's class; the canvas shows the state on the selected element only.
+- Not built: states for several elements at once, and Custom Background Color under a state.
 
-## Transitions and entrance motion?
-- A transition between states is code. Missing: Transition (property group, duration, easing) on the element. S. Reads `--pg-duration` and `--pg-ease`.
-- Entrance motion has ten effects (Fade in, four slides, Scale, and Zoom out, Blur in, Rotate in, Reveal since DO18: `designer-interactions-more-entrances.md`) with Duration, Delay, Easing, Distance, Stagger. Missing: a choice of easing curves beyond the stored list. S. Reads `--pg-duration`, `--pg-ease`. Endless motion (pulse, float) is not offered; `designer-block-motion.md` binds what blocks may do.
+## Transitions, entrances and easing?
+- "Transition" in Shadow and effect: what changes, Duration and Easing, from `--pg-duration` and `--pg-ease`; nothing moves under reduced motion (DO11, `designer-options-transition.md`).
+- Entrance motion has ten effects: Fade in, four slides, Scale, and Zoom out, Blur in, Rotate in, Reveal (DO18, `designer-interactions-more-entrances.md`). Endless motion (pulse, float) is not offered; `designer-block-motion.md` binds what blocks may do.
+- The easing curve drawn and dragged wherever Easing is chosen, a curve kept under a name as a design variable (DO19, `designer-options-curve.md`).
+- "Page transition" for the design and "Keep across pages" on an element (DO20, `designer-options-page-transition.md`).
 
 ## Gradients and several backgrounds?
-- Custom Background Color gives one gradient of two colours with a middle, and Bg Image one picture. A picture over a gradient, a gradient overlay on a photo, three or more stops, conic gradients are code. Missing: a list of background layers (colour, gradient, picture) in order, each with its own size, position and repeat. M. Reads the theme colours as stop choices.
-- The gradient colours are typed hex values, not theme colours. Missing: stops chosen from the palette (`var(--bs-primary)`), so a palette change follows. S. Reads `--bs-*` theme colours.
+- "Background layers" in Color and background: colour, gradient (linear, radial, conic, two to sixteen stops) and picture layers in order, stops from the palette so a palette change follows, written in the element's `style` where the old background was (DO13, `designer-options-bg-layers.md`). One old background is read as one layer and written back unchanged until changed.
 
 ## Filters and blend?
-- Opacity has five steps; nothing else. Missing: Filter (blur, brightness, contrast, grayscale, saturate, sepia, hue) with sliders (S), Backdrop blur for glass panels (S), Blend mode (mix-blend-mode, background-blend-mode) (S). Reads none; backdrop blur may read `--pg-radius-*` for its corner.
+- Filter's seven sliders, Background blur and both Blend modes under Shadow and effect's "More" (DO15, `designer-options-effects.md`). Opacity keeps its five steps.
 
 ## Transforms?
-- Only through Interactions' start states. Missing: Rotate, Scale, Move X and Y, Skew and Origin on the element, combined with Interactions' own transform (`pgFxBase` keeps the node's). M (composition with pg_fx and per state). Reads none.
+- Rotate, Scale, Move X and Y, Skew and Origin in Shadow and effect, in every state, composed with an Interactions effect's own transform (DO12, `designer-options-transform.md`).
 
 ## Text effects?
-- Missing: Text shadow (S, reads `--pg-shadow*` colours or none), Letter spacing (S, reads `--pg-heading-tracking`), Font family per element from the design's two families (S, reads `--pg-font-body`, `--pg-font-heading`), text gradient fill and stroke (S, reads the theme colours), Line clamp to N lines (S, none), Text wrap balance for headings (S, none).
+- Text shadow, Letter spacing, Font family from the design's two families, "Limit to lines", Gradient fill and Outline under Text's "More" (DO16, `designer-options-text.md`). Not built: Text wrap balance for headings (no step).
 
 ## Masks and clip shapes?
-- Missing: Clip shape (circle, ellipse, inset with corners, a few polygons such as slant and arrow) and Mask (a fade to transparent at one edge, a picture as mask) on any element. M (shape editor and canvas preview). Reads `--pg-radius-*` for inset corners.
+- "Clip shape" (Circle, Ellipse, Rounded inset, Slant, Arrow) and "Mask" (a fade at one edge, a picture) under Shadow and effect's "More", shown on the canvas (DO14, `designer-options-shape.md`).
 
 ## Cursor and pointer?
-- Missing: Cursor (pointer, default, not-allowed) and "Let clicks through" (`pe-none`, a Bootstrap class). S. Reads none.
+- Cursor (Pointer, Default, Not allowed) and "Let clicks through" (`pe-none`) under Shadow and effect's "More", Normal only (DO17, `designer-options-pointer.md`).

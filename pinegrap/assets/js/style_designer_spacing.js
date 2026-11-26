@@ -560,9 +560,20 @@ StyleDesigner.definePart('spacing', function (K) {
         return (key === 'width' || key === 'height') && n.type === 'content' && n.props && n.props.contentType === 'image';
     }
 
+    // A value of the row `key` as written: a ratio as CSS aspect-ratio, else
+    // a length (a bare number is pixels).
+    function _szNorm(host, key, v) {
+        return key === 'aspect' ? host.ratio(v) : Z.len(v);
+    }
+
     // The every-size value an element holds outside User Styles: the
-    // inline length, or Bootstrap's fs-* class (it wins with !important).
-    function _szOutside(n, key) {
+    // inline length, Bootstrap's fs-* class (it wins with !important), or
+    // the ratio (its own, else today's ratio box).
+    function _szOutside(host, n, key) {
+        if (key === 'aspect') {
+            var r = host.ratioOf(n);
+            return r ? { cls: '', value: r } : null;
+        }
         if (key === 'fontSize') {
             var f = Z.fontValue(n.props.cssClass);
             return f && f.cls.indexOf('fs-') === 0 ? f : null;
@@ -572,10 +583,10 @@ StyleDesigner.definePart('spacing', function (K) {
     }
 
     // An element's value per size for a row, xs from where it is held.
-    function _szValues(text, n, key) {
+    function _szValues(host, text, n, key) {
         var cls = window.PgCustomStyle.classOf(n.props.cssClass);
         var vals = Z.read(text, cls, Z.PROPS[key]);
-        var out = _szOutside(n, key);
+        var out = _szOutside(host, n, key);
         if (out) vals.xs = out.value;
         else if (key === 'fontSize' && !vals.xs) {
             var f = Z.fontValue(n.props.cssClass);
@@ -601,7 +612,8 @@ StyleDesigner.definePart('spacing', function (K) {
                 if (!cls) return null;
                 list.push(cls);
             }
-            var out = _szOutside(n, key);
+            var out = _szOutside(host, n, key);
+            if (key === 'aspect') ch.ratioFree = true;
             if (out) {
                 text = Z.write(text, cls, css, 'xs', out.value);
                 if (out.cls) list = list.filter(function (c) { return c !== out.cls; });
@@ -620,7 +632,7 @@ StyleDesigner.definePart('spacing', function (K) {
     function _szTake(host, f, key, text) {
         var nodes = host.nodes.filter(function (n) { return n && n.props && !_szSkips(n, key); });
         if (!nodes.length) return;
-        var reads = nodes.map(function (n) { return Z.at(_szValues(text, n, key), host.size); });
+        var reads = nodes.map(function (n) { return Z.at(_szValues(host, text, n, key), host.size); });
         var first = reads[0];
         var mixed = reads.some(function (r) { return r.value !== first.value || r.here !== first.here; });
         var css = Z.PROPS[key];
@@ -665,11 +677,11 @@ StyleDesigner.definePart('spacing', function (K) {
             else if (!first.here && first.value) nf.placeholder = first.value + ' (' + from + ')';
             var was = nf.value;
             nf.addEventListener('change', function () {
-                var why = host.lenCheck(nf.value);
+                var why = host.lenCheck(nf.value, f.getAttribute('data-sd-len'));
                 nf.classList.toggle('is-invalid', !!why);
                 if (why) { nf.title = why; return; }
                 if (nf.value.trim() === was.trim()) return;
-                _szWrite(host, key, Z.len(nf.value));
+                _szWrite(host, key, _szNorm(host, key, nf.value));
             });
         }
         f.parentNode.replaceChild(nf, f);

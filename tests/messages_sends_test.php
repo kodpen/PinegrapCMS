@@ -274,3 +274,15 @@ function test_messages_sends_modules_load_sms_campaigns()
 		pg_assert_true((bool) preg_match('~^require_once\(PG_FUNCTIONS_DIR \. \'/includes/fn/sms_campaigns\.php\'\);~m', $source), $module . ' loads the SMS campaigns module');
 	}
 }
+
+function test_messages_sends_whatsapp_retry_keeps_a_switched_off_key_back()
+{
+	// A failed row's single-use offer key was switched off when it failed
+	// (pg_whatsapp_queue_run()): Retry would send a code that no longer works.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/messages_sends.php');
+	pg_assert_contains("AND NOT ((status = 'failed') AND (key_code_id > 0))", $source, 'a failed row holding a key is not put back in the queue');
+	pg_assert_contains("'offer_key'", $source, 'the refusal is named');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/messages_sends.php');
+	pg_assert_contains("\$sends_outcome === 'offer_key'", $screen, 'the screen says why nothing was queued');
+}

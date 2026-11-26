@@ -10,7 +10,7 @@ module: design_variables
 
 ## Which variables are there?
 - `pg_design_variable_list()`, grouped by `pg_design_variable_groups()`: Colour (brand, accent, neutral, surface, text, success, warning, danger), Type (font_heading, font_body, size_base, scale, weight_heading, weight_body, line_height), Spacing (space_unit, space_section), Shape (radius, border_width, shadow).
-- Kinds: color, font (names, quotes, commas only), length (rem or px within the row's bounds, or a bare `0`), number, weight (100 to 900), choice. Shadow's `''` means "As the look"; the other options are the look builder's presets (`_pg_design_look_shadows()`, shared with the custom look).
+- Kinds: color, font (names, quotes, commas only), length (rem or px within the row's bounds, or a bare `0` where the bounds start at 0), font names each bare or in one closed pair of quotes, number, weight (100 to 900), choice. Shadow's `''` means "As the look"; the other options are the look builder's presets (`_pg_design_look_shadows()`, shared with the custom look).
 - Custom variables: at most 24, kind `color` or `size`, key made a slug of up to 30 characters and kept once, name up to 40 characters.
 
 ## Where do the defaults come from?

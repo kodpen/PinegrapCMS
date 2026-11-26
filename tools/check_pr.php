@@ -27,11 +27,16 @@
  *   tools/build_css.php writes (the .min.js and .min.css files of
  *   pg_js_bundles() and pg_css_bundles()): the landing builds them, so two
  *   branches never conflict on them;
+ * - the branch does not delete, or rename away, a PHP file of the integrity
+ *   scope (directly in pinegrap/ or under pinegrap/includes/) unless its old
+ *   place joins the Cleanup tool's list (pg_clean_up_file_list()): the
+ *   update deletes nothing, so the file stays on upgraded sites, and the
+ *   Security Scan tells such a file from a planted one by that list;
  * - more than PG_CHECK_PR_SIZE_LIMIT product lines (changed lines under
  *   pinegrap/, minified bundles and language files not counted) prints a
  *   warning, never a failure.
  * A merge train (merge-train/*), development and main skip the author,
- * changelog, memory list, bundle and size checks: they carry the commits of other branches,
+ * changelog, memory list, bundle, retired file and size checks: they carry the commits of other branches,
  * Dependabot's among them; --identity-exempt does the same for a pull
  * request Dependabot opened. The trailer and config.php checks apply to every
  * branch.
@@ -244,6 +249,64 @@ function check_pr_bundles()
 	return $bundles;
 }
 
+// The PHP files of the integrity scope among paths relative to the
+// repository root: directly in pinegrap/ or under pinegrap/includes/, as
+// places relative to pinegrap/.
+function check_pr_integrity_php(array $paths)
+{
+	$places = array();
+
+	foreach ($paths as $path) {
+		$path = (string) $path;
+
+		if ((strpos($path, 'pinegrap/') !== 0) || (strtolower(substr($path, -4)) !== '.php')) {
+			continue;
+		}
+
+		$place = substr($path, 9);
+
+		if ((strpos($place, '/') === false) || (strpos($place, 'includes/') === 0)) {
+			$places[] = $place;
+		}
+	}
+
+	return $places;
+}
+
+// What is wrong with the files a branch deletes (paths relative to the
+// repository root; a rename counts as a deletion of its old path), given the
+// Cleanup tool's list at the branch's head: one message per PHP file of the
+// integrity scope whose place is not on the list.
+function check_pr_retired_problems(array $deleted, array $list)
+{
+	$problems = array();
+
+	foreach (check_pr_integrity_php($deleted) as $place) {
+		if (!pg_clean_up_place_listed($place, $list)) {
+			$problems[] = "the branch deletes pinegrap/$place without adding '$place' to pg_clean_up_file_list() (pinegrap/includes/fn/files.php); "
+				. 'the update deletes nothing, so the file stays on upgraded sites, and the Security Scan reports it as unknown until it is listed (docs/memory/waf/security-scan-file-scan.md)';
+		}
+	}
+
+	return $problems;
+}
+
+// The Cleanup tool's list of the checked-out tree, or null when it cannot be
+// read. functions.php loads the modules under includes/fn/ without a
+// connection.
+function check_pr_clean_up_list()
+{
+	$software = dirname(__DIR__) . '/pinegrap';
+
+	if (!is_file($software . '/functions.php')) {
+		return null;
+	}
+
+	require_once($software . '/functions.php');
+
+	return function_exists('pg_clean_up_file_list') ? pg_clean_up_file_list() : null;
+}
+
 // The product lines of a change: changed lines in files under pinegrap/,
 // minified bundles and the language files under includes/local/ not counted.
 function check_pr_product_lines(array $files)
@@ -419,6 +482,29 @@ if (!$exempt && !$identity_exempt) {
 	foreach ($touches_min ? check_pr_bundle_problems($files, check_pr_bundles(), $merge_base) : array() as $problem) {
 		$fail($problem);
 		$failed = true;
+	}
+
+	$deleted = check_pr_git(array('-c', 'core.quotePath=false', 'diff', '--name-only', '-z', '--no-renames', '--diff-filter=D', $merge_base, $head, '--', 'pinegrap'));
+
+	if ($deleted === false) {
+		fwrite(STDERR, "git diff --diff-filter=D $merge_base $head failed\n");
+		exit(1);
+	}
+
+	$deleted = array_values(array_filter(explode("\0", $deleted), 'strlen'));
+
+	if (check_pr_integrity_php($deleted) !== array()) {
+		$list = check_pr_clean_up_list();
+
+		if ($list === null) {
+			$fail('the branch deletes PHP files of the integrity scope and pg_clean_up_file_list() could not be loaded to check them');
+			$failed = true;
+		} else {
+			foreach (check_pr_retired_problems($deleted, $list) as $problem) {
+				$fail($problem);
+				$failed = true;
+			}
+		}
 	}
 
 	$lines = check_pr_product_lines($files);

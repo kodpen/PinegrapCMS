@@ -90,3 +90,34 @@ function test_workspace_channel_board_tab_shared_toolbar()
 	pg_assert_contains('k.bar.filter(', $js, 'urgency, person and the cancelled ones are behind Filter');
 	pg_assert_false(strpos($js, "'btn btn-sm ws-cb-chip") !== false, 'no btn btn-sm chip is drawn any more');
 }
+
+function test_workspace_channel_board_tab_nobody_column_takes_everybody_off()
+{
+	$js = workspace_channel_board_tab_js('workspace_board_channel.js');
+
+	// "Drop here: nobody on it": a card with two people dropped from one
+	// person's column on "Nobody yet" loses both, not only the column's one.
+	pg_assert_contains("var people = (to.drop > 0) ? item.assignees.map(", $js, 'Nobody yet takes every person off the task');
+}
+
+function test_workspace_channel_board_tab_board_address_opens_the_board()
+{
+	$js = workspace_channel_board_tab_js('workspace.js');
+
+	// ?view=board opens the Board view even when List is the view kept in
+	// the browser, as ?view=list opens the List view.
+	pg_assert_contains("self.boardView = (self.tab === 'board') ? 'board' : '';", $js, 'the board asked for in the address is the view opened');
+}
+
+function test_workspace_channel_board_tab_list_mine_and_person_together()
+{
+	$tasks = workspace_channel_board_tab_tasks();
+
+	// The board and its figures keep the tasks the reader and the person
+	// chosen are both on; the List view narrows the same way.
+	pg_assert_same(array(1), workspace_channel_board_tab_ids(ws_tasks_for_person(ws_tasks_for_person($tasks, 9), 4)), 'a person and the reader: the tasks both are on');
+
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_contains("\$tasks = ws_tasks_for_person(ws_tasks_for_person(\$tasks, (int) (\$request['person'] ?? 0)), !empty(\$request['mine']) ? (int) \$viewer['id'] : 0);", $php, 'the List view keeps both the person and "Only mine"');
+}

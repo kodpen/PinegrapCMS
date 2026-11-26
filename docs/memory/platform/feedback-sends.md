@@ -11,7 +11,7 @@ module: feedback_sends
 
 ## What is stored at the queue?
 - `pg_feedback_queue_row()` (pure): the recipient by the survey's channel (address; number in `pg_sms_number()` form), `person_hash`, `subject_id` (service, calendar event, course, form page, mail box), `staff_user_id` (`booking_staff.user_id`), `due_at` = now + delay moved into the sending hours.
-- `pg_feedback_queue()` inserts, then in the same call `pg_feedback_set_due()` writes `token_hash` of the `answer` token issued at `due_at`: the sender rebuilds the link from id and `due_at`; it holds 30 days from the due time. No key (`ENCRYPTION_KEY`), no row.
+- `pg_feedback_queue()` inserts, then in the same call `pg_feedback_set_due()` writes `token_hash` of the `answer` token issued at `due_at`: the sender rebuilds the link from id and `due_at`. The send signs it again at the send time (`pg_feedback_send_due()` sets `due_at` to now once claimed), so the link holds 30 days from the send, as the reminder and the no-answer rule count. No key (`ENCRYPTION_KEY`), no row.
 - A person with a row of the same survey still queued gets no second one (two tickets, two addresses of one order).
 
 ## What cancels a waiting survey at once?

@@ -58,6 +58,7 @@ function designer_sketch_test_node($script)
 		. designer_sketch_test_js('function _sdSketchDetailsKeep(')
 		. designer_sketch_test_js('function _sdSketchClean(')
 		. designer_sketch_test_js('function _sdSketchBodyH(')
+		. designer_sketch_test_js('function _sdSketchNearSide(')
 		. designer_sketch_test_js('function _sdSketchRect(');
 	$file = tempnam(sys_get_temp_dir(), 'pgsk') . '.js';
 	file_put_contents($file, "var window = {}; var document = {};\n" . $core . "\nfunction _sdT(text) { return text; }\nvar _sdProto = { view: { x: 0, y: 0, k: 1 } };\n" . $parts . "\n" . $script);
@@ -93,7 +94,7 @@ function test_designer_sketch_adapter_wiring()
 	pg_assert_contains("press: function (event, next) {\n                if (_sdSketchPress(event, next)) return;", $build, 'a press is the sketch\'s first');
 	pg_assert_contains("if (/^sk/.test(drag.kind || '')) { _sdSketchMove(event, drag, dx, dy); return; }", $build, 'its moves');
 	pg_assert_contains("if (/^sk/.test(done.kind || '')) { _sdSketchRelease(event, done); return; }", $build, 'its release');
-	pg_assert_contains("if (done && /^sk/.test(done.kind || '')) _sdSketchMount(false);", $build, 'a cancelled drag draws the sketch back');
+	pg_assert_contains("if (done && /^sk/.test(done.kind || '')) { _sdProto.sk.drag = false; _sdSketchMount(false); }", $build, 'a cancelled drag ends the drag and draws the sketch back');
 	pg_assert_contains("key: function (event) {\n                if (_sdSketchKey(event)) return true;", $build, 'the keys go to the sketch first');
 	pg_assert_contains(".sd-sketch-chip, .sd-sketch-input'", $build, 'chips and the input keep their clicks');
 	pg_assert_contains("return !!to && to.kind !== 'sketch' && _sdProtoArrowHref(from, to, port) !== null;", $build, 'no arrow to a sketch page');
@@ -276,4 +277,64 @@ function test_designer_sketch_more_rows()
 	pg_assert_true(strpos($fill, '_sdSketchPicEl(page.pic)') < strpos($fill, '_sdSketchBoxEl(b, picked, on)'), 'the picture under the boxes');
 	pg_assert_contains('opacity: .33; pointer-events: none;', $css, 'dimmed, no pointer');
 	pg_assert_contains('.sd-sketch-mode .pgc-selected .sd-sketch-more { display: inline-flex; }', $css, 'on the selected page only');
+}
+
+// A finger near a handle of the selected box takes that handle: the nearest
+// corner or side within reach, none farther; the reach is at most a quarter
+// of the box, so a small box's middle still moves it.
+function test_designer_sketch_near_side()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var b = { x: 100, y: 100, w: 200, h: 120 };
+var at = function (x, y, reach) { return _sdSketchNearSide(b, { x: x, y: y }, reach); };
+var out = {
+    se: at(296, 216, 16), nw: at(108, 92, 16), n: at(200, 104, 16), e: at(310, 160, 16), s: at(205, 220, 16), w: at(100, 150, 16),
+    middle: at(200, 160, 16), far: at(330, 250, 16), edgeNotHandle: at(150, 100, 16),
+    small: _sdSketchNearSide({ x: 0, y: 0, w: 24, h: 24 }, { x: 12, y: 12 }, 16),
+    smallCorner: _sdSketchNearSide({ x: 0, y: 0, w: 24, h: 24 }, { x: 22, y: 23 }, 16)
+};
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('se', 'nw', 'n', 'e', 's', 'w'), array($result['se'], $result['nw'], $result['n'], $result['e'], $result['s'], $result['w']), 'the nearest handle within reach');
+	pg_assert_same('', $result['middle'], 'the middle moves the box');
+	pg_assert_same('', $result['far'], 'out of reach');
+	pg_assert_same('', $result['edgeNotHandle'], 'an edge between two handles is no handle');
+	pg_assert_same('', $result['small'], 'a small box\'s middle still moves it');
+	pg_assert_same('se', $result['smallCorner'], 'its corner resizes it');
+}
+
+// The feel on a page of a hundred boxes: the guides are placed, never
+// added and taken out on each pointer move; a press marks the selection
+// in place; a drag let go or an arrow nudge keeps the box where it is and
+// draws the frames again once the hand rests, never during a drag; a
+// touch near a handle takes it; the selected box lies over the others.
+function test_designer_sketch_feel()
+{
+	$guides = designer_sketch_test_js('function _sdSketchGuides(');
+	$pick = designer_sketch_test_js('function _sdSketchPick(');
+	$press = designer_sketch_test_js('function _sdSketchPress(');
+	$release = designer_sketch_test_js('function _sdSketchRelease(');
+	$changed = designer_sketch_test_js('function _sdSketchChanged(');
+	$soon = designer_sketch_test_js('function _sdSketchMountSoon(');
+	$mount = designer_sketch_test_js('function _sdSketchMount(');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_same(false, strpos($guides, 'removeChild'), 'no guide is taken out while a box moves');
+	pg_assert_contains("line.style.display = 'none';", $guides, 'a guide not needed is hidden');
+	pg_assert_contains('if (!same && !_sdSketchSelDraw(was)) _sdSketchMount(refocus);', $pick, 'a new selection is marked in place');
+	pg_assert_contains('_sdProto.sk.drag = true;', $press, 'a press starts a drag');
+	pg_assert_contains("if (b && !side && event.pointerType === 'touch' && boxEl.classList.contains('sd-sketch-on')) {", $press, 'a touch near a handle of the selected box takes it');
+	pg_assert_contains("if (!done.moved && event.type === 'pointerup') {", $release, 'a tap draws nothing again');
+	pg_assert_true(substr_count($release, '_sdSketchMountSoon();') === 2, 'a drawn, moved or resized box waits for the hand to rest');
+	pg_assert_contains('if (fold && _sdSketchPlace()) _sdSketchMountSoon();', $changed, 'an arrow nudge moves the box only');
+	pg_assert_contains('if (sk.drag) _sdSketchMountSoon();', $soon, 'never during a drag');
+	pg_assert_contains('}, SD_SKETCH.rest);', $soon, 'after the rest');
+	pg_assert_contains('if (_sdProto.sk.soon) { clearTimeout(_sdProto.sk.soon); _sdProto.sk.soon = 0; }', $mount, 'a full draw makes the waiting one needless');
+	pg_assert_contains('.sd-sketch-box.sd-sketch-on { z-index: 1;', $css, 'the selected box and its handles over the others');
 }

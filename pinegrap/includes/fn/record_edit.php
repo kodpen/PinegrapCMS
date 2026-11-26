@@ -37,6 +37,10 @@ const PG_REC_EDIT_LIVEFORM = 'pg_record_edit_in_place';
 // The most fields one save may carry.
 const PG_REC_EDIT_MAX_FIELDS = 100;
 
+// The most characters one field takes in place, whatever its own length
+// (the external API's ceiling for a long text body).
+const PG_REC_EDIT_MAX_LENGTH = 200000;
+
 /**
  * The control a field is edited with in place, '' when it is not edited in
  * place: 'text' (a text box, an e-mail address, a plain text area, a slug),
@@ -238,7 +242,13 @@ function pg_rec_edit_record($form_id)
         WHERE forms.id = '" . $form_id . "' AND custom_form_pages.collection = '1'
         LIMIT 1");
 
-    return $row ?: null;
+    // A collection in the Recycle Bin is offline and purged with it: its
+    // items are not written from a Preview.
+    if (!$row || pg_folder_binned((int) $row['folder_id'])) {
+        return null;
+    }
+
+    return $row;
 }
 
 /**
@@ -256,7 +266,7 @@ function pg_rec_edit_fields($record)
     $fields = array();
 
     foreach ((array) db_items(
-        "SELECT id, name, label, type, wysiwyg, multiple, required, rss_field
+        "SELECT id, name, label, type, wysiwyg, multiple, required, maxlength, rss_field
         FROM form_fields
         WHERE page_id = '" . $page_id . "'
         ORDER BY sort_order ASC, id ASC") as $field
@@ -291,6 +301,10 @@ function pg_rec_edit_fields($record)
     foreach ($fields as $id => $field) {
         $fields[$id]['value'] = pg_rec_edit_stored($field['control'], $rows[$id] ?? array());
 
+        if ($field['control'] === 'rich') {
+            $fields[$id]['value'] = pg_rec_edit_rich_out($fields[$id]['value'], PATH);
+        }
+
         if (($field['control'] === 'picture') && ($fields[$id]['value'] !== '')) {
             $fields[$id]['file_name'] = (string) ($rows[$id][0]['file_name'] ?? '');
         }
@@ -321,10 +335,71 @@ function pg_rec_edit_fields_out($fields)
             'rss' => (string) ($field['rss_field'] ?? ''),
             'value' => $field['value'],
             'file_name' => $field['file_name'],
+            'multiline' => (($field['type'] ?? '') === 'text area') && ($field['control'] === 'text'),
         );
     }
 
     return $out;
+}
+
+/**
+ * A formatted text as the item's screen and the site draw it: cleaned as
+ * staff text (pg_sanitize_rich_text()) and its {path} placeholders filled.
+ * The Preview puts it into its own document, so an event handler or a
+ * script stored in the field must not come with it; the save compares and
+ * writes in this same form. Pure.
+ *
+ * @param string $html  the stored form_data value
+ * @param string $path  the site path, PATH
+ * @return string
+ */
+function pg_rec_edit_rich_out($html, $path)
+{
+    $html = pg_sanitize_rich_text((string) $html, 'staff');
+
+    if ($html === '') {
+        return '';
+    }
+
+    return str_replace(array('href="{path}', 'src="{path}', 'value="{path}'), array('href="' . $path, 'src="' . $path, 'value="' . $path), $html);
+}
+
+/**
+ * Why a value cannot be kept in a field, '' when it can: a required field
+ * emptied (a formatted text holding tags and no words or picture is empty),
+ * a line of text or a number over the field's own length, any value over
+ * PG_REC_EDIT_MAX_LENGTH. Lengths count characters. Pure.
+ *
+ * @param array  $field  label, control, required, maxlength
+ * @param string $value
+ * @return string  HTML, as a liveform message
+ */
+function pg_rec_edit_value_refusal($field, $value)
+{
+    $value = (string) $value;
+    $control = (string) ($field['control'] ?? '');
+    $label = h(function_exists('pg_tr_label') ? pg_tr_label((string) ($field['label'] ?? '')) : (string) ($field['label'] ?? ''));
+
+    $empty = ($control === 'rich')
+        ? ((trim(html_entity_decode(strip_tags($value), ENT_QUOTES, 'UTF-8'), " \t\n\r\0\x0B\xC2\xA0") === '') && !preg_match('~<(img|video|iframe|hr)\b~i', $value))
+        : (trim($value) === '');
+
+    if (!empty($field['required']) && $empty) {
+        return lang(array('string' => '{var:1} is required.', 'vars' => $label));
+    }
+
+    $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+    $limit = (int) ($field['maxlength'] ?? 0);
+
+    if (($limit <= 0) || !in_array($control, array('text', 'number'), true) || ($limit > PG_REC_EDIT_MAX_LENGTH)) {
+        $limit = PG_REC_EDIT_MAX_LENGTH;
+    }
+
+    if ($length > $limit) {
+        return lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($label, (string) $limit)));
+    }
+
+    return '';
 }
 
 /**
@@ -405,6 +480,7 @@ function pg_rec_edit_record_out($record, $fields)
 {
     return array(
         'id' => (int) $record['id'],
+        'form_page_id' => (int) ($record['page_id'] ?? 0),
         'reference_code' => (string) $record['reference_code'],
         'address_name' => (string) $record['address_name'],
         'title' => pg_rec_edit_title($record, $fields),
@@ -429,13 +505,40 @@ function pg_rec_edit_picture_refusal($value)
         return lang('Please choose an image (JPG, PNG, GIF or WebP).');
     }
 
-    $file = db_item("SELECT name, folder FROM files WHERE id = '" . (int) $value . "' LIMIT 1");
+    $file = db_item("SELECT name, folder, attachment, design FROM files WHERE id = '" . (int) $value . "' LIMIT 1");
 
-    if (!$file || !pg_coll_image_name_ok((string) $file['name']) || !check_view_access((int) $file['folder'])) {
+    if (
+        !pg_rec_edit_picture_file_ok($file, $file && pg_folder_binned((int) $file['folder']), $file && (pg_file_chat_conversations((int) $value) !== array()))
+        || !check_view_access((int) $file['folder'])
+    ) {
         return lang('Please choose an image (JPG, PNG, GIF or WebP).');
     }
 
     return '';
+}
+
+/**
+ * Whether a files row may be a record's picture, by the pickers' rule
+ * (pg_picker_files_where()): an image name, in a folder, not an attachment
+ * (another record's form upload, a volunteer document), not a design file,
+ * not in the Recycle Bin (purged with it) and not a team chat attachment.
+ * A file id can be sent by hand, so the save asks what "Choose a
+ * picture…" would offer. Pure.
+ *
+ * @param array|null $file    files row: name, folder, attachment, design
+ * @param bool       $binned  its folder is in the Recycle Bin
+ * @param bool       $chat    a panel team chat message carries it
+ * @return bool
+ */
+function pg_rec_edit_picture_file_ok($file, $binned, $chat)
+{
+    return is_array($file)
+        && pg_coll_image_name_ok((string) ($file['name'] ?? ''))
+        && ((int) ($file['folder'] ?? 0) > 0)
+        && empty($file['attachment'])
+        && empty($file['design'])
+        && !$binned
+        && !$chat;
 }
 
 /**
@@ -454,10 +557,10 @@ function pg_rec_edit_check($record, $fields, $write)
 
     foreach ($write as $id => $value) {
         $field = $fields[$id];
-        $label = h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']);
+        $refusal = pg_rec_edit_value_refusal($field, $value);
 
-        if (!empty($field['required']) && (trim($value) === '')) {
-            $liveform->mark_error($id, lang(array('string' => '{var:1} is required.', 'vars' => $label)));
+        if ($refusal !== '') {
+            $liveform->mark_error($id, $refusal);
             continue;
         }
 
@@ -517,6 +620,49 @@ function pg_rec_edit_liveform($fields, $write)
  */
 function pg_rec_edit_save($user, $form_id, $changes)
 {
+    $form_id = (int) $form_id;
+
+    if ($form_id <= 0) {
+        return array('status' => 'missing', 'message' => lang('This item could not be found.'));
+    }
+
+    // Two saves of one item run one after the other: the stored values are
+    // compared with each change's base and written under the same lock, so
+    // a second save meets the first one's values as a conflict.
+    $lock = pg_rec_edit_lock_name($form_id);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 10)") !== 1) {
+        return array('status' => 'refused', 'message' => lang('Someone else is saving this item. Please try again.'));
+    }
+
+    $answer = pg_rec_edit_save_locked($user, $form_id, $changes);
+
+    db("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+    return $answer;
+}
+
+/**
+ * The name of the lock one item's in-place saves run under. Pure.
+ *
+ * @param int $form_id
+ * @return string
+ */
+function pg_rec_edit_lock_name($form_id)
+{
+    return 'pg_rec_edit_' . (int) $form_id;
+}
+
+/**
+ * pg_rec_edit_save() inside the item's lock.
+ *
+ * @param array $user
+ * @param int   $form_id
+ * @param mixed $changes
+ * @return array
+ */
+function pg_rec_edit_save_locked($user, $form_id, $changes)
+{
     $record = pg_rec_edit_record($form_id);
 
     if (!$record) {
@@ -544,6 +690,14 @@ function pg_rec_edit_save($user, $form_id, $changes)
     foreach (array_keys($changes) as $id) {
         if (!isset($fields[$id])) {
             return array('status' => 'refused', 'message' => lang('A field sent cannot be changed from the Preview.'), 'field_id' => $id);
+        }
+    }
+
+    // A formatted text is compared and written as it is read: cleaned as
+    // staff text, with the site path in its addresses.
+    foreach ($changes as $id => $change) {
+        if ($fields[$id]['control'] === 'rich') {
+            $changes[$id]['value'] = pg_rec_edit_rich_out($change['value'], PATH);
         }
     }
 
@@ -656,4 +810,110 @@ function pg_rec_edit_write($user, $record, $fields, $write, $liveform)
     if (!empty($record['complete']) && function_exists('pg_tr_records_saved')) {
         pg_tr_records_saved($record['page_id'], $user_id);
     }
+}
+
+/**
+ * The panel screen a record of a "Preview as" source is opened on, relative
+ * to the software directory; '' for no record or a kind with no screen.
+ * Pure.
+ *
+ * @param string $source  pg_preview_as_record_source(): form, product, event
+ * @param mixed  $id      the record's id
+ * @return string
+ */
+function pg_rec_edit_open_screen($source, $id)
+{
+    $screens = array(
+        'form'    => 'edit_submitted_form.php',
+        'product' => 'edit_product.php',
+        'event'   => 'edit_calendar_event.php',
+    );
+    $id = is_scalar($id) ? (int) $id : 0;
+
+    if (($id <= 0) || !is_string($source) || !isset($screens[$source])) {
+        return '';
+    }
+
+    return $screens[$source] . '?id=' . $id;
+}
+
+/**
+ * What a bound element's canvas row offers for the record its widget shows:
+ * a collection item is edited in place ("Edit this record's content")
+ * unless the person's change would wait for approval; that item, a product
+ * or an event is opened on its own screen ("Open the record"). Pure.
+ *
+ * @param string $source  pg_preview_as_record_source()
+ * @param int    $id      the record the widget shows, 0 none
+ * @param bool   $may     the person may edit it on its own screen
+ * @param bool   $waits   their change would wait for approval
+ * @return array status (ok, missing, denied); with ok source, id, screen, edit
+ */
+function pg_rec_edit_open_out($source, $id, $may, $waits)
+{
+    $screen = pg_rec_edit_open_screen($source, $id);
+
+    if ($screen === '') {
+        return array('status' => 'missing');
+    }
+
+    if (!$may) {
+        return array('status' => 'denied');
+    }
+
+    return array(
+        'status' => 'ok',
+        'source' => (string) $source,
+        'id' => (int) $id,
+        'screen' => $screen,
+        'edit' => ($source === 'form') && !$waits,
+    );
+}
+
+/**
+ * The record a single-record widget shows in the Preview (the one kept in
+ * "Preview as", else the default pick) and what its canvas row offers
+ * (pg_rec_edit_open_out()). Rights as on each record's own screen: the
+ * item's writer (pg_rec_edit_rights()), the store's right for a product,
+ * the event's calendars for an event.
+ *
+ * @param array $user       validate_user()
+ * @param mixed $cfg        the widget's settings
+ * @param int   $page_id    the page it is on, 0 unsaved
+ * @param int   $record_id  the record kept in "Preview as", 0 the default
+ * @return array
+ */
+function pg_rec_edit_open($user, $cfg, $page_id, $record_id)
+{
+    $cfg = is_array($cfg) ? $cfg : array();
+    $kind = pg_sw_widget_kind($cfg);
+    $source = pg_preview_as_record_source($kind);
+
+    if ($source === '') {
+        return array('status' => 'missing');
+    }
+
+    $setup = pg_preview_as_setup($kind, array('record' => (int) $record_id));
+    $target = pg_preview_as_record_target($setup, $cfg, (int) $page_id, $user);
+    $id = (int) $target['id'];
+    $may = false;
+    $waits = false;
+
+    if ($id > 0 && $source === 'form') {
+        $record = pg_rec_edit_record($id);
+
+        if (!$record) {
+            return array('status' => 'missing');
+        }
+
+        $rights = pg_rec_edit_rights($user, $record);
+        $may = $rights['may'];
+        $waits = $rights['waits'];
+    } elseif ($id > 0 && $source === 'product') {
+        $may = pg_preview_as_source_right('product', $user) !== 'none';
+    } elseif ($id > 0) {
+        $may = (pg_preview_as_source_right('event', $user) !== 'none') && validate_calendar_event_access($id);
+    }
+
+    return pg_rec_edit_open_out($source, $id, $may, $waits);
 }

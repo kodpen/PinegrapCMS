@@ -5,7 +5,7 @@ module: design_style_guide
 ---
 
 ## Where is the model?
-- `includes/fn/design_style_guide.php`, pure (no database, no request, no file read beyond the look tokens `pg_design_variables_defaults()` already reads); tests in `tests/design_style_guide_test.php`. No screen: the sheet is drawn by SG2 of `plans/designer-style-guide.md`.
+- `includes/fn/design_style_guide.php`, pure (no database, no request, no file read beyond the look tokens `pg_design_variables_defaults()` already reads); tests in `tests/design_style_guide_test.php`. The sheet: `designer-style-guide-sheet.md`; what binds the feature: `designer-style-guide-rules.md`.
 - `pg_style_guide_model($variables, $defaults, $css, $components)`: `$variables` is the design's variables model (`design-variables-model.md`) or null when it has no variables file; `$defaults` is `pg_design_variables_defaults()` of its look and palette; `$css` the design's own stylesheet text; `$components` its `shared_components` rows.
 - Out: `has_variables`, `offer_start` (true without variables: the sheet shows the Theme pane's values under the same blocks and offers the start questions), `blocks` in the sheet's order: `colours`, `type`, `spacing`, `shape`, `controls`, `components`, each with a translated `title`.
 

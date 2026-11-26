@@ -228,3 +228,19 @@ function test_customer_rhythm_tell_flow_start()
 	pg_assert_same(array_keys($codes), array_keys(array_intersect_key(ws_events_rhythm_stages(), $codes)));
 	pg_assert_same(count($codes), count(ws_events_rhythm_stages()));
 }
+
+// One contact can stand behind two customer keys (orders under an old and a
+// new address): the brake runs per contact, so a reminder told under one
+// key holds back the other's for the brake's days.
+function test_customer_rhythm_tell_brake_runs_per_contact()
+{
+	$settings = _crt_test_settings();
+	$due = array(_crt_test_due(5, 1));
+
+	pg_assert_same(array(), pg_customer_rhythm_reorder_pick($due, 0, _crt_test_now(), $settings, _crt_test_now() - 86400), 'the other key was told yesterday');
+	pg_assert_same(1, count(pg_customer_rhythm_reorder_pick($due, 0, _crt_test_now(), $settings, _crt_test_now() - (8 * 86400))), 'brake over');
+	pg_assert_same(1, count(pg_customer_rhythm_reorder_pick($due, 0, _crt_test_now(), $settings)), 'no other key');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_tell.php');
+	pg_assert_contains('MAX(reminded_at)', $source, 'the contact\'s last reminder under any key');
+}

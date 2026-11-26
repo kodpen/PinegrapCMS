@@ -6,7 +6,7 @@ description: Drawing of record edit in place, boards R1 to R3: the switch "Edit 
 ## Where is the drawing?
 - `designer/designer-record-edit-drawing/record-edit.html` with `record-edit-dark.jpg` and `record-edit-light.jpg`; six boards. R4 to R6 are in `designer-record-edit-drawing-save.md`.
 - It continues the "Preview as" sheet (`designer-preview-as-drawing.md`): the bar, the menus and the foot bar are the designer's dark chrome, the page under them is the site's.
-- Steps RE3 and RE4 of `plans/designer-record-edit-in-place.md` build it (`workflow/screen-follows-drawing.md`).
+- RE3 (#11677) and RE4 (#11690) built it (`record-edit-in-place-overview.md`) (`workflow/screen-follows-drawing.md`).
 
 ## Where is the switch "Edit content here"? (R1, RE3)
 - The last thing of the "Preview as" bar, at its right end, after the choosers; "Reset" keeps to its left. On, the label and the switch turn green.

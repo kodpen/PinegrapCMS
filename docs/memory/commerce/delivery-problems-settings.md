@@ -17,6 +17,9 @@ module: delivery_problems
 - `pg_delivery_problem_settings_input()` (pure): a switch left out of the post is off; the day counts go through `pg_delivery_tower_settings_clean()` (clamped, not a number keeps the default). `pg_delivery_problems_settings_save()` writes the JSON to `config_text` `delivery_tower_settings`; a Site Log line "The delivery problem settings were saved.".
 - The next hourly pass reads it (`delivery-tower-passes.md`). A kind switched off is no longer opened; problems already open stay until a status or staff close them.
 
+## How are the settings cleaned?
+- `pg_delivery_tower_settings_clean()`: each kind on by default; `not_handed_over_days` 1 to 10, `stuck_extra_days` 0 to 30; not a number gives the default; unknown keys dropped. Kept in `config_text` `delivery_tower_settings`: read by the passes (`delivery-tower-passes.md`), written by the Settings drawer of Delivery problems (`delivery-problems-settings.md`).
+
 ## How is it tested?
 - `tests/delivery_problems_test.php`: the input, the drawer's counts (four switches each with its help line, two number fields inside the fold and none outside, one fill, one quiet, no danger) and the screen's pins (quiet button, Manager and up).
 

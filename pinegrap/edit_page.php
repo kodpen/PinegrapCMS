@@ -305,7 +305,8 @@ if (!$_POST) {
     $form_values = pg_page_form_redraw_fields(
         array(
             'name' => $page_name,
-            'folder' => $page_folder,
+            // A draft's Folder is the one it goes to when it is published.
+            'folder' => pg_page_is_draft($page_folder) ? pg_page_draft_publish_folder($page_id) : $page_folder,
             'style' => $page_style,
             'mobile_style_id' => $mobile_style_id,
             'layout_type' => $layout_type,
@@ -883,6 +884,7 @@ if (!$_POST) {
                                                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
                                                     <select class="form-control" id="folder" name="folder">' . pg_page_select_folder($form_values['folder']) . '</select>
                                                     <div class="form-text">' . lang('Page Access Control, Design &amp; Common Content') . '</div>
+                                                    ' . (pg_page_is_draft($page_folder) ? '<div class="form-text">' . lang('This page is a draft. It goes to this folder when it is published.') . '</div>' : '') . '
                                                 </div>
                                             </div>
                                             <div class="row mt-7">
@@ -1175,6 +1177,10 @@ if (!$_POST) {
     $current_page_search = $row['page_search'];
     $current_search_keywords = $row['page_search_keywords'];
     $current_page_folder = $row['page_folder'];
+    // A draft stays in the Drafts folder: the posted folder is the one it
+    // goes to when published, compared and checked against that one.
+    $page_draft_folder = (int) pg_page_draft_folder_id(false);
+    $current_form_folder = pg_page_is_draft($current_page_folder) ? pg_page_draft_publish_folder($page_id) : (int) $current_page_folder;
     $current_page_style = $row['page_style'];
     $current_mobile_style_id = $row['mobile_style_id'];
     $current_sitemap = $row['sitemap'];
@@ -1461,7 +1467,7 @@ if (!$_POST) {
         // now; moving the page needs edit rights to the destination as well,
         // the same check add_page.php makes for a new page.
         if (
-            ((int) $current_page_folder != (int) ($_POST['folder'] ?? 0))
+            ((int) $current_form_folder != (int) ($_POST['folder'] ?? 0))
             && (check_edit_access($_POST['folder'] ?? '') == false)
         ) {
             log_activity(lang('access denied because user does not have access to modify folder'), $_SESSION['sessionusername']);
@@ -1484,7 +1490,7 @@ if (!$_POST) {
 
         // A folder that is not there, or a move into the Workspace folder or
         // the Recycle Bin, would leave the page where nobody sees it.
-        pg_page_form_refuse($liveform, pg_page_form_folder_errors($_POST['folder'] ?? '', (int) $current_page_folder), $form_url);
+        pg_page_form_refuse($liveform, pg_page_form_folder_errors($_POST['folder'] ?? '', (int) $current_form_folder), $form_url);
 
         // A style deleted while the form was open, or one the pickers do not
         // offer; the stored ones are kept as they are.
@@ -1699,7 +1705,7 @@ if (!$_POST) {
                 || ($current_page_meta_description != $_POST['meta_description'])
                 || ($current_search_keywords != ($_POST['search_keywords'] ?? ''))
                 || ($current_page_name != $name)
-                || ((int) $current_page_folder != (int) ($_POST['folder'] ?? 0))
+                || ((int) $current_form_folder != (int) ($_POST['folder'] ?? 0))
                 || ((int) $current_page_search != (int) ($_POST['search'] ?? 0))
                 || ((int) $current_sitemap != (int) $sitemap)
             )
@@ -1723,12 +1729,14 @@ if (!$_POST) {
             $sql_ai_fields = "ai_fields = " . (($ai_fields === null) ? "NULL" : "'" . e($ai_fields) . "'") . ",";
         }
 
+        $folder_write = pg_page_form_folder_write($_POST['folder'] ?? '', (int) $current_page_folder, $page_draft_folder);
+
         // update page
         $query =
             "UPDATE page
             SET
                 page_name = '" . escape($name) . "',
-                page_folder = '" . escape($_POST['folder'] ?? '') . "',
+                page_folder = '" . (int) $folder_write['page_folder'] . "',
                 $sql_page_type
                 layout_type = '" . e($layout_type) . "',
                 $sql_home_page
@@ -1765,6 +1773,14 @@ if (!$_POST) {
                 comments_watchers_managed_by_submitter = '" . escape($_POST['comments_watchers_managed_by_submitter'] ?? '') . "'
             WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // A draft's Folder is where Publish puts it; a draft moved into the
+        // Drafts folder by hand has no row yet.
+        if ($folder_write['draft_folder'] !== null) {
+            db("INSERT INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
+                VALUES ('" . (int) $page_id . "', '" . (int) $folder_write['draft_folder'] . "', UNIX_TIMESTAMP(), '" . (int) $user['id'] . "')
+                ON DUPLICATE KEY UPDATE folder_id = VALUES(folder_id)");
+        }
 
         // A new name is a new address: a redirect of the page's own that held
         // the name goes, and the old name sends visitors here when a manager

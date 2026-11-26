@@ -99,6 +99,59 @@ function test_supplier_feed_sync_record_values()
 	pg_assert_same(null, $empty['vat'], 'no VAT');
 }
 
+// A price of 0 is no price: it never becomes the item's buy price.
+function test_supplier_feed_sync_zero_buy_price()
+{
+	foreach (array('0', '0,00', '0.00 TL') as $text) {
+		$values = pg_supplier_feed_record_values(array('code' => 'A', 'cost' => $text, 'qty' => '3'), supplier_feed_sync_test_fields());
+
+		pg_assert_same(null, $values['buy'], $text . ' is no buy price');
+	}
+}
+
+// The buy price an item keeps, followed or not: net of VAT, held when out of
+// range, so a product carried by several feeds compares like with like.
+function test_supplier_feed_sync_item_buy()
+{
+	$vat = supplier_feed_sync_test_context(array('vat_included' => true));
+	$net = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), null, array('buy' => 1200, 'vat' => 20.0), $vat);
+
+	pg_assert_same(1000, $net['buy'], 'net of the record\'s VAT');
+	pg_assert_same(array('buy_price' => 1000, 'held_price' => 0), $net['item'], 'kept net');
+	pg_assert_false($net['held'], 'in range');
+
+	$by_product = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), supplier_feed_sync_test_product(array('tax_rate' => '10')), array('buy' => 1100, 'vat' => null), $vat);
+
+	pg_assert_same(1000, $by_product['buy'], 'net of the product\'s own rate');
+
+	$low = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), null, array('buy' => 300, 'vat' => null), supplier_feed_sync_test_context());
+
+	pg_assert_true($low['held'], 'under half is held on an item that is not followed too');
+	pg_assert_same(array('held_price' => 300), $low['item'], 'the last buy price stays');
+
+	$none = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), null, array('buy' => null), supplier_feed_sync_test_context());
+
+	pg_assert_same(array(), $none['item'], 'no buy price writes nothing');
+}
+
+// A code that is the name of two products matches none, unless the record's
+// barcode belongs to exactly one product and that one holds the code.
+function test_supplier_feed_sync_match_pick()
+{
+	pg_assert_same(array('id' => 5, 'ambiguous' => false), pg_supplier_feed_match_pick(array(5), array()), 'one product');
+	pg_assert_same(array('id' => 0, 'ambiguous' => true), pg_supplier_feed_match_pick(array(5, 6), array()), 'two products: none');
+	pg_assert_same(array('id' => 6, 'ambiguous' => false), pg_supplier_feed_match_pick(array(5, 6), array(6)), 'the barcode of one of them settles it');
+	pg_assert_same(array('id' => 0, 'ambiguous' => true), pg_supplier_feed_match_pick(array(5, 6), array(9)), 'a barcode of a third settles nothing');
+	pg_assert_same(array('id' => 0, 'ambiguous' => true), pg_supplier_feed_match_pick(array(5, 6), array(5, 6)), 'a barcode on two products settles nothing');
+	pg_assert_same(array('id' => 9, 'ambiguous' => false), pg_supplier_feed_match_pick(array(), array(9)), 'no code: the barcode, as before');
+	pg_assert_same(array('id' => 0, 'ambiguous' => false), pg_supplier_feed_match_pick(array(), array()), 'nothing');
+	pg_assert_same(array(5, 6), pg_supplier_feed_match_group(array(
+		array('id' => 5, 'name' => 'ABC-1'),
+		array('id' => 6, 'name' => 'abc-1'),
+		array('id' => 7, 'name' => 'XYZ'),
+	))['abc-1'], 'two that differ only in case hold one code');
+}
+
 function test_supplier_feed_sync_missing_fields()
 {
 	$records = array(
@@ -280,4 +333,15 @@ function test_supplier_feed_sync_failed_lines()
 
 	pg_assert_same('The feed is empty.', $braked['reason'], 'a brake\'s reason');
 	pg_assert_same(3, count($braked['failed']), 'the lines stay');
+}
+
+// A pull downloads into its own file: the screen's first read and Test pull
+// use the feed's other file, so a person testing while the job pulls neither
+// cuts the pull's download nor pauses the feed.
+function test_supplier_feed_sync_pull_downloads_into_its_own_file()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_sync.php');
+
+	pg_assert_contains("!empty(\$feed['allow_http']), \$state['file'])", $source, 'the pull names its own file');
+	pg_assert_true(pg_supplier_feed_pull_file(3) !== pg_supplier_feed_temp_file(3), 'two files');
 }

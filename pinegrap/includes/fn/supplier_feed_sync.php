@@ -53,7 +53,7 @@ define('PG_SUPPLIER_FEED_FAILED_LINES', 500);
  *
  * @param array $record a flat record
  * @param array $fields product field => the feed's field
- * @return array key, barcode, buy (minor units or null), stock, vat (percent
+ * @return array key, barcode, buy (minor units, null for none or 0), stock, vat (percent
  *               or null), name, category, brand, model, description, images
  */
 function pg_supplier_feed_record_values($record, $fields)
@@ -71,10 +71,14 @@ function pg_supplier_feed_record_values($record, $fields)
         $vat = ($vat_minor === null) ? null : $vat_minor / 100.0;
     }
 
+    // A price of 0 is a supplier's placeholder, not a buy price: it would
+    // replace the last one, or count as a held price when there was one.
+    $buy = ($get('buy_price') === '') ? null : pg_supplier_feed_parse_amount($get('buy_price'), 2);
+
     return array(
         'key'      => $get('supplier_key'),
         'barcode'  => $get('barcode'),
-        'buy'      => ($get('buy_price') === '') ? null : pg_supplier_feed_parse_amount($get('buy_price'), 2),
+        'buy'      => ($buy === 0) ? null : $buy,
         'stock'    => pg_supplier_feed_parse_stock($get('stock')),
         'vat'      => $vat,
         'name'     => $get('name'),
@@ -136,6 +140,51 @@ function pg_supplier_feed_drop_brake($matched, $dropped)
 }
 
 /**
+ * The buy price a record gives its item, followed or not: net of VAT when
+ * the feed's prices include it (the record's VAT, else the product's own
+ * rate), held under half or over ten times the item's last one.
+ *
+ * @param array      $item    buy_price
+ * @param array|null $product tax_rate; null when the item has no live product
+ * @param array      $values  buy (null when not read), vat
+ * @param array      $context vat_included
+ * @return array buy (net, null for none), item (columns to write), held (bool)
+ */
+function pg_supplier_feed_item_buy($item, $product, $values, $context)
+{
+    $out = array('buy' => null, 'item' => array(), 'held' => false);
+    $buy = isset($values['buy']) ? $values['buy'] : null;
+
+    if ($buy === null) {
+        return $out;
+    }
+
+    if (!empty($context['vat_included'])) {
+        $vat = isset($values['vat']) ? $values['vat'] : null;
+
+        if (($vat === null) && is_array($product) && isset($product['tax_rate']) && ((string) $product['tax_rate'] !== '')) {
+            $vat = (float) $product['tax_rate'];
+        }
+
+        if ($vat !== null) {
+            $buy = pg_supplier_feed_net_of_vat($buy, $vat);
+        }
+    }
+
+    $out['buy'] = (int) $buy;
+
+    if (pg_supplier_feed_price_held((int) $item['buy_price'], $buy)) {
+        $out['held'] = true;
+        $out['item']['held_price'] = (int) $buy;
+    } else {
+        $out['item']['buy_price'] = (int) $buy;
+        $out['item']['held_price'] = 0;
+    }
+
+    return $out;
+}
+
+/**
  * What one record does to its product, nothing written (F6, F7, F13).
  *
  * The buy price is made net of VAT when the feed's prices include it (the
@@ -157,36 +206,15 @@ function pg_supplier_feed_drop_brake($matched, $dropped)
  */
 function pg_supplier_feed_plan_item($item, $product, $values, $context)
 {
-    $out = array('price' => null, 'stock' => null, 'enable' => null, 'item' => array(), 'outcome' => '', 'held' => false);
-    $buy = isset($values['buy']) ? $values['buy'] : null;
+    $kept = pg_supplier_feed_item_buy($item, $product, $values, $context);
+    $buy = $kept['buy'];
+    $out = array('price' => null, 'stock' => null, 'enable' => null, 'item' => $kept['item'], 'outcome' => '', 'held' => $kept['held']);
 
-    if (($buy !== null) && !empty($context['vat_included'])) {
-        $vat = isset($values['vat']) ? $values['vat'] : null;
+    if (($buy !== null) && !$kept['held'] && !empty($item['follow_price']) && is_array($context['rule'])) {
+        $price = pg_supplier_feed_price($buy, $context['rule'], $context['rate'], $context['home_decimals'], $context['feed_decimals']);
 
-        if (($vat === null) && isset($product['tax_rate']) && ((string) $product['tax_rate'] !== '')) {
-            $vat = (float) $product['tax_rate'];
-        }
-
-        if ($vat !== null) {
-            $buy = pg_supplier_feed_net_of_vat($buy, $vat);
-        }
-    }
-
-    if ($buy !== null) {
-        if (pg_supplier_feed_price_held((int) $item['buy_price'], $buy)) {
-            $out['held'] = true;
-            $out['item']['held_price'] = (int) $buy;
-        } else {
-            $out['item']['buy_price'] = (int) $buy;
-            $out['item']['held_price'] = 0;
-
-            if (!empty($item['follow_price']) && is_array($context['rule'])) {
-                $price = pg_supplier_feed_price($buy, $context['rule'], $context['rate'], $context['home_decimals'], $context['feed_decimals']);
-
-                if (($price > 0) && ($price !== (int) $product['price'])) {
-                    $out['price'] = $price;
-                }
-            }
+        if (($price > 0) && ($price !== (int) $product['price'])) {
+            $out['price'] = $price;
         }
     }
 
@@ -460,14 +488,11 @@ function pg_supplier_feed_pull_start($feed, $kind, $drop_ok)
     // A pull dropped before its drafts were made leaves its spool behind.
     pg_supplier_feed_spool_clear($feed['id']);
 
-    $download = pg_supplier_feed_download($feed['id'], pg_supplier_feed_secret_decode($feed['secret']), !empty($feed['allow_http']));
+    // Its own file, not the screen's: a Test pull meanwhile does not cut it.
+    $download = pg_supplier_feed_download($feed['id'], pg_supplier_feed_secret_decode($feed['secret']), !empty($feed['allow_http']), $state['file']);
 
-    if (!$download['ok'] || !@rename($download['file'], $state['file'])) {
-        if ($download['ok']) {
-            @unlink($download['file']);
-        }
-
-        pg_supplier_feed_brake($feed, $state, $download['ok'] ? lang('The server could not write a temporary file.') : $download['error'], array());
+    if (!$download['ok']) {
+        pg_supplier_feed_brake($feed, $state, $download['error'], array());
 
         return null;
     }
@@ -664,38 +689,98 @@ function pg_supplier_feed_products_of($ids)
 }
 
 /**
- * Products found by code (products.name) or barcode for unmatched keys.
+ * Product ids by code, the name folded as the match folds it, pure.
  *
- * @param array $values lower key => record values
+ * @param array $rows id, name
+ * @return array lower name => list of ids
+ */
+function pg_supplier_feed_match_group($rows)
+{
+    $grouped = array();
+
+    foreach ((array) $rows as $row) {
+        $grouped[pg_supplier_feed_lower($row['name'])][] = (int) $row['id'];
+    }
+
+    return $grouped;
+}
+
+/**
+ * The product a record matches, pure: the one product whose name is the
+ * code; with two or more, the one the record's barcode belongs to when it
+ * belongs to exactly one of them, else none (ambiguous); with none by name,
+ * the first product of the barcode.
+ *
+ * @param array $code_ids    products whose name is the code
+ * @param array $barcode_ids products holding the record's barcode
+ * @return array id (0 for none), ambiguous (bool)
+ */
+function pg_supplier_feed_match_pick($code_ids, $barcode_ids)
+{
+    $code_ids = array_values(array_unique(array_map('intval', (array) $code_ids)));
+    $barcode_ids = array_values(array_unique(array_map('intval', (array) $barcode_ids)));
+
+    if (count($code_ids) === 1) {
+        return array('id' => $code_ids[0], 'ambiguous' => false);
+    }
+
+    if (count($code_ids) > 1) {
+        if ((count($barcode_ids) === 1) && in_array($barcode_ids[0], $code_ids, true)) {
+            return array('id' => $barcode_ids[0], 'ambiguous' => false);
+        }
+
+        return array('id' => 0, 'ambiguous' => true);
+    }
+
+    return array('id' => ($barcode_ids !== array()) ? $barcode_ids[0] : 0, 'ambiguous' => false);
+}
+
+/**
+ * Products found by code (products.name) or barcode for unmatched keys.
+ * Architect (2026-11-26): a code that is the name of two live products
+ * matches none unless the barcode settles it; such keys go to $ambiguous.
+ *
+ * @param array $values    lower key => record values
+ * @param array $ambiguous lower keys two products hold, set
  * @return array lower key => product id
  */
-function pg_supplier_feed_match($values)
+function pg_supplier_feed_match($values, &$ambiguous = array())
 {
     $found = array();
+    $ambiguous = array();
     $codes = array();
     $barcodes = array();
+    $by_name = array();
+    $by_barcode = array();
 
-    foreach ($values as $lower => $value) {
+    foreach ($values as $value) {
         $codes[] = $value['key'];
 
         if ($value['barcode'] !== '') {
-            $barcodes[$value['barcode']] = $lower;
+            $barcodes[] = $value['barcode'];
         }
     }
 
     if ($codes !== array()) {
-        foreach ((array) db_items("SELECT id, name FROM products WHERE name IN ('" . implode("', '", array_map('escape', $codes)) . "')" . pg_catalog_bin_live_sql('products')) as $product) {
-            $found[pg_supplier_feed_lower($product['name'])] = (int) $product['id'];
-        }
+        $by_name = pg_supplier_feed_match_group((array) db_items("SELECT id, name FROM products WHERE name IN ('" . implode("', '", array_map('escape', $codes)) . "')" . pg_catalog_bin_live_sql('products') . " ORDER BY id"));
     }
 
     if ($barcodes !== array()) {
-        foreach ((array) db_items("SELECT barcode, product_id FROM product_barcodes WHERE barcode IN ('" . implode("', '", array_map('escape', array_keys($barcodes))) . "')") as $row) {
-            $lower = isset($barcodes[(string) $row['barcode']]) ? $barcodes[(string) $row['barcode']] : '';
+        foreach ((array) db_items("SELECT barcode, product_id FROM product_barcodes WHERE barcode IN ('" . implode("', '", array_map('escape', array_unique($barcodes))) . "') ORDER BY id") as $row) {
+            $by_barcode[(string) $row['barcode']][] = (int) $row['product_id'];
+        }
+    }
 
-            if (($lower !== '') && !isset($found[$lower])) {
-                $found[$lower] = (int) $row['product_id'];
-            }
+    foreach ($values as $lower => $value) {
+        $pick = pg_supplier_feed_match_pick(
+            isset($by_name[$lower]) ? $by_name[$lower] : array(),
+            (($value['barcode'] !== '') && isset($by_barcode[$value['barcode']])) ? $by_barcode[$value['barcode']] : array()
+        );
+
+        if ($pick['id'] > 0) {
+            $found[$lower] = $pick['id'];
+        } elseif ($pick['ambiguous']) {
+            $ambiguous[$lower] = true;
         }
     }
 
@@ -747,7 +832,7 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
         }
     }
 
-    $found = pg_supplier_feed_match($unmatched);
+    $found = pg_supplier_feed_match($unmatched, $ambiguous);
 
     foreach ($values as $lower => $value) {
         if (!isset($items[$lower])) {
@@ -789,6 +874,14 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
         }
 
         pg_supplier_feed_item_write($feed, $state, $context, $items[$lower], $products, $value, $lines);
+
+        if (isset($ambiguous[$lower])) {
+            // Not a draft: one named after the code would be a third product
+            // of that name. Not dismissed: the next pull tries again.
+            $lines[] = array('line' => $value['key'], 'reason' => lang('Two products have this code'));
+            $state['count']['failed']++;
+            continue;
+        }
 
         $spool_line = pg_supplier_feed_spool_line($value, $items[$lower]);
 
@@ -888,11 +981,19 @@ function pg_supplier_feed_item_write($feed, &$state, $context, $item, $products,
     $product = isset($products[$product_id]) ? $products[$product_id] : null;
 
     if (($product === null) || empty($item['active']) || !empty($item['dismissed']) || !empty($product['bundle'])) {
-        // Not followed: only the record's values are kept.
-        if ($value['buy'] !== null) {
-            $columns['buy_price'] = (int) $value['buy'];
+        // Not followed: only the record's values are kept, the buy price as
+        // a followed item keeps it, so the choice between feeds compares net
+        // prices and a matched product's price out of range waits for a
+        // person here too. An item with no product holds nothing.
+        $kept = pg_supplier_feed_item_buy($item, $product, $value, $context);
+
+        if ($kept['held'] && ($product === null)) {
+            $kept['item'] = array('buy_price' => $kept['buy'], 'held_price' => 0);
+        } elseif ($kept['held']) {
+            $state['count']['held']++;
         }
 
+        $columns = array_merge($columns, $kept['item']);
         $columns['stock'] = max(0, (int) $value['stock']);
     } else {
         $plan = pg_supplier_feed_plan_item($item, $product, $value, $context);

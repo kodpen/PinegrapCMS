@@ -252,3 +252,38 @@ function test_document_reader_kinds_and_words()
 	pg_assert_same(array('contact'), $result[2], 'dotted capital I folded');
 	pg_assert_same(array(), $result[3], 'a heading that names no kind');
 }
+
+// fits(): every kind a section's words can fill, with the items each
+// would carry: its own reading first, the other readings, then text,
+// which any words fill. The intro offers intro and text.
+function test_document_reader_fits()
+{
+	$result = document_reader_test_node('var p = R.paragraphs("# Spa\n\nRest by the lake.\n\n## Treatments\n\n- **Massage** 60 minutes, 900 TL\n- **Sauna** 30 minutes\n");'
+		. 'var s = R.read(p).sections; out = [R.fits(p, s[0]).map(function (f) { return f.kind; }), R.fits(p, s[1]), R.fits(p, null)];');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('intro', 'text'), $result[0], 'the intro offers intro and text');
+	pg_assert_same('cards', $result[1][0]['kind'], 'its own reading first');
+	pg_assert_same(array('title' => 'Massage', 'text' => '60 minutes, 900 TL'), $result[1][0]['items'][0], 'with its items');
+	pg_assert_same('text', $result[1][count($result[1]) - 1]['kind'], 'text last');
+	pg_assert_same('item', $result[1][count($result[1]) - 1]['items'][0]['type'], 'text keeps the paragraphs');
+	pg_assert_same(array(), $result[2], 'no section fills nothing');
+}
+
+// A contact line that is an address holding a phone or an e-mail is one
+// line: its phone or e-mail is not given again beside it.
+function test_document_reader_contact_line_not_doubled()
+{
+	$result = document_reader_test_read("# Visit\n\nCome by.\n\n## Contact\n\nBağdat Caddesi No: 12, Kadıköy · +90 212 555 12 34\n");
+
+	if ($result === null) {
+		return;
+	}
+
+	$s = $result['sections'][1];
+	pg_assert_same('contact', $s['kind'], 'still read as contact');
+	pg_assert_same(array(array('type' => 'address', 'value' => 'Bağdat Caddesi No: 12, Kadıköy · +90 212 555 12 34')), $s['items'], 'the line once, as written');
+}

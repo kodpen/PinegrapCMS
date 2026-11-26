@@ -310,3 +310,20 @@ function test_supplier_feed_tables()
 		pg_assert_contains("'" . $table . "',", $install, $table . ' in get_tables()');
 	}
 }
+
+// A JSON number has one decimal point: 12.375 is twelve and a bit, never the
+// thousands reading "12.375" gets as text.
+function test_supplier_feed_read_json_number_three_decimals()
+{
+	$file = tempnam(sys_get_temp_dir(), 'pgsf');
+	file_put_contents($file, '[{"sku":"A","price":12.375,"cost":0.125,"whole":1250.0,"two":7.5}]');
+	$read = pg_supplier_feed_read($file, 'json', '', array(), 5);
+	@unlink($file);
+
+	$record = $read['records'][0];
+
+	pg_assert_same(1238, pg_supplier_feed_parse_amount($record['price']), 'three decimals stay decimals');
+	pg_assert_same(13, pg_supplier_feed_parse_amount($record['cost']), 'under one');
+	pg_assert_same(125000, pg_supplier_feed_parse_amount($record['whole']), 'a whole float');
+	pg_assert_same('7.5', $record['two'], 'other floats as before');
+}

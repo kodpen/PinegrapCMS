@@ -302,17 +302,18 @@ function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
 	$css = workspace_channel_look_css();
 	pg_assert_same(1, preg_match_all('/\n\.ws-chip(:hover|\.active|:focus-visible)? \{/', $css), 'the message reference chip is the only top-level .ws-chip rule');
 	$col = workspace_channel_look_block($css, '.ws-pane-board .ws-cb-col');
-	pg_assert_contains('border: 1px solid', $col, 'a column of the channel\'s board is a card');
-	pg_assert_contains('background: var(--pg-card-bg);', $col, 'on the card background');
+	pg_assert_contains('border: 0;', $col, 'a column of the channel\'s board is a surface, not a card');
+	pg_assert_contains('background: var(--pg-bg-1);', $col, 'on the gray surface');
 	pg_assert_contains('flex: 1 1 17rem;', $col, 'a column of the channel\'s board grows to fill the width');
 	pg_assert_contains('max-width: 34rem;', $col, 'up to twice its old width');
 	pg_assert_contains('flex: 0 0 17rem;', workspace_channel_look_block($css, '.ws-cb-col'), 'the workflow table\'s board keeps its width');
 	pg_assert_contains('border: 2px solid transparent;', workspace_channel_look_block($css, '.ws-cb-col'), 'the workflow table\'s board keeps its columns');
 	$card = workspace_channel_look_block($css, '.ws-pane-board .ws-cb-card');
 	pg_assert_contains('box-shadow: var(--ws-shadow-soft);', $card, 'a card of the channel\'s board in the panes\' manner');
-	pg_assert_contains('inset-inline-start: 0;', workspace_channel_look_block($css, '.ws-pane-board .ws-cb-card::before'), 'its priority stripe on the side reading starts from');
-	pg_assert_contains('.ws-cb-card.ws-cb-pri-urgent::before {', $css, 'the priority still shows');
-	pg_assert_contains("    .ws-cb-col.ws-cb-col-current {\n        display: flex;", $css, 'a phone still shows the picked column');
+	pg_assert_contains('content: none;', workspace_channel_look_block($css, '.ws-pane-board .ws-cb-card::before'), 'no priority stripe on the channel\'s board');
+	pg_assert_contains('.ws-cb-card.ws-cb-pri-urgent::before {', $css, 'the table\'s board keeps its stripe');
+	pg_assert_contains('.ws-cb-priority-urgent {', $css, 'the channel\'s cards show the priority as a chip');
+	pg_assert_contains("    .ws-cb-col.ws-cb-col-current {\n        display: flex;", $css, 'a table\'s board on a phone still shows the picked column');
 }
 
 function test_workspace_channel_panes_memory_is_rows_under_projects()

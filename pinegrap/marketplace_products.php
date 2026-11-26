@@ -677,7 +677,8 @@ function mp_products_shop_step($account, $action, $id, $user) {
 	} elseif ($action === 'shop_pricing') {
 
 		// The row's own price and strategy (marketplace_price_state). A
-		// changed price goes out on the next run, for this account only.
+		// changed price, or a strategy that stops or starts sending the
+		// robot's price, goes out on the next run, for this account only.
 		$ids = array($id);
 
 		$parsed = mp_pricing_listing_parse($_POST['own_price'] ?? '', $_POST['strategy'] ?? '', $account['provider']);
@@ -704,7 +705,7 @@ function mp_products_shop_step($account, $action, $id, $user) {
 
 				$error = lang('The pricing could not be saved. Try again.');
 
-			} elseif (($before['own_price'] !== $parsed['own_price']) && mp_matches_send($account, $ids)) {
+			} elseif (mp_pricing_listing_moves($before, $parsed['own_price'], $parsed['strategy']) && mp_matches_send($account, $ids)) {
 
 				$message = lang('Saved. The new price goes out on the next run.');
 

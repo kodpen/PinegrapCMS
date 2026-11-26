@@ -1,6 +1,6 @@
 ---
 name: code-view-tab-search
-description: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
+description: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why the bar does not replace and where file tabs are replaced
 ---
 
 ## What does it do?
@@ -11,5 +11,6 @@ description: Search in all tabs of the designer's code view (page and file tabs)
 ## Where is the matching?
 - `PgCodeEditor.findAll(text, query, limit)` in the facade (`assets/js/pg_code_editor.js`), no engine needed: `query` is `{ search, caseSensitive, regexp, wholeWord }` or a string; a regexp reads `^`/`$` per line and empty matches are skipped. A hit is `{ from, to, text, line, col, lineFrom, lineText }`; `truncated` when the limit cut the list, `error` for an invalid pattern. Node tests in `tests/code_editor_test.php`.
 
-## Why no replace across tabs?
-- The page tab's text is locked in parts (frame rows, widgets, shared components) and a replace there goes through the tree; a cross-tab replace would mix that with plain file writes and unsaved tabs. Replace stays per tab (the engine's search panel), where the locks apply.
+## Why does the bar not replace?
+- The page tab's text is locked in parts (frame rows, widgets, shared components) and a replace there goes through the tree; a cross-tab replace would mix that with plain file writes. Replace stays per tab (the engine's search panel), where the locks apply.
+- Across the file tabs (never the page tab) the designer's Find and Replace window replaces with its scope "Code files", each file as one undo step of its editor, unsaved (`designer-find-replace-scopes.md`).

@@ -233,9 +233,9 @@ function test_record_view_filters_list_redirect_needs_detail_folder_access()
 	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
 
 	$list_branch = (string) substr($source, (int) strpos($source, 'foreach ($lists as $w)'));
-	pg_assert_contains("if (!check_view_access(\$detail_page['page_folder'], true)) continue;", $list_branch, 'the detail page folder must be open to the visitor');
+	pg_assert_contains("if (!pg_preview_as_view_access(\$detail_page['page_folder'], true)) continue;", $list_branch, 'the detail page folder must be open to the visitor');
 
-	$guard  = strpos($list_branch, "check_view_access(\$detail_page['page_folder'], true)");
+	$guard  = strpos($list_branch, "pg_preview_as_view_access(\$detail_page['page_folder'], true)");
 	$lookup = strpos($list_branch, 'pg_sw_record_by_address(');
 	pg_assert_true($guard !== false && $lookup !== false && $guard < $lookup, 'the folder check comes before the record is looked up');
 }

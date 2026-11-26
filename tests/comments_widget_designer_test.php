@@ -453,7 +453,7 @@ function test_comments_widget_designer_page_literals()
 	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js') . "\n" . comments_widget_designer_test_source('assets/js/style_designer_import.js');
 	$new = array('pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message', 'pg_comments_closed_message', 'pg_comments_watchers_managed');
 
-	foreach (array('_pgTabsAddNew', '_pgTabsDuplicateActive', '_pgTabsAddCopy', '_pgTabsAttachLoaded', '_pgImportApplyPages', '_pgTemplateApply', '_pgTabsInit') as $name) {
+	foreach (array('_pgTabsAddNew', '_pgTabsDuplicateActive', '_pgTabsAddCopy', '_pgTabsAttachLoaded', '_pgImportApplyPages', '_pgTemplateApply', '_pgPageFromRow', '_pgTabsInit') as $name) {
 		$body = comments_widget_designer_test_js_function($js, $name);
 		pg_assert_true($body !== '', $name . ' is found');
 		foreach ($new as $key) {
@@ -461,11 +461,8 @@ function test_comments_widget_designer_page_literals()
 		}
 	}
 
-	// _pgTabsInit builds the stored pages and the blank one.
-	$init = comments_widget_designer_test_js_function($js, '_pgTabsInit');
-	foreach ($new as $key) {
-		pg_assert_true(preg_match_all('/\b' . $key . ': /', $init) >= 2, '_pgTabsInit names ' . $key . ' in both pages');
-	}
+	// The stored pages are built by _pgPageFromRow(), the blank one by
+	// _pgTabsInit(): both are checked above.
 }
 
 // The pages the editor opens carry every setting; the save writes the new

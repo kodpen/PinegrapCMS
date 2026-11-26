@@ -2538,6 +2538,27 @@ function ws_flow_step_claim($step)
 }
 
 /**
+ * A ready row as the claim (ws_flow_step_claim()) left it: running, its try
+ * counted, claimed now. A box on its second try knows it is one
+ * (ws_flow_step_task() looks for the first try's task), and a box whose
+ * deadline counts from its claim (the Pinegrap AI and agent boxes) counts
+ * from this one, not from the 0 or the earlier try the row was read with.
+ * Pure.
+ *
+ * @param array $row ws_flow_run_steps row, read while ready
+ * @param int   $now the moment of the claim
+ * @return array
+ */
+function ws_flow_step_claimed($row, $now)
+{
+    $row['status'] = 'running';
+    $row['attempt'] = (int) ($row['attempt'] ?? 0) + 1;
+    $row['claimed_at'] = (int) $now;
+
+    return $row;
+}
+
+/**
  * Marks an open run as running now. A box is settled only after this, so a
  * request that dies between settling a box and writing what comes after it
  * leaves a run that reads running and is touched by nobody: a running run is
@@ -2699,12 +2720,7 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
             return ws_flow_step_claim($row);
         },
         function ($row) {
-            // The row as the claim left it: a box on its second try knows it
-            // is one (ws_flow_step_task() looks for the first try's task).
-            $row['status'] = 'running';
-            $row['attempt'] = (int) $row['attempt'] + 1;
-
-            ws_flow_step_run($row);
+            ws_flow_step_run(ws_flow_step_claimed($row, time()));
         },
         $deadline
     );
@@ -4330,6 +4346,14 @@ function ws_flow_chain_check($viewer, $source_flow_id, $config)
         return array('ok' => false, 'error' => ws_flow_chain_refusal_text('gone'), 'flow' => null);
     }
 
+    // A role-3 member's own flow is started by its owner alone, whatever
+    // home or share it kept from its owner's staff days (flow_member.php).
+    $refused = ws_flow_member_starter_refusal(ws_flow_builder_kind(ws_change_viewer_for_id($flow['owner_id'])), $flow['owner_id'], $viewer['id']);
+
+    if ($refused !== '') {
+        return array('ok' => false, 'error' => $refused, 'flow' => null);
+    }
+
     $version = ((string) $flow['status'] === 'live') ? ws_flow_version($flow['version_id']) : null;
     $trigger = is_array($version) ? ws_flow_trigger_node(ws_flow_graph_of($version)) : null;
     $refusal = ws_flow_chain_refusal($source_flow_id, is_array($version) ? $flow : array('version_id' => 0) + $flow, $trigger ? (string) $trigger['kind'] : '', 0);
@@ -4385,6 +4409,20 @@ function ws_flow_chain_start($run, $step, $node, $owner)
 
     if ($refusal !== '') {
         $fail(ws_flow_chain_refusal_text($refusal));
+        return;
+    }
+
+    // A role-3 member's own flow: started by its owner alone, under the cap
+    // of starts of all their flows, as a start by hand (flow_member.php).
+    $target_owner = ws_change_viewer_for_id($flow['owner_id']);
+    $refused = ws_flow_member_starter_refusal(ws_flow_builder_kind($target_owner), $flow['owner_id'], $owner['id']);
+
+    if (($refused === '') && is_array($target_owner)) {
+        $refused = ws_flow_member_starts_check($target_owner);
+    }
+
+    if ($refused !== '') {
+        $fail($refused);
         return;
     }
 

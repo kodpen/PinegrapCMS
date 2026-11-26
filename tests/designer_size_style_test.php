@@ -221,3 +221,24 @@ function test_designer_size_style_is_in_the_spacing_part()
 	pg_assert_contains("(has[s] ? ' is-has' : '')", $part, 'a size holding a value carries the dot');
 	pg_assert_contains('.sd-spb-size.is-has::after', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css'), 'the dot');
 }
+
+// Aspect Ratio is a row by size too: a ratio at a size is an @media rule's
+// aspect-ratio, read back as written.
+function test_designer_size_style_aspect_ratio()
+{
+	$r = designer_size_style_run(
+		'var o = {}, c = "pgs-abc123";'
+		. 'o.css = S.PROPS.aspect;'
+		. 'o.md = S.write("", c, S.PROPS.aspect, "md", "9 / 16");'
+		. 'o.read = S.read(o.md, c, S.PROPS.aspect).md;'
+		. 'console.log(JSON.stringify(o));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('aspect-ratio', $r['css']);
+	pg_assert_same("@media (min-width: 768px) {\n  .pgs-abc123 {\n    aspect-ratio: 9 / 16;\n  }\n}\n", $r['md'], 'a ratio at a size');
+	pg_assert_same('9 / 16', $r['read'], 'read back');
+}

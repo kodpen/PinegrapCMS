@@ -10,7 +10,7 @@ module: security_scan_section
 
 ## How does one run go?
 - `pg_security_scan_run($budget)`: files (`pg_security_files_run()`), then stored content (`pg_security_content_pass()` with the cursor kept in the state), then accounts and settings (`pg_security_accounts_scan()`, unseen ones closed to gone). One run at a time by `GET_LOCK('pg_security_scan')`; a second caller answers busy.
-- State: `config_text` row `security_scan` (`pg_security_scan_state()`): started, phase, content cursor, files and records so far, last_finished, last_files, last_records. The file scan keeps its own row `security_scan_files`.
+- State: `config_text` row `security_scan` (`pg_security_scan_state()`): started, phase, content cursor, files and records so far, last_finished, last_files, last_records. The file scan keeps its own row `security_scan_files`, the accounts step its staff role map `security_scan_staff_roles` (`security-scan-accounts-settings.md`).
 - `security_scan_job.php` (daily, heavy lane) and Scan now both call it. Scan now (`api.php` `security_scan_step`, 8 seconds a request) asks again until done, every 3 s while busy; a run finished there calls `pg_cron_ran('security_scan_job')`.
 
 ## What does the list show?
@@ -20,7 +20,8 @@ module: security_scan_section
 ## Which actions does a row offer?
 - `pg_security_section_actions()`: open → Quarantine (file kinds only) and Ignore; quarantined → Restore; ignored → Reopen. `api.php` `security_scan_act` (Manager and above, token) answers with the list drawn again.
 - Quarantine only for `file_php_unknown`, `file_upload_executable`, `file_picture_php`, `file_shell_mark` (`pg_security_quarantinable()`); never `file_server_config`, as moving the root `.htaccess` could take the site down. It asks first (the only danger dialog).
-- Quarantine moves the file to `data/quarantine/<sha1(place)>.quarantine` (an extension nothing runs; the folder gets `Require all denied` and is skipped by the walk) and marks every open quarantinable finding of that place quarantined. Restore moves it back only when nothing is at the place again, and the place's quarantined findings become open.
+- Quarantine moves the file to `data/quarantine/<sha1(place)>.quarantine` (an extension nothing runs; the folder gets `Require all denied` and is skipped by the walk) and marks every open quarantinable finding of that place quarantined. A copy already there from an earlier Quarantine of the place is kept as `<sha1>.<n>.quarantine`. Restore moves it back only when nothing is at the place again, and the place's quarantined findings become open.
+- Both refuse when a folder of the place is no longer the one the walk found (`pg_security_place_folder_real()`: a segment turned into a symbolic link), so neither moves a file outside the site's folders.
 - Ignore first shows a note field ("Why is it ignored?", 255 characters, `pg_security_note_clean()`); Return in it sends the note, not the settings form. Each action writes a Site Log line.
 
-Related: `security-scan-api.md` (the API read), `security-scan-findings.md`, `security-scan-file-scan.md`, `plans/security-scan.md`.
+Related: `security-scan-api.md` (the API read), `security-scan-findings.md`, `security-scan-file-scan.md`, `security-scan-overview.md`.

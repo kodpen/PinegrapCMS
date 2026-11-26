@@ -9,7 +9,7 @@ module: image_focus
 - Before it, the Image kept an object position only as a style value typed by hand; "Edit image" crops the file itself (`image-editor-tool.md`); a ratio box or a cover background cut the picture differently per screen (`image-size-props.md`, `responsive-images.md`).
 
 ## What binds it?
-- Owner (2026-11-24): a picture's position gets no second picker: the Focus control is that control, also for a video when it gets one (`workflow/decisions-made-product-110.md`).
+- Owner (2026-11-24): a picture's position gets no second picker: the Focus control is that control, also for a video (`workflow/decisions-made-product-110.md`); a video with a poster has it since DO9 (`designer-aspect-ratio-object-fit.md`).
 - An element with no focus set draws byte for byte as before; a page saved before needs no change.
 - The site, the canvas and the Preview draw the same cut: the render and its browser twin share one writer (`image-focus-value.md`).
 - The file is never changed: cropping stays "Edit image". The value is kept on the node, per place; a default kept with the picture itself would need a column and was not built.

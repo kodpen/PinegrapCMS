@@ -73,11 +73,13 @@ function test_bs6_timepicker_addon_loaded_nowhere()
 			continue;
 		}
 		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
-		// clean_up.php names the files to delete them on an updated site.
-		if ((strpos($path, 'assets/lib/') === 0) || ($path === 'clean_up.php')) {
+		if (strpos($path, 'assets/lib/') === 0) {
 			continue;
 		}
-		if (strpos((string) file_get_contents($file->getPathname()), 'jquery-ui-timepicker-addon') !== false) {
+		// The Cleanup tool's list names the files to delete them on an
+		// updated site.
+		$source = pg_test_without_clean_up_list($path, (string) file_get_contents($file->getPathname()));
+		if (strpos($source, 'jquery-ui-timepicker-addon') !== false) {
 			$found[] = $path;
 		}
 	}
@@ -107,13 +109,11 @@ function test_bs6_timepicker_addon_form_content_branches()
 
 function test_bs6_timepicker_addon_files_are_gone_and_cleaned_up()
 {
-	$clean_up = bs6_timepicker_addon_test_source('clean_up.php');
-
 	foreach (array(
 		'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js',
 		'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.src.js',
 	) as $path) {
 		pg_assert_false(is_file(dirname(__DIR__) . '/pinegrap/' . $path), $path . ' is not shipped');
-		pg_assert_contains("    '" . $path . "',\n", $clean_up, 'Cleanup deletes ' . $path . ' on an updated site');
+		pg_assert_true(in_array($path, pg_clean_up_file_list(), true), 'Cleanup deletes ' . $path . ' on an updated site');
 	}
 }

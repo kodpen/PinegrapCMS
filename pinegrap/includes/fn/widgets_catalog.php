@@ -5611,7 +5611,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // The back-in-stock form the field and the button belong to.
             'stock_notify_form'      => $_civ_notify_form,
             'stock_notify_sms'       => ($_civ_notify_form !== '') && pg_stock_notify_phone_asked(),
-            'stock_notify_email'     => (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_EMAIL_ADDRESS')) ? (string)USER_EMAIL_ADDRESS : '',
+            'stock_notify_email'     => pg_preview_as_viewer()['signed_in'] ? pg_preview_as_viewer()['email'] : '',
             // A classic layout's search form (_civ_search_form_node()).
             'search_form_id'         => $_civ_search_form,
             'search_param'           => $_civ_catalog ? $_civ_catalog['param'] : '',

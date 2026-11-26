@@ -623,7 +623,7 @@ function pg_connections_registry()
         // the E-Invoice card picks the one that carries the documents.
         'parasut' => array('name' => 'Paraşüt', 'group' => 'edocuments', 'place' => 'connections.php', 'found_at' => '#settings/accounting/pgset-invoice', 'uses' => 'e-Fatura, e-Arşiv and e-İrsaliye',
             'state' => array('kind' => 'edoc', 'key' => 'parasut'),
-            'covers' => array('edoc' => array('parasut'))),
+            'covers' => array('edoc' => array('parasut'), 'connect' => array('parasut'), 'purpose' => array('parasut'))),
         'isbasi' => array('name' => 'Logo İşbaşı', 'group' => 'edocuments', 'place' => 'connections.php', 'found_at' => '#settings/accounting/pgset-invoice', 'uses' => 'e-Fatura and e-Arşiv',
             'state' => array('kind' => 'edoc', 'key' => 'isbasi'),
             'covers' => array('edoc' => array('isbasi'))),

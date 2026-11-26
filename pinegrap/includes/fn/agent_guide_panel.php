@@ -7,7 +7,7 @@
  * open, by English label and address, from the list the panel search box
  * offers (pg_panel_search_screens() in includes/fn/panel_screens.php) under the
  * same gates (pg_panel_search_viewer_gates()); how a change is kept; how the
- * Visual Page Editor is worked.
+ * Visual Page Editor is worked, for a viewer who may open it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -160,7 +160,7 @@ function pg_agent_guide_panel_build($screens, $gate, $folder) {
 
 	}
 
-	return array(
+	$sections = array(
 
 		array(
 			'id'      => 'screens',
@@ -182,17 +182,25 @@ function pg_agent_guide_panel_build($screens, $gate, $folder) {
 				'Everything a screen does is in the toolbar under its heading.',
 				'Tell the person what a save will change and wait for their yes.'
 			)
-		),
+		)
 
-		array(
+	);
+
+	// The editor and the design tools open to designers only (the design
+	// gate); anyone else would be sent to a screen that answers Access denied.
+	if (!empty($gate['design'])) {
+
+		$sections[] = array(
 			'id'      => 'designer',
 			'heading' => 'Visual Page Editor',
 			'lines'   => array(
 				'Change a page with the editor\'s Assistant box, or with the tools: {tool:design.pages.get}, then {tool:design.proposals.create}.',
 				'Never drag or drop on the canvas.'
 			)
-		)
+		);
 
-	);
+	}
+
+	return $sections;
 
 }

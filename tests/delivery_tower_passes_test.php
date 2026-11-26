@@ -106,6 +106,24 @@ function test_delivery_tower_summary_across_ticks()
 	pg_assert_same($figure, pg_delivery_tower_figure_for($summary['figures'], 'yurtici', 'istanbul'), 'the pass reads the summary\'s figures as the rules give them');
 }
 
+function test_delivery_tower_summary_on_time_needs_the_minimum()
+{
+	$tz = 'Europe/Istanbul';
+	$state = pg_delivery_tower_summary_state_new(_dt_passes_test_at('2026-11-20 02:00'));
+	$rows = array_merge(
+		_dt_passes_test_delivered('mng', 'Ankara', 1, 1, '2026-11-04'),
+		_dt_passes_test_delivered('yurtici', 'Ankara', 25, 1, '2026-11-02')
+	);
+	foreach ($rows as $i => $row) {
+		$rows[$i]['id'] = $i + 1;
+	}
+	pg_delivery_tower_summary_add($state, $rows, $tz);
+	$summary = pg_delivery_tower_summary_finish($state, PG_DELIVERY_TOWER_MIN_PARCELS);
+	pg_assert_true(!isset($summary['on_time']['mng']['country']), 'one parcel gives no on-time share across the country');
+	pg_assert_same(null, pg_delivery_tower_on_time_share($summary['on_time'], 'mng', 'ankara'), 'so the carrier reads as not measured');
+	pg_assert_same(array('judged' => 25, 'on_time' => 0), $summary['on_time']['yurtici']['country'], 'twenty-five parcels do');
+}
+
 function test_delivery_tower_summary_fits_its_text()
 {
 	$summary = array('at' => 1, 'parcels' => 0, 'figures' => array('ptt' => array('country' => null, 'provinces' => array())), 'on_time' => array());
@@ -129,6 +147,7 @@ function test_delivery_tower_parcel_query()
 	pg_assert_contains('LIMIT 200', $sql, 'one page');
 	pg_assert_contains('shipment_problems', $sql, 'a parcel with an open problem is read whatever its age');
 	pg_assert_contains("NOT IN ('incomplete', 'cancelled')", $sql, 'a cancelled order is left out');
+	pg_assert_contains('shipping_tracking_numbers.status_at', $sql, 'the last status change is read for the hand-closed rule');
 	pg_assert_same(array(500, 1700000000, 1700000000, 1700000000), $params, 'the place and the window');
 }
 
@@ -169,6 +188,28 @@ function test_delivery_tower_parcel_changes()
 	// nobody reads its status, so "still created" means nothing.
 	$changes = pg_delivery_tower_parcel_changes(array(11 => $parcels[11]), $labels, array(), $figures, $now, $settings, array(), $tz);
 	pg_assert_same(array(), $changes['open'], 'a status nobody reads is not judged');
+
+	// A label made through a driver that does not track: the label path
+	// wrote the row with source carrier, but nothing reads its status, so
+	// "still created" means nothing either.
+	$labelled = array(11 => array_merge($parcels[11], array('source' => 'carrier')));
+	$changes = pg_delivery_tower_parcel_changes($labelled, $labels, array(), $figures, $now, $settings, array(), $tz);
+	pg_assert_same(array(), $changes['open'], 'a label nobody tracks is not judged as not handed over');
+	$changes = pg_delivery_tower_parcel_changes($labelled, $labels, array(), $figures, $now, $settings, array('yurtici'), $tz);
+	pg_assert_same(2, $changes['open'][0]['kind'] ?? 0, 'the same label of a tracking driver is');
+	$sold = array(11 => array_merge($parcels[11], array('source' => 'marketplace')));
+	$changes = pg_delivery_tower_parcel_changes($sold, $labels, array(), $figures, $now, $settings, array(), $tz);
+	pg_assert_same(2, $changes['open'][0]['kind'] ?? 0, 'a marketplace reports the status of its own labels');
+
+	// Stuck closed by hand after its last status: the next pass leaves it
+	// closed; a status read after that close judges the parcel anew.
+	$moving = array(10 => array_merge($parcels[10], array('status_at' => _dt_passes_test_at('2026-11-12 09:00'))));
+	$hand = array(10 => array(1 => _dt_passes_test_at('2026-11-18 11:00')));
+	$changes = pg_delivery_tower_parcel_changes($moving, array(), array(), $figures, $now, $settings, array(), $tz, $hand);
+	pg_assert_same(array(), $changes['open'], 'a kind closed by hand is not opened again while the status holds');
+	$moving[10]['status_at'] = _dt_passes_test_at('2026-11-19 09:00');
+	$changes = pg_delivery_tower_parcel_changes($moving, array(), array(), $figures, $now, $settings, array(), $tz, $hand);
+	pg_assert_same(1, $changes['open'][0]['kind'] ?? 0, 'a later status opens it again, as a new row');
 
 	// A kind switched off in the settings opens nothing.
 	$off = pg_delivery_tower_settings_clean(array('stuck' => 0));

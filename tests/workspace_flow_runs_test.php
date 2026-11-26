@@ -608,8 +608,8 @@ function test_workspace_flow_runs_writes_are_conditional()
 	// knows it is one and looks for the task its first try opened.
 	$advance = ws_flow_runs_test_source('ws_flow_advance');
 
-	pg_assert_true(strpos($advance, 'ws_flow_step_claim($row)') < strpos($advance, "\$row['attempt'] = (int) \$row['attempt'] + 1;"), 'the attempt counted after the claim');
-	pg_assert_true(strpos($advance, "\$row['attempt'] = (int) \$row['attempt'] + 1;") < strpos($advance, 'ws_flow_step_run($row)'), 'before the box runs');
+	pg_assert_true(strpos($advance, 'ws_flow_step_claim($row)') < strpos($advance, 'ws_flow_step_run(ws_flow_step_claimed($row'), 'the attempt counted after the claim, before the box runs');
+	pg_assert_same(3, ws_flow_step_claimed(array('attempt' => 2), 1)['attempt']);
 	pg_assert_contains("((int) \$step['attempt'] > 1) ? ws_flow_step_task_find(", ws_flow_runs_test_source('ws_flow_step_task'));
 
 	$cancel = ws_flow_runs_test_source('ws_flow_run_cancel');
@@ -972,7 +972,7 @@ function test_workspace_flow_runs_advance_budgets()
 	pg_assert_contains('ws_flow_advance_boxes(', $advance);
 	pg_assert_contains('run_id NOT IN (', $advance);
 	pg_assert_contains('ws_flow_step_claim($row)', $advance);
-	pg_assert_contains('ws_flow_step_run($row)', $advance);
+	pg_assert_contains('ws_flow_step_run(ws_flow_step_claimed($row', $advance);
 }
 
 // Runs that ended more than WS_FLOW_RUNS_KEEP ago are swept with their boxes,

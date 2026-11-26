@@ -175,6 +175,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-111.md: What follows for the step? (architect, 2026-11-25, agent channel message 13373)
 - decisions-made-product-111.md: How are shared components and system widgets marked on the designer's canvas? (owner, 2026-11-25, in the architect's window)
 - decisions-made-product-111.md: What follows for the canvas? (architect, 2026-11-25)
+- decisions-made-product-112.md: Where are the rules and the earlier parts?
+- decisions-made-product-112.md: What does a My library item do about pictures the site lacks? (owner, 2026-11-26, agent channel poll 224, message 13858)
+- decisions-made-product-112.md: Does a payment way in test mode on a live shop show on System Status? (owner, 2026-11-26, agent channel poll 225, message 14071)
+- decisions-made-product-113.md: Where are the rules and the earlier parts?
+- decisions-made-product-113.md: What does a translated picture text do when it does not fit its source's box? (owner, 2026-11-26, agent channel poll 229, message 14130)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -780,6 +785,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-52.md: Which columns does form_old_address have? (architect, 2026-11-24)
 - decisions-made-schema-52.md: When is a row written and removed? (architect, 2026-11-24)
 - decisions-made-schema-52.md: What does an old name answer? (architect, 2026-11-24)
+- decisions-made-schema-53.md: Where are the rules and the earlier parts?
+- decisions-made-schema-53.md: Where does an agent's context window size come from? (owner, 2026-11-26, agent channel polls 227 and 228, messages 14104 and 14109)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
@@ -1000,6 +1007,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-51.md: How should the board look? (owner, same day)
 - decisions-made-workspace-51.md: Do automations come to the board? (owner, same day)
 - decisions-made-workspace-51.md: Where is the work?
+- decisions-made-workspace-52.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-52.md: Is an agent's answer that does not name the asking agent refused? (owner, 2026-11-26, agent channel poll 226, message 14090)
 - decisions-made-workspace-6.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-6.md: What does a change made in the person's own calendar do to the Workspace task? (#4490)
 - decisions-made-workspace-6.md: Why does the pinned My Notes row open the Workspace list? (#4889)
@@ -1092,6 +1101,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code
 - commerce/customer-rhythm.md: Customer rhythm overview (reorder time per product, own rhythm per customer, stages, reorder reminder): what binds it, the map of its files, each feature's PR, what is left out
 - commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
+- commerce/delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
 - commerce/delivery-tower-segments.md: The link segments "Problems" / "Carrier scorecard" under the head of Delivery problems and the Carrier scorecard (DT5b): who sees which, how they are drawn
 - commerce/delivery-tower.md: Delivery tower overview (carrier times, problem parcels, Delivery problems, Carrier Scorecard, label chooser): what binds it, its files, each feature's PR
 - commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
@@ -1144,6 +1154,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/supplier-feed-cost-api.md: Supplier feeds (SF6, #11121, F11 and F14): the feed's buy price as an order line's cost, the stock plan's supplier from the feed's ERP account, and the three API routes
 - commerce/supplier-feed-price-card.md: Supplier feed screens (SF3b): price rule and rules by category or brand, test pull prices and Floor pill, Held prices, Pull now, Pull history, the product's "Price from the feed"
 - commerce/supplier-feed-screen.md: Products › Supplier feeds (SF2): the list, Add and Edit supplier feed, the encrypted sign-in, the first read into the Fields mapping, the test pull; what each button writes
+- commerce/supplier-feed-sync-matching.md: How a supplier feed record finds its product (code to products.name, else barcode), and a code two products hold: matched to none, a failed line, no draft (architect 2026-11-26, #11784)
 - commerce/supplier-feed.md: Supplier feeds (Products › Supplier feeds, SF1 to SF7, #10771 to #11121): the store pulls suppliers' XML, CSV or JSON lists and keeps price and stock in step; F1 to F14, which file holds what
 - commerce/tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
 - commerce/tr-place-list.md: The Turkish place list (includes/geo/places/TR.json, 81 provinces, 973 districts): lookup, the city box suggester, the spelling written at save, the order screen's note for an unlisted district
@@ -1172,8 +1183,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
 - core/picture-text-auto-draw.md: Translated Artifact Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out
 - core/picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, #10028 to #10448): what it does, its binding decisions, what it leaves out and why, where each part is
-- core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
-- core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
+- core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the fit floor by a text's size, the draw after a Save
+- core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words (2026-11-17, 2026-11-25), the floor by a text's size, what the draw does, what is open
 - core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
 - core/privacy-centre-decisions.md: What binds the Privacy centre (KVKK): opt-in rules off by default, one removal engine, what no rule removes, staff never removed, public request form off, answer by link, who changes rules
 - core/privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link
@@ -1184,7 +1195,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and its exclusion from the panel search and the file pickers
 - core/volunteer-shifts-decisions.md: Volunteer shifts decisions: owner polls 202, 206, 207, 208, the architect's tables, place and screen parts, the words on screen, what binds the code, what was left out
 - core/volunteer-store.md: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule
+- designer/accessibility-view-rules.md: What binds the designer's Accessibility view (View menu switch, Tab order, Headings, Names, "See as"): why it exists, what it may never do, which file holds each part; landed in AV1 to AV4
 - designer/bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
+- designer/canva-start.md: The Canva start of the New design window (ST6): exported PNG pages uploaded, kept as reference pictures under sketch pages, their colours offered for the variables; no Canva call, no PDF
 - designer/canvas-closed-blocks-content.md: Content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): what each opens to today and what stays closed
 - designer/canvas-closed-blocks-emails.md: Designed e-mail pages and their closed parts today: the comment e-mail's System region drawn with a note (CB3), the fixed markup kept for a page with no card, the other e-mails' widget slots
 - designer/canvas-closed-blocks-regions.md: Region nodes and classic page types on the canvas today: the System region converter (CB10, #10060), the nine page types with no widget, the legacy regions
@@ -1192,9 +1205,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, the CI guard, what is still open
 - designer/checkout-open-blocks.md: Order preview blocks opened (CB6d1): applied offers, gift cards and recurring payments as checkout lists (converter, starter), the installment choice and table drawn true; what stays closed
 - designer/classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open
-- designer/classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays
+- designer/classic-style-to-design.md: A classic style's frame as shared components and page trees (L2, #2370): pg_classic_style_design_open(), now the move run's own function with no button, what Save writes and what stays
 - designer/collection-rows-delete-history.md: Collection "Rows" field on delete and in History: a deleted record's rows go with it, the delete confirmations name the count, a loaded revision keeps only rows that exist
 - designer/collection-rows.md: Start file of the collection "Record rows" field (Kind "Rows"): rows of a record as child records, decisions, file map, R1 to R19 with PRs, open items
+- designer/collection-with-pages-folder.md: Where "New collection with pages" (DO23) puts what it makes: the collection's page in a private "Collections" folder and not a draft, the two pages as drafts, the fields' upload folder
 - designer/collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described
 - designer/comment-email-pages-system-region.md: Comment e-mail pages: what their System region prints, the canvas note saying so on a page that keeps it, why the design templates keep it, the fixed markup kept
 - designer/comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
@@ -1221,11 +1235,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/design-template-own-look.md: Rule (owner, 2026-11-07): sector sections first as palette blocks, reused not duplicated, general ones in general groups; own composition and motion on home and signature pages
 - designer/design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - designer/design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
+- designer/design-variables-overview.md: A design's variables (colour, type, spacing, shape): what the feature is, the rules that bind it, the Variables tab, the Options chip, start questions, Export and Import, which file holds what
 - designer/designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values
 - designer/designer-activity-audit-trail.md: The designer's events that leave no page version go to the audit trail (audit_log), no new table or column: the record types and the writers AC5 added
 - designer/designer-activity-drawing-choosers.md: Drawing of the designer's History "Activity" tab, boards A3 to A5: the three choosers person, page and kind, the row that opens Compare on two versions, more rows, an empty design, narrow
 - designer/designer-activity-drawing.md: Drawing of the designer's History "Activity" tab, boards A1 and A2: the two tabs "This page" and "Activity", a day's rows, the count of changes on a version's row, the marks
-- designer/designer-activity-writers.md: Census for the designer's History "Activity" tab (AC1): every writer that changes a visual design, the row it leaves with who and when, the ones that leave none, and the open store question
+- designer/designer-activity-writers.md: Every writer that changes a visual design and the row the History "Activity" tab reads from it, what stays on the Site Log only, what still leaves none
+- designer/designer-activity.md: The designer's History "Activity" tab: who published, restored, imported, shared or changed what in a design, read from rows that already exist; what binds it and which file holds each part
 - designer/designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule.
 - designer/designer-blocks-map.md: The map of the "Map of places" block (#10581): the Maps switch and its tiles in Site Settings, Features, consent before any tile, the vendored Leaflet, the Firewall copy line, headers unchanged
 - designer/designer-blocks-overview.md: Start file for the designer-blocks-* files: what a block family is, the rule that binds it, every family by its palette group label, which file holds what, how a new family is added
@@ -1236,10 +1252,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-cleanup-states-drawing.md: The drawing of the designer's "Clean up" window, boards U3 and U4: "Show", ticked rows and the foot, what is not listed, the closing line after "Remove", the states
 - designer/designer-compare-live-drawing.md: The drawing of "Compare with the live page" (plan designer-compare-live, CL2 and CL3): boards L1 what opens it, L2 the Look tab's slider, L3 side by side and phone, L6 from History
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
+- designer/designer-first-tour-card.md: The designer's first card "New here? A one-minute tour" and its tour (FT2): the part 'tour', when the card shows, the ring and the bubble, the keys, the phone's sheet, "Take the tour"
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-image-focus-drawing-frames.md: Board F5 of the image focus drawing (2026-11-25): the Focus control's phone, tablet and desktop frames stand under the whole picture, large, with their names; one frame when all three are the same
+- designer/designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; how they are counted
 - designer/designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows
 - designer/designer-my-library-overview.md: My library in the designer: a section saved as the site's own start, inserted as a copy, managed, exported and imported as a file; what binds it and which file holds which part
 - designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
+- designer/designer-options-new-row.md: How a new option enters the Options panel and what every option keeps: its section, the row kinds it copies, unset draws as before, one writer, User Styles or a Bootstrap class
 - designer/designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
 - designer/designer-page-strip.md: The Page Design Studio's page strip: the design's menu (Settings, Delete), how the strip makes room on a narrow screen in six steps, what never goes, the "+N" lists, which file holds the rest
@@ -1248,39 +1268,52 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-panels-overview.md: Start file of the Page Design Studio's redrawn chrome (plan designer-panels, ended #10760): Options panel, Overview tree, page strip, canvas bar; what binds them, which file holds what
 - designer/designer-parts-on-demand.md: The designer's parts not needed to open a page: one file each in includes/designer_parts/, their conditions, the loader _sdPartLoad(), definePart and the sorted kit for parts cut from the core
 - designer/designer-phone-preview-rules.md: "Preview on a phone": why it exists, the rules every change keeps (QR code a secret, bounded asking, Share prototype rights), which file holds which part
+- designer/designer-phone-preview-server.md: "Preview on a phone" on the server (PP1, #11541): the phone link as an 8-hour share link, found again per person, ended; the changed-since address prototype.php?watch=1, its pace, bounds and one read
+- designer/designer-preview-as-rules.md: What binds "Preview as" (Record, Visitor, Case, "Check all cases" in the designer's Preview): why it exists, what it may never do, which step built which part (PW1 to PW4)
+- designer/designer-preview-as-visitor.md: How a widget of the Preview is drawn for the chosen visitor (PW2c, architect 2026-11-26): one viewer reader in place of the USER_ constants, the sample account with no row, what is never read
 - designer/designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design
 - designer/designer-prototype-comments-list.md: The designer's side of prototype comments: pins on the canvas, the list's threads and actions, numbers as the customer sees them, the presence stamp, the endpoints, the bell line
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
 - designer/designer-publish-overview.md: Start file of the visual designer's Publish sheet and its Publish check: what they are, the decisions that bind them, their parts by label, which file holds each part
 - designer/designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway
 - designer/designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state
+- designer/designer-select-similar-matcher.md: Why "Select similar" exists in the designer, what is never chosen, the pure matcher PGSelectSimilar.find() (ways of alike, places, left out), not across pages; SE1 #11530, SE2 #11649
 - designer/designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts"
+- designer/designer-side-by-side.md: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size
 - designer/designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone
 - designer/designer-sketch-drawing-check.md: The boxes the Sketch reader is not sure of, as drawn (build.html, board B4): the quiet mark on the chip, the chip's menu that settles one early, and the one list "Build the page" opens
 - designer/designer-sketch-drawing-details.md: "Page details" as drawn (details.html, boards D1 to D4): the window's seven rows with their sentences and defaults, what each choice says, errors, saving, read-only, phone
+- designer/designer-start-import.md: The Figma and Canva starts of the New design window (2026-11): what the owner asked, where each part is written, and what was left unbuilt
+- designer/designer-style-guide-rules.md: What binds the designer's Style guide (Preview menu, "Style guide", "Print or save as PDF"): why it exists, what it may never do, which file holds each part; landed in SG1 to SG3
 - designer/designer-variables-drawing-computed-rows.md: The computed rows a bound control's list offers in Options (boards B6 and B7 of the variables drawing, DV3): the type scale's steps and the base unit's multiples, their names, the chip, the order
+- designer/document-to-page.md: A page from a document ("From a document" start, "Page from a document"): what it is, what binds it (words never changed, nothing sent before "Sort it for me"), its parts and which file holds each
 - designer/editor-turkish-terms.md: The names Page Design Studio, Artifact Canvas (was Design Canvas), Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
 - designer/figma-import-converter.md: The Figma converter (#11509): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step
+- designer/figma-start-import.md: The Figma start's import (#11643): the four steps, pictures fetched with an upload's limits, Stop, shared components, variables, the report, the editor's tabs
 - designer/form-feed-detail-access.md: A form list's ?rss=true item whose detail page is not public is a teaser (title, link, guid, pubDate, category; no description, no media), whoever asks; both feeds (#11462, bug #11440)
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - designer/image-focus-overview.md: A picture's focus point ("Focus" in the options, "Set focus" on the canvas): why, what binds it, which file holds what
+- designer/layout-convert-widget-gap.md: What the layout converter does with a piece a page type's layout has and its widget lacks (LE10b to LE10d): a state, a carried setting, a page link, a second form or list; the guest button
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
-- designer/layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10): what the converter is, the rules kept, which file holds each type's map
+- designer/layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10d): what the converter is, the rules kept, which file holds each type's map
 - designer/legacy-bootstrap-overview.md: Overview of the Legacy to Bootstrap 5.3.8 helper (#8856, LB1-LB7): why a trial design beside the Legacy one, what it converts, how a designer runs it, what stays reversible, and the file of each part
 - designer/legacy-bootstrap-rules.md: Legacy to Bootstrap 5 helper rules beyond renames: visibility names, push/pull, theme names 5.3.8 owns, list-inline, data-bs, the trial's scripts.js and compatibility sheet, non-Bootstrap designs
 - designer/legacy-bootstrap-theme.md: A Legacy design's Theme file read as a palette and a look its Bootstrap 5 trial design wears (LB7, #9328): what is read, the imported colour sheet, the files made, the card
 - designer/legacy-bootstrap-trial-why.md: Why a Bootstrap 5 trial design keeps Bootstrap 3's script row switched off, and why only a design the card's test calls Bootstrap 3 gets a trial (architect, 2026-11-13, asked in #9159)
+- designer/legacy-editable-overview.md: Start file for a classic page made editable in the visual designer (LE1-LE12, closed): the owner's goal, the rules kept, which file holds each part, the starting sites' last figures
 - designer/legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move
 - designer/legacy-layouts-output-map.md: How a bootstrap5 design's page types get 5.3.8 names (architect, #8969): the system region's output mapped per request, no converted copies; the rules every change keeps
-- designer/legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open
+- designer/legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7, LE1-LE12), the rules kept, what is open
 - designer/legacy-run-starters.md: Where the legacy-editable run gets a widget's starter layout for a stock-layout page (step LE5b): built in the browser at Convert and posted, never a PHP twin or an empty tree
 - designer/legacy-to-classic.md: Back to classic (LG7): a set's Legacy design sends its pages, all or one, back to the classic styles they came from; how the origin is found, why the tree leaves the page, the refusals, the card
 - designer/legacy-to-designer-report.md: The "Move to the Page Design Studio" readiness report (LD1, #6219): what it lists per classic style, its sets (LG4), its state, the "What stays classic" card (#6488), the rules the whole move keeps
 - designer/member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.
-- designer/options-panel-census-bss.md: Options panel census, part 4: what Bootstrap Studio has that the Page Design Studio lacks, each as have, partly or missing, with where ours lives (view transitions to collection pages)
+- designer/options-panel-census-bss.md: Options panel census, part 4, as built: what Bootstrap Studio has beside the Page Design Studio, as have or partly, with where ours lives (DO19 to DO26)
+- designer/options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24) and what was built from it (DO2 to DO26, done 2026-11-26): which file holds each row or component now
 - designer/order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
 - designer/overview-search-map.md: Designer Overview (DP13): the tree search part (name, text, class, id; Turkish letters folded; results with their path; Ctrl+F) and the page map at the tree's right edge
+- designer/page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
 - designer/page-experiments-model.md: Page experiments model: the three tables (11.0.153), statuses and moves, the weighted draw, the pg_exp bucket cookie, which requests never join
 - designer/page-region-into-page-tree.md: A page's own regions (pregion) moved into its designer tree: one _editable block per page region node, the Nth node takes the Nth row, refused inside shared components, rows kept unread
 - designer/page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
@@ -1307,6 +1340,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
 - designer/prototype-viewer-missed-click.md: The prototype viewer's missed click (PX6): a click on nothing clickable flashes the page's links in the frame; when it does not; Play's start page and its title
 - designer/prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom
+- designer/record-edit-in-place-overview.md: Start file of record edit in place: "Edit content here" in the Preview, "Edit this record's content" / "Open the record" on the canvas; why, what binds it, which file holds what
 - designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: where the Bundles screen shows them, what they post and the screen does with it, the "changed since" choice, focus on Cancel, their words
 - designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its dialogs, Publish and Take back, Remove and Delete
 - designer/release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle
@@ -1316,6 +1350,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links
 - designer/sketch-page-details.md: "Page details" of a Prototype view sketch page (SK5): the More menu and palette row, the seven rows and defaults, checks, the sketch_details endpoint, where values are kept
 - designer/sketch-read-picture.md: "Read the picture" of the Sketch tool (SK7b): the reference picture read into proposed boxes by the browser's model, nothing sent; row, first use, busy, Keep, Discard
+- designer/start-abandoned-cleanup.md: What an abandoned Figma or Canva start deletes (#11705): the stop step, the window's close, a failed finish, the Cleanup tool's work files, the Canva drop by session ids
 - designer/style-predictor.md: The smart completion predictor assets/js/pg_style_predict.js: its API, the context object, suggestion fields, reason codes, how classes are ranked, the hand-kept hint tables, tests
 - designer/system-widget-page-types.md: Which classic page types have designer system widgets, which stay `system` nodes (#2436), confirmations as a widget setting, and what a converted page uses until a widget exists.
 - designer/widget-condition-canvas.md: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, list and main loop sample rows (#1914, #1928)
@@ -1339,6 +1374,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - erp/erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes
 - erp/erp-order-profit-screens.md: Where an order's profit is seen (#10664): the Profit card of view_order.php, the order list's Profit column and "Sold at a loss" filter, the gate, includes/erp/order_profit_view.php
 - erp/erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
+- erp/erp-parasut-devhub-application.md: Paraşüt's partner application (2026-11-26): what was entered, the two fixed redirect addresses, the staging client and company, a partner client on a self-hosted site
 - erp/erp-parasut-overview.md: Paraşüt as a whole: connection card, the ERP's e-document driver, the order screen's legacy Create Invoice and E-Shipment, inbox, export; its decisions and which erp-parasut-* file holds each part
 - erp/erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public
 - erp/erp-stock-planning.md: Stock Planning (Accounting › Stock Planning): what it is, the owner's and architect's decisions, its parts and which file holds each, the defaults, what is left out; PRs #10612, #10654, #10693, #10687
@@ -1448,6 +1484,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-upload-setting.md: The Artifact Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
+- ui/launch-journey-setup-card.md: Dashboard card "Set up your site" (cards/launch.php): the launch_journey config_text row, the facts reader, "Do it", "Not for this site", "Hide set-up", the purpose dialog, General's purpose field
 - ui/launch-journey.md: The site set-up journey as a whole: "Set up your site" card by purpose, go-live check, First week, Start here, hint lines, agency summary, GET /launch; its decisions and which file holds each part
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there
@@ -1521,13 +1558,17 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/visitors-clicks-section.md: The Clicks and scrolling section of the Visitors overview (includes/visitors/clicks.php, CM3): the switch-off empty state, the pages list, a page's own view, the device filter, labels as text
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
 - visitors/lead-hot-contacts-followed-by.md: The Hot Contacts view's "Followed by" column (LJ4c, #11301): the people holding an open follow-up task of the contact, read in one batch; no assignee column on contacts
+- visitors/lead-journey-rules.md: The visitor journey's pure rules (lead_journey.php, LJ1a): browser key verdict, tie and move on a shared browser, tying back in the keep period, interest score half-life
 - visitors/lead-journey.md: Visitor journey start file (visits tied to a contact with the marketing yes, Journey card, Interest score, Hot contacts, Lead sources, API): what binds it, file map, J1-J15 with PRs, what is not built
+- visitors/lead-sources-customer-rule.md: Who the Lead sources report counts as a lead that became a customer, and what a cancelled or refunded first order does (architect, 2026-11-26, request 3081)
 - visitors/page-clicks-scope.md: What the clicks and scroll depth counter is for and where it stops: the owner's and the architect's lines of 2026-11-16 (polls 67 and 75, messages 5763, 5774), the bounds, what is left out, whose look
 - visitors/page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where
 - visitors/page-clicks.md: Clicks and scroll depth counter (page_click_daily, #9902): row kinds, the beacon in page_view.php and its gate, the fold, the 200-element bound, figures, 400-day sweep, the hunt of 10214
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitors/web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
-- waf/security-scan-retired-files.md: Decision (architect 2026-11-25): a PHP file an earlier release carried and this one dropped is told from an unknown file by the Clean Up tool's list; the update still deletes nothing; step SC8b
+- waf/security-scan-accounts-settings.md: Security Scan rules on accounts and settings: new staff account, new application key, world-writable core folder, risky PHP settings, PHP security fixes; places, severities, detail
+- waf/security-scan-overview.md: Security Scan as a whole: rule-based self-scan in Firewall and HTTPS settings and the Firewall card; binding rules, parts, which file holds what, how to add a rule
+- waf/security-scan-retired-files.md: Security Scan retired release files - file_php_retired from the Cleanup tool's shared list, the list completed from the release tags, the check_pr.php rule
 - waf/waf-ai-training-crawlers.md: SEO's "Allow AI training" in the firewall: on, the training crawlers leave the bad-bot match only (class training, no good-bot privilege); off, refused (#11023, poll 216)
 - waf/waf-architecture-and-phases.md: waf.php structure: standalone module (no functions.php, no HTTP), what runs in the router vs init phase, signature scanning only in init, fail-open, waf_client_ip(), upgrade compatibility.
 - waf/waf-ban-ladder.md: waf_auto_ban() escalation ladder: hit_count is the number of bans, 60-240-960-3840-10080 min, cap waf_auto_ban_max_minutes, a rate ban stays at the base, expired rows kept for ladder memory.
@@ -1536,6 +1577,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-country-panel-exemption.md: Country restriction's panel exemption: the panel sign-in screens for anyone, every other software-directory script only with staff signed in; site sign-in pages not exempt, staff kept to the panel.
 - waf/waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
 - waf/waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), hand-written bans apply in every mode, automatic bans not in Monitor mode.
+- waf/waf-log-request-url-masking.md: Firewall log request_url keeps path and names, credential values become * (waf_mask_request_url(), waf_credential_params(), per-script short names) (#11778)
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
@@ -1555,19 +1597,36 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone
+- workflow/bug-hunt-areas-agent-guide.md: The bug hunt in the AI agent guide and the refused calls (built in #10709 to #11236), PR #11805: the faults fixed, what was read clean and what was seen and left
+- workflow/bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left
 - workflow/bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run
+- workflow/bug-hunt-areas-application-review.md: Bug hunt of the application review desk (Forms › Application programmes, named by the architect 2026-11-26, request 3016): five faults fixed in #11757, what was read clean, what was left
+- workflow/bug-hunt-areas-audiences.md: Bug hunt of contact groups filled by rules (#6158 to #6418), named by the architect (2026-11-26, request 3055): what was read, the four faults fixed in #11789, what was found clean and what was asked
 - workflow/bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean
 - workflow/bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
+- workflow/bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left
+- workflow/bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean
+- workflow/bug-hunt-areas-flow-waits.md: The bug hunt in Workspace flows that wait, the run side (architect 2026-11-26, request 3068): one fault fixed (the claim time a waiting box counts from), what was read clean, what was left
+- workflow/bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left
+- workflow/bug-hunt-areas-launch-journey.md: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): the facts reader, the set-up card, "Go live", First week and Start here, the agency summary
+- workflow/bug-hunt-areas-lead-journey-store.md: Bug hunt of the visitor journey's store, ties and first touch (LJ1a, LJ1b, LJ5): what was read, the eight faults fixed (#11806), what was found clean, what was left for the owner
+- workflow/bug-hunt-areas-marketplace-repricer.md: The bug hunt in the marketplace repricer RP1 to RP5 (architect, 2026-11-26, request 3034): what was fixed, what was read clean, what is left
+- workflow/bug-hunt-areas-my-library.md: Bug hunt of the designer's My library (2026-11-26): an item saved, inserted as a copy, managed, exported and imported as a file; what was fixed, what read clean, what was left
 - workflow/bug-hunt-areas-notifications-bell.md: The bug hunt of the panel's bell and the mails it sends (2026-11-24, #11438): the seven faults fixed, what was read clean, what was judged decided
 - workflow/bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet
 - workflow/bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean
+- workflow/bug-hunt-areas-phone-preview.md: Bug hunt in "Preview on a phone" (2026-11-26): failing asks that never stopped and a found link opening on the lock note, fixed; what was read clean and left
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
+- workflow/bug-hunt-areas-record-edit-in-place.md: Bug hunt of record edit in place ("Edit content here", "Edit this record's content", 2026-11-26): what was fixed, what read clean, what was left
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
+- workflow/bug-hunt-areas-satisfaction-surveys.md: Bug hunt of the satisfaction surveys (architect, 2026-11-26, request 3016, K2): faults fixed, what was read clean, what was left and asked
+- workflow/bug-hunt-areas-security-scan.md: The bug hunt in the Security Scan (built in #11425 to #11672, SC1 to SC9), PR #11777: the faults fixed, what was read clean and what was seen and left
 - workflow/bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean
 - workflow/bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean
+- workflow/bug-hunt-areas-workspace-calls.md: The bug hunt of Workspace voice and video calls (CL1-CL8, CN1-CN7), 2026-11-26, #11765: four faults fixed, the ring in a muted channel asked, what read clean
 - workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-channel-commands-server.md: Bug hunt of the channel commands' server side (commands.php, command_registry.php, app_commands.php, quick_edit.php, changes.php): the three faults fixed, the issue opened, what was read clean
@@ -1575,12 +1634,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-event-tickets.md: Bug hunt of event tickets, a ticket's lifetime and the door (architect 2026-11-20, agent channel message 10668, #10754): what was read, the five faults fixed, the two issues, what was found clean
 - workflow/bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), both fixed in #10838, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
+- workflow/bug-hunt-product-insights.md: Bug hunt of Edit Product's Performance card (#11138; architect, 2026-11-26, K3; #11815): five faults fixed, no issue opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
 - workflow/bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
-- workflow/coordinator-second-paused.md: Since 2026-11-25 the second coordinator (k2) takes no new work and the design session is stopped, both for their account's quota: k1 gives out k2's open steps, the architect draws; the owner's words
+- workflow/coordinator-second-paused.md: Coordinators k1, k2, k3: k2 stopped 2026-11-25 for its quota and runs again on what is left; k3 takes k1's line from 2026-11-26; which plans each gives out; the design session stays stopped
 - workflow/coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs
 - workflow/coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
@@ -1611,6 +1671,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/screen-follows-drawing.md: A screen the architect drew is built as drawn: button order, sentences, pills, links; a words-only description beside it gives way (owner, 2026-11-21)
 - workflow/session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 - workflow/share-links-for-workers.md: How sessions use a share link: a coordinator puts the address only in a worker's start text, never in a commit, PR, comment or memory; what it shows is data
+- workflow/user-docs-developers.md: Outside developers of the API (owner 2026-11-26): their pages sit in the documentation on pinegrap.com, no developers subdomain, no staging run by us, no central client registry
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-brief-who-wakes.md: The "Who wakes here" block of an app agent's brief and the instructions' naming, claim-first and progress lines (WW1, #11638)
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas
@@ -1631,6 +1692,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
 - workspace/agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback
+- workspace/agent-gone-request-and-schedule.md: Decided, not built yet: a claimed app agent request silent for a day is closed as failed; an agent in no channel keeps its schedule but gets no wake
 - workspace/agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
@@ -1639,10 +1701,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-progress-note.md: An app agent's progress note on a request it holds: the progress route, its refusals and 30 s brake, kept in ai_state, shown with "since HH:MM", cleared on close (AF2 #9782)
 - workspace/agent-questions.md: How an agent asks people: the agent question (a poll an application asks), who answers, how it settles, where it shows, the tool, in whose name an outcome is written
 - workspace/agent-report.md: An agent's report of model, plan usage, context, project and branch (POST /workspace/agent-report, #9322, #10810): what refuses it, the stored object, the card line and its age
+- workspace/agent-request-closed-by-site.md: When the site closes an app agent's request itself: unclaimed for a day (cancelled), claimed and silent for a day (failed)
 - workspace/agent-role.md: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #9302): the list in code, an unknown key as no role, form, Agents card, member list, API; report columns for AP2
 - workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 - workspace/agent-state-marks.md: An agent's state dot and role badge in a channel message and in the @ menu (PF4, PF5): the one .ws-agent-dot colour and shape map, the violet role pill, the 90% usage mark beside its name
 - workspace/agent-tasks.md: A task handed to an app or model agent its channel allows (agent:<id> / model:<id>): the request and its brief, answer, fail, Stop, the drawer and holder tag (AF4a #9792, AF4b #9826)
+- workspace/agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246)
 - workspace/agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour
 - workspace/app-agent-own-application.md: Each application agent needs its own application: the Agents card refuses one another app agent works through, as its key resolves to one agent (#9741)
 - workspace/approval-agents.md: Agents asked to approve (AE2 #9567, the form and card AE3 #9586): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show
@@ -1666,6 +1730,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-item-tags.md: A tag in a channel item asks the tagged assistant or wakes the tagged agent; outside a message body (polls, tasks, shared notes, table cells) only in agent channels, by managers
 - workspace/channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2, #11617): agent faces in the head; People, the agents block, Guests in Channel info; last seen for a manager
 - workspace/channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep
+- workspace/channel-memory-note.md: The system note when a channel's or the general memory changes (#10546): text, writer, the burst rule, the write path, no agent woken
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/channel-note-move.md: Move to this channel (ws_note_move(), POST /workspace/notes/{id}/move) makes a person's note the channel's; Copy to my notes (ws_note_copy_mine()) is the way back
 - workspace/channel-note-owned.md: A channel's note (ws_notes.owner_channel_id): access from the channel, off My Notes and its limit (ws_note_own_sql(), guard test), WS_NOTE_CHANNEL_LIMIT, who deletes it, deleted with its channel
@@ -1734,6 +1799,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
 - workspace/workspace-calendar-write-plans.md: A person's own plans written one way to their Google or Outlook calendar (calendar_sync.php, PC13): the My calendar switch, the second calendar, which plans, the body, off and deleted
 - workspace/workspace-calendar-write.md: A person's Workspace tasks written to their own Google or Outlook calendar (calendar_sync.php, #4387, #4420): app-made calendar, derived ids, sealed state per person, the hourly job
+- workspace/workspace-channel-board-automations.md: The Automations part of a channel's Board tab (BM5): the toolbar button and its count, a column's rule line, the drawer of Switch rows, a rule asking its answer, the last runs
 - workspace/workspace-channel-board-tab.md: A channel's one Board tab (BM1 #11555, BM2): Tasks and Board as one tab with the Board and List views, tasks only, the shared toolbar, the kept view, ?view=board/list/tasks, a room without the board
 - workspace/workspace-channel-catchup.md: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, Go to new messages to the New line, the pinned line, one row on a phone
 - workspace/workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; on a phone the field on top and the tools with Send under it, the keyboard rules
@@ -1747,7 +1813,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 - workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; My tasks keeps its rows
 - workspace/workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
-- workspace/workspace-channel-summary-board-memory.md: The channel's Summary and Board tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the Memory tab is in workspace-memory-tab.md
+- workspace/workspace-channel-summary-board-memory.md: The channel's Summary tab as cards (pinned message, Time spent) and the channel panes' empty states as a dashed card (CL3 #8703); Board look in workspace-channel-board-look.md
 - workspace/workspace-channel-timeline-card.md: The conversation timeline's card: head, the decision or note line, shortcut rows to what a message carries, where each row opens, pointer, keyboard, phone
 - workspace/workspace-channel-timeline-zoom.md: The conversation timeline's zoom and movement: buttons in the well, Ctrl+wheel, Shift+wheel, pinch, the keys, where a strip opens, the zoom kept per channel
 - workspace/workspace-channel-timeline.md: Conversation timeline at the end of the channel tabs row (Channel info when narrow): one well, days as columns, runs as bars, writer colours, the read, live updates

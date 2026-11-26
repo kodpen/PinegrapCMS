@@ -2589,9 +2589,9 @@ function ws_flow_save_check($viewer, $data, $flow = null)
     }
 
     // A role-3 member's own flow: no home channel and only the kinds of box
-    // open to it (flow_member.php). A colleague shared at edit saves only
-    // into a staff member's flow, so the saver is the owner here.
-    $kept = ws_flow_member_flow_refusal(ws_flow_builder_kind($viewer), $sets['channel_id'] ?? ($flow['channel_id'] ?? 0), $graph);
+    // open to it (flow_member.php), asked with the owner's kind: a colleague
+    // shared at edit before the owner became a member saves no more.
+    $kept = ws_flow_member_flow_refusal(ws_flow_owner_builder_kind($viewer, $flow), $sets['channel_id'] ?? ($flow['channel_id'] ?? 0), $graph);
 
     if ($kept['refusal'] !== '') {
         return ws_flow_refusal($kept['refusal'], 422, $kept['field']);
@@ -2714,8 +2714,9 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
     }
 
     // A role-3 member publishes only what their own flow may hold, a home
-    // channel or a box kept from a time they were on the staff included.
-    $kept = ws_flow_member_flow_refusal(ws_flow_builder_kind($viewer), $flow['channel_id'] ?? 0, $graph);
+    // channel or a box kept from a time they were on the staff included;
+    // a staff member publishing a converted flow is held to its owner's.
+    $kept = ws_flow_member_flow_refusal(ws_flow_owner_builder_kind($viewer, $flow), $flow['channel_id'] ?? 0, $graph);
 
     if ($kept['refusal'] !== '') {
         return ws_flow_refusal($kept['refusal'], 422, $kept['field']);

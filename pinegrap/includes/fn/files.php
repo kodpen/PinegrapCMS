@@ -556,6 +556,256 @@ function pg_clean_up_summary($folders, $files, $records = null)
 }
 
 /**
+ * The places, relative to the software folder, that earlier releases carried
+ * and this one no longer uses: what the Cleanup tool (clean_up.php) deletes
+ * besides the sweep of data/temp, and what the Security Scan reports as
+ * file_php_retired (includes/fn/security_scan_files.php). A folder dropped as
+ * a whole is listed as the folder. One list: both read it here.
+ *
+ * A name comes off this list the moment the software starts using it again.
+ * image_editor_save.php was once here as a LiveSite leftover while the name
+ * served the previous image editor's endpoint -- so running the cleanup
+ * deleted a live part of the software, and every save from the image editor
+ * answered 404 from then on. That editor is gone now (the image editor is
+ * assets/js/pg_image_editor.js, saved through image_editor_api.php), and its
+ * files are listed below.
+ *
+ * Before adding a name here, check that nothing references it:
+ * grep -rn "<name>" --include=*.php --include=*.js .
+ * A PHP file deleted from the software folder or includes/ must join the
+ * list: tools/check_pr.php refuses a change that drops one without it.
+ *
+ * @return string[]
+ */
+function pg_clean_up_file_list()
+{
+    return array(
+        'image_editor_save.php',
+        'assets/js/image_editor_modal.js',
+        'assets/lib/image_editor',
+        'image_editor_send.php',
+        'image_editor_close.php',
+        'threeds_payment.php',
+        'changelog.php',
+        'widget_api.php',
+        'backend.min.css',
+        'backend.src.css',
+        'backend.min.js',
+        'backend.src.js',
+        'clean_up_software_trashs.php',
+        'clean_up_software_trash.php',
+        'add_product_variants.php',
+        'assets/add_product_variants.js',
+        'pinegrap.php',
+        '../terminal.php',
+        '../terminal_data.php',
+        'files',
+        'layouts',
+        'error_log',
+        'install/error_log',
+        '../error_log',
+        'assets/images/dashboard_bg_l.jpg',
+        'assets/images/dashboard_bg_d.jpg',
+        'data_api.php',
+        'view_products_development.php',
+        'datatable_serverside_script.php',
+        'JSON.php',
+        // The config.php editor. A screen that rewrote any define() in the file
+        // let an administrator switch PHP execution back on from the panel; the
+        // file is edited by hand where a site needs a setting changed.
+        'edit_config.php',
+        // The offer library screens. An offer now owns its rule and its actions
+        // through edit_offer.php, which writes the same tables; these screens
+        // edited rows that several offers could share, so a change made here
+        // silently changed every offer that used the row. They were taken out of
+        // the menu with 2026.4.4 and nothing links to them any more.
+        'view_offer_rules.php',
+        'add_offer_rule.php',
+        'edit_offer_rule.php',
+        'view_offer_actions.php',
+        'add_offer_action.php',
+        'edit_offer_action.php',
+        'includes/templates/view_offer_rules.php',
+        'includes/templates/edit_offer_rule.php',
+        'apps.php',
+        'apps_settings.php',
+        // The single Site Settings screen, 5219 lines of it. Its cards and its
+        // save code were split into the eight category modules under
+        // includes/settings/, which are reached through the dialog in the header
+        // or, where there is no JavaScript, through settings_<category>.php.
+        // Nothing links here any more and no code includes it. The dialog's
+        // address resolver still recognises a settings.php link found in saved
+        // content and opens the right pane instead of following it, so removing
+        // the file costs only a bookmark typed straight into the address bar.
+        'settings.php',
+        // The MailChimp screen. Its card is in Site Settings -> Communication now,
+        // reading and writing the same seven config columns, and nothing links
+        // here any more.
+        'mailchimp_settings.php',
+        'includes/templates/mailchimp_settings.php',
+        // A development leftover: a one-shot diagnostic page for the
+        // shared-component placeholder invariant, written while that invariant was
+        // being introduced. The designer's save path enforces the rule itself and
+        // nothing links to the page.
+        'check_shared_invariant.php',
+        // The XML endpoint of the classic folder tree screen. Its script
+        // (assets/folder_tree.js, listed below) is already retired and no other
+        // code requests the endpoint, so it goes the same way.
+        'get_folder_tree.php',
+        // Legacy LiveSite container templates. The root add_container.php,
+        // edit_container.php and view_containers.php render their markup inline,
+        // and no page type maps to these templates, so nothing includes them.
+        'includes/templates/edit_container.php',
+        'includes/templates/view_containers.php',
+        // The shipping method's service template. shipping_method.php draws its
+        // form inline and nothing includes the template; dropped from the package
+        // after 2026.4.10.
+        'includes/templates/shipping_method_service.php',
+        // The XML endpoint of the old product-group tree widget. No screen or
+        // script requests it any more.
+        'get_product_group_tree.php',
+        // A third-party single-file barcode generator that sat at the web root
+        // with its own request handler, callable by anyone without a session and
+        // rendering an image of whatever size the request asked for. Nothing in
+        // the software requested it: barcodes are drawn in the browser by
+        // JsBarcode. Removed from the package with 2026.4.4.
+        'barcode.php',
+
+        // The pre-lib/ asset tree, superseded in 2026.4.4 and dropped from the
+        // package. Every library below is also carried under assets/lib, the
+        // bundles moved to assets/js and assets/css, the PHP libraries belong in
+        // includes/, and includes/ now owns the language and template folders.
+        // Installations upgraded from an older package still have these on disk,
+        // so the names stay here until those sites have run the cleanup.
+        'assets/DataTables',
+        'assets/GoldenLayout',
+        'assets/Inputmask-5.x',
+        'assets/Jquery',
+        'assets/JsBarcode',
+        'assets/backend.src.css',
+        'assets/backend.src.js',
+        'assets/bootstrap-5.3.0',
+        'assets/bootstrap-5.3.8',
+        'assets/boxpacker',
+        'assets/chartjs',
+        'assets/chat_backend.min.js',
+        'assets/chat_backend.src.js',
+        'assets/ckeditor_4_20',
+        'assets/class_suggestions.js',
+        // The designer's fixed list of Bootstrap classes, replaced by the smart
+        // completion (assets/js/pg_style_suggest.js with the predictor and the
+        // generated vocabulary). Dropped from the package with 2026.11.0.
+        'assets/js/class_suggestions.js',
+        // The designer's script, now served as assets/js/style_designer.min.js
+        // built from assets/js/style_designer.src.js. Renamed with 2026.11.0.
+        'assets/js/style_designer.js',
+        'assets/codemirror',
+        'assets/codemirror-5.65.9',
+        'assets/codemirror_modal.js',
+        // CodeMirror 5, replaced by the code editor facade (assets/js/
+        // pg_code_editor.js, CodeMirror 6 in assets/lib/code_editor) on every
+        // screen, and the rich text editor's own copy, replaced by its
+        // pgcodeeditor plugin (assets/js/pg_ckeditor_source.js). Dropped from the
+        // package with 2026.11.0.
+        'assets/lib/codemirror',
+        'assets/lib/codemirror-5.65.9',
+        'assets/lib/ckeditor_4_20/plugins/codemirror',
+        // The jQuery UI timepicker add-on. The panel's and the sites' date and
+        // time fields are drawn by assets/js/pg_datetime.js and pg_fields.js, so
+        // no page loads it. Dropped from the package with 2026.11.0.
+        'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js',
+        'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.src.js',
+        // DataTables and its checkbox extension. Every panel list is drawn by
+        // the list table driver (assets/js/pg_list_table.js) or is a plain
+        // table, so no page loads them. Dropped from the package with 2026.11.0.
+        'assets/lib/DataTables',
+        'assets/lib/Jquery/jquery_datatables_checkbox.min.js',
+        'assets/lib/Jquery/jquery_datatables_checkbox.min.js.map',
+        'assets/colorpicker',
+        'assets/dropzone',
+        'assets/file-explorer',
+        'assets/folder_tree.js',
+        'assets/image_editor',
+        'assets/iyzipay-php',
+        'assets/json2',
+        'assets/lazy',
+        'assets/lightbox',
+        'assets/local',
+        'assets/multiselect-checkbox',
+        'assets/page_designer.css',
+        'assets/page_designer.js',
+        // The folder screens and the classic files list, retired with 2026.11.0:
+        // folders are made, renamed, set up and given their access rules in the
+        // File Manager (view_folders.php), whose Files view has the list's
+        // filters, sorting and actions.
+        'add_folder.php',
+        'edit_folder.php',
+        'includes/forms/folder_form.php',
+        'view_files.php',
+        // The legacy page designer, retired with 2026.11.0: a classic style
+        // opens in the visual designer and a page's custom layout in
+        // edit_page_layout.php.
+        'page_designer.php',
+        'assets/js/page_designer.js',
+        'assets/css/page_designer.css',
+        'assets/pg_carousel_layout.css',
+        'assets/pg_civ_variants.js',
+        'assets/pg_lightbox.css',
+        'assets/pg_lightbox.js',
+        'assets/phpexcel',
+        'assets/phpmailer',
+        'assets/product_builder.js',
+        'assets/select2',
+        'assets/stripe',
+        'assets/style_designer.css',
+        'assets/style_designer.js',
+        'assets/templates',
+        'assets/tiny_mce_3_5_10',
+        'assets/vendor',
+        // The logo of the third-party image editor the software used before its
+        // own; nothing shows it since the image editor became pg_image_editor.js.
+        'assets/images/icon_image_editor.png',
+        // The rich text editor's old link window; the Link dialog and the
+        // visual designer choose through the picker (pg_editor_bridge_script()).
+        'editor_select_page_or_file.php',
+        // The rich text editor's old image window; the Image dialog, the product
+        // builder's pictures and a contact's photo choose through the picker.
+        'editor_select_image.php',
+        // The spreadsheet library the importers and the Paraşüt exports used
+        // before the sheet reader (includes/fn/sheet_read.php) and the xlsx
+        // writer (includes/fn/xlsx_write.php) took its place.
+        'includes/phpexcel',
+    );
+}
+
+/**
+ * Is a place, relative to the software folder, on the Cleanup tool's list:
+ * the listed name itself or a path inside a listed folder?
+ *
+ * @param string $place
+ * @param string[]|null $list pg_clean_up_file_list() when null
+ * @return bool
+ */
+function pg_clean_up_place_listed($place, $list = null)
+{
+    $place = (string) $place;
+
+    if ($place === '') {
+        return false;
+    }
+
+    foreach (($list === null) ? pg_clean_up_file_list() : $list as $entry) {
+        $entry = rtrim((string) $entry, '/');
+
+        if (($entry !== '') && (($place === $entry) || (strpos($place, $entry . '/') === 0))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The names under data/temp that the Cleanup tool (clean_up.php) never lists:
  * the directory guard and the records nothing writes again as the same file.
  * hash_reference.json is this installation's own integrity baseline;

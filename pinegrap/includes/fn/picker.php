@@ -83,6 +83,8 @@ function pg_picker_kinds()
         'channel_file' => array_merge($file, array('upload' => false, 'channel' => true)),
         'canvas_picture' => array_merge($file, array('types' => array('jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'), 'pictures' => true)),
         'canvas_photo' => array_merge($file, array('types' => array('jpg', 'jpeg', 'png', 'gif', 'webp'), 'pictures' => true)),
+        // The designer's "From a document" start (designer_document.php).
+        'document' => array_merge($file, array('types' => array('docx', 'md', 'txt'), 'role' => 2)),
         'canvas_video' => array_merge($file, array('types' => function_exists('pg_image_editor_clip_types') ? pg_image_editor_clip_types() : array('mp4', 'm4v', 'webm'))),
         'canvas_sound' => array_merge($file, array('types' => function_exists('pg_image_editor_sound_types') ? pg_image_editor_sound_types() : array('mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus'))),
         'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'forms' => false, 'access' => 'edit', 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
