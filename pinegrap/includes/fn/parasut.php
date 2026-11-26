@@ -2451,15 +2451,21 @@ function parasut_currency_code($currency)
  * the card ends below Pinegrap's count by that order's units. Which earlier
  * orders will ever be documented at Paraşüt cannot be told here.
  *
- * @param array       $product    A products row: name, short_description, price
- *                                (minor units), inventory, inventory_quantity, tax_rate
- * @param int         $taken_out  Units of the product the documented sale took out of
- *                                inventory_quantity (parasut_stock_taken_units()); 0 for none
- * @param string|null $currency   The store's base currency (ISO code); null reads
- *                                BASE_CURRENCY_CODE, and with none defined the lira
+ * A card opened for an invoice line takes that line's VAT rate ($vat_rate):
+ * the line is what the sale charged, and a catalogue rate Paraşüt no longer
+ * takes (18 %) would make it refuse the card and stop the invoice. A caller
+ * with no line (E-Shipment) keeps the catalogue's products.tax_rate.
+ *
+ * @param array             $product    A products row: name, short_description, price
+ *                                      (minor units), inventory, inventory_quantity, tax_rate
+ * @param int               $taken_out  Units of the product the documented sale took out of
+ *                                      inventory_quantity (parasut_stock_taken_units()); 0 for none
+ * @param string|null       $currency   The store's base currency (ISO code); null reads
+ *                                      BASE_CURRENCY_CODE, and with none defined the lira
+ * @param float|string|null $vat_rate   The invoice line's VAT rate; null or '' for the catalogue's
  * @return array
  */
-function parasut_product_attributes($product, $taken_out = 0, $currency = null)
+function parasut_product_attributes($product, $taken_out = 0, $currency = null, $vat_rate = null)
 {
     $track_stock = !empty($product['inventory']);
 
@@ -2469,15 +2475,21 @@ function parasut_product_attributes($product, $taken_out = 0, $currency = null)
 
     $currency_code = parasut_currency_code($currency);
 
+    // Default rate on the Paraşüt product card. Invoice lines carry their own
+    // rate and override this, so it only matters for documents raised inside
+    // Paraşüt. A null products.tax_rate means "the zone decides", which has no
+    // equivalent on a product card - 0 is the safe default there.
+    $rate = ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'];
+
+    if (($vat_rate !== null) && ($vat_rate !== '')) {
+        $rate = (float) $vat_rate;
+    }
+
     $attributes = [
         'name' => $product['short_description'] ?: ($product['name'] ?: lang('No Product Name')),
         'list_price' => round($product['price'] / 100, 2),
         'currency' => $currency_code,
-        // Default rate on the Parasut product card. Invoice lines carry their own
-        // rate and override this, so it only matters for documents raised inside
-        // Parasut. A null products.tax_rate means "the zone decides", which has no
-        // equivalent on a product card - 0 is the safe default there.
-        'vat_rate' => ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'],
+        'vat_rate' => $rate,
         'inventory_tracking' => $track_stock,
     ];
 
@@ -2672,11 +2684,14 @@ function _parasut_stock_taken_read($what, $id)
  * @param int    $taken_out   Units the sale behind the document already took out of
  *                            inventory_quantity and the document takes out at Paraşüt;
  *                            used only when the card is opened
+ * @param float|string|null $vat_rate  The invoice line's VAT rate the card opens at; null
+ *                            keeps the catalogue's (parasut_product_attributes()). A card
+ *                            already kept is never updated to it.
  * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string];
  *               'missing' => true when the products row no longer exists, 'read_failed' => true
  *               when it could not be read (no request was sent in either case)
  */
-function parasut_sync_product($product_id, $token, $taken_out = 0)
+function parasut_sync_product($product_id, $token, $taken_out = 0, $vat_rate = null)
 {
     // Fetch product details (needed for both new creation and track_stock flag).
     $result = mysqli_query(db::$con, "SELECT name, short_description, price, inventory, inventory_quantity, tax_rate, parasut_product_id FROM products WHERE id = '" . escape($product_id) . "' LIMIT 1");
@@ -2705,7 +2720,7 @@ function parasut_sync_product($product_id, $token, $taken_out = 0)
     $body = [
         'data' => [
             'type' => 'products',
-            'attributes' => parasut_product_attributes($product, $taken_out),
+            'attributes' => parasut_product_attributes($product, $taken_out, null, $vat_rate),
         ],
     ];
 

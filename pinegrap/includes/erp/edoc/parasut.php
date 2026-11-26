@@ -829,7 +829,10 @@ function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
  * product whose card Paraşüt did not open is refused, not put on the
  * default (erp_edoc_parasut_line_product_pick()).
  *
- * @param array $line       An erp_invoice_items row
+ * A card opened here takes the line's VAT rate, not the catalogue's: the
+ * line is what the sale charged. A card already kept stays as it is.
+ *
+ * @param array $line       An erp_invoice_items row (product_id, tax_rate)
  * @param int   $taken_out  Units of the line's product the invoice's sale already took out
  *                          of Pinegrap's count (parasut_invoice_stock_taken()): a card
  *                          opened now starts from the stock before the invoice
@@ -847,7 +850,7 @@ function erp_edoc_parasut_line_product($line, $taken_out = 0)
             return array('id' => '', 'error' => (string) $token['error']);
         }
 
-        $sync = parasut_sync_product($product_id, (string) $token['token'], $taken_out);
+        $sync = parasut_sync_product($product_id, (string) $token['token'], $taken_out, $line['tax_rate'] ?? null);
     }
 
     return erp_edoc_parasut_line_product_pick($line, $sync, defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '');

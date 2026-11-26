@@ -184,8 +184,8 @@ function test_parasut_product_stock_sync_product_takes_the_quantity()
 {
 	$body = parasut_product_stock_test_source('includes/fn/parasut.php', 'parasut_sync_product');
 
-	pg_assert_contains('function parasut_sync_product($product_id, $token, $taken_out = 0)', $body);
-	pg_assert_contains("'attributes' => parasut_product_attributes(\$product, \$taken_out),", $body);
+	pg_assert_contains('function parasut_sync_product($product_id, $token, $taken_out = 0, $vat_rate = null)', $body);
+	pg_assert_contains("'attributes' => parasut_product_attributes(\$product, \$taken_out, null, \$vat_rate),", $body);
 }
 
 // Which orders took their tracked lines out of Pinegrap's count: every
@@ -326,15 +326,15 @@ function test_parasut_product_stock_typed_invoice_reads_applied_moves()
 	pg_assert_contains('SELECT status, type, cancelled_by FROM orders', $body);
 }
 
-// The driver's line product hands the quantity to parasut_sync_product();
-// the body builder works it out once per invoice and gives each line its
-// product's.
+// The driver's line product hands the quantity and the line's VAT rate to
+// parasut_sync_product(); the body builder works the quantity out once per
+// invoice and gives each line its product's.
 function test_parasut_product_stock_driver_passes_the_quantity()
 {
 	$line = parasut_product_stock_test_source('includes/erp/edoc/parasut.php', 'erp_edoc_parasut_line_product');
 
 	pg_assert_contains('function erp_edoc_parasut_line_product($line, $taken_out = 0)', $line);
-	pg_assert_contains("\$sync = parasut_sync_product(\$product_id, (string) \$token['token'], \$taken_out);", $line);
+	pg_assert_contains("\$sync = parasut_sync_product(\$product_id, (string) \$token['token'], \$taken_out, \$line['tax_rate'] ?? null);", $line);
 
 	$payload = parasut_product_stock_test_source('includes/erp/edoc/parasut.php', 'erp_edoc_parasut_invoice_payload');
 
