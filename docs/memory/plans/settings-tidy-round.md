@@ -18,15 +18,17 @@ priority: 6
 - Lose an anchor, a settings key or a right: `workflow/decisions-made-product-14.md`.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- TR1 (S, no product code) Done #11829: `settings-crossings-census.md` and its six files. The crossings census, into `plans/settings-crossings-census.md` (more files past 4 KB). For every service page of the registry and every card that leads to Connections: where the lead goes (page, anchor), whether and where the page leads back, where the person stands after Connect, Save and Disconnect, the names at both ends.
-  - Then, for each feature: the hops of a first set-up from its card to working, the round trips with nothing to do at one end, and the ten worst paths.
-- TR2 (architect) after TR1: one rule for the hand-over, asked of the owner with the worst paths as its examples; this file gains the rule and TR3's cut.
-- TR3 (M, cut by the rule) after TR2: the crossings follow the rule.
-- TR4 (architect, then steps) Ecommerce: its plan, by the survey's order.
+- TR1 Done #11829: the crossings census, `settings-crossings-census.md` and its six files.
+- TR2 Done (2026-11-26, agent channel poll 232): the rule, `settings-crossings-rule.md`. TR3 is cut in four, one at a time: they share `connections.php`.
+- TR3a (M) The return: the helper every lead uses, the key check as a pure function, "Back to {card}", the return after Save and Connect and through the sign-in, the two old parameters folded in. Every lead to the service's page in the same tab: E-mail sending's and Backups' leads that land on the list, MCP servers' new tab.
+- TR3b (S) after TR3a: nothing is lost: the pane's unsaved fields kept and put back, the assistant's drawer opened again (paths 7 and 8 of `settings-crossings-census-worst.md`).
+- TR3c (M) after TR3b: the page finishes it: the application's fields on the page of a Google or Microsoft account service, the drives' two answers made one, Sign in with Microsoft given its anchor and button (paths 1 to 6).
+- TR3d (S) after TR3c: no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.
+- TR4 Done by the architect (2026-11-26): Ecommerce's plan is `settings-ecommerce-tidy.md`, steps EC1 to EC6, free beside TR3 (another file).
 - TR5 (architect, then steps) Accounting's ERP card and Updates and maintenance (cron steps, one S3, K2): their plans.
 - TR6 (S) Close-out: the rule into `ui/`, the survey files corrected or deleted, this file deleted.
 
 ## What about the other panes?
 - SEO, Languages and Translation, Fediverse, Integrations, Channels and Team have their folded-row lines in `settings-scan-findings.md`; they follow TR5 unless TR1 shows one of them among the worst paths.
 
-Related: docs/memory/plans/settings-tidy-census.md, docs/memory/plans/settings-tidy-census-order.md, docs/memory/plans/settings-scan-findings.md, docs/memory/ui/connections-one-place.md
+Related: docs/memory/plans/settings-crossings-rule.md, docs/memory/plans/settings-ecommerce-tidy.md, docs/memory/plans/settings-tidy-census.md, docs/memory/plans/settings-tidy-census-order.md, docs/memory/plans/settings-scan-findings.md, docs/memory/ui/connections-one-place.md
