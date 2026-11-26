@@ -20,8 +20,9 @@ module: lead_touch
 - `lead_sources.php`, Visitors menu after "Create Visitor Report" while `pg_lead_ready()`; gate `validate_visitors_access()`. Help row `visitors#lead-sources`.
 - Tools row: month stepper, "Last 12 months", the period, "First touch" / "Last touch", "Excel" quiet at the right. Figures: Leads, Customers (note: the share), Revenue. "Group by" Channel / Campaign / Landing page above the table frame. Head line: the figures count only visitors who accepted marketing cookies.
 - Rows by the touch visit's channel (the visitor reports' names), campaign ("No campaign") or landing page; a trimmed visit is its own group (`gone`), "Not known" under every grouping, Campaign too (`pg_lead_sources_group()`, most leads first, #11806). Each contact's earliest row of a kind counts once.
-- "Became customers" = the period's leads whose contact has a customer row at or after the lead row (the same second counts), as a share of the leads; "–" with no lead. The API reads the same figures; who counts as a customer: `lead-sources-customer-rule.md`.
-- Revenue only with commerce on and the order reports right: the total of each new customer's first order (`orders.total`, minor units); a customer by paid invoice adds none (its currency may differ from the shop's).
+- "Became customers" = the period's leads whose contact has a customer row at or after the lead row (the same second counts), as a share of the leads; "–" with no lead. The API reads the same figures.
+- A customer row is judged at read (`pg_lead_customer_read()`): a cancelled or fully refunded first order is no customer and no revenue; the next counting order takes the row over, in its own period. Details: `lead-sources-customer-rule.md`.
+- Revenue only with commerce on and the order reports right: the customer's counting order total less refunds (`pg_customer_value_order_amount()`, minor units); a customer by paid invoice adds none (its currency may differ from the shop's).
 - Excel: `pg_xlsx_write_plain()`, the table as shown, revenue as a money cell.
 
 ## What is not done here?
