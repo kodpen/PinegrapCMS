@@ -13,6 +13,7 @@ description: Why nobody heard a voice message (VA1): the recorder's hint while t
 - `ws_voice_unheard_reason($channel, $row, $state)` applies it to a message: '' for no recording or one written out; `ws_voice_state_of($row)` reads status, transcript and error of the row once.
 - `ws_ai_heard_text()` passes the reason to `ws_voice_heard()`, whose note becomes `[voice message, not transcribed: <ws_voice_unheard_words()>]` (English, like the prompt). The MCP ask reads the same.
 - After the request block, `ws_ai_briefing()` and `ws_mcp_ask_start()` add `ws_voice_unheard_line($reason)` outside the data blocks, as the site's own line: that it could not hear it, why, where the setting is (the settings card for `off`, the channel menu for `skipped`, record again or write for `failed`), and not to guess. Pinegrap AI takes it in its parts, Claude's brief in its text.
+- A recording written out gets the heard line there instead (`workspace-voice-heard-line.md`).
 - Claude's routine instructions (`ws_claude_routine_prompt()`, step 2b) name the case; the bootstrap version is unchanged (the routine text is served by the site).
 - The row's `error` is site-language text and stays out of the prompt.
 

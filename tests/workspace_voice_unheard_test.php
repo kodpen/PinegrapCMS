@@ -171,3 +171,36 @@ function test_ws_voice_unheard_hint_drawn()
 	pg_assert_same('Settings', $result['label']);
 	pg_assert_same('Switch it on', $result['note'], 'the manager\'s note follows the words');
 }
+
+// A request that was a recording written out is followed by the site's own
+// line: the machine transcript is how the model hears a voice message, so it
+// answers what was said and never that it cannot hear sound. No line without
+// a transcript (the unheard line speaks then) or for a file the recorder did
+// not name; the transcript stays in the request block, never in the line.
+function test_ws_voice_heard_line()
+{
+	$line = ws_voice_heard_line('voice-20261126-190312.weba', 'Can you hear me?');
+	pg_assert_contains('machine transcript', $line, 'names the machine transcript');
+	pg_assert_contains('Answer what the transcript says', $line, 'answers what was said');
+	pg_assert_contains('Never answer that you cannot hear', $line, 'never says it cannot hear');
+	pg_assert_false(strpos($line, 'Can you hear me?') !== false, 'the transcript stays in its data block');
+
+	pg_assert_same('', ws_voice_heard_line('voice-1.weba', ''), 'no transcript');
+	pg_assert_same('', ws_voice_heard_line('voice-1.weba', " \n "), 'an empty transcript');
+	pg_assert_same('', ws_voice_heard_line('voice-1.weba', '<@user:4>'), 'a transcript of tags alone');
+	pg_assert_same('', ws_voice_heard_line('report.mp3', 'Can you hear me?'), 'a sound file somebody attached');
+	pg_assert_same('', ws_voice_heard_line('', 'Can you hear me?'), 'no file');
+}
+
+// Pinegrap AI's briefing (Claude's brief and the model agents read it too)
+// and the MCP ask add the heard line after the request when it was heard.
+function test_ws_voice_heard_line_is_wired()
+{
+	$ai = ws_voice_unheard_test_source('includes/workspace/ai.php');
+	pg_assert_contains("\$heard_line = ((\$unheard === '') && function_exists('ws_voice_request_heard_line')) ? ws_voice_request_heard_line(\$message) : '';", $ai, 'Pinegrap AI reads the line');
+	pg_assert_contains("            \$parts[] = ws_voice_unheard_line(\$unheard);\n        } elseif (\$heard_line !== '') {\n            \$parts[] = \$heard_line;", $ai, 'the line follows the request block');
+
+	$mcp = ws_voice_unheard_test_source('includes/workspace/mcp_ask.php');
+	pg_assert_contains("\$heard_line = ((\$unheard === '') && function_exists('ws_voice_request_heard_line')) ? ws_voice_request_heard_line(\$message) : '';", $mcp, 'the MCP ask reads the line');
+	pg_assert_contains("        \$parts[] = ws_voice_unheard_line(\$unheard);\n    } elseif (\$heard_line !== '') {\n        \$parts[] = \$heard_line;", $mcp, 'the MCP ask adds the line');
+}
