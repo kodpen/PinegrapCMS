@@ -110,18 +110,26 @@ function pg_api_refusals_patterns($routes) {
 // The route a logged request reached and its path with the ids folded out:
 // array(route id or '', path). A path no route matches (a wrong address, a
 // wrong method) keeps its words and loses its numbers, so /nope/12 and
-// /nope/13 are one row.
+// /nope/13 are one row. A tool called over MCP is logged as /mcp followed by
+// its route's path (pg_mcp_route_run()): it folds to that route, the /mcp
+// kept in front so MCP and REST calls stay separate rows.
 function pg_api_refusals_fold_path($method, $path, $patterns) {
 
 	$method = strtoupper((string)$method);
+
+	$path = (string)$path;
+
+	$mcp = (strpos($path, '/mcp/') === 0);
+
+	$route_path = $mcp ? substr($path, 4) : $path;
 
 	if (isset($patterns[$method])) {
 
 		foreach ($patterns[$method] as $pattern) {
 
-			if (preg_match($pattern[0], $path)) {
+			if (preg_match($pattern[0], $route_path)) {
 
-				return array($pattern[1], $pattern[2]);
+				return array($pattern[1], ($mcp ? '/mcp' : '') . $pattern[2]);
 
 			}
 

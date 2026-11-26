@@ -67,6 +67,20 @@ function test_api_refusals_fold_path()
 	pg_assert_same(array('', '/v2'), pg_api_refusals_fold_path('GET', '/v2', $patterns), 'a number inside a word stays');
 }
 
+// A tool called over MCP is logged as /mcp and the route's own path
+// (pg_mcp_route_run()): it folds to the route it ran, the /mcp kept so the
+// MCP rows stay apart from the REST ones.
+function test_api_refusals_fold_path_of_an_mcp_call()
+{
+	$patterns = pg_api_refusals_patterns(api_refusals_test_routes());
+
+	pg_assert_same(array('orders.get', '/mcp/orders/{id}'), pg_api_refusals_fold_path('GET', '/mcp/orders/12', $patterns), 'an MCP tool call');
+	pg_assert_same(array('pages.update', '/mcp/pages/{id}'), pg_api_refusals_fold_path('POST', '/mcp/pages/4', $patterns), 'an MCP write');
+	pg_assert_same(array('', '/mcp'), pg_api_refusals_fold_path('POST', '/mcp', $patterns), 'a refusal of the protocol itself');
+	pg_assert_same(array('', '/mcp/nope/{id}'), pg_api_refusals_fold_path('GET', '/mcp/nope/3', $patterns), 'no route behind /mcp');
+	pg_assert_same(array('', '/mcpx/orders/{id}'), pg_api_refusals_fold_path('GET', '/mcpx/orders/12', $patterns), 'only the /mcp segment');
+}
+
 // Rows of one route, code and application are added up whatever the id;
 // the busiest comes first; each code carries its guide section.
 function test_api_refusals_fold_rows()
