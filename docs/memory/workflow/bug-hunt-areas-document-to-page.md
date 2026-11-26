@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-areas-document-to-page
-description: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, two questions left
+description: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, two faults left as one task
 ---
 
 ## What was the area?
@@ -24,7 +24,9 @@ description: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faul
 - Stored pictures go to folder 0, public like the designer's other assets; the token is let go after one store.
 
 ## What was seen and left?
-- The reader drops words around a reading: a table section's paragraphs, the lines of a questions, figures, cards or contact section that are no item, a card past its word limit, a contact line's words around its e-mail. Whether such a section keeps its look with the rest as paragraphs, or turns to Text, is the architect's question.
-- The intro's picture is never shown: the build turns the hero picture off on purpose. Whether the intro shows it is the architect's question.
+- The reader drops words around a reading (a table section's paragraphs, the lines of a questions, figures, cards or contact section that are no item, a card past its word limit), and the intro's picture is never shown. Too large for the hunt's PR; given out as one task after #11769 lands.
+- Architect (2026-11-26, agent channel request 3035): both are faults. Nothing of the document is lost between the rows and the built page unless the person leaves a row out. A special section keeps its look: paragraphs before the first item go above the items, the rest under them, in order; an item past a limit goes under them as a paragraph with its lead bold.
+- The rows show these words when a row is opened, with no new control or mark. The intro's picture goes in a hero starter with a picture place, else in a picture section right under the intro, and is stored like the others.
+- Test that holds it, red first: for each kind, every paragraph index a section read is on the built page exactly once, pictures counted. The PR adds the rule to "What binds it?" in `designer/document-to-page.md` and corrects `document-reader.md` and `document-start.md`.
 
 Related: docs/memory/designer/document-to-page.md, docs/memory/workflow/bug-hunt.md
