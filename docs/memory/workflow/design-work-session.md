@@ -10,7 +10,7 @@ description: Where a screen's look is designed: in a design session of its own w
 - The architect still writes how each screen is put together, in words, in its plan (`screen-described-in-plan.md`); a part with no model on the Design examples screen it draws as before (`architect-draws-new-part.md`).
 
 ## In which order does the architect draw?
-- The sheets of `plans/designer-drawings.md`, then DD22 to DD26 of `plans/designer-options-census-steps-3.md`; a sheet that holds the most waiting steps comes first. The ten sheets of the levelled features (DD12 to DD21) are drawn.
+- The sheets of `plans/designer-drawings.md`, then DD22 to DD26 of the Options census (drawn, `designer/options-panel-census.md`); a sheet that holds the most waiting steps comes first. The ten sheets of the levelled features (DD12 to DD21) are drawn.
 - One sheet, one docs-only PR, claimed as its plan says; a green one lands alone.
 
 ## What does a designer feature's sheet show besides its screen?

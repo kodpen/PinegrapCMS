@@ -67,6 +67,20 @@ function test_api_refusals_fold_path()
 	pg_assert_same(array('', '/v2'), pg_api_refusals_fold_path('GET', '/v2', $patterns), 'a number inside a word stays');
 }
 
+// A tool called over MCP is logged as /mcp and the route's own path
+// (pg_mcp_route_run()): it folds to the route it ran, the /mcp kept so the
+// MCP rows stay apart from the REST ones.
+function test_api_refusals_fold_path_of_an_mcp_call()
+{
+	$patterns = pg_api_refusals_patterns(api_refusals_test_routes());
+
+	pg_assert_same(array('orders.get', '/mcp/orders/{id}'), pg_api_refusals_fold_path('GET', '/mcp/orders/12', $patterns), 'an MCP tool call');
+	pg_assert_same(array('pages.update', '/mcp/pages/{id}'), pg_api_refusals_fold_path('POST', '/mcp/pages/4', $patterns), 'an MCP write');
+	pg_assert_same(array('', '/mcp'), pg_api_refusals_fold_path('POST', '/mcp', $patterns), 'a refusal of the protocol itself');
+	pg_assert_same(array('', '/mcp/nope/{id}'), pg_api_refusals_fold_path('GET', '/mcp/nope/3', $patterns), 'no route behind /mcp');
+	pg_assert_same(array('', '/mcpx/orders/{id}'), pg_api_refusals_fold_path('GET', '/mcpx/orders/12', $patterns), 'only the /mcp segment');
+}
+
 // Rows of one route, code and application are added up whatever the id;
 // the busiest comes first; each code carries its guide section.
 function test_api_refusals_fold_rows()
@@ -95,6 +109,31 @@ function test_api_refusals_fold_rows()
 	pg_assert_same(0, $folded[2]['app_id'], 'ties broken by the latest');
 	pg_assert_same('', $folded[2]['app_name'], 'no name for an unknown key');
 	pg_assert_same(4, $folded[3]['app_id'], 'another application is its own row');
+}
+
+// The Refused calls card links a code's guide section only to a topic the
+// viewer may read (agent_guide.php answers 404 for any other): a manager
+// sees a designer's design_* refusals but not the designer topic.
+function test_api_refusals_guide_topic_for_the_viewer()
+{
+	pg_assert_same('designer', pg_api_refusals_guide_topic('designer#page', array('start', 'designer', 'panel')), 'listed');
+	pg_assert_same('', pg_api_refusals_guide_topic('designer#page', array('start', 'content', 'panel')), 'not listed: no link');
+	pg_assert_same('start', pg_api_refusals_guide_topic('start#calls', array('start')), 'start');
+	pg_assert_same('', pg_api_refusals_guide_topic('', array('start')), 'no guide');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
+
+	$routes = array(
+		array('id' => 'design.pages.get', 'scope' => 'design:read'),
+		array('id' => 'pages.get', 'scope' => 'pages:read'),
+		array('id' => 'guide.read', 'scope' => '')
+	);
+
+	pg_assert_same(array('pages.get', 'guide.read'), pg_agent_guide_route_ids($routes, array('pages:read')), 'the routes the scopes cover');
+
+	$listed = pg_agent_guide_listed(pg_agent_guide_registry(), pg_agent_guide_route_ids($routes, array('pages:read')), array());
+
+	pg_assert_same('', pg_api_refusals_guide_topic('designer#page', $listed), 'a manager\'s scopes: no designer link');
 }
 
 // The one read takes refused rows in the window, grouped, busiest first,

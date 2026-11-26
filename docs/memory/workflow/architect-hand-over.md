@@ -15,7 +15,7 @@ description: Hand-over note of the architect session of 2026-11-24 and 25, writt
 - His report of 2026-11-25, an SQL error on the "Edit Contact" screen: bug issue #11549, given to coordinator 1. He is told when its fix has landed.
 
 ## What did he decide on 2026-11-25?
-- The Options panel census: he ticked every package of the three questions (product part 110 of the decisions list, in #11548). The plan is DO2 to DO27 of `plans/designer-options-census.md`. He was told that twenty-six more steps make 1 January 2027 tighter; what slips is his to choose.
+- The Options panel census: he ticked every package of the three questions (product part 110 of the decisions list, in #11548). The plan, DO2 to DO27, is done (`designer/options-panel-census.md`). He was told that twenty-six more steps make 1 January 2027 tighter; what slips is his to choose.
 - Who draws while no design session runs: "sen çiz mimar ve tasarımcısın" (`design-work-session.md`).
 
 ## What was he asked and has not answered? (none of it holds work)

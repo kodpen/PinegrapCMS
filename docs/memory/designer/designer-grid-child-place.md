@@ -4,7 +4,7 @@ description: Advanced › Layout's Span columns, Span rows and Start at on a gri
 ---
 
 ## Where do the rows sit?
-- Style tab › Advanced › Layout, on an element whose parent's Display is Grid or Inline Grid at any size (context key `gridItem` of `_sdOptCtx()`; several elements: all of them). Row `gridItem` of `_SD_LAY_ROWS`, the first of the element's own rows. Plan `designer-options-census-steps.md` DO5 (#11654).
+- Style tab › Advanced › Layout, on an element whose parent's Display is Grid or Inline Grid at any size (context key `gridItem` of `_sdOptCtx()`; several elements: all of them). Row `gridItem` of `_SD_LAY_ROWS`, the first of the element's own rows. Options census DO5 (#11654) (`options-panel-census.md`).
 - Rows: "Screen size" (left out when the element is a grid box too: its Columns and Rows already show it), "Span columns", "Span rows", "Start at" with two number fields, Column and Row. No button in a bar or a head. Named areas and the row "Area" above these: `designer-grid-areas.md`.
 
 ## What does each field write?

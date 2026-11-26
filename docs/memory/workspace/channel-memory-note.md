@@ -5,6 +5,8 @@ description: The system note when a channel's or the general memory changes (#10
 
 ## When does a channel get a memory note?
 - Every write of an entry (added, changed, deleted; a move to the general memory counts as a change of the general memory) by the Memory tab, the API, MCP or /memory: `ws_memory_note()` is called from `ws_memory_save()`, `ws_memory_delete()` and `ws_memory_move_general()` (`includes/workspace/channel_memory.php`), the one write path they share.
+- Architect (2026-11-26, agent channel request 3063): an update that changes nothing writes nothing: no UPDATE, no note. `ws_memory_save()` with `$current` asks the pure `ws_memory_unchanged()`: title, text, tags in stored order, pinned, expires_at, project where `ws_memory_project_ready()`, after `ws_memory_check()`'s folding ("İade" against "iade" or a trailing space is no change).
+- A change of only pinned or expires_at is a change. `ws_memory_move_general()` always notes. The Memory tab's Save closes the form, without a note.
 - A channel's entry: a note in that channel, head "Channel memory updated". A general entry (channel_id 0): a note in every unarchived agent channel (`ws_memory_note_channels()`, at most 200), head "General memory updated".
 
 ## What does it say?

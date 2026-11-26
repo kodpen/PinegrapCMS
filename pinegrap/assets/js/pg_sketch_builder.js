@@ -35,10 +35,11 @@
  * What a part takes from the sketch: the typed heading (the first heading of
  * the block), the number of columns of a row of equal boxes (features,
  * cards, gallery; a column copied to reach the count gets its number in its
- * heading) and a picture beside the text (the split intro). A body
- * section's padding is the design's section rhythm, var(--pg-var-space-section),
- * falling back to the starter's own 3rem, so a design without variables
- * draws as before. Every built root carries _sketchId, the section's id.
+ * heading) and a picture beside the text (the split intro). The title goes
+ * into the block's first h1-h6, not a badge before it. A body section whose
+ * padding is py-5 takes the design's section rhythm,
+ * var(--pg-var-space-section), falling back to the starter's own 3rem, so a
+ * design without variables draws as before. Every built root carries _sketchId, the section's id.
  *
  * Nothing runs at load but the definition of window.PGSketchBuilder.
  * tests/sketch_builder_test.php runs it in Node.
@@ -147,6 +148,15 @@
         return node.type === 'content' && node.props && node.props.contentType === 'heading';
     }
 
+    // The heading a section's title goes into: the first h1-h6, so a
+    // starter's badge or eyebrow (a heading drawn as a <span>) keeps its
+    // word; the first heading of any tag when the block has no h1-h6.
+    function titleHeading(root) {
+        return find(root, function (node) {
+            return isHeading(node) && /^h[1-6]$/.test(String(node.props.tag || ''));
+        }) || find(root, isHeading);
+    }
+
     function isParagraph(node) {
         return node.type === 'content' && node.props && node.props.contentType === 'paragraph';
     }
@@ -184,7 +194,7 @@
         }
         while (kids.length < want) {
             var copy = copyTree(kids[kids.length - 1], make);
-            var heading = find(copy, isHeading);
+            var heading = titleHeading(copy);
             if (heading && heading.props) {
                 heading.props.text = String(heading.props.text || '').replace(/\s+\d+$/, '') + ' ' + (kids.length + 1);
             }
@@ -215,6 +225,21 @@
         }
         var own = p.inlineStyle ? String(p.inlineStyle).replace(/[;\s]+$/, '') : '';
         p.inlineStyle = own ? own + '; ' + declarations : declarations;
+    }
+
+    // A root whose padding is the starters' py-5, which the rhythm stands
+    // in for. A root with a style attribute keeps its own: an inline style
+    // would hide it (_attrs prints only for an empty prop), and the
+    // background picture of hero-image-bg sits there.
+    function takesRhythm(root) {
+        var p = root.props || {};
+        var attrs = Array.isArray(p._attrs) ? p._attrs : [];
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && String(attrs[i].name).toLowerCase() === 'style') {
+                return false;
+            }
+        }
+        return /(^|\s)py-5(\s|$)/.test(String(p.cssClass || ''));
     }
 
     // A text section: heading and paragraph in a narrow column.
@@ -401,7 +426,7 @@
             title = str(opts.names[kind]);
         }
         if (title) {
-            var heading = find(root, isHeading);
+            var heading = titleHeading(root);
             if (heading) {
                 heading.props.text = escapeText(title);
             }
@@ -412,7 +437,7 @@
         if (paragraph) {
             placeParagraph(root, escapeText(paragraph), opts.node);
         }
-        if (place === 'body') {
+        if (place === 'body' && takesRhythm(root)) {
             addStyle(root, RHYTHM);
         }
         root.props._sketchId = section.id || '';

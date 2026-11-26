@@ -511,6 +511,9 @@ function pg_library_item_from_subtree($node, $meta, $design, $site)
  * $site    'pages', 'groups', 'folders'  id => name of the records it has
  *          'shared' sid => name of its shared components
  *          'menus' id => name of its menus (a menu widget names its menu)
+ *          'path', 'host', 'has_file'  the site's path and host and a
+ *                 callable($name) telling whether a file of that name is
+ *                 in its file manager; without it no picture is counted
  *
  * The design's own wins: a class rule it has the same stays as it is; one
  * of the same name that differs stays too, and the item's class gets a new
@@ -531,13 +534,17 @@ function pg_library_item_from_subtree($node, $meta, $design, $site)
  *              ones the site does not have,
  *   'css'      text to append to the User Styles ('' when nothing),
  *   'rules_added', 'renamed' (old class => new), 'vars_added' (name => value),
- *   'cleared'  number of references cleared)
+ *   'cleared'  number of references cleared,
+ *   'pictures_missing'  number of the copy's distinct picture addresses
+ *              that point at this site's own files and have no file there;
+ *              the addresses themselves stay as written)
  */
 function pg_library_item_into_design($item, $design, $site)
 {
     $framework = isset($design['framework']) && is_array($design['framework']) ? $design['framework'] : array();
     $out = array('tree' => null, 'widgets' => array(), 'shared' => array(), 'css' => '',
-                 'rules_added' => 0, 'renamed' => array(), 'vars_added' => array(), 'cleared' => 0);
+                 'rules_added' => 0, 'renamed' => array(), 'vars_added' => array(), 'cleared' => 0,
+                 'pictures_missing' => 0);
 
     // ── Rules: by the item's own class names.
     $design_rules = pg_library_css_rules(isset($design['css']) ? $design['css'] : '');
@@ -736,7 +743,126 @@ function pg_library_item_into_design($item, $design, $site)
         );
     }
     $out['tree'] = $copy['tree'];
+
+    // ── Pictures: what is inserted (the tree, new rows, added rules).
+    if (isset($site['has_file']) && is_callable($site['has_file'])) {
+        $urls = array();
+        $trees = array($out['tree']);
+        foreach (array_merge($out['widgets'], $out['shared']) as $entry) {
+            if (isset($entry['tree']) && is_array($entry['tree'])) $trees[] = $entry['tree'];
+            if (isset($entry['config'])) _pg_library_string_urls($entry['config'], '', $urls);
+        }
+        foreach ($trees as $tree) {
+            if (is_array($tree)) _pg_library_tree_urls($tree, $urls);
+        }
+        _pg_library_text_urls($out['css'], '', $urls);
+        $out['pictures_missing'] = pg_library_missing_pictures($urls, isset($site['path']) ? $site['path'] : '/',
+            $site['has_file'], isset($site['host']) ? $site['host'] : '');
+    }
     return $out;
+}
+
+// The addresses one text holds: the text itself under an address key
+// (each srcset candidate), the address attributes of its tags, and its
+// style url()s. Appended to $urls.
+function _pg_library_text_urls($text, $key, &$urls)
+{
+    if (!is_string($text) || $text === '') return;
+    if ($key !== '' && pg_library_address_key($key)) {
+        foreach (_pg_library_value_urls($key, $text) as $u) $urls[] = $u;
+        return;
+    }
+    if (strpos($text, '<') !== false) {
+        foreach (_pg_library_markup_tags($text) as $tag) {
+            if (!preg_match_all('/[\s\/"\']([a-zA-Z:-]+)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/', $tag, $attrs, PREG_SET_ORDER)) continue;
+            foreach ($attrs as $a) {
+                if (!pg_library_address_key($a[1])) continue;
+                $value = (isset($a[5]) && $a[5] !== '') ? $a[5] : ((isset($a[4]) && $a[4] !== '') ? $a[4] : $a[3]);
+                foreach (_pg_library_value_urls($a[1], _pg_library_entity_decode($value)) as $u) $urls[] = $u;
+            }
+        }
+    }
+    if (stripos($text, 'url(') !== false
+        && preg_match_all('/url\(\s*(?:"([^"]*)"|\'([^\']*)\'|([^)]*))/i', _pg_library_css_unescape($text), $m, PREG_SET_ORDER)) {
+        foreach ($m as $one) {
+            $urls[] = isset($one[3]) && $one[3] !== '' ? $one[3] : (isset($one[2]) && $one[2] !== '' ? $one[2] : $one[1]);
+        }
+    }
+}
+
+// The addresses of the strings of an array, each read with the nearest
+// named key above it.
+function _pg_library_string_urls($value, $key, &$urls, $depth = 0)
+{
+    if ($depth > 40) return;
+    if (is_string($value)) {
+        _pg_library_text_urls($value, $key, $urls);
+        return;
+    }
+    if (!is_array($value)) return;
+    foreach ($value as $k => $v) _pg_library_string_urls($v, is_int($k) ? $key : (string)$k, $urls, $depth + 1);
+}
+
+// The addresses of a tree's props, an _attrs value read under its name.
+function _pg_library_tree_urls($tree, &$urls)
+{
+    _pg_library_walk($tree, function (&$n) use (&$urls) {
+        if (!isset($n['props']) || !is_array($n['props'])) return;
+        $props = $n['props'];
+        if (isset($props['_attrs']) && is_array($props['_attrs'])) {
+            foreach ($props['_attrs'] as $a) {
+                if (is_array($a) && isset($a['name'], $a['value'])) _pg_library_text_urls((string)$a['value'], strtolower(trim((string)$a['name'])), $urls);
+            }
+            unset($props['_attrs']);
+        }
+        _pg_library_string_urls($props, '', $urls);
+    });
+}
+
+/**
+ * How many of the distinct picture addresses point at this site's own
+ * files and have no file there. A file of the file manager is served at
+ * the site's path and its name, so an address counts when it is that path
+ * (or a name relative to it) and a picture's name, on no host or on
+ * $host. Another host's address, a data: address, a variable or a
+ * placeholder ({{token}}, var()) and an address under a folder cannot be
+ * checked and are not counted. $has_file($name) tells whether the site
+ * has a file of that name. Pure.
+ */
+function pg_library_missing_pictures($urls, $path, $has_file, $host = '')
+{
+    $path = '/' . trim((string)$path, '/');
+    if ($path !== '/') $path .= '/';
+    $host = strtolower((string)preg_replace('/:\d+$/', '', (string)$host));
+    $names = array();
+    foreach ((array)$urls as $url) {
+        $u = trim(_pg_library_entity_decode((string)$url));
+        if ($u === '' || preg_match('/[{}$]|var\(/i', $u)) continue;
+        $u = (string)preg_replace('/[?#].*$/s', '', $u);
+        if (preg_match('#^(?:(https?):)?//([^/]*)(/.*)?$#i', $u, $m)) {
+            $h = strtolower((string)preg_replace('/:\d+$/', '', $m[2]));
+            if ($host === '' || $h !== $host) continue;
+            $u = isset($m[3]) ? $m[3] : '/';
+        } elseif (preg_match('/^[a-zA-Z][a-zA-Z0-9+.\-]*:/', $u)) {
+            continue;
+        }
+        if ($u === '') continue;
+        if ($u[0] === '/') {
+            if (strpos($u, $path) !== 0) continue;
+            $u = substr($u, strlen($path));
+        } elseif (strpos($u, './') === 0) {
+            $u = substr($u, 2);
+        }
+        $name = rawurldecode($u);
+        if ($name === '' || strpos($name, '/') !== false || strpos($name, '\\') !== false) continue;
+        if (!preg_match('/\.(jpe?g|png|gif|webp|avif|svg|bmp|ico|tiff?)$/i', $name)) continue;
+        $names[$name] = true;
+    }
+    $missing = 0;
+    foreach (array_keys($names) as $name) {
+        if (!call_user_func($has_file, (string)$name)) $missing++;
+    }
+    return $missing;
 }
 
 /**
@@ -1277,6 +1403,13 @@ function pg_library_editor($sub, $request, $user)
         if (!$item) return array('status' => 'error', 'message' => lang('The library item was not found.'));
         $site = pg_library_site_records();
         $site['shared'] = pg_library_site_shared($item);
+        // The address readers of the import checks count the pictures.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_library_io.php');
+        $site['path'] = defined('PATH') ? PATH : '/';
+        $site['host'] = defined('HOSTNAME') ? (string)HOSTNAME : '';
+        $site['has_file'] = function ($name) {
+            return (bool)db_value("SELECT id FROM files WHERE name = '" . e($name) . "' LIMIT 1");
+        };
         $out = pg_library_item_into_design($item, _pg_library_request_design($request), $site);
         $made = array();
         if (!empty($request['make']) && ($out['widgets'] || $out['shared'])) {
@@ -1292,7 +1425,7 @@ function pg_library_editor($sub, $request, $user)
             if (!empty($w['cleared'])) $unbound[] = $w['name'];
         }
         return array('status' => 'success', 'tree' => $out['tree'], 'css' => $out['css'], 'renamed' => $out['renamed'],
-            'cleared' => (int)$out['cleared'], 'unbound' => $unbound, 'rows' => count($out['widgets']) + count($out['shared']),
+            'cleared' => (int)$out['cleared'], 'pictures_missing' => (int)$out['pictures_missing'], 'unbound' => $unbound, 'rows' => count($out['widgets']) + count($out['shared']),
             'made' => $made);
     }
 

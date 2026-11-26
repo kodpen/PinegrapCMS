@@ -189,6 +189,26 @@ function pg_agent_guide_listed($registry, $route_ids, $modules) {
 
 }
 
+// The ids of the $routes a holder of $scopes may call: what decides the
+// topics listed beside start (pg_agent_guide_listed()).
+function pg_agent_guide_route_ids($routes, $scopes) {
+
+	$ids = array();
+
+	foreach ((array)$routes as $route) {
+
+		if (isset($route['id'], $route['scope']) && api_has_scope($scopes, (string)$route['scope'])) {
+
+			$ids[] = (string)$route['id'];
+
+		}
+
+	}
+
+	return $ids;
+
+}
+
 // Whether one of $route_ids starts with one of $prefixes.
 function pg_agent_guide_holds($prefixes, $route_ids) {
 

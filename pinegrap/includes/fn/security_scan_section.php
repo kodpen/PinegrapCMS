@@ -240,7 +240,7 @@ function pg_security_rule_text($kind, $detail)
     }
 
     if (in_array($kind, pg_security_accounts_kinds(), true)) {
-        return array('reason' => pg_security_accounts_reason($kind, $detail), 'advice' => pg_security_accounts_advice($kind));
+        return array('reason' => pg_security_accounts_reason($kind, $detail), 'advice' => pg_security_accounts_advice($kind, $detail));
     }
 
     return array('reason' => '', 'advice' => '');

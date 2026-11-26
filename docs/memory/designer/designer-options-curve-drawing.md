@@ -27,4 +27,4 @@ description: The drawing of the easing curve and "Page transition" (plan designe
 - The plan says "Keep across pages" writes "the same `view-transition-name` on both pages": the drawing joins the two by a "Name" the operator reads and picks, and says where nothing is kept.
 - The drawing wins where the two differ (`workflow/architect-draws-new-part.md`); what neither says the worker asks of the architect.
 
-Related: docs/memory/plans/designer-options-census-steps-2.md, docs/memory/designer/designer-options-transition.md, docs/memory/designer/designer-interactions-part.md
+Related: docs/memory/designer/options-panel-census.md, docs/memory/designer/designer-options-transition.md, docs/memory/designer/designer-interactions-part.md

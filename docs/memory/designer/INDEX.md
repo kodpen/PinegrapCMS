@@ -475,7 +475,7 @@
 - designer-library-export-import.md: My library's Export and Import (ML4): the export file and its name, names kept beside, the import's report, the endpoints and the part
 - designer-library-import-checks.md: The checks an import into My library runs (script, event attribute, address kinds), all or nothing, and the refusal's words
 - designer-library-item.md: My library item model (ML1): a subtree to an item, an item into a design (rules added or renamed, variables, references cleared and marked), the store as design files, rights
-- designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; decided, not built [decision: decisions-made-product-112.md]
+- designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; how they are counted [decision: decisions-made-product-112.md]
 - designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows [decision: decisions-made-product-108.md, decisions-made-product-110.md]
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
@@ -508,6 +508,7 @@
 - designer-options-layout.md: Advanced › Layout in the Options panel draws its rows by context (DP6, #10504): flex container rows, flex child rows under "parent: flex", the note naming hidden rows, "Make it a container"
 - designer-options-multiple.md: The Options panel with several elements selected (#10468): identity row with the count, tabs by kind, "— Multiple —" per control, the ring dot, the counts, a change written to all as one undo step
 - designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts [decision: here]
+- designer-options-new-row.md: How a new option enters the Options panel and what every option keeps: its section, the row kinds it copies, unset draws as before, one writer, User Styles or a Bootstrap class [decision: here]
 - designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added [decision: here]
 - designer-options-page-transition.md: "Page transition" (Settings, Theme) and "Keep across pages" (Interactions) as built in DO20: the page entry in the variables file, the rules, the page-only save, the names
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
@@ -603,6 +604,7 @@
 - designer-select-similar-drawing.md: The drawing of "Select similar" (sheet DD13, step SE2): boards E1 to E4, where the row sits, the line above the Options panel with its two lists, what it settles, the new texts and the key
 - designer-select-similar-matcher.md: Why "Select similar" exists in the designer, what is never chosen, the pure matcher PGSelectSimilar.find() (ways of alike, places, left out), not across pages; SE1 #11530, SE2 #11649 [decision: decisions-made-product-108.md]
 - designer-select-similar-part.md: "Select similar" in the designer: the menu rows, the S key, the palette row, the `similar` part and the line above the Options panel with its two lists; what ends the line
+- designer-selection-in-place.md: A selection marks the HTML tree in place, draws Attributes and Styles after the frame and leaves the icon picker unbuilt until it opens (issue #11795)
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
 - designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts" [decision: decisions-made-product-111.md]
@@ -766,6 +768,7 @@
 - list-search-sort-price-forms.md: List widget search, sort and price forms (server box, catalog's bound form) and page links: accessible names, translated words, no router page name in hidden inputs or links (#4457, #4538).
 - listen-script.md: The "Listen" block's script pg_listen.js and its two doors: what it reads, in which language, when the button shows, the markup it expects
 - loop-band-canvas.md: The loop band and the element chips on the canvas: band height and tooltips, the chip row (Only when, Off, Shown when) in the flow, see-through wrappers, the Turkish band terms (#2523) [decision: decisions-made-product-48.md]
+- markdown-component.md: The Markdown palette component (DO26): the reader pg_markdown_html() and its twin PGMarkdown, what it draws, the safe addresses, the part 'markdown', where the text is edited and translated
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
 - member-widgets-open-slots.md: Sign-in and sign-up widgets' slots opened (CB7, #9895): password rules and the three links as elements, the sign-in buttons drawn true (settings only)
@@ -782,11 +785,11 @@
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image on the page and the canvas (#9199): an icon without words; its address in data-pg-fallback, never in the onerror code
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
-- options-panel-census-bss.md: Options panel census, part 4: what Bootstrap Studio has that the Page Design Studio lacks, each as have, partly or missing, with where ours lives (view transitions to collection pages) [decision: here]
-- options-panel-census-layout.md: Options panel census, part 2: gaps to place and size an element (grid tracks, position, layer order, per size values, sticky, scroll snap, aspect ratio, object fit)
-- options-panel-census-look.md: Options panel census, part 3: gaps to dress and move an element (hover/focus/pressed, transitions, gradients, filters, blend, transforms, text effects, masks)
+- options-panel-census-bss.md: Options panel census, part 4, as built: what Bootstrap Studio has beside the Page Design Studio, as have or partly, with where ours lives (DO19 to DO26) [decision: here]
+- options-panel-census-layout.md: Options panel census, part 2, as built: grid tracks and areas, position presets, per size values, hide and sticky by size, scroll snap, aspect ratio, object fit
+- options-panel-census-look.md: Options panel census, part 3, as built: states, transition, easing curve, background layers, filters, transform, text effects, clip shape and mask, cursor
 - options-panel-census-today.md: Options panel census, part 1: every Options panel control on 2026-11-24 per element kind and Style/Advanced section, and which rows take a per screen size value
-- options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24): what the designer's Options panel sets today and what needs code, each gap sized S or M [decision: decisions-made-product-110.md]
+- options-panel-census.md: Start file of the Options panel census (DO1, 2026-11-24) and what was built from it (DO2 to DO26, done 2026-11-26): which file holds each row or component now [decision: decisions-made-product-105.md, decisions-made-product-110.md]
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out. [decision: here]
@@ -925,6 +928,7 @@
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - sketch-build-again.md: "Build again" of a built sketch page (SK4): which sections stay, are built again, added or removed, when it asks, the History snapshot first, what was not done
+- sketch-build-starters.md: How "Build the page" gets the palette starters (#11794): the host's maker, block styles after the build, h1 not badge, rhythm only on py-5, pages built before the fix
 - sketch-build.md: "Build the page" of a Prototype view sketch page (SK4): the part sketchbuild, the chip marks, the list of boxes to check, the draft tab built, the sketch kept in props._sketch
 - sketch-builder.md: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): sections to header, body and footer trees from palette starters, columns, heading, the section rhythm variable
 - sketch-feel.md: The Sketch tool's feel (SK8): what keeps a drag at 60 frames a second on a hundred boxes, touch near a handle, the selected box on top, how it is measured (tests/js/sketch_feel.js) and the numbers
