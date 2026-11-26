@@ -456,7 +456,8 @@ function pg_security_content_sources()
 
 /**
  * The pass's cursor: the one given while it is whole (source index, last id
- * read, when the pass started), otherwise a new pass from the first source.
+ * read, when the pass started, the record types that could not be read),
+ * otherwise a new pass from the first source.
  *
  * @param mixed $cursor
  * @param int $now
@@ -464,7 +465,7 @@ function pg_security_content_sources()
  */
 function pg_security_content_cursor($cursor, $now)
 {
-    $fresh = array('source' => 0, 'after' => 0, 'started' => (int) $now);
+    $fresh = array('source' => 0, 'after' => 0, 'started' => (int) $now, 'unread' => array());
 
     if (!is_array($cursor)) {
         return $fresh;
@@ -480,7 +481,11 @@ function pg_security_content_cursor($cursor, $now)
         return $fresh;
     }
 
-    return array('source' => (int) $cursor['source'], 'after' => (int) $cursor['after'], 'started' => (int) $cursor['started']);
+    $unread = (isset($cursor['unread']) && is_array($cursor['unread']))
+        ? array_values(array_intersect(pg_security_content_source_names(), array_map('strval', array_filter($cursor['unread'], 'is_string'))))
+        : array();
+
+    return array('source' => (int) $cursor['source'], 'after' => (int) $cursor['after'], 'started' => (int) $cursor['started'], 'unread' => $unread);
 }
 
 /**
@@ -566,22 +571,16 @@ function pg_security_content_store(array $sighting, $now)
 /**
  * Close a whole pass: a stored-content finding it did not see again (last
  * seen before the pass started) moves as pg_security_state_unseen() says:
- * open and ignored become gone, quarantined and gone stay.
+ * open and ignored become gone, quarantined and gone stay. A record of a
+ * type the pass could not read was not looked at and stays as it is.
  *
  * @param int $started
- * @return bool
+ * @param string[] $unread Record types that could not be read
+ * @return void
  */
-function pg_security_content_close($started)
+function pg_security_content_close($started, array $unread = array())
 {
-    $kinds = array_keys(pg_security_content_kinds());
-
-    return db_q(
-        "UPDATE security_finding SET state = ? WHERE kind IN (" . implode(', ', array_fill(0, count($kinds), '?')) . ")
-         AND state IN (?, ?) AND last_seen < ?",
-        array_merge(
-            array(pg_security_state_unseen(PG_SECURITY_STATE_OPEN)),
-            $kinds,
-            array(PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started))) !== false;
+    pg_security_scan_close_kinds(array_keys(pg_security_content_kinds()), (int) $started, $unread);
 }
 
 /**
@@ -609,7 +608,7 @@ function pg_security_content_pass($cursor, $deadline, $now)
 
     while (microtime(true) < (float) $deadline) {
         if ($cursor['source'] >= count($sources)) {
-            pg_security_content_close($cursor['started']);
+            pg_security_content_close($cursor['started'], $cursor['unread']);
             $result['done'] = true;
             break;
         }
@@ -619,6 +618,10 @@ function pg_security_content_pass($cursor, $deadline, $now)
         // A source that cannot be read, or has nothing more, hands over to
         // the next one.
         if (($batch === false) || !$batch) {
+            if (($batch === false) && !in_array($types[$cursor['source']], $cursor['unread'], true)) {
+                $cursor['unread'][] = $types[$cursor['source']];
+            }
+
             $cursor['source']++;
             $cursor['after'] = 0;
             continue;

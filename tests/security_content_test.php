@@ -183,11 +183,16 @@ function test_security_content_cursor_walks_the_sources_in_order()
 	pg_assert_same('config', $sources[count($sources) - 1]);
 
 	$cursor = pg_security_content_cursor(null, 100);
-	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100), $cursor);
+	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100, 'unread' => array()), $cursor);
 
 	$kept = pg_security_content_cursor(array('source' => 2, 'after' => 55, 'started' => 90), 100);
-	pg_assert_same(array('source' => 2, 'after' => 55, 'started' => 90), $kept, 'a pass in progress keeps its place');
+	pg_assert_same(array('source' => 2, 'after' => 55, 'started' => 90, 'unread' => array()), $kept, 'a pass in progress keeps its place');
 
-	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100), pg_security_content_cursor(array('source' => 99, 'after' => 1, 'started' => 5), 100), 'a broken cursor starts again');
-	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100), pg_security_content_cursor(array('source' => 'x'), 100));
+	// A source that could not be read stays named until the pass closes, so
+	// its findings are not marked gone; a name that is no source is dropped.
+	$kept = pg_security_content_cursor(array('source' => 3, 'after' => 0, 'started' => 90, 'unread' => array('page', 'nope', 7)), 100);
+	pg_assert_same(array('page'), $kept['unread']);
+
+	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100, 'unread' => array()), pg_security_content_cursor(array('source' => 99, 'after' => 1, 'started' => 5), 100), 'a broken cursor starts again');
+	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100, 'unread' => array()), pg_security_content_cursor(array('source' => 'x'), 100));
 }
