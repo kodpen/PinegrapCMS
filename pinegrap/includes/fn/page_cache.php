@@ -1789,7 +1789,8 @@ function pg_page_cache_panel_sub_actions()
         'designer' => array(
             'key' => 'sub_action',
             'dirty' => array('form_adopt', 'page_detach', 'page_delete', 'import_paste', 'design_publish',
-                'design_rename', 'design_delete', 'theme_save', 'theme_look_save', 'theme_palette_save'),
+                'design_rename', 'design_delete', 'theme_save', 'theme_look_save', 'theme_palette_save',
+                'collection_pages'),
             'clean' => array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch', 'form_fields',
                 'design_targets', 'selectable_pages', 'page_load', 'import_fragment', 'seo_check',
                 'widget_ghosts', 'preview_widgets', 'preview_records', 'preview_record_open', 'legacy_region_preview', 'page_regions_import', 'template_prepare', 'template_from_design',

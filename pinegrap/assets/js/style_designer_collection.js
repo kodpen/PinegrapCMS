@@ -415,7 +415,7 @@ StyleDesigner.definePart('collection', function (K) {
         (function walk(n) {
             if (n.props && n.props.cssClass === 'card-body') {
                 n.children.push(S.host.node('content', { contentType: 'link', text: _sdT('Open'), href: '#',
-                    cssClass: 'stretched-link visually-hidden-focusable', customName: _sdT('Open'), _bindings: { href: 'form_item_view' } }));
+                    cssClass: 'card-link stretched-link small', customName: _sdT('Open'), _bindings: { href: 'form_item_view' } }));
                 return;
             }
             (n.children || []).forEach(walk);
@@ -603,7 +603,7 @@ StyleDesigner.definePart('collection', function (K) {
             var t = e.target;
             if (!t.closest('.sd-nc-kinds')) _ncKindClose();
             var b = t.closest('[data-open]');
-            if (b) { e.preventDefault(); var pid = parseInt(b.getAttribute('data-open'), 10); S.host.back(); S.host.open(pid); return; }
+            if (b) { e.preventDefault(); var pid = parseInt(b.getAttribute('data-open'), 10), host = S.host; _ncBack(); host.open(pid); return; }
             b = t.closest('[data-choice]');
             if (b) { S.choice = b.getAttribute('data-choice'); if (S.choice === 'there') _ncLoadCollections(); _ncRedraw('[data-choice="' + S.choice + '"]'); return; }
             b = t.closest('[data-coll]');

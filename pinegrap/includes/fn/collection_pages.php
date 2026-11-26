@@ -279,6 +279,12 @@ function pg_coll_pages_make($req, $user)
         return array('ok' => false, 'error' => $error, 'field' => $field);
     };
 
+    // The collection's page is named by the editor, not typed: another
+    // design's page of that address moves it on to the next free one.
+    for ($n = 2; ($what === 'collection') && pg_coll_pages_taken(array($name)) && ($n < 50); $n++) {
+        $name = trim((string) $req['name']) . '-' . $n;
+    }
+
     if (pg_coll_pages_taken(array($name))) {
         return $fail(lang(array('string' => 'The address "{var:1}" is taken.', 'vars' => $name)), 'name');
     }
