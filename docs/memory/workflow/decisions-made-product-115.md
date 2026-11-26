@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-115
-description: Decisions made, product part 115 (2026-11-26 on): the spreadsheet and document editors get all eight abilities offered; simple formulas change the no-formula-engine scope of 2026-11-19
+description: Decisions made, product part 115 (2026-11-26 on): the spreadsheet and document editors get all eight abilities offered; simple formulas change the no-formula-engine scope of 2026-11-19; "Preview on a phone" shows the live page's QR code in a design with no draft
 ---
 
 ## Where are the rules and the earlier parts?
@@ -19,3 +19,9 @@ description: Decisions made, product part 115 (2026-11-26 on): the spreadsheet a
 - Charts, pivot tables, tracked changes, comments and page layout stay never built; no library is added.
 
 Related: docs/memory/plans/office-sheet-abilities.md, docs/memory/plans/office-sheet-formulas.md, docs/memory/plans/office-document-abilities.md
+
+## What does "Preview on a phone" show in a design with no draft? (owner, 2026-11-26, agent channel poll 243, message 14627)
+- Owner (2026-11-26, in the architect's window, with a picture of the window saying "Bağlantı oluşturulamadı"): "telefonda görüntüle qr göstermiyor tekrar dene işe yaramıyor."
+- What was found: the phone link is made over draft pages only (`decisions-made-product-106.md`); a design with no draft is answered "This design has no draft pages." and the window hid that reason (bug issue #11966).
+- Asked what the row does in a published design with no draft, among the live page's QR code, the row left out and the reason alone, he chose "Yayındaki sayfanın QR'ı çıksın".
+- Architect's reading, not his words: the code holds the live address, so no share link is made, and the window says it opens the live page. Issue #11968; a design with a draft behaves as before.
