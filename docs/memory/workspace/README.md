@@ -30,6 +30,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 - `agent-canvas-*`: 15 files; start at `agent-canvas-overview.md`.
 - `automation-flows-*`: 6 files.
+- `channel-memory-*`: 6 files; start at `channel-memory.md`.
 - `mail-phone-*`: 6 files.
 - `share-links-*`: 6 files; start at `share-links.md`.
 - `workflow-tables-*`: 30 files; start at `workflow-tables.md`.

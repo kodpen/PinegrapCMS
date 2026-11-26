@@ -119,6 +119,7 @@
 - channel-info-agents-drawing.md: The drawing of Channel info's one agents block for both tabs (built in #11617): a calm two-line row that opens in place, what goes, the measures [decision: here]
 - channel-item-tags.md: A tag in a channel item asks the tagged assistant or wakes the tagged agent; outside a message body (polls, tasks, shared notes, table cells) only in agent channels, by managers [decision: decisions-made-workspace-23.md]
 - channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2, #11617): agent faces in the head; People, the agents block, Guests in Channel info; last seen for a manager [decision: decisions-made-workspace-19.md, decisions-made-workspace-24.md]
+- channel-memory-brief-projects.md: An agent's brief tells a memory of more than 40 live records by its pinned records and its projects with their counts (MS2, #11866): headings, the reads it names, the size bound
 - channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep [decision: decisions-made-schema-27.md, decisions-made-workspace-39.md]
 - channel-memory-mark.md: The decision mark on a message by a person or an agent (ws_messages.marked_by_kind): who marks, what is markable, naming the marker
 - channel-memory-note.md: The system note when a channel's or the general memory changes (#10546): text, writer, the burst rule, the write path, no agent woken [decision: here]

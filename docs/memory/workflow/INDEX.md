@@ -73,6 +73,7 @@
 - bug-hunt-areas-erp-credit-limit.md: The bug hunt of the ERP credit limit and "Put it on my account" (architect, 2026-11-26, request 3141): two orders and two invoices passing one limit at once; what was read clean, what was asked [decision: here]
 - bug-hunt-areas-erp-edoc-incoming.md: The bug hunt in ERP incoming e-invoices and account sync (k2, 2026-11-26): hostile UBL, a document taken in twice, reads and decisions, automatic links; one fault fixed, what is clean and left
 - bug-hunt-areas-erp-expenses.md: The bug hunt of ERP expenses and repeating expenses (2026-11-26, PR #11843): three races fixed, what was read clean and what was left [decision: here]
+- bug-hunt-areas-erp-period-lock.md: The bug hunt of the ERP period lock and the accountant pack (architect, 2026-11-26, request 3141): what it fixed, what was read clean, what was left [decision: here]
 - bug-hunt-areas-erp-quotes-purchase-orders.md: The bug hunt in ERP sales quotes and purchase orders (k2, 2026-11-26): the guest link, a quote invoiced twice, an order received twice, rights; two faults fixed, what was read clean, what is left [decision: here]
 - bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
 - bug-hunt-areas-file-manager-permissions.md: Bug hunt 53, File Manager permissions (2026-11-24, PR #11492): who sees, moves, renames and deletes a file or folder, the Recycle Bin, design files, path checks; three faults fixed
