@@ -1586,6 +1586,13 @@ if ($_POST) {
 
 				$liveform->add_notice(lang(array('string' => 'The {var:1} application was saved.', 'vars' => $provider['label'])));
 
+				// Paraşüt's environment is saved with its client; the select
+				// is read-only, and the save refused, while the site is
+				// connected.
+				if (($provider_key === 'parasut') && parasut_environment_save($_POST['parasut_environment'] ?? null)) {
+					log_activity(lang(array('string' => 'set the Paraşüt environment to {var:1}', 'vars' => parasut_environment_value($_POST['parasut_environment']))), $_SESSION['sessionusername']);
+				}
+
 				log_activity(lang(array('string' => 'changed the {var:1} application of connected accounts', 'vars' => $provider['label'])), $_SESSION['sessionusername']);
 
 				// Save and try: each of the site's accounts of the provider is
@@ -3890,7 +3897,7 @@ function connections_edoc_page($page, $id, $may_manage, $draft = null, $can_seal
 	$page['status_extra'] = '
 			<div class="mt-4">
 				<div class="pg-field-label">' . h(lang('Connection')) . '</div>
-				<div class="pg-text-2 text-break">' . h($line) . (!empty($environment['is_test']) ? ' <span class="pg-pill pg-tone-amber">' . h((string) $environment['label']) . '</span>' : '') . '</div>
+				<div class="pg-text-2 text-break">' . (($own && !empty($environment['is_test'])) ? '<span class="pg-pill pg-tone-amber">' . h((string) $environment['label']) . '</span> ' : '') . h($line) . ((!$own && !empty($environment['is_test'])) ? ' <span class="pg-pill pg-tone-amber">' . h((string) $environment['label']) . '</span>' : '') . '</div>
 				' . ((is_array($row) && ((int) $row['checked_at'] > 0))
 					? '<div class="pg-text-meta mt-1">' . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $row['checked_at'], 'format' => 'plain_text')), (string) $row['check_message'])))) . '</div>'
 					: '') . '
@@ -4137,6 +4144,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 				? '<details><summary class="pg-text-2">' . h(lang('How to set it up')) . '</summary><ol class="pg-text-2 ps-5 mt-3 mb-0">' . $setup_steps . '</ol></details>'
 				: '<ol class="pg-text-2 ps-5 mb-0">' . $setup_steps . '</ol>') . '
 			' . $redirect_html . '
+			' . ((($provider_key === 'parasut') && ($return_service !== '')) ? parasut_environment_field_html(parasut_environment(), is_array(parasut_devhub_connection())) : '') . '
 			<div>
 				<label class="pg-field-label" for="' . $field_id('client_id') . '">' . h(lang('Client ID')) . '</label>
 				<input type="text" class="pg-input' . ($client_id_bad ? ' is-invalid' : '') . '" id="' . $field_id('client_id') . '" name="client_id"

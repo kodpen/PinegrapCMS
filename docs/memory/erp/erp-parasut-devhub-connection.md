@@ -10,7 +10,7 @@ module: parasut
 - Back on the page, `connections.php` sees the flash's connection and runs `parasut_devhub_after_connect()`: `GET /v4/me?include=companies`, `parasut_connect_company('', saved, companies)`, writes `config.parasut_company_id`, keeps e-mail and company name in the sealed service entry `parasut_devhub` (with its `connection_id`), and answers `parasut_connect_report()`. Several companies and none saved: a warning, the number is typed under Advanced.
 - The client lives in `connect_apps`, not `config.parasut_client_id`; `parasut_order_buttons_on()` counts the connection as the client.
 - Connect again keeps the connection's id: `parasut_devhub_after_connect()` first drops the `parasut_devhub` entry, so a failed `/v4/me` read does not leave the earlier account's e-mail and company in the status line (#11741).
-- Staging (`id-staging.parasut.com`) is not offered: the provider signs in at `id.parasut.com` only.
+- Staging (`id-staging.parasut.com`) is the site's choice of environment: `erp-parasut-devhub-staging.md`.
 
 ## Which token do the requests use?
 - `parasut_token_choice(parasut_devhub_connection())`: the site's connection whenever there is one, in any state (one that must be made again says so, no fall-back), else the older token below. `parasut_get_token()` then takes `pg_connect_access_token()`; `parasut_token_forget()` and `_parasut_token_after_401()` force its renewal. `parasut_connection_status()` without an owner reads the connection (`parasut_devhub_status()`, grant `devhub`).

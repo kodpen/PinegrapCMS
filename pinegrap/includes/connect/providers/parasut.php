@@ -14,6 +14,9 @@
  * renewal); kc_idp_hint skips the choice of identity provider. The access
  * token lives 300 seconds.
  *
+ * The site's environment (parasut_environment()) picks the sign-in server:
+ * id-staging.parasut.com for a test client of the portal, the same paths.
+ *
  * The site holds one Paraşüt connection: the account is not named by an
  * identity token (identity => false), its company is read from
  * GET /v4/me?include=companies once the browser is back
@@ -30,13 +33,15 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+$parasut_sign_in = parasut_sign_in(parasut_environment());
+
 return array(
     'label'            => 'Paraşüt',
     'icon'             => 'bi-receipt',
-    'authorize_url'    => 'https://id.parasut.com/realms/parasut/protocol/openid-connect/auth',
-    'token_url'        => 'https://id.parasut.com/realms/parasut/protocol/openid-connect/token',
-    'check_url'        => 'https://api.parasut.com/v4/me',
-    'issuers'          => array('https://id.parasut.com/realms/parasut'),
+    'authorize_url'    => $parasut_sign_in['authorize'],
+    'token_url'        => $parasut_sign_in['token'],
+    'check_url'        => parasut_api_base(parasut_environment()) . '/v4/me',
+    'issuers'          => array($parasut_sign_in['issuer']),
     'identity_scopes'  => array('openid', 'offline_access'),
     'identity'         => false,
     'account_label'    => 'Paraşüt',

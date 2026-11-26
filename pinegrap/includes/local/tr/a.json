@@ -3684,6 +3684,7 @@
     "A term is bought once: buy it again before it ends to keep your cases coming. Nothing is charged by itself.": "Üyelik bir kez satın alınır: kolilerinizin gelmeye devam etmesi için bitmeden yeniden satın alın. Kendiliğinden hiçbir ücret alınmaz.",
     "A term runs for its months. Buy it again before it ends and your next case comes without a gap.": "Üyelik süresi boyunca geçerlidir. Bitmeden yeniden satın alın, bir sonraki koliniz ara vermeden gelsin.",
     "A terms page is set": "Koşullar sayfası seçili",
+    "A test client from Paraşüt's Developer Portal works only with the test environment. Documents made there are not real.": "Paraşüt Geliştirici Portalı'ndan alınan bir test istemcisi yalnızca test ortamında çalışır. Orada düzenlenen belgeler gerçek değildir.",
     "A test goes to you and at most {var:1} more addresses.": "Deneme size ve en fazla {var:1} adrese daha gider.",
     "A test notification was sent to that device. It can take a few seconds to arrive, and a browser that is completely closed receives it when it is next opened.": "O cihaza deneme bildirimi gönderildi. Ulaşması birkaç saniye sürebilir; tamamen kapalı bir tarayıcı bildirimi bir sonraki açılışında alır.",
     "A test ride round the yard is free with every bike": "Her bisiklette avluda bir deneme sürüşü ücretsizdir",
