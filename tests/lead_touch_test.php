@@ -153,3 +153,13 @@ function test_lead_touch_became_runs_under_the_contacts_lock()
 	pg_assert_true(strpos($body, 'GET_LOCK') !== false && strpos($body, 'GET_LOCK') < strpos($body, 'FROM contact_journey'), 'the check and the write run under the lock');
 	pg_assert_contains('RELEASE_LOCK', $body);
 }
+
+function test_lead_touch_a_cancelled_booking_is_no_earlier_act()
+{
+	$counted = pg_lead_touch_booking_statuses();
+
+	pg_assert_false(in_array('held', $counted, true), 'a hold is no booking yet');
+	pg_assert_false(in_array('cancelled', $counted, true), 'an abandoned deposit hold ends cancelled: no booking, as a cancelled order is none');
+	pg_assert_true(in_array('requested', $counted, true) && in_array('confirmed', $counted, true) && in_array('done', $counted, true));
+	pg_assert_contains('pg_lead_touch_booking_statuses()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php'));
+}

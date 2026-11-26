@@ -113,9 +113,22 @@ function pg_lead_touch_verdict(array $facts)
 }
 
 /**
+ * The booking statuses that count as a booking made: not a hold, which is
+ * none yet, and not a cancelled one, as a cancelled order counts for
+ * nothing either (an abandoned deposit checkout ends as a cancelled hold
+ * that carries the customer). Pure.
+ *
+ * @return string[]
+ */
+function pg_lead_touch_booking_statuses()
+{
+    return array('requested', 'confirmed', 'no_show', 'done');
+}
+
+/**
  * Whether the contact had an act of the same kind before this one: a lead
- * act a complete form or a booking, a customer act a complete order or a
- * paid sales invoice.
+ * act a complete form or a booking made (pg_lead_touch_booking_statuses()),
+ * a customer act a complete order or a paid sales invoice.
  *
  * @param int    $kind PG_LEAD_JOURNEY_LEAD or PG_LEAD_JOURNEY_CUSTOMER
  * @param int    $contact_id
@@ -138,7 +151,7 @@ function pg_lead_touch_earlier($kind, $contact_id, $act, $ref_id)
         $user_ids = array_map('intval', (array) db_values("SELECT user_id FROM user WHERE user_contact = '" . $contact_id . "'"));
 
         return $user_ids && function_exists('pg_booking_ready') && pg_booking_ready()
-            && ((int) db_value("SELECT COUNT(*) FROM bookings WHERE user_id IN (" . implode(',', $user_ids) . ") AND status <> 'held'" . $not('booking')) > 0);
+            && ((int) db_value("SELECT COUNT(*) FROM bookings WHERE user_id IN (" . implode(',', $user_ids) . ") AND status IN ('" . implode("', '", pg_lead_touch_booking_statuses()) . "')" . $not('booking')) > 0);
     }
 
     if ((int) db_value("SELECT COUNT(*) FROM orders WHERE contact_id = '" . $contact_id . "' AND status IN ('complete', 'exported')" . $not('order')) > 0) {
