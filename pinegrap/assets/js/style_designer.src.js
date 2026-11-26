@@ -84916,153 +84916,17 @@ const StyleDesigner = (function () {
     }
 
     // ========================= FIND & REPLACE =========================
-    // Walks the tree and finds/replaces matching text in every node's
-    // text-bearing props. Scope: current style tree only — shared_ref
-    // children are placeholders (invariant: children=[]) so they're not
-    // touched automatically; shared component internals must be edited
-    // from their own designer session.
-    var FR_TEXT_PROPS = [
-        'text', 'content', 'html', 'paragraph', 'heading',
-        'btnText', 'btnText1', 'btnText2',
-        'title', 'subtitle', 'label', 'caption',
-        'price', 'tier'
-    ];
-
+    // The window is the part 'findreplace' (style_designer_findreplace.js):
+    // this page, all pages or the code view's files. _frWalk() is also the
+    // walk of the class and style readers.
     function _frWalk(node, fn) {
         if (!node) return;
         fn(node);
         if (node.children) for (var i = 0; i < node.children.length; i++) _frWalk(node.children[i], fn);
     }
 
-    function _frBuildPattern(needle, opts) {
-        if (!needle) return null;
-        if (opts.regex) {
-            try { return new RegExp(needle, opts.caseSensitive ? 'g' : 'gi'); }
-            catch (e) { return null; }
-        }
-        var escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        if (opts.wholeWord) escaped = '\\b' + escaped + '\\b';
-        return new RegExp(escaped, opts.caseSensitive ? 'g' : 'gi');
-    }
-
-    function _frCount(needle, opts) {
-        var pat = _frBuildPattern(needle, opts);
-        if (!pat) return 0;
-        var total = 0;
-        _frWalk(tree, function (n) {
-            if (!n.props) return;
-            FR_TEXT_PROPS.forEach(function (k) {
-                var v = n.props[k];
-                if (typeof v !== 'string' || !v) return;
-                pat.lastIndex = 0;
-                var m = v.match(pat);
-                if (m) total += m.length;
-            });
-        });
-        return total;
-    }
-
-    function _frReplaceAll(needle, replacement, opts) {
-        var pat = _frBuildPattern(needle, opts);
-        if (!pat) return 0;
-        var total = 0;
-        saveState();
-        _frWalk(tree, function (n) {
-            if (!n.props) return;
-            FR_TEXT_PROPS.forEach(function (k) {
-                var v = n.props[k];
-                if (typeof v !== 'string' || !v) return;
-                pat.lastIndex = 0;
-                var m = v.match(pat);
-                if (m) {
-                    n.props[k] = v.replace(pat, replacement);
-                    total += m.length;
-                }
-            });
-        });
-        if (total) render();
-        return total;
-    }
-
     function openFindReplaceModal() {
-        var existing = document.getElementById('sd-fr-overlay');
-        if (existing) { existing.remove(); return; }
-
-        var overlay = document.createElement('div');
-        overlay.id = 'sd-fr-overlay';
-        overlay.className = 'sd-fr-overlay';
-        overlay.innerHTML =
-            '<div class="sd-fr-modal" role="dialog" aria-label="' + esc(_sdT('Find and Replace')) + '">' +
-                '<div class="sd-fr-header">' +
-                    '<span class="bi bi-search me-3"></span>' + esc(_sdT('Find and Replace')) + '' +
-                    '<button type="button" class="sd-fr-close" id="sd-fr-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>' +
-                '</div>' +
-                '<div class="sd-fr-body">' +
-                    '<label class="sd-fr-label">' + esc(_sdT('Find')) + '</label>' +
-                    '<input type="text" class="sd-fr-input" id="sd-fr-find" placeholder="' + esc(_sdT('The text to look for…')) + '" autocomplete="off">' +
-                    '<label class="sd-fr-label">' + esc(_sdT('Replace')) + '</label>' +
-                    '<input type="text" class="sd-fr-input" id="sd-fr-replace" placeholder="' + esc(_sdT('The new text…')) + '" autocomplete="off">' +
-                    '<div class="sd-fr-opts">' +
-                        '<label><input type="checkbox" id="sd-fr-case"> ' + esc(_sdT('Case sensitive')) + '</label>' +
-                        '<label><input type="checkbox" id="sd-fr-word"> ' + esc(_sdT('Whole word')) + '</label>' +
-                        '<label><input type="checkbox" id="sd-fr-regex">' + esc(_sdT(' Regex')) + '</label>' +
-                    '</div>' +
-                    '<div class="sd-fr-status" id="sd-fr-status">—</div>' +
-                '</div>' +
-                '<div class="sd-fr-footer">' +
-                    '<button type="button" class="sd-fr-btn" id="sd-fr-count">' + esc(_sdT('Count matches')) + '</button>' +
-                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-fr-replace-all">' + esc(_sdT('Replace All')) + '</button>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(overlay);
-
-        var findInp    = overlay.querySelector('#sd-fr-find');
-        var replaceInp = overlay.querySelector('#sd-fr-replace');
-        var caseChk    = overlay.querySelector('#sd-fr-case');
-        var wordChk    = overlay.querySelector('#sd-fr-word');
-        var regexChk   = overlay.querySelector('#sd-fr-regex');
-        var statusEl   = overlay.querySelector('#sd-fr-status');
-
-        function getOpts() {
-            return { caseSensitive: caseChk.checked, wholeWord: wordChk.checked, regex: regexChk.checked };
-        }
-        function refreshCount() {
-            var q = findInp.value;
-            if (!q) { statusEl.textContent = '—'; return; }
-            var opts = getOpts();
-            if (opts.regex) {
-                try { new RegExp(q); }
-                catch (e) { statusEl.textContent = _sdT('Invalid regex: {var}', e.message); return; }
-            }
-            var n = _frCount(q, opts);
-            statusEl.textContent = _sdT('{var} matches', n);
-        }
-
-        findInp.addEventListener('input', refreshCount);
-        caseChk.addEventListener('change', refreshCount);
-        wordChk.addEventListener('change', refreshCount);
-        regexChk.addEventListener('change', refreshCount);
-
-        overlay.querySelector('#sd-fr-count').addEventListener('click', refreshCount);
-
-        overlay.querySelector('#sd-fr-replace-all').addEventListener('click', function () {
-            var q = findInp.value;
-            if (!q) return;
-            var n = _frReplaceAll(q, replaceInp.value, getOpts());
-            statusEl.textContent = _sdT('{var} changes made', n);
-            if (n) sdToast(esc(_sdT('{var} matches were replaced.', n)), 'success');
-        });
-
-        overlay.querySelector('#sd-fr-close').addEventListener('click', function () { overlay.remove(); });
-        overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
-        overlay.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') overlay.remove();
-            else if (e.key === 'Enter' && !e.shiftKey) {
-                if (document.activeElement === findInp) refreshCount();
-            }
-        });
-
-        setTimeout(function () { findInp.focus(); }, 30);
+        _sdPartCall('findreplace', 'open', []).catch(_sdPartFailed);
     }
 
     // Notes popup — view/edit/delete a note on a single node
@@ -98319,6 +98183,7 @@ const StyleDesigner = (function () {
             _pgNewPageDraft: _pgNewPageDraft,
             _pgPageByKey: _pgPageByKey,
             _pgPublishSheet: _pgPublishSheet,
+            _pgTabHolder: _pgTabHolder,
             _pgTabsInsertAfter: _pgTabsInsertAfter,
             _pgTabsOpenPageSettings: _pgTabsOpenPageSettings,
             _pgTabsPersistActive: _pgTabsPersistActive,
