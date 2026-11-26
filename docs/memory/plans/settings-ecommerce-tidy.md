@@ -23,7 +23,7 @@ priority: 6
 - Inside a row: no popover and nothing more than one fold deep; a switch that showed a popover shows its fields under it as a group; every switch is `pg-switch`, every plain radio a `pg-seg` or, with more than four choices or a help line each, a list of radio rows; labels in sentence case; one line of help a field; at most eight fields before a group label.
 
 ## Which steps? (one at a time: one file; M about 1,000 product lines; tests red first)
-- EC1 (M) The fold: the rows' order, names, icons, lines and pills as pure functions in `includes/fn/commerce_settings_fold.php` with `tests/settings_commerce_fold_test.php`; the pane drawn through `pg_settings_fold()`, the purpose line, the cards inside unchanged. Gift Cards & Rewards is cut in two cards here (`pgset-giftcards`, new `pgset-rewards`) with their anchors.
+- EC1 (M) done (#11868): The fold: the rows' order, names, icons, lines and pills as pure functions in `includes/fn/commerce_settings_fold.php` with `tests/settings_commerce_fold_test.php`; the pane drawn through `pg_settings_fold()`, the purpose line, the cards inside unchanged. Gift Cards & Rewards is cut in two cards here (`pgset-giftcards`, new `pgset-rewards`) with their anchors.
 - EC2 (M) after EC1: Store and Payment methods opened.
 - EC3 (M) after EC2: Shipping, Address autocomplete, Stock locations opened; the old buttons of `carrier_api.php`, `carrier_labels.php`, `address_autocomplete.php` and `geo.php` drawn into them.
 - EC4 (M) after EC3: Gift cards, Rewards, Reference price opened.
