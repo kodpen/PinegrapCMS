@@ -495,6 +495,42 @@ function pg_commerce_settings_choice($name, $legend, $options, $help = '')
                     </div>';
 }
 /**
+ * Groups to choose as a list of ticks under a legend, each posting its id
+ * into the array <name>[] as the multi-select did; above eight groups a
+ * filter stands over the list (pg_commerce_settings_reveal_script()). Pure.
+ *
+ * @param string $name         the array's name without []
+ * @param string $legend       plain text
+ * @param array  $groups       id => path (plain text)
+ * @param int[]  $chosen       the ids ticked
+ * @param string $help         plain text, '' for none
+ * @param string $filter_label plain text: the filter's name and placeholder
+ * @return string HTML, a full-width cell
+ */
+function pg_commerce_settings_group_ticks($name, $legend, $groups, $chosen, $help, $filter_label)
+{
+    $list = $name . '_list';
+    $ticks = '';
+
+    foreach ($groups as $id => $path) {
+        $id = (int) $id;
+        $words = function_exists('mb_strtolower') ? mb_strtolower((string) $path, 'UTF-8') : strtolower((string) $path);
+        $ticks .= '
+                                <label class="d-flex align-items-center gap-2 pg-text-2" for="' . h($name . '_' . $id) . '" data-pg-filter-text="' . h($words) . '"><input type="checkbox" class="pg-checkbox" value="' . $id . '" id="' . h($name . '_' . $id) . '" name="' . h($name) . '[]"' . (in_array($id, array_map('intval', $chosen), true) ? ' checked="checked"' : '') . '/>' . h($path) . '</label>';
+    }
+
+    return '
+                    <div class="col-12">
+                        <fieldset' . (($help !== '') ? ' aria-describedby="' . h($name) . '_help"' : '') . '><legend class="form-label pg-field-label">' . h($legend) . '</legend>' . ((count($groups) > 8) ? '
+                            <div class="pg-f-md mb-3"><input type="search" class="form-control" data-pg-commerce-filter="' . h($list) . '" aria-label="' . h($filter_label) . '" placeholder="' . h($filter_label) . '" autocomplete="off"/></div>' : '') . '
+                            <div class="pg-commerce-ticks d-flex flex-column gap-3" id="' . h($list) . '">' . $ticks . '
+                            </div>
+                        </fieldset>' . (($help !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
+                    </div>';
+}
+
+/**
  * A quiet button that opens a box of fields under it, closed at first: the
  * fields of something new, drawn only when asked for. The box posts its
  * fields whether open or not. Pure.
@@ -521,8 +557,9 @@ function pg_commerce_settings_reveal($id, $label, $icon, $html)
 
 /**
  * The pane's script for pg_commerce_settings_reveal(): a click opens or
- * closes the box the button names. Delegated to the document, so the pane's
- * markup may be replaced after a save. Pure.
+ * closes the box the button names; typing in the filter of
+ * pg_commerce_settings_group_ticks() narrows its list. Delegated to the
+ * document, so the pane's markup may be replaced after a save. Pure.
  *
  * @return string
  */
@@ -536,6 +573,24 @@ function pg_commerce_settings_reveal_script()
             }
 
             window.pgCommerceRevealBound = true;
+
+            // The filter over a ticked list hides the ticks whose words do
+            // not hold what is typed; a hidden tick keeps its state.
+            document.addEventListener("input", function (event) {
+                var field = event.target;
+                var list = (field && field.getAttribute) ? document.getElementById(field.getAttribute("data-pg-commerce-filter") || "") : null;
+
+                if (!list) {
+                    return;
+                }
+
+                var words = field.value.trim().toLowerCase();
+
+                list.querySelectorAll("[data-pg-filter-text]").forEach(function (tick) {
+                    // An inline display: the d-flex of a tick would outweigh d-none.
+                    tick.style.display = ((words !== "") && (tick.getAttribute("data-pg-filter-text").indexOf(words) === -1)) ? "none" : "";
+                });
+            });
 
             document.addEventListener("click", function (event) {
                 var button = event.target.closest ? event.target.closest("[data-pg-commerce-reveal]") : null;
