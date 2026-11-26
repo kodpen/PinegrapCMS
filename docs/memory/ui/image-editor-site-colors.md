@@ -20,4 +20,4 @@ module: image_editor
 - The model checks the answer: `M.siteColors()` (section `SITECOLORS`). Tests: `tests/image_editor_colors_test.php`.
 
 ## Why no schema change?
-- Palettes and variables are already stored (`style.style_palette`, the design's `design-variables-<id>.css`); the action only reads them (PR #NNNN).
+- Palettes and variables are already stored (`style.style_palette`, the design's `design-variables-<id>.css`); the action only reads them (PR #11854).
