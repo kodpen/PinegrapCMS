@@ -56,6 +56,7 @@
 - bug-hunt-areas-csv-import-export.md: The bug hunt of the panel's CSV imports and exports (area 27, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
+- bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
