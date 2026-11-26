@@ -1,12 +1,12 @@
 ---
 name: agent-memory-search
-description: Plan (owner 2026-11-23), held until he opens it: text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
+description: Plan (owner 2026-11-23, opened 2026-11-26): text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
 priority: 6
 ---
 
 ## What is asked, and when does it start?
 - Owner (2026-11-23): agents get an index of the memory and a search in it, for the later move of this project's work into the agent channel (`workflow/decisions-made-workspace-49.md`).
-- Held: his words are "bugün için değil". A coordinator gives out no step of it until the owner opens it; the architect then takes this line out.
+- Owner (2026-11-26, agent channel message 14119): "ajan belleği devam edelim". The plan is open: its steps are given out in order, MS1 first, by the coordinator that holds it (`workflow/coordinator-second-paused.md`). Until then it was held by his words "bugün için değil".
 
 ## What is there today?
 - `ws_channel_memory` records (title 150, text 4000, tags, `project`), a channel's own and the general memory the agent channels share (`workspace/channel-memory.md`, `channel-memory-general.md`).
