@@ -66,6 +66,7 @@
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
+- parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left

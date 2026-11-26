@@ -185,6 +185,24 @@ function test_document_start_rows_parts()
 	pg_assert_same(array('rows', 2), $result[6], 'prices count rows');
 }
 
+// The words around a row's items are opened as fields like the others,
+// and are not counted or previewed as items.
+function test_document_start_rows_words_around()
+{
+	$result = document_start_test_node('var row = {kind: "questions", heading: "FAQ", items: [{type: "paragraph", text: "Read first."}, {question: "Parking?", answer: "Yes."}, {question: "Pets?", answer: "No."}, {type: "picture", src: "x.png", alt: "Map", text: ""}]};'
+		. 'var f = W.fields(row); W.set(row, f[1][0], "Read this first.");'
+		. 'out = [W.count(row), W.preview(row), f.map(function (x) { return x[1]; }), row.items[0].text];');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('questions', 2), $result[0], 'only the questions are counted');
+	pg_assert_same('Parking? · Pets?', $result[1], 'the preview shows the items');
+	pg_assert_same(array('heading', 'text', 'question', 'answer', 'question', 'answer', 'alt'), $result[2], 'the words around are fields in their place');
+	pg_assert_same('Read this first.', $result[3], 'a word around corrected');
+}
+
 // The page: the words go in as written, the starters' sample words go,
 // each section wears the section rhythm, left-out rows are not built.
 function test_document_start_page_words()
@@ -218,9 +236,10 @@ function test_document_start_page_words()
 	pg_assert_same(true, $result[4], 'a stored picture in the gallery');
 }
 
-// A picture among a text's paragraphs is placed where it stands; only the
-// pictures the page places are stored (none of a left-out row, none of the
-// intro, which the hero does not show).
+// A picture among a text's paragraphs is placed where it stands; the
+// intro's picture goes in a picture section under it when the hero has no
+// picture place; only the pictures the page places are stored (none of a
+// left-out row).
 function test_document_start_page_pictures()
 {
 	$result = document_start_test_node('var rows = ['
@@ -229,15 +248,17 @@ function test_document_start_page_pictures()
 		. '{id: "p7", kind: "gallery", heading: "", out: true, items: [{src: "picture:2", alt: "Gone"}]},'
 		. '{id: "p8", kind: "picture", heading: "", items: [{src: "picture:3", alt: "Dock"}]}'
 		. ']; var nodes = P.build(rows, {make: make, src: function (s) { return "/" + s.replace(":", "-") + ".png"; }});'
-		. 'var kinds = []; (function walk(n) { if (n.type === "content") kinds.push(n.props.contentType === "image" ? "image:" + n.props.src : n.props.text); (n.children || []).forEach(walk); })(nodes[1]);'
-		. 'out = [kinds, P.pictures(rows)];');
+		. 'var kinds = []; (function walk(n) { if (n.type === "content") kinds.push(n.props.contentType === "image" ? "image:" + n.props.src : n.props.text); (n.children || []).forEach(walk); })(nodes[2]);'
+		. 'out = [kinds, P.pictures(rows), nodes.length, JSON.stringify(nodes[1]).indexOf("/picture-0.png") !== -1];');
 
 	if ($result === null) {
 		return;
 	}
 
 	pg_assert_same(array('Rooms', 'Six rooms.', 'image:/picture-1.png', 'All quiet.'), $result[0], 'the picture between its paragraphs');
-	pg_assert_same(array('picture:1', 'picture:3'), $result[1], 'only the pictures the page places are stored');
+	pg_assert_same(array('picture:0', 'picture:1', 'picture:3'), $result[1], 'only the pictures the page places are stored');
+	pg_assert_same(4, $result[2], 'the intro, its picture section, the text and the picture');
+	pg_assert_same(true, $result[3], 'the intro\'s picture right under the intro');
 }
 
 // A starter without a heading of its own (stats-counter) still shows the
@@ -253,6 +274,55 @@ function test_document_start_page_figures_heading()
 	}
 
 	pg_assert_same(array('In numbers', '12', 'rooms', '3', 'boats'), $result, 'the heading over the figures, every figure in its column');
+}
+
+// Words in, words out: for each kind, every paragraph the reader read is on
+// the built page exactly once (a token per paragraph counted in the page's
+// texts and alts), the words around the items as paragraphs of the same
+// section, a card past its word limit under the cards with its lead bold,
+// and every picture placed once and stored.
+function test_document_start_page_keeps_every_paragraph()
+{
+	$long = trim(str_repeat('word ', 90));
+	$cases = array(
+		'table' => '[{style: "h2", text: "Rooms zq3"}, {text: "Before the table zq4."}, {style: "table", rows: [["Room zq5", "Size"], ["Lake", "20 m2"]]}, {text: "After the table zq6."}]',
+		'prices' => '[{style: "h2", text: "Rates zq3"}, {text: "Rates for two zq4."}, {style: "table", rows: [["Night zq5", "900 TL"], ["Week", "5000 TL"]]}, {style: "quote", text: "Tax included zq6"}]',
+		'questions' => '[{style: "h2", text: "Before you come zq3"}, {text: "Read these first zq4."}, {text: "Is there parking zq5?"}, {text: "Yes, free zq6."}, {text: "Are pets allowed zq7?"}, {text: "No zq8."}, {text: "Is there a pool zq9?"}, {text: "Yes, outside zq10."}, {style: "picture", src: "picture:11", alt: "Map zq11"}, {text: "Open on Sundays zq12?"}]',
+		'figures' => '[{style: "h2", text: "Our year zq3"}, {text: "The year in short zq4."}, {text: "120 rooms zq5"}, {text: "35 boats zq6"}, {text: "8 chefs zq7"}, {text: "Counted in May zq8."}]',
+		'cards' => '[{style: "h2", text: "Included zq3"}, {text: "What you get zq4."}, {style: "item", text: "Sauna zq5: Wood fired.", lead: "Sauna zq5"}, {style: "item", text: "Boat zq6: Row out.", lead: "Boat zq6"}, {style: "item", text: "Kayak zq7: ' . $long . '", lead: "Kayak zq7"}, {text: "Ask at the desk zq8."}]',
+		'contact' => '[{style: "h2", text: "Contact zq3"}, {text: "Write or call zq4."}, {text: "zq5@lake.com"}, {text: "Shore Street zq6 No: 4"}, {text: "Weekdays only zq7."}]',
+		'testimonial' => '[{style: "h2", text: "Guests zq3"}, {text: "Our guests wrote zq4."}, {style: "quote", text: "“A lovely stay zq5.”"}, {text: "— Ayse zq6"}, {style: "picture", src: "picture:7", alt: "Porch zq7"}]',
+		'gallery' => '[{style: "h2", text: "Inside zq3"}, {style: "picture", src: "picture:4", alt: "Oven zq4"}, {style: "picture", src: "picture:5", alt: "Shop zq5"}]',
+	);
+	$code = 'function hero(type) { return type === "hero-split" ? n("semantic", {tag: "section"}, [n("container", {}, [n("row", {}, [n("col", {lg: "6"}, [c("heading", "Sample", {tag: "h1"}), c("paragraph", "Sample lead")]), n("col", {lg: "6"}, [c("image", "", {src: "sample.jpg", alt: "Hero image"})])])])]) : make(type); }'
+		. 'function seen(nodes, acc) { nodes.forEach(function (x) { (function walk(m) { if (m.type === "content") { acc.push(m.props.text || ""); acc.push(m.props.alt || ""); } (m.children || []).forEach(walk); })(x); }); return acc.join(" \n "); }'
+		. 'function srcs(nodes) { var acc = []; nodes.forEach(function (x) { (function walk(m) { if (m.type === "content" && m.props.contentType === "image") acc.push(m.props.src); (m.children || []).forEach(walk); })(x); }); return acc; }'
+		. 'function check(body, maker) { var p = [{style: "h1", text: "Lake zq0"}, {text: "Calm water zq1."}, {style: "picture", src: "picture:2", alt: "Shore zq2"}].concat(body);'
+		. ' var read = R.read(p), rows = W.rowsOf(read, p, R), nodes = P.build(rows, {make: maker, src: function (s) { return "/" + s.replace(":", "-") + ".png"; }}), page = seen(nodes, []), counts = [];'
+		. ' read.sections.forEach(function (s) { s.paragraphs.forEach(function (i) { counts.push((page.match(new RegExp("\\\\bzq" + i + "\\\\b", "g")) || []).length); }); });'
+		. ' var pics = p.map(function (x) { return x.src; }).filter(Boolean);'
+		. ' return {kinds: read.sections.map(function (s) { return s.kind; }), counts: counts, read: read.sections.reduce(function (a, s) { return a + s.paragraphs.length; }, 0),'
+		. ' placed: srcs(nodes).sort(), stored: P.pictures(rows).sort(), want: pics.map(function (s) { return "/" + s.replace(":", "-") + ".png"; }).sort(), wantStored: pics.sort(), bold: page.indexOf("<strong>Kayak zq7</strong>") !== -1}; }'
+		. 'out = {};';
+	foreach ($cases as $kind => $body) {
+		$code .= 'out["' . $kind . '"] = check(' . $body . ', make);';
+	}
+	$code .= 'out.hero = check(' . $cases['table'] . ', hero);';
+	$result = document_start_test_node($code);
+
+	if ($result === null) {
+		return;
+	}
+
+	foreach ($result as $kind => $r) {
+		$want = $kind === 'hero' ? 'table' : $kind;
+		pg_assert_same(array('intro', $want), $r['kinds'], $kind . ': read as the intro and the kind');
+		pg_assert_same(count($r['counts']), $r['read'], $kind . ': every paragraph read is counted');
+		pg_assert_same(array_fill(0, $r['read'], 1), $r['counts'], $kind . ': every paragraph read is on the page exactly once');
+		pg_assert_same($r['want'], $r['placed'], $kind . ': every picture, the intro\'s too, is on the page once');
+		pg_assert_same($r['wantStored'], $r['stored'], $kind . ': every picture on the page is stored');
+	}
+	pg_assert_same(true, $result['cards']['bold'], 'a card past its word limit keeps its lead bold');
 }
 
 // The note on the pictures left out names both reasons: an EMF or WMF
