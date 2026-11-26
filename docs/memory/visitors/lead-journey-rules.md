@@ -14,6 +14,7 @@ module: lead_journey
 - `pg_lead_tie_decision()` returns a `verdict` code. Only the person's own act ties: `form`, `newsletter` (after the double opt-in when it is on: the caller passes it then), `sign_in`, `order`, `booking`, `campaign_click` (`pg_lead_tie_acts()`).
 - Refused in this order: `panel_user` (a panel role is never tied or scored), `no_consent`, `no_key`, `not_an_act`, `no_contact`. Then `tie` (first contact), `same` (already that contact) or `move`.
 - `move` (a shared computer): the key points at the new contact, `moved_from` names the earlier one; the earlier contact's visits stay with it.
+- Architect (2026-11-26, agent channel request 3081): on a move the open visit is split (`pg_lead_move_split()`, #11806): the earlier contact's row gets no further page, a new row starts for the new contact landing on the page of the act, with no campaign or referrer; a move back does the same again.
 
 ## Which visits are tied back?
 - `pg_lead_tie_back_ids()`: visits of the browser with no contact yet, started at or after the consent and inside the keep period (13 months by default, `pg_lead_keep_start()`; a short month's day falls to its last day). A visit already with a contact is never moved.

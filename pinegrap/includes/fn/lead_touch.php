@@ -113,9 +113,22 @@ function pg_lead_touch_verdict(array $facts)
 }
 
 /**
+ * The booking statuses that count as a booking made: not a hold, which is
+ * none yet, and not a cancelled one, as a cancelled order counts for
+ * nothing either (an abandoned deposit checkout ends as a cancelled hold
+ * that carries the customer). Pure.
+ *
+ * @return string[]
+ */
+function pg_lead_touch_booking_statuses()
+{
+    return array('requested', 'confirmed', 'no_show', 'done');
+}
+
+/**
  * Whether the contact had an act of the same kind before this one: a lead
- * act a complete form or a booking, a customer act a complete order or a
- * paid sales invoice.
+ * act a complete form or a booking made (pg_lead_touch_booking_statuses()),
+ * a customer act a complete order or a paid sales invoice.
  *
  * @param int    $kind PG_LEAD_JOURNEY_LEAD or PG_LEAD_JOURNEY_CUSTOMER
  * @param int    $contact_id
@@ -138,7 +151,7 @@ function pg_lead_touch_earlier($kind, $contact_id, $act, $ref_id)
         $user_ids = array_map('intval', (array) db_values("SELECT user_id FROM user WHERE user_contact = '" . $contact_id . "'"));
 
         return $user_ids && function_exists('pg_booking_ready') && pg_booking_ready()
-            && ((int) db_value("SELECT COUNT(*) FROM bookings WHERE user_id IN (" . implode(',', $user_ids) . ") AND status <> 'held'" . $not('booking')) > 0);
+            && ((int) db_value("SELECT COUNT(*) FROM bookings WHERE user_id IN (" . implode(',', $user_ids) . ") AND status IN ('" . implode("', '", pg_lead_touch_booking_statuses()) . "')" . $not('booking')) > 0);
     }
 
     if ((int) db_value("SELECT COUNT(*) FROM orders WHERE contact_id = '" . $contact_id . "' AND status IN ('complete', 'exported')" . $not('order')) > 0) {
@@ -151,6 +164,21 @@ function pg_lead_touch_earlier($kind, $contact_id, $act, $ref_id)
 }
 
 /**
+ * The name of the lock a contact's lead or customer mark is checked and
+ * written under. GET_LOCK names are server-wide, so the database name keeps
+ * two sites on one server apart; at most 64 characters. Pure.
+ *
+ * @param int    $contact_id
+ * @param int    $kind
+ * @param string $database
+ * @return string
+ */
+function pg_lead_became_lock_name($contact_id, $kind, $database)
+{
+    return 'pg_lead_became_' . substr(md5((string) $database), 0, 8) . '_' . (int) $kind . '_' . (int) $contact_id;
+}
+
+/**
  * A contact's act at its own save path: when it is the contact's first lead
  * or customer act and visits were tied to the contact before it, one
  * journey row keeps its first and last touch (pg_lead_touch_verdict()).
@@ -158,7 +186,8 @@ function pg_lead_touch_earlier($kind, $contact_id, $act, $ref_id)
  * @param string $act        form, booking, order or invoice
  * @param int    $contact_id
  * @param int    $ref_id     the act's record
- * @return string the verdict, 'not_ready' before the journey's tables
+ * @return string the verdict, 'not_ready' before the journey's tables, 'busy'
+ *                when another request held the contact's lock too long
  */
 function pg_lead_became($act, $contact_id, $ref_id)
 {
@@ -170,6 +199,19 @@ function pg_lead_became($act, $contact_id, $ref_id)
     $contact_id = (int) $contact_id;
     $kind = pg_lead_touch_act_kind($act);
     $facts = array('kind' => $kind, 'contact_id' => $contact_id, 'staff' => false, 'marked' => false, 'earlier' => false, 'touches' => null);
+
+    // Two acts of one contact at the same moment (a form sent twice, an order
+    // and a paid invoice) would both find no row and write two: the check
+    // and the write run under the contact's lock for the kind.
+    $lock = '';
+
+    if (($kind > 0) && ($contact_id > 0)) {
+        $lock = pg_lead_became_lock_name($contact_id, $kind, defined('DB_DATABASE') ? (string) DB_DATABASE : '');
+
+        if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+            return 'busy';
+        }
+    }
 
     // Each fact is read only while the verdict still needs it.
     if (($kind > 0) && ($contact_id > 0)) {
@@ -194,6 +236,10 @@ function pg_lead_became($act, $contact_id, $ref_id)
             "INSERT INTO contact_journey (contact_id, kind, at, visit_id, ref_id, detail, first_visit_id, last_visit_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?)",
             array((string) $contact_id, (string) $kind, (string) $now, (string) max(0, (int) $ref_id), (string) $act, (string) $facts['touches']['first'], (string) $facts['touches']['last'])
         );
+    }
+
+    if ($lock !== '') {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
     }
 
     return $verdict;
@@ -263,31 +309,35 @@ function pg_lead_sources_share($converted, $leads)
 
 /**
  * The report's rows grouped by the touch's channel, campaign or landing
- * page ('' when the visit is gone or had none): leads, those of them that
- * became customers, customers and their first orders' revenue. Most leads
- * first, then most customers, then by name. Pure.
+ * page ('' when the visit had none): leads, those of them that became
+ * customers, customers and their first orders' revenue. A touch whose visit
+ * is gone (trimmed by the keep period) is a group of its own with key '' and
+ * gone true, so it never mixes with the visits that had no campaign. Most
+ * leads first, then most customers, then by name. Pure.
  *
- * @param array[] $rows kind, channel, campaign, landing_page, converted, revenue
+ * @param array[] $rows kind, channel, campaign, landing_page, converted, revenue, gone
  * @param string  $by   channel, campaign or landing_page
- * @return array[] key, leads, converted, customers, revenue, share
+ * @return array[] key, gone, leads, converted, customers, revenue, share
  */
 function pg_lead_sources_group(array $rows, $by)
 {
     $groups = array();
 
     foreach ($rows as $row) {
-        $key = (string) ($row[$by] ?? '');
+        $gone = !empty($row['gone']);
+        $key = $gone ? '' : (string) ($row[$by] ?? '');
+        $slot = ($gone ? 'gone:' : 'key:') . $key;
 
-        if (!isset($groups[$key])) {
-            $groups[$key] = array('key' => $key, 'leads' => 0, 'converted' => 0, 'customers' => 0, 'revenue' => 0, 'share' => null);
+        if (!isset($groups[$slot])) {
+            $groups[$slot] = array('key' => $key, 'gone' => $gone, 'leads' => 0, 'converted' => 0, 'customers' => 0, 'revenue' => 0, 'share' => null);
         }
 
         if ((int) $row['kind'] === PG_LEAD_JOURNEY_LEAD) {
-            $groups[$key]['leads']++;
-            $groups[$key]['converted'] += empty($row['converted']) ? 0 : 1;
+            $groups[$slot]['leads']++;
+            $groups[$slot]['converted'] += empty($row['converted']) ? 0 : 1;
         } elseif ((int) $row['kind'] === PG_LEAD_JOURNEY_CUSTOMER) {
-            $groups[$key]['customers']++;
-            $groups[$key]['revenue'] += (int) ($row['revenue'] ?? 0);
+            $groups[$slot]['customers']++;
+            $groups[$slot]['revenue'] += (int) ($row['revenue'] ?? 0);
         }
     }
 
@@ -306,7 +356,11 @@ function pg_lead_sources_group(array $rows, $by)
             return $b['customers'] - $a['customers'];
         }
 
-        return strcmp($a['key'], $b['key']);
+        if ($a['key'] !== $b['key']) {
+            return strcmp($a['key'], $b['key']);
+        }
+
+        return (int) $a['gone'] - (int) $b['gone'];
     });
 
     return $groups;
@@ -332,15 +386,17 @@ function pg_lead_sources_totals(array $groups)
 }
 
 /**
- * The lead and customer rows of a period with the touch's visit: its
+ * The lead and customer rows of a period with the touch's visit, each
+ * contact's earliest row of a kind only (a merge moves both contacts' rows
+ * to the one kept, and a contact becomes a lead or a customer once): its
  * channel, campaign and landing page; whether a lead's contact became a
- * customer (at any time); a customer's first order total in minor units
+ * customer at or after the lead (one who bought first is no conversion); a customer's first order total in minor units
  * (0 for a paid invoice).
  *
  * @param int    $from
  * @param int    $to    the first second after the period
  * @param string $touch first or last
- * @return array[] kind, channel, campaign, landing_page, converted, revenue
+ * @return array[] kind, channel, campaign, landing_page, converted, revenue, gone (the visit was trimmed)
  */
 function pg_lead_sources_read($from, $to, $touch)
 {
@@ -354,11 +410,12 @@ function pg_lead_sources_read($from, $to, $touch)
         : '0';
     $rows = array();
 
-    foreach ((array) db_items("SELECT j.kind, v.channel, v.campaign, v.landing_page, " . $orders . " AS revenue,
-            (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "') AS customer_rows
+    foreach ((array) db_items("SELECT j.kind, v.channel, v.campaign, v.landing_page, " . $orders . " AS revenue, v.id AS visit_id,
+            (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "' AND c.at >= j.at) AS customer_rows
         FROM contact_journey j
         LEFT JOIN lead_visits v ON v.id = " . $visit . "
-        WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', '" . PG_LEAD_JOURNEY_CUSTOMER . "') AND j.at >= '" . (int) $from . "' AND j.at < '" . (int) $to . "'") as $row) {
+        WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', '" . PG_LEAD_JOURNEY_CUSTOMER . "') AND j.at >= '" . (int) $from . "' AND j.at < '" . (int) $to . "'
+            AND NOT EXISTS (SELECT 1 FROM contact_journey e WHERE e.contact_id = j.contact_id AND e.kind = j.kind AND (e.at < j.at OR (e.at = j.at AND e.id < j.id)))") as $row) {
         $rows[] = array(
             'kind'         => (int) $row['kind'],
             'channel'      => (string) $row['channel'],
@@ -366,6 +423,7 @@ function pg_lead_sources_read($from, $to, $touch)
             'landing_page' => (string) $row['landing_page'],
             'converted'    => ((int) $row['kind'] === PG_LEAD_JOURNEY_LEAD) && ((int) $row['customer_rows'] > 0),
             'revenue'      => (int) $row['revenue'],
+            'gone'         => $row['visit_id'] === null,
         );
     }
 
@@ -374,14 +432,19 @@ function pg_lead_sources_read($from, $to, $touch)
 
 /**
  * A group's name as the report shows it: a channel by the visitor reports'
- * names, an empty key in words.
+ * names, an empty key in words; a touch whose visit is gone is "Not known".
  *
- * @param string $by  channel, campaign or landing_page
+ * @param string $by   channel, campaign or landing_page
  * @param string $key
+ * @param bool   $gone the group's gone (pg_lead_sources_group())
  * @return string
  */
-function pg_lead_sources_label($by, $key)
+function pg_lead_sources_label($by, $key, $gone = false)
 {
+    if ($gone) {
+        return lang('Not known');
+    }
+
     if ($key === '') {
         return ($by === 'campaign') ? lang('No campaign') : lang('Not known');
     }
