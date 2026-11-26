@@ -217,7 +217,7 @@ JS
 function test_sketch_builder_heading_and_variables()
 {
 	$out = sketch_builder_test_node(<<<'JS'
-starters['cta-simple'] = n('semantic', {tag: 'section', inlineStyle: 'color: red;', _styles: [{prop: 'color', val: 'red'}], _stylesInit: true}, [
+starters['cta-simple'] = n('semantic', {tag: 'section', cssClass: 'py-5 bg-body-tertiary', inlineStyle: 'color: red;', _styles: [{prop: 'color', val: 'red'}], _stylesInit: true}, [
 	n('content', {contentType: 'heading', tag: 'h2', text: 'Act now'})
 ]);
 var page = B.build([
@@ -364,4 +364,118 @@ JS
 	pg_assert_same('Typed', $out['cta'], 'a typed word wins');
 	pg_assert_same(array('Page 7', 'Sample', 'Words'), $out['bare'], 'no title: the page\'s name; no names: the sample words');
 	pg_assert_same(array('navbar-centered-logo', true), $out['noSite'], 'without the site the starter header stays; with it no navbar starter is asked for');
+}
+
+// Starters shaped as the palette's are: a badge (a heading drawn as a
+// <span>) before the headline, a card's badge before its title, and the
+// image-background hero whose picture sits in a style attribute and whose
+// padding is not py-5.
+function test_sketch_builder_reads_real_starter_shapes()
+{
+	$out = sketch_builder_test_node(<<<'JS'
+function badge(t) { return n('content', {contentType: 'heading', tag: 'span', text: t, cssClass: 'badge'}); }
+starters['hero-centered'] = n('semantic', {tag: 'section', cssClass: 'py-5'}, [n('container', {}, [n('semantic', {tag: 'div'}, [
+	badge('New!'),
+	n('content', {contentType: 'heading', tag: 'h1', text: 'Turn your ideas into reality'}),
+	n('content', {contentType: 'paragraph', text: 'Starter words'})
+])])]);
+starters['hero-image-bg'] = n('semantic', {tag: 'section', cssClass: 'd-flex pg-hero-tall', _attrs: [{name: 'style', value: 'background-image: url(x.jpg)'}]}, [
+	n('semantic', {tag: 'div', cssClass: 'py-5'}, [badge('New!'), n('content', {contentType: 'heading', tag: 'h1', text: 'Old'})])
+]);
+function card(t) { return n('col', {lg: '4', md: '6'}, [badge('30 min'), n('content', {contentType: 'heading', tag: 'h3', text: t})]); }
+starters['services-image-cards'] = n('semantic', {tag: 'section', cssClass: 'py-5'}, [n('container', {}, [
+	n('content', {contentType: 'heading', tag: 'h2', text: 'Visits'}),
+	n('row', {}, [card('First Visit'), card('Follow-up')])
+])]);
+function heads(node, acc) {
+	if (node.type === 'content' && node.props.contentType === 'heading') acc.push(node.props.text);
+	(node.children || []).forEach(function (c) { heads(c, acc); });
+	return acc;
+}
+function paras(node, acc) {
+	if (node.type === 'content' && node.props.contentType === 'paragraph') acc.push(node.props.text);
+	(node.children || []).forEach(function (c) { paras(c, acc); });
+	return acc;
+}
+var page = B.build([
+	sec('i', 'intro'),
+	sec('p', 'intro', {picture: true, heading: 'Typed'}),
+	sec('c', 'cards', {picture: true, columns: 3})
+], {make: make, page: {title: 'Our bakery', description: 'Bread every morning.'}});
+out = {
+	intro: heads(page.body[0].node, []),
+	introText: paras(page.body[0].node, []),
+	introStyle: page.body[0].node.props.inlineStyle || '',
+	picture: heads(page.body[1].node, []),
+	pictureStyle: page.body[1].node.props.inlineStyle || '',
+	cards: heads(page.body[2].node, []),
+	ids: page.body.map(function (p) { return p.node.props._sketchId; })
+};
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('New!', 'Our bakery'), $out['intro'], 'the page title goes into the h1, the badge keeps its word');
+	pg_assert_same(array('Bread every morning.'), $out['introText'], 'the description is the intro\'s paragraph');
+	pg_assert_true($out['introStyle'] !== '', 'a py-5 section takes the section rhythm');
+	pg_assert_same(array('New!', 'Typed'), $out['picture'], 'the typed word goes into the h1');
+	pg_assert_same('', $out['pictureStyle'], 'a root with a style attribute keeps it: no inline style hides its picture');
+	pg_assert_same(array('Visits', '30 min', 'First Visit', '30 min', 'Follow-up', '30 min', 'Follow-up 3'), $out['cards'], 'a copied card numbers its title, not its badge');
+	pg_assert_same(array('i', 'p', 'c'), $out['ids'], 'every root carries its section id');
+}
+
+// The editor's maker asks for a starter as the palette does
+// ('component' with its componentType), and every starter the builder can
+// name is one createFromPalette() builds: a ctype branch, a block family's
+// item or a COMPONENTS entry.
+function test_sketch_builder_starters_are_palette_components()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$at = strpos($src, 'function _sdSketchBuildHost()');
+	pg_assert_true($at !== false, '_sdSketchBuildHost() is found');
+	$host = substr($src, (int) $at, 6000);
+	pg_assert_true((bool) preg_match('/make:\s*function\s*\(type\)\s*\{.*?createFromPalette\(\'component\',\s*\{\s*componentType:\s*type\s*\}\)/s', $host), 'the maker asks createFromPalette(\'component\', {componentType: type})');
+
+	$out = sketch_builder_test_node(<<<'JS'
+var seen = {};
+['header', 'intro', 'features', 'cards', 'gallery', 'form', 'cta', 'footer', 'text', 'picture', 'catalog', 'blog', 'booking'].forEach(function (kind) {
+	[false, true].forEach(function (picture) {
+		[0, 1, 2, 3, 4, 7].forEach(function (columns) {
+			[0, 1].forEach(function (buttons) {
+				var t = B.blockFor(sec('a', kind, {picture: picture, columns: columns, buttons: buttons}));
+				if (t) seen[t] = true;
+			});
+		});
+	});
+});
+out = Object.keys(seen).sort();
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_true(count($out) >= 10, 'the builder names its starters');
+	$start = strpos($src, 'function createFromPalette(');
+	// The function's body: up to the next function at its indent.
+	$end = strpos($src, "\n    function ", (int) $start + 10);
+	$palette = substr($src, (int) $start, $end === false ? null : $end - (int) $start);
+	$families = '';
+	foreach ((array) glob(PG_FUNCTIONS_DIR . '/assets/js/style_designer_blocks_*.js') as $file) {
+		if (substr($file, -7) !== '.min.js') {
+			$families .= (string) file_get_contents($file);
+		}
+	}
+	$components = (string) substr($src, (int) strpos($src, 'var COMPONENTS = {'), 20000);
+	foreach ($out as $name) {
+		$q = preg_quote($name, '/');
+		$built = preg_match('/ctype === \'' . $q . '\'/', $palette)
+			|| preg_match('/componentType:\s*\'' . $q . '\'/', $families)
+			|| preg_match('/^\s*\'?' . $q . '\'?\s*:\s*\{/m', $components);
+		pg_assert_true((bool) $built, 'createFromPalette() builds the starter ' . $name);
+	}
 }
