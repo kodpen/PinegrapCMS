@@ -65208,6 +65208,38 @@ const StyleDesigner = (function () {
         _sdLeftHideForget();
     }
 
+    // A side panel's width while its edge is dragged. The width lives in
+    // a custom property on the root (--sd-left-width / --sd-right-width),
+    // which every element of the document inherits: writing it on each
+    // pointer move restyled the whole document every time (#11945). The
+    // drag writes the panel's own width and min-width instead, once a
+    // frame (width is not inherited, so only the panel is styled again
+    // and the row laid out), and the root property once, when it ends.
+    // `dockClass` is the body class under which the panel floats and the
+    // stylesheet clamps its width; the inline width keeps that clamp.
+    function _sdPanelWidthDrag(panel, varName, dockClass) {
+        var w = 0, raf = 0;
+        function frame() {
+            raf = 0;
+            var body = panel.parentNode;
+            var docked = !!(body && body.classList && body.classList.contains(dockClass));
+            panel.style.width = docked ? 'clamp(240px, ' + w + 'px, calc(100vw - 64px))' : w + 'px';
+            panel.style.minWidth = w + 'px';
+        }
+        return {
+            move: function (newW) {
+                w = newW;
+                if (!raf) raf = requestAnimationFrame(frame);
+            },
+            end: function () {
+                if (raf) { cancelAnimationFrame(raf); raf = 0; }
+                panel.style.width = '';
+                panel.style.minWidth = '';
+                if (w) document.documentElement.style.setProperty(varName, w + 'px');
+            }
+        };
+    }
+
     function initPanelResizes() {
         loadLayout();
 
@@ -65223,13 +65255,14 @@ const StyleDesigner = (function () {
                 var startW = leftPanel.offsetWidth;
                 document.body.classList.add('sd-resizing');
                 if (canvasIframe) canvasIframe.style.pointerEvents = 'none';
+                var drag = _sdPanelWidthDrag(leftPanel, '--sd-left-width', 'sd-dock-left');
                 function onMove(ev) {
-                    var newW = Math.max(180, Math.min(startW + ev.clientX - startX, 520));
-                    document.documentElement.style.setProperty('--sd-left-width', newW + 'px');
+                    drag.move(Math.max(180, Math.min(startW + ev.clientX - startX, 520)));
                 }
                 function onUp() {
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup', onUp);
+                    drag.end();
                     document.body.classList.remove('sd-resizing');
                     if (canvasIframe) canvasIframe.style.pointerEvents = '';
                     saveLayout();
@@ -65251,13 +65284,14 @@ const StyleDesigner = (function () {
                 var startW = rightPanel.offsetWidth;
                 document.body.classList.add('sd-resizing');
                 if (canvasIframe) canvasIframe.style.pointerEvents = 'none';
+                var drag = _sdPanelWidthDrag(rightPanel, '--sd-right-width', 'sd-dock-right');
                 function onMove(ev) {
-                    var newW = Math.max(200, Math.min(startW - (ev.clientX - startX), 600));
-                    document.documentElement.style.setProperty('--sd-right-width', newW + 'px');
+                    drag.move(Math.max(200, Math.min(startW - (ev.clientX - startX), 600)));
                 }
                 function onUp() {
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup', onUp);
+                    drag.end();
                     document.body.classList.remove('sd-resizing');
                     if (canvasIframe) canvasIframe.style.pointerEvents = '';
                     saveLayout();
