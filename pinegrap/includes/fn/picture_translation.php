@@ -1775,9 +1775,14 @@ function pg_picture_tr_languages_answer($request, $user)
             'url'        => ($picture !== '') ? PATH . encode_url_path($picture) . '?v=' . (int) $row['drawn_at'] : '');
     }
 
-    // A photo's document is drawn on its base row (action picture).
+    // A photo's document is drawn on its base row (action picture). The
+    // Translations screen's Pictures group, where the words are typed, for
+    // the language view's menu: only for a role that may open it.
+    $words_url = (isset($user['role']) && ((int) $user['role'] <= 2)) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php?group=pictures' : '';
+
     return array(array('status' => 'success', 'words' => $words, 'hash' => $canvas['hash'], 'kind' => $canvas['kind'], 'doc' => $canvas['doc'],
-        'base' => $canvas['base'] ? (int) $canvas['base']['version_id'] : 0, 'name' => (string) $file['row']['name'], 'languages' => $languages), 200);
+        'base' => $canvas['base'] ? (int) $canvas['base']['version_id'] : 0, 'name' => (string) $file['row']['name'], 'languages' => $languages,
+        'words_url' => $words_url), 200);
 }
 
 /**

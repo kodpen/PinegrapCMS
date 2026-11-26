@@ -2459,9 +2459,140 @@ a.pgie-langthumb:focus-visible {
     justify-self: start;
   }
 
-  .pgie-langrow > .pgie-btn {
+  .pgie-langrow > .pgie-langacts {
     grid-column: 3;
     grid-row: 1 / span 2;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* A row's Draw and Correct by hand, side by side. */
+.pgie-langacts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.pgie-langfixed {
+  color: var(--pgie-ink);
+}
+
+/* -- The language view (pg_image_editor_langview.js) -- */
+
+/* The bar over the stage's top: the language, the line, the menu, Back
+   to automatic and Done; at the stage's foot where the panel is a sheet,
+   in the selection bar's place (hidden in the view, as is the context
+   menu's bar). */
+.pgie-lvbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow);
+}
+
+.pgie-lvname {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pgie-lvmore {
+  position: relative;
+}
+
+.pgie-lvmenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 4;
+  min-width: 220px;
+  padding: 4px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow);
+}
+
+.pgie-lvmenu[hidden] {
+  display: none;
+}
+
+.pgie-lvmenu a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--pgie-tx);
+  text-decoration: none;
+}
+
+.pgie-lvmenu a:hover,
+.pgie-lvmenu a:focus-visible {
+  background: var(--pgie-hover);
+}
+
+.pgie-langview .pgie-actwrap,
+.pgie-langview .pgie-sh[data-h="n"],
+.pgie-langview .pgie-sh[data-h="s"],
+.pgie-langview .pgie-sh[data-h="rot"] {
+  display: none;
+}
+
+/* A corrected text's dot and a text past the picture's edge, drawn over
+   the stage for every text of the view. */
+.pgie-lvbox {
+  position: absolute;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.pgie-lvbox.pgie-lvpast {
+  outline: 2px dashed var(--pg-warning);
+}
+
+.pgie-lvdot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--pgie-primary);
+}
+
+.pgie-lvbox > .pgie-lvdot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  margin: 0;
+  box-shadow: 0 0 0 2px var(--pgie-surface);
+}
+
+.pgie-lrow.pgie-lvlocked .pgie-lname {
+  opacity: 0.6;
+}
+
+@media (max-width: 767.98px), (max-height: 499.98px) {
+  .pgie-lvbar {
+    top: auto;
+    bottom: calc(var(--pgie-act-bottom, 0px) + 10px);
+  }
+
+  .pgie-lvmenu {
+    top: auto;
+    bottom: calc(100% + 4px);
   }
 }
 
