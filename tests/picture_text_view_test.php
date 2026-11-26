@@ -239,8 +239,8 @@ function test_picture_view_corrections()
 // row opening the language view.
 function test_picture_view_doors()
 {
-	if (function_exists('pg_image_editor_strings_artboard')) {
-		$strings = pg_image_editor_strings_artboard();
+	if (function_exists('pg_image_editor_strings_artboard') && function_exists('pg_image_editor_strings_langview')) {
+		$strings = array_merge(pg_image_editor_strings_artboard(), pg_image_editor_strings_langview());
 
 		foreach (array('langCorrect', 'langCorrectedOne', 'langCorrected', 'langFixNote', 'langViewLine', 'langAuto', 'langDone', 'langSaveFirst', 'langAutoAll', 'langEditWords') as $key) {
 			pg_assert_true(isset($strings[$key]) && ($strings[$key] !== ''), 'label ' . $key);
@@ -252,4 +252,70 @@ function test_picture_view_doors()
 
 	pg_assert_true(strpos($queue, 'data-pg-image-language="') !== false, 'the queue\'s row names its language');
 	pg_assert_true(strpos($editor, 'b.getAttribute("data-pg-image-language")') !== false, 'the editor opens on it');
+}
+
+// The editor in the view: only Select, the other layers locked, a move made
+// a correction, a side handle a width, Delete refused; Done brings the
+// canvas document back with the correction, one undo step.
+function test_picture_view_editor()
+{
+	if (!function_exists('exec')) {
+		pg_assert_true(true, 'exec is not available');
+
+		return;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		pg_assert_true(true, 'Node is not available');
+
+		return;
+	}
+
+	$js = PG_FUNCTIONS_DIR . '/assets/js/';
+	$file = @tempnam(sys_get_temp_dir(), 'pgpicved');
+	$parts = array('pg_image_editor.js', 'pg_image_editor_layers.js', 'pg_image_editor_text.js', 'pg_image_editor_artboard.js', 'pg_image_editor_langview.js');
+
+	file_put_contents($file, 'global.window = global; global.document = { activeElement: null, addEventListener: function () {} };' . "\n"
+		. 'var M = require(' . json_encode($js . 'pg_image_editor_model.js') . '); window.PgImageEditorModel = window.PgImageEditorModel || M;' . "\n"
+		. implode('', array_map(function ($f) use ($js) { return 'require(' . json_encode($js . $f) . ');' . "\n"; }, $parts))
+		. 'var Editor = window.PgImageEditor.parts.Editor, none = function () {}, e = Object.create(Editor.prototype);' . "\n"
+		. 'e.doc = { v: 1, artboard: { width: 400, height: 200 }, layers: [{ id: "s", type: "rect", x: 0, y: 0, w: 60, h: 60 }, { id: "a", type: "text", text: "Sale", size: 40, x: 150, y: 80, w: 80, h: 50 }] };' . "\n"
+		. 'e.history = new M.History(); e.opening = M.clone(e.doc); e.tools = { list: ["select", "text"] }; e.tool = "text"; e.sel = []; e.ready = true;' . "\n"
+		. 'e.textLayout = function (l) { var lines = String(l.text).split("\n"); return { w: Math.max.apply(null, lines.map(function (s) { return s.length; })) * l.size / 2, h: lines.length * l.size * 1.25 }; };' . "\n"
+		. 'e.root = { classList: { add: none, remove: none } }; e.renderTools = e.render = e.renderMeta = e.renderView = e.closeConfirm = none;' . "\n"
+		. 'e.lvBar = function () { this.lv.auto = {}; return {}; }; e.stage = { appendChild: none }; e.layersReady = function () { return Promise.resolve(); };' . "\n"
+		. 'e.enterLanguage({ code: "de", name: "Deutsch", texts: [{ id: "a", field: "text", text: "Grosser Sommer" }] });' . "\n"
+		. 'var out = { tools: e.tools.list, locked: e.doc.layers[0].locked, x: e.doc.layers[1].x };' . "\n"
+		. 'e.change(function (d) { d.layers[1].x += 10; });' . "\n"
+		. 'out.fix = e.doc.layers[1].corrections.de;' . "\n"
+		. 'out.side = Editor.layerTypes.text.resize.call(e, M.clone(e.doc.layers[1]), { x: 1, y: 2, w: 50, h: 9 }, "e").lvFix;' . "\n"
+		. 'out.del = Editor.keys[0].call(e, {}, false, "Delete"); out.arrow = Editor.keys[0].call(e, {}, false, "ArrowLeft");' . "\n"
+		. 'e.leaveLanguage();' . "\n"
+		. 'out.after = e.doc.layers[1]; out.tool = e.tool; out.dirty = e.dirty; out.view = e.lv; out.past = e.history.past.length;' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$r = ($code === 0) ? json_decode(implode("\n", $out), true) : null;
+
+	pg_assert_true(is_array($r), ($code === 0) ? 'answered' : implode("\n", $out));
+
+	if (!is_array($r)) {
+		return;
+	}
+
+	pg_assert_same(array('select'), $r['tools'], 'only Select in the view');
+	pg_assert_same(true, $r['locked'], 'the other layers locked');
+	pg_assert_true(picture_view_near($r['fix']['x'], $r['x'] + 10), 'a move made a correction');
+	pg_assert_same(50, $r['side']['w'], 'a side handle sets the width the lines wrap to');
+	pg_assert_same(array(true, false), array($r['del'], $r['arrow']), 'Delete refused, the arrows kept');
+	pg_assert_same(array('Sale', 150, 40), array($r['after']['text'], $r['after']['x'], $r['after']['size']), 'Done: the canvas text unchanged');
+	pg_assert_true(isset($r['after']['corrections']['de']), 'with its correction');
+	pg_assert_same(array('text', true, null, 1), array($r['tool'], $r['dirty'], $r['view'], $r['past']), 'the tool back, the change one undo step to save');
 }

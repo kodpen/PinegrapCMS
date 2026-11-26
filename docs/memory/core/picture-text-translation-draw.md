@@ -10,6 +10,7 @@ module: picture_translation
 - A right-to-left language is listed with "Right to left: the source picture is shown." and no Draw.
 - Owner (2026-11-17, poll 131): a language is drawn only once every counted text is translated into it. Until then Draw is disabled (`M.languageDrawable()`) and the row says how many texts are not translated and that visitors see the source picture; the server refuses such a draw (`untranslated`, 409). Draw all takes Translated and Out of date languages that are drawable. A text that stays the same (a brand name) is translated by typing the same word; the list's note says so.
 - The list's note (`langNote`) says that each language's picture is drawn by itself from the last saved version once all its texts are translated, and that "Draw" does it now (#10448).
+- Once every text is translated a row has "Correct by hand" (the language view, `picture-text-fit-view.md`), the main button of a Look by hand row, and "Corrected by hand: {n} texts" where texts are corrected.
 - An Out of date row says "Visitors see the source picture until this one is drawn again." in place of the count. A drawn picture's thumbnail is a link opening it at full size in a new tab, named "Open the picture: {name}".
 
 ## How is a picture drawn?

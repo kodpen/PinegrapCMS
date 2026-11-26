@@ -23,7 +23,7 @@ module: picture_server_draw
 - A save of the document changes its hash, so the stamp turns the drawn pictures out of date and they are drawn again, as every save does.
 
 ## What does the editor call?
-- `M.languageCorrect(l, code, box)`: sets a text layer's box, rounded to two places, or takes it off with `null`; the last off removes the field; a malformed box, a non-text layer, a bad code or a 101st language changes nothing. Answers whether the layer changed. The screen is PF4 (`plans/picture-text-fit.md`).
+- `M.languageCorrect(l, code, box)`: sets a text layer's box, rounded to two places, or takes it off with `null`; the last off removes the field; a malformed box, a non-text layer, a bad code or a 101st language changes nothing. Answers whether the layer changed. The screen: `picture-text-fit-view.md`.
 
 ## Tests?
 - `tests/picture_text_correct_test.php` on `tests/fixtures/picture_language/correct.json` (11 cases: wrap, right and centre alignment, the edge, past it, turned, words unchanged, another language, a string number, no width, a text beside one corrected), PHP and Node; the reader, the save's check, the setter.

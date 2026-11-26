@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -3001,6 +3001,17 @@ function pg_image_editor_strings_artboard()
         'langCorrectedOne'  => lang('Corrected by hand: 1 text'),
         'langCorrected'     => lang('Corrected by hand: {n} texts'),
         'langFixNote'       => lang('A text that does not fit can be moved and sized for that language alone with "Correct by hand"; the source picture stays as it is.'),
+    );
+}
+
+/**
+ * The language view (pg_image_editor_langview.js): labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_langview()
+{
+    return array(
         'langSaveFirst'     => lang('Save your changes first: a language is corrected on the saved picture.'),
         'langViewLine'      => lang('Only this language\'s texts move here. The source picture does not change.'),
         'langAuto'          => lang('Back to automatic'),

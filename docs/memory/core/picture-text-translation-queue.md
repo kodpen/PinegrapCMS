@@ -18,7 +18,7 @@ module: picture_translation
 - `assets/js/picture_queue.js` (standalone, no bundle) loads the Artifact Canvas bundle (`pg_image_editor_includes()`, `pgImageEditor.load()`) and draws each row with `PgImageEditor.parts.drawWaiting()`, shared with the background draw (`picture-text-auto-panel.md`). A picture's live document is read once (`picture_languages`); each language is posted to `picture_language_draw`, which checks right, stamp and every text translated.
 - One row at a time; the background draw does nothing in this view. A row drawn meanwhile (another tab, the server) ends as its state (`M.languageRowPlan()`).
 - A row ends as Picture drawn, Look by hand (a text fell under the fit floor), Not every text is translated (`languageDrawable()` false since the page was built) or failed with the server's message. Once its draw ends the reason it waited (Not drawn yet / Out of date) goes; the line keeps the language and the pill says the result (`reasonShown()`).
-- A Look by hand row offers "Edit in the Artifact Canvas" (`data-pg-image-edit`; the view already loads the editor) once the run has ended or stopped, never while a draw runs (`editShown()`).
+- A Look by hand row offers "Edit in the Artifact Canvas" once the run ends or stops (`editShown()`), opening that language's view (`picture-text-fit-view.md`).
 - At a narrow width the pill goes under the name (`pg-list-row-head-wrap`), which is never cut with an ellipsis.
 
 ## What do Stop and Continue do?

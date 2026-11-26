@@ -1597,7 +1597,7 @@
         this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-lang-title' }, [
             el('div', { class: 'pgie-confirm-box pgie-langbox' }, [
                 el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-lang-title', text: t('languages') }), close]),
-                el('p', { class: 'pgie-note', text: t('langNote') + ' ' + t('langSame') }),
+                el('p', { class: 'pgie-note', text: t('langNote') + ' ' + t('langSame') + ' ' + t('langFixNote') }),
                 this.dirty ? el('p', { class: 'pgie-note pgie-langwarn', text: t('langUnsaved') }) : null,
                 this.langList,
                 el('div', { class: 'pgie-langfoot' }, [this.langStatus, this.langAll])
@@ -1610,7 +1610,10 @@
     };
 
     // One row per language: the drawn picture beside its name, the state,
-    // how many texts are translated, Draw.
+    // how many texts are translated, how many are corrected by hand, Draw
+    // and, once every text is translated, Correct by hand (the language
+    // view, pg_image_editor_langview.js): the row's main button where the
+    // picture is to look at by hand.
     Editor.prototype.showLanguages = function () {
         var self = this, list = this.langList, data = this.langData;
 
@@ -1635,6 +1638,11 @@
                 'aria-label': t('langDraw') + ': ' + lang.name, onclick: function () {
                     self.drawLanguages([lang.code]);
                 } });
+            var fixes = Number(lang.corrected) || 0;
+            var correct = (M.languageDrawable(lang) && self.correctLanguage) ? el('button', { type: 'button', class: 'pgie-btn' + ((state === 'look') ? ' pgie-primary' : ''),
+                text: t('langCorrect'), disabled: self.langBusy, 'aria-label': t('langCorrect') + ': ' + lang.name, onclick: function () {
+                    self.correctLanguage(lang);
+                } }) : null;
 
             // The row says what a visitor sees where it asks for a draw, and
             // why Draw waits while a text is not translated.
@@ -1648,10 +1656,11 @@
                     : el('span', { class: 'pgie-langthumb pgie-checker' }),
                 el('span', { class: 'pgie-langname' }, [
                     el('strong', { text: lang.name }),
-                    el('span', { class: 'pgie-note', text: note })
+                    el('span', { class: 'pgie-note', text: note }),
+                    fixes ? el('span', { class: 'pgie-note pgie-langfixed', text: (fixes === 1) ? t('langCorrectedOne') : t('langCorrected').replace('{n}', String(fixes)) }) : null
                 ]),
                 state ? el('span', { class: 'pgie-langstate pgie-lang-' + state, text: t(LANG_STATES[state] || 'langNotTranslated') }) : null,
-                draw
+                el('span', { class: 'pgie-langacts' }, [draw, correct])
             ]));
         });
 
