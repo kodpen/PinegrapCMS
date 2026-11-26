@@ -6,7 +6,7 @@ module: publish_weight
 
 ## Where does it live, and what does it read?
 - `includes/fn/publish_weight.php`, pure, loaded where the Publish check runs (not by `functions.php`). It reads the draft's server render (`seo-check-draft-render.md`; the audit render writes `data-pg-node`) and the sizes of the files that page loads. `seo_check` calls it when the Publish check asks (`weight: 1`), through `pg_designer_publish_weight()` (`includes/fn/seo_draft.php`).
-- `pg_publish_weight_urls($html)`: the stylesheets, scripts and pictures the page loads, without query, once each. `pg_publish_weight_local_files($urls, $root, $base)` gives the site's own files' bytes and a picture's pixel size; another host, a path outside `$root` or a missing file is left out.
+- `pg_publish_weight_urls($html)`: the stylesheets, scripts and pictures the page loads, without query, once each. `pg_publish_weight_local_files($urls, $root, $base)` gives the site's own files' bytes and a picture's pixel size; another host, a path outside `$root`, a null byte or a missing file is left out.
 
 ## What does `pg_publish_weight_measure($html, $files)` count?
 - `markup`: the page's bytes without its inline `<style>` and JavaScript `<script>` (JSON-LD stays markup). `styles`: inline plus each linked stylesheet once. `scripts`: inline plus each `src` once. `images`: the first screen's pictures, an `<img>` without `loading="lazy"` (none in `noscript`/`template`). `total`: the four.
@@ -21,7 +21,7 @@ module: publish_weight
 - Kept as used: selectors with no class or id, attribute selectors and pseudo-class arguments (`:not(.x)`) not read, classes scripts add while the page runs (`show`, `active`, `fade`, `is-*`, `has-*`, `js-*`, `was-*` …, `pg_publish_weight_state_class()`). Listed only, never removed.
 
 ## Which findings does it give?
-- `pg_publish_weight_findings($measure, $unused, $texts)` in PC1's shape (`designer-publish-findings.md`), source and group `weight`, level `look`, never blocking: `weight_<measure>` over budget (detail `bytes / budget`), `img_oversized` and `img_no_size` per picture (node = nearest `data-pg-node`, detail its address), `script_blocking` per script, one `css_unused` (count, one rule a line).
+- `pg_publish_weight_findings($measure, $unused, $texts)` in PC1's shape (`designer-publish-findings.md`), source and group `weight`, level `look`, never blocking: `weight_<measure>` over budget (detail `bytes / budget`), `img_oversized` and `img_no_size` per picture (node = nearest `data-pg-node`, detail its address, the id's index the nth picture of that node, or the page-wide index without a node), `script_blocking` per script, one `css_unused` (count, one rule a line).
 - `pg_publish_weight_failed($why, $texts)`: one `failed` finding, blocks nothing. `pg_publish_weight_texts()` gives the translated sentences; English stands in without them.
 
 ## What does `seo_check` answer, and how fast?
