@@ -216,6 +216,21 @@ function test_publish_weight_findings_in_the_publish_check_shape()
 	pg_assert_contains((string) $budget['images'], $found[0]['detail'], 'the budget shown');
 }
 
+// A gallery, a carousel or a widget draws several pictures from one editor
+// node: each gets its own id (the nth picture of that node), so "Ignore on
+// this page" on one does not hide the others and the count stays right. The
+// first picture of a node keeps the id it had.
+function test_publish_weight_findings_of_pictures_of_one_node_have_their_own_ids()
+{
+	$html = '<html><body><div data-pg-node="g1"><img src="/a.jpg"><img src="/b.jpg"><img src="/c.jpg"></div>'
+		. '<img data-pg-node="n2" src="/d.jpg"></body></html>';
+	$found = pg_publish_weight_findings(pg_publish_weight_measure($html, array()), array(), array());
+	$ids = array_map(function ($f) { return $f['id']; }, $found);
+
+	pg_assert_same(array('weight:img_no_size:g1:0', 'weight:img_no_size:g1:1', 'weight:img_no_size:g1:2',
+		'weight:img_no_size:n2:0'), $ids);
+}
+
 function test_publish_weight_findings_of_a_light_page_are_none()
 {
 	$m = pg_publish_weight_measure('<html><body><img src="/a.jpg" width="10" height="10"></body></html>',
