@@ -4,7 +4,7 @@ description: Start file for a page type's layout file turned into its widget's d
 ---
 
 ## What is it?
-- A classic page with its own layout file (`data/layouts/<page id>.php`) of a mapped type becomes its page type's widget built from that file: the theme's markup stays, each PHP piece becomes a token, a flag, a section or the widget's list, a piece with no element is dropped and reported. Plan `plans/legacy-editable.md`.
+- A classic page with its own layout file (`data/layouts/<page id>.php`) of a mapped type becomes its page type's widget built from that file: the theme's markup stays, each PHP piece becomes a token, a flag, a section or the widget's list, a piece with no element is dropped and reported. Start file of the move: [[legacy-editable-overview]].
 - The move run converts a page only when nothing drops; otherwise the Region panel lists the dropped pieces and "Convert to design elements" converts after the designer's confirm.
 
 ## Which rules bind it?

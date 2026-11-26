@@ -1,6 +1,6 @@
 ---
 name: classic-style-to-design
-description: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays
+description: A classic style's frame as shared components and page trees (L2, #2370): pg_classic_style_design_open(), now the move run's own function with no button, what Save writes and what stays
 module: classic_style_design
 ---
 
@@ -14,7 +14,7 @@ module: classic_style_design
 - Each page naming the style (`page_style`, not binned, `pg_designer_load_pages(..., true)`) gets `pg_classic_style_frame_page_tree()`: body attributes and title on the root, the parts around its content. A page with a tree of its own keeps it.
 - No page names the style as its own (all take it from their folder, or none uses it): the editor's blank tab (`pg_designer_blank_page()`, `includes/fn/designer.php`) starts with the same tree (`frame_tree` of the open result, passed as `classic_frame_tree`) and `converted: 1`; Save creates it as a new page (a draft where drafts exist). Folder pages are still not tabs: a tab is saved as a design page whatever the "Also convert" box says.
 - `<cregion>` tags (L3): a common region already made a shared component (category `common_region:<id>`) is placed as a `shared_ref` to it, the component its tag draws anyway; any other common or designer region stays a region node.
-- No region is converted by opening a style: each conversion stays opt-in on its own screen or node. A designer region made a component from the designer (R3, `cregion:<id>`) stays a region node: its tag still draws the row, so placing the component could change what the page shows.
+- The open converts no region; the move run's `page_parts` step does (LE2, `legacy-page-parts.md`). In the open alone a designer region made a component (R3, `cregion:<id>`) stays a region node: its tag still draws the row.
 - Region tags inside the component render per page: `_expand_shared_refs()` runs before the region passes of `get_page_content.php`.
 
 ## What happens to the style's own CSS/JS files?

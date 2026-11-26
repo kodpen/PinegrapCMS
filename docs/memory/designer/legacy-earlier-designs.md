@@ -25,4 +25,4 @@ module: legacy_earlier_designs
 ## Tests?
 - `tests/legacy_earlier_designs_test.php`: the component check, rows, the entry and its groups, the two-step cursor, the wiring.
 
-Related: docs/memory/designer/legacy-editable-measure.md, docs/memory/designer/legacy-page-parts.md, docs/memory/designer/legacy-types-step.md, docs/memory/plans/legacy-editable-screens.md
+Related: docs/memory/designer/legacy-editable-measure.md, docs/memory/designer/legacy-page-parts.md, docs/memory/designer/legacy-types-step.md, docs/memory/designer/legacy-editable-overview.md
