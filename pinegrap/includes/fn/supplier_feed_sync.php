@@ -140,6 +140,51 @@ function pg_supplier_feed_drop_brake($matched, $dropped)
 }
 
 /**
+ * The buy price a record gives its item, followed or not: net of VAT when
+ * the feed's prices include it (the record's VAT, else the product's own
+ * rate), held under half or over ten times the item's last one.
+ *
+ * @param array      $item    buy_price
+ * @param array|null $product tax_rate; null when the item has no live product
+ * @param array      $values  buy (null when not read), vat
+ * @param array      $context vat_included
+ * @return array buy (net, null for none), item (columns to write), held (bool)
+ */
+function pg_supplier_feed_item_buy($item, $product, $values, $context)
+{
+    $out = array('buy' => null, 'item' => array(), 'held' => false);
+    $buy = isset($values['buy']) ? $values['buy'] : null;
+
+    if ($buy === null) {
+        return $out;
+    }
+
+    if (!empty($context['vat_included'])) {
+        $vat = isset($values['vat']) ? $values['vat'] : null;
+
+        if (($vat === null) && is_array($product) && isset($product['tax_rate']) && ((string) $product['tax_rate'] !== '')) {
+            $vat = (float) $product['tax_rate'];
+        }
+
+        if ($vat !== null) {
+            $buy = pg_supplier_feed_net_of_vat($buy, $vat);
+        }
+    }
+
+    $out['buy'] = (int) $buy;
+
+    if (pg_supplier_feed_price_held((int) $item['buy_price'], $buy)) {
+        $out['held'] = true;
+        $out['item']['held_price'] = (int) $buy;
+    } else {
+        $out['item']['buy_price'] = (int) $buy;
+        $out['item']['held_price'] = 0;
+    }
+
+    return $out;
+}
+
+/**
  * What one record does to its product, nothing written (F6, F7, F13).
  *
  * The buy price is made net of VAT when the feed's prices include it (the
@@ -161,36 +206,15 @@ function pg_supplier_feed_drop_brake($matched, $dropped)
  */
 function pg_supplier_feed_plan_item($item, $product, $values, $context)
 {
-    $out = array('price' => null, 'stock' => null, 'enable' => null, 'item' => array(), 'outcome' => '', 'held' => false);
-    $buy = isset($values['buy']) ? $values['buy'] : null;
+    $kept = pg_supplier_feed_item_buy($item, $product, $values, $context);
+    $buy = $kept['buy'];
+    $out = array('price' => null, 'stock' => null, 'enable' => null, 'item' => $kept['item'], 'outcome' => '', 'held' => $kept['held']);
 
-    if (($buy !== null) && !empty($context['vat_included'])) {
-        $vat = isset($values['vat']) ? $values['vat'] : null;
+    if (($buy !== null) && !$kept['held'] && !empty($item['follow_price']) && is_array($context['rule'])) {
+        $price = pg_supplier_feed_price($buy, $context['rule'], $context['rate'], $context['home_decimals'], $context['feed_decimals']);
 
-        if (($vat === null) && isset($product['tax_rate']) && ((string) $product['tax_rate'] !== '')) {
-            $vat = (float) $product['tax_rate'];
-        }
-
-        if ($vat !== null) {
-            $buy = pg_supplier_feed_net_of_vat($buy, $vat);
-        }
-    }
-
-    if ($buy !== null) {
-        if (pg_supplier_feed_price_held((int) $item['buy_price'], $buy)) {
-            $out['held'] = true;
-            $out['item']['held_price'] = (int) $buy;
-        } else {
-            $out['item']['buy_price'] = (int) $buy;
-            $out['item']['held_price'] = 0;
-
-            if (!empty($item['follow_price']) && is_array($context['rule'])) {
-                $price = pg_supplier_feed_price($buy, $context['rule'], $context['rate'], $context['home_decimals'], $context['feed_decimals']);
-
-                if (($price > 0) && ($price !== (int) $product['price'])) {
-                    $out['price'] = $price;
-                }
-            }
+        if (($price > 0) && ($price !== (int) $product['price'])) {
+            $out['price'] = $price;
         }
     }
 
@@ -892,11 +916,19 @@ function pg_supplier_feed_item_write($feed, &$state, $context, $item, $products,
     $product = isset($products[$product_id]) ? $products[$product_id] : null;
 
     if (($product === null) || empty($item['active']) || !empty($item['dismissed']) || !empty($product['bundle'])) {
-        // Not followed: only the record's values are kept.
-        if ($value['buy'] !== null) {
-            $columns['buy_price'] = (int) $value['buy'];
+        // Not followed: only the record's values are kept, the buy price as
+        // a followed item keeps it, so the choice between feeds compares net
+        // prices and a matched product's price out of range waits for a
+        // person here too. An item with no product holds nothing.
+        $kept = pg_supplier_feed_item_buy($item, $product, $value, $context);
+
+        if ($kept['held'] && ($product === null)) {
+            $kept['item'] = array('buy_price' => $kept['buy'], 'held_price' => 0);
+        } elseif ($kept['held']) {
+            $state['count']['held']++;
         }
 
+        $columns = array_merge($columns, $kept['item']);
         $columns['stock'] = max(0, (int) $value['stock']);
     } else {
         $plan = pg_supplier_feed_plan_item($item, $product, $value, $context);

@@ -99,6 +99,41 @@ function test_supplier_feed_sync_record_values()
 	pg_assert_same(null, $empty['vat'], 'no VAT');
 }
 
+// A price of 0 is no price: it never becomes the item's buy price.
+function test_supplier_feed_sync_zero_buy_price()
+{
+	foreach (array('0', '0,00', '0.00 TL') as $text) {
+		$values = pg_supplier_feed_record_values(array('code' => 'A', 'cost' => $text, 'qty' => '3'), supplier_feed_sync_test_fields());
+
+		pg_assert_same(null, $values['buy'], $text . ' is no buy price');
+	}
+}
+
+// The buy price an item keeps, followed or not: net of VAT, held when out of
+// range, so a product carried by several feeds compares like with like.
+function test_supplier_feed_sync_item_buy()
+{
+	$vat = supplier_feed_sync_test_context(array('vat_included' => true));
+	$net = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), null, array('buy' => 1200, 'vat' => 20.0), $vat);
+
+	pg_assert_same(1000, $net['buy'], 'net of the record\'s VAT');
+	pg_assert_same(array('buy_price' => 1000, 'held_price' => 0), $net['item'], 'kept net');
+	pg_assert_false($net['held'], 'in range');
+
+	$by_product = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), supplier_feed_sync_test_product(array('tax_rate' => '10')), array('buy' => 1100, 'vat' => null), $vat);
+
+	pg_assert_same(1000, $by_product['buy'], 'net of the product\'s own rate');
+
+	$low = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), null, array('buy' => 300, 'vat' => null), supplier_feed_sync_test_context());
+
+	pg_assert_true($low['held'], 'under half is held on an item that is not followed too');
+	pg_assert_same(array('held_price' => 300), $low['item'], 'the last buy price stays');
+
+	$none = pg_supplier_feed_item_buy(supplier_feed_sync_test_item(), null, array('buy' => null), supplier_feed_sync_test_context());
+
+	pg_assert_same(array(), $none['item'], 'no buy price writes nothing');
+}
+
 function test_supplier_feed_sync_missing_fields()
 {
 	$records = array(
