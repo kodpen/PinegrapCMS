@@ -9387,6 +9387,9 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-cu-state-head { margin: 4px 0 0; font-weight: 600; }
 .sd-cu-foot { gap: 8px; }
 .sd-cu-ticked { font-size: .78rem; color: var(--sd-text-muted); }
+/* The closing line after "Remove" over the lists; a row that stayed says why. */
+.sd-cu-result { margin-bottom: 4px; }
+.sd-cu-failed { color: var(--sd-warning); }
 .sd-pc-unused-end { display: flex; align-items: center; gap: 8px; }
 .sd-pc-unused-end .sd-pc-bar-note { flex: 1; }
 @media (max-width: 767.98px) {

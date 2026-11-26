@@ -1509,6 +1509,21 @@ function pg_panel_designer($request, $action)
             respond(array('status' => 'success') + $lists);
             break;
 
+        // "Remove" of the Clean up window
+        // (includes/fn/design_cleanup_remove.php): what is ticked and still
+        // unused. Files go to the Recycle Bin and shared components are
+        // deleted here; the rules and variables come back without the
+        // ticked ones, for the editor to save after its snapshot.
+        case 'cleanup_remove':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_cleanup_remove.php');
+            $cu_ticked = isset($request['ticked']) && is_array($request['ticked']) ? $request['ticked'] : array();
+            $cu_done = pg_cleanup_remove(isset($request['style_id']) ? (int)$request['style_id'] : 0, $cu_ticked, $user);
+            if ($cu_done === null) {
+                respond(array('status' => 'error', 'message' => lang('Not found.')));
+            }
+            respond(array('status' => 'success') + $cu_done);
+            break;
+
         // The Style guide sheet of the Preview menu
         // (includes/fn/design_style_guide.php): the model of what the
         // design is made of, from the variables the editor holds (or, with

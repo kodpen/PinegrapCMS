@@ -24,7 +24,7 @@ module: design_cleanup_list
 - Head "Clean up" and the design's name; the lead sentence; four lists in fixed order, the first with rows open (from the Publish check: the rules). A list head: fold, a box ticking the list (dash while some), name, count, size for rules and files. Past eight rows the list scrolls.
 - A row is one label: box, picture/swatch/icon, name (selector or token in a fixed-width face), why, size, "Show"/"Hide": a rule's text, a picture, another file in a new tab, a component drawn in a sandboxed frame with the canvas's stylesheets. A variable has no Show.
 - States: unsaved changes ("Save the design first", "Save and look again" saves as Save does, then reads); one spinner while reading; a failed read with "Try again"; "This design has nothing unused" with Close; under 768 px it fills the screen.
-- Foot: "Nothing is ticked." or "{n} ticked · {size} lighter.", Close, "Remove {n}". Remove stays off: removal, the snapshot and the closing line are CU3.
+- Foot: "Nothing is ticked." or "{n} ticked · {size} lighter." with what can be brought back, Close, "Remove {n}" (off while nothing is ticked). What Remove does: `designer-cleanup-removal.md`.
 
 ## What does it cost?
 - Nothing runs until the row is chosen: one request when the window opens or reads again.
