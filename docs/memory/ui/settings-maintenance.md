@@ -7,7 +7,7 @@ module: maintenance_settings_fold
 ## How is the pane drawn?
 - Folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`) since #11876, in this order: Update channel, Maintenance mode, Scheduled jobs, Backups, Storage, Operations alerts, Sales watch, Chat notifications. The registry's sections follow the same order and names.
 - Order, names, icons and lines: `includes/fn/maintenance_settings_fold.php` (`pg_maintenance_fold_order()`, `pg_maintenance_fold_face()`, `pg_maintenance_fold_<part>()`, pure but for `lang()` and `date()`); `includes/settings/maintenance.php` reads the facts. Test: `tests/settings_maintenance_fold_test.php`.
-- Each card is drawn whole inside its row. Scheduled jobs opened as a list of jobs: `ui/settings-maintenance-cron.md`; the other rows' new drawing is the plan settings-maintenance-tidy (SM3).
+- Each card is drawn whole inside its row. Scheduled jobs opened as a list of jobs: `ui/settings-maintenance-cron.md`; the other rows opened: `ui/settings-maintenance-open-rows.md`.
 
 ## What does each row say closed?
 - Update channel: Stable or Beta (amber pill), then "backs up before updating" when on.

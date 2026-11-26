@@ -38,7 +38,7 @@ priority: 6
 ## Which steps? (one at a time: one file; tests red first)
 - SM1 (M) done (#11876) The fold: rows, lines and pills as pure functions in `includes/fn/maintenance_settings_fold.php` with its test; the sales watch cut into its own card.
 - SM2 (M) done (#11891) Scheduled jobs.
-- SM3 (M) after SM2 and after TR3a has landed: Backups and Storage, Update channel, Maintenance mode, Operations alerts, Sales watch, Chat notifications opened.
+- SM3 (M) done (#11910) Backups and Storage, Update channel, Maintenance mode, Operations alerts, Sales watch, Chat notifications opened.
 - SM4 (S) Close-out: `ui/settings-maintenance.md`, the survey's K2 and S3 lines corrected, this file deleted.
 
 Related: docs/memory/plans/settings-tidy-round.md, docs/memory/ui/settings-fold-rows.md, docs/memory/platform/object-storage-client.md
