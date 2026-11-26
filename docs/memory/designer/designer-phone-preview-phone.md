@@ -6,7 +6,7 @@ module: prototype_phone_view
 
 ## What does a phone link open?
 - `prototype.php?link=<token>` for a link `pg_proto_link_is_phone()` marks draws `pg_proto_phone_shell_html()` (`includes/fn/prototype_phone_view.php`) instead of the desktop viewer's bar, after every share-link gate (team sign-in, use counted, session mark). Other links are unchanged.
-- One dark 32 px line (page name, grey words, list button 44 px wide reaching 12 px below) over the sandboxed frame at the phone's width. No Bootstrap stylesheet, only the icons.
+- One dark 32 px line (page name, grey words, list button 44 px wide reaching 12 px below; a blue focus ring on its buttons and rows, #11855) over the sandboxed frame at the phone's width. No Bootstrap stylesheet, only the icons.
 - Body (`pg_proto_phone_view_body()`): `frame`; `locked` (a page for signed-in visitors on a link for anyone: "This page is for signed-in visitors" / "Ask for a team link to see it on your phone."); `gone` (the page asked for is no longer a draft: "This page is no longer in the design.", list open, the line keeps the earlier name from sessionStorage); `error`. Only `frame` is watched.
 - The list (`pg_proto_phone_view_rows()`): drafts in tab order, shown one ticked, locked ones greyed with a lock (anyone link only; two small reads per page via `pg_proto_link_page_access()`). A press opens `?link=…&page=N`: Back returns.
 

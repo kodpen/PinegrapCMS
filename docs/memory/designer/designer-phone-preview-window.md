@@ -17,7 +17,8 @@ description: The "Preview on a phone" window as built (PP2, #11578): its row in 
 - The time left is `_phLeftWords()`: "7 h 58 min", "8 h", "42 min", "less than a minute"; counted from the answer's `seconds_left` by a one-minute interval that also swaps the info line. At zero the code goes pale with "Make a new link".
 - The info line: a page never saved names it ("… has not been saved yet"); otherwise unsaved changes give the amber line with "Save", which saves and redraws the line; else the blue line.
 - A team link carries the chip "Team link" and "Sign in on the phone to open it."
-- Below 768 px (`sd-phone-narrow`) it fills the screen: "Point another phone's camera here", "Open here" (new tab), "Copy link", "End now".
+- The window is dark whatever the panel's scheme (`data-bs-theme="dark"`; a light panel drew its lines dark on dark until #11855). Closed, the focus goes back where it was asked for, else to the Preview button.
+- Below 768 px (`sd-phone-narrow`) it fills the screen, its body taking the height: "Point another phone's camera here", "Open here" (new tab), "Copy link", "End now".
 - "Share prototype" puts the chip "Phone preview" on the phone link's row (`l.phone`); its Revoke is unchanged.
 
 ## What does it cost?

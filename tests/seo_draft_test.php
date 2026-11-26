@@ -123,3 +123,18 @@ function test_preview_override_rows_are_shared_by_preview_and_draft()
 	pg_assert_same(0, $rows[5]['cfg']['custom_form_page_id'], 'a tab page reads as nothing chosen');
 	pg_assert_same(array('tree_json' => '', 'cfg' => null, 'case' => '', 'record' => 0), $rows[6]);
 }
+
+// The draft render reads the renderable page types, which take the sitemap's
+// types from seo.php: a request that had not loaded it (Compare's
+// compare_render) found a standard page "not renderable" and drew nothing.
+function test_seo_draft_render_loads_the_page_types_it_reads()
+{
+	$src = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+	$start = strpos($src, 'function pg_seo_check_draft_render(');
+	pg_assert_true($start !== false, 'the draft render is found');
+	$body = substr($src, $start, 4000);
+	$seo = strpos($body, "'/seo.php'");
+	$structure = strpos($body, "'/seo_structure.php'");
+	pg_assert_true($seo !== false, 'the draft render loads seo.php');
+	pg_assert_true($structure !== false && $seo < $structure, 'seo.php is loaded with the structure half');
+}

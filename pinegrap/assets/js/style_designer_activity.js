@@ -269,6 +269,13 @@ StyleDesigner.definePart('activity', function (K) {
         }
         host.innerHTML = html;
         wire();
+        // The chooser just used gets the focus back once the list has come:
+        // it is disabled while the list is read, which drops the focus.
+        if (s.refocus && s.state !== 'loading') {
+            var back = host.querySelector('.sd-act-chooser[data-chooser="' + s.refocus + '"]');
+            s.refocus = '';
+            if (back && !back.disabled) back.focus();
+        }
     }
 
     function appendRows(events) {
@@ -402,6 +409,13 @@ StyleDesigner.definePart('activity', function (K) {
             find.addEventListener('input', function () {
                 menu.querySelector('.sd-act-menu-pages').innerHTML = pagesHtml(find.value);
             });
+            // Enter takes the first page found, as a search field does.
+            find.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Enter') return;
+                ev.preventDefault();
+                var hit = menu.querySelector('.sd-act-menu-pages .sd-act-item');
+                if (hit) choose(name, hit.dataset.v);
+            });
             find.focus();
         } else {
             var first = menu.querySelector('.sd-act-item.is-on') || menu.querySelector('.sd-act-item');
@@ -427,9 +441,8 @@ StyleDesigner.definePart('activity', function (K) {
         else s.choice[name] = value;
         closeMenu();
         s.scrollTop = 0;
+        s.refocus = name;
         load(false);
-        var b = s.host.querySelector('.sd-act-chooser[data-chooser="' + name + '"]');
-        if (b) b.focus();
     }
 
     // ── Compare ──

@@ -201,6 +201,9 @@ function pg_seo_check_draft_render($page_id, $fields, $tree_json, $widgets, $use
 
     $overrides = pg_designer_is_full($user) ? pg_designer_preview_override_rows($widgets) : array();
 
+    // seo.php gives the page types the structure half may render; without
+    // it a standard page counts as one it cannot draw.
+    require_once(PG_FUNCTIONS_DIR . '/seo.php');
     require_once(PG_FUNCTIONS_DIR . '/seo_structure.php');
 
     // The session is lent empty for the render, as the audit buttons render

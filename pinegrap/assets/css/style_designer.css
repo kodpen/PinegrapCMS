@@ -5495,8 +5495,9 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-act-menu-find { display: flex; align-items: center; gap: .3rem; padding: .2rem .35rem .3rem; color: var(--sd-text-muted, #8b9ab0); font-size: .72rem; }
 .sd-act-find {
     flex: 1 1 auto; min-width: 0; padding: .18rem .35rem; font-size: .72rem; color: var(--sd-text);
-    background: var(--sd-input-bg); border: 1px solid var(--sd-input-border, var(--sd-panel-border)); border-radius: .25rem;
+    height: 30px; background: var(--sd-input-bg); border: 1px solid var(--sd-input-border, var(--sd-panel-border)); border-radius: 9px;
 }
+.sd-act-find:focus { outline: none; border-color: var(--sd-accent); box-shadow: var(--sd-focus-ring); }
 /* A narrow window: History as wide as the window lets it. */
 @media (max-width: 575.98px) {
     .sd-snapshots-panel { width: calc(100vw - 16px); right: 8px !important; }
@@ -5634,7 +5635,13 @@ dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; fil
     .sd-rev-overlay .sd-rev-modal { border-radius: 0; }
     .sd-cmp-title { display: none; }
     .sd-cmp-title-short { display: inline; }
-    .sd-cmp-choose { max-width: 9rem; }
+    .sd-cmp-choose { max-width: 100%; }
+    /* The line holds the two names only; the foot's sentence takes a line of
+       its own and the buttons keep theirs on one line. */
+    .sd-cmp-detail { display: none; }
+    .sd-rev-overlay .sd-fr-footer { flex-wrap: wrap; }
+    .sd-rev-overlay .sd-rev-summary { flex: 1 1 100%; }
+    .sd-rev-overlay .sd-fr-btn { white-space: nowrap; }
     .sd-cmp-list { display: none; flex-basis: auto; border-left: 0; }
     .sd-cmp-is-list .sd-cmp-list { display: flex; flex: 1 1 auto; }
     .sd-cmp-is-list .sd-cmp-main .sd-cmp-stage, .sd-cmp-is-list .sd-cmp-line, .sd-cmp-is-list .sd-cmp-note { display: none; }
@@ -9280,6 +9287,7 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
    768 px the window fills the screen. */
 .sd-phone-dialog { width: min(360px, calc(100vw - 32px)); }
 .sd-phone-body { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.sd-phone-dialog .sd-phone-body { padding: 16px; }
 .sd-phone-code { width: 196px; height: 196px; padding: 6px; border-radius: 8px; background: #fff; color: #000;
     display: flex; align-items: center; justify-content: center; }
 .sd-phone-code svg { display: block; width: 100%; height: 100%; }
@@ -9296,7 +9304,8 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-phone-foot { gap: 8px; }
 .sd-phone-note { font-size: .78rem; color: var(--sd-text-muted); }
 .sd-phone-narrow.sd-phone-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
-.sd-phone-narrow .sd-phone-body { justify-content: center; }
+.sd-phone-narrow.sd-phone-dialog[open] { display: flex; flex-direction: column; }
+.sd-phone-narrow .sd-phone-body { flex: 1 1 auto; max-height: none; justify-content: center; }
 .sd-phone-narrow .sd-phone-code { width: 176px; height: 176px; }
 .sd-phone-narrow .sd-phone-foot { flex-direction: column; align-items: stretch; }
 /* "Clean up" (style_designer_cleanup.js): four lists with a head each, a

@@ -67,6 +67,9 @@ StyleDesigner.definePart('phone', function (K) {
         var d = document.createElement('dialog');
         d.className = 'dialog sd-settings-modal-dark sd-modal-content pg-dialog-centered sd-phone-dialog' + (_phNarrow() ? ' sd-phone-narrow' : '');
         d.tabIndex = -1;
+        // The designer's windows are dark whatever the panel's scheme: without
+        // this a light panel drew the window white, its lines dark on dark.
+        d.setAttribute('data-bs-theme', 'dark');
         d.setAttribute('aria-labelledby', 'sd-phone-title');
         d.innerHTML =
             '<div class="dialog-header sd-modal-header">' +
@@ -267,8 +270,13 @@ StyleDesigner.definePart('phone', function (K) {
         if (state.el || !window.pgUI) return;
         state.host = host;
         state.answer = null;
+        // Focus goes back where the window was asked for; a Preview menu row
+        // is hidden by then, so its button takes it.
+        var back = document.activeElement;
         state.el = _phBuild();
         pgUI.dialog.on(state.el, 'hidden', function () {
+            var to = back && back.isConnected && back.getClientRects().length ? back : document.getElementById('sd-preview-menu-btn');
+            if (to && to.getClientRects().length) to.focus();
             clearInterval(state.tick);
             clearTimeout(state.copied);
             state.tick = null;

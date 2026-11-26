@@ -26,7 +26,7 @@ priority: 6
 - UR3 after SK6 has landed: the Prototype view as a drawing board (`designer/prototype-view.md`, `designer/prototype-sketch-tool.md`, `designer/sketch-page-details.md`, `designer/sketch-build.md`, `designer/sketch-build-again.md`, `designer/prototype-sketch-picture.md`).
 - UR4 The Options panel's parts added by the DO steps (`designer/designer-options-overview.md`), in a 240 px column too (`designer/designer-options-narrow.md`).
 - UR5 after CO5 has landed: a shared component's fields per place and its variants (`designer/component-overrides-fields.md`, `designer/component-overrides-this-place.md`).
-- UR6 "Preview on a phone" (`designer/designer-phone-preview-rules.md`), History's Activity tab (`designer/designer-activity.md`), "Compare with the live page" (`designer/designer-compare-look-tab.md`).
+- UR6 "Preview on a phone" (`designer/designer-phone-preview-rules.md`), History's Activity tab (`designer/designer-activity.md`), "Compare with the live page" (`designer/designer-compare-look-tab.md`). Done: #11855.
 - UR7 My library (`designer/designer-my-library-overview.md`), a page from a document (`designer/document-to-page.md`), canvas guides (`designer/designer-canvas-guides-overview.md`), a picture's focus point (`designer/image-focus-overview.md`).
 - UR8 after CU3 has landed: "Clean up"; then the close-out: the round's files read as one, a fault that repeated across features written into `designer/` as a rule, this file deleted.
 

@@ -243,7 +243,7 @@ StyleDesigner.definePart('compare', function (K) {
             : esc(_sdT('Compare with the live page')) + ' <span class="sd-rev-who">' + esc((w.page && w.page.page_name) || '') + '</span>';
         var refusal = K._sdRevisionLoadRefusal();
         overlay.innerHTML =
-            '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare')) + '">' +
+            '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-modal="true" aria-label="' + esc(_sdT('Compare')) + '">' +
                 '<div class="sd-fr-header">' +
                     '<span class="bi bi-arrow-left-right me-3"></span><span class="sd-cmp-title">' + title + '</span>' +
                     '<span class="sd-cmp-title-short">' + esc(_sdT('Compare')) + '</span>' +
@@ -304,8 +304,10 @@ StyleDesigner.definePart('compare', function (K) {
         var el = w.el;
         el.querySelectorAll('[data-cmp="close"]').forEach(function (b) { b.addEventListener('click', close); });
         el.addEventListener('mousedown', function (ev) { if (ev.target === el) close(); });
-        // Escape closes the window only, never the dialog under it.
+        // Escape closes the window only, never the dialog under it. Tab
+        // stays inside the window: the panels under it are not reachable.
         w.onKey = function (ev) {
+            if (ev.key === 'Tab') { keepFocus(ev); return; }
             if (ev.key !== 'Escape' || ev.defaultPrevented) return;
             ev.preventDefault();
             ev.stopPropagation();
@@ -353,6 +355,21 @@ StyleDesigner.definePart('compare', function (K) {
             K._sdRevisionRestore(pageId, s.no, done);
         });
         wireHandle();
+        // The window takes the focus, on its open tab, as a dialog does.
+        var tab = w.q('.sd-rev-tab.is-active');
+        if (tab) tab.focus();
+    }
+
+    // Tab and Shift+Tab go round the window's visible controls.
+    function keepFocus(ev) {
+        var all = Array.prototype.filter.call(
+            w.el.querySelectorAll('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex="0"]'),
+            function (n) { return n.getClientRects().length > 0; });
+        if (!all.length) return;
+        var first = all[0], last = all[all.length - 1], at = document.activeElement;
+        if (!w.el.contains(at)) { ev.preventDefault(); (ev.shiftKey ? last : first).focus(); }
+        else if (ev.shiftKey && at === first) { ev.preventDefault(); last.focus(); }
+        else if (!ev.shiftKey && at === last) { ev.preventDefault(); first.focus(); }
     }
 
     function close() {
