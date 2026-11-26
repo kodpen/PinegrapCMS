@@ -657,8 +657,7 @@
 .sd-category-header {
     display:flex; align-items:center;
     padding:.4rem .7rem; cursor:pointer;
-    font-size:.67rem; font-weight:700;
-    text-transform:uppercase; letter-spacing:.05em;
+    font-size:11.5px; font-weight:600;
     color:var(--sd-text-muted); -webkit-user-select: none; user-select: none;
     transition:background .12s;
 }
@@ -2756,30 +2755,78 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     color: color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text));
     border-bottom-color: var(--sd-accent, #58a6ff);
 }
-/* Four tabs share this strip, 62px each in a 249px panel. The strip-wide
-   uppercase + .72rem leaves ~54px of room for a 10-character label, so the
-   longest ones were clipped mid-word: drop the case transform and a step of
-   font size here rather than shortening the labels, which are shared keys. */
-#sd-panel-tabs .sd-panel-tab {
-    padding-left: .25rem;
-    padding-right: .25rem;
-    font-size: .62rem;
+/* The palette's head is its tab holder: a 40 px row, the holder 32 px,
+   the dock button at its end. Tabs are words in sentence case, none in a
+   colour of its own; under 230 px a tab that is not open shows its rail
+   icon, the word staying in its tip. */
+.sd-panel-header.sd-pal-head {
+    container-type: inline-size;
+    min-height: 40px;
+    gap: 4px;
+    padding: 0 6px 0 8px;
+    background: var(--sd-panel-bg);
+    border-bottom: 0;
     text-transform: none;
     letter-spacing: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
-/* Light indigo keeps the System tab apart and reads 5.1:1 on the panel. */
-#sd-panel-tabs .sd-panel-tab[data-tab="system"] { color: #818cf8; }
+.sd-pal-head .sd-dock-spacer { display: none; }
+.sd-panel-header.sd-pal-head .sd-dock-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border-radius: 6px; font-size: 13px;
+}
+.sd-pal-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 32px;
+    padding: 3px;
+    gap: 3px;
+    display: flex;
+    border-radius: 10px;
+    background: var(--sd-input-bg);
+    border: 1px solid var(--sd-panel-border);
+}
+#sd-panel-tabs .sd-panel-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--sd-label);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+#sd-panel-tabs .sd-panel-tab:hover { color: var(--sd-text); }
+#sd-panel-tabs .sd-panel-tab.active { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+#sd-panel-tabs .sd-panel-tab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+#sd-panel-tabs .sd-pal-tab-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#sd-panel-tabs .sd-pal-tab-ic { display: none; font-size: 12.5px; }
+@container (max-width: 229.98px) {
+    #sd-panel-tabs .sd-panel-tab:not(.active) { flex: none; width: 30px; padding: 0; }
+    #sd-panel-tabs .sd-panel-tab:not(.active) .sd-pal-tab-ic { display: inline-block; }
+    #sd-panel-tabs .sd-panel-tab:not(.active) .sd-pal-tab-txt { display: none; }
+}
+@media (forced-colors: active) {
+    #sd-panel-tabs .sd-panel-tab.active,
+    .sd-ov-subtabs .sd-ov-subtab.active {
+        forced-color-adjust: none;
+        background-color: Highlight;
+        color: HighlightText;
+    }
+}
 /* System tab contents */
 .sd-system-regions-wrap { padding: .5rem .25rem; }
 .sd-system-header {
-    font-size: .7rem;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--sd-text-muted, #8b9ab0);
-    text-transform: uppercase;
-    letter-spacing: .06em;
     padding: .25rem .5rem .5rem;
 }
 .sd-system-empty {
@@ -2841,7 +2888,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 
 /* Overview header — shares the look of `.sd-panel-header`.
-   Detailed rules: the "Overview: header + sub-tabs" block at the section start. */
+   Detailed rules: the "Overview: its head" block further down. */
 .sd-overview-header { border-top: 1px solid var(--sd-panel-border); }
 .sd-overview-header .bi { font-size: .6rem; }
 
@@ -5217,6 +5264,18 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-bulk-confirm-list li + li { margin-top: .25rem; }
 
 /* ========================= RECENTLY USED COMPS ========================= */
+/* "Recently used" is a quiet group label with the link Clear at its right. */
+.sd-pal-label {
+    display: flex; align-items: center;
+    padding: 12px 12px 4px;
+    font-size: 11.5px; font-weight: 600;
+    color: var(--sd-text-muted);
+}
+.sd-pal-label .sd-recent-clear-btn {
+    margin-left: auto; padding: 0;
+    color: var(--sd-accent); font-size: 11.5px; font-weight: 500;
+}
+.sd-pal-label .sd-recent-clear-btn:hover { color: var(--sd-accent); text-decoration: underline; }
 .sd-recent-section { border-bottom: 2px solid rgba(88,166,255,.2); }
 .sd-recent-section .sd-category-header {
     background: rgba(88,166,255,.06); color: var(--sd-accent, #58a6ff);
@@ -5927,56 +5986,79 @@ dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; fil
     transform: scale(1.15);
 }
 
-/* ========== Overview: header + sub-tabs (Tree ↔ Notes) ========== */
-/* Mirrors the right panel's Design/Themes pattern: panel header on top
-   (clickable, collapses everything), full-width tab strip below, content
-   under that. Tree-collapse-all moved into the search row. */
-.sd-overview-header {
-    display: flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .45rem .6rem;
+/* ========== Overview: its head (name, Tree / Notes, caret) ========== */
+/* One 40 px row: the name is a button that shuts and opens the section
+   (the caret at the right shows which), Tree / Notes a small pair beside
+   it. Under 230 px the name is its icon. */
+.sd-panel-header.sd-overview-header {
+    container-type: inline-size;
+    min-height: 40px;
+    gap: 6px;
+    padding: 0 6px 0 10px;
+    background: var(--sd-panel-bg);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
 }
+.sd-ov-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--sd-text);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: start;
+    cursor: pointer;
+}
+.sd-panel-header .sd-ov-name .bi { font-size: 13px; color: var(--sd-label); }
+.sd-ov-name-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sd-ov-name:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; border-radius: 4px; }
 .sd-overview-header .sd-panel-caret {
-    margin-left: auto;
-    font-size: .65rem;
-    transition: transform .15s ease;
+    flex: none;
+    width: 20px;
+    text-align: center;
+    font-size: 11px;
     color: var(--sd-text-muted);
 }
-.sd-overview-section.sd-ov-collapsed .sd-overview-header .sd-panel-caret {
-    transform: rotate(180deg);
+.sd-overview-header:hover .sd-ov-name { color: var(--sd-text); }
+@container (max-width: 229.98px) {
+    .sd-ov-name-txt { display: none; }
 }
-.sd-overview-header:hover { background: color-mix(in srgb, var(--sd-text) 3%, transparent); }
 
 .sd-ov-subtabs {
+    flex: none;
     display: flex;
-    border-bottom: 1px solid color-mix(in srgb, var(--sd-text) 6%, transparent);
+    gap: 3px;
+    height: 28px;
+    padding: 3px;
+    border-radius: 10px;
     background: var(--sd-input-bg);
+    border: 1px solid var(--sd-panel-border);
+    cursor: default;
 }
 .sd-ov-subtabs .sd-ov-subtab {
-    flex: 1;
-    padding: .35rem .5rem;
-    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 9px;
     border: 0;
-    border-bottom: 2px solid transparent;
-    color: var(--sd-text-muted);
-    font-size: .7rem;
+    border-radius: 7px;
+    background: none;
+    color: var(--sd-label);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: .25rem;
 }
-.sd-ov-subtabs .sd-ov-subtab.active {
-    color: var(--sd-accent);
-    border-bottom-color: var(--sd-accent);
-    background: rgba(var(--sd-accent-rgb),.05);
-}
-.sd-ov-subtabs .sd-ov-subtab:not(.active):hover {
-    color: var(--sd-text);
-    background: color-mix(in srgb, var(--sd-text) 3%, transparent);
-}
-.sd-ov-subtab .bi { font-size: .72rem; }
+.sd-ov-subtabs .sd-ov-subtab:hover { color: var(--sd-text); }
+.sd-ov-subtabs .sd-ov-subtab.active { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-ov-subtabs .sd-ov-subtab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
 
 /* Tree-collapse-all moves into the search row — small icon button on the right */
 .sd-ov-search-box { position: relative; }
@@ -6100,7 +6182,6 @@ dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; fil
 .sd-ov-path-step:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
 .sd-ov-path-step:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
 .sd-ov-path-step.sd-ov-path-cur { flex-shrink: 0; max-width: 60%; color: var(--sd-text); font-weight: 600; }
-.sd-ov-subtab .bi { font-size: .72rem; }
 .sd-ov-subtab .sd-notes-tab-count {
     display: inline-block;
     min-width: 16px;
