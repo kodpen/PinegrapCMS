@@ -11,6 +11,7 @@ description: The speech service a spoken answer is made with (VA3): the card's S
 
 ## How is a text spoken?
 - `ws_voice_speak($text, $locale)`: refuses with the first sentence of `ws_voice_speech_missing()` (off, no key, key unreadable, no cURL; `ws_voice_speech_ready()` is its yes/no); cuts the text (`ws_voice_speech_cut()`: over `WS_VOICE_SPEECH_MAX_CHARS` 1,500 characters, at the last `. ! ? …` followed by white space or a line end that fits, else a word end, else the limit); builds the request (`ws_voice_speech_request()`, pure: `POST <base>/audio/speech`, JSON model/input/voice/response_format mp3, `instructions: Speak in <language>.` only for a model that is not tts-1/tts-1-hd, which refuse it); sends it through `api_http_request()` with the key, 120 s, `agent workspace-voice`; reads the answer with `ws_voice_speech_answer()` (200 with non-JSON bytes = a sound; else the service's words, `refused` for 401/402/403).
+- A 200 whose type is `text/…` (an error page) is a refusal, not a sound (#11809).
 - Answers `bytes`, `name` (`voice-YYYYMMDD-HHMMSS.mp3`, `ws_voice_speech_file_name()`, UTC), `mime`, `text` (what was spoken), `language` (the locale's two-letter code), `model`, `voice`, `provider`. Nothing is kept yet.
 
 ## How is the sound kept like a recording?
