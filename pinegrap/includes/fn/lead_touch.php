@@ -309,31 +309,35 @@ function pg_lead_sources_share($converted, $leads)
 
 /**
  * The report's rows grouped by the touch's channel, campaign or landing
- * page ('' when the visit is gone or had none): leads, those of them that
- * became customers, customers and their first orders' revenue. Most leads
- * first, then most customers, then by name. Pure.
+ * page ('' when the visit had none): leads, those of them that became
+ * customers, customers and their first orders' revenue. A touch whose visit
+ * is gone (trimmed by the keep period) is a group of its own with key '' and
+ * gone true, so it never mixes with the visits that had no campaign. Most
+ * leads first, then most customers, then by name. Pure.
  *
- * @param array[] $rows kind, channel, campaign, landing_page, converted, revenue
+ * @param array[] $rows kind, channel, campaign, landing_page, converted, revenue, gone
  * @param string  $by   channel, campaign or landing_page
- * @return array[] key, leads, converted, customers, revenue, share
+ * @return array[] key, gone, leads, converted, customers, revenue, share
  */
 function pg_lead_sources_group(array $rows, $by)
 {
     $groups = array();
 
     foreach ($rows as $row) {
-        $key = (string) ($row[$by] ?? '');
+        $gone = !empty($row['gone']);
+        $key = $gone ? '' : (string) ($row[$by] ?? '');
+        $slot = ($gone ? 'gone:' : 'key:') . $key;
 
-        if (!isset($groups[$key])) {
-            $groups[$key] = array('key' => $key, 'leads' => 0, 'converted' => 0, 'customers' => 0, 'revenue' => 0, 'share' => null);
+        if (!isset($groups[$slot])) {
+            $groups[$slot] = array('key' => $key, 'gone' => $gone, 'leads' => 0, 'converted' => 0, 'customers' => 0, 'revenue' => 0, 'share' => null);
         }
 
         if ((int) $row['kind'] === PG_LEAD_JOURNEY_LEAD) {
-            $groups[$key]['leads']++;
-            $groups[$key]['converted'] += empty($row['converted']) ? 0 : 1;
+            $groups[$slot]['leads']++;
+            $groups[$slot]['converted'] += empty($row['converted']) ? 0 : 1;
         } elseif ((int) $row['kind'] === PG_LEAD_JOURNEY_CUSTOMER) {
-            $groups[$key]['customers']++;
-            $groups[$key]['revenue'] += (int) ($row['revenue'] ?? 0);
+            $groups[$slot]['customers']++;
+            $groups[$slot]['revenue'] += (int) ($row['revenue'] ?? 0);
         }
     }
 
@@ -352,7 +356,11 @@ function pg_lead_sources_group(array $rows, $by)
             return $b['customers'] - $a['customers'];
         }
 
-        return strcmp($a['key'], $b['key']);
+        if ($a['key'] !== $b['key']) {
+            return strcmp($a['key'], $b['key']);
+        }
+
+        return (int) $a['gone'] - (int) $b['gone'];
     });
 
     return $groups;
@@ -386,7 +394,7 @@ function pg_lead_sources_totals(array $groups)
  * @param int    $from
  * @param int    $to    the first second after the period
  * @param string $touch first or last
- * @return array[] kind, channel, campaign, landing_page, converted, revenue
+ * @return array[] kind, channel, campaign, landing_page, converted, revenue, gone (the visit was trimmed)
  */
 function pg_lead_sources_read($from, $to, $touch)
 {
@@ -400,7 +408,7 @@ function pg_lead_sources_read($from, $to, $touch)
         : '0';
     $rows = array();
 
-    foreach ((array) db_items("SELECT j.kind, v.channel, v.campaign, v.landing_page, " . $orders . " AS revenue,
+    foreach ((array) db_items("SELECT j.kind, v.channel, v.campaign, v.landing_page, " . $orders . " AS revenue, v.id AS visit_id,
             (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "') AS customer_rows
         FROM contact_journey j
         LEFT JOIN lead_visits v ON v.id = " . $visit . "
@@ -412,6 +420,7 @@ function pg_lead_sources_read($from, $to, $touch)
             'landing_page' => (string) $row['landing_page'],
             'converted'    => ((int) $row['kind'] === PG_LEAD_JOURNEY_LEAD) && ((int) $row['customer_rows'] > 0),
             'revenue'      => (int) $row['revenue'],
+            'gone'         => $row['visit_id'] === null,
         );
     }
 
@@ -420,14 +429,19 @@ function pg_lead_sources_read($from, $to, $touch)
 
 /**
  * A group's name as the report shows it: a channel by the visitor reports'
- * names, an empty key in words.
+ * names, an empty key in words; a touch whose visit is gone is "Not known".
  *
- * @param string $by  channel, campaign or landing_page
+ * @param string $by   channel, campaign or landing_page
  * @param string $key
+ * @param bool   $gone the group's gone (pg_lead_sources_group())
  * @return string
  */
-function pg_lead_sources_label($by, $key)
+function pg_lead_sources_label($by, $key, $gone = false)
 {
+    if ($gone) {
+        return lang('Not known');
+    }
+
     if ($key === '') {
         return ($by === 'campaign') ? lang('No campaign') : lang('Not known');
     }
