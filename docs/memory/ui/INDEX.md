@@ -368,6 +368,7 @@
 - image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager [decision: here]
 - image-editor-site-colors.md: The Artifact Canvas's "Site colours" row in every colour control (AC4): which colours, their order and names, the site_colors action, the colors part and the core's swatchRows hook
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
+- image-editor-starts.md: The Artifact Canvas's "Start from a design" (AC7): the New image dialog's row, purpose chips, tiles, the designs files, the "Your picture" box filled from Files
 - image-editor-sticker.md: The Artifact Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Artifact Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
 - image-editor-subject.md: The Artifact Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection [decision: here]
