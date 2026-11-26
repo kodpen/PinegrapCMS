@@ -390,7 +390,7 @@ function pg_lead_sources_totals(array $groups)
  * contact's earliest row of a kind only (a merge moves both contacts' rows
  * to the one kept, and a contact becomes a lead or a customer once): its
  * channel, campaign and landing page; whether a lead's contact became a
- * customer (at any time); a customer's first order total in minor units
+ * customer at or after the lead (one who bought first is no conversion); a customer's first order total in minor units
  * (0 for a paid invoice).
  *
  * @param int    $from
@@ -411,7 +411,7 @@ function pg_lead_sources_read($from, $to, $touch)
     $rows = array();
 
     foreach ((array) db_items("SELECT j.kind, v.channel, v.campaign, v.landing_page, " . $orders . " AS revenue, v.id AS visit_id,
-            (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "') AS customer_rows
+            (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "' AND c.at >= j.at) AS customer_rows
         FROM contact_journey j
         LEFT JOIN lead_visits v ON v.id = " . $visit . "
         WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', '" . PG_LEAD_JOURNEY_CUSTOMER . "') AND j.at >= '" . (int) $from . "' AND j.at < '" . (int) $to . "'

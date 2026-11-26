@@ -189,3 +189,11 @@ function test_lead_touch_report_counts_a_contacts_first_row_of_a_kind()
 	pg_assert_contains('NOT EXISTS (SELECT 1 FROM contact_journey e WHERE e.contact_id = j.contact_id AND e.kind = j.kind', $body, 'a merged contact holding two lead rows is one lead');
 	pg_assert_contains('v.id AS visit_id', $body, 'a trimmed visit is marked');
 }
+
+function test_lead_touch_became_customer_only_at_or_after_the_lead()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
+	$body = substr($source, strpos($source, 'function pg_lead_sources_read('));
+
+	pg_assert_contains("c.kind = '\" . PG_LEAD_JOURNEY_CUSTOMER . \"' AND c.at >= j.at)", $body, 'a contact who bought first and sent a form later did not become a customer since');
+}
