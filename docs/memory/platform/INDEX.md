@@ -171,6 +171,7 @@
 - office-docx-page-keys.md: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter splits, Backspace and Delete join, selections and arrows cross paragraphs, B/I/U across them
 - office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1, OP2 PR #11940): one typed sheet, the caret followed, what stays; the keys in office-docx-page-keys.md
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
+- office-docx-undo.md: Undo and Redo of a Word document typed on its sheet (OP3, PR #11963): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one change is, what a press puts back
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps [decision: decisions-made-product-115.md, decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: decisions-made-workspace-45.md]
