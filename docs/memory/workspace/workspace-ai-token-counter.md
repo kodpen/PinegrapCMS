@@ -5,6 +5,7 @@ module: ai_quota
 ---
 
 ## What does the counter show?
+- Added in PR #11990, so a site sees how much of the licence's daily Pinegrap AI allowance is left.
 - Under "days remaining" in the account menu's licence card (`license_check('bar')`, only while the licence is valid): "Pinegrap AI today", "1,234 / 5,000 tokens" or "1,234 tokens, no daily limit", a 3px bar while there is a limit, "Starts again at 00:00" in the site's clock. `pg_ai_quota_card_html()`.
 - On the Pinegrap AI settings row's facts line, after this site's 7/30 day tokens: "Licence today: 1,234 / 5,000 tokens" (`ws_ai_row_html()`, value `quota`).
 - Tone: green, amber from 80%, red at the limit. Nothing is shown before the gateway has answered once, or when AI is not part of the licence.
