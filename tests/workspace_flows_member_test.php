@@ -173,3 +173,46 @@ function test_workspace_flows_member_kinds_are_flow_kinds()
 		pg_assert_true(isset($kinds[$kind]), $kind);
 	}
 }
+
+// A function's code without its comments.
+function ws_flows_member_test_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	return (string) preg_replace('~^\s*(//|\*|/\*).*$~m', '', $source);
+}
+
+// Another flow's "Start a flow" box starts a role-3 member's flow only as a
+// start by hand would: by its owner alone and inside the starts an hour of
+// all their flows. A home channel or a share the flow kept from its owner's
+// staff days lets nobody else's flow start it.
+function test_workspace_flows_member_flow_is_not_started_by_another_flow()
+{
+	foreach (array('ws_flow_chain_check', 'ws_flow_chain_start') as $name) {
+		$source = ws_flows_member_test_source($name);
+
+		pg_assert_contains('ws_flow_member_starter_refusal(', $source, $name . ': the owner alone');
+	}
+
+	pg_assert_contains('ws_flow_member_starts_check(', ws_flows_member_test_source('ws_flow_chain_start'), 'the starts an hour of all their flows');
+}
+
+// What a role-3 member's flow may hold is asked with its owner's kind, not
+// the saver's: a colleague a share from the owner's staff days still lets
+// edit the draft, or a staff member publishing a converted flow, keeps to
+// what the owner's own flow may hold.
+function test_workspace_flows_member_flow_kept_by_owner_kind()
+{
+	foreach (array('ws_flow_save_check', 'ws_flow_publish_check') as $name) {
+		$source = ws_flows_member_test_source($name);
+
+		pg_assert_contains('ws_flow_member_flow_refusal(ws_flow_owner_builder_kind($viewer, $flow)', $source, $name);
+	}
+
+	// The saver who owns the flow, or makes a new one, is asked as they are.
+	pg_assert_same('member', ws_flow_owner_builder_kind(array('id' => 7, 'member' => true, 'role' => 3), null));
+	pg_assert_same('member', ws_flow_owner_builder_kind(array('id' => 7, 'member' => true, 'role' => 3), array('owner_id' => 7)));
+	pg_assert_same('staff', ws_flow_owner_builder_kind(array('id' => 7, 'member' => true, 'role' => 1), array('owner_id' => 7)));
+}
