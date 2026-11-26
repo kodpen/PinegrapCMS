@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -203,6 +203,8 @@ function pg_image_editor_config()
         'serverColor' => class_exists('Imagick'),
         // The Sticker tool's icons: the font and its name => code point map.
         'icons'   => pg_image_editor_icon_urls(),
+        // The Text panel's font pairs, read when the panel first opens.
+        'fontPairs' => pg_image_editor_font_pairs_url(),
         // The animation encoder's script, started as a worker.
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
@@ -7139,4 +7141,58 @@ function pg_image_editor_site_colors_list($designs, $max = 12)
     }
 
     return $out;
+}
+
+// -- Text styles and font pairs (pg_image_editor_textstyles.js) --
+
+/**
+ * The Text panel's three styles and its font pairs: labels, and the words a
+ * pair writes on the board (keys named in assets/canvas/font-pairs.json).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_textstyles()
+{
+    return array(
+        'textAddHeading'    => lang('Add a heading'),
+        'textAddSubheading' => lang('Add a subheading'),
+        'textAddBody'       => lang('Add body text'),
+        'fontPairs'         => lang('Font pairs'),
+        'fontPairsError'    => lang('The font pairs could not be loaded.'),
+        'fontPairClassicHead' => lang('Grand opening'),
+        'fontPairClassicLine' => lang('Join us this Saturday at ten'),
+        'fontPairModernHead' => lang('New collection'),
+        'fontPairModernLine' => lang('Designed for every day'),
+        'fontPairBoldHead' => lang('Big summer sale'),
+        'fontPairBoldLine' => lang('Up to half off, this week only'),
+        'fontPairElegantHead' => lang('Save the date'),
+        'fontPairElegantLine' => lang('We are getting married'),
+        'fontPairFriendlyHead' => lang('Hello there'),
+        'fontPairFriendlyLine' => lang('Fresh coffee every morning'),
+        'fontPairEditorialHead' => lang('The weekly letter'),
+        'fontPairEditorialLine' => lang('Stories worth your time'),
+        'fontPairStrongHead' => lang('Workshop'),
+        'fontPairStrongLine' => lang('Learn, make and share in one day'),
+        'fontPairStoryHead' => lang('Our story'),
+        'fontPairStoryLine' => lang('Made by hand since 1998'),
+        'fontPairLaunchHead' => lang('Launch day'),
+        'fontPairLaunchLine' => lang('Version two is here'),
+        'fontPairMenuHead' => lang('Weekend menu'),
+        'fontPairMenuLine' => lang('Seasonal dishes, made fresh'),
+        'fontPairPosterHead' => lang('Live music'),
+        'fontPairPosterLine' => lang('Friday night, doors open at eight'),
+        'fontPairThanksHead' => lang('Thank you'),
+        'fontPairThanksLine' => lang('For being part of our day'),
+    );
+}
+
+/**
+ * The font pairs file of the Text panel; the address carries the file's time
+ * so a changed file is fetched again.
+ *
+ * @return string address
+ */
+function pg_image_editor_font_pairs_url()
+{
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/font-pairs.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/font-pairs.json');
 }
