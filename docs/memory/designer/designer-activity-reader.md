@@ -16,12 +16,14 @@ module: designer_activity
 - Also from `audit_log` since AC5: a page taken off the site or put on it, the design's own lines and a copy's, shared components (`designer-activity-audit-trail.md`). Not read: the Site Log (`designer-activity-writers.md`).
 
 ## What does an event hold?
-- `key`, `at`, `kind`, `action`, `sentence`, `name`, `who`, `user_id`, `page_id`, `revision_no`, `editor`. Never the values before and after.
+- `key`, `at`, `kind`, `action`, `sentence`, `name`, `who`, `user_id`, `page_id`, `revision_no`, `before_no`, `editor`.
+- `before_no`: n-1, or 0 for the first and for the oldest kept version (retention trimmed n-1). Never the values before and after.
 - `sentence` is plain text after the person's name ("published Home"), from `pg_designer_activity_sentence()`, translated; '' for an action it does not know. The tab escapes it.
 - `who`: the user row of the stored id (`pg_designer_activity_who()`), "A removed user" when the id finds none; the trail's own `username` column is never read. A guest's answer names the typed name, "The customer" when empty or erased (`{name}`).
 
 ## How does paging work?
 - Order: time, then store name, then row id, all descending. The cursor is `<time>:<store>:<id>` of the last event; `pg_designer_activity_after_sql()` gives each store's rows after it, so many events in one second are neither lost nor repeated. Each store reads 51 rows; `pg_designer_activity_merge()` cuts to fifty and says `more`.
+- Rights are applied after that cut, so `pg_designer_activity_fill()` reads on from the cursor (ten reads at most) until fifty visible events or the end (#11762: a content editor got empty pages before).
 
 ## Who sees what?
 - Designer roles: every event. A content editor: events of pages they may edit (`pg_designer_page_access()`; a binned or deleted page by the folder its line kept), no share link and no design file (`pg_designer_activity_visible()`).
