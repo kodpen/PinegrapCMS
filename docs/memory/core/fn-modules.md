@@ -99,7 +99,7 @@ description: Generated from the module field of the memory files: each includes/
 - `comment_list_edit`: [[list-table-quick-edit-comments]]
 - `comments`: [[bug-hunt-areas-comments-reviews]], [[comment-anonymous-name]], [[comment-label-stored-and-mail-line]], [[comment-moderation-recycle-bin]], [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-item-threads]], [[comments-widget-pages]], [[comments-widget-product-page]], [[designed-page-comment-names]], [[product-review-order]], [[scheduled-comment-claim]]
 - `commerce_list`: [[list-table-commerce-lists]], [[list-table-order-side-lists]]
-- `commerce_settings_fold`: [[settings-ecommerce]], [[settings-ecommerce-giftcards-rewards]], [[settings-ecommerce-shipping-stock]], [[settings-ecommerce-store-payments]]
+- `commerce_settings_fold`: [[settings-ecommerce]], [[settings-ecommerce-giftcards-rewards]], [[settings-ecommerce-programmes-feeds]], [[settings-ecommerce-shipping-stock]], [[settings-ecommerce-store-payments]]
 - `commission_list`: [[affiliate-approval-and-commission-edit]], [[api-commission-writes]], [[commission-list-affiliate-join]], [[commission-list-paging]], [[order-cancel-commissions]], [[referral-commission-readers]]
 - `common_regions`: [[api-design-dialogs-regions]]
 - `communication_settings_fold`: [[settings-communication]]
