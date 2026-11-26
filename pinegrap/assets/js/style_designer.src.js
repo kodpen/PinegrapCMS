@@ -98466,13 +98466,24 @@ const StyleDesigner = (function () {
             try { settings = JSON.parse(cached.system_region_config) || {}; } catch (e) { return true; }
         }
         var empty = false, seen = false;
+        // A placement whose component id was not this site's is done once a
+        // component is placed there again.
+        if (kinds.indexOf('shared') !== -1) {
+            seen = true;
+            if (!node.props.sharedId) empty = true;
+        }
+        // The kinds of pg_library_ref_kind(), and a menu by its name.
         Object.keys(settings).forEach(function (k) {
-            var kind = (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
+            var kind = (k.indexOf('product_group_id') !== -1 || k.indexOf('root_group_id') !== -1) ? 'product_group'
+                : k.indexOf('calendar_id') !== -1 ? 'calendar'
+                : (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
                 : k.indexOf('folder_id') !== -1 ? 'folder'
-                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page' : '';
+                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page'
+                : k === 'menu_name' ? 'menu' : '';
             if (!kind || kinds.indexOf(kind) === -1) return;
             seen = true;
-            if (!settings[k] || settings[k] === '0') empty = true;
+            var v = settings[k];
+            if (Array.isArray(v) ? (!v.length || v.some(function (x) { return !x || x === '0'; })) : (!v || v === '0')) empty = true;
         });
         if (seen && !empty) {
             delete node.props._libraryUnbound;
