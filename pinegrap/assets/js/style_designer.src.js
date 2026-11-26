@@ -81578,7 +81578,19 @@ const StyleDesigner = (function () {
             changed: function (say) { _sdSketchChanged(false, say); },
             pick: function (frameId, boxId) { _sdSketchPick(frameId, boxId, true); },
             mayBuild: function () { return !_sdIsContentLevel() && _collab.mayEdit !== false && !_sdComponentOnly(); },
-            make: function (type) { try { return createFromPalette(type) || null; } catch (e) { return null; } },
+            // A starter as the palette places it ('component' with its
+            // componentType), built dry: its block styles join User Styles
+            // only through blockStyles() once the page is added.
+            make: function (type) {
+                var built = null;
+                _sdPaletteDry = true;
+                try { built = createFromPalette('component', { componentType: type }) || null; } catch (e) { built = null; }
+                finally { _sdPaletteDry = false; }
+                return built;
+            },
+            blockStyles: function (types) {
+                (types || []).forEach(function (type) { _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[type]); });
+            },
             node: createNode,
             words: function () {
                 return {
