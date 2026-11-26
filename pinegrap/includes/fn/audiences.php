@@ -558,7 +558,9 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
     $op = $c['op'];
     $value = isset($c['value']) ? $c['value'] : null;
     $since = isset($c['value']) && is_int($c['value']) ? $now - ($c['value'] * 86400) : 0;
-    $complete = "orders.status <> 'incomplete' AND orders.contact_id <> 0";
+    // A finished order: a cart is no purchase and a cancelled order is none
+    // either, as customer value and customer rhythm read them.
+    $complete = "orders.status IN ('complete', 'exported') AND orders.contact_id <> 0";
 
     switch ($c['key']) {
         case 'country':
@@ -1370,6 +1372,64 @@ function pg_audience_recompute($group_id, $budget)
     }
 
     $group_id = (int) $group_id;
+
+    // One pass of a group at a time: the job's tick, Refresh now and the
+    // API's refresh would otherwise read the same page and both insert its
+    // new rule rows (the xref has no unique key). The cursor is read inside
+    // the lock, so the second run goes on from where the first one stopped.
+    // Only a plain 0 means another run holds it; a server that cannot answer
+    // runs without the lock.
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value('SELECT DATABASE()');
+    $lock = pg_audience_lock_name($group_id, $database);
+    $got = db_value("SELECT GET_LOCK('" . $lock . "', 0)");
+
+    if (($got !== null) && ($got !== false) && ((string) $got === '0')) {
+        return pg_audience_busy_answer();
+    }
+
+    $run = pg_audience_recompute_pass($group_id, $budget);
+
+    db_value("SELECT RELEASE_LOCK('" . $lock . "')");
+
+    return $run;
+}
+
+/**
+ * The name of a group's recompute lock. GET_LOCK names belong to the whole
+ * database server, so the database is part of the name; hashed, so the name
+ * stays within the 64 characters a lock name may have. Pure.
+ *
+ * @param int    $group_id
+ * @param string $database the database and its host
+ * @return string
+ */
+function pg_audience_lock_name($group_id, $database)
+{
+    return 'pg_audience_' . md5((string) $database) . '_' . (int) $group_id;
+}
+
+/**
+ * What a recompute answers when another run holds the group: not done and
+ * nothing changed, so the general job ends its turn and the screen asks
+ * again. Pure.
+ *
+ * @return array
+ */
+function pg_audience_busy_answer()
+{
+    return array('done' => false, 'added' => 0, 'removed' => 0, 'cursor' => 0, 'busy' => true);
+}
+
+/**
+ * The pass of pg_audience_recompute(), run while its lock is held.
+ *
+ * @param int $group_id
+ * @param int $budget seconds
+ * @return array|null
+ */
+function pg_audience_recompute_pass($group_id, $budget)
+{
+    $group_id = (int) $group_id;
     $result = db_q("SELECT name, rules, compute_cursor FROM contact_groups WHERE id = ? AND kind = 'dynamic'", array($group_id));
     $group = $result ? mysqli_fetch_assoc($result) : null;
 
@@ -1378,6 +1438,17 @@ function pg_audience_recompute($group_id, $budget)
     }
 
     $rules = pg_audience_rules_clean((string) $group['rules']);
+
+    // A rule that leans on the group itself never settles; stored before the
+    // save refused it, it is a failed run and writes nothing.
+    if (pg_audience_rules_refs($rules)['contact_group']) {
+        $stored = pg_audience_dynamic_rules();
+
+        if (($stored === null) || pg_audience_group_loops($group_id, $rules, $stored)) {
+            return null;
+        }
+    }
+
     $cursor = (int) $group['compute_cursor'];
     $state = ($cursor > 0) ? pg_audience_state_read($group_id) : array('added' => array(), 'removed' => array());
     $started = microtime(true);
@@ -1619,6 +1690,66 @@ function pg_audience_rules_refs($rules)
     $walk(pg_audience_rules_clean($rules));
 
     return $refs;
+}
+
+/**
+ * Whether a group's rules reach the group itself through "Contact group"
+ * conditions, directly or through other groups filled by rules. Such a rule
+ * never settles: "not in this group" adds every contact on one pass and
+ * removes them on the next, starting the "joined" triggers each time. Pure.
+ *
+ * @param int   $group_id
+ * @param mixed $rules          the group's rules
+ * @param array $rules_by_group the stored rules of the groups filled by
+ *                              rules, id => rules; the group's own entry is
+ *                              not read ($rules stands for it)
+ * @return bool
+ */
+function pg_audience_group_loops($group_id, $rules, array $rules_by_group)
+{
+    $group_id = (int) $group_id;
+    $seen = array();
+    $queue = pg_audience_rules_refs($rules)['contact_group'];
+
+    while ($queue) {
+        $id = (int) array_shift($queue);
+
+        if ($id === $group_id) {
+            return true;
+        }
+
+        if (isset($seen[$id]) || !isset($rules_by_group[$id])) {
+            continue;
+        }
+
+        $seen[$id] = true;
+        $queue = array_merge($queue, pg_audience_rules_refs($rules_by_group[$id])['contact_group']);
+    }
+
+    return false;
+}
+
+/**
+ * The stored rules of every group filled by rules, id => JSON text, for
+ * pg_audience_group_loops(); null on a failed query.
+ *
+ * @return array|null
+ */
+function pg_audience_dynamic_rules()
+{
+    $result = db_q("SELECT id, rules FROM contact_groups WHERE kind = 'dynamic'", array());
+
+    if (!$result) {
+        return null;
+    }
+
+    $map = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $map[(int) $row['id']] = (string) $row['rules'];
+    }
+
+    return $map;
 }
 
 /**

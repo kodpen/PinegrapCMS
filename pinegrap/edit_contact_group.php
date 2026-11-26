@@ -242,6 +242,12 @@ if (!$_POST) {
             $liveform->mark_error('kind', lang('Add at least one condition, or turn off Fill this group by rules.'));
         }
 
+        // A rule on the group itself, directly or through another group
+        // filled by rules, would add and remove its contacts on every pass.
+        if ($posted_rules && ($posted_rules['kind'] === 'dynamic') && pg_audience_group_loops($id, $posted_rules['rules'], (array) pg_audience_dynamic_rules())) {
+            $liveform->mark_error('kind', lang('A rule cannot use this group itself, directly or through another group filled by rules.'));
+        }
+
         $minimum_order_posted = $may_set_minimum_order ? pg_minimum_order_posted($_POST['minimum_order'] ?? '') : 0;
 
         if ($minimum_order_posted === null) {
