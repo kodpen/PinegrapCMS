@@ -619,7 +619,7 @@
 - designer-sketch-drawing-check.md: The boxes the Sketch reader is not sure of, as drawn (build.html, board B4): the quiet mark on the chip, the chip's menu that settles one early, and the one list "Build the page" opens [decision: here]
 - designer-sketch-drawing-details.md: "Page details" as drawn (details.html, boards D1 to D4): the window's seven rows with their sentences and defaults, what each choice says, errors, saving, read-only, phone [decision: here]
 - designer-sketch-drawing-picture.md: The reference picture as drawn (ai-and-picture.html, boards E4 and E5): the picture under a sketch page, its rows in "More", and "Read the picture" with its proposal, "Keep" and "Discard" [decision: decisions-made-product-111.md]
-- designer-sketch-drawing.md: The drawing of the Sketch tool's later steps (plans/designer-sketch.md, SK4 to SK7): the three sheets, where each part is described, and which board belongs to which step
+- designer-sketch-drawing.md: The drawing of the Sketch tool's later steps (SK4 to SK7, `sketch-overview.md`): the three sheets, where each part is described, and which board belongs to which step
 - designer-spacing-box.md: Style › Spacing as one box (DP7): outer and inner sides typed, dragged or stepped, Shift and Alt, the screen-size chooser in the head, the part 'spacing', what it writes (today's classes) and reads
 - designer-start-import-drawing-canva.md: The Canva start as drawn (canva.html, boards C1 to C5): the upload of PNG or PDF pages, the page tiles, refused files and the colours card
 - designer-start-import-drawing-connections.md: The Figma page of Connections as drawn (connections.html, boards A1 to A6): the three cards, the personal access token field, the token's states and the "Disconnect" question
@@ -936,6 +936,7 @@
 - sketch-build.md: "Build the page" of a Prototype view sketch page (SK4): the part sketchbuild, the chip marks, the list of boxes to check, the draft tab built, the sketch kept in props._sketch
 - sketch-builder.md: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): sections to header, body and footer trees from palette starters, columns, heading, the section rhythm variable
 - sketch-feel.md: The Sketch tool's feel (SK8): what keeps a drag at 60 frames a second on a hundred boxes, touch near a handle, the selected box on top, how it is measured (tests/js/sketch_feel.js) and the numbers
+- sketch-overview.md: Start file of the Prototype view's Sketch tool: decisions, parts by label (Sketch, New page, Build the page, Page details, Describe the page, Read the picture), which file holds what [decision: decisions-made-product-105.md, decisions-made-product-106.md]
 - sketch-page-details.md: "Page details" of a Prototype view sketch page (SK5): the More menu and palette row, the seven rows and defaults, checks, the sketch_details endpoint, where values are kept [decision: here]
 - sketch-read-picture.md: "Read the picture" of the Sketch tool (SK7b): the reference picture read into proposed boxes by the browser's model, nothing sent; row, first use, busy, Keep, Discard [decision: here]
 - sketch-reader.md: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, window.PGSketchReader): boxes drawn in a frame in, sections with kinds and unsure marks out; its input, rules, output and test

@@ -42,7 +42,6 @@
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
-- designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
@@ -73,6 +72,7 @@
 - picture-text-fit.md: Plan (owner 2026-11-26, poll 229): a translated picture text grows into the free room, then wraps, then shrinks; one language's texts corrected by hand in the Artifact Canvas; steps PF1 to PF5
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- settings-accounting-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Accounting as folded rows, the flat ERP card cut into six by topic, steps SA1 to SA4
 - settings-crossings-census-leads.md: Crossings census, the leads: every Site Settings card (and other screen) that leads to a Connections page, the page and anchor it opens, its label, same or new tab, when the lead shows
 - settings-crossings-census-names.md: Crossings census, the names at both ends: the lead's label words, what the Connections page calls the card it leads back to, and where the two differ
 - settings-crossings-census-pages.md: Crossings census, the pages: for each service page of Connections the way back to its card, and where the person stands after Connect, Save and Disconnect
@@ -83,6 +83,7 @@
 - settings-crossings-rule.md: Plan settings-tidy-round, step TR2: the one rule for a hand-over between a Site Settings card and its Connections page (owner, poll 232), and what the return may never be
 - settings-ecommerce-tidy-rows.md: Plan settings-ecommerce-tidy: the eleven folded rows of Site Settings › Ecommerce, what each says closed (line, pill, attention) and what it holds when open
 - settings-ecommerce-tidy.md: Plan (step TR4 of settings-tidy-round): Site Settings › Ecommerce redrawn as folded rows, its ten cards without popovers or plain radios, steps EC1 to EC6
+- settings-maintenance-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Updates and maintenance as folded rows, the cron card as a list of jobs, the sales watch a row of its own, steps SM1 to SM4
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
