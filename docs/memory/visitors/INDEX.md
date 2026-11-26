@@ -23,7 +23,7 @@
 - lead-sources-report.md: First and last touch of a lead or customer (LJ5): the contact_journey rows kind 3 and 4, the four save paths, once per contact, and the Lead sources report under Visitors with its Excel
 - lead-tell.md: What the visitor journey's scores tell (LJ4): customer.hot and customer.returned from the scoring pass, their payload, the flow start boxes, the daily contacts_hot ops alert
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
-- page-clicks-designer-layer.md: The designer's Clicks layer (part clicks #10056, wired #10715): toolbar toggle and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
+- page-clicks-designer-layer.md: The designer's Clicks layer (part clicks #10056, wired #10715): View menu row, palette row and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
 - page-clicks-scope.md: What the clicks and scroll depth counter is for and where it stops: the owner's and the architect's lines of 2026-11-16 (polls 67 and 75, messages 5763, 5774), the bounds, what is left out, whose look [decision: here]
 - page-clicks-script.md: The clicks and scroll depth script (pg_clicks.src.js, CM2 #9946): who gets it, how it names and folds an element, the depth, the one request it shares with the speed beacon, the consent check
 - page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where [decision: here]
