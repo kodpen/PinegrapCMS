@@ -372,7 +372,32 @@ function pg_product_insights_sales_from($product_id, $from)
 }
 
 /**
+ * The orders whose amounts are in the store's base currency:
+ * pg_customer_value_order_unit() in SQL. A web order always is (its
+ * currency_code is only what the visitor was shown); a marketplace order is
+ * when its code is empty or the base one. Pure.
+ *
+ * @param string $base      BASE_CURRENCY_CODE
+ * @param bool   $has_type  orders.type exists
+ * @return string  SQL for a condition
+ */
+function pg_product_insights_base_unit_sql($base, $has_type)
+{
+    if (!$has_type) {
+        return '1 = 1';
+    }
+
+    $base = (string) preg_replace('/[^A-Z]/', '', strtoupper((string) $base));
+
+    return "(orders.type <> 'marketplace' OR TRIM(COALESCE(orders.currency_code, '')) = ''"
+        . " OR UPPER(TRIM(orders.currency_code)) = '" . $base . "')";
+}
+
+/**
  * Units, revenue and orders of the period, the earlier period and the chart.
+ * Revenue sums only lines of orders in the base currency
+ * (pg_product_insights_base_unit_sql()); units and orders count every
+ * order.
  *
  * @param int   $product_id
  * @param array $window  pg_product_insights_window()
@@ -385,7 +410,8 @@ function pg_product_insights_sales($product_id, $window)
     $from = ((int) $window['prev_start'] > 0) ? (int) $window['prev_start'] : 0;
 
     $result = db_q("SELECT " . $slot . " AS slot, SUM(order_items.quantity) AS units,
-            SUM(CAST(order_items.price AS SIGNED) * CAST(order_items.quantity AS SIGNED)) AS revenue,
+            SUM(CASE WHEN " . pg_product_insights_base_unit_sql(defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', pg_schema_has('orders', 'type')) . "
+                THEN CAST(order_items.price AS SIGNED) * CAST(order_items.quantity AS SIGNED) ELSE 0 END) AS revenue,
             COUNT(DISTINCT order_items.order_id) AS orders
         " . pg_product_insights_sales_from($product_id, $from) . "
         GROUP BY slot");
