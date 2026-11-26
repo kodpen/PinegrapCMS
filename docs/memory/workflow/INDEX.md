@@ -93,6 +93,7 @@
 - bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-rights-new-screens.md: Bug hunt of rights by role on the 2026.11.0 screens (volunteers, queue, pick and pack, Hot Contacts, launch journey, share links, prototype settings): two faults fixed in #11374
+- bug-hunt-areas-satisfaction-surveys.md: Bug hunt of the satisfaction surveys (architect, 2026-11-26, request 3016, K2): faults fixed, what was read clean, what was left and asked [decision: here]
 - bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-seo-meta-output.md: Bug hunt of what a page puts in its head (area 47, 2026-11-24): six faults fixed in the hunt's PR (#11459), what was read clean, what is left as it is
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found

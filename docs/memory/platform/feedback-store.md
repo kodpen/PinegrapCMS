@@ -16,8 +16,8 @@ description: Satisfaction survey tables feedback_surveys and feedback_responses 
 - `pg_feedback_person_hashes($list)` hashes a list once each; the export and erasure use it.
 
 ## What does the personal data erasure do?
-- `pg_privacy_erase_tables()` entry `feedback_responses`: found by `contact_id` (`contact_ids`) or `person_hash` (scope key `feedback_hashes`, the hashes of the person's addresses and numbers, built after `phones`); anonymised: `contact_id` 0, `person_hash` '', `recipient` '', `comment` and `answers` NULL. Score, band and dates stay for the report (owner, poll 197).
-- `_pg_privacy_erase_apply_feedback_responses()` first sets a queued row (`status` 0) to cancelled (3), so the job never sends to an empty recipient.
+- `pg_privacy_erase_tables()` entry `feedback_responses`: found by `contact_id` (`contact_ids`) or `person_hash` (scope key `feedback_hashes`, the hashes of the person's addresses and numbers, built after `phones`); anonymised: `contact_id` 0, `person_hash` '', `recipient` '', `comment`, `answers` and `token_hash` NULL (the old answer link then finds no row, so it cannot write a comment back). Score, band and dates stay for the report (owner, poll 197).
+- `_pg_privacy_erase_apply_feedback_responses()` first sets a queued row (`status` 0) to cancelled (3) and a sent, unanswered one (1) to no answer (4), so the job never sends it or its reminder to an empty recipient.
 - `pg_privacy_erase_set()` writes a `null` field as SQL `NULL` (added here).
 - `feedback_surveys` names nobody and is in neither list.
 
