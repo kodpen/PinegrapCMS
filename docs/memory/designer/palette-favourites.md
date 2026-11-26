@@ -22,4 +22,4 @@ description: Favourites in the designer's Components palette (DO24): the star on
 
 ## Tests and sizes?
 - `tests/designer_palette_favourites_test.php`: the key, the kept rows and the toggle with its limit under Node; source pins for the order, the star and the F key. No browser run: the star's hover and the group's drawing.
-- Core `style_designer.min.js` +SIZE bytes (+GZ gzipped).
+- Core `style_designer.min.js` +2,947 bytes (+924 gzipped), #11753.
