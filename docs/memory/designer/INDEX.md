@@ -698,6 +698,7 @@
 - layout-editor-classic.md: The layout editor screen edit_page_layout.php (L5a, #3084) for a page not on a visual design: who reaches it, the layout_code action, hosted sites, where Edit Layout goes [decision: decisions-made-product-2.md]
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
+- layout-type-converter-account-address.md: My account and update address book layout files into their widgets (LE10c): address type flag, help page link, value conditions, orders list, drops, new converter rules
 - layout-type-converter-account-forms.md: Login, forgot/set/change password, profile and e-mail preferences layout files into their widgets (LE10a, #11710): maps, new flags and tokens, differences, starting sites
 - layout-type-converter-cart.md: A shopping cart page's layout file into the Cart widget (LE9a, #11466): two tables as one list, row and layout flags, blocks printed whole, the type row's seed and state
 - layout-type-converter-catalog-detail.md: A catalog detail page's layout file into the Catalog Detail widget (LE8c, #11436): each piece, the record and cross_sell options, the widget's new flags, tokens, sections and sidebar forms
