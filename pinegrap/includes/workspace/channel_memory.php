@@ -42,6 +42,12 @@ define('WS_MEMORY_DIGEST_MAX', 6000);
  */
 define('WS_MEMORY_BRIEF_DECISIONS', 10);
 
+/**
+ * The most records a memory's index lists line by line in the brief; past
+ * it the brief carries the pinned records and the projects with their counts.
+ */
+define('WS_MEMORY_DIGEST_LINES', 40);
+
 // A writer's memory changes in one channel within this many seconds go into
 // one note: the channel's last note is extended rather than a new one written.
 define('WS_MEMORY_NOTE_BURST', 300);
@@ -198,7 +204,9 @@ function ws_memory_entry_fault($entry, $now)
  * workspace.memory.get), then the newest WS_MEMORY_BRIEF_DECISIONS decision
  * lines and a line counting the older ones. In an agent channel the
  * general memory's index comes first, each line naming the record's
- * project, inside the same size. A line that
+ * project, inside the same size. A memory of more than
+ * WS_MEMORY_DIGEST_LINES live records gives its pinned lines, then its
+ * projects with their counts and the reads that list a project. A line that
  * no longer fits is left out whole, never cut, with every line after it,
  * and the count left out closes the digest so the agent knows to read the
  * rest. Pure.
@@ -213,9 +221,13 @@ function ws_memory_entry_fault($entry, $now)
  * @param bool     $across    the decisions are every agent channel's: the
  *                            heading says so and a decision's channel
  *                            (its 'channel' name, '' for this one) leads its line
+ * @param array    $projects  'memory' / 'general' => project, count rows of
+ *                            all the live records (ws_memory_projects()), when
+ *                            the rows given are not all of them; left out, the
+ *                            live rows are counted
  * @return string '' when there is nothing to tell
  */
-function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null, $general = array(), $across = false)
+function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null, $general = array(), $across = false, $projects = array())
 {
     $given = count((array) $decisions);
     $decisions = array_slice(array_values((array) $decisions), 0, WS_MEMORY_BRIEF_DECISIONS);
@@ -251,9 +263,33 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
     };
 
     $sections = array();
+    $summed = array();
 
     foreach (array('general' => $general, 'memory' => $entries) as $key => $rows) {
-        foreach ($live($rows) as $entry) {
+        $rows = $live($rows);
+        $counts = isset($projects[$key]) ? ws_memory_project_counts($projects[$key]) : null;
+
+        if ($counts === null) {
+            $counts = ws_memory_project_counts(array_map(function ($entry) {
+                return array('project' => $entry['project'] ?? '', 'count' => 1);
+            }, $rows));
+        }
+
+        $total = array_sum(array_column($counts, 'count'));
+
+        // A large memory: its pinned records, then its projects counted.
+        if ($total > WS_MEMORY_DIGEST_LINES) {
+            $summed[$key] = $total;
+            $rows = array_values(array_filter($rows, function ($entry) {
+                return !empty($entry['pinned']);
+            }));
+
+            foreach ($counts as $count) {
+                $sections[$key . '_projects'][] = '- ' . (($count['project'] === '') ? '(no project)' : $one_line($count['project'])) . ': ' . (int) $count['count'];
+            }
+        }
+
+        foreach ($rows as $entry) {
             $tags = ws_memory_tags($entry['tags'] ?? array());
             $project = ws_memory_project($entry['project'] ?? '');
             $line = '- #' . (int) ($entry['id'] ?? 0) . ' ' . (($key === 'general') && ($project !== '') ? $one_line($project) . ': ' : '') . $one_line($entry['title'] ?? '');
@@ -280,9 +316,15 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
         return '';
     }
 
+    $read = ' (read an entry with workspace.memory.get, its id without the #):';
+    $by = function ($name, $key, $list, $counts) use ($summed) {
+        return $name . ' by project, ' . (int) ($summed[$key] ?? 0) . ' records (list a project\'s index with ' . $list . ' and project=<name>, the counts with ' . $counts . ', or find an entry with search=<words>):';
+    };
     $headings = array(
-        'general'   => 'General memory, shared by the agent channels (read an entry with workspace.memory.get, its id without the #):',
-        'memory'    => 'Channel memory (read an entry with workspace.memory.get, its id without the #):',
+        'general'          => 'General memory, shared by the agent channels' . (isset($summed['general']) ? ', pinned' : '') . $read,
+        'general_projects' => $by('General memory', 'general', 'workspace.memory.general.list', 'workspace.memory.projects'),
+        'memory'           => 'Channel memory' . (isset($summed['memory']) ? ', pinned' : '') . $read,
+        'memory_projects'  => $by('Channel memory', 'memory', 'workspace.memory.list', 'workspace.memory.projects and channel_id'),
         'decisions' => $across ? 'Decisions in the agent channels (one made in another channel names it first):' : 'Decisions in this channel:',
     );
     $decisions_list = $across ? 'workspace.decisions.list (agent_channels only)' : 'workspace.decisions.list';
@@ -311,7 +353,7 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
                 if ($full || ($used + $cost > $budget)) {
                     $full = true;
                     $left++;
-                    $left_general = $left_general || ($key === 'general');
+                    $left_general = $left_general || (strpos($key, 'general') === 0);
                     continue;
                 }
 
@@ -1260,8 +1302,19 @@ function ws_memory_brief($viewer, $channel)
     }
 
     $general = ws_memory_brief_general($viewer, $channel) ? ws_memory_rows(0, false) : array();
+    $entries = ws_memory_rows($channel['id'], false);
 
-    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total, $general, $across);
+    // A large memory is told by its projects: counted in the database, as
+    // the rows read stop at 500.
+    $projects = array();
+
+    foreach (array('general' => array($general, 0), 'memory' => array($entries, (int) $channel['id'])) as $key => $part) {
+        if (count($part[0]) > WS_MEMORY_DIGEST_LINES) {
+            $projects[$key] = ws_memory_projects($part[1]);
+        }
+    }
+
+    return ws_memory_digest($entries, $decisions, time(), WS_MEMORY_DIGEST_MAX, $total, $general, $across, $projects);
 }
 
 /**
