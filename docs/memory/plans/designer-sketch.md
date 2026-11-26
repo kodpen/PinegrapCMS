@@ -26,7 +26,7 @@ priority: 7
 - SK5 (M) after SK2: "Page details". Done #11545 (`designer/sketch-page-details.md`; the More menu on a sketch page, values kept with the sketch).
 - SK6 (S) after SK4: the two AI actions.
 - SK7 (S) after SK2: the reference picture and "Read the picture". Picture done #11557 (designer/prototype-sketch-picture.md; "More" rows in `_sdSketchMoreRows()`); "Read the picture" done #11584 (designer/sketch-read-picture.md).
-- SK8 (M) after SK4: the feel round: 60 frames a second on a hundred boxes, touch and pen, every key, light and dark; measured, the numbers in the PR. Done #11749 (`designer/sketch-feel.md`).
+- SK8 (M) after SK4: the feel round, measured. Done #11749 (`designer/sketch-feel.md`).
 - SK9 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
 
 ## What does every step keep?
