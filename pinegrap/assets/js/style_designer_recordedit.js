@@ -53,7 +53,7 @@ StyleDesigner.definePart('recordedit', function (K) {
         win: null, doc: null, sid: 0, id: 0, read: null, reading: 0, on: false,
         base: {}, edits: {}, bad: {}, names: {}, theirs: {}, open: null,
         mode: '', conflicts: [], ci: 0, pending: null, refused: 0, pop: null,
-        spots: [], hot: null, theirsName: {},
+        spots: [], hot: null, theirsName: {}, sent: {},
         other: null
     };
 
@@ -409,7 +409,11 @@ StyleDesigner.definePart('recordedit', function (K) {
         var o = R.open;
         if (!o || o.el !== el) return;
         var rich = o.s.control === 'rich' && o.s.prop === 'html';
-        var v = rich ? el.innerHTML : String(el.textContent || '').replace(/[\r\n]+/g, ' ');
+        // A plain text area keeps the line breaks it holds; Enter still
+        // ends the edit, so a line of text stays one line.
+        var multi = !!(field(o.fid) || {}).multiline;
+        var v = rich ? el.innerHTML : String(el.textContent || '');
+        if (!rich && !multi) v = v.replace(/[\r\n]+/g, ' ');
         if (o.s.control === 'rich' && !rich) v = esc(v);
         change(o.fid, v, el);
     }
@@ -594,6 +598,10 @@ StyleDesigner.definePart('recordedit', function (K) {
         var changes = list.map(function (fid) {
             return { field_id: fid, value: R.edits[fid], base: Object.prototype.hasOwnProperty.call(R.theirs, fid) ? R.theirs[fid] : String(R.base[fid] == null ? '' : R.base[fid]) };
         });
+        // What this save carries: a change typed while it is on its way is
+        // not part of it and stays after the answer.
+        R.sent = {};
+        changes.forEach(function (c) { R.sent[c.field_id] = c.value; });
         api('record_edit_save', { item_id: R.id, changes: changes }).then(saved, function () { R.mode = 'error'; R.pending = null; foot(); });
     }
 
@@ -602,8 +610,19 @@ StyleDesigner.definePart('recordedit', function (K) {
         if (st === 'saved' || st === 'unchanged') {
             if (res.record) R.read.record = res.record;
             R.read.fields = res.fields || R.read.fields;
-            R.edits = {}; R.bad = {}; R.theirs = {}; R.conflicts = []; R.mode = '';
+            Object.keys(R.sent).forEach(function (k) {
+                var fid = parseInt(k, 10);
+                if (R.edits[fid] === R.sent[fid]) delete R.edits[fid];
+                delete R.theirs[fid];
+                if (!Object.prototype.hasOwnProperty.call(R.edits, fid)) delete R.bad[fid];
+            });
+            R.sent = {}; R.conflicts = []; R.mode = '';
             takeFields(R.read.fields);
+            // A change typed meanwhile that the record now holds is none.
+            Object.keys(R.edits).forEach(function (k) {
+                var fid = parseInt(k, 10);
+                if (R.edits[fid] === String(R.base[fid] == null ? '' : R.base[fid])) { delete R.edits[fid]; delete R.bad[fid]; }
+            });
             foot();
             K._sdRecEditBar({ tone: 'ok', text: _sdT('Saved to {var:1}. The item\'s history keeps what it was before.', [title()]), act: 'close' });
             K._sdRecEditRedraw();
