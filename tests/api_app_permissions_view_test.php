@@ -188,3 +188,15 @@ function test_the_picker_markup()
 	pg_assert_false(strpos($html, 'btn btn-') !== false, 'no old button');
 	pg_assert_false(strpos($html, ' name="search') !== false, 'the search box is never posted');
 }
+
+// The line a bulk button leaves ("{n} permissions that move money are
+// ticked.") belongs to the rows it ticked: opening another application, or
+// a starting point ticking its own rows, takes it away. It stayed, naming
+// rows the application on screen did not have.
+function test_the_money_line_goes_with_new_rows()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	pg_assert_contains('clearPickNote("#api_drawer")', $screen, 'opening an application');
+	pg_assert_contains('clearPickNote("#api_new")', $screen, 'a starting point ticking its rows');
+}

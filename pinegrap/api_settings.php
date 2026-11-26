@@ -2241,6 +2241,13 @@ echo '
 		if (chosen) { chosen.checked = true; }
 	}
 
+	// The line a bulk button left names the rows it ticked; rows set for
+	// another application or starting point take it away.
+	function clearPickNote(root) {
+		var note = document.querySelector(root + " [data-pick-note]");
+		if (note) { note.textContent = ""; }
+	}
+
 	// The read position is held open, not checked, when write is chosen: the
 	// rule lives in one place on the server and this only shows it.
 	function paintImplied() {
@@ -2425,6 +2432,7 @@ echo '
 			setRadio("scope[" + group + "]", app.scopes[group]);
 		});
 		paintImplied();
+		clearPickNote("#api_drawer");
 
 		document.getElementById("d_log_errors").checked = false;
 		renderLog(app.log, false);
@@ -2945,6 +2953,7 @@ echo '
 				if (input) { input.checked = true; }
 			});
 			paintImplied();
+			clearPickNote("#api_new");
 			startPicked = card.id;
 		}
 		newStep(2);
