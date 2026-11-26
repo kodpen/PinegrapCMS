@@ -24,7 +24,8 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_cart_widget_view_creates_no_order()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
-	$guarded = "if (function_exists('initialize_order') && !empty(\$_SESSION['ecommerce']['order_id'])) initialize_order();";
+	// Each call also waits for a render that may write (not the Preview).
+	$guarded = "_write && function_exists('initialize_order') && !empty(\$_SESSION['ecommerce']['order_id'])) initialize_order();";
 
 	pg_assert_same(2, substr_count($source, 'initialize_order();'), 'initialize_order() calls');
 	pg_assert_same(2, substr_count($source, $guarded), 'calls run only for an order in the session');

@@ -600,6 +600,66 @@ function test_preview_render_audience_value()
 	}
 }
 
+// Whether a render may write the visitor's order: never in a background
+// render (the Preview, the SEO pass), always on a real visit.
+function test_preview_render_may_write_outside_a_background_render()
+{
+	pg_assert_true(pg_preview_as_may_write(), 'a real visit writes its order');
+	$inside = pg_preview_as_while(pg_preview_as_setup('shopping_cart', array()), function () {
+		return pg_preview_as_may_write();
+	});
+	pg_assert_false($inside, 'a Preview widget writes nothing');
+	pg_assert_true(pg_preview_as_may_write(), 'restored');
+}
+
+// The lines of a function body that call one of $calls, comments left out.
+function designer_preview_render_test_calls($body, $calls)
+{
+	$out = array();
+	foreach (explode("\n", $body) as $line) {
+		$code = ltrim($line);
+		if ($code === '' || strpos($code, '//') === 0 || strpos($code, '*') === 0) continue;
+		foreach ($calls as $call) {
+			if (strpos($code, $call) !== false) $out[] = $code;
+		}
+	}
+	return $out;
+}
+
+// The shopping cart and the express order bring the session's order up to
+// date (owner, prices, offers, stock, tax) on a visit; in a Preview that
+// order is the operator's own cart, which a Preview never writes.
+function test_preview_render_cart_widgets_leave_the_order_alone()
+{
+	$cart  = designer_preview_render_test_source('includes/fn/widgets_cart.php');
+	$calls = array('initialize_order()', 'check_inventory(', 'update_order_item_prices()', 'apply_offers_to_cart()', 'pg_express_order_tax_pass(');
+	foreach (array('_render_system_widget_shopping_cart' => '$_pg_cart_write', '_render_system_widget_express_order' => '$_eo_write') as $fn => $flag) {
+		$start = (int) strpos($cart, 'function ' . $fn . '(');
+		$body  = substr($cart, $start, (int) strpos($cart, "\nfunction ", $start + 10) - $start);
+		pg_assert_contains($flag . ' = pg_preview_as_may_write();', $body, $fn . ' asks once');
+		$lines = designer_preview_render_test_calls($body, $calls);
+		pg_assert_true(count($lines) >= 4, $fn . ' runs the passes');
+		foreach ($lines as $line) {
+			pg_assert_contains($flag, $line, $fn . ': ' . $line);
+		}
+	}
+}
+
+// The express order mirrors its settings into express_order_pages, which
+// the live checkout reads. The Preview draws the editor's unsaved
+// settings, so it must not write them to the live page.
+function test_preview_render_express_order_keeps_its_page_row()
+{
+	$cart  = designer_preview_render_test_source('includes/fn/widgets_cart.php');
+	$start = (int) strpos($cart, 'function _render_system_widget_express_order(');
+	$body  = substr($cart, $start, (int) strpos($cart, "\nfunction ", $start + 10) - $start);
+	$at    = (int) strpos($body, 'INSERT INTO express_order_pages');
+	pg_assert_true($at > 0);
+	$head  = substr($body, 0, $at);
+	$open  = (int) strrpos($head, 'if ($_eo_page_id > 0');
+	pg_assert_contains('if ($_eo_page_id > 0 && $_eo_write) {', substr($head, $open, 60), 'the row is written on a visit only');
+}
+
 // A comments widget on a record page shows the thread of the record the
 // page's record widget draws: that widget's own chosen record and case
 // count, not only the page's.
