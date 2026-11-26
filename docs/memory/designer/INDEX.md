@@ -63,7 +63,7 @@
 - classic-style-folder-pages.md: Save of a converted classic style also converts the pages that take it from their folder (#2411 (c)): the box, which pages, what is written
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
 - classic-style-to-design.md: A classic style's frame as shared components and page trees (L2, #2370): pg_classic_style_design_open(), now the move run's own function with no button, what Save writes and what stays [decision: decisions-made-product-43.md]
-- code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
+- code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why the bar does not replace and where file tabs are replaced
 - collection-fields.md: Collection forms and field kinds: columns, where the kind is written and read, kinds per field type, template collections (C6a), the slug kind (C5b)
 - collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
 - collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
@@ -438,6 +438,7 @@
 - designer-document-to-page-drawing.md: The drawing of the "From a document" start (`document-to-page.md`): boards F1 what opens it, F2 the form, F3 the sections as rows
 - designer-document-to-page-rows-drawing.md: The "From a document" drawing, boards F4 to F6: a row's kind list, opened words, left out, moved; "Sort it for me" proposals (FD4); busy, refusals, cut short, 390 px
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
+- designer-find-replace-scopes.md: The designer's Find and Replace window (DO25): This page, All pages and Code files, the list per page before Replace All, one undo step a page, pages left out and named, the matcher PGFindReplace
 - designer-first-tour-card.md: The designer's first card "New here? A one-minute tour" and its tour (FT2): the part 'tour', when the card shows, the ring and the bubble, the keys, the phone's sheet, "Take the tour" [decision: decisions-made-product-108.md]
 - designer-first-tour-drawing.md: The first tour's drawing (DD14), boards T1 to T3 and T7: the first card, the five stops' ring and bubble, a content editor's three stops, the phone's sheet; the sentences
 - designer-first-tour-help-drawing.md: The first tour's drawing (DD14), boards T4 to T6 for step FT3: the Help window's "How do I…" with its ten tasks and three pointers, the "Tips" switch, a first-use tip, an empty page's three starts

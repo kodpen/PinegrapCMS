@@ -346,7 +346,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy_inventory`: [[privacy-inventory]]
 - `privacy_request_form`: [[privacy-request-form]]
 - `privacy_request_link`: [[privacy-request-export-link]]
-- `privacy_requests`: [[privacy-request-answer]], [[privacy-requests]]
+- `privacy_requests`: [[bug-hunt-areas-privacy-requests]], [[privacy-request-answer]], [[privacy-requests]]
 - `privacy_retention`: [[bug-hunt-areas-privacy-new-tables]], [[privacy-centre-decisions]], [[privacy-log-retention]], [[privacy-retention-rules]], [[privacy-rule-site-chats]], [[settings-privacy-retention]]
 - `privacy_settings_fold`: [[settings-privacy]]
 - `product_bins`: [[pick-pack-shelf-address]]
