@@ -706,16 +706,20 @@ function pg_picture_tr_language_place($src, $room, $before, $after)
 /**
  * A canvas document with a language's words in its layers, by layer id and
  * field; a text with no translation keeps the source's words. Answers the
- * new document and, by layer id, each text layer whose words changed as it
- * was, to fit the new words to. Twin of M.languageDoc(), run on the same
- * fixtures (tests/fixtures/picture_language/doc.json). Pure.
+ * new document, by layer id each text layer whose words changed as it
+ * was, to fit the new words to, and with the language's code, by layer id
+ * each text's correction by hand (pg_image_edit_correction() of its
+ * corrections[code]), drawn in place of the fit. Twin of M.languageDoc(),
+ * run on the same fixtures (tests/fixtures/picture_language/doc.json,
+ * correct.json). Pure.
  *
- * @param mixed $doc   the document, arrays or objects
- * @param array $texts pg_picture_tr_language_texts(): id, field, text (null
- *                     where none is translated)
- * @return array|null doc, source; null without a list of layers
+ * @param mixed       $doc   the document, arrays or objects
+ * @param array       $texts pg_picture_tr_language_texts(): id, field, text
+ *                           (null where none is translated)
+ * @param string|null $code  the language, null to read no correction
+ * @return array|null doc, source, corrected; null without a list of layers
  */
-function pg_picture_tr_language_doc($doc, $texts)
+function pg_picture_tr_language_doc($doc, $texts, $code = null)
 {
     $doc = is_object($doc) ? json_decode((string) json_encode($doc), true) : $doc;
     $layers = (is_array($doc) && isset($doc['layers'])) ? $doc['layers'] : null;
@@ -727,6 +731,7 @@ function pg_picture_tr_language_doc($doc, $texts)
 
     $by = array();
     $source = array();
+    $corrected = array();
 
     foreach ((array) $texts as $text) {
         if (is_array($text) && isset($text['text']) && is_string($text['text']) && ($text['text'] !== '')) {
@@ -739,6 +744,11 @@ function pg_picture_tr_language_doc($doc, $texts)
         $field = ($type === 'text') ? 'text' : (($type === 'sticker') ? 'label' : '');
         $id = (is_array($layer) && isset($layer['id']) && is_scalar($layer['id'])) ? (string) $layer['id'] : '';
         $key = $id . "\n" . $field;
+        $fix = (($code !== null) && ($id !== '')) ? pg_picture_tr_language_correction($layer, $code) : null;
+
+        if ($fix) {
+            $corrected[$id] = $fix;
+        }
 
         if (($field === '') || ($id === '') || !array_key_exists($key, $by) || ($by[$key] === (isset($layer[$field]) ? $layer[$field] : null))) {
             continue;
@@ -751,7 +761,86 @@ function pg_picture_tr_language_doc($doc, $texts)
         $doc['layers'][$i][$field] = $by[$key];
     }
 
-    return array('doc' => $doc, 'source' => $source);
+    return array('doc' => $doc, 'source' => $source, 'corrected' => $corrected);
+}
+
+/**
+ * A text layer's correction by hand for a language, null without a well
+ * formed one. Twin of M.languageCorrection(). Pure.
+ *
+ * @param mixed  $layer
+ * @param string $code
+ * @return array|null x, y, w, size
+ */
+function pg_picture_tr_language_correction($layer, $code)
+{
+    if (!is_array($layer) || !isset($layer['type']) || ($layer['type'] !== 'text') || !isset($layer['corrections']) || !is_array($layer['corrections'])
+        || !pg_image_edit_correction_code($code) || !array_key_exists($code, $layer['corrections'])) {
+        return null;
+    }
+
+    // A JSON list is no object of codes.
+    if ($layer['corrections'] && (array_keys($layer['corrections']) === range(0, count($layer['corrections']) - 1))) {
+        return null;
+    }
+
+    return pg_image_edit_correction($layer['corrections'][$code]);
+}
+
+/**
+ * A text layer corrected by hand put in place of the fit: its translation
+ * at the correction's size, wrapped between words to its width
+ * (pg_picture_tr_language_wrap(), measured by $layout), from its place;
+ * narrower than the width it keeps its alignment inside it, moved along
+ * its own turned line. Twin of the editor's languageCorrectedPut(). Pure
+ * but for $layout.
+ *
+ * @param array    $layer
+ * @param array    $fix    pg_picture_tr_language_correction()
+ * @param callable $layout a text layer => its laid out box (w, h)
+ * @param array    $board  the picture's w, h
+ * @return bool|null whether the box runs past the picture (half a px of
+ *                   slack, never without a size); null when it cannot be
+ *                   laid out
+ */
+function pg_picture_tr_language_corrected_put(&$layer, $fix, $layout, $board)
+{
+    $layer['size'] = $fix['size'];
+    $measure = function ($s) use ($layer, $layout) {
+        $layer['text'] = $s;
+        $b = call_user_func($layout, $layer);
+
+        return $b ? $b['w'] : INF;
+    };
+    $layer['text'] = pg_picture_tr_language_wrap(isset($layer['text']) ? (string) $layer['text'] : '', $fix['w'], $measure);
+    $after = call_user_func($layout, $layer);
+
+    if (!$after) {
+        return null;
+    }
+
+    $w = (float) $after['w'];
+    $h = (float) $after['h'];
+    $free = $fix['w'] - $w;
+    $align = isset($layer['align']) ? $layer['align'] : '';
+    $d = ($align === 'center') ? $free / 2 : (($align === 'right') ? $free : 0.0);
+    $a = ((isset($layer['rot']) && is_numeric($layer['rot'])) ? (float) $layer['rot'] : 0.0) * M_PI / 180;
+    $cos = cos($a);
+    $sin = sin($a);
+    $o = $d + $w / 2 - $fix['w'] / 2;
+    $cx = $fix['x'] + $fix['w'] / 2 + $o * $cos;
+    $cy = $fix['y'] + $h / 2 + $o * $sin;
+    $bw = (float) $board['w'];
+    $bh = (float) $board['h'];
+    $ex = (abs($w * $cos) + abs($h * $sin)) / 2;
+    $ey = (abs($w * $sin) + abs($h * $cos)) / 2;
+
+    $layer['x'] = pg_picture_tr_js_round($cx - $w / 2, 2);
+    $layer['y'] = pg_picture_tr_js_round($cy - $h / 2, 2);
+    $layer['w'] = $after['w'];
+    $layer['h'] = $after['h'];
+
+    return ($bw > 0) && ($bh > 0) && (($cx - $ex < -0.5) || ($cy - $ey < -0.5) || ($cx + $ex > $bw + 0.5) || ($cy + $ey > $bh + 0.5));
 }
 
 /**
@@ -762,7 +851,9 @@ function pg_picture_tr_language_doc($doc, $texts)
  * written into the layer's text, so the draw paints them), shrunk by
  * pg_picture_tr_language_fit() only past it, never under the floor of its
  * size on the artboard's shorter side, and put by
- * pg_picture_tr_language_place(). Pure but for $layout.
+ * pg_picture_tr_language_place(); a text corrected by hand for the
+ * language is put by pg_picture_tr_language_corrected_put() instead, and
+ * marks the draw only past the picture's edge. Pure but for $layout.
  *
  * @param array    $put    pg_picture_tr_language_doc()
  * @param callable $layout a text layer => its laid out box (w, h), null
@@ -781,17 +872,31 @@ function pg_picture_tr_language_fitted($put, $layout)
     );
     $side = min($size['w'], $size['h']);
     $rooms = array();
+    $corrected = isset($put['corrected']) ? $put['corrected'] : array();
 
     foreach ($doc['layers'] as $layer) {
         $id = (is_array($layer) && isset($layer['id']) && is_scalar($layer['id'])) ? (string) $layer['id'] : '';
 
-        if (($id !== '') && isset($put['source'][$id])) {
+        if (($id !== '') && isset($put['source'][$id]) && !isset($corrected[$id])) {
             $rooms[$id] = pg_picture_tr_language_room($put['doc'], $id, $size);
         }
     }
 
     foreach ($doc['layers'] as $i => $layer) {
         $id = (is_array($layer) && isset($layer['id']) && is_scalar($layer['id'])) ? (string) $layer['id'] : '';
+
+        if (($id !== '') && isset($corrected[$id])) {
+            $off = pg_picture_tr_language_corrected_put($layer, $corrected[$id], $layout, $size);
+
+            if ($off === null) {
+                return null;
+            }
+
+            $mark = $mark || $off;
+            $doc['layers'][$i] = $layer;
+
+            continue;
+        }
 
         if (($id === '') || !isset($put['source'][$id])) {
             continue;
@@ -861,17 +966,19 @@ function pg_picture_tr_server_layout($layer, $can)
 /**
  * A language's picture of a canvas as this server would draw it: the
  * language's words in the layers, each changed text fitted with the
- * server's letter widths, then pg_image_draw_plan()'s verdict on that
+ * server's letter widths (or put where it is corrected by hand), then pg_image_draw_plan()'s verdict on that
  * document. Draws nothing; reads font files.
  *
  * @param mixed $doc   the live canvas document, arrays or objects
  * @param array $texts pg_picture_tr_language_texts()
  * @param array $can   pg_image_draw_can()
  * @param float $until the time the budget ends, 0 for none
+ * @param string|null $code the language, whose corrections by hand are
+ *                    drawn in place of the fit
  * @return array error ('' | kind | untranslated | a plan's error), plan,
  *               fit (1 when a text did not fit at the smallest size)
  */
-function pg_picture_tr_server_plan($doc, $texts, $can, $until = 0.0)
+function pg_picture_tr_server_plan($doc, $texts, $can, $until = 0.0, $code = null)
 {
     $none = array('error' => 'kind', 'plan' => null, 'fit' => 0);
 
@@ -884,7 +991,7 @@ function pg_picture_tr_server_plan($doc, $texts, $can, $until = 0.0)
         return array('error' => 'untranslated') + $none;
     }
 
-    $put = pg_picture_tr_language_doc($doc, $texts);
+    $put = pg_picture_tr_language_doc($doc, $texts, $code);
 
     if (!$put) {
         return $none;
@@ -935,7 +1042,7 @@ function pg_picture_tr_server_draw_row($row, $can, $until)
 
     $texts = pg_picture_tr_language_texts($file_id, $language);
     $stamp = pg_picture_tr_stamp($file_id, $language, $live['hash'], $texts);
-    $drawn = pg_picture_tr_server_plan($live['doc'], $texts, $can, $until);
+    $drawn = pg_picture_tr_server_plan($live['doc'], $texts, $can, $until, $language);
 
     if ($drawn['error'] !== '') {
         return $drawn['error'];

@@ -3107,16 +3107,18 @@
     // wider than it is wrapped between words (languageWrapped(), its lines
     // written into the layer's text, so every draw paints them), then
     // shrinks only past it, never under its floor (then the draw is marked,
-    // fit 1), and is put by languagePlace(). layout: a text layer => its
+    // fit 1), and is put by languagePlace(). A text corrected by hand for
+    // the language (put.corrected) is put by languageCorrectedPut() instead
+    // and marks the draw only past the picture's edge. layout: a text layer => its
     // laid out w, h (null: it cannot be; the answer is null); board: the
     // picture's w, h. Changes put.doc. Twin of
     // pg_picture_tr_language_fitted().
     function languageFitted(put, layout, board) {
-        var doc = put.doc, mark = false, rooms = {}, failed = false;
+        var doc = put.doc, mark = false, rooms = {}, failed = false, corrected = put.corrected || {};
         var side = Math.min(Number(board && board.w) || 0, Number(board && board.h) || 0);
 
         doc.layers.forEach(function (l) {
-            if (put.source[l.id]) {
+            if (put.source[l.id] && !corrected[l.id]) {
                 rooms[l.id] = languageRoom(doc, l.id, board);
             }
         });
@@ -3124,7 +3126,20 @@
         doc.layers.forEach(function (l) {
             var src = put.source[l.id];
 
-            if (!src || failed) {
+            if (failed) {
+                return;
+            }
+
+            if (corrected[l.id]) {
+                var off = languageCorrectedPut(l, corrected[l.id], layout, board);
+
+                failed = (off === null);
+                mark = mark || !!off;
+
+                return;
+            }
+
+            if (!src) {
                 return;
             }
 
@@ -3166,17 +3181,158 @@
         return failed ? null : { doc: doc, fit: mark ? 1 : 0 };
     }
 
+    // A text layer corrected by hand (fix: languageCorrection()) put in
+    // place of the fit: its translation at the correction's size, wrapped
+    // between words to its width (languageWrap(), measured by layout), from
+    // its place; narrower than the width it keeps its alignment inside it,
+    // moved along its own turned line. Answers whether the box runs past
+    // the picture (board: w, h; half a px of slack, none without a size),
+    // null when it cannot be laid out. Twin of
+    // pg_picture_tr_language_corrected_put().
+    function languageCorrectedPut(l, fix, layout, board) {
+        var copy = function (text) {
+            var c = {};
+
+            Object.keys(l).forEach(function (key) {
+                c[key] = l[key];
+            });
+            c.text = text;
+
+            return c;
+        };
+
+        l.size = fix.size;
+        l.text = languageWrap(String(l.text || ''), fix.w, function (s) {
+            var b = layout(copy(s));
+
+            return b ? b.w : Infinity;
+        });
+
+        var after = layout(l);
+
+        if (!after) {
+            return null;
+        }
+
+        var w = after.w, h = after.h, free = fix.w - w;
+        var d = (l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0);
+        var a = (Number(l.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        var o = d + w / 2 - fix.w / 2, cx = fix.x + fix.w / 2 + o * cos, cy = fix.y + h / 2 + o * sin;
+        var bw = Number(board && board.w) || 0, bh = Number(board && board.h) || 0;
+        var ex = (Math.abs(w * cos) + Math.abs(h * sin)) / 2, ey = (Math.abs(w * sin) + Math.abs(h * cos)) / 2;
+
+        l.x = Math.round((cx - w / 2) * 100) / 100;
+        l.y = Math.round((cy - h / 2) * 100) / 100;
+        l.w = w;
+        l.h = h;
+
+        return (bw > 0) && (bh > 0) && ((cx - ex < -0.5) || (cy - ey < -0.5) || (cx + ex > bw + 0.5) || (cy + ey > bh + 0.5));
+    }
+
+    // A language code as a correction is kept under: letters, then parts
+    // of letters and digits after a hyphen or an underscore.
+    function languageCode(code) {
+        return (typeof code === 'string') && (code.length <= 20) && /^[A-Za-z]{2,3}([-_][A-Za-z0-9]{1,8})*$/.test(code);
+    }
+
+    // A correction's numbers and their ranges, in the layer's own space;
+    // a layer keeps at most LANGUAGE_CORRECTIONS_MAX languages.
+    var LANGUAGE_CORRECTION = { x: [-100000, 100000], y: [-100000, 100000], w: [1, 100000], size: [0.5, 10000] };
+    var LANGUAGE_CORRECTIONS_MAX = 100;
+
+    // A box as a correction keeps it ({ x, y, w, size }, each a number in
+    // range), else null. Twin of pg_image_edit_correction().
+    function languageCorrectionBox(c) {
+        if (!c || (typeof c !== 'object') || Array.isArray(c)) {
+            return null;
+        }
+
+        var out = {}, ok = Object.keys(LANGUAGE_CORRECTION).every(function (key) {
+            var v = c[key], r = LANGUAGE_CORRECTION[key];
+
+            out[key] = v;
+
+            return (typeof v === 'number') && isFinite(v) && (v >= r[0]) && (v <= r[1]);
+        });
+
+        return ok ? out : null;
+    }
+
+    // A text layer's correction by hand for a language (its corrections,
+    // by language code: the box's place, its width and the letters' size),
+    // null without a well formed one.
+    function languageCorrection(l, code) {
+        var all = l && (l.type === 'text') ? l.corrections : null;
+
+        if (!all || (typeof all !== 'object') || Array.isArray(all) || !languageCode(code) || !Object.prototype.hasOwnProperty.call(all, code)) {
+            return null;
+        }
+
+        return languageCorrectionBox(all[code]);
+    }
+
+    // Sets a text layer's correction for a language (box: x, y, w, size,
+    // rounded to two places), or takes it off (box null); the last one
+    // off takes the field. Answers whether the layer changed.
+    function languageCorrect(l, code, box) {
+        if (!l || (l.type !== 'text') || !languageCode(code)) {
+            return false;
+        }
+
+        var all = (l.corrections && (typeof l.corrections === 'object') && !Array.isArray(l.corrections)) ? l.corrections : {};
+
+        if (box === null) {
+            if (!Object.prototype.hasOwnProperty.call(all, code)) {
+                return false;
+            }
+
+            delete all[code];
+
+            if (Object.keys(all).length) {
+                l.corrections = all;
+            } else {
+                delete l.corrections;
+            }
+
+            return true;
+        }
+
+        var fix = languageCorrectionBox(box);
+
+        if (!fix || (!Object.prototype.hasOwnProperty.call(all, code) && (Object.keys(all).length >= LANGUAGE_CORRECTIONS_MAX))) {
+            return false;
+        }
+
+        Object.keys(fix).forEach(function (key) {
+            fix[key] = Math.round(fix[key] * 100) / 100;
+        });
+        all[code] = fix;
+        l.corrections = all;
+
+        return true;
+    }
+
+    // How many text layers of a document are corrected for a language.
+    // Twin of pg_picture_tr_corrected().
+    function languageCorrected(doc, code) {
+        return (doc && Array.isArray(doc.layers)) ? doc.layers.filter(function (l) {
+            return !!languageCorrection(l, code);
+        }).length : 0;
+    }
+
     // A canvas document with a language's words in its layers (texts:
     // [{ id, field, text }], text null where none is translated, which
-    // keeps the source's words). Answers the new document and, by layer id,
-    // a copy of each text layer as it was, to fit the new words to; null
-    // without a document.
-    function languageDoc(doc, texts) {
+    // keeps the source's words). Answers the new document, by layer id a
+    // copy of each text layer as it was, to fit the new words to, and with
+    // the language's code, by layer id each text's correction by hand
+    // (languageCorrection()), drawn in place of the fit; null without a
+    // document.
+    function languageDoc(doc, texts, code) {
         if (!doc || !Array.isArray(doc.layers)) {
             return null;
         }
 
-        var next = clone(doc), byId = {}, source = {};
+        var next = clone(doc), byId = {}, source = {}, corrected = {};
 
         (texts || []).forEach(function (t) {
             if (t && (typeof t.text === 'string') && (t.text !== '')) {
@@ -3186,6 +3342,11 @@
 
         next.layers.forEach(function (l) {
             var field = (l.type === 'text') ? 'text' : ((l.type === 'sticker') ? 'label' : ''), key = l.id + '\n' + field;
+            var fix = (code === undefined) ? null : languageCorrection(l, code);
+
+            if (fix) {
+                corrected[l.id] = fix;
+            }
 
             if (!field || !byId.hasOwnProperty(key) || (byId[key] === l[field])) {
                 return;
@@ -3198,7 +3359,7 @@
             l[field] = byId[key];
         });
 
-        return { doc: next, source: source };
+        return { doc: next, source: source, corrected: corrected };
     }
 
     // Whether a language may be drawn: every text translated into it, not
@@ -3255,7 +3416,8 @@
 
     var ARTBOARD = {
         LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageRoom: languageRoom, languagePlace: languagePlace,
-        languageWrap: languageWrap, languageWraps: languageWraps, languageFitted: languageFitted, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        languageWrap: languageWrap, languageWraps: languageWraps, languageFitted: languageFitted, languageDoc: languageDoc,
+        languageCorrection: languageCorrection, languageCorrect: languageCorrect, languageCorrected: languageCorrected, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
