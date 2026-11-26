@@ -325,6 +325,7 @@
 - image-editor-data-menu.md: The Artifact Canvas's Data menu (DV2 #10892, DV2b): the top bar's Data button, the two-step picker, the layer's panel groups, the actions data_tables and data_rows
 - image-editor-data-show.md: "Show on a canvas" on a Data table's head (DV3, DV2b): As a chart / As a table, a new canvas in the table's channel or one asked at the send, the table bound read-only, who may
 - image-editor-data-still.md: A canvas with data layers saved out of the Artifact Canvas (DV5): the Workspace's file drawn without rows, Files keeps the layers, an export is a still that says so
+- image-editor-design-chooser.md: The design file's window "Open a design file" (DF4): the New image dialog's door, page tiles, many canvases or scenes of one canvas, the report line under the top bar
 - image-editor-design-file.md: The Artifact Canvas's design file (DF3): action design_file reading a .pptx into pages, its pictures kept in Files, limits and refusals, Import's "A design file (.pptx)" adding one page as a group
 - image-editor-detach-sound.md: Artifact Canvas Detach sound where the hand is: the bar over a clip, a clip row's menu on the tracks, Detach from a video under Add sound; the reasons it is refused [decision: here]
 - image-editor-draw.md: The Artifact Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
