@@ -310,16 +310,20 @@ function pg_ai_connection_service_of($provider)
 }
 
 /**
- * The address of a provider's page on Connections. Pure.
+ * The address of a provider's page on Connections, returning to the card
+ * that led there when one is named. Pure.
  *
  * @param string $provider a model provider key
+ * @param string $card     the card of Assistants and agents the lead sits on
  * @return string '' for a provider without a connection
  */
-function pg_ai_connection_page_url($provider)
+function pg_ai_connection_page_url($provider, $card = '')
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     $service = pg_ai_connection_service_of($provider);
 
-    return ($service === '') ? '' : 'connections.php?service=' . rawurlencode($service);
+    return ($service === '') ? '' : pg_connections_lead_url($service, ($card !== '') ? pg_ai_connection_category() : '', $card);
 }
 
 /**
@@ -334,11 +338,12 @@ function pg_ai_connection_page_url($provider)
  * @param bool   $ready    the connection holds a key (pg_ai_connection_ready())
  * @param array  $own      null, or the own key's box: name, id, attrs (the
  *                         form's disabled and form="" attributes)
+ * @param string $card     the card the block sits on, for the way back
  * @return string HTML
  */
-function pg_ai_connection_block_html($provider, $name, $ready, $own = null)
+function pg_ai_connection_block_html($provider, $name, $ready, $own = null, $card = '')
 {
-    $url = pg_ai_connection_page_url($provider);
+    $url = pg_ai_connection_page_url($provider, $card);
     $pill = $ready
         ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
         : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>';

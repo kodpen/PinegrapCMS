@@ -29,6 +29,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 // Analytics' page of Connections; this card shows the connection and leads
 // there.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_settings_fold.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 
@@ -84,7 +85,7 @@ $privacy_parts['analytics'] = array('html' => '
                                                     <span class="connections-row-main"><span class="connections-row-name">Google Analytics</span><span class="pg-text-meta d-block">' . h($google_analytics_line) . '</span></span>
                                                     <span class="connections-row-side">' . ($google_analytics_connected
                                                         ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
-                                                        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '<a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=google_analytics">' . h($google_analytics_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a></span>
+                                                        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_connections_lead_url('google_analytics', 'privacy', 'pgset-analytics')) . '">' . h($google_analytics_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a></span>
                                                 </div>
                                             </div>
                                         </div>

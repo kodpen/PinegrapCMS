@@ -1652,15 +1652,17 @@ function pg_sms_settings_provider()
 
 /**
  * The address of a provider's page on Connections, where its account is
- * kept.
+ * kept, returning to the SMS card.
  *
  * @param string $provider
  * @return string
  */
 function pg_sms_connections_url($provider)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=' . rawurlencode((string) $provider);
+        . '/' . pg_connections_lead_url((string) $provider, 'contact', 'pgset-sms');
 }
 
 /**

@@ -24,6 +24,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_sending_rows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
@@ -277,7 +278,7 @@ $mail_parts['campaign'] = array('html' => '
                                             <div class="form-text mt-0">' . h($mail_mailchimp_on
                                                 ? lang('Customers, orders and products are synced to a Mailchimp list. Its key and sync are kept on Mailchimp\'s page of Connections.')
                                                 : lang('Mailchimp can keep a list in step with the site\'s customers, orders and products. It is set up on Mailchimp\'s page of Connections.')) . '</div>
-                                            <a class="pg-button pg-button-quiet pg-button-sm mt-2" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=mailchimp">' . h($mail_mailchimp_on ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            <a class="pg-button pg-button-quiet pg-button-sm mt-2" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_connections_lead_url('mailchimp', 'email', 'pgset-mail-campaign')) . '">' . h($mail_mailchimp_on ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                         </div>
                                     </div>
                                 </div>

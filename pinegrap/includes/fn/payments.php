@@ -2522,15 +2522,19 @@ function pg_payment_gateway_choice_refusal($posted, $was, $card_on, $stored)
 }
 
 /**
- * The address of a gateway's page on Connections.
+ * The address of a gateway's page on Connections, returning to the card
+ * that leads there (Payment Methods, Gift Cards & Rewards, Shipping).
  *
- * @param string $id page key
+ * @param string $id   page key
+ * @param string $card the card's anchor in Ecommerce
  * @return string
  */
-function pg_payment_gateway_connections_url($id)
+function pg_payment_gateway_connections_url($id, $card = 'pgset-payments')
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=' . rawurlencode((string) $id);
+        . '/' . pg_connections_lead_url((string) $id, 'commerce', $card);
 }
 
 /**

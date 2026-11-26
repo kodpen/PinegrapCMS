@@ -107,6 +107,27 @@ if (!$_POST) {
     // The cards themselves.
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.php');
 
+    // Back from a service's page of Connections that this category's card
+    // led to, once the service was completed there (connections.php): a line
+    // saying what was connected. A Connect's own message is shown here unless
+    // a card read it already (Mailboxes, Backups).
+    if (isset($_SESSION['software']['settings_returned']['category'])
+        && ($_SESSION['software']['settings_returned']['category'] === $pg_settings_key)) {
+
+        $pg_settings_returned = (string) $_SESSION['software']['settings_returned']['text'];
+        unset($_SESSION['software']['settings_returned']);
+
+        $pg_settings_returned_flash = function_exists('pg_connect_flash_take') ? pg_connect_flash_take() : null;
+
+        if (is_array($pg_settings_returned_flash)) {
+            $pg_settings_returned = $pg_settings_returned_flash['text'];
+        }
+
+        if ($pg_settings_returned !== '') {
+            $liveform->add_notice(h($pg_settings_returned));
+        }
+    }
+
     // ── the section chips ────────────────────────────────────────────────
     //
     // A category holds between one and six cards, which is few enough that a

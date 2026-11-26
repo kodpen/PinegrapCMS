@@ -89,7 +89,7 @@ function test_connections_google_translate_card_shows_the_connection()
 
 	pg_assert_false(strpos($card, 'name="translation_google_key') !== false, 'the card no longer types or clears the key');
 	pg_assert_contains('id="pgsub-google-translate"', $card, 'the card shows the connection');
-	pg_assert_contains('connections.php?service=google_translate', $card, 'and leads to its page');
+	pg_assert_contains("pg_connections_lead_url('google_translate', 'languages', 'pgset-translation-engines')", $card, 'and leads to its page, and back');
 	pg_assert_contains("lang('Manage in Connections')", $card, 'with Manage in Connections');
 	pg_assert_contains('id="translation_attribution"', $card, 'the attribution switch stays on the card');
 	pg_assert_contains('id="translation_style_note"', $card, 'the style note stays on the card');

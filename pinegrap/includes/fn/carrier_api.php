@@ -737,7 +737,7 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
     $html .= pg_payment_connection_block_html('pgsub-carrier-' . $carrier . '-connection', $definition['label'], $ready, $ready
         ? lang('The keys are kept on its page of Connections.')
         : lang('The keys are missing, so real-time information from this carrier is off. Enter them on its page of Connections.'),
-        pg_payment_gateway_connections_url($carrier)) . '
+        pg_payment_gateway_connections_url($carrier, 'pgset-shipping')) . '
             <div class="pg-f-md">
                 <label for="' . h($name) . 'environment" class="form-label">' . lang('Environment') . '</label>
                 <select name="' . h($name) . 'environment" id="' . h($name) . 'environment" class="form-control">

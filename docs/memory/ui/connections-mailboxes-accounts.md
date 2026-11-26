@@ -10,8 +10,8 @@ module: connections_screen
 - Gate: card `mailboxes` of `pg_connections_screen_page_cards()`: a manager (connect.php's right for the site's accounts) who may open the Mailboxes category (`connections_mailboxes_may_manage()`, `pg_settings_may_open('mailboxes')`). Nobody gains or loses a right.
 
 ## Where does the connection return to?
-- The page reads `mail_return`; `pg_connections_screen_mail_return()` (pure, tested) takes only a `settings_<key>.php` address with an optional anchor that `pg_connect_return_path()` and `pg_safe_redirect_path()` both keep unchanged, else the provider's page.
-- The button's `data-return` fills the Connect form's `return`; other Connect buttons use the form's own `data-return`. connect.php checks the address again. Mailboxes shows connect.php's message (`pg_connect_flash_take()`).
+- `ws_mail_connections_url()` leads with `from=email/pgset-ws-mail` (`connections-return-to-card.md`, #11862; `mail_return=` is still read from an old link). The part's Connect returns to the page, which goes on to the card once the account is connected; saving the application alone stays on the page, as the account is still to connect.
+- The button's `data-return` fills the Connect form's `return`; other Connect buttons use the form's own `data-return`. connect.php checks the address again. Mailboxes shows connect.php's message (`pg_connect_flash_take()`), put back by the page on the way.
 
 ## What do the Mailboxes card and a box's form show now?
 - No Connect button and no hidden Connect form. `ws_mail_connection_html()`: "Microsoft (Google) account for mailboxes", its state, "Manage in Connections" / "Connect in Connections" to `ws_mail_connections_url()`, and "The … application is not set up yet." while it is not.

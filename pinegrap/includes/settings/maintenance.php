@@ -296,9 +296,9 @@ if ($backup_settings_ready) {
                         <div class="row gy-5">' . ($backup_cloud_ready ? '' : '
                             <div class="col-12">
                                 <div class="alert theme-secondary mb-0 py-3 small">' . h(lang(array(
-                                    'string' => 'The {var:1} application is not set up yet. Enter it on Connected accounts first.',
+                                    'string' => 'The {var:1} application is not set up yet. Enter it on its page of Connections first.',
                                     'vars'   => $backup_cloud_provider['label'],
-                                ))) . ' <a href="connections.php">' . h(lang('Connected accounts')) . '</a></div>
+                                ))) . ' <a href="' . h(pg_backup_cloud_app_url($backup_cloud_type)) . '">' . h(lang(array('string' => 'Set up the {var:1} application', 'vars' => $backup_cloud_provider['label']))) . '</a></div>
                             </div>') . '
                             <div class="pg-f-md">
                                 <label for="backup_' . $backup_cloud_type . '_connection" class="form-label">' . lang('Account') . '</label>

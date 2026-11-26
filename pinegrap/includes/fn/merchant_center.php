@@ -373,11 +373,14 @@ function pg_merchant_center_url($account)
 }
 
 // The address of Merchant Center's page on Connections, where its account is
-// chosen, the feed registered and the issues read.
+// chosen, the feed registered and the issues read, returning to the Product
+// Feeds card.
 function pg_merchant_connections_url()
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=merchant_center';
+        . '/' . pg_connections_lead_url('merchant_center', 'commerce', 'pgset-feeds');
 }
 
 // The Product Feeds card's Merchant Center connection: Connected while an

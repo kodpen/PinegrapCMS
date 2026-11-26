@@ -536,6 +536,8 @@ function pg_captcha_settings_selected($apps)
  */
 function pg_captcha_settings_fields()
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     $apps = array();
 
     foreach (array_keys(pg_captcha_providers()) as $provider) {
@@ -590,7 +592,7 @@ function pg_captcha_settings_fields()
                                             <div class="d-flex flex-wrap align-items-center gap-3">
                                                 <h3 class="pg-group-label mb-0">' . h($definition['label']) . '</h3>
                                                 <span class="pg-text-meta">' . h($stored ? lang('Keys stored') : lang('No keys yet')) . '</span>
-                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h('connections.php?service=' . $key) . '"><i class="bi bi-plug" aria-hidden="true"></i>' . h($stored ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_connections_lead_url($key, 'security', 'pgset-captcha')) . '"><i class="bi bi-plug" aria-hidden="true"></i>' . h($stored ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                             </div>
                                         </div>';
     }

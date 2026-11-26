@@ -20,7 +20,7 @@ priority: 6
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
 - TR1 Done #11829: the crossings census, `settings-crossings-census.md` and its six files.
 - TR2 Done (2026-11-26, agent channel poll 232): the rule, `settings-crossings-rule.md`. TR3 is cut in four, one at a time: they share `connections.php`.
-- TR3a (M, in progress) The return: the helper every lead uses, the key check as a pure function, "Back to {card}", the return after Save and Connect and through the sign-in, the two old parameters folded in. Every lead to the service's page in the same tab: E-mail sending's and Backups' leads that land on the list, MCP servers' new tab.
+- TR3a Done #11862 (`ui/connections-return-to-card.md`). The return: the helper every lead uses, the key check as a pure function, "Back to {card}", the return after Save and Connect and through the sign-in, the two old parameters folded in. Every lead to the service's page in the same tab: E-mail sending's and Backups' leads that land on the list, MCP servers' new tab.
 - TR3b (S) after TR3a: nothing is lost: the pane's unsaved fields kept and put back, the assistant's drawer opened again (paths 7 and 8 of `settings-crossings-census-worst.md`).
 - TR3c (M) after TR3b: the page finishes it: the application's fields on the page of a Google or Microsoft account service, the drives' two answers made one, Sign in with Microsoft given its anchor and button (paths 1 to 6).
 - TR3d (S) after TR3c: no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.

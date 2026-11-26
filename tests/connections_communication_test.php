@@ -81,7 +81,7 @@ function test_connections_communication_cards_show_the_connection()
 	$card = pg_whatsapp_settings_card_html($app, '');
 
 	pg_assert_contains('id="pgsub-whatsapp-connection"', $card, 'the card shows the connection');
-	pg_assert_contains('connections.php?service=whatsapp', $card, 'and leads to its page');
+	pg_assert_contains('connections.php?service=whatsapp&amp;from=contact%2Fpgset-whatsapp', $card, 'and leads to its page, and back');
 	pg_assert_false(strpos($card, 'name="whatsapp_') !== false, 'no account field on the card');
 	pg_assert_false(strpos($card, $app['token']) !== false, 'no secret on the card');
 
@@ -90,7 +90,7 @@ function test_connections_communication_cards_show_the_connection()
 	$iys = connections_communication_test_source('includes/iys/settings.php');
 
 	pg_assert_contains('pg_iys_settings_card_html()', $contact, 'the İYS card shows the connection');
-	pg_assert_contains('connections.php?service=iys', $iys, 'and leads to its page');
+	pg_assert_contains("pg_connections_lead_url('iys', 'contact', 'pgset-iys')", $iys, 'and leads to its page, and back');
 	pg_assert_false(strpos($save, 'pg_whatsapp_settings_check(') !== false || strpos($save, 'pg_iys_settings_check(') !== false, 'the pane\'s save cannot change either account');
 	pg_assert_contains('pg_whatsapp_channel_check($_POST', $save, 'the WhatsApp channel stays the pane\'s');
 	pg_assert_contains('pg_sms_switch_check($_POST', $save, 'the SMS switch and provider stay the pane\'s');

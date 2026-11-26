@@ -73,7 +73,7 @@ function test_connections_signin_google_fields_moved_to_the_page()
 	pg_assert_false(strpos($card, 'name="oauth_google_client_id"') !== false, 'the sign-in card no longer types the client');
 	pg_assert_false(strpos($card, 'name="oauth_google_client_secret"') !== false, 'nor the secret');
 	pg_assert_contains('$signin_connect_row(\'oauth_google_enabled\'', $card, 'the switch stays, a connect row posting oauth_google_enabled');
-	pg_assert_contains("'connections.php?service=google#connections-signin'", $card, 'a row leads to Google\'s page');
+	pg_assert_contains("pg_connections_lead_url('google', 'security', 'pgset-signin', 'connections-signin')", $card, 'a row leads to Google\'s page, and back');
 
 	$save = connections_signin_google_test_source('includes/settings/security.save.php');
 	pg_assert_false(strpos($save, 'oauth_google_client_id') !== false, 'saving the sign-in settings leaves the client ID alone');

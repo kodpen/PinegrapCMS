@@ -402,14 +402,16 @@ function pg_grev_job_run()
 
 /**
  * The address of Google reviews' page on Connections, where the key and the
- * Place ID are typed. Pure.
+ * Place ID are typed, returning to the Google Reviews card.
  *
  * @return string
  */
 function pg_grev_connections_url()
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=google_reviews';
+        . '/' . pg_connections_lead_url('google_reviews', 'api', 'pgset-google-reviews');
 }
 
 /**
