@@ -57,12 +57,13 @@
         });
     }
 
-    function failed() {
+    // message: the server's refusal for this read; else the card's own line.
+    function failed(message) {
         var line = document.createElement('p');
         var retry = document.createElement('button');
 
         line.className = 'pg-pi-failed';
-        line.textContent = card.getAttribute('data-failed') + ' ';
+        line.textContent = (message || card.getAttribute('data-failed')) + ' ';
         retry.type = 'button';
         retry.className = 'pg-button pg-button-ghost pg-button-sm';
         retry.textContent = card.getAttribute('data-retry');
@@ -103,11 +104,7 @@
                 return;
             }
 
-            if (answer && answer.message) {
-                card.setAttribute('data-failed', answer.message);
-            }
-
-            failed();
+            failed(answer && answer.message ? String(answer.message) : '');
         }).catch(function () {
             if (ticket === asked) {
                 failed();
