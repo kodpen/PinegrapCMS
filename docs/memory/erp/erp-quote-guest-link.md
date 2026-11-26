@@ -15,11 +15,11 @@ description: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_l
 - One live link: `erp_quote_link_issue()` calls `erp_quote_link_revoke()` (sets `revoked_at` on live rows) before the new row. Only an open quote without a signature gets a link (a quote signed and opened again takes no second signature; #5462). It answers the new row's `id` with the token.
 - `erp_quote_link_issue(…, false)` leaves earlier links live; the caller keeps one (`erp_quote_link_revoke($quote_id, $keep_id)`) or drops the new one (`erp_quote_link_drop()`).
 - `expires_at` = end of the quote's `valid_until` day at issue (`erp_quote_link_expires_at()`).
-- `erp_quote_link_state()` (pure but for today): revoked, used, expired, accepted (quote accepted another way), closed (`erp_quote_state()` not open, `signed` set by `erp_quote_link_quote()`, or `erp_quote_status_refusal($quote, 'accepted')` refuses: expired, invoiced, cancelled, rejected), open. Asked on every open of the page.
+- `erp_quote_link_state()` (pure but for today): revoked, used (only while `erp_quote_state()` is accepted or invoiced, else closed; #11860), expired, accepted (quote accepted another way), closed (`erp_quote_state()` not open, `signed` set by `erp_quote_link_quote()`, or `erp_quote_status_refusal($quote, 'accepted')` refuses: expired, invoiced, cancelled, rejected), open. Asked on every open of the page.
 - Lookup `erp_quote_link_for_token()`: shape check, then by hash with `hash_equals`. Unknown and revoked tokens get one neutral 404.
 
 ## How is a quote accepted?
-- `erp_quote_link_accept()`: state must be open, the refusal function asked, posted `d` (hash of the quote printed) must match it now (`erp_quote_link_shown_matches()`), else nothing is claimed (a panel edit while the page was open was signed unread). The link claimed (`used_at`, `WHERE used_at = 0 AND revoked_at = 0`, one affected row) so a double submit does nothing; `erp_signature_store('quote', …, user_id 0)` with `erp_signature_document_hash_quote()`; a refused store releases the claim. Then `erp_quote_set_status(…, 'accepted', 0)` (panel writer, `erp.quote.accepted`) and `erp.quote.signed`. Never a bare status write.
+- `erp_quote_link_accept()` runs in one transaction under the quote's row lock (`SELECT … FOR UPDATE`, as `erp_quote_to_invoice()`); details and why: erp-quote-link-accept-lock.md. Order: state open, refusal asked, posted `d` matches (`erp_quote_link_shown_matches()`), claim (`used_at = 0 AND revoked_at = 0`, one row), `erp_signature_store()`, `erp_quote_set_status(…, 'accepted', 0)`; any refusal rolls all back. Never a bare status write.
 - The panel's signature card says "through the guest link" for `user_id` 0.
 
 ## What does the page show on each line?

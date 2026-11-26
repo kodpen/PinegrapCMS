@@ -39,7 +39,7 @@ function test_erp_quote_link_state_of_the_link()
 
 	pg_assert_same('open', erp_quote_link_state(erp_quote_links_test_link(), $quote, $now), 'fresh');
 	pg_assert_same('open', erp_quote_link_state(erp_quote_links_test_link(array('expires_at' => $now)), $quote, $now), 'its last second');
-	pg_assert_same('used', erp_quote_link_state(erp_quote_links_test_link(array('used_at' => $now - 5)), $quote, $now), 'used');
+	pg_assert_same('used', erp_quote_link_state(erp_quote_links_test_link(array('used_at' => $now - 5)), erp_quote_links_test_quote(array('status' => 'accepted')), $now), 'used');
 	pg_assert_same('revoked', erp_quote_link_state(erp_quote_links_test_link(array('revoked_at' => $now - 5)), $quote, $now), 'revoked');
 	pg_assert_same('revoked', erp_quote_link_state(erp_quote_links_test_link(array('revoked_at' => 1, 'used_at' => 1)), $quote, $now), 'revoked wins');
 	pg_assert_same('expired', erp_quote_link_state(erp_quote_links_test_link(array('expires_at' => $now - 1)), $quote, $now), 'expired by date');
@@ -57,6 +57,44 @@ function test_erp_quote_link_state_asks_the_quote()
 	pg_assert_same('closed', erp_quote_link_state($link, erp_quote_links_test_quote(array('status' => 'rejected')), $now), 'rejected');
 	pg_assert_same('accepted', erp_quote_link_state($link, erp_quote_links_test_quote(array('status' => 'accepted')), $now), 'accepted another way');
 	pg_assert_same('closed', erp_quote_link_state($link, erp_quote_links_test_quote(array('signed' => 1)), $now), 'signed, then opened again');
+}
+
+// A used link reads "accepted" only while the quote stands accepted (or went
+// on to an invoice): a link claimed for a quote whose move was refused, or
+// that was cancelled later, is shown as closed.
+function test_erp_quote_link_used_follows_the_saved_state()
+{
+	$now = time();
+	$used = erp_quote_links_test_link(array('used_at' => $now - 5));
+
+	pg_assert_same('used', erp_quote_link_state($used, erp_quote_links_test_quote(array('status' => 'accepted', 'signed' => 1)), $now), 'accepted through it');
+	pg_assert_same('used', erp_quote_link_state($used, erp_quote_links_test_quote(array('status' => 'invoiced', 'invoice_status' => 'draft', 'signed' => 1)), $now), 'accepted, then invoiced');
+	pg_assert_same('closed', erp_quote_link_state($used, erp_quote_links_test_quote(array('status' => 'cancelled', 'signed' => 1)), $now), 'cancelled');
+	pg_assert_same('closed', erp_quote_link_state($used, erp_quote_links_test_quote(array('status' => 'rejected')), $now), 'rejected');
+	pg_assert_same('closed', erp_quote_link_state($used, erp_quote_links_test_quote(array('status' => 'open', 'signed' => 1)), $now), 'opened again');
+	pg_assert_same('revoked', erp_quote_link_state(erp_quote_links_test_link(array('used_at' => 1, 'revoked_at' => 1)), erp_quote_links_test_quote(array('status' => 'cancelled')), $now), 'revoked still wins');
+}
+
+// The claim, the signature and the status move are one transaction under the
+// quote's row lock; a refused move rolls all of it back.
+function test_erp_quote_link_accept_under_the_quote_lock()
+{
+	$source = pg_test_function_source('erp_quote_link_accept');
+	$begin = strpos($source, 'erp_tx_begin()');
+	$lock = strpos($source, 'FOR UPDATE');
+	$state = strpos($source, 'erp_quote_link_state(');
+	$claim = strpos($source, 'SET used_at = UNIX_TIMESTAMP()');
+	$move = strpos($source, '$moved = erp_quote_set_status(');
+	$commit = strpos($source, 'erp_tx_commit()');
+	$signed = strpos($source, "'erp.quote.signed'");
+
+	pg_assert_true(($begin !== false) && ($lock !== false) && ($begin < $lock), 'the transaction opens, then the quote row is locked');
+	pg_assert_true(($state !== false) && ($lock < $state), 'the state is read under the lock');
+	pg_assert_true(($claim !== false) && ($state < $claim), 'before the link is claimed');
+	pg_assert_true(($move !== false) && ($claim < $move), 'the move\'s answer is kept');
+	pg_assert_contains("if (!\$moved['success'])", $source, 'and a refused move is not reported as accepted');
+	pg_assert_contains('erp_tx_rollback()', $source, 'a refusal rolls back');
+	pg_assert_true(($commit !== false) && ($move < $commit) && ($commit < $signed), 'signed is announced after the commit');
 }
 
 function test_erp_quote_link_token_parts_and_shape()
