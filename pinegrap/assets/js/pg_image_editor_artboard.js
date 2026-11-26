@@ -1768,9 +1768,9 @@
     }
 
     // One language's picture: its words in the layers, each changed text
-    // fitted by M.languageFitted() (grown into its free room, smaller only
-    // past it, never under the floor of its size on the picture's shorter
-    // side), drawn and posted.
+    // fitted by M.languageFitted() (grown into its free room, wrapped
+    // between words past its width, smaller only past that, never under the
+    // floor of its size on the picture's shorter side), drawn and posted.
     Editor.prototype.drawLanguage = function (data, lang) {
         var self = this, photo = (data.kind === 'photo');
         var opened = photo ? M.versionOpenDoc(data.doc, this.langFileId) : M.canvasOpenDoc(data.doc);

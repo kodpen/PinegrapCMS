@@ -883,7 +883,7 @@
 		"fit": 0
 	},
 	{
-		"about": "a text squeezed between two layers shrinks to its floor, is marked and is put in the middle of its room",
+		"about": "a text squeezed between two layers is wrapped into three lines at its size, its middle kept",
 		"doc": {
 			"v": 1,
 			"artboard": {
@@ -936,17 +936,82 @@
 		},
 		"layers": {
 			"a": {
-				"x": 275,
+				"x": 300,
+				"y": 150,
+				"w": 180,
+				"h": 150,
+				"size": 40,
+				"text": "Sehr enge\nPassform\nhier"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "one long word squeezed between two layers is never broken: it shrinks to its floor, is marked and is put in the middle of its room",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "w",
+					"type": "rect",
+					"x": 280,
+					"y": 200,
+					"w": 10,
+					"h": 50
+				},
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Tight fit",
+					"size": 40,
+					"x": 300,
+					"y": 200,
+					"w": 180,
+					"h": 50
+				},
+				{
+					"id": "e",
+					"type": "rect",
+					"x": 490,
+					"y": 200,
+					"w": 10,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Passformgarantieschein"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 300,
+				"y": 20,
+				"w": 180,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 280,
 				"y": 212.5,
-				"w": 230,
+				"w": 220,
 				"h": 25,
-				"size": 20
+				"size": 20,
+				"text": "Passformgarantieschein"
 			}
 		},
 		"fit": 1
 	},
 	{
-		"about": "a text leaning on both side edges has no room across: the floor and the mark",
+		"about": "a text leaning on both side edges is wrapped, then shrinks only as far as its longest word needs",
 		"doc": {
 			"v": 1,
 			"artboard": {
@@ -984,14 +1049,15 @@
 		},
 		"layers": {
 			"a": {
-				"x": -20,
-				"y": 112.5,
-				"w": 240,
-				"h": 25,
-				"size": 20
+				"x": 9.99,
+				"y": 63.63,
+				"w": 180.02,
+				"h": 122.74,
+				"size": 32.73,
+				"text": "Grosse\nWerbebanner\nheute"
 			}
 		},
-		"fit": 1
+		"fit": 0
 	},
 	{
 		"about": "a document with no size has no room: the old rule",
@@ -1033,7 +1099,7 @@
 		"fit": 1
 	},
 	{
-		"about": "a text in a crowd grows only as far as its neighbours let it",
+		"about": "a text in a crowd grows only as far as its neighbours let it, then wraps",
 		"doc": {
 			"v": 1,
 			"artboard": {
@@ -1096,10 +1162,11 @@
 		"layers": {
 			"a": {
 				"x": 160,
-				"y": 207.81,
+				"y": 180,
 				"w": 220,
-				"h": 34.38,
-				"size": 27.5
+				"h": 100,
+				"size": 40,
+				"text": "Mittelpunkt\nhier"
 			}
 		},
 		"fit": 0
