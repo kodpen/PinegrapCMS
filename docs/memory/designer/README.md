@@ -26,6 +26,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Build a design template's missing sector sections first as a palette block family, then give its home and signature pages their own composition and `_fx` motion where it fits; never copy another template's builders or band sequence (`design-template-own-look.md`).
 - Redraw a one-node text, property or style edit with `_sdRenderNode(node, …)`; a structure change, or a prop another node reads, keeps the full `render()` (`designer-incremental-canvas.md`).
 - Start a new panel's drawing function with `_sdPanelDefer(name)` and debounce per-keystroke panel draws with `_sdPanelsSoon(node)`; the canvas stays live (`designer-panels-on-demand.md`).
+- Add an Options row in the section of its kind, copying a row kind the panel has; unset it draws byte for byte as before, one writer shared with its twin, written to the element's class in User Styles or a Bootstrap class, never a new inline style (`designer-options-new-row.md`).
 <!-- key-rules:end -->
 
 ## Clusters

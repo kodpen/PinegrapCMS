@@ -4,7 +4,7 @@ description: Advanced › Layout's "Areas" on a grid box and "Area" on its child
 ---
 
 ## Where do the rows sit?
-- "Areas": on a grid box (`gridBox`), drawn by the part `grid` after Columns and Rows and before Gap, one element only. "Area": on a grid's child, after "Screen size" and before "Span columns", when the parent has areas at any size. Plan `designer-options-census-steps.md` DO6 (#11734), drawing `designer-options-grid-drawing.md`.
+- "Areas": on a grid box (`gridBox`), drawn by the part `grid` after Columns and Rows and before Gap, one element only. "Area": on a grid's child, after "Screen size" and before "Span columns", when the parent has areas at any size. Options census DO6 (#11734) (`options-panel-census.md`), drawing `designer-options-grid-drawing.md`.
 - No bar or head button. The row folds: open by itself when the box has areas, a press folds it; the choice is kept per element for the session.
 - Off with the line "Areas need a set number of columns and rows…" unless Columns and Rows are both Equal or Fixed sizes at the size (`PGGridAreas.count()`).
 

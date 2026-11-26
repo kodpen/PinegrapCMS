@@ -4,7 +4,7 @@ description: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (
 ---
 
 ## Where do the rows sit?
-- Style tab › Advanced › Layout, on an element whose Display is Grid or Inline Grid at any size (`_sdGridBox()`, context key `gridBox` of `_sdOptCtx()`; several elements: all of them). Plan `designer-options-census-steps.md` DO4.
+- Style tab › Advanced › Layout, on an element whose Display is Grid or Inline Grid at any size (`_sdGridBox()`, context key `gridBox` of `_sdOptCtx()`; several elements: all of them). Options census DO4 (`options-panel-census.md`).
 - They stand before Gap: "Screen size", "Columns" with its field, "Rows" with its field, then "Areas" (`designer-grid-areas.md`); a changed count cuts the box's areas at that size. Gap is the same Gap row (gap-* classes); on a grid box it shows without being held (`also: 'gridBox'` in `_SD_LAY_ROWS`), so the note no longer names gap as hidden there.
 - No button in a bar or a head. A flex box gets no grid rows.
 

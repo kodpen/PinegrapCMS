@@ -18,6 +18,9 @@ description: Start file of the designer-options-* files: what the Options panel 
 - "Only what I changed" (the switch at the bottom, the list of changed rows, "Reset all"): `designer-options-review.md`.
 - "Copy style", "Paste style" (the brush) and the quick strip on Content: `designer-options-copy-style.md`.
 
+## How does a new option enter the panel?
+- Its section, its row kind, unset drawing as before, one writer, User Styles or a Bootstrap class: `designer-options-new-row.md`. The rows the census added (states, transition, transform, layers, shapes, effects, text, cursor, grid, per size) and their files: `options-panel-census.md`.
+
 ## How is a part added?
 - New code a page does not need to open goes into a part (`designer-parts-on-demand.md`), a decision into a pure module tested under Node (`pg_spacing_box.js`, `pg_options_search.js`); the core gets the hooks.
 - A new section gets a key (`_sdSectKey()`) so `_SD_OPT_TAB_OF` places it in its tab; a renamed one keeps its card id (`designer-options-style-advanced.md`).

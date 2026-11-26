@@ -32,4 +32,4 @@ description: The drawing of a grid box's named areas (plan designer-options-cens
 - The plan names no canvas part: the drawing shows the areas there only while one of the two rows is open; nothing is dragged there.
 - The drawing wins where the two differ (`workflow/architect-draws-new-part.md`); what neither says the worker asks of the architect.
 
-Related: docs/memory/plans/designer-options-census-steps.md, docs/memory/designer/designer-grid-columns-rows.md, docs/memory/designer/designer-grid-child-place.md
+Related: docs/memory/designer/options-panel-census.md, docs/memory/designer/designer-grid-columns-rows.md, docs/memory/designer/designer-grid-child-place.md

@@ -1,26 +1,36 @@
 ---
 name: options-panel-census
-description: Start file of the Options panel census (DO1, 2026-11-24): what the designer's Options panel sets today and what needs code, each gap sized S or M
+description: Start file of the Options panel census (DO1, 2026-11-24) and what was built from it (DO2 to DO26, done 2026-11-26): which file holds each row or component now
 ---
 
-## What is this census?
-- Step DO1 of `plans/designer-options-census.md`: a count, no product code. It lists the controls of the Page Design Studio's Options panel (tabs Content, Style, Advanced) as `style_designer.src.js` builds them on 2026-11-24, and against them what a designer can reach today only through code: the Styles panel's "This element" card (`custom-style.md`), User Styles, the Attributes panel or a class typed by hand.
-- It names no control as dead or unused. The owner picks from the gaps; the architect then writes DO2 onward.
+## What was this census?
+- Step DO1 (#11490): a count, no product code, of the Page Design Studio's Options panel (tabs Content, Style, Advanced) as `style_designer.src.js` built it on 2026-11-24, against what a designer could reach then only through code ("This element" card, User Styles, Attributes, a typed class).
+- Owner (2026-11-24, 2026-11-25): more options of good quality; every package shown goes in (`workflow/decisions-made-product-105.md`, `-110.md`). Built as DO2 to DO26, closed 2026-11-26. How a new row enters the panel and what it keeps: `designer-options-new-row.md`.
 
 ## Which file holds what?
-- Controls today, per element kind and per section: `options-panel-census-today.md`.
-- Missing ways to place and size an element (grid tracks and areas, position and layer order, per screen size values, sticky and scroll snapping, aspect ratio, object fit): `options-panel-census-layout.md`.
-- Missing ways to dress and move it (hover, focus and pressed states, transitions and entrance motion, gradients and several backgrounds, filters and blend, transforms, text effects, masks and clip shapes): `options-panel-census-look.md`.
-- What Bootstrap Studio has that ours lacks, as have, partly or missing (view transitions, scrollspy, Markdown, favourites, notes, Check for issues, find and replace, easing curve, collection pages): `options-panel-census-bss.md`.
+- The panel on 2026-11-24, per element kind and section: `options-panel-census-today.md`.
+- Placing and sizing (grid, position, per size, sticky, snap, ratio, fit): `options-panel-census-layout.md`.
+- Dressing and moving (states, transition, layers, effects, transform, text, shapes, cursor): `options-panel-census-look.md`.
+- Bootstrap Studio's list as have, partly or missing: `options-panel-census-bss.md`.
 
-## What do S and M mean here?
-- S: one new row or a few values in a row that writes a Bootstrap class or a prop the page already prints, with the twins (canvas, editor HTML, site) already in place; one PR of a few hundred lines.
-- M: a new kind of stored value (a state, a per-size length, a list of layers) that needs its own writer to User Styles or the node's style, its canvas preview, the code view's way back and tests; one plan step of about 1,000 lines.
+## Where does each built step live?
+- A value per screen size, DO2: `designer-size-per-screen.md`. Hide on and Sticky from, DO3: `designer-hide-on-sticky-from.md`.
+- Grid Columns and Rows, DO4: `designer-grid-columns-rows.md`; a child's span and start, DO5: `designer-grid-child-place.md`; named areas, DO6: `designer-grid-areas.md`.
+- Position presets and Z Index, DO7: `designer-position-presets.md`. Scroll snap, DO8: `designer-scroll-snap.md`. Aspect ratio and Object Fit, DO9: `designer-aspect-ratio-object-fit.md`.
+- State row, DO10: `designer-options-states.md`. Transition, DO11: `designer-options-transition.md`. Transform, DO12: `designer-options-transform.md`.
+- Background layers, DO13: `designer-options-bg-layers.md`. Clip shape and Mask, DO14: `designer-options-shape.md`.
+- Filter, Background blur, Blend, DO15: `designer-options-effects.md`. Text effects, DO16: `designer-options-text.md`. Cursor, DO17: `designer-options-pointer.md`.
+- Four more entrances, DO18: `designer-interactions-more-entrances.md`. Easing curve, DO19: `designer-options-curve.md`. Page transition, DO20: `designer-options-page-transition.md`.
+- Back to top and Scroll progress, DO21: `page-scroll-components.md`. A menu's scrollspy and scrolled state, DO22: `menu-scroll-rows.md`.
+- New collection with pages, DO23: `collection-pages.md`. Favourites, DO24: `palette-favourites.md`. Find and Replace scopes, DO25: `designer-find-replace-scopes.md`. Markdown, DO26: `markdown-component.md`.
+- The sheets drawn first: `designer-options-states-drawing.md`, `designer-options-grid-drawing.md`, `designer-options-layers-drawing.md`, `designer-options-curve-drawing.md`, `designer-options-collection-drawing.md`.
+
+## What did S and M mean?
+- S: one row or a few values writing a Bootstrap class or a prop the page already prints; a few hundred lines.
+- M: a new kind of stored value (a state, a per size length, a list of layers) with its own writer, canvas preview, way back from the code view and tests; about 1,000 lines.
 
 ## What are "the design's variables"?
-- The look's `--pg-*` tokens (`--pg-radius-*`, `--pg-shadow*`, `--pg-border-width`, `--pg-duration`, `--pg-ease`, `--pg-font-body`, `--pg-font-heading`, `--pg-line-height`, the button and card hover tokens) and the palette's and Themes panel's `--bs-*` variables (theme colours, `--bs-border-radius*`, `--bs-box-shadow*`, `--bs-breakpoint-*`, custom variables): `design-theme-look-and-palette.md`, `designer-theme-panel-light-selector.md`.
-- A gap marked "reads" offers those variables as its choices or defaults, so a design that changes its look changes the value with it; "none" means it takes plain values.
+- The look's `--pg-*` tokens (radius, shadow, border width, `--pg-duration`, `--pg-ease`, the two font families, line height, button and card hover) and the `--bs-*` variables of the palette and Themes panel (theme colours, radius, shadow, `--bs-breakpoint-*`): `design-theme-look-and-palette.md`. A row offers them first, so a changed look carries.
 
-## Which gaps were found, in short?
-- Layout file: grid tracks (M), grid areas and spans (M), position offsets per size (M), layer order typed or from tokens (S), width and height per size (M), sticky top per size (S), scroll snapping (S), aspect ratio on any element and per size (S), object fit on video and per size (S), object position as presets (S).
-- Look file: hover, focus and pressed states (M), transitions (S), entrance motion on more effects and easings (S), several backgrounds and gradient stops (M), gradient from theme colours (S), filters (S), backdrop blur (S), blend modes (S), transforms (M), text shadow, letter spacing and font family (S), text gradient and stroke (S), masks and clip shapes (M), cursor and pointer (S).
+## What is still left out?
+- Text wrap balance for headings; one "Check for issues" window; a designer's own options on a component (`options-panel-census-bss.md`). None has a step.
