@@ -331,7 +331,8 @@ function pg_image_editor_includes()
     };
     window.imageEditorAvailable = function () { return true; };
     // A button or link with data-pg-image-edit (the name of a file) opens the
-    // file. A copy saved from a picture of a page is put in that content
+    // file; with data-pg-image-language (a code) on the view of that language. A
+    // copy saved from a picture of a page is put in that content
     // (data-pg-image-object, -object-id, -column: action content); then the
     // page is drawn again, past the week the browser may keep a picture.
     document.addEventListener("click", function (e) {
@@ -339,7 +340,7 @@ function pg_image_editor_includes()
         if (!b) { return; }
         e.preventDefault();
         var cfg = window.pgImageEditorConfig, name = b.getAttribute("data-pg-image-edit");
-        window.pgImageEditor.open({ fileName: name, save: { mode: "replace" }, onSave: function (r) {
+        window.pgImageEditor.open({ fileName: name, language: b.getAttribute("data-pg-image-language") || "", save: { mode: "replace" }, onSave: function (r) {
             var f = r.file || {}, object = b.getAttribute("data-pg-image-object"), steps = [];
             if (f.url) {
                 var bare = String(f.url).split("?")[0];
@@ -2996,6 +2997,18 @@ function pg_image_editor_strings_artboard()
         'langDrawAll'       => lang('Draw all'),
         'langDrawing'       => lang('Drawing…'),
         'langDrawError'     => lang('The picture could not be drawn.'),
+        'langCorrect'       => lang('Correct by hand'),
+        'langCorrectedOne'  => lang('Corrected by hand: 1 text'),
+        'langCorrected'     => lang('Corrected by hand: {n} texts'),
+        'langFixNote'       => lang('A text that does not fit can be moved and sized for that language alone with "Correct by hand"; the source picture stays as it is.'),
+        'langSaveFirst'     => lang('Save your changes first: a language is corrected on the saved picture.'),
+        'langViewLine'      => lang('Only this language\'s texts move here. The source picture does not change.'),
+        'langAuto'          => lang('Back to automatic'),
+        'langAutoAll'       => lang('Take every correction of {name} off? Its texts go back to where they fit by themselves.'),
+        'langDone'          => lang('Done'),
+        'langViewMenu'      => lang('More'),
+        'langEditWords'     => lang('Edit the words in Translations'),
+        'langViewError'     => lang('This language\'s picture could not be shown.'),
     );
 }
 

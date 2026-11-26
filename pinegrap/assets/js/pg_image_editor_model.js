@@ -3218,15 +3218,157 @@
         var d = (l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0);
         var a = (Number(l.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
         var o = d + w / 2 - fix.w / 2, cx = fix.x + fix.w / 2 + o * cos, cy = fix.y + h / 2 + o * sin;
-        var bw = Number(board && board.w) || 0, bh = Number(board && board.h) || 0;
-        var ex = (Math.abs(w * cos) + Math.abs(h * sin)) / 2, ey = (Math.abs(w * sin) + Math.abs(h * cos)) / 2;
-
         l.x = Math.round((cx - w / 2) * 100) / 100;
         l.y = Math.round((cy - h / 2) * 100) / 100;
         l.w = w;
         l.h = h;
 
+        return languagePast({ x: cx - w / 2, y: cy - h / 2, w: w, h: h, rot: l.rot }, board);
+    }
+
+    // Whether a layer's turned box runs past the picture (board: w, h) by
+    // more than half a px; never without a picture size.
+    function languagePast(l, board) {
+        var w = Number(l.w) || 0, h = Number(l.h) || 0, cx = (Number(l.x) || 0) + w / 2, cy = (Number(l.y) || 0) + h / 2;
+        var a = (Number(l.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        var bw = Number(board && board.w) || 0, bh = Number(board && board.h) || 0;
+        var ex = (Math.abs(w * cos) + Math.abs(h * sin)) / 2, ey = (Math.abs(w * sin) + Math.abs(h * cos)) / 2;
+
         return (bw > 0) && (bh > 0) && ((cx - ex < -0.5) || (cy - ey < -0.5) || (cx + ex > bw + 0.5) || (cy + ey > bh + 0.5));
+    }
+
+    // The correction (x, y, w, size) that puts text layer l, laid out w
+    // wide at its size, with its box's corner at x, y when its lines wrap
+    // to width fw: the inverse of languageCorrectedPut().
+    function languageCorrectionAt(l, fw, x, y, w) {
+        var free = fw - w, d = (l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0);
+        var a = (Number(l.rot) || 0) * Math.PI / 180, o = d + w / 2 - fw / 2;
+
+        return { x: x + w / 2 - fw / 2 - o * Math.cos(a), y: y - o * Math.sin(a), w: fw, size: Number(l.size) || 0 };
+    }
+
+    // The language view: the document as a language's picture is drawn
+    // (languageDoc(), languageFitted()), every layer but a text locked;
+    // beside it each text's words before the fit (words) and where the fit
+    // alone puts it (auto: x, y, w, h, size, text). Null when it cannot be
+    // laid out.
+    function languageView(doc, texts, code, layout, board) {
+        var put = languageDoc(doc, texts, code), plain = doc ? clone(doc) : null;
+
+        if (!put) {
+            return null;
+        }
+
+        plain.layers.forEach(function (l) {
+            languageCorrect(l, code, null);
+        });
+
+        var auto = languageDoc(plain, texts), words = {}, boxes = {};
+
+        put.doc.layers.forEach(function (l) {
+            if (l.type === 'text') {
+                words[l.id] = String(l.text || '');
+            }
+        });
+
+        if (!languageFitted(auto, layout, board) || !languageFitted(put, layout, board)) {
+            return null;
+        }
+
+        auto.doc.layers.forEach(function (l) {
+            if (l.type === 'text') {
+                boxes[l.id] = { x: l.x, y: l.y, w: l.w, h: l.h, size: l.size, text: l.text };
+            }
+        });
+
+        put.doc.layers.forEach(function (l) {
+            if (l.type !== 'text') {
+                l.locked = true;
+            }
+        });
+
+        return { doc: put.doc, code: code, words: words, auto: boxes };
+    }
+
+    // A change in the language view (doc, after; before, as it was) kept
+    // to what the view may change: each text's place, size and its
+    // correction; any other change is taken back. A text moved or sized
+    // gets the correction that keeps it there (its width scaled with the
+    // letters), one given a box by a side handle (lvFix) that box; then
+    // each text is put again: corrected by languageCorrectedPut(), else
+    // where the fit puts it (view.auto). Changes doc.
+    function languageViewSettle(before, doc, view, layout, board) {
+        var code = view.code, now = {}, moved = function (a, b) {
+            return ['x', 'y', 'size'].some(function (key) {
+                return Math.abs((Number(a[key]) || 0) - (Number(b[key]) || 0)) > 1e-6;
+            });
+        };
+
+        doc.layers.forEach(function (l) {
+            now[l.id] = l;
+        });
+
+        doc.layers = before.layers.map(function (b) {
+            var n = now[b.id], l = clone(b);
+
+            if ((b.type !== 'text') || !n || (n.type !== 'text') || !view.words.hasOwnProperty(b.id)) {
+                return l;
+            }
+
+            var fix = languageCorrection(b, code);
+
+            if (n.lvFix) {
+                languageCorrect(l, code, n.lvFix);
+            } else if (languageCorrection(n, code) && !moved(n, b)) {
+                languageCorrect(l, code, languageCorrection(n, code));
+            } else if (!languageCorrection(n, code) && fix && !moved(n, b)) {
+                languageCorrect(l, code, null);
+            } else if (moved(n, b) && (Number(b.size) > 0)) {
+                var fw = (fix ? fix.w : (Number(b.w) || 0)) * (Number(n.size) || 0) / Number(b.size);
+
+                languageCorrect(l, code, languageCorrectionAt(n, fw, Number(n.x) || 0, Number(n.y) || 0, Number(n.w) || 0));
+            }
+
+            fix = languageCorrection(l, code);
+            l.text = view.words[b.id];
+
+            if (!fix || (languageCorrectedPut(l, fix, layout, board) === null)) {
+                var auto = view.auto[b.id] || {};
+
+                ['x', 'y', 'w', 'h', 'size', 'text'].forEach(function (key) {
+                    if (auto[key] !== undefined) {
+                        l[key] = auto[key];
+                    }
+                });
+            }
+
+            return l;
+        });
+
+        return doc;
+    }
+
+    // Done in the language view: each text's correction for the language
+    // as the view (viewDoc) holds it written into the canvas document doc,
+    // or taken off; nothing else of it changes. Answers whether it changed.
+    function languageViewCorrections(doc, viewDoc, code) {
+        var changed = false, byId = {};
+
+        ((viewDoc && viewDoc.layers) || []).forEach(function (l) {
+            byId[l.id] = l;
+        });
+
+        ((doc && doc.layers) || []).forEach(function (l) {
+            var v = byId[l.id], want = v ? languageCorrection(v, code) : null, have = languageCorrection(l, code);
+
+            if ((l.type !== 'text') || !v || (JSON.stringify(want) === JSON.stringify(have))) {
+                return;
+            }
+
+            changed = languageCorrect(l, code, want) || changed;
+        });
+
+        return changed;
     }
 
     // A language code as a correction is kept under: letters, then parts
@@ -3418,6 +3560,8 @@
         LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageRoom: languageRoom, languagePlace: languagePlace,
         languageWrap: languageWrap, languageWraps: languageWraps, languageFitted: languageFitted, languageDoc: languageDoc,
         languageCorrection: languageCorrection, languageCorrect: languageCorrect, languageCorrected: languageCorrected, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        languageCorrectedPut: languageCorrectedPut, languagePast: languagePast, languageCorrectionAt: languageCorrectionAt, languageView: languageView,
+        languageViewSettle: languageViewSettle, languageViewCorrections: languageViewCorrections,
         languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
