@@ -832,6 +832,9 @@ StyleDesigner.definePart('code', function (K) {
             else { d.from = Math.min(d.from, fromB); d.to = Math.max(d.to, toB); }
         });
         _sdCode.dirty = d;
+        // New typing: a switch that held the view on before no longer
+        // counts as the first of two.
+        _sdCode.leaveAt = 0;
         if (_sdCode.applyTimer) clearTimeout(_sdCode.applyTimer);
         _sdCode.applyTimer = setTimeout(_sdCodeApply, _SD_CODE_APPLY_MS);
     }
