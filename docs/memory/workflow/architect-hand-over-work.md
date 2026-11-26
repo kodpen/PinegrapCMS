@@ -1,14 +1,13 @@
 ---
 name: architect-hand-over-work
-description: Hand-over of the architect session of 2026-11-24 to 26, the work in flight: what has landed, who works now, what is left of the sheets, how sheets are made, what is watched
+description: Hand-over of the architect session of 2026-11-24 to 26, the work in flight: who works now, what is left of the sheets, how sheets are made, what is watched
 ---
 
-## What of that session's work has landed?
-- All of its PRs: #11898 (the editor's frame sheet, plan `designer-frame-tidy`), #11901 (FR5 no longer waits) and #11903 (DD4, the Sketch tool).
+## Who works now?
 - Since 2026-11-26 (owner, message 14372) only the architect, the merging session and k3 work; k2 is back for the Paraşüt round alone (`architect-hand-over.md`).
 
 ## What is still to do with the sheets?
-- No sheet is left to draw and the plan that listed them is closed; what a sheet holds is in `designer-sheet-rules.md`.
+- No sheet is left to draw; what a sheet holds is in `designer-sheet-rules.md`.
 - The owed comparison list of `designer/designer-panels-differences.md` needs the studio open on dev beside each drawing: not possible with only an application key.
 
 ## How is a sheet made?
@@ -22,9 +21,12 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - After MS4 has landed: the merging session's rule for the memory mirror.
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
 - The office editors (owner 2026-11-26, `decisions-made-product-115.md`): the steps of `plans/office-sheet-abilities.md`, `office-sheet-formulas.md` and `office-document-abilities.md` are not free; the architect marks their lines `free` when OF4, SA5 and OP3 have landed, each by a docs PR, and tells k3.
-- The owner's designer reports of 2026-11-26 have landed: #11942 (bands), #11950 (code view), #11949 (panel drag).
-- His stutter everywhere is the design's size: bug issue #11960 with k3 (a selection lays the page out several times: five in the Store template 2.4 s on a sandbox, 0.12 s in a small design). Stored data is ruled out (poll 240; a 568 K autosave write costs 8 ms). When it has landed he is asked to try design 838 again.
-- With k3 too: #11965 (page bar label), #11966 and #11968 (phone preview; poll 243). Poll 242: Options is too narrow; his console line picks the issue.
+- The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
+- His stutter is the design's size: #11974 landed (five selections in the Store template 1.2 to 0.9 s on a sandbox, 0.12 s in a small design); the rest is bug issue #11987. Poll 245 asks him to try design 838 again.
+- Phone preview: #11966 has landed; #11968 (the live page's QR code, poll 243) is free; another reason his window names gets its own issue.
+- Plan `designer-new-version` (poll 244, `decisions-made-product-116.md`): NV1 is PR #11981; a step needing a table or column comes back here.
+- Poll 242: Options is too narrow; his console line under it picks the issue.
+- Paraşüt: the staging round passed; what is left is in `plans/erp-parasut-open-work.md`, with k2's local workers.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
