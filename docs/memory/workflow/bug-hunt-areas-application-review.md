@@ -12,7 +12,7 @@ description: Bug hunt of the application review desk (Forms › Application prog
 - A stale "Open for entries" or "Close" press fell through to the Set-up save and drew the form blank; a Save from it wiped the set-up.
 - A panel reviewer still sent scores once the round was over, after the juror link had expired (`pg_application_review_open()`).
 - "Let it in" pressed twice wrote two audit lines.
-- Later, issue #11758 (#NNNN): two "Call the next" presses at the same moment accepted two waitlisted entries for one declined place; the call now runs under the declined entry's lock.
+- Later, issue #11758 (#11773): two "Call the next" presses at the same moment accepted two waitlisted entries for one declined place; the call now runs under the declined entry's lock.
 
 ## What was read clean?
 - Reads of "My reviews" and the juror page: the review is joined on the signed-in user or the link's reviewer row, not removed, never a conflict or a draft programme; autosave and posts check the form token.
