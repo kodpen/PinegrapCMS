@@ -427,6 +427,10 @@ function pg_designer_screen_render($ctx)
         // the sheet's address and each tab page's state, for the top bar's
         // chip and the held variant's Publish.
         'experiments'   => pg_experiment_editor_config($tab_page_ids, $user),
+        // New versions (includes/fn/page_versions.php): each tab page that
+        // is a version's draft names its live page, each live page that has
+        // one names its draft.
+        'versions'      => pg_page_version_editor_config($tab_page_ids),
         // Tab order and groups (2026.4.8): kept in style_tab_layout, written
         // by designer/tab_layout. Without the column the strip is plain.
         'tabLayout'     => array(

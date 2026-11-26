@@ -269,6 +269,20 @@ function pg_panel_designer($request, $action)
         respond(pg_library_editor($sub, $request, $user));
     }
 
+    // A live page's new version (includes/fn/page_versions.php): started
+    // from a live tab with that tab's state, discarded from its draft's tab.
+    // Designers only: the list above does not open them to a content-level
+    // operator, and the module asks the bundle's right again.
+    if ($sub === 'version_start') {
+        $nv_page = isset($request['page']) ? $request['page'] : null;
+        if (is_string($nv_page)) $nv_page = json_decode($nv_page, true);
+        respond(pg_page_version_start(isset($request['page_id']) ? (int)$request['page_id'] : 0,
+            is_array($nv_page) ? $nv_page : null, $user));
+    }
+    if ($sub === 'version_discard') {
+        respond(pg_page_version_discard(isset($request['page_id']) ? (int)$request['page_id'] : 0, $user));
+    }
+
     switch ($sub) {
 
         // ── PRESENCE ─────────────────────────────────────────────────
