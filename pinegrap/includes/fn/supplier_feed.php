@@ -711,6 +711,13 @@ function pg_supplier_feed_flatten_json($value, $prefix, &$out)
         $text = '';
     } elseif (is_float($value)) {
         $text = rtrim(rtrim(sprintf('%.10F', $value), '0'), '.');
+
+        // pg_supplier_feed_parse_amount() reads one mark before exactly three
+        // digits as a thousands mark ("1.250" is 1250); a JSON number's point
+        // is always a decimal point, so 12.375 is written 12.3750.
+        if (preg_match('/\.\d{3}$/', $text) && (strpos($text, '0.') !== 0)) {
+            $text .= '0';
+        }
     } else {
         $text = trim((string) $value);
     }
