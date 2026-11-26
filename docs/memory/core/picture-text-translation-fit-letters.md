@@ -23,6 +23,6 @@ module: picture_translation
 - Right-to-left languages are not drawn (`picture-text-overview.md`).
 
 ## What is open? (architect, 2026-11-17, read in the code, not tried in a browser)
-- Under the floor a text is still drawn at its floor and marked; wrapping it onto a second line stays the owner's, asked when he names it.
+- Under the floor a text is still drawn at its floor and marked. Owner (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): it is to grow into the free room, then wrap, then shrink, and a language is to be corrected by hand. `plans/picture-text-fit.md` builds it; until its steps land the rule above is what runs.
 - The font list's key is the face and the family, not the text. Two text layers of one face, of which only the second has letters of another part of the font (digits, then Cyrillic), wait only for the first part, so the second may be drawn in the next family at the first draw. A small fix for a worker: ask the face per layer text.
 - A family with no letters of the language (a display face without Cyrillic or `ğ`, `ş`, `ı`): the picture is drawn with borrowed letters and listed as drawn. A mark on the Languages row would be a new control, so the owner's look.
