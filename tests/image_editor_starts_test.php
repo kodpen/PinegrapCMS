@@ -149,9 +149,10 @@ function test_image_editor_starts_layers()
 	pg_assert_same(array('sx' => 25, 'sy' => 0, 'sw' => 50, 'sh' => 100, 'w' => 50, 'h' => 100), $r['cover'][2], 'never more pixels than the picture has');
 }
 
-// The shipped designs: six, each in the index, passing the check with its
-// fonts in the catalogue, every text and name a label, a "Your picture" box
-// where a photo goes, and the size a preset of the dialog.
+// The shipped designs: thirty, each in the index, passing the check with
+// its fonts in the catalogue, every text and name a label, the size a preset
+// of the dialog; every purpose has three or more, in sizes that fit it, and
+// every size is used.
 function test_image_editor_starts_shipped()
 {
 	$r = image_editor_starts_node(
@@ -167,11 +168,24 @@ function test_image_editor_starts_shipped()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(6, $r['raw'], 'six designs in the index');
-	pg_assert_same(6, count($r['list']), 'every entry passes the check');
+	pg_assert_same(30, $r['raw'], 'thirty designs in the index');
+	pg_assert_same(30, count($r['list']), 'every entry passes the check');
 
 	$strings = pg_image_editor_strings_starts();
 	$presets = array();
+	$purposes = array();
+	// The sizes a purpose may take: a story is tall, a banner wide, the
+	// others any but the story's where it reads as one.
+	$fits = array(
+		'post'         => array('square', 'portrait', 'share'),
+		'story'        => array('story'),
+		'banner'       => array('banner', 'share'),
+		'announcement' => array('square', 'portrait', 'share', 'story'),
+		'sale'         => array('square', 'portrait', 'share', 'story', 'banner'),
+		'event'        => array('square', 'portrait', 'story', 'banner', 'share'),
+		'quote'        => array('square', 'portrait', 'share', 'story'),
+		'invitation'   => array('square', 'portrait', 'story', 'share'),
+	);
 
 	foreach ($r['list'] as $d) {
 		pg_assert_true($d['ok'], $d['id'] . ': its file passes the check');
@@ -179,14 +193,20 @@ function test_image_editor_starts_shipped()
 		pg_assert_true(isset($strings['startPurpose_' . $d['purpose']]), $d['id'] . ': its purpose has a chip');
 		pg_assert_true($d['preset'] !== 'custom', $d['id'] . ': a size of the dialog');
 		pg_assert_true(count($d['texts']) >= 3, $d['id'] . ': three texts or more');
+		pg_assert_true(in_array($d['preset'], $fits[$d['purpose']], true), $d['id'] . ': a size that fits ' . $d['purpose']);
 		$presets[$d['preset']] = true;
+		$purposes[$d['purpose']] = isset($purposes[$d['purpose']]) ? $purposes[$d['purpose']] + 1 : 1;
 
 		foreach ($d['texts'] as $key) {
 			pg_assert_true(isset($strings[$key]), $d['id'] . ': ' . $key . ' is a label');
 		}
 	}
 
-	pg_assert_same(5, count($presets), 'the six designs use the five sizes');
+	pg_assert_same(5, count($presets), 'the designs use the five sizes');
+
+	foreach (array_keys($fits) as $purpose) {
+		pg_assert_true(isset($purposes[$purpose]) && ($purposes[$purpose] >= 3), $purpose . ': three designs or more');
+	}
 }
 
 // The part is listed, bundled after the svg layers and before the menu,

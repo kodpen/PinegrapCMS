@@ -1,0 +1,14 @@
+{
+ "id": "invite-share",
+ "width": 1200,
+ "height": 630,
+ "background": "#1a1a2e",
+ "layers": [
+  {"type": "rect", "x": 30, "y": 30, "w": 1140, "h": 570, "color": "#c9a227", "fill": "none", "stroke": 3},
+  {"type": "text", "text": "startInviteOpenSmall", "font": "g:Cormorant Garamond", "size": 40, "weight": 600, "color": "#c9a227", "align": "center", "x": 600, "y": 100, "maxW": 1000, "italic": true},
+  {"type": "text", "text": "startInviteOpenHead", "font": "g:Playfair Display", "size": 84, "weight": 700, "color": "#ffffff", "align": "center", "x": 600, "y": 160, "maxW": 1000},
+  {"type": "text", "text": "startInviteOpenWhen", "font": "g:Lato", "size": 36, "weight": 400, "color": "#dee2e6", "align": "center", "x": 600, "y": 310, "maxW": 1000},
+  {"type": "text", "text": "startInviteOpenNote", "font": "g:Lato", "size": 32, "weight": 400, "color": "#adb5bd", "align": "center", "x": 600, "y": 370, "maxW": 1000},
+  {"type": "star", "x": 575, "y": 470, "w": 50, "h": 50, "color": "#c9a227"}
+ ]
+}

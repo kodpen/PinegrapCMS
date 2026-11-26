@@ -155,6 +155,7 @@
     "10001": "34000",
     "10001 New York": "34000 İstanbul",
     "10:00 until the curtain goes up": "10:00'dan perde açılana kadar",
+    "10:00 – 16:00": "10.00 – 16.00",
     "10–20–30–20–10 seconds hard, equal rest, three rounds": "10–20–30–20–10 saniye zor, eşit dinlenme, üç tur",
     "11 digits for a person, 10 for a company.": "Bireysel alımda 11 haneli T.C. kimlik no, kurumsal alımda 10 haneli vergi no.",
     "11 months": "11 ay",
@@ -444,6 +445,7 @@
     "48 MP": "48 MP",
     "48 apartments, 6,200 m²": "48 daire, 6.200 m²",
     "48 hours": "48 saat",
+    "48 hours only": "Yalnızca 48 saat",
     "48 months": "48 ay",
     "48.62": "48,62",
     "4K": "4K",
@@ -572,5 +574,6 @@
     "900 skiers an hour": "Saatte 900 kayakçı",
     "91 to 180 days": "91 - 180 gün",
     "9:00 to 13:00": "9:00–13:00",
-    "9:00 to 17:00": "9:00–17:00"
+    "9:00 to 17:00": "9:00–17:00",
+    "9:00 – 19:00": "09.00 – 19.00"
 }

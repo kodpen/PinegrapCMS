@@ -1,0 +1,13 @@
+{
+ "id": "quote-square",
+ "width": 1080,
+ "height": 1080,
+ "background": "#212529",
+ "layers": [
+  {"type": "rect", "x": 90, "y": 90, "w": 900, "h": 900, "color": "#495057", "fill": "none", "stroke": 3},
+  {"type": "text", "text": "startQuoteSqLine1", "font": "g:Playfair Display", "size": 80, "weight": 700, "color": "#ffffff", "align": "center", "x": 540, "y": 370, "maxW": 820, "italic": true},
+  {"type": "text", "text": "startQuoteSqLine2", "font": "g:Playfair Display", "size": 80, "weight": 700, "color": "#ffffff", "align": "center", "x": 540, "y": 470, "maxW": 820, "italic": true},
+  {"type": "rect", "x": 490, "y": 640, "w": 100, "h": 4, "color": "#fcc419"},
+  {"type": "text", "text": "startQuoteAuthor", "font": "g:Raleway", "size": 36, "weight": 600, "color": "#fcc419", "align": "center", "x": 540, "y": 690, "maxW": 820, "spacing": 0.1}
+ ]
+}

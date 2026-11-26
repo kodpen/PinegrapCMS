@@ -1,0 +1,13 @@
+{
+ "id": "post-coffee",
+ "width": 1080,
+ "height": 1080,
+ "background": "#f3ece2",
+ "layers": [
+  {"type": "slot", "x": 0, "y": 0, "w": 1080, "h": 640},
+  {"type": "text", "text": "startPostCoffeeHead", "font": "g:Playfair Display", "size": 76, "weight": 700, "color": "#3e2723", "align": "left", "x": 80, "y": 700, "maxW": 920},
+  {"type": "text", "text": "startPostCoffeeLine", "font": "g:Lato", "size": 36, "weight": 400, "color": "#6d4c41", "align": "left", "x": 80, "y": 810, "maxW": 920},
+  {"type": "rect", "x": 80, "y": 900, "w": 280, "h": 80, "color": "#3e2723", "radius": 40},
+  {"type": "text", "text": "startPostCoffeeTry", "font": "g:DM Sans", "size": 30, "weight": 700, "color": "#ffffff", "align": "center", "x": 220, "y": 922, "maxW": 240}
+ ]
+}
