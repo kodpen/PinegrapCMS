@@ -316,3 +316,14 @@ function test_supplier_feed_sync_failed_lines()
 	pg_assert_same('The feed is empty.', $braked['reason'], 'a brake\'s reason');
 	pg_assert_same(3, count($braked['failed']), 'the lines stay');
 }
+
+// A pull downloads into its own file: the screen's first read and Test pull
+// use the feed's other file, so a person testing while the job pulls neither
+// cuts the pull's download nor pauses the feed.
+function test_supplier_feed_sync_pull_downloads_into_its_own_file()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_sync.php');
+
+	pg_assert_contains("!empty(\$feed['allow_http']), \$state['file'])", $source, 'the pull names its own file');
+	pg_assert_true(pg_supplier_feed_pull_file(3) !== pg_supplier_feed_temp_file(3), 'two files');
+}

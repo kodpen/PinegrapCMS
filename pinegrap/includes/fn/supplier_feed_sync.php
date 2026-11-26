@@ -488,14 +488,11 @@ function pg_supplier_feed_pull_start($feed, $kind, $drop_ok)
     // A pull dropped before its drafts were made leaves its spool behind.
     pg_supplier_feed_spool_clear($feed['id']);
 
-    $download = pg_supplier_feed_download($feed['id'], pg_supplier_feed_secret_decode($feed['secret']), !empty($feed['allow_http']));
+    // Its own file, not the screen's: a Test pull meanwhile does not cut it.
+    $download = pg_supplier_feed_download($feed['id'], pg_supplier_feed_secret_decode($feed['secret']), !empty($feed['allow_http']), $state['file']);
 
-    if (!$download['ok'] || !@rename($download['file'], $state['file'])) {
-        if ($download['ok']) {
-            @unlink($download['file']);
-        }
-
-        pg_supplier_feed_brake($feed, $state, $download['ok'] ? lang('The server could not write a temporary file.') : $download['error'], array());
+    if (!$download['ok']) {
+        pg_supplier_feed_brake($feed, $state, $download['error'], array());
 
         return null;
     }
