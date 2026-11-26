@@ -1866,6 +1866,25 @@
         return (l.italic ? 'italic ' : '') + w + ' ' + textRound(Math.max(0.5, Number(l.size) || 1)) + 'px ' + textFamily(l.font);
     }
 
+    // The letters of a text a face was not asked for yet, each once, in
+    // the text's order: document.fonts.load() loads only the parts of a
+    // font (Latin, digits, Cyrillic) the letters it is given need.
+    function textFontLetters(asked, text) {
+        var seen = {}, out = '';
+
+        Array.from(String(asked || '')).forEach(function (c) {
+            seen[c] = true;
+        });
+        Array.from(String(text || '')).forEach(function (c) {
+            if (!seen[c]) {
+                seen[c] = true;
+                out += c;
+            }
+        });
+
+        return out;
+    }
+
     function textRound(n) {
         return Math.round(n * 100) / 100;
     }
@@ -1973,7 +1992,7 @@
 
     var TEXT = {
         TEXT_FONTS: TEXT_FONTS, TEXT_WEIGHTS: TEXT_WEIGHTS, textDefaults: textDefaults, textFamilyName: textFamilyName,
-        textFamily: textFamily, textFont: textFont, textLayout: textLayout, textFit: textFit, textResize: textResize,
+        textFamily: textFamily, textFont: textFont, textFontLetters: textFontLetters, textLayout: textLayout, textFit: textFit, textResize: textResize,
         textEffects: textEffects
     };
 

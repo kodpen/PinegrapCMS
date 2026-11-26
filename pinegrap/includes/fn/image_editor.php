@@ -3033,7 +3033,7 @@ function pg_image_editor_strings_artboard()
         'langDrawn'         => lang('Picture drawn'),
         'langOutOfDate'     => lang('Out of date'),
         'langLook'          => lang('Look by hand'),
-        'langLookNote'      => lang('A text did not fit even at the smallest size: check this picture.'),
+        'langLookNote'      => lang('A text does not fit even wrapped at its smallest size: place it with "Correct by hand".'),
         'langRtl'           => lang('Right to left: the source picture is shown.'),
         'langOutOfDateNote' => lang('Visitors see the source picture until this one is drawn again.'),
         'langOpen'          => lang('Open the picture: {name}'),
@@ -3047,7 +3047,7 @@ function pg_image_editor_strings_artboard()
         'langCorrect'       => lang('Correct by hand'),
         'langCorrectedOne'  => lang('Corrected by hand: 1 text'),
         'langCorrected'     => lang('Corrected by hand: {n} texts'),
-        'langFixNote'       => lang('A text that does not fit can be moved and sized for that language alone with "Correct by hand"; the source picture stays as it is.'),
+        'langFixNote'       => lang('A longer translation takes the free room around its text, then wraps and gets smaller; one that still does not fit is moved and sized for that language alone with "Correct by hand", and the source picture stays as it is.'),
     );
 }
 

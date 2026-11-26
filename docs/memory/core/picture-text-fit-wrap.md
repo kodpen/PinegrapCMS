@@ -6,7 +6,7 @@ module: picture_server_draw
 
 ## When is a translated text wrapped?
 - In `M.languageFitted()` / `pg_picture_tr_language_fitted()`, after the room is read (`picture-text-fit-room.md`): when the translation at the source's size on its own lines is wider than its room. With no room (the old rule) nothing is wrapped.
-- Owner's order (2026-11-26, poll 229): grow, wrap, shrink (`plans/picture-text-fit-rules.md`).
+- Owner's order (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): grow, wrap, shrink.
 
 ## How is a text broken?
 - `M.languageWrap(text, max, measure)` / `pg_picture_tr_language_wrap()`: each of the text's own lines wider than `max` is broken between words (at spaces) into the fewest lines that fit, balanced: the break with the narrowest widest line; of two as narrow, the last line is the shorter.

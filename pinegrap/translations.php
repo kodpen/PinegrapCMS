@@ -149,7 +149,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
         </div>
         <section class="pg-card p-5" aria-labelledby="pg_pq_title">
             <h2 class="pg-title-section" id="pg_pq_title">' . lang('Waiting pictures') . '</h2>
-            <p class="pg-card-sub">' . lang('Each language is drawn from the picture\'s last saved version once every one of its texts is translated. The pages in that language show it from then on.') . '</p>
+            <p class="pg-card-sub">' . lang('Each language is drawn from the picture\'s last saved version once every one of its texts is translated. The pages in that language show it from then on.') . ' ' . lang('A longer translation takes the free room around its text, then wraps and gets smaller; a picture where a text still does not fit ends as "Look by hand" and is corrected in the Artifact Canvas.') . '</p>
             ' . ($queue ? '<ul class="list-unstyled mb-0">' . $queue_rows . '</ul>' : '<p class="pg-text-2 mb-0">' . lang('Nothing is waiting to be drawn.') . '</p>') . '
         </section>
     </div>

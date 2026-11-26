@@ -1,11 +1,11 @@
 ---
 name: picture-text-fit-correct
-description: A picture text corrected by hand for one language (PF3): the layer's corrections field, the save's check, both draws taking it in place of the fit, the mark, the count
+description: A picture text corrected by hand for one language (#11888): the layer's corrections field, the save's check, both draws taking it in place of the fit, the mark, the count, what is left out
 module: picture_server_draw
 ---
 
 ## Where is a correction kept?
-- On the text layer in the canvas document: `corrections`, an object by language code, each `{ x, y, w, size }` (the box's place, its width, the letters' size) in the layer's own space. No words: the translation stays in the store. No table or column (`plans/picture-text-fit-screens.md`).
+- On the text layer in the canvas document: `corrections`, an object by language code, each `{ x, y, w, size }` (the box's place, its width, the letters' size) in the layer's own space. No words: the translation stays in the store. No table or column (architect, 2026-11-26, agent channel request 3129). When the translation changes later the correction stays and the new words wrap in the same box.
 - A layer deleted takes its corrections, a copy (a clone) takes them along, a code no longer a target language is never read.
 
 ## What does the save check?
@@ -19,8 +19,11 @@ module: picture_server_draw
 - The browser (`drawLanguage()` passes `lang.code`) and the server (`pg_picture_tr_server_plan(..., $code)`, its language from the queue row) draw the same numbers; the server's widths are its own.
 
 ## What does the Languages list get?
-- `picture_languages` answers per language `corrected`: how many text layers carry a well formed correction for it (`pg_picture_tr_corrected()`, twin `M.languageCorrected()`), for the row's "Corrected by hand: {n} text(s)" (PF4).
+- `picture_languages` answers per language `corrected`: how many text layers carry a well formed correction for it (`pg_picture_tr_corrected()`, twin `M.languageCorrected()`), for the row's "Corrected by hand: {n} text(s)" (`picture-text-fit-view.md`).
 - A save of the document changes its hash, so the stamp turns the drawn pictures out of date and they are drawn again, as every save does.
+
+## What is left out? (architect, 2026-11-26)
+- Other words, another font or another colour for one language; a layer shown in one language only; a correction for the source language.
 
 ## What does the editor call?
 - `M.languageCorrect(l, code, box)`: sets a text layer's box, rounded to two places, or takes it off with `null`; the last off removes the field; a malformed box, a non-text layer, a bad code or a 101st language changes nothing. Answers whether the layer changed. The screen: `picture-text-fit-view.md`.
