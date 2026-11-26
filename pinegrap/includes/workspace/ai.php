@@ -1624,6 +1624,10 @@ function ws_ai_step($row)
         );
     }
 
+    // The calls that end the request are made last, and the conversation
+    // keeps them in that order, so each tool result still follows its call.
+    $kept = ws_ai_turn_order($kept);
+
     $state['messages'][] = array(
         'role'       => 'assistant',
         'content'    => $content,
@@ -1632,17 +1636,18 @@ function ws_ai_step($row)
         }, $kept),
     );
 
-    // A page tool that answered with an error or a warning in this turn holds
-    // the answer of the same turn back: the model has not seen what went
-    // wrong, and its words would describe a change that is not there.
-    $page_trouble = false;
+    // A tool that makes something and answered with an error in this turn
+    // holds the answer of the same turn back (ws_ai_holds_answer()): the
+    // model has not seen what went wrong, and its words would describe a
+    // change or a drawing that is not there.
+    $held = false;
 
     foreach ($kept as $call) {
         $name = $call['function']['name'];
 
         if (!$call['valid']) {
             $state['messages'][] = ws_ai_tool_message($call['id'], null, 'The arguments were not valid JSON. Call the tool again with valid JSON.');
-            $page_trouble = $page_trouble || (strpos($name, 'page_') === 0);
+            $held = $held || ws_ai_holds_answer($name, null);
             continue;
         }
 
@@ -1684,8 +1689,8 @@ function ws_ai_step($row)
                 continue;
             }
 
-            if ($page_trouble && ($steps < WS_AI_MAX_STEPS - 2)) {
-                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'A page tool above answered with an error or a warning. Fix that first, then call answer again.');
+            if ($held && ($steps < WS_AI_MAX_STEPS - 2)) {
+                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'A tool above answered with an error or a warning, so what it was to make or change is not there. Fix that first, then call answer again.');
                 continue;
             }
 
@@ -1740,10 +1745,7 @@ function ws_ai_step($row)
         }
 
         $result = ws_ai_tool_run($row, $state, $name, $call['args']);
-
-        if ((strpos($name, 'page_') === 0) && (isset($result['error']) || isset($result['warning']))) {
-            $page_trouble = true;
-        }
+        $held = $held || ws_ai_holds_answer($name, $result);
 
         $state['messages'][] = ws_ai_tool_message($call['id'], $result);
     }
@@ -1751,6 +1753,59 @@ function ws_ai_step($row)
     ws_ai_save($row, $state, $steps + 1);
 
     return 'step';
+}
+
+/**
+ * The order one model turn's tool calls are made in. answer, fail and
+ * decide end the request, and every call after the one that ends it is
+ * dropped: they come after the turn's other calls, so an answer written
+ * before draw_canvas no longer loses the drawing. Each group keeps the
+ * order the model wrote, so an answer written before a fail still wins.
+ *
+ * @param array $calls the turn's calls, each with ['function']['name']
+ * @return array
+ */
+function ws_ai_turn_order($calls)
+{
+    $work = array();
+    $closing = array();
+
+    foreach ((array) $calls as $call) {
+        if (in_array((string) ($call['function']['name'] ?? ''), array('answer', 'fail', 'decide'), true)) {
+            $closing[] = $call;
+        } else {
+            $work[] = $call;
+        }
+    }
+
+    return array_merge($work, $closing);
+}
+
+/**
+ * Does a tool's result hold back the answer of the same turn? Yes for a
+ * page, live page or canvas tool that answered with an error, or whose
+ * arguments were not valid JSON (it never ran): the answer was written
+ * before the model saw the result and would describe what is not there.
+ * A page tool's warning holds it back too.
+ *
+ * @param string     $name
+ * @param array|null $result null when the arguments were not valid JSON
+ * @return bool
+ */
+function ws_ai_holds_answer($name, $result)
+{
+    $name = (string) $name;
+    $page = (strpos($name, 'page_') === 0);
+
+    if (!$page && !in_array($name, array_merge(ws_canvas_ai_tool_names(), ws_page_ai_tool_names()), true)) {
+        return false;
+    }
+
+    if ($result === null) {
+        return true;
+    }
+
+    return isset($result['error']) || ($page && isset($result['warning']));
 }
 
 /**
