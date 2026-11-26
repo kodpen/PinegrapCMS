@@ -15,9 +15,9 @@ description: The bug hunt of Workspace voice messages (V3-V5, VA1-VA6), 2026-11-
 
 ## What read clean?
 - `ws_voice_channel_allowed()` asked on every path out: job, browser route, spoken answers, the route and Pinegrap AI's tool. The event goes out for public channels only.
+- A failed transcript still asks once, with the "not heard" line: Architect (2026-11-26) kept it, as `workspace-voice-asks.md` says.
 - Retries and their end, the watchdog's single ask, the hold path, the browser route (only at upload, recorder name, 100,000 chars), the 1,500-character cut on Turkish text, search, recaps, bells (deleted messages skipped).
 
 ## What was left?
 - The 5-minute cap is only the recorder's and 6 MB on the server: an API upload at a low bitrate can be longer. Finding the length means decoding the file.
 - What one application key can spend at the speech service is bounded only by the general API rate limit, not by the twenty-a-minute message limit, which binds a person only.
-- The brief asked that a failed transcript ask nobody. Memory (V4c, VA1) says it asks with a "not heard" line, so this was not changed.
