@@ -271,7 +271,10 @@ function pg_co_apply($tree, $values)
             $value = $usable[$entry['id']];
             switch ($entry['kind']) {
                 case 'shown':
-                    if ($value === false && !$root) return null;
+                    if ($value === false && !$root) {
+                        _pg_co_claim_ids($node, $seen);
+                        return null;
+                    }
                     break;
                 case 'text':
                     $node['props']['text'] = $value;
@@ -300,6 +303,20 @@ function pg_co_apply($tree, $values)
         return $node;
     };
     return $walk($tree, true);
+}
+
+// A node left out of a place takes its own field ids and those of its
+// subtree with it, as pg_co_open_fields() gives them to it: they are marked
+// in $seen, so a later node with the same id (a duplicated element) never
+// takes their values. A placed component inside is not entered.
+function _pg_co_claim_ids($node, &$seen)
+{
+    if (!is_array($node)) return;
+    foreach (pg_co_node_open($node) as $entry) $seen[$entry['id']] = true;
+    if (isset($node['type']) && $node['type'] === 'shared_ref') return;
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) _pg_co_claim_ids($child, $seen);
+    }
 }
 
 // The ids of a place's values that are left over: no open field has the id
@@ -415,23 +432,33 @@ function pg_co_place_texts($tree, $values)
         if ($field['kind'] === 'text' && array_key_exists($field['id'], $safe)) $texts[$field['id']] = true;
     }
     if (empty($texts)) return array();
+    // The walk of pg_co_apply() on the given tree: a node keeps the ids it
+    // meets first, and a node the place hides takes its subtree's with it.
     $out = array();
     $seen = array();
-    $walk = function ($node) use (&$walk, &$out, &$seen, $texts) {
+    $walk = function ($node, $root) use (&$walk, &$out, &$seen, $texts, $safe) {
         if (!is_array($node)) return;
+        $mine = array();
         foreach (pg_co_node_open($node) as $entry) {
             if (isset($seen[$entry['id']])) continue;
             $seen[$entry['id']] = true;
-            if ($entry['kind'] === 'text' && isset($texts[$entry['id']])) {
-                $out[] = array('id' => $entry['id'], 'node' => $node);
+            if ($entry['kind'] === 'shown' && !$root && array_key_exists($entry['id'], $safe) && $safe[$entry['id']] === false) {
+                _pg_co_claim_ids($node, $seen);
+                return;
             }
+            if ($entry['kind'] === 'text' && isset($texts[$entry['id']])) $mine[] = $entry['id'];
+        }
+        foreach ($mine as $id) {
+            $drawn = $node;
+            $drawn['props']['text'] = $safe[$id];
+            $out[] = array('id' => $id, 'node' => $drawn);
         }
         if (isset($node['type']) && $node['type'] === 'shared_ref') return;
         if (!empty($node['children']) && is_array($node['children'])) {
-            foreach ($node['children'] as $child) $walk($child);
+            foreach ($node['children'] as $child) $walk($child, false);
         }
     };
-    $walk(pg_co_apply($tree, $safe));
+    $walk($tree, true);
     return $out;
 }
 

@@ -277,3 +277,37 @@ function test_component_overrides_core_entry_points()
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_overrides.min.js', $parts['overrides'], 'the part is loaded on first use');
 }
+
+// An element duplicated inside a component carries its open fields with the
+// same ids; the first node keeps them. A place that hides the first one
+// must not hand its other values to the copy: the copy draws as the
+// component has it, in both twins.
+function test_component_overrides_hidden_element_keeps_its_fields_from_a_copy()
+{
+	$card = array('_id' => 'a', 'type' => 'content', 'props' => array('text' => 'Our menu', '_open' => array(
+		array('id' => 'of_s', 'kind' => 'shown', 'label' => 'Shown'),
+		array('id' => 'of_t', 'kind' => 'text', 'label' => 'Title'),
+	)), 'children' => array());
+	$copy = $card;
+	$copy['_id'] = 'b';
+	$inner = array('_id' => 'n', 'type' => 'container', 'props' => array('_open' => array(array('id' => 'of_box', 'kind' => 'shown', 'label' => 'Box'))), 'children' => array(
+		array('_id' => 'nt', 'type' => 'content', 'props' => array('text' => 'Open daily', '_open' => array(array('id' => 'of_note', 'kind' => 'text', 'label' => 'Note'))), 'children' => array()),
+	));
+	$innerCopy = $inner;
+	$innerCopy['_id'] = 'n2';
+	$innerCopy['children'][0]['_id'] = 'nt2';
+	$tree = array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array($card, $copy, $inner, $innerCopy));
+	$values = array('of_s' => false, 'of_t' => 'Lunch', 'of_box' => false, 'of_note' => 'Closed');
+
+	$out = pg_co_apply($tree, $values);
+	pg_assert_same(array('b', 'n2'), array_column($out['children'], '_id'), 'the hidden elements are left out');
+	pg_assert_same('Our menu', $out['children'][0]['props']['text'], 'the copy keeps the component\'s text');
+	pg_assert_same('Open daily', $out['children'][1]['children'][0]['props']['text'], 'a field inside a hidden element does not pass to the copy');
+	pg_assert_same(array(), pg_co_place_texts($tree, $values), 'no place text is drawn, none is extracted');
+
+	$js = component_overrides_test_node('out = C.apply(' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ', ' . json_encode($values) . ');');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same($out, $js, 'the twin draws the same');
+}
