@@ -4,7 +4,7 @@
  *
  * The sheets of an Excel workbook added, renamed, deleted and moved on the
  * server, in the file itself (the file window and a channel's preview send
- * one such change as their whole save, through pg_office_xlsx_save()).
+ * such changes in a save's ordered list, through pg_office_xlsx_save()).
  *
  * A new sheet is an empty worksheet put at the end. A rename rewrites the
  * sheet's name wherever a formula, a defined name, a chart, a table or a
@@ -1032,40 +1032,6 @@ function pg_office_sheets_move($zip, $book, $workbook, $place, $to, &$texts)
     $texts['xl/workbook.xml'] = $xml;
 
     return '';
-}
-
-/**
- * Writes one sheet change into a workbook on disk, under the file's lock,
- * as pg_office_xlsx_save() writes cells.
- *
- * @param string   $path
- * @param array    $op        pg_office_sheets_request()
- * @param string   $version
- * @param string   $directory '' for data/temp
- * @param callable $fail
- * @return array ok, code, error, size, version, changed
- */
-function pg_office_xlsx_sheets_save($path, $op, $version, $directory, $fail)
-{
-    $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
-
-    if (!is_dir($directory)) {
-        @mkdir($directory, 0755, true);
-    }
-
-    $lock = pg_office_edit_lock($path, $directory);
-
-    if ($lock === null) {
-        return $fail('busy');
-    }
-
-    $result = pg_office_save_package($path, $version, $directory, $fail, function ($zip, $spool) use ($op, $fail) {
-        return pg_office_xlsx_sheets_parts($zip, $op, $fail, $spool);
-    });
-
-    pg_office_edit_unlock($lock);
-
-    return $result;
 }
 
 /**

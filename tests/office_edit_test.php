@@ -285,7 +285,14 @@ function test_office_edit_patch_refuses()
 	pg_assert_same(array(false, 'locked', 'B1'), array($result['ok'], $result['error'], $result['cell']), 'a linked value');
 
 	$result = pg_office_xlsx_patch_sheet($xml, array(2 => array(0 => '5')), $context);
-	pg_assert_same(array(false, 'missing', 'A2'), array($result['ok'], $result['error'], $result['cell']), 'a row the sheet does not have');
+	pg_assert_true($result['ok'], 'a row the sheet does not have is made');
+	pg_assert_contains('</row><row r="2"><c r="A2"><v>5</v></c></row></sheetData>', $result['xml'], 'after the last row');
+
+	$result = pg_office_xlsx_patch_sheet(office_edit_test_sheet('<row r="3"><c r="A3"><v>1</v></c></row>'), array(1 => array(1 => 'x', 0 => ''), 2 => array(0 => ''), 3 => array(0 => '2')), $context);
+	pg_assert_contains('<sheetData><row r="1"><c r="B1" t="inlineStr"><is><t>x</t></is></c></row><row r="3"><c r="A3"><v>2</v></c></row>', $result['xml'], 'before the rows after it; a row of empty values is not made');
+
+	$result = pg_office_xlsx_patch_sheet(str_replace('<sheetData></sheetData>', '<sheetData/>', office_edit_test_sheet('')), array(2 => array(0 => '5')), $context);
+	pg_assert_contains('<sheetData><row r="2"><c r="A2"><v>5</v></c></row></sheetData>', $result['xml'], 'into an empty sheet');
 
 	$context['protected'] = true;
 	$result = pg_office_xlsx_patch_sheet($xml, array(1 => array(3 => '5')), $context);

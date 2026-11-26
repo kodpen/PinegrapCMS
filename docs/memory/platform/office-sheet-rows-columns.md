@@ -1,11 +1,11 @@
 ---
 name: office-sheet-rows-columns
-description: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one change a save
+description: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list
 module: office_shift
 ---
 
 ## How is a row or column inserted or deleted?
-- A save whose `cells` list holds one entry `{sheet, name, op: insert|delete, row: 7}` (or `column: "C"`), sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`). `pg_office_xlsx_save()` hands it to `pg_office_xlsx_shift_save()`, under the same lock, version check and package rebuild. It is a save of its own: mixed with cell changes it is refused (`none`). No new endpoint, permission or schema.
+- An entry `{sheet, name, op: insert|delete, row: 7}` (or `column: "C"`) in a save's `cells` list, sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`). `pg_office_xlsx_save()` applies it in its place in the list with `pg_office_xlsx_shift_parts()` (`office-save-list.md`). No new endpoint, permission or schema.
 - The grid's head menu that sends it: `office-sheet-head-menu.md`.
 
 ## What moves?

@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The format of selected cells of an Excel workbook changed on the server,
- * in the file itself (the file window and a channel's preview send one such
- * change as their whole save, through pg_office_xlsx_save()): bold, italic,
+ * in the file itself (the file window and a channel's preview send such
+ * changes in a save's ordered list, through pg_office_xlsx_save()): bold, italic,
  * text colour, fill, horizontal alignment and the number format (general,
  * number, money, percent, date).
  *
@@ -723,46 +723,6 @@ function pg_office_format_protected($xml)
 /* ---------------------------------------------------------------------------
    The save
    --------------------------------------------------------------------------- */
-
-/**
- * Writes one format change into a workbook on disk, under the file's lock,
- * as pg_office_xlsx_save() writes cells.
- *
- * @param string   $path
- * @param array    $format    pg_office_format_request()
- * @param string   $version
- * @param string   $directory '' for data/temp
- * @param callable $fail
- * @return array ok, code, error, size, version, changed
- */
-function pg_office_xlsx_format_save($path, $format, $version, $directory, $fail)
-{
-    $range = $format['range'];
-
-    if ((($range[2] - $range[0] + 1) * ($range[3] - $range[1] + 1)) > PG_OFFICE_EDIT_MAX_CHANGES) {
-        return $fail('many');
-    }
-
-    $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
-
-    if (!is_dir($directory)) {
-        @mkdir($directory, 0755, true);
-    }
-
-    $lock = pg_office_edit_lock($path, $directory);
-
-    if ($lock === null) {
-        return $fail('busy');
-    }
-
-    $result = pg_office_save_package($path, $version, $directory, $fail, function ($zip, $spool) use ($format, $fail) {
-        return pg_office_xlsx_format_parts($zip, $format, $fail, $spool);
-    });
-
-    pg_office_edit_unlock($lock);
-
-    return $result;
-}
 
 /**
  * The two parts a format change writes: the sheet and the styles part.
