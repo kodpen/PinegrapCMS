@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences', 'registration entrance', 'membership entrance', 'my account', 'update address book');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences', 'registration entrance', 'membership entrance', 'my account', 'update address book', 'search results');
 }
 
 /**
@@ -782,7 +782,8 @@ function pg_layout_convert_types()
  * it: no list is added), 'cross_sell' => the id of the classic cross-sell
  * container (its element becomes the widget's cross-sell part), 'lists'
  * => true (every 'list' loop is a place of the widget's list, its rows
- * told apart by row flags; otherwise a second one is dropped), 'scripts'
+ * told apart by row flags, a 'list:<row flag>' loop's body under that
+ * flag; otherwise a second one is dropped), 'scripts'
  * => 'keep' (a <script> of the layout is kept as a raw block), 'replace'
  * => array(text => text) (put in the markup before it is read),
  * 'page_links' => array(token => page setting) (a link bound to the token
@@ -877,6 +878,9 @@ function pg_layout_piece_map($type)
 
         case 'my account':
             return _pg_lc_my_account_map($none);
+
+        case 'search results':
+            return _pg_lc_search_results_map($none);
 
         case 'form item view':
             return array(
@@ -2087,6 +2091,80 @@ function _pg_lc_my_account_map($none)
     );
 }
 
+
+// The search results page (widgets.php, search_results): the featured, the
+// catalog and the other results loops are places of the widget's one list
+// ('lists'), each showing its kind of rows (result_is_featured,
+// result_is_catalog, result_is_page); a result's values its row tokens; the
+// search box the widget's bound search form; the sentences about the search
+// its heading; the rest under the widget's flags.
+function _pg_lc_search_results_map($none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $heading = 'token:__results_heading';
+    $echo = array(
+        '$attributes' => 'form:search_form',
+        '$page_id' => 'text:page',
+        'h($query)' => 'token:__search_query',
+        'number_format($number_of_results)' => 'token:__result_count',
+        'pg_format_number($number_of_results, 0)' => 'token:__result_count',
+        // The stock template's sentences: the widget's heading says them.
+        "lang(array('string' => 'No results were found for: {var:1}', 'vars' => array(h(\$query))))" => $heading,
+        "lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(pg_format_number(\$number_of_results, 0), h(\$query))))" => $heading,
+        "(\$number_of_results > 1) ? lang(array('string' => 'Found {var:1} results for: {var:2}', 'vars' => array(pg_format_number(\$number_of_results, 0), h(\$query)))) : lang(array('string' => 'Found {var:1} result for: {var:2}', 'vars' => array(pg_format_number(\$number_of_results, 0), h(\$query))))" => $heading,
+    );
+    // A featured or catalog item and an other result: the same row values.
+    foreach (array('item', 'result') as $v) {
+        $echo += array(
+            "h(\$" . $v . "['url'])" => 'token:__result_url',
+            "h(\$" . $v . "['title'])" => 'token:__result_title',
+            "h(\$" . $v . "['full_url'])" => 'token:__result_full_url',
+            "h(\$" . $v . "['description'])" => 'token:__result_excerpt',
+            "h(\$" . $v . "['image_url'])" => 'token:__result_image',
+            "h(\$" . $v . "['short_description'])" => 'token:__result_title',
+            "\$" . $v . "['price_info']" => 'token:__result_price',
+        );
+    }
+    $if = array(
+        "\$query == ''" => $flag('no_query'),
+        '$number_of_results == 0' => $flag('no_results'),
+        '$limited' => $flag('is_limited'),
+        '$number_of_results > 1' => $flag('many_results'),
+        '$featured_items' => $flag('has_featured_results'),
+        '$catalog_items' => $flag('has_catalog_results'),
+        '$results' => $flag('has_page_results'),
+        '$featured_items or $catalog_items' => $flag('has_featured_or_catalog_results'),
+        // A link around the picture and the words, opened and closed in two
+        // blocks: every row has its address. A catalog row's title is its
+        // short description, else its name.
+        "\$item['url']" => array('becomes' => 'keep'),
+        "\$item['short_description']" => array('becomes' => 'keep'),
+        "\$item['image_url']" => $flag('result_has_image'),
+        "\$item['price_info']" => $flag('result_has_price'),
+        "\$item['description']" => $flag('result_has_excerpt'),
+        "\$result['description']" => $flag('result_has_excerpt'),
+    );
+    return array(
+        // The layout's own form is the widget's search form.
+        'echo' => array_merge($none, $echo),
+        'if' => $if,
+        'else' => array(
+            '$number_of_results == 0' => 'has_results',
+            '$limited' => 'not_limited',
+        ),
+        'loop' => array(
+            '$featured_items as $item' => 'list:result_is_featured',
+            '$catalog_items as $item' => 'list:result_is_catalog',
+            '$results as $result' => 'list:result_is_page',
+        ),
+        'lists' => true,
+        'flag_list' => true,
+        // "result<s>" in a line of text: the line once for each.
+        'opposite' => array('many_results' => 'one_result'),
+        'controls' => array('page_query' => 'bind:search_query'),
+    );
+}
+
 /**
  * A widget starter's row template: what its first loop area holds, or the
  * content of the loop area's one column (the layout's own loop body lays
@@ -2591,7 +2669,7 @@ function _pg_lc_finish($nodes, $row, $map = array())
             // One kind of the list's records: shown in that kind's rows.
             $kind = (string)_pg_lfc_attr($n, 'data-row-flag');
             if ($kind !== '') foreach ($kids as $i => $k) $kids[$i] = _pg_lc_flag($k, $kind);
-            $out[] = pg_di_mk('loop_area', $kind !== '' ? array('_kinds' => true) : array(), $kids);
+            $out[] = pg_di_mk('loop_area', ($kind !== '' && empty($map['lists'])) ? array('_kinds' => true) : array(), $kids);
             continue;
         }
         if ($tag === 'pg-source') {
