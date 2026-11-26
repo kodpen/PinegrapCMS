@@ -79861,7 +79861,7 @@ const StyleDesigner = (function () {
         zoom: null, tap: null,
         // The Sketch tool: its switch, the stored sketch with its undo
         // history and the box selected (_sdSketchData()).
-        sketchOn: false, sk: { key: null, data: null, hist: null, sel: null },
+        sketchOn: false, sk: { key: null, data: null, hist: null, sel: null, soon: 0, drag: false },
         // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
         // null when none.
         rowDrag: null,
@@ -80375,7 +80375,7 @@ const StyleDesigner = (function () {
             },
             cancel: function (done) {
                 _sdProtoDrawing(false);
-                if (done && /^sk/.test(done.kind || '')) _sdSketchMount(false);
+                if (done && /^sk/.test(done.kind || '')) { _sdProto.sk.drag = false; _sdSketchMount(false); }
             },
             key: function (event) {
                 if (_sdSketchKey(event)) return true;
@@ -80965,8 +80965,10 @@ const StyleDesigner = (function () {
     // Frame width and head, the body's least height and the room kept
     // under its lowest box, the grid, the snapping reach (screen pixels),
     // the smallest box, the first box's size; how many pages, boxes and
-    // heading characters are kept.
-    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000 };
+    // heading characters are kept; how long the hand rests (ms) before
+    // the frames are drawn again after a drag or a nudge; how near a
+    // handle (screen pixels) a finger or a pen takes it.
+    var SD_SKETCH = { w: 480, head: 44, minH: 640, pad: 80, grid: 8, reach: 6, min: 24, pages: 50, boxes: 200, text: 80, picH: 20000, rest: 300, touch: 16 };
 
     // What a box can be. A box without a kind chosen is read from the
     // sketch; until the reader runs its chip says so.
@@ -81126,13 +81128,51 @@ const StyleDesigner = (function () {
     }
 
     // A change made: kept, a step of the undo history (fold: an arrow-key
-    // nudge joins the one before it), the frames drawn again.
+    // nudge joins the one before it), the frames drawn again. A nudge only
+    // moves the selected box's element: the frames are drawn again once
+    // the keys rest, so a held arrow key does not rebuild every box.
     function _sdSketchChanged(fold, say) {
+        _sdSketchKeep(fold);
+        if (fold && _sdSketchPlace()) _sdSketchMountSoon();
+        else _sdSketchMount(true);
+        if (say && _sdProto.canvas) _sdProto.canvas.announce(say);
+    }
+
+    // Kept in this browser and a step of the undo history.
+    function _sdSketchKeep(fold) {
         var sk = _sdProto.sk;
         _sdSketchWrite();
         window.PGGraphCanvas.historyRecord(sk.hist, JSON.stringify(sk.data), !!fold, Date.now());
-        _sdSketchMount(true);
-        if (say && _sdProto.canvas) _sdProto.canvas.announce(say);
+    }
+
+    // The selected box's element moved to its kept rectangle, the body
+    // grown under it; false when it is not drawn.
+    function _sdSketchPlace() {
+        var sel = _sdProto.sk.sel;
+        var el = _sdSketchSelEl();
+        var b = sel ? _sdSketchBox(sel.frame, sel.box) : null;
+        if (!el || !b) return false;
+        el.style.left = b.x + 'px';
+        el.style.top = b.y + 'px';
+        el.style.width = b.w + 'px';
+        el.style.height = b.h + 'px';
+        var body = el.parentNode;
+        body.style.height = Math.max(parseFloat(body.style.height) || 0, b.y + b.h + SD_SKETCH.pad) + 'px';
+        return true;
+    }
+
+    // The frames drawn again once the hand rests (SD_SKETCH.rest after the
+    // last drag or nudge): the box is already in place, what follows from
+    // it (the reader's chips, the head's count, "Build again") waits.
+    // Never while a drag runs; any earlier full draw makes it needless.
+    function _sdSketchMountSoon() {
+        var sk = _sdProto.sk;
+        clearTimeout(sk.soon);
+        sk.soon = setTimeout(function () {
+            sk.soon = 0;
+            if (sk.drag) _sdSketchMountSoon();
+            else _sdSketchMount(false);
+        }, SD_SKETCH.rest);
     }
 
     function _sdSketchUndo(back) {
@@ -81182,6 +81222,7 @@ const StyleDesigner = (function () {
     function _sdSketchMount(refocus) {
         var canvas = _sdProto.canvas;
         var ui = _sdProto.ui;
+        if (_sdProto.sk.soon) { clearTimeout(_sdProto.sk.soon); _sdProto.sk.soon = 0; }
         if (!canvas || !ui) return;
         var data = _sdSketchData();
         var had = ui.boxes.contains(document.activeElement) && document.activeElement.closest('.sd-sketch-frame');
@@ -81267,15 +81308,44 @@ const StyleDesigner = (function () {
         chip.lastChild.setAttribute('aria-hidden', 'true');
         el.appendChild(chip);
         if (b.text) el.appendChild(_sdProtoEl('span', 'sd-sketch-heading', b.text));
-        if (picked && on) {
-            ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].forEach(function (side) {
-                var h = _sdProtoEl('span', 'sd-sketch-handle sd-sketch-handle-' + side);
-                h.setAttribute('data-side', side);
-                h.setAttribute('aria-hidden', 'true');
-                el.appendChild(h);
-            });
-        }
+        if (picked && on) _sdSketchHandles(el);
         return el;
+    }
+
+    // The selected box's eight resize handles.
+    function _sdSketchHandles(el) {
+        ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].forEach(function (side) {
+            var h = _sdProtoEl('span', 'sd-sketch-handle sd-sketch-handle-' + side);
+            h.setAttribute('data-side', side);
+            h.setAttribute('aria-hidden', 'true');
+            el.appendChild(h);
+        });
+    }
+
+    // The selection moved from `was` to the selected box on the drawn
+    // frames: the old box loses its mark and handles, the new one gets
+    // them. Nothing else on a frame depends on which box is selected, so
+    // no frame is built again; false when a box is not drawn.
+    function _sdSketchSelDraw(was) {
+        var ui = _sdProto.ui;
+        var sel = _sdProto.sk.sel;
+        if (!ui) return false;
+        var find = function (s) {
+            var frame = ui.boxes.querySelector('.sd-sketch-frame[data-node="' + s.frame + '"]');
+            return frame ? frame.querySelector('.sd-sketch-box[data-box="' + s.box + '"]') : null;
+        };
+        var oldEl = was ? find(was) : null;
+        var newEl = sel ? find(sel) : null;
+        if ((was && !oldEl) || (sel && !newEl)) return false;
+        if (oldEl) {
+            oldEl.classList.remove('sd-sketch-on');
+            Array.prototype.slice.call(oldEl.querySelectorAll('.sd-sketch-handle')).forEach(function (h) { h.parentNode.removeChild(h); });
+        }
+        if (newEl) {
+            newEl.classList.add('sd-sketch-on');
+            if (_sdProto.sketchOn && !newEl.querySelector('.sd-sketch-handle')) _sdSketchHandles(newEl);
+        }
+        return true;
     }
 
     function _sdSketchSelEl() {
@@ -81295,7 +81365,10 @@ const StyleDesigner = (function () {
             _sdProto.canvas.focus(sk.sel.frame);
             _sdProtoSelect({ type: 'node', id: sk.sel.frame });
         }
-        if (JSON.stringify(was) !== JSON.stringify(sk.sel)) _sdSketchMount(refocus);
+        var same = JSON.stringify(was) === JSON.stringify(sk.sel);
+        // A new selection marks the boxes in place; the frames are built
+        // again only when a box is not drawn.
+        if (!same && !_sdSketchSelDraw(was)) _sdSketchMount(refocus);
         else if (refocus) { var el = _sdSketchSelEl(); if (el) el.focus({ preventScroll: true }); }
     }
 
@@ -81376,14 +81449,22 @@ const StyleDesigner = (function () {
         var boxEl = event.target.closest('.sd-sketch-box');
         var b = boxEl ? _sdSketchBox(item.id, boxEl.getAttribute('data-box')) : null;
         var handle = event.target.closest('.sd-sketch-handle');
+        var side = handle ? handle.getAttribute('data-side') : '';
         next.frame = item;
         next.page = page;
         next.body = body;
         next.local = { x: at.x - item.x, y: at.y - item.y - SD_SKETCH.head };
         event.preventDefault();
+        _sdProto.sk.drag = true;
+        // A finger or a pen lands near a handle rather than on it, and the
+        // browser's touch adjustment hands such a press to the box: on the
+        // selected box a press within reach of a handle takes that handle.
+        if (b && !side && event.pointerType === 'touch' && boxEl.classList.contains('sd-sketch-on')) {
+            side = _sdSketchNearSide(b, next.local, SD_SKETCH.touch / (_sdProto.view.k || 1));
+        }
         if (b) {
-            next.kind = handle ? 'skresize' : 'skmove';
-            next.side = handle ? handle.getAttribute('data-side') : '';
+            next.kind = side ? 'skresize' : 'skmove';
+            next.side = side;
             next.box = b;
             next.start = { x: b.x, y: b.y, w: b.w, h: b.h };
             _sdSketchPick(item.id, b.id, true);
@@ -81403,6 +81484,21 @@ const StyleDesigner = (function () {
             if (node) node.focus({ preventScroll: true });
         }
         return true;
+    }
+
+    // The handle of box `b` nearest to point `p` (frame units) within
+    // `reach` on both axes: 'n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw', or
+    // '' when none is that near. The reach is at most a quarter of the
+    // box's side, so its middle half always moves it.
+    function _sdSketchNearSide(b, p, reach) {
+        var best = '';
+        var bestD = Infinity;
+        reach = Math.min(reach, b.w / 4, b.h / 4);
+        [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]].forEach(function (h) {
+            var d = Math.max(Math.abs(p.x - (b.x + b.w * h[1])), Math.abs(p.y - (b.y + b.h * h[2])));
+            if (d <= reach && d < bestD) { best = h[0]; bestD = d; }
+        });
+        return best;
     }
 
     // The rectangle of a sketch drag, lined up and kept inside the frame's
@@ -81447,22 +81543,29 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The guides of a moving box. The lines are made once per drag and
+    // then only placed or hidden through their style: adding or taking out
+    // an element on every pointer move restyles the whole editor, which
+    // cost a frame on a page of a hundred boxes.
     function _sdSketchGuides(body, guides) {
-        Array.prototype.slice.call(body.querySelectorAll('.sd-sketch-guide')).forEach(function (g) { g.parentNode.removeChild(g); });
-        (guides || []).forEach(function (g) {
-            var line = _sdProtoEl('span', 'sd-sketch-guide sd-sketch-guide-' + g.axis);
-            line.setAttribute('aria-hidden', 'true');
-            if (g.axis === 'x') {
-                line.style.left = g.at + 'px';
-                line.style.top = g.from + 'px';
-                line.style.height = (g.to - g.from) + 'px';
-            } else {
-                line.style.top = g.at + 'px';
-                line.style.left = g.from + 'px';
-                line.style.width = (g.to - g.from) + 'px';
+        var have = body.querySelectorAll('.sd-sketch-guide');
+        var list = guides || [];
+        for (var i = 0; i < Math.max(have.length, list.length); i++) {
+            var line = have[i];
+            var g = list[i];
+            if (!g) {
+                if (line.style.display !== 'none') line.style.display = 'none';
+                continue;
             }
-            body.appendChild(line);
-        });
+            if (!line) {
+                line = _sdProtoEl('span', 'sd-sketch-guide');
+                line.setAttribute('aria-hidden', 'true');
+                body.appendChild(line);
+            }
+            var x = g.axis === 'x';
+            line.style.cssText = 'left:' + (x ? g.at : g.from) + 'px;top:' + (x ? g.from : g.at) + 'px;'
+                + (x ? 'width:1px;height:' : 'height:1px;width:') + (g.to - g.from) + 'px';
+        }
     }
 
     function _sdSketchMove(event, drag, dx, dy) {
@@ -81485,7 +81588,17 @@ const StyleDesigner = (function () {
         _sdSketchGuides(drag.body, r.guides);
     }
 
+    // A drag let go. The box stays where the drag left it and is kept at
+    // once; the frames are drawn again when the hand rests.
     function _sdSketchRelease(event, done) {
+        _sdProto.sk.drag = false;
+        // A tap: the press already picked the box (or let it go) and
+        // nothing moved, so nothing is drawn again.
+        if (!done.moved && event.type === 'pointerup') {
+            var sel = _sdSketchSelEl();
+            if (sel) sel.focus({ preventScroll: true });
+            return;
+        }
         if (!done.moved || !done.rect || event.type !== 'pointerup') {
             _sdSketchMount(true);
             return;
@@ -81505,14 +81618,32 @@ const StyleDesigner = (function () {
             var b = { id: data.n++, x: r.x, y: r.y, w: r.w, h: r.h, kind: '', text: '' };
             done.page.boxes.push(b);
             _sdProto.sk.sel = { frame: done.frame.id, box: b.id };
-            _sdSketchChanged(false, _sdT('Box drawn. Type its heading; the chip says what it is.'));
+            var say = _sdT('Box drawn. Type its heading; the chip says what it is.');
+            // The ghost becomes the new box, selected and focused.
+            if (done.el && done.el.parentNode) {
+                var el = _sdSketchBoxEl(b, true, true);
+                done.el.parentNode.replaceChild(el, done.el);
+                _sdSketchGuides(el.parentNode, null);
+                _sdSketchKeep(false);
+                el.focus({ preventScroll: true });
+                _sdSketchMountSoon();
+                if (_sdProto.canvas) _sdProto.canvas.announce(say);
+            } else {
+                _sdSketchChanged(false, say);
+            }
             return;
         }
         done.box.x = r.x;
         done.box.y = r.y;
         done.box.w = r.w;
         done.box.h = r.h;
-        _sdSketchChanged(false);
+        if (done.el && done.el.parentNode) {
+            _sdSketchGuides(done.el.parentNode, null);
+            _sdSketchKeep(false);
+            _sdSketchMountSoon();
+        } else {
+            _sdSketchChanged(false);
+        }
     }
 
     // Keys on a selected box: Delete takes it out, the arrows move it
