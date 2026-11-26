@@ -475,7 +475,7 @@
 - designer-library-export-import.md: My library's Export and Import (ML4): the export file and its name, names kept beside, the import's report, the endpoints and the part
 - designer-library-import-checks.md: The checks an import into My library runs (script, event attribute, address kinds), all or nothing, and the refusal's words
 - designer-library-item.md: My library item model (ML1): a subtree to an item, an item into a design (rules added or renamed, variables, references cleared and marked), the store as design files, rights
-- designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; decided, not built [decision: decisions-made-product-112.md]
+- designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; how they are counted [decision: decisions-made-product-112.md]
 - designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows [decision: decisions-made-product-108.md, decisions-made-product-110.md]
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
@@ -766,6 +766,7 @@
 - list-search-sort-price-forms.md: List widget search, sort and price forms (server box, catalog's bound form) and page links: accessible names, translated words, no router page name in hidden inputs or links (#4457, #4538).
 - listen-script.md: The "Listen" block's script pg_listen.js and its two doors: what it reads, in which language, when the button shows, the markup it expects
 - loop-band-canvas.md: The loop band and the element chips on the canvas: band height and tooltips, the chip row (Only when, Off, Shown when) in the flow, see-through wrappers, the Turkish band terms (#2523) [decision: decisions-made-product-48.md]
+- markdown-component.md: The Markdown palette component (DO26): the reader pg_markdown_html() and its twin PGMarkdown, what it draws, the safe addresses, the part 'markdown', where the text is edited and translated
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
 - member-widgets-open-slots.md: Sign-in and sign-up widgets' slots opened (CB7, #9895): password rules and the three links as elements, the sign-in buttons drawn true (settings only)
@@ -925,6 +926,7 @@
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - sketch-build-again.md: "Build again" of a built sketch page (SK4): which sections stay, are built again, added or removed, when it asks, the History snapshot first, what was not done
+- sketch-build-starters.md: How "Build the page" gets the palette starters (#11794): the host's maker, block styles after the build, h1 not badge, rhythm only on py-5, pages built before the fix
 - sketch-build.md: "Build the page" of a Prototype view sketch page (SK4): the part sketchbuild, the chip marks, the list of boxes to check, the draft tab built, the sketch kept in props._sketch
 - sketch-builder.md: The sketch builder (pg_sketch_builder.js, PGSketchBuilder): sections to header, body and footer trees from palette starters, columns, heading, the section rhythm variable
 - sketch-feel.md: The Sketch tool's feel (SK8): what keeps a drag at 60 frames a second on a hundred boxes, touch near a handle, the selected box on top, how it is measured (tests/js/sketch_feel.js) and the numbers

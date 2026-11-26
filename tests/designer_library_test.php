@@ -407,3 +407,29 @@ function test_library_hunt_menu_by_name()
 	pg_assert_same('Main', $saved['tree']['props']['menu_name'], 'saving keeps the name');
 	pg_assert_false(isset($saved['refs']['menu']));
 }
+
+function test_library_missing_pictures_counted()
+{
+	$item = array('format' => PG_LIBRARY_FORMAT, 'version' => 1, 'name' => 'Gallery',
+		'tree' => array('type' => 'section', 'props' => array('style' => 'background-image: url("/hero.jpg")'), 'children' => array(
+			array('type' => 'img', 'props' => array('src' => '/team.jpg')),
+			array('type' => 'img', 'props' => array('src' => '/team.jpg', 'srcset' => '/team.jpg 1x, /logo.png 2x')),
+			array('type' => 'img', 'props' => array('src' => 'https://cdn.example.com/far.jpg')),
+			array('type' => 'img', 'props' => array('src' => 'data:image/png;base64,AAAA')),
+			array('type' => 'img', 'props' => array('src' => '{{image_url}}')),
+			array('type' => 'a', 'props' => array('href' => '/about')),
+		)));
+	$has = function ($name) { return $name === 'logo.png'; };
+	$out = pg_library_item_into_design($item, array(), array('path' => '/', 'has_file' => $has));
+	pg_assert_same(2, $out['pictures_missing'], 'two missing (one used twice); another host, data:, a placeholder and one the site has are not counted');
+	pg_assert_same('/team.jpg', $out['tree']['children'][0]['props']['src'], 'the address stays');
+	pg_assert_false(isset($out['tree']['children'][0]['props']['_libraryUnbound']), 'no mark');
+
+	pg_assert_same(1, pg_library_missing_pictures(array('/sub/a.webp', '/sub/a.webp', '/b.jpg', 'c.gif', '/sub/x/d.jpg'), '/sub/',
+		function ($name) { return $name === 'c.gif'; }), 'under the site path only, folders are not file names');
+	pg_assert_same(0, pg_library_missing_pictures(array('?v=1', '#top', '', 'https://shop.test'), '/', function ($name) { return false; }, 'shop.test:8080'),
+		'nothing left of an address once its query is dropped');
+	pg_assert_same(1, pg_library_missing_pictures(array('https://shop.test/a.jpg', 'https://other.test/b.jpg', '//shop.test/c.jpg?v=2'), '/',
+		function ($name) { return $name === 'c.jpg'; }, 'shop.test'), 'this site\'s own host counts');
+	pg_assert_same(0, pg_library_item_into_design($item, array(), array())['pictures_missing'], 'no callback: nothing counted');
+}

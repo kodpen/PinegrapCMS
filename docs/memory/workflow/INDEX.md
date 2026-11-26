@@ -60,6 +60,7 @@
 - bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-customer-rhythm.md: Bug hunt of customer rhythm (agent channel request 3034, PR #11767): what was read, the four faults fixed, what was found clean, what was asked and left
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
+- bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left [decision: here]
 - bug-hunt-areas-design-variables.md: The bug hunt in a design's variables (2026-11-26, PR #11770): the Variables tab, the start questions, "Ask me again", Export and Import; what was read, fixed, seen and left
 - bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
@@ -147,7 +148,7 @@
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
 - coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators [decision: here]
 - coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps [decision: here]
-- coordinator-second-paused.md: The second coordinator (k2): stopped on 2026-11-25 for its account's quota, running again since that evening on what is left; which plans each coordinator gives out; the design session stays stopped [decision: decisions-made-product-110.md]
+- coordinator-second-paused.md: Coordinators k1, k2, k3: k2 stopped 2026-11-25 for its quota and runs again on what is left; k3 takes k1's line from 2026-11-26; which plans each gives out; the design session stays stopped [decision: decisions-made-product-110.md]
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs [decision: here]
 - coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task [decision: here]
@@ -192,7 +193,7 @@
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-110.md: Decisions made, product part 110 (2026-11-25 on): all eleven packages of the Options panel census go into the designer; the architect draws the designer plans' sheets while no design session runs
 - decisions-made-product-111.md: Decisions made, product part 111 (2026-11-25 on): the Sketch tool's "Read the picture" runs on the browser's built-in model; no picture path to Pinegrap AI until the owner says it is good enough
-- decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item added on a site that lacks its pictures says how many are missing; the addresses stay, the export carries no picture files
+- decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item says how many pictures the site lacks; a payment way in test on a live shop gets a System Status warning row
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
@@ -457,6 +458,7 @@
 - unit-test-time-limit.md: tools/test.php gives every test the run's own time limit back, because product code sets @set_time_limit(120) and Windows counts it in wall-clock time, which stopped pushes there
 - user-docs-coverage-content.md: pinegrap.com documentation pages for the panel, settings, files, pages and people (/introduction to /chat): what each page covers and the memory folders and clusters it is written from
 - user-docs-coverage-modules.md: pinegrap.com documentation pages for visitors, SEO, design, languages, commerce, ERP, Workspace, API and security: what each page covers and the memory folders and clusters it is written from
+- user-docs-developers.md: Outside developers of the API (owner 2026-11-26): their pages sit in the documentation on pinegrap.com, no developers subdomain, no staging run by us, no central client registry [decision: here]
 - user-docs-help-anchors.md: Help anchors of get_help_url.php on pinegrap.com: none missing since 2026-11-23, the Artifact Canvas anchors waiting for a help button (#11185), two rows corrected, how to recheck
 - user-docs-pages.md: User documentation on pinegrap.com: the 31 pages by address, the PR each is written up to (#500 plus the 2026.11.0 round), how a mark moves, the site pages, where coverage is listed
 - user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog [decision: here]

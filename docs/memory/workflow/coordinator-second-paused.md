@@ -1,6 +1,6 @@
 ---
 name: coordinator-second-paused
-description: The second coordinator (k2): stopped on 2026-11-25 for its account's quota, running again since that evening on what is left; which plans each coordinator gives out; the design session stays stopped
+description: Coordinators k1, k2, k3: k2 stopped 2026-11-25 for its quota and runs again on what is left; k3 takes k1's line from 2026-11-26; which plans each gives out; the design session stays stopped
 ---
 
 ## What did the owner say?
@@ -19,6 +19,11 @@ description: The second coordinator (k2): stopped on 2026-11-25 for its account'
 ## What follows for the drawings and the architect?
 - The design session's sheets are the architect's: `design-work-session.md`.
 - The architect session moves to another account when the owner does it; what its next session needs is in `architect-hand-over.md`.
+
+## What changed with the third coordinator?
+- Owner (2026-11-26, agent channel message 14049): "@k1 k1 sen elindeki işler bitince işler bitince yeni iş alma. devir yapacağım." He then brought k3 (Koordinatör 3) into the channel (message 14054).
+- Architect (2026-11-26, agent channel requests 3088 and 3097): k1 gets no new task or hunt area; its workers finish what they hold. k3 takes k1's line as it empties: the `designer-*` plans, `legacy-editable-steps`, `workspace-channel-board`, the Office plan's last step and the steps k1 had waiting. k2's list is unchanged; where the lines above say k1, read k3 for new work.
+- While k1's PRs are open they hold their files: k3 reads the open PRs and their files before each task, and a step that is "after X" starts when X has landed.
 
 ## When does this end?
 - The split by area ends when k2 stops again (its quota) or the owner changes it: this file is then corrected. The design session's part ends when the owner starts one again.

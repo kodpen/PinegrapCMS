@@ -130,7 +130,7 @@
 - delivery-tower-label-chooser.md: Create Label carrier chooser on the order screen (DT4b, #10931): when it shows, the rows' order and suggestion, the api.php action, the label path's one optional argument
 - delivery-tower-passes.md: Delivery tower passes from the general job: the nightly measured-times summary (config_text, cursor in data/temp), the hourly problem pass, the lock, the time budget, the 100k-parcel timing
 - delivery-tower-problems-table.md: The shipment_problems table (step 11.0.259): one row per problem found on a parcel, its columns, the unique open-row key, who writes and closes rows, order deletion
-- delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
+- delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing [decision: here]
 - delivery-tower-scorecard.md: Carrier Scorecard screen (view_carrier_scorecard.php, DT4): month and 12-month figures per carrier and province, Excel, the arrival check, the carrier order rule
 - delivery-tower-segments.md: The link segments "Problems" / "Carrier scorecard" under the head of Delivery problems and the Carrier scorecard (DT5b): who sees which, how they are drawn [decision: here]
 - delivery-tower.md: Delivery tower overview (carrier times, problem parcels, Delivery problems, Carrier Scorecard, label chooser): what binds it, its files, each feature's PR [decision: decisions-made-product-90.md]

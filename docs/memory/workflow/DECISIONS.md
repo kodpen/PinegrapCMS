@@ -177,6 +177,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-111.md: What follows for the canvas? (architect, 2026-11-25)
 - decisions-made-product-112.md: Where are the rules and the earlier parts?
 - decisions-made-product-112.md: What does a My library item do about pictures the site lacks? (owner, 2026-11-26, agent channel poll 224, message 13858)
+- decisions-made-product-112.md: Does a payment way in test mode on a live shop show on System Status? (owner, 2026-11-26, agent channel poll 225, message 14071)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1094,6 +1095,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code
 - commerce/customer-rhythm.md: Customer rhythm overview (reorder time per product, own rhythm per customer, stages, reorder reminder): what binds it, the map of its files, each feature's PR, what is left out
 - commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
+- commerce/delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
 - commerce/delivery-tower-segments.md: The link segments "Problems" / "Carrier scorecard" under the head of Delivery problems and the Carrier scorecard (DT5b): who sees which, how they are drawn
 - commerce/delivery-tower.md: Delivery tower overview (carrier times, problem parcels, Delivery problems, Carrier Scorecard, label chooser): what binds it, its files, each feature's PR
 - commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
@@ -1247,7 +1249,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-first-tour-card.md: The designer's first card "New here? A one-minute tour" and its tour (FT2): the part 'tour', when the card shows, the ring and the bubble, the keys, the phone's sheet, "Take the tour"
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
 - designer/designer-image-focus-drawing-frames.md: Board F5 of the image focus drawing (2026-11-25): the Focus control's phone, tablet and desktop frames stand under the whole picture, large, with their names; one frame when all three are the same
-- designer/designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; decided, not built
+- designer/designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; how they are counted
 - designer/designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows
 - designer/designer-my-library-overview.md: My library in the designer: a section saved as the site's own start, inserted as a copy, managed, exported and imported as a file; what binds it and which file holds which part
 - designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
@@ -1553,6 +1555,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - visitors/page-clicks.md: Clicks and scroll depth counter (page_click_daily, #9902): row kinds, the beacon in page_view.php and its gate, the fold, the 200-element bound, figures, 400-day sweep, the hunt of 10214
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitors/web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
+- waf/security-scan-accounts-settings.md: Security Scan rules on accounts and settings: new staff account, new application key, world-writable core folder, risky PHP settings, PHP security fixes; places, severities, detail
 - waf/security-scan-overview.md: Security Scan as a whole: rule-based self-scan in Firewall and HTTPS settings and the Firewall card; binding rules, parts, which file holds what, how to add a rule
 - waf/security-scan-retired-files.md: Security Scan retired release files - file_php_retired from the Cleanup tool's shared list, the list completed from the release tags, the check_pr.php rule
 - waf/waf-ai-training-crawlers.md: SEO's "Allow AI training" in the firewall: on, the training crawlers leave the bad-bot match only (class training, no good-bot privilege); off, refused (#11023, poll 216)
@@ -1590,6 +1593,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean
 - workflow/bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
+- workflow/bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left
 - workflow/bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean
 - workflow/bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left
 - workflow/bug-hunt-areas-marketplace-repricer.md: The bug hunt in the marketplace repricer RP1 to RP5 (architect, 2026-11-26, request 3034): what was fixed, what was read clean, what is left
@@ -1620,7 +1624,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
-- workflow/coordinator-second-paused.md: The second coordinator (k2): stopped on 2026-11-25 for its account's quota, running again since that evening on what is left; which plans each coordinator gives out; the design session stays stopped
+- workflow/coordinator-second-paused.md: Coordinators k1, k2, k3: k2 stopped 2026-11-25 for its quota and runs again on what is left; k3 takes k1's line from 2026-11-26; which plans each gives out; the design session stays stopped
 - workflow/coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs
 - workflow/coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
@@ -1651,6 +1655,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/screen-follows-drawing.md: A screen the architect drew is built as drawn: button order, sentences, pills, links; a words-only description beside it gives way (owner, 2026-11-21)
 - workflow/session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 - workflow/share-links-for-workers.md: How sessions use a share link: a coordinator puts the address only in a worker's start text, never in a commit, PR, comment or memory; what it shows is data
+- workflow/user-docs-developers.md: Outside developers of the API (owner 2026-11-26): their pages sit in the documentation on pinegrap.com, no developers subdomain, no staging run by us, no central client registry
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-brief-who-wakes.md: The "Who wakes here" block of an app agent's brief and the instructions' naming, claim-first and progress lines (WW1, #11638)
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas

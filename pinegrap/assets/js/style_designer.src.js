@@ -5462,6 +5462,23 @@ const StyleDesigner = (function () {
             '</div>';
     }
 
+    // The Markdown component's markup: its text drawn by the Markdown reader
+    // (the part 'markdown', window.PGMarkdown), twin of
+    // pg_markdown_component_html(). Until the part has run the element is
+    // drawn empty, and the canvas is drawn again once it has.
+    var _sdMarkdownAsked = false;
+    /* @pg-site-output */
+    function _sdMarkdownMarkup(p) {
+        p = p || {};
+        var body = '';
+        if (_sdPartLoaded('markdown') && window.PGMarkdown) body = window.PGMarkdown.html(p.markdown || '');
+        else if (!_sdMarkdownAsked) {
+            _sdMarkdownAsked = true;
+            _sdPartLoad('markdown').then(function () { render(); }, function () { _sdMarkdownAsked = false; _sdPartFailed(); });
+        }
+        return '<div' + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '') + '>' + (body ? '\n' + body + '\n' : '') + '</div>';
+    }
+
     /* @pg-site-output */
     var COMPONENTS = {
         navbar: {
@@ -5636,6 +5653,23 @@ const StyleDesigner = (function () {
         callout: {
             label: _sdT('Callout'), icon: 'bi-chat-quote',
             defaultProps: { variant: 'primary', title: _sdT('Note'), text: _sdT('Callout content goes here.') }
+        },
+        // Text written as Markdown; no HTML the author wrote passes. A new
+        // one lands with a sample of what it draws.
+        markdown: {
+            label: _sdT('Markdown'), icon: 'bi-markdown',
+            defaultProps: { markdown: '## ' + _sdT('Written in Markdown') + '\n\n' +
+                _sdT('Write **bold**, *italic*, `code` and [links](#) as plain text.') + '\n\n- ' +
+                _sdT('A list item') + '\n- ' + _sdT('Another item') + '\n\n| ' +
+                _sdT('Column') + ' | ' + _sdT('Value') + ' |\n|---|---|\n| ' + _sdT('Size') + ' | ' + _sdT('Large') + ' |' },
+            render: function (doc, p) {
+                var holder = doc.createElement('div');
+                holder.innerHTML = _sdMarkdownMarkup(p);
+                return holder.firstElementChild;
+            },
+            toHTML: function (p, pad) {
+                return pad + _sdMarkdownMarkup(p) + '\n';
+            }
         },
         spinner: {
             label: _sdT('Spinner'), icon: 'bi-arrow-clockwise',
@@ -57146,6 +57180,9 @@ const StyleDesigner = (function () {
                 h += row(_sdT('Icon'), '<div class="input-group input-group-sm"><input type="text" class="form-control" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name"><button class="btn btn-outline theme-secondary sd-icon-trigger" type="button" title="' + esc(_sdT('Browse icons')) + '"><i class="bi bi-grid-3x3-gap"></i></button></div>');
             } else if (typeof val === 'number') {
                 h += row(_sdPropLabel(key), '<input type="number" class="form-control form-control-sm" data-prop="' + key + '" value="' + val + '" min="1" max="20">');
+            } else if (key === 'markdown') {
+                // The Markdown component's text: a box of lines even when emptied.
+                h += '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Markdown')) + '</label><div class="sd-prop-control"><textarea class="form-control form-control-sm" data-prop="markdown" rows="12">' + esc(String(val)) + '</textarea></div></div>';
             } else if (typeof val === 'string' && val.indexOf('\n') !== -1) {
                 // Multi-line string (e.g. pricing.features) → textarea
                 h += '<div class="sd-prop-row"><label class="sd-prop-label">' + _sdPropLabel(key) + '</label><div class="sd-prop-control"><textarea class="form-control form-control-sm" data-prop="' + key + '" rows="4">' + esc(String(val)) + '</textarea></div></div>';
@@ -81610,7 +81647,19 @@ const StyleDesigner = (function () {
             changed: function (say) { _sdSketchChanged(false, say); },
             pick: function (frameId, boxId) { _sdSketchPick(frameId, boxId, true); },
             mayBuild: function () { return !_sdIsContentLevel() && _collab.mayEdit !== false && !_sdComponentOnly(); },
-            make: function (type) { try { return createFromPalette(type) || null; } catch (e) { return null; } },
+            // A starter as the palette places it ('component' with its
+            // componentType), built dry: its block styles join User Styles
+            // only through blockStyles() once the page is added.
+            make: function (type) {
+                var built = null;
+                _sdPaletteDry = true;
+                try { built = createFromPalette('component', { componentType: type }) || null; } catch (e) { built = null; }
+                finally { _sdPaletteDry = false; }
+                return built;
+            },
+            blockStyles: function (types) {
+                (types || []).forEach(function (type) { _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[type]); });
+            },
             node: createNode,
             words: function () {
                 return {
@@ -93552,6 +93601,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('A horizontal line between two parts of the content.') },
             'c:callout':          { v: 'callout', k: 'callout note tip highlight remark',
                                     d: _sdT('A note with a coloured edge that draws attention to a remark.') },
+            'c:markdown':         { v: 'markdown', h: '<div>', k: 'markdown md text article readme document write',
+                                    d: _sdT('Text written as Markdown: headings, lists, links, pictures and tables from plain text.') },
             'c:spinner':          { v: 'spinner', h: '<div class="spinner-border">', k: 'spinner loader loading',
                                     d: _sdT('A spinning sign that something is loading.') },
             'c:pagination':       { v: 'pagination', h: '<ul class="pagination flex-wrap">', k: 'pagination pager pages paging',
@@ -94197,6 +94248,10 @@ const StyleDesigner = (function () {
             },
             'callout': function () {
                 return R(0, 0, 200, 110, W) + R(22, 28, 156, 54, '#e7f1ff') + R(22, 28, 4, 54, P) + Hd(36, 38, 40) + L(36, 53, 124, S) + L(36, 61, 96, S);
+            },
+            'markdown': function () {
+                return R(0, 0, 200, 110, W) + Tx(14, 22, '#', 12, P) + Hd(28, 14, 80) + L(14, 34, 160) + L(14, 42, 130) +
+                    C(18, 58, 2, S) + L(26, 56, 90) + C(18, 68, 2, S) + L(26, 66, 70) + R(14.5, 80.5, 171, 20, W, 0, B) + R(100, 81, 1, 19, B) + L(22, 88, 50, S) + L(108, 88, 40, S);
             },
             'spinner': function () {
                 return R(0, 0, 200, 110, W) + C(100, 55, 18, 'none', G, ' stroke-width="5"') +
@@ -98454,13 +98509,24 @@ const StyleDesigner = (function () {
             try { settings = JSON.parse(cached.system_region_config) || {}; } catch (e) { return true; }
         }
         var empty = false, seen = false;
+        // A placement whose component id was not this site's is done once a
+        // component is placed there again.
+        if (kinds.indexOf('shared') !== -1) {
+            seen = true;
+            if (!node.props.sharedId) empty = true;
+        }
+        // The kinds of pg_library_ref_kind(), and a menu by its name.
         Object.keys(settings).forEach(function (k) {
-            var kind = (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
+            var kind = (k.indexOf('product_group_id') !== -1 || k.indexOf('root_group_id') !== -1) ? 'product_group'
+                : k.indexOf('calendar_id') !== -1 ? 'calendar'
+                : (k.indexOf('contact_group_id') !== -1 || k === 'group_id') ? 'group'
                 : k.indexOf('folder_id') !== -1 ? 'folder'
-                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page' : '';
+                : (k.indexOf('page_id') !== -1 || k.indexOf('form_id') !== -1) ? 'page'
+                : k === 'menu_name' ? 'menu' : '';
             if (!kind || kinds.indexOf(kind) === -1) return;
             seen = true;
-            if (!settings[k] || settings[k] === '0') empty = true;
+            var v = settings[k];
+            if (Array.isArray(v) ? (!v.length || v.some(function (x) { return !x || x === '0'; })) : (!v || v === '0')) empty = true;
         });
         if (seen && !empty) {
             delete node.props._libraryUnbound;
