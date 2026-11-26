@@ -259,6 +259,20 @@ function ws_call_party_check($party, $channel, $start)
 }
 
 /**
+ * May a party in a call no longer stay in it: taken out of the channel
+ * during the call, a guest whose link now reads only, the channel archived
+ * or gone? The same rule as a join's. Pure.
+ *
+ * @param array      $party
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_call_party_barred($party, $channel)
+{
+    return ws_call_party_check($party, $channel, false) !== '';
+}
+
+/**
  * May one more join this call? Pure.
  *
  * @param array|null $call       the ws_calls row
@@ -919,6 +933,26 @@ function ws_call_leave($party, $call_id, $member_id = 0)
 }
 
 /**
+ * Takes a party's place out of a call when it may no longer take part
+ * (ws_call_party_barred()), so it hears no new member's offer and sends
+ * nothing more; the last one out ends the call.
+ *
+ * @param array $party
+ * @param array $call
+ * @return bool its place was taken out
+ */
+function ws_call_party_out_if_barred($party, $call)
+{
+    if (!ws_call_party_barred($party, ws_channel((int) $call['channel_id']))) {
+        return false;
+    }
+
+    ws_call_leave($party, (int) $call['id']);
+
+    return true;
+}
+
+/**
  * Ends a call for everyone: its starter or whoever manages the channel.
  *
  * @param array $party
@@ -983,6 +1017,12 @@ function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body, $mem
     $from = ($call && ((string) $call['state'] === 'live')) ? ws_call_member_of($party, $call_id) : null;
 
     if (!ws_call_member_matches($from, $member_id)) {
+        return array('ok' => false, 'error' => lang('You are not in this call.'));
+    }
+
+    // Taken out of the channel during the call: its place goes, and so
+    // does this message.
+    if (ws_call_party_out_if_barred($party, $call)) {
         return array('ok' => false, 'error' => lang('You are not in this call.'));
     }
 
@@ -1163,8 +1203,20 @@ function ws_call_live_part($party, $channel_id, $signal_after)
         return array('call' => null, 'member_id' => 0, 'signals' => array());
     }
 
-    $members = ws_call_members_live($call['id']);
     $mine = ws_call_member_of($party, $call['id']);
+
+    // A party that may no longer take part loses its place here; its window
+    // reads that the connection was lost.
+    if ($mine && ws_call_party_out_if_barred($party, $call)) {
+        $mine = null;
+        $call = ws_call_live($channel_id);
+
+        if (!$call) {
+            return array('call' => null, 'member_id' => 0, 'signals' => array());
+        }
+    }
+
+    $members = ws_call_members_live($call['id']);
 
     return array(
         'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharers((int) $call['id'], $members),
