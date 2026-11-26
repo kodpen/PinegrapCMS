@@ -1011,7 +1011,10 @@ function pg_customer_rhythm_card_view($row, $now)
     return array(
         'stage' => pg_customer_rhythm_stage_name($row['stage']),
         'interval' => (int) $row['interval_days'],
-        'own' => ((int) $row['orders'] > 1),
+        // Orders less than a day apart are one visit and make no gap
+        // (pg_customer_rhythm_customer()), so two orders on one day still
+        // leave the store's median standing for the interval.
+        'own' => ((int) $row['orders'] > 1) && (((int) $row['last_order_at'] - (int) ($row['first_order_at'] ?? 0)) >= 86400),
         'next_due' => (int) $row['next_due_at'],
         'chance' => (int) $row['chance'],
         'expected' => (int) $row['expected_value'],
