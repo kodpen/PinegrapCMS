@@ -2779,8 +2779,22 @@ function _pg_lc_text_flags($n, $map)
     $kids = array();
     foreach (preg_split('~(<pg-vis data-flag="[a-z0-9_]+"[^>]*>.*?</pg-vis>)~s', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) as $b) {
         $flag = preg_match('~^<pg-vis data-flag="([a-z0-9_]+)"[^>]*>(.*)</pg-vis>$~s', $b, $x) ? $x[1] : '';
-        $span = pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => '', 'text' => ($flag !== '') ? $x[2] : $b));
+        $part = ($flag !== '') ? $x[2] : $b;
+        // A span's text is plain: a part holding markup (a line break, an
+        // italic word) is read into the span's elements.
+        $span = (strpos($part, '<') === false) ? pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => '', 'text' => $part))
+            : pg_di_mk('semantic', array('tag' => 'span', 'cssClass' => ''), array_map(function ($k) use ($map) { return _pg_lc_bind($k, $map); }, _pg_lfc_parse($part)));
         $kids[] = ($flag !== '') ? _pg_lc_flag($span, $flag) : _pg_lc_bind($span, $map);
+    }
+    if (($n['type'] ?? '') === 'content') {
+        // A text block draws no children: the element of its tag holds
+        // the spans instead, its class and bindings kept.
+        $props = array('tag' => (string)($n['props']['tag'] ?? (($n['props']['contentType'] ?? '') === 'paragraph' ? 'p' : 'div')),
+            'cssClass' => (string)($n['props']['cssClass'] ?? ''));
+        foreach (array('_bindings', '_bindParams', 'id') as $k) {
+            if (isset($n['props'][$k])) $props[$k] = $n['props'][$k];
+        }
+        return array(pg_di_mk('semantic', $props, $kids));
     }
     $n['props']['text'] = '';
     $n['children'] = $kids;

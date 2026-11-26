@@ -179,16 +179,25 @@ function test_aal_my_account_orders()
 function test_aal_my_account_value_conditions()
 {
 	$r = pg_layout_convert('my account', _test_aal_site('english_default', 971), array());
-	$none = $date = $name = null;
+	$name = null;
+	$expiry = array();
 	foreach (_test_aal_nodes($r['tree']['children']) as $n) {
-		$text = (string)($n['props']['text'] ?? '');
-		if (strpos($text, 'Not Set') !== false) $none = $n;
-		if (strpos($text, '^^__member_expiry_date^^') !== false) $date = $n;
-		if (strpos($text, '^^first_name^^') !== false) $name = $n;
+		if (strpos((string)($n['props']['text'] ?? ''), '^^first_name^^') !== false) $name = $n;
+		if (($n['props']['_bindings']['show_if'] ?? '') === '__member_expiry_date') $expiry[] = $n;
 	}
-	pg_assert_same(array('op' => 'empty'), $none['props']['_bindParams']['show_if']);
-	pg_assert_same(array('op' => 'not_empty'), $date['props']['_bindParams']['show_if']);
-	pg_assert_false(strpos($date['props']['text'], 'pg-vis') !== false, 'no marker in the text');
+	pg_assert_same(2, count($expiry), 'two branches');
+	pg_assert_same(array('op' => 'empty'), $expiry[0]['props']['_bindParams']['show_if']);
+	pg_assert_contains('Not Set', json_encode($expiry[0]));
+	pg_assert_same('i', $expiry[0]['children'][0]['props']['tag'], 'the italic word is an element, not escaped text');
+	pg_assert_same(array('op' => 'not_empty'), $expiry[1]['props']['_bindParams']['show_if']);
+	pg_assert_contains('^^__member_expiry_date^^', json_encode($expiry[1]));
+	pg_assert_false(strpos(json_encode($r['tree']), 'pg-vis') !== false, 'no marker in the text');
+	// A text block draws no children: its element holds the spans.
+	$p = null;
+	foreach (_test_aal_nodes($r['tree']['children']) as $n) {
+		if (($n['props']['_bindings']['show_if'] ?? '') === 'member_id') $p = $n;
+	}
+	pg_assert_same(array('semantic', 'p', 'mb16'), array($p['type'], $p['props']['tag'], $p['props']['cssClass']));
 	pg_assert_same(array('first_name', 'last_name'), array($name['props']['_bindings']['show_if'], $name['props']['_bindings']['show_if_2']));
 	pg_assert_same('any', $name['props']['_bindParams']['show_if']['join']);
 }

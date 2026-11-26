@@ -21,6 +21,6 @@ module: layout_convert
 
 ## Starting sites and tests?
 - 12 file pages, 6 types on both sites (ids 895, 981, 980, 979, 975, 978): all convert with nothing dropped. `tests/account_forms_layout_test.php`.
-- Address book waits for LE10c: its address type switch is not carried by the seed, and its help link needs a setting the widget has not.
+- Address book and my account: [[layout-type-converter-account-address]] (LE10c).
 
 Related: docs/memory/designer/layout-type-overview.md
