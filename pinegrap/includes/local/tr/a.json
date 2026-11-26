@@ -1,6 +1,7 @@
 {
     "A \"{var}\" widget is on this page. Without the region the widget alone draws the page; the layout file stays.": "Bu sayfada bir \"{var}\" bileşeni var. Bölge kaldırılınca sayfayı yalnızca bileşen çizer; yerleşim dosyası kalır.",
     "A .csv, .xlsx or .ods file. The first row holds the column names.": ".csv, .xlsx veya .ods dosyası. İlk satır sütun adlarını taşır.",
+    "A .pptx file: in Canva, Share, Download, then PPTX. A Canva design of the Website kind has no download.": "Bir .pptx dosyası: Canva'da Paylaş, İndir, ardından PPTX. Canva'da Web sitesi türündeki bir tasarımın indirmesi yoktur.",
     "A 0% line on an e-document has to say why it carries no VAT. A line takes its product's code when the product has one, otherwise this one; empty leaves the line without a code. Which code fits your sales is for your accountant to say.": "e-Belgedeki %0 KDV'li satır neden KDV taşımadığını söylemek zorundadır. Satır, ürününün kodu varsa onu, yoksa bunu alır; boş bırakılırsa satır kodsuz gider. Satışlarınıza hangi kodun uyduğunu mali müşaviriniz söyler.",
     "A 10-inch screen for reading, films and video calls, light enough to carry everywhere.": "Okumak, film izlemek ve görüntülü görüşme için 10 inç ekran; her yere taşıyacak kadar hafif.",
     "A 260 ml bottle with a slow-flow teat and a vent that keeps the air out.": "Yavaş akışlı emzikli ve havayı dışarıda tutan valfli 260 ml biberon.",
@@ -5029,6 +5030,7 @@
     "Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.": "Anahtarı doğrulama uygulamanıza (Google Authenticator, Aegis, 1Password, Microsoft Authenticator) elle ekleyin, sonra uygulamanın gösterdiği kodu girin.",
     "Add the list of {var}": "{var} listesini ekle",
     "Add the loop-guard text to its requests": "İsteklerine döngü koruma metnini ekle",
+    "Add the page": "Sayfayı ekle",
     "Add the panel to your home screen first, then turn notifications on from there.": "Bildirimler için önce paneli ana ekranınıza ekleyin, sonra oradan açın.",
     "Add the pharmacist with a photo and a few words; they appear in the team list as soon as you send it.": "Eczacıyı bir fotoğraf ve birkaç sözcükle ekleyin; gönderdiğiniz anda ekip listesinde görünür.",
     "Add the pitch or cabin with its facts and photos; it appears in the list as soon as you send it. Mark it featured from its Edit button.": "Kamp yerini ya da kulübeyi bilgileri ve fotoğraflarıyla ekleyin; gönderdiğiniz anda listede görünür. Düzenle düğmesinden öne çıkarın.",
@@ -7854,6 +7856,7 @@
     "As of {var:1}, your account in our records shows a zero balance.": "{var:1} tarihi itibarıyla cari hesabınız kayıtlarımızda bakiye vermemektedir.",
     "As on the site": "Sitedeki gibi",
     "As owners read it, for example Senior Veterinary Surgeon.": "Hayvan sahiplerinin okuyacağı biçimde, örneğin Kıdemli Veteriner Hekim, Cerrahi.",
+    "As scenes of one canvas": "Tek tuvalin sahneleri olarak",
     "As soon as a place is free": "Yer açılır açılmaz",
     "As soon as possible": "En kısa sürede",
     "As soon as the car is back and checked; your bank shows it within a few working days. Ask under your booking if it takes longer.": "Araç iade edilip kontrol edilir edilmez; bankanız birkaç iş günü içinde gösterir. Daha uzun sürerse rezervasyonunuzun altından sorun.",

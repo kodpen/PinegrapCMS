@@ -3020,6 +3020,7 @@
     "Not every selected element has a flex parent; the {var} rows are hidden.": "Seçilen öğelerin hepsinin üst öğesi flex değil; {var} satırları gizli.",
     "Not every selected element is a flex container; the {var} rows are hidden.": "Seçilen öğelerin hepsi flex kapsayıcı değil; {var} satırları gizli.",
     "Not every text is translated": "Tüm metinler çevrilmedi",
+    "Not everything on this page could be brought in.": "Bu sayfadaki her şey getirilemedi.",
     "Not filled": "Doldurulmadı",
     "Not for an emergency": "Acil durumlar için değil",
     "Not for dark mode, use {var}": "Koyu modda çalışmaz, {var} kullanın",
