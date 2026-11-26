@@ -7,6 +7,7 @@ description: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, w
 - Both uploads (`ws_message_send_file_bytes()`, the API's files.create) call `ws_voice_queue()`: only a recorder name (`ws_voice_is_recording()`: `voice-….weba/ogg/m4a…`) gets a row, `queued` when transcripts are on and the channel allows them, else '' (never asked).
 - `ws_voice_carry_on()` runs `ws_voice_kick()` after the answer went back where PHP-FPM can (`fastcgi_finish_request()`, session closed first); elsewhere (IIS, mod_php) `ws_voice_job()` in workspace_recurring_job.php, hourly, until V3c gives the panel a kick.
 - `ws_voice_kick()`: one call at a time (`GET_LOCK('pg_ws_voice_run')`), budget 60 s (job 300 s), watchdog (queued over a day → failed, running over 15 min → queued again or failed after 3 attempts). Watchdog runs before the lock: each row moves by its own conditional UPDATE; only the one that moved it asks (`ws_voice_changed()`). `ws_voice_run()` re-checks the message, the channel rule and the size (`WS_VOICE_MAX_BYTES` 6 MB), then `ws_voice_call()`: multipart (`ws_voice_multipart()`) through `api_http_request()` (pinned address, no internal hosts), `response_format=json`, 120 s.
+- No sound (`ws_voice_sound_rule()`) or an empty text fails; deleted mid-call: no event, no ask (#11809).
 - `ws_voice_answer()`: 200 with `text` → done (text, language, provider, model), `ws_message_touch()`; 401/402/403 → the whole queue held an hour, the card shows the error, the attempt not counted; 0/408/429/5xx → queued again with a 1 min (429: 5 min) hold, failed after 3 attempts; any other answer → failed with the service's words.
 
 ## What does delete for everyone do? (owner 4a)
@@ -23,6 +24,6 @@ description: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, w
 
 ## Which event says it was written out?
 - `workspace.message.transcribed` (`ws_voice_announce()`, from `ws_voice_run()` once done): public channels only, never a private channel or a discussion, as `workspace.message.created`. Carries id, `channel_id` (narrowed subscriptions), sender_id or app_id, file_id, file_name, duration_ms, transcript, language, provider, model.
-- A webhook event only (`pg_announce()`), not a Flows trigger: no `ws_event()` call, so no line in `workspace_flows_parity_table()`. Making it one belongs to the Flows work, not the voice slices: an entry in `ws_events_catalog()`, a `ws_event()` call beside `ws_voice_announce()` and its parity line (tests/workspace_flows_parity_test.php).
+- A webhook event only (`pg_announce()`), not a Flows trigger: no `ws_event()` call, so no line in `workspace_flows_parity_table()`. Making it one is Flows work: a `ws_events_catalog()` entry, a `ws_event()` call beside `ws_voice_announce()`, its parity line.
 
 Schema, settings and the channel rule: workspace-voice-transcripts.md.
