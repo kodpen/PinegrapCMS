@@ -22,11 +22,11 @@ module: component_overrides
 - A component with a variant counts as having per-place choices (`_sdCoHasSid()`): its places get "This place" and its elements are read-only there until "Edit the component" (`component-overrides-this-place.md`).
 
 ## Where are variants listed and edited?
-- "Shared Component" section, after "Can change per place": head "Variants", "Default" then the variants with their count, a three-dot menu (Rename, Duplicate, Delete) and "Add a variant". Without a variant and the part not loaded the core prints "Default" and the button (`_sdCoVarsHtml()`); otherwise the part fills it (`fillVariants()`).
-- Keyboard: Up, Down, Enter, F2, Delete. Delete asks nothing: a Result line with Undo.
-- Choosing a variant starts editing it (`startVariant()`): one undo step, its props put on the component's nodes, the selection moved into the component, `_sdCoVar = {sid, name, base, sig, depth}`, the line over the canvas (`.sd-co-vline`) with "Done". "Done", Escape (outside a field) or "Default" ends it (`variantDone()`): the variant keeps what differs, the component's own props go back, and the steps inside become the one start step (`_sdCoVarCommit()`).
+- "Shared Component" section, after "Can change per place": head "Variants", "Default" then the variants with their count, a three-dot menu (Rename, Duplicate, Delete) and "Add a variant". With none and the part not loaded the core prints "Default" and the button (`_sdCoVarsHtml()`), else the part fills it (`fillVariants()`).
+- Keyboard: Up, Down, Enter, F2, Delete (no question: a Result line, Undo focused).
+- Choosing a variant starts editing it (`startVariant()`): one undo step, its props put on the component's nodes, the selection moved into the component, `_sdCoVar = {sid, name, base, sig, depth}`, the line over the canvas (`.sd-co-vline`) with "Done", focused. "Done", Escape (not in a field; an open menu closes first) or "Default" ends it (`variantDone()`): the variant keeps what differs, the component's own props go back, and the steps inside become the one start step (`_sdCoVarCommit()`).
 - Undo past the start ends it keeping nothing; Save finishes it first (`_sdCoVarFinish()` in `_flushDirtyShared()`).
-- Adding, removing or moving an element meanwhile is undone after the draw (`variantGuard()`) with the amber line; a text typed stays the component's.
+- Adding, removing or moving an element meanwhile is undone (`variantGuard()`) with the amber line; a typed text stays the component's.
 - The Options panel's dot compares with the component's own props while a variant is edited (`_sdCoVarDefaults()` in `markModifiedProps()`).
 
 ## How does a place pick one?

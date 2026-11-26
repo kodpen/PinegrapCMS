@@ -37,8 +37,9 @@ StyleDesigner.definePart('overrides', function (K) {
     var FIRST_KEY = 'sd_co_first_seen';
 
     // The open list over the panel, the last Result line of the settings
-    // list, and the element whose menu row is focused for the keyboard.
-    var state = { pop: null, popNode: null, popSid: 0, result: null, focusId: '' };
+    // list, the element whose menu row is focused for the keyboard, and
+    // what had the focus when the list opened.
+    var state = { pop: null, popNode: null, popSid: 0, result: null, focusId: '', opener: null, focusUndo: false };
 
     function kindName(kind) {
         return {
@@ -176,6 +177,7 @@ StyleDesigner.definePart('overrides', function (K) {
         if (state.pop) state.pop.remove();
         state.pop = null;
         state.popNode = null;
+        state.opener = null;
         document.removeEventListener('mousedown', onOutside, true);
     }
 
@@ -263,7 +265,9 @@ StyleDesigner.definePart('overrides', function (K) {
     function openFor(node, anchor) {
         var sid = K._resolveSharedSid(node);
         if (!(sid > 0) || !compTree(sid)) return;
+        var opener = document.activeElement;
         closePop();
+        state.opener = opener;
         var pop = document.createElement('div');
         pop.className = 'sd-co-pop';
         pop.setAttribute('role', 'dialog');
@@ -300,12 +304,20 @@ StyleDesigner.definePart('overrides', function (K) {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 e.stopPropagation();
+                var back = state.opener;
                 closePop();
+                // Back to what opened the list; the element's three-dot
+                // button when that was redrawn meanwhile.
+                if (!(back && back !== document.body && back.isConnected && back.focus && back.getClientRects().length)) back = document.getElementById('sd-id-more');
+                if (back) back.focus();
                 return;
             }
             if (e.key === 'Enter' && e.target.hasAttribute('data-co-label')) {
+                // Keeps the label (its change runs on leaving the field) and
+                // stays in the list, on the field's switch.
                 e.preventDefault();
-                e.target.blur();
+                var sw = pop.querySelector('[data-co-kind="' + e.target.getAttribute('data-co-label') + '"]');
+                if (sw) sw.focus(); else e.target.blur();
                 return;
             }
             if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -340,7 +352,7 @@ StyleDesigner.definePart('overrides', function (K) {
         }
         h += '<div class="sd-co-rows" role="list">';
         fields.forEach(function (f) {
-            h += '<div class="sd-co-row" role="listitem" tabindex="0" data-co-id="' + esc(f.id) + '" title="' + esc(_sdT('Alt+Up and Alt+Down move the field')) + '">' +
+            h += '<div class="sd-co-row" role="listitem" tabindex="0" data-co-id="' + esc(f.id) + '" title="' + esc(_sdT('Alt+Up and Alt+Down move the field')) + '" aria-keyshortcuts="F2 Delete Alt+ArrowUp Alt+ArrowDown">' +
                 '<span class="sd-co-grip bi bi-grip-vertical" aria-hidden="true"></span>' +
                 '<span class="sd-co-ki bi ' + (KIND_ICON[f.kind] || 'bi-dot') + '" aria-hidden="true"></span>' +
                 '<b class="sd-co-label">' + esc(f.label || kindName(f.kind)) + '</b>' +
@@ -405,6 +417,7 @@ StyleDesigner.definePart('overrides', function (K) {
             var r = compTree(sid);
             var n = r ? findById(r, nodeId) : null;
             if (!n) return;
+            state.focusId = keep.entry.id;
             write(sid, function () {
                 var list = openList(n, true);
                 list.splice(Math.min(keep.index, list.length), 0, keep.entry);
@@ -413,6 +426,7 @@ StyleDesigner.definePart('overrides', function (K) {
                 else if (order) order.push(keep.entry.id);
             });
         } };
+        state.focusUndo = true;
         K.renderProperties();
     }
 
@@ -501,6 +515,13 @@ StyleDesigner.definePart('overrides', function (K) {
     function fillList(el, sid) {
         if (state.result && state.result.sid !== sid) state.result = null;
         el.innerHTML = listHtml(sid);
+        if (state.focusUndo && el.isConnected) {
+            // After "Close the field" the keyboard is on its Undo (in the
+            // drawing that is in the page, not one queued before it).
+            state.focusUndo = false;
+            var undo = el.querySelector('[data-co-undo]');
+            if (undo) undo.focus();
+        }
         if (state.focusId) {
             var again = el.querySelector('.sd-co-row[data-co-id="' + state.focusId + '"]');
             state.focusId = '';
@@ -524,7 +545,17 @@ StyleDesigner.definePart('overrides', function (K) {
         });
         el.addEventListener('keydown', function (e) {
             var row = e.target.classList && e.target.classList.contains('sd-co-row') ? e.target : null;
-            if (!row || !e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+            if (!row) return;
+            // F2 and Delete as in the variants' list: the row's menu is
+            // reached by the pointer only.
+            if (e.key === 'F2' && !e.altKey) { e.preventDefault(); rename(sid, row); return; }
+            if ((e.key === 'Delete' || e.key === 'Backspace') && !e.altKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeField(sid, row.getAttribute('data-co-id'));
+                return;
+            }
+            if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
             e.preventDefault();
             var id = row.getAttribute('data-co-id');
             var ids = fieldsOf(sid).map(function (f) { return f.id; });
@@ -798,7 +829,7 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // The Result line after "Delete", the field of a variant being added or
     // renamed, its message, and the row to focus after a draw.
-    var vstate = { result: null, adding: 0, renaming: '', err: '', focus: null, keyOn: false };
+    var vstate = { result: null, adding: 0, renaming: '', err: '', focus: null, keyOn: false, focusUndo: false };
 
     function variantsOf(sid) {
         var root = compTree(sid);
@@ -873,7 +904,14 @@ StyleDesigner.definePart('overrides', function (K) {
         if (vstate.adding && vstate.adding !== sid) vstate.adding = 0;
         el.innerHTML = varsHtml(sid);
         var field = el.querySelector('[data-co-vname]');
-        if (field) {
+        // A drawing queued before the last one fills a box no longer in the
+        // page: the focus waits for the one that is.
+        var vundo = (vstate.focusUndo && el.isConnected) ? el.querySelector('[data-co-vundo]') : null;
+        if (el.isConnected) vstate.focusUndo = false;
+        if (vundo) {
+            // After "Delete" the keyboard is on its Undo.
+            vundo.focus();
+        } else if (field) {
             field.focus();
             field.setSelectionRange(field.value.length, field.value.length);
         } else if (vstate.focus !== null) {
@@ -1050,11 +1088,13 @@ StyleDesigner.definePart('overrides', function (K) {
         vstate.result = { sid: sid, text: _sdT('The variant “{var}” was deleted. Places that used it show the default.', name), undo: function () {
             var r = compTree(sid);
             if (!r) return;
+            vstate.focus = name;
             write(sid, function () {
                 var list = rawVariants(r, true);
                 list.splice(Math.min(i, list.length), 0, kept);
             });
         } };
+        vstate.focusUndo = true;
         K.renderProperties();
     }
 
@@ -1126,6 +1166,10 @@ StyleDesigner.definePart('overrides', function (K) {
             drawLine();
             listen(true);
         });
+        // The list the variant was chosen in is gone with the selection:
+        // the keyboard goes on with "Done" over the canvas.
+        var done = document.querySelector('.sd-co-vline [data-co-vdone]');
+        if (done) done.focus();
     }
 
     // "Done": the variant keeps what differs from the component's own, which
@@ -1192,14 +1236,16 @@ StyleDesigner.definePart('overrides', function (K) {
             (warn ? '<div class="sd-co-vwarn"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' + esc(warn) + '</span></div>' : '');
     }
 
-    // Escape ends the editing, but not inside a field or an open menu.
+    // Escape ends the editing, but not inside a field; with the editor's
+    // menu open (showCtxMenu(), a row's three-dot menu) it closes the menu.
     function onEscape(e) {
         if (e.key !== 'Escape' || !K.coVar) return;
         var t = e.target;
         if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
-        if (document.querySelector('.sd-ctx-menu.show, .sd-ctx-menu[style*="block"]')) return;
         e.preventDefault();
         e.stopPropagation();
+        var menu = document.getElementById('sd-tree-ctx-menu');
+        if (menu) { menu.remove(); return; }
         variantDone();
     }
 
