@@ -19,7 +19,7 @@ module: sales_watch
 - A past date is dropped on save; a text that is no date refuses the save ("This is not a date.").
 
 ## Where is it on the screen?
-- Settings › Updates and maintenance, its own row Sales watch (`pgset-sales-watch`, #SM1PR) after Operations alerts; its fields hide with the Operations alerts switch and a note "Off with Operations alerts" with Open Operations alerts shows instead; drawn only with `ECOMMERCE` and the `config_text` table. An alert's checkbox shows once its code is in `pg_ops_alert_codes()`.
+- Settings › Updates and maintenance, its own row Sales watch (`pgset-sales-watch`, #11876) after Operations alerts; its fields hide with the Operations alerts switch and a note "Off with Operations alerts" with Open Operations alerts shows instead; drawn only with `ECOMMERCE` and the `config_text` table. An alert's checkbox shows once its code is in `pg_ops_alert_codes()`.
 - The save writes the row only when the part was drawn (`sales_watch_card`). List fields `sales_watch_alerts`, `sales_watch_pause` are named in the registry's `lists`.
 - Chat notifications: each target lists the `group => 'sales'` codes under a "Sales watch" heading; a new target has them all checked, an existing one keeps its own choice.
 
