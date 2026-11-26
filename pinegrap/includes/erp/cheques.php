@@ -597,6 +597,24 @@ function erp_cheque_bank_till_refusal($till, $cheque, $kept_currency, $bank_curr
 }
 
 /**
+ * The tills a cheque's bank step may choose, as a WHERE condition on
+ * erp_cash_accounts: the active ones but its portfolio, and the bank it was
+ * handed to even when that bank was taken off since, the one
+ * erp_cheque_bank_till_refusal() still lets it be collected at. Without it the
+ * list lacked that bank and the form posted the first active till instead.
+ *
+ * @param array $cheque  erp_cheques row: bank_till_id, portfolio_till_id
+ * @return string
+ */
+function erp_cheque_bank_till_choices_where($cheque)
+{
+    $stored = (int) ($cheque['bank_till_id'] ?? 0);
+    $active = ($stored > 0) ? "(is_active = 1 OR id = '" . $stored . "')" : 'is_active = 1';
+
+    return $active . " AND id <> '" . (int) ($cheque['portfolio_till_id'] ?? 0) . "'";
+}
+
+/**
  * Why a cheque or note cannot be passed on to this account, or ''.
  *
  * The screen and the API ask the same: the account exists, is active, and is

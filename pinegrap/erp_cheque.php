@@ -78,7 +78,7 @@ $name = trim(($kinds[(string) $cheque['kind']] ?? '') . ' ' . (string) $cheque['
 
 $tills = '';
 $till_count = 0;
-foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 AND id <> '" . (int) $cheque['portfolio_till_id'] . "' ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
+foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE " . erp_cheque_bank_till_choices_where($cheque) . " ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
     $tills .= '<option value="' . (int) $till['id'] . '"' . (((int) $till['id'] === (int) $cheque['bank_till_id']) ? ' selected' : '') . '>' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
     $till_count++;
 }

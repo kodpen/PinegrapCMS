@@ -40,3 +40,19 @@ function test_erp_cheque_step_asks_the_endorse_account_refusal()
 
 	pg_assert_contains('erp_cheque_endorse_account_refusal(', $step, 'the step checks the account it is passed on to');
 }
+
+// A cheque handed to a bank that was taken off later is collected there: the
+// screen lists that bank, so the collect form does not post the first active
+// till in its place.
+function test_erp_cheque_bank_till_choices_keep_the_stored_bank()
+{
+	$where = erp_cheque_bank_till_choices_where(array('bank_till_id' => 7, 'portfolio_till_id' => 2));
+
+	pg_assert_contains("(is_active = 1 OR id = '7')", $where, 'the stored bank is listed even when inactive');
+	pg_assert_contains("id <> '2'", $where, 'the portfolio is not listed');
+	pg_assert_contains("is_active = 1", erp_cheque_bank_till_choices_where(array('bank_till_id' => 0, 'portfolio_till_id' => 2)), 'without a stored bank only active tills are listed');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_cheque.php');
+	pg_assert_contains('erp_cheque_bank_till_choices_where(', $screen, 'the cheque screen lists the tills by it');
+}
+
