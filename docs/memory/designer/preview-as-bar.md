@@ -25,5 +25,5 @@ module: designer
 ## What does "Edit content here" add to the bar?
 - Its switch or link last in the bar's right end and as a row of the narrow sheet (`K._sdRecEditHtml()`), the document handed over on each `render()` (`K._sdRecEditSync()`), and `note()`/`redraw()` for its line (`record-edit-in-place-preview.md`).
 
-## What is left for later steps?
-- The "Member of a group" rows (with access rules). "Check all cases" is in `preview-as-check.md`.
+## What is not built?
+- The "Member of a group" rows, until the editor knows a page's access rules (`designer-preview-as-rules.md`). "Check all cases" is in `preview-as-check.md`.
