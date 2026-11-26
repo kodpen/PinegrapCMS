@@ -18,7 +18,7 @@ priority: 6
 - Lose an anchor, a settings key or a right: `workflow/decisions-made-product-14.md`.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- TR1 (S, no product code) The crossings census, into `plans/settings-crossings-census.md` (more files past 4 KB). For every service page of the registry and every card that leads to Connections: where the lead goes (page, anchor), whether and where the page leads back, where the person stands after Connect, Save and Disconnect, the names at both ends.
+- TR1 (S, no product code) Done #11829: `settings-crossings-census.md` and its six files. The crossings census, into `plans/settings-crossings-census.md` (more files past 4 KB). For every service page of the registry and every card that leads to Connections: where the lead goes (page, anchor), whether and where the page leads back, where the person stands after Connect, Save and Disconnect, the names at both ends.
   - Then, for each feature: the hops of a first set-up from its card to working, the round trips with nothing to do at one end, and the ten worst paths.
 - TR2 (architect) after TR1: one rule for the hand-over, asked of the owner with the worst paths as its examples; this file gains the rule and TR3's cut.
 - TR3 (M, cut by the rule) after TR2: the crossings follow the rule.
