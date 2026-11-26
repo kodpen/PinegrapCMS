@@ -20,7 +20,7 @@ module: document_start
 - In the New design window: the rows go to this tab's `sessionStorage` (`pg_document_build`), the start questions are asked (`window.sdStartAsk`), and `add_system_style.php?framework=bootstrap5&start=document` opens; the editor (`sdDesign.startDocument`) runs the part's `auto()`, which builds once into the empty first page.
 - In the editor window: the sections are put on the page at once, one undo step (`_sdDocumentHost().insert`).
 - `PGDocumentPage.build(rows, {make, node, src})` (builder from part `sketchbuild`): intro, text, cards, picture and gallery through `PGSketchBuilder` (`sketch-builder.md`); figures `stats-counter`, questions `faq-twocol`; testimonial, table, prices and contact plain Bootstrap 5 sections. Every section wears `var(--pg-var-space-section, 3rem)`.
-- The words fill the starters' columns, samples out; a headless starter gets the heading over its row; a Text's pictures stand among its paragraphs. A list kind's words around its items are paragraphs over or under the item row; the intro's picture fills `hero-split`, else a picture section under it (PR #PRNUM, `document-to-page.md`).
+- The words fill the starters' columns, samples out; a headless starter gets the heading over its row; a Text's pictures stand among its paragraphs. A list kind's words around its items are paragraphs over or under the item row; the intro's picture fills `hero-split`, else a picture section under it (PR #11792, `document-to-page.md`).
 
 ## Where do a Word document's pictures go?
 - `designer_document.php` keeps a document with pictures in `data/temp/documents/<token>.docx` (per session, 3 at most, swept after 6 h), answering the pictures without their package part.

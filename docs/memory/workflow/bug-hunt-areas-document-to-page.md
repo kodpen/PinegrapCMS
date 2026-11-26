@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-areas-document-to-page
-description: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #PRNUM
+description: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #11792
 ---
 
 ## What was the area?
@@ -24,6 +24,6 @@ description: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faul
 - Stored pictures go to folder 0, public like the designer's other assets; the token is let go after one store.
 
 ## What was seen and left?
-- The reader dropped words around a reading and never showed the intro's picture. Built in PR #PRNUM after #11769 landed; the rule is in `designer/document-to-page.md` ("What binds it?").
+- The reader dropped words around a reading and never showed the intro's picture. Built in PR #11792 after #11769 landed; the rule is in `designer/document-to-page.md` ("What binds it?").
 
 Related: docs/memory/designer/document-to-page.md, docs/memory/workflow/bug-hunt.md
