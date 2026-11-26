@@ -26484,8 +26484,11 @@ const StyleDesigner = (function () {
         var tfRow = function (keys, label, ctrl) {
             return '<div class="sd-prop-row" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
         };
+        // Cursor and "Let clicks through" are Normal's only (_sdPtRowsHtml()).
+        var pt = _sdOptState === '' ? _sdPtOf(node) : null;
         var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; }) ||
-            Object.keys(_SD_EFF_NONE).some(function (k) { return fv[k] !== '' || finh[k] !== ''; });
+            Object.keys(_SD_EFF_NONE).some(function (k) { return fv[k] !== '' || finh[k] !== ''; }) ||
+            !!(pt && (pt.cursor !== '' || pt.through));
         var h = '<div class="sd-tf" data-sd-tf-box>' +
             '<div class="sd-trans-sub">' + esc(_sdT('Transform')) + '</div>' +
             tfRow('tx,ty', _sdT('Move'), '<div class="sd-tf-pair">' + field('tx', 'px', 'X', '0') + field('ty', 'px', 'Y', '0') + '</div>') +
@@ -26506,7 +26509,7 @@ const StyleDesigner = (function () {
             h += tfRow('skx,sky', _sdT('Skew'), '<div class="sd-tf-pair">' + field('skx', '°', 'X', '0') + field('sky', '°', 'Y', '0') + '</div>') +
                 tfRow('o', _sdT('Origin'), '<div class="sd-tf-og' + (v.o === '' ? ' sd-trans-inh' : '') + '"><div class="sd-tf-grid" role="radiogroup" aria-label="' + esc(_sdT('Origin')) + '">' + cells + '</div>' +
                     '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>') +
-                _sdEffRowsHtml(fv, finh);
+                _sdEffRowsHtml(fv, finh) + (pt ? _sdPtRowsHtml(pt) : '');
         }
         h += '<button type="button" class="sd-tf-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
             esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
@@ -26517,10 +26520,10 @@ const StyleDesigner = (function () {
     // The same for an effect row (Filter, Background blur, Blend) and a
     // Text effect row (a value of its own reads as set too).
     function _sdTfMark(root) {
-        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys], [data-sd-tx-keys]').forEach(function (r) {
+        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys], [data-sd-tx-keys], [data-sd-pt-keys]').forEach(function (r) {
             var lbl = r.querySelector('.sd-prop-label');
-            var kind = r.hasAttribute('data-sd-fx-keys') ? 'fx' : r.hasAttribute('data-sd-tx-keys') ? 'tx' : 'tf';
-            var sel = { fx: 'input[data-sd-fx], select[data-sd-fx]', tx: '[data-sd-tx]', tf: '[data-sd-tf]' }[kind];
+            var kind = r.hasAttribute('data-sd-fx-keys') ? 'fx' : r.hasAttribute('data-sd-tx-keys') ? 'tx' : r.hasAttribute('data-sd-pt-keys') ? 'pt' : 'tf';
+            var sel = { fx: 'input[data-sd-fx], select[data-sd-fx]', tx: '[data-sd-tx]', pt: '[data-sd-pt]', tf: '[data-sd-tf]' }[kind];
             var set = r.querySelector('.sd-tf-og:not(.sd-trans-inh)') ||
                 Array.prototype.some.call(r.querySelectorAll(sel), function (i) { return i.value !== '' || i.getAttribute('placeholder') === _sdT('Your own'); });
             if (!lbl || !set) return;
@@ -26901,6 +26904,72 @@ const StyleDesigner = (function () {
             renderProperties();
             var b = document.querySelector('#sd-properties .sd-tx-more');
             if (b) b.focus();
+        });
+    }
+
+    // ── Options: the pointer (Shadow and effect › More › Pointer) ──
+    // "Cursor" (Pointer, Default, Not allowed) written by the part 'states'
+    // (PGOptionStates.cursorWrite()) on the element's custom style class,
+    // and "Let clicks through", Bootstrap's pe-none class on the element
+    // (a class switch, data-util-toggle). Normal only: a cursor shows while
+    // the pointer is over the element, so a state adds nothing.
+    var _SD_PT_RE = /(?:^|[\s;{])cursor\s*:/;
+
+    // { cursor: a row's key, '' or 'own'; through: pe-none on the element }.
+    function _sdPtOf(node) {
+        var through = String(node.props.cssClass || '').split(/\s+/).indexOf('pe-none') !== -1;
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('.' + cls) === -1 || !_SD_PT_RE.test(text)) return { cursor: '', through: through };
+        if (_sdPartLoaded('states') && window.PGOptionStates) return { cursor: window.PGOptionStates.cursorRead(text, cls), through: through };
+        if (!_sdTfLoading) {
+            _sdTfLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTfLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTfLoading = false; _sdPartFailed(); });
+        }
+        return { cursor: '', through: through };
+    }
+
+    function _sdPtRowsHtml(pt) {
+        var names = [['', _sdT('Auto')], ['pointer', _sdT('Pointer')], ['default', _sdT('Default')], ['not-allowed', _sdT('Not allowed')]];
+        var h = '<div class="sd-trans-sub">' + esc(_sdT('Pointer')) + '</div>' +
+            '<div class="sd-prop-row" data-sd-pt-keys="cursor"><label class="sd-prop-label">' + esc(_sdT('Cursor')) + '</label><div class="sd-prop-control">' +
+            '<select class="form-select form-select-sm' + (pt.cursor === '' ? ' sd-trans-inh' : '') + '" data-sd-pt="cursor" aria-label="' + esc(_sdT('Cursor')) + '">' +
+            (pt.cursor === 'own' ? '<option value="own" selected disabled>' + esc(_sdT('Your own')) + '</option>' : '') +
+            names.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === pt.cursor ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+            '</select></div></div>' +
+            '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Let clicks through')) + '</label><div class="sd-prop-control">' +
+            swAttr('data-util-toggle="pe-none"', pt.through) + '</div></div>';
+        if (pt.through) {
+            h += '<div class="sd-tf-fx"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' +
+                esc(_sdT('Clicks go to what is behind this element, on the canvas too. Pick it in the Tree to change it.')) + '</span></div>';
+        }
+        return h;
+    }
+
+    // The cursor written as one undo step ('' takes it out).
+    function _sdPtSet(value) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) { return S.cursorWrite(text, cls, value); });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // Once per panel: Cursor writes on change ("Let clicks through" is a
+    // class switch the panel's class toggles handle).
+    function _sdPtBind(panel) {
+        if (!panel || panel._sdPt || !panel.querySelector('[data-sd-pt]')) return;
+        panel._sdPt = true;
+        panel.addEventListener('change', function (e) {
+            var t = e.target;
+            if (t && t.getAttribute && t.getAttribute('data-sd-pt') === 'cursor') _sdPtSet(t.value);
         });
     }
 
@@ -38521,6 +38590,7 @@ const StyleDesigner = (function () {
         _sdTfBind(panel);
         _sdEffBind(panel);
         _sdTxBind(panel);
+        _sdPtBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -67601,6 +67671,8 @@ const StyleDesigner = (function () {
             if (_fk) { var _fv = {}; _fv[_fk] = ''; _sdEffSet(_fv); }
             return;
         }
+        // The Cursor row: the cursor out.
+        if (kind === 'pt') { _sdPtSet(''); return; }
         // A Text effect row: its value out (Outline: the width takes it out).
         if (kind === 'tx') {
             var _xk = propRow.getAttribute('data-sd-tx-keys');
