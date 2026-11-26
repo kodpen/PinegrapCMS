@@ -590,56 +590,39 @@ if ($reference_price_rule_ready) {
 }
 
 // ── Affiliate Program ──
+// Its fields are drawn under the switch whatever the switch says.
 $commerce_parts['affiliate'] = array('html' => '
-                        <div id="pgset-affiliate" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Affiliate Program') . '
-                                </div>
-                                <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <div class="form-field">' . pg_settings_tile('people', 'shop') . '
-                                                <div class="switch"><input value="1"' . $affiliate_program_checked . ' class="collapse-switcher" type="checkbox" id="affiliate_program" name="affiliate_program" data-bs-target="#affiliate_program_row"/></div>
-                                                <label class="" for="affiliate_program">' . lang('Enable Affiliate Program') . '</label>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="affiliate_program_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(50px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $affiliate_automatic_approval_checked . ' class="" type="checkbox" id="affiliate_automatic_approval" name="affiliate_automatic_approval"/></div>
-                                                                <label class="" for="affiliate_automatic_approval">' . lang('Automatically Approve Affiliates') . '</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="pg-f-xs">
-                                                            <label for="affiliate_default_commission_rate" class="form-label">' . lang('Default Commission Rate') . '</label>
-                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost text-end" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
-                                                            </label>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label class="form-label" for="affiliate_contact_group_id">'. lang('Affiliate Contact Group') . '</label>
-                                                            <select class="form-control" id="affiliate_contact_group_id" name="affiliate_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($affiliate_contact_group_id, $user) . '</select>
-                                                        </div>
-                                                        <div class="pg-f-sm">
-                                                            <label for="affiliate_email_address" class="form-label">' . lang('Affiliate Program E-mail Address') . '</label>
-                                                            <input type="text" name="affiliate_email_address" id="affiliate_email_address" class="form-control" value="' . h($affiliate_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
-                                                        </div>
-                                                        <div class="pg-f-lg">
-                                                            <label class="form-label" for="affiliate_group_offer_id">'. lang('Group Offer') . '</label>
-                                                            <select class="form-control" id="affiliate_group_offer_id" name="affiliate_group_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer($affiliate_group_offer_id) . '</select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                   </div>
-                                </div>
-                            </div>
-                        </div>') + pg_commerce_fold_affiliate($commerce_on, $affiliate_program == 1, $affiliate_default_commission_rate);
+    <div id="pgset-affiliate" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Affiliate Program') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . pg_commerce_settings_switch('affiliate_program', $affiliate_program == 1, lang('Turn on the affiliate programme'))
+                    . pg_commerce_settings_switch('affiliate_automatic_approval', $affiliate_automatic_approval_checked !== '', lang('Approve affiliates automatically')) . '
+                    <div class="pg-f-xs">
+                        <label for="affiliate_default_commission_rate" class="form-label">' . lang('Default commission rate') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                            <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost text-end" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
+                        </label>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="affiliate_contact_group_id">' . lang('Affiliate contact group') . '</label>
+                        <select class="form-control" id="affiliate_contact_group_id" name="affiliate_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($affiliate_contact_group_id, $user) . '</select>
+                    </div>
+                    <div class="pg-f-sm">
+                        <label for="affiliate_email_address" class="form-label">' . lang('Affiliate programme e-mail address') . '</label>
+                        <input type="text" name="affiliate_email_address" id="affiliate_email_address" class="form-control" value="' . h($affiliate_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label class="form-label" for="affiliate_group_offer_id">' . lang('Group offer') . '</label>
+                        <select class="form-control" id="affiliate_group_offer_id" name="affiliate_group_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer($affiliate_group_offer_id) . '</select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_commerce_fold_affiliate($commerce_on, $affiliate_program == 1, $affiliate_default_commission_rate);
 
 // ── Referral programme ──
 // A customer with an order brings a friend through their own link; the rules
@@ -654,60 +637,55 @@ if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
 }
 
 $commerce_parts['referral'] = array('html' => '
-                        <div id="pgset-referral" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Referral programme') . '
-                                </div>
-                                <div class="card-body">
-                                   <div class="row gy-5">' . (($referral_notice !== '') ? '
-                                        <div class="col-12">
-                                            <div class="alert theme-secondary py-3 small mb-0">' . h($referral_notice) . '</div>
-                                        </div>' : '') . '
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . ($referral_settings['on'] ? ' checked="checked"' : '') . ' type="checkbox" id="referral_on" name="referral_on"/></div>
-                                                <label for="referral_on">' . lang('Turn on the referral programme') . '</label>
-                                                <div class="form-text">' . lang('A customer with an order shares their own link; when a friend\'s first order is completed, the customer earns store credit. An approved affiliate keeps the commission programme instead. Off, nothing changes.') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label class="form-label" for="referral_offer_id">' . lang('Offer for the friend') . '</label>
-                                            <select class="form-control" id="referral_offer_id" name="referral_offer_id"><option value="">-' . lang('None') . '-</option>' . select_offer($referral_settings['offer_id']) . '</select>
-                                            <div class="form-text">' . lang('Put in the friend\'s cart when they arrive by a referral link, while the offer runs.') . '</div>
-                                        </div>
-                                        <div class="pg-f-xs">
-                                            <label for="referral_reward" class="form-label">' . lang('Reward') . '</label>
-                                            <label class="form-control form-adorn form-adorn-end">
-                                                <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
-                                                <input value="' . h($referral_settings['reward']) . '" type="text" name="referral_reward" id="referral_reward" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
-                                            </label>
-                                            <div class="form-text">' . lang('Store credit the customer earns for each friend.') . '</div>
-                                        </div>
-                                        <div class="pg-f-xs">
-                                            <label for="referral_reward_days" class="form-label">' . lang('Reward lasts') . '</label>
-                                            <label class="form-control form-adorn form-adorn-end">
-                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                <input value="' . h($referral_settings['days']) . '" type="text" name="referral_reward_days" id="referral_reward_days" class="form-ghost text-end" size="5" maxlength="4" inputmode="numeric" />
-                                            </label>
-                                            <div class="form-text">(' . lang('leave blank for credit that never expires') . ')</div>
-                                        </div>
-                                        <div class="pg-f-xs">
-                                            <label for="referral_smallest" class="form-label">' . lang('Smallest order that counts') . '</label>
-                                            <label class="form-control form-adorn form-adorn-end">
-                                                <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
-                                                <input value="' . h($referral_settings['smallest']) . '" type="text" name="referral_smallest" id="referral_smallest" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
-                                            </label>
-                                        </div>
-                                        <div class="pg-f-xs">
-                                            <label for="referral_month_cap" class="form-label">' . lang('Rewards a month per customer') . '</label>
-                                            <input value="' . h($referral_settings['month_cap']) . '" type="text" name="referral_month_cap" id="referral_month_cap" class="form-control text-end" size="5" maxlength="4" inputmode="numeric" />
-                                            <div class="form-text">(' . lang('leave blank for no limit') . ')</div>
-                                        </div>
-                                   </div>
-                                </div>
-                            </div>
-                        </div>') + pg_commerce_fold_referral($commerce_on, !empty($referral_settings['on']), $referral_settings['reward'], BASE_CURRENCY_CODE);
+    <div id="pgset-referral" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Referral programme') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . (($referral_notice !== '') ? '
+                    <div class="col-12">
+                        <p class="pg-field-help pg-text-meta fg-warning mb-0">' . h($referral_notice) . '</p>
+                    </div>' : '')
+                    . pg_commerce_settings_switch('referral_on', !empty($referral_settings['on']), lang('Turn on the referral programme'), lang('A customer with an order shares their own link; when a friend\'s first order is completed, the customer earns store credit. An approved affiliate keeps the commission programme instead. Off, nothing changes.'))
+                    . pg_commerce_settings_group(lang('For the friend')) . '
+                    <div class="pg-f-lg">
+                        <label class="form-label" for="referral_offer_id">' . lang('Offer for the friend') . '</label>
+                        <select class="form-control" id="referral_offer_id" name="referral_offer_id" aria-describedby="referral_offer_id_help"><option value="">-' . lang('None') . '-</option>' . select_offer($referral_settings['offer_id']) . '</select>
+                        <div class="form-text" id="referral_offer_id_help">' . lang('Put in the friend\'s cart when they arrive by a referral link, while the offer runs.') . '</div>
+                    </div>
+                    <div class="pg-f-xs">
+                        <label for="referral_smallest" class="form-label">' . lang('Smallest order that counts') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
+                            <input value="' . h($referral_settings['smallest']) . '" type="text" name="referral_smallest" id="referral_smallest" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
+                        </label>
+                    </div>' . pg_commerce_settings_group(lang('For the customer')) . '
+                    <div class="pg-f-xs">
+                        <label for="referral_reward" class="form-label">' . lang('Reward') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
+                            <input value="' . h($referral_settings['reward']) . '" type="text" name="referral_reward" id="referral_reward" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" aria-describedby="referral_reward_help"/>
+                        </label>
+                        <div class="form-text" id="referral_reward_help">' . lang('Store credit the customer earns for each friend.') . '</div>
+                    </div>
+                    <div class="pg-f-xs">
+                        <label for="referral_reward_days" class="form-label">' . lang('Reward lasts') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                            <input value="' . h($referral_settings['days']) . '" type="text" name="referral_reward_days" id="referral_reward_days" class="form-ghost text-end" size="5" maxlength="4" inputmode="numeric" aria-describedby="referral_reward_days_help"/>
+                        </label>
+                        <div class="form-text" id="referral_reward_days_help">' . lang('Leave blank for credit that never expires.') . '</div>
+                    </div>
+                    <div class="pg-f-xs">
+                        <label for="referral_month_cap" class="form-label">' . lang('Rewards a month per customer') . '</label>
+                        <input value="' . h($referral_settings['month_cap']) . '" type="text" name="referral_month_cap" id="referral_month_cap" class="form-control text-end" size="5" maxlength="4" inputmode="numeric" aria-describedby="referral_month_cap_help"/>
+                        <div class="form-text" id="referral_month_cap_help">' . lang('Leave blank for no limit.') . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_commerce_fold_referral($commerce_on, !empty($referral_settings['on']), $referral_settings['reward'], BASE_CURRENCY_CODE);
 
 // ── Product Feeds ──
 // The shop's products as files shopping platforms read
@@ -717,6 +695,7 @@ $commerce_parts['referral'] = array('html' => '
 // finds them missing; commerce.save.php writes nothing until the column is there.
 $product_feeds_groups = pg_product_feed_screen_groups();
 $product_feeds_rows = '';
+$product_feeds_in_dialog = !empty($pg_settings_in_dialog);
 
 // The Google Merchant Center part of the card ($product_feeds_merchant).
 require(PG_FUNCTIONS_DIR . '/includes/settings/commerce_merchant.php');
@@ -728,13 +707,27 @@ foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_fee
     if ($product_feeds_entry['token_hash'] !== '') {
         $product_feeds_token = pg_product_feed_token($product_feeds_entry);
 
+        // New address asks in a drawer: its button there posts the format
+        // through the form attribute, as the drawer sits beside the pane.
+        $product_feeds_drawer = 'pg-feed-address-' . $product_feeds_format;
+        $pg_settings_modals[] = pg_settings_drawer(
+            $product_feeds_drawer,
+            h(lang('New address')),
+            '<p class="mb-0">' . h(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.')) . '</p>',
+            $product_feeds_in_dialog,
+            '<button type="submit" form="' . ($product_feeds_in_dialog ? 'pg_settings_modal_form' : 'pg_settings_page_form') . '" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="pg-button pg-button-danger"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Make a new address')) . '</button>',
+            h($product_feeds_text['label'])
+        );
+
         $product_feeds_address = '
-                                            <div class="d-flex align-items-center gap-2 mt-3 pg-f-lg">
-                                                ' . (($product_feeds_token !== '')
-                                                    ? '<input type="text" class="form-control" readonly value="' . h(pg_product_feed_url($product_feeds_token)) . '" aria-label="' . h(lang('Feed address')) . '" onfocus="this.select()" />'
-                                                    : '<span class="form-control fg-secondary">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
-                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="pg-button pg-button-danger pg-button-sm text-nowrap" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('New address') . '</button>
-                                            </div>';
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-2 pg-f-lg">
+                            ' . (($product_feeds_token !== '')
+                                ? '<input type="text" class="form-control" readonly value="' . h(pg_product_feed_url($product_feeds_token)) . '" aria-label="' . h(lang('Feed address')) . '" onfocus="this.select()" />'
+                                : '<span class="form-control fg-secondary">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
+                            <button type="button" class="pg-button pg-button-quiet pg-button-sm text-nowrap" data-bs-toggle="drawer" data-bs-target="#' . h($product_feeds_drawer) . '" aria-controls="' . h($product_feeds_drawer) . '"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('New address') . '</button>
+                        </div>
+                    </div>';
     }
 
     $product_feeds_status = pg_product_feed_status_text($product_feeds_entry);
@@ -748,21 +741,11 @@ foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_fee
         $product_feeds_status = h($product_feeds_status);
     }
 
-    $product_feeds_rows .= '
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . ($product_feeds_entry['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="product_feed_' . h($product_feeds_format) . '" name="product_feed_' . h($product_feeds_format) . '"/></div>
-                                                <label class="" for="product_feed_' . h($product_feeds_format) . '">' . h($product_feeds_text['label']) . '</label>
-                                                <div class="form-text">' . h($product_feeds_text['help']) . '</div>
-                                            </div>' . $product_feeds_address . (($product_feeds_status !== '') ? '
-                                            <div class="form-text">' . $product_feeds_status . '</div>' : '') . '
-                                        </div>';
-}
-
-$product_feeds_group_options = '';
-
-foreach ($product_feeds_groups as $product_feeds_group_id => $product_feeds_group_path) {
-    $product_feeds_group_options .= '<option value="' . (int) $product_feeds_group_id . '"' . (in_array((int) $product_feeds_group_id, $product_feeds_settings['excluded_group_ids'], true) ? ' selected="selected"' : '') . '>' . h($product_feeds_group_path) . '</option>';
+    $product_feeds_rows .= pg_commerce_settings_switch('product_feed_' . $product_feeds_format, (bool) $product_feeds_entry['enabled'], $product_feeds_text['label'], $product_feeds_text['help'])
+        . $product_feeds_address . (($product_feeds_status !== '') ? '
+                    <div class="col-12">
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . $product_feeds_status . '</p>
+                    </div>' : '');
 }
 
 $product_feeds_notice = '';
@@ -792,57 +775,54 @@ foreach ($product_feeds_settings['formats'] as $commerce_feed) {
 }
 
 $commerce_parts['feeds'] = array('html' => '
-                        <div id="pgset-feeds" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Product Feeds') . '
-                                </div>
-                                <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="col-12">
-                                            <div class="form-text">' . lang('Publishes the products of your catalog as files that shopping platforms and AI shopping assistants read. Each feed has its own private address and is built again every day.') . '</div>' . (($product_feeds_notice !== '') ? '
-                                            <div class="form-text fg-warning">' . h($product_feeds_notice) . '</div>' : '') . '
-                                        </div>
-                                        ' . $product_feeds_rows . '
-                                        <div class="col-12 mb-0"><h3 class="pg-group-label mb-0">' . lang('Seller') . '</h3></div>
-                                        <div class="pg-f-md">
-                                            <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
-                                            <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '"/>
-                                            <div class="form-text">' . lang('The name shoppers see as the seller. The OpenAI feed needs it.') . '</div>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="product_feed_default_brand" class="form-label">' . lang('Brand for products without one') . '</label>
-                                            <input type="text" name="product_feed_default_brand" id="product_feed_default_brand" class="form-control" maxlength="255" value="' . h($product_feeds_settings['default_brand']) . '"/>
-                                            <div class="form-text">' . lang('Usually your own brand. The OpenAI feed leaves out a product with no brand.') . '</div>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label for="product_feed_seller_url" class="form-label">' . lang('Seller website') . '</label>
-                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label for="product_feed_privacy_policy_url" class="form-label">' . lang('Privacy policy address') . '</label>
-                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label for="product_feed_terms_url" class="form-label">' . lang('Terms of sale address') . '</label>
-                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
-                                            <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label' . (($product_feeds_group_options !== '') ? ' for="product_feed_excluded_groups"' : '') . ' class="form-label">' . lang('Leave out these product groups') . '</label>
-                                            ' . (($product_feeds_group_options !== '')
-                                                ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-control">' . $product_feeds_group_options . '</select>
-                                            <div class="form-text">' . lang('A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.') . '</div>'
-                                                : '<div class="form-text">' . lang('No catalog shows a product group yet.') . '</div>') . '
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-text mb-3">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
-                                            <button type="submit" name="product_feed_build" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
-                                        </div>' . $product_feeds_merchant . '
-                                   </div>
-                                </div>
-                            </div>
-                        </div>') + pg_commerce_fold_feeds($commerce_on, $product_feeds_ready, $commerce_feeds_on, $commerce_feeds_built, $commerce_feeds_count, time(), pg_time_format_code(), get_date_format_code());
+    <div id="pgset-feeds" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Product Feeds') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="col-12">
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('Publishes the products of your catalog as files that shopping platforms and AI shopping assistants read. Each feed has its own private address and is built again every day.') . '</p>' . (($product_feeds_notice !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-warning mb-0">' . h($product_feeds_notice) . '</p>' : '') . '
+                    </div>' . $product_feeds_rows . pg_commerce_settings_group(lang('Seller')) . '
+                    <div class="pg-f-md">
+                        <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
+                        <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '" aria-describedby="product_feed_seller_name_help"/>
+                        <div class="form-text" id="product_feed_seller_name_help">' . lang('The name shoppers see as the seller. The OpenAI feed needs it.') . '</div>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="product_feed_seller_url" class="form-label">' . lang('Seller website') . '</label>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="product_feed_privacy_policy_url" class="form-label">' . lang('Privacy policy address') . '</label>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="product_feed_terms_url" class="form-label">' . lang('Terms of sale address') . '</label>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://" aria-describedby="product_feed_terms_url_help"/>
+                        <div class="form-text" id="product_feed_terms_url_help">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
+                    </div>' . pg_commerce_settings_group(lang('Products')) . '
+                    <div class="pg-f-md">
+                        <label for="product_feed_default_brand" class="form-label">' . lang('Brand for products without one') . '</label>
+                        <input type="text" name="product_feed_default_brand" id="product_feed_default_brand" class="form-control" maxlength="255" value="' . h($product_feeds_settings['default_brand']) . '" aria-describedby="product_feed_default_brand_help"/>
+                        <div class="form-text" id="product_feed_default_brand_help">' . lang('Usually your own brand. The OpenAI feed leaves out a product with no brand.') . '</div>
+                    </div>' . ($product_feeds_groups
+                        ? pg_commerce_settings_group_ticks('product_feed_excluded_groups', lang('Leave out these product groups'), $product_feeds_groups, $product_feeds_settings['excluded_group_ids'], lang('A product in a ticked group, or in a group under it, is in no feed.'), lang('Filter groups'))
+                        : '
+                    <div class="col-12">
+                        <p class="form-label pg-field-label mb-1">' . lang('Leave out these product groups') . '</p>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('No catalog shows a product group yet.') . '</p>
+                    </div>') . '
+                    <div class="col-12">
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-3">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</p>
+                        <button type="submit" name="product_feed_build" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
+                    </div>' . $product_feeds_merchant . '
+                </div>
+            </div>
+        </div>
+    </div>') + pg_commerce_fold_feeds($commerce_on, $product_feeds_ready, $commerce_feeds_on, $commerce_feeds_built, $commerce_feeds_count, time(), pg_time_format_code(), get_date_format_code());
 
 // ── The rows ──
 $commerce_rows = array();

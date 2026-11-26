@@ -12105,6 +12105,7 @@
     "Turn on kiosk mode": "Kiosk modunu aç",
     "Turn on kiosk mode in this browser? You will be signed out after a time without activity.": "Bu tarayıcıda kiosk modu açılsın mı? Bir süre işlem yapılmazsa oturumunuz kapatılır.",
     "Turn on the Gmail API in the same Google Cloud project; answers are sent through it: {var:1}.": "Aynı Google Cloud projesinde Gmail API'yi açın; yanıtlar onunla gönderilir: {var:1}.",
+    "Turn on the affiliate programme": "Ortaklık programını aç",
     "Turn on the firewall": "Güvenlik duvarını aç",
     "Turn on the form fields the search should match.": "Aramada eşleştirilecek form alanlarını açın.",
     "Turn on the referral programme": "Arkadaş davet programını aç",

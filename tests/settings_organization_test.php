@@ -160,13 +160,13 @@ function test_settings_organization_general_save_writes_the_same_columns()
 function test_settings_organization_affiliate_address_named_apart()
 {
 	$card = settings_organization_test_card('includes/settings/commerce.php', 'pgset-affiliate');
-	pg_assert_contains('<label for="affiliate_email_address" class="form-label">\' . lang(\'Affiliate Program E-mail Address\') . \'</label>', $card, 'the affiliate field has its own name');
+	pg_assert_contains('<label for="affiliate_email_address" class="form-label">\' . lang(\'Affiliate programme e-mail address\') . \'</label>', $card, 'the affiliate field has its own name');
 	pg_assert_contains('name="affiliate_email_address"', $card, 'same post name');
 	pg_assert_false(strpos($card, 'Support E-mail Address') !== false, 'no second Support E-mail Address');
 	pg_assert_contains("affiliate_email_address = '\" . escape(post_value('affiliate_email_address')) . \"',", settings_organization_test_source('includes/settings/commerce.save.php'), 'same column and save');
 
 	$tr = json_decode(settings_organization_test_source('includes/local/tr/a.json'), true);
-	pg_assert_same('Ortaklık Programı E-posta Adresi', $tr['Affiliate Program E-mail Address'] ?? null, 'translated');
+	pg_assert_same('Ortaklık programı e-posta adresi', $tr['Affiliate programme e-mail address'] ?? null, 'translated');
 }
 
 function test_settings_organization_erp_settings_names_organization()
