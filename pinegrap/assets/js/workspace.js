@@ -12044,6 +12044,11 @@
                 self.hasMore = data.has_more;
                 self.tab = (self.pendingTab && !messageId) ? self.pendingTab : 'messages';
                 self.pendingTab = null;
+
+                // ?view=board opens the Board view, whatever view the
+                // browser kept; ?view=list and ?view=tasks come as the Tasks
+                // tab and open the List view in drawCenter().
+                self.boardView = (self.tab === 'board') ? 'board' : '';
                 self.drawCenter();
                 self.drawSide();
 

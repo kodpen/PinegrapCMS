@@ -99,3 +99,12 @@ function test_workspace_channel_board_tab_nobody_column_takes_everybody_off()
 	// person's column on "Nobody yet" loses both, not only the column's one.
 	pg_assert_contains("var people = (to.drop > 0) ? item.assignees.map(", $js, 'Nobody yet takes every person off the task');
 }
+
+function test_workspace_channel_board_tab_board_address_opens_the_board()
+{
+	$js = workspace_channel_board_tab_js('workspace.js');
+
+	// ?view=board opens the Board view even when List is the view kept in
+	// the browser, as ?view=list opens the List view.
+	pg_assert_contains("self.boardView = (self.tab === 'board') ? 'board' : '';", $js, 'the board asked for in the address is the view opened');
+}
