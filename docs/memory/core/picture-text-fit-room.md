@@ -5,7 +5,7 @@ module: picture_server_draw
 ---
 
 ## What does a translated text do now?
-- It grows into its room at the source's size; it shrinks only past the room, never under its floor (`M.languageFloor()`, `picture-text-translation-fit-letters.md`), and under the floor it is drawn there and marked "Look by hand" (`fit` 1), as before. Owner's order (2026-11-26, poll 229): grow, wrap, shrink (`plans/picture-text-fit-rules.md`). The wrap is not built yet (step PF2).
+- It grows into its room at the source's size; it shrinks only past the room, never under its floor (`M.languageFloor()`, `picture-text-translation-fit-letters.md`), and under the floor it is drawn there and marked "Look by hand" (`fit` 1), as before. Owner's order (2026-11-26, poll 229): grow, wrap, shrink (`plans/picture-text-fit-rules.md`). Wider than the room it is wrapped between words first (`picture-text-fit-wrap.md`).
 - `M.languageFitted(put, layout, board)` (`assets/js/pg_image_editor_model.js`) runs the loop for the editor's `drawLanguage()`; `pg_picture_tr_language_fitted()` is its server twin. All rooms are read before any text moves.
 
 ## How is the room read?
@@ -23,5 +23,5 @@ module: picture_server_draw
 
 ## How is it tested and measured?
 - `tests/picture_text_fit_test.php` on `tests/fixtures/picture_language/room.json` (20 cases: the owner's three, four edges, side by side, stacked, a headline over a line, a card, turned texts, a sticker, layers not read, no size) with a stub layout, PHP and Node within 0.011.
-- `measure.json`: 24 layouts, each with translations 1.0, 1.3, 1.6, 2.0, 2.5 times its width. "Look by hand" before and after: 0/0, 0/0, 4/0, 8/0, 24/2 (36 of 120 before, 2 after). The test holds no text smaller than the old rule and fewer marks.
+- `measure.json`: 24 layouts, each with translations 1.0, 1.3, 1.6, 2.0, 2.5 times its width. "Look by hand" before the room and with the growth alone: 0/0, 0/0, 4/0, 8/0, 24/2 (36 of 120, then 2); with the wrap 0 (`picture-text-fit-wrap.md`). The test holds no text smaller than the old rule and fewer marks.
 - `tests/picture_translation_server_test.php`'s fit test uses a document with no size for the old rule.
