@@ -517,8 +517,11 @@ function code_editor_test_minimap_node($script)
 	}
 
 	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
-	$from = strpos($facade, '    function _minimapExtension(');
-	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+	// From the quiet time over the wrapper of the bundle's plugin to the end
+	// of _minimapExtension().
+	$from = strpos($facade, '    var MINIMAP_QUIET_MS');
+	$end = ($from !== false) ? strpos($facade, '    function _minimapExtension(', $from) : false;
+	$to = ($end !== false) ? strpos($facade, "\n    }\n", $end) : false;
 
 	if ($to === false) {
 		return array('error' => '_minimapExtension() was not found');
@@ -568,6 +571,56 @@ function test_code_editor_minimap_extension()
 	pg_assert_true($result['bundled'], 'the bundle exports PgCM.minimap');
 	pg_assert_same(array('create' => 'function', 'text' => 'blocks', 'overlay' => 'mouse-over'), $result['on'], 'minimap on');
 	pg_assert_same(null, $result['off'], 'minimap off');
+}
+
+// The minimap's plugin is wrapped once: its colour and font reads are kept
+// until the theme changes, and it draws once after typing or a resize
+// pauses, not inside every update (about 45 style recalculations a key in
+// the designer before).
+function test_code_editor_minimap_draws_after_a_pause()
+{
+	$result = code_editor_test_minimap_node(
+		'var cm = window.PgCM;' . "\n"
+		. 'var theme = "light"; global.document = { documentElement: { getAttribute: function () { return theme; } } };' . "\n"
+		. 'var frames = []; global.requestAnimationFrame = function (f) { frames.push(f); return frames.length; }; global.cancelAnimationFrame = function (id) { frames[id - 1] = null; };' . "\n"
+		. 'function creates() { var list = []; (function walk(x) { if (Array.isArray(x)) return x.forEach(walk); if (x instanceof cm.view.ViewPlugin) list.push(x.create); })(cm.minimap.showMinimap.extensions); return list; }' . "\n"
+		. '_minimapExtension(cm, true); var first = creates(); _minimapExtension(cm, true);' . "\n"
+		. 'var wrapped = first.filter(function (f) { return /_minimapTameInstance/.test(String(f)); }).length;' . "\n"
+		. 'var again = creates().every(function (f, i) { return f === first[i]; });' . "\n"
+		. 'var draws = 0, cleared = 0, updates = 0, destroyed = 0;' . "\n"
+		. 'var view = { dom: { className: "cm-editor cm-light" } };' . "\n"
+		. 'var p = { text: { _fontInfoMap: { clear: function () { cleared++; } }, beforeDraw: function () { this._fontInfoMap.clear(); } },' . "\n"
+		. '  render: function () { this.text.beforeDraw(); draws++; }, update: function (u) { updates++; this.render(); }, destroy: function () { destroyed++; } };' . "\n"
+		. 'p = _minimapTameInstance(p, view);' . "\n"
+		. 'var out = { wrapped: wrapped, again: again };' . "\n"
+		. 'for (var i = 0; i < 5; i++) p.update({ docChanged: true });' . "\n"
+		. 'out.whileTyping = draws; out.updates = updates;' . "\n"
+		. 'setTimeout(function () {' . "\n"
+		. '  out.afterPause = draws;' . "\n"
+		. '  p.update({ selectionSet: true }); p.render(); out.queuedFrames = frames.filter(Boolean).length; frames.forEach(function (f) { if (f) f(); }); frames = [];' . "\n"
+		. '  out.afterFrame = draws; out.cleared = cleared;' . "\n"
+		. '  view.dom.className = "cm-editor cm-dark"; p.render(); frames.forEach(function (f) { if (f) f(); }); frames = []; out.clearedOnTheme = cleared;' . "\n"
+		. '  p.update({ geometryChanged: true }); p.destroy();' . "\n"
+		. '  setTimeout(function () { out.afterDestroy = draws; out.destroyed = destroyed; console.log(JSON.stringify(out)); }, MINIMAP_QUIET_MS + 50);' . "\n"
+		. '}, MINIMAP_QUIET_MS + 50);'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(2, $result['wrapped'], 'both plugins of the facet are wrapped (the overlay has no render() and comes back as it is)');
+	pg_assert_true($result['again'], 'a second editor wraps nothing again');
+	pg_assert_same(5, $result['updates'], 'every update still reaches the plugin');
+	pg_assert_same(0, $result['whileTyping'], 'no draw while typing');
+	pg_assert_same(1, $result['afterPause'], 'one draw after the pause');
+	pg_assert_same(1, $result['queuedFrames'], 'a selection and a scroll share one frame');
+	pg_assert_same(2, $result['afterFrame'], 'and draw on it');
+	pg_assert_same(1, $result['cleared'], 'the font reads are kept between draws');
+	pg_assert_same(2, $result['clearedOnTheme'], 'and read again when the theme changes');
+	pg_assert_same(3, $result['afterDestroy'], 'nothing draws after destroy');
+	pg_assert_same(1, $result['destroyed'], 'the plugin\'s own destroy runs');
 }
 
 // The option is opt-in per editor, with a page default from configure(), and
