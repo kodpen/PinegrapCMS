@@ -5,13 +5,16 @@ module: designer_preview_render
 ---
 
 ## What reads the chosen visitor?
-- `pg_preview_as_viewer()` in `designer_preview_render.php`: `{preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name}`. Outside a Preview widget: the request's `USER_` constants. Inside: signed out (nobody), signed in (the sample account, id 0, role 3), member (signed in and a member). First visit and returning are step PW2d.
+- `pg_preview_as_viewer()` in `designer_preview_render.php`: `{preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name}`. Outside a Preview widget: the request's `USER_` constants. Inside: signed out (nobody), signed in (the sample account, id 0, role 3), member (signed in and a member), first visit and returning (signed out; `returning` true only for Returning, PW2d #11746). Outside, `returning` is the `pg_ret` cookie's answer (`pg_audience_returning()`).
 - `pg_preview_as_view_access($folder, $grant)` stands for `check_view_access()` in every widget renderer; inside a Preview the rule is `pg_preview_as_view_rule()`: public for all, guest and registration signed in or with `$grant`, membership and private for the member only.
 - `_pg_acct_signed_in()` and `_pg_member_session_signed_in()` (the "already signed in" branch of login, forgot password, sign-up) answer the viewer's `signed_in` in a Preview.
 
 ## Which renderers read it?
 - Signed in or out: the account family (logout, change password, profile, e-mail preferences, address book, my account and its extras, the login region with its staff and panel links), form list's viewer filter, `pg_sw_submitted_form_visible()`, the search's folder narrowing, comments and recent comments, the menu's and gallery's folder checks, billing, shipping address, express order, cart, booking, catalog's back-in-stock e-mail, folder view's start page.
 - The login region and the comments widget were drawn signed out in every background render; in a Preview they now draw the chosen visitor, still with no session, token or form state (`audience['session']` stays false).
+
+## What do the audience conditions read?
+- `pg_audience_value()` asks `pg_preview_as_audience_value($kind, pg_preview_as_viewer())` first while a Preview widget is drawn, before the background rule and outside its cache: returning from the chosen case, never the cookie; member from the chosen member; every other kind '' (no group for the sample account; the operator's country, device, UTM, experiment are no visitor's). No cookie is set (PW2d, #11746).
 
 ## What does the sample account draw?
 - `pg_preview_as_sample_account()`: the canvas's Alex Morgan (`lang('Alex Morgan')` split as the canvas splits it), its contact row in `contacts` columns, two address book recipients (Sam Carter's studio first). `pg_preview_as_sample_recipient($name)` finds one.

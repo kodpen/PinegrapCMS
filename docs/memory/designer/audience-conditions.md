@@ -8,6 +8,7 @@ module: page_audience
 - A page condition ([[page-conditions]]) outside any widget, with the tokens of `includes/fn/page_audience.php`: `__audience_returning`, `__audience_country` (two capitals, `pg_geo_country_code()`), `__audience_device` (`phone`, `tablet`, `desktop` from the user agent, `pg_audience_device()`), `__audience_utm_source`, `__audience_utm_campaign` (the request's parameter, else the session's from visitor tracking), `__audience_member` (`USER_MEMBER`), `__audience_group_<id>` (the signed-in contact in `contacts_contact_groups_xref`, any source, so a dynamic group of `core/audiences-rules.md` works as it is), `__audience_experiment_<id>` (the variant key in `pg_exp`).
 - Signed in is the existing `__visit_signed_in`; no second name.
 - The plan's `{audience:...}` became tokens: bindings take `[a-z0-9_]` only; the condition markers, operators and twin evaluator are reused.
+- In a widget of the designer's Preview the values come from the chosen visitor, not the request (`pg_preview_as_audience_value()`, `designer-preview-as-viewer.md`).
 - Values are read only for the tokens the page's spans name (`pg_audience_values_for()`); a page drawn for no visit (e-mail, index, SEO score) reads ''.
 
 ## How is a returning visitor told?
