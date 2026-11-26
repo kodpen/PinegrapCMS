@@ -280,6 +280,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail_webhook`: [[mail-transport-webhooks]]
 - `mailchimp_key`: [[mailchimp-key-kept]]
 - `mailchimp_settings`: [[connections-mailchimp-page]]
+- `maintenance_settings_fold`: [[settings-maintenance]]
 - `markdown`: [[markdown-component]]
 - `marketplace_pricing`: [[marketplace-channel-price]]
 - `marketplace_pricing_settings`: [[marketplace-pricing-tab]]

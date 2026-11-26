@@ -421,6 +421,7 @@
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
 - design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down [decision: decisions-made-product-110.md]
+- designer-use-round-component-overrides.md: Use round UR5 (PR #11853): a shared component's fields per place and its variants used in a browser; the eight faults fixed, what was left and what could not be run
 - designer-use-round-design-variables.md: Designer use round UR1 (#11835): design variables used in a browser as a first-time person; faults found, fixed and left
 - designer-use-round-library-document-guides-focus.md: Use round UR7 (PR #11856): My library, a page from a document, canvas guides and a picture's focus point used in a browser; the eight fixes, what was left and what could not be run
 - designer-use-round-new-design.md: Use round UR2 (PR #11839): the New design window used in a browser; what was found, the eight fixes, what was left and what could not be run
