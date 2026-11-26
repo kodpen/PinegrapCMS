@@ -91,3 +91,14 @@ function test_api_app_agent_view_return_saves_the_agent()
 	pg_assert_contains('e.target.closest("#d_agent")', $script, 'in the AI agent tab only');
 	pg_assert_contains('document.getElementById("da_save").click()', $script, 'the agent\'s own button posts');
 }
+
+// The sheet's Agent name follows Application name until it is typed in. It
+// was copied when the card was picked in step 1, before Application name
+// (step 2) held anything, so Create refused the agent for a missing name.
+function test_api_app_agent_view_sheet_name_follows_the_application_name()
+{
+	$script = api_app_agent_script(array(), 0);
+
+	pg_assert_contains('e.target.id === "n_name"', $script, 'Application name is followed as it is typed');
+	pg_assert_contains('dataset.agentTyped', $script, 'a name typed for the agent is kept');
+}

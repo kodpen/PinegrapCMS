@@ -404,6 +404,15 @@ function api_app_agent_script($data, $back_id) {
 		if (!save.hidden) { document.getElementById("da_save").click(); }
 	});
 
+	// The sheet\'s Agent name follows Application name (step 2) until a name
+	// is typed for the agent itself.
+	document.addEventListener("input", function (e) {
+		var agentName = document.getElementById("na_name");
+		if (!agentName) { return; }
+		if (e.target === agentName) { agentName.dataset.agentTyped = (agentName.value !== "") ? "1" : ""; return; }
+		if (e.target.id === "n_name" && !agentName.dataset.agentTyped) { agentName.value = e.target.value.slice(0, 100); }
+	});
+
 	document.addEventListener("input", function (e) {
 		if (!e.target.hasAttribute("data-agent-search")) { return; }
 		var words = e.target.value.trim().toLowerCase();
