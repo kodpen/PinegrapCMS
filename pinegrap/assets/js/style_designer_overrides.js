@@ -173,12 +173,23 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // ── The list of an element's fields ──────────────────────────────────
 
-    function closePop() {
-        if (state.pop) state.pop.remove();
+    // Closes the list. A label typed and not yet left is kept (a click
+    // outside, another list opened), since removing its field fires no
+    // change; `discard` (Escape) drops it.
+    function closePop(discard) {
+        var pop = state.pop, node = state.popNode, sid = state.popSid;
         state.pop = null;
         state.popNode = null;
         state.opener = null;
         document.removeEventListener('mousedown', onOutside, true);
+        if (!pop) return;
+        var typed = discard === true ? [] : Array.prototype.filter.call(pop.querySelectorAll('[data-co-label]'), function (inp) {
+            return inp.value !== inp.defaultValue;
+        });
+        pop.remove();
+        typed.forEach(function (inp) {
+            if (node) setLabel(node, sid, inp.getAttribute('data-co-label'), inp.value);
+        });
     }
 
     function onOutside(e) {
@@ -292,7 +303,7 @@ StyleDesigner.definePart('overrides', function (K) {
                 return;
             }
             kind = t.getAttribute('data-co-label');
-            if (kind) setLabel(state.popNode, state.popSid, kind, t.value);
+            if (kind && state.popNode) setLabel(state.popNode, state.popSid, kind, t.value);
         });
         pop.addEventListener('click', function (e) {
             if (!e.target.closest('[data-co-got]')) return;
@@ -305,7 +316,7 @@ StyleDesigner.definePart('overrides', function (K) {
                 e.preventDefault();
                 e.stopPropagation();
                 var back = state.opener;
-                closePop();
+                closePop(true);
                 // Back to what opened the list; the element's three-dot
                 // button when that was redrawn meanwhile.
                 if (!(back && back !== document.body && back.isConnected && back.focus && back.getClientRects().length)) back = document.getElementById('sd-id-more');

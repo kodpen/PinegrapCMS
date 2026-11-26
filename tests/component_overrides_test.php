@@ -311,3 +311,38 @@ function test_component_overrides_hidden_element_keeps_its_fields_from_a_copy()
 	}
 	pg_assert_same($out, $js, 'the twin draws the same');
 }
+
+// A label typed in the list of an element's fields is kept when the list is
+// closed before the field is left (a click outside removes it, and a removed
+// field fires no change); Escape drops it.
+function test_component_overrides_list_keeps_a_typed_label_on_close()
+{
+	$code = "var StyleDesigner = { definePart: function (n, f) { part = f(kit); } }, part = null;\n"
+		. "var comp = {_id: 'c', type: 'root', props: {}, children: [{_id: 'b', type: 'content', props: {contentType: 'button', text: 'Shop', href: '/s',\n"
+		. " _open: [{id: 'of_t', kind: 'text', label: 'b'}]}, children: []}]};\n"
+		. "var label = { value: '', defaultValue: 'b', getAttribute: function (a) { return a === 'data-co-label' ? 'text' : null; } };\n"
+		. "var listeners = {}, pop = { setAttribute: function () {}, offsetWidth: 300, offsetHeight: 200, style: {}, set innerHTML(v) {},\n"
+		. " addEventListener: function (t, f) { listeners[t] = f; }, querySelector: function () { return null; },\n"
+		. " querySelectorAll: function (s) { return /data-co-label/.test(s) ? [label] : []; }, contains: function () { return true; }, remove: function () {} };\n"
+		. "window.innerWidth = 1200; window.innerHeight = 800;\n"
+		. "var document = { createElement: function () { return pop; }, body: { appendChild: function () {} }, activeElement: label,\n"
+		. " addEventListener: function () {}, removeEventListener: function () {}, getElementById: function () { return null; } };\n"
+		. "var kit = { _sdT: function (k) { return k; }, esc: String, getNodeLabel: function (n) { return n._id; }, sharedCache: {5: {tree: comp}},\n"
+		. " _resolveSharedSid: function () { return 5; }, _sdCoWrite: function (sid, fn) { fn(); }, _sdTipsOff: function () { return true; } };\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_overrides.js') . "\n"
+		. "var entry = comp.children[0].props._open[0];\n"
+		. "part.openFor(comp.children[0], null); label.value = 'Dish name'; part.close();\n"
+		. "out = { kept: entry.label };\n"
+		. "part.openFor(comp.children[0], null); label.value = 'Other';\n"
+		. "listeners.keydown({ key: 'Escape', target: label, preventDefault: function () {}, stopPropagation: function () {} });\n"
+		. "out.escape = entry.label;\n"
+		. "part.openFor(comp.children[0], null); label.value = 'Again'; listeners.change({ target: label }); part.close();\n"
+		. "out.once = entry.label;";
+	$js = component_overrides_test_node($code);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same('Dish name', $js['kept'], 'a click outside keeps the typed label');
+	pg_assert_same('Dish name', $js['escape'], 'Escape drops what was typed');
+	pg_assert_same('Again', $js['once'], 'a label already kept by its change is kept once');
+}
