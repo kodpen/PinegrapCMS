@@ -1,6 +1,6 @@
 ---
 name: designer-cleanup-window
-description: The designer's "Clean up" window as built (CU2): what opens it, the four lists and what each counts as unused, "Show", the states, the endpoint and the part
+description: The designer's "Clean up" window as built (#11668): what opens it, the four lists and what each counts as unused, "Show", the states, the endpoint and the part
 module: design_cleanup_list
 ---
 
