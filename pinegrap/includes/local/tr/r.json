@@ -2110,6 +2110,7 @@
     "Reward points conversion form (hidden when the member cannot convert)": "Ödül puanı dönüştürme formu (üye dönüştüremiyorsa gizlenir)",
     "Reward points of order #{var:1} taken back: {var:2} points off the balance, {var:3} off the store credit.": "#{var:1} numaralı siparişin ödül puanları geri alındı: bakiyeden {var:2} puan, mağaza kredisinden {var:3}.",
     "Reward points: {var:1}": "Ödül puanları: {var:1}",
+    "Reward program": "Ödül programı",
     "Rewarded": "Ödüllendirildi",
     "Rewards": "Ödüller",
     "Rewards a month per customer": "Müşteri başına aylık ödül",

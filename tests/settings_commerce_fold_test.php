@@ -202,19 +202,27 @@ function test_settings_commerce_fold_pane_is_rows()
 	}
 }
 
+// A field drawn in a card's source: written by hand, or a switch drawn by
+// pg_commerce_settings_switch() / _group_switch() named in its first argument.
+function settings_commerce_fold_test_drawn($name, $html)
+{
+	return (strpos($html, 'name="' . $name . '"') !== false)
+		|| (preg_match("/pg_commerce_settings_(group_)?switch\\('" . preg_quote($name, '/') . "'/", $html) === 1);
+}
+
 function test_settings_commerce_fold_gift_cards_and_rewards_apart()
 {
 	$gift = settings_commerce_fold_test_card('pgset-giftcards');
 	$rewards = settings_commerce_fold_test_card('pgset-rewards');
 
 	foreach (array('ecommerce_gift_card', 'ecommerce_gift_card_validity_days', 'ecommerce_givex', 'credit_refund_bonus') as $name) {
-		pg_assert_contains('name="' . $name . '"', $gift, $name . ' stays in Gift cards');
-		pg_assert_false(strpos($rewards, 'name="' . $name . '"') !== false, $name . ' is not in Rewards');
+		pg_assert_true(settings_commerce_fold_test_drawn($name, $gift), $name . ' stays in Gift cards');
+		pg_assert_false(settings_commerce_fold_test_drawn($name, $rewards), $name . ' is not in Rewards');
 	}
 
 	foreach (array('ecommerce_reward_program', 'ecommerce_reward_program_points', 'credit_points_per_unit', 'credit_points_smallest', 'ecommerce_reward_program_membership', 'ecommerce_reward_program_membership_days', 'ecommerce_reward_program_email', 'ecommerce_reward_program_email_bcc_email_address', 'ecommerce_reward_program_email_subject') as $name) {
-		pg_assert_contains('name="' . $name . '"', $rewards, $name . ' is in Rewards');
-		pg_assert_false(strpos($gift, 'name="' . $name . '"') !== false, $name . ' left Gift cards');
+		pg_assert_true(settings_commerce_fold_test_drawn($name, $rewards), $name . ' is in Rewards');
+		pg_assert_false(settings_commerce_fold_test_drawn($name, $gift), $name . ' left Gift cards');
 	}
 
 	pg_assert_contains("'ecommerce_reward_program_email_page_id'", $rewards, 'the e-mail page is in Rewards');
@@ -254,8 +262,10 @@ function test_settings_commerce_fold_names_stay()
 	foreach (array('ecommerce', 'ecommerce_next_order_number', 'ecommerce_tax_exempt_label', 'ecommerce_payment_gateway', 'ecommerce_offline_payment', 'ecommerce_recipient_mode', 'ecommerce_reference_price_rule', 'affiliate_program', 'referral_on', 'product_feed_seller_name') as $name) {
 		// A switch is drawn by pg_commerce_settings_switch() or
 		// pg_commerce_settings_group_switch(), named in their first argument;
-		// a choice by pg_commerce_settings_seg(), named in its second.
+		// a choice by pg_commerce_settings_seg(), named in its second, or by
+		// pg_commerce_settings_choice(), named in its first.
 		$drawn = (strpos($pane, 'name="' . $name . '"') !== false) || (preg_match("/pg_commerce_settings_(group_)?switch\\('" . preg_quote($name, '/') . "'/", $pane) === 1)
+			|| (strpos($pane, "pg_commerce_settings_choice('" . $name . "'") !== false)
 			|| (preg_match("/pg_commerce_settings_seg\\([^\n]*?, '" . preg_quote($name, '/') . "',/", $pane) === 1);
 		pg_assert_true($drawn, $name . ' posts under its name');
 	}

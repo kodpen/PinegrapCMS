@@ -320,50 +320,26 @@ $commerce_parts['giftcards'] = array('html' => '
                 ' . lang('Gift cards') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
-                    <div class="col-12">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_gift_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_gift_card" name="ecommerce_gift_card" data-bs-target="#ecommerce_gift_card_row"/></div>
-                                                                <label class="" for="ecommerce_gift_card">' . lang('Accept Gift Cards') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_gift_card_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="pg-f-xs">
-                                                                            <label for="ecommerce_gift_card_validity_days" class="form-label">' . lang('Validity Length') . '</label>
-                                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                                <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost text-end" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" />
-                                                                            </label>
-                                                                            <div class="form-text">' . lang('leave blank for no expiration') . '</div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_givex_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_givex" name="ecommerce_givex" data-bs-target="#ecommerce_givex_row"/></div>
-                                                                                <label class="" for="ecommerce_givex">' . lang('Accept Givex Cards') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_givex_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Requires Givex service') . '</div>' . pg_payment_method_connection_html('givex', $ecommerce_method_connection_stored) . '
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="pg-f-xs">
-                                                            <label for="credit_refund_bonus" class="form-label">' . lang('Bonus on refunds given as store credit') . '</label>
-                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                <input value="' . h($credit_refund_bonus) . '" type="text" name="credit_refund_bonus" id="credit_refund_bonus" class="form-ghost text-end" size="6" maxlength="6" inputmode="decimal" />
-                                                            </label>
-                                                            <div class="form-text">(' . lang('leave blank for no bonus') . ')</div>
-                                                        </div>
+                <div class="row gy-5">' . pg_commerce_settings_switch('ecommerce_gift_card', $ecommerce_gift_card_checked !== '', lang('Accept gift cards')) . '
+                    <div class="pg-f-xs">
+                        <label for="ecommerce_gift_card_validity_days" class="form-label">' . lang('Validity length') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                            <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost text-end" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" aria-describedby="ecommerce_gift_card_validity_days_help"/>
+                        </label>
+                        <div class="form-text" id="ecommerce_gift_card_validity_days_help">' . lang('Leave blank for no expiry.') . '</div>
+                    </div>'
+                    . pg_commerce_settings_group_switch('ecommerce_givex', $ecommerce_givex_checked !== '', lang('Accept Givex cards'))
+                    . pg_payment_method_connection_html('givex', $ecommerce_method_connection_stored)
+                    . pg_commerce_settings_group(lang('Store credit')) . '
+                    <div class="pg-f-xs">
+                        <label for="credit_refund_bonus" class="form-label">' . lang('Bonus on refunds given as store credit') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                            <input value="' . h($credit_refund_bonus) . '" type="text" name="credit_refund_bonus" id="credit_refund_bonus" class="form-ghost text-end" size="6" maxlength="6" inputmode="decimal" aria-describedby="credit_refund_bonus_help"/>
+                        </label>
+                        <div class="form-text" id="credit_refund_bonus_help">' . lang('Leave blank for no bonus.') . '</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -379,87 +355,50 @@ $commerce_parts['rewards'] = array('html' => '
                 ' . lang('Rewards') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $ecommerce_reward_program_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program" name="ecommerce_reward_program" data-bs-target="#ecommerce_reward_program_row"/></div>
-                                                                <label class="" for="ecommerce_reward_program">' . lang('Enable Reward Program') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="ecommerce_reward_program_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="pg-f-xs">
-                                                                            <label for="ecommerce_reward_program_points" class="form-label">' . lang('Goal') . '</label>
-                                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
-                                                                                <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-ghost text-end" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
-                                                                            </label>
-                                                                        </div>
-                                                                        <div class="pg-f-xs">
-                                                                            <label for="credit_points_per_unit" class="form-label">' . lang('Points per unit of store credit') . '</label>
-                                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
-                                                                                <input value="' . h($credit_points_per_unit) . '" type="text" name="credit_points_per_unit" id="credit_points_per_unit" class="form-ghost text-end" size="8" maxlength="12" inputmode="decimal" />
-                                                                            </label>
-                                                                            <div class="form-text">(' . lang('leave blank to keep points from turning into store credit') . ')</div>
-                                                                        </div>
-                                                                        <div class="pg-f-xs">
-                                                                            <label for="credit_points_smallest" class="form-label">' . lang('Smallest conversion') . '</label>
-                                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                                <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
-                                                                                <input value="' . h($credit_points_smallest) . '" type="text" name="credit_points_smallest" id="credit_points_smallest" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
-                                                                            </label>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_reward_program_membership_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program_membership" name="ecommerce_reward_program_membership" data-bs-target="#ecommerce_reward_program_membership_row"/></div>
-                                                                                <label class="" for="ecommerce_reward_program_membership">' . lang('Grant Membership') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_reward_program_membership_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <div class="pg-f-xs">
-                                                                                            <label for="ecommerce_reward_program_membership_days" class="form-label">' . lang('Membership Length') . '</label>
-                                                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                                                <input value="' . $ecommerce_reward_program_membership_days . '" type="text" name="ecommerce_reward_program_membership_days" id="ecommerce_reward_program_membership_days" class="form-ghost text-end" size="5" maxlength="5" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
-                                                                                            </label>
-                                                                                            <div class="form-text">(' . lang('leave blank for lifetime membership') . ')</div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_reward_program_email_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program_email" name="ecommerce_reward_program_email" data-bs-target="#ecommerce_reward_program_email_row"/></div>
-                                                                                <label class="" for="ecommerce_reward_program_email">' . lang('Send E-mail') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="ecommerce_reward_program_email_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <div class="pg-f-md">
-                                                                                            <label class="form-label" for="ecommerce_reward_program_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
-                                                                                            <input type="text" value="' . h($ecommerce_reward_program_email_bcc_email_address) . '" class="form-control" id="ecommerce_reward_program_email_bcc_email_address" name="ecommerce_reward_program_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label class="form-label" for="ecommerce_reward_program_email_subject">' . lang('Subject') . '</label>
-                                                                                            <input type="text" value="' . h($ecommerce_reward_program_email_subject) . '" id="ecommerce_reward_program_email_subject" name="ecommerce_reward_program_email_subject" class="form-control" maxlength="255" >
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label class="form-label" for="ecommerce_reward_program_email_page_id">' . lang('Page') . '</label>
-                                                                                            ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                <div class="row gy-5">' . pg_commerce_settings_switch('ecommerce_reward_program', $ecommerce_reward_program_checked !== '', lang('Reward program')) . '
+                    <div class="pg-f-xs">
+                        <label for="ecommerce_reward_program_points" class="form-label">' . lang('Goal') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
+                            <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-ghost text-end" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
+                        </label>
+                    </div>
+                    <div class="pg-f-xs">
+                        <label for="credit_points_per_unit" class="form-label">' . lang('Points per unit of store credit') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
+                            <input value="' . h($credit_points_per_unit) . '" type="text" name="credit_points_per_unit" id="credit_points_per_unit" class="form-ghost text-end" size="8" maxlength="12" inputmode="decimal" aria-describedby="credit_points_per_unit_help"/>
+                        </label>
+                        <div class="form-text" id="credit_points_per_unit_help">' . lang('Leave blank to keep points from turning into store credit.') . '</div>
+                    </div>
+                    <div class="pg-f-xs">
+                        <label for="credit_points_smallest" class="form-label">' . lang('Smallest conversion') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
+                            <input value="' . h($credit_points_smallest) . '" type="text" name="credit_points_smallest" id="credit_points_smallest" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
+                        </label>
+                    </div>' . pg_commerce_settings_group(lang('When the goal is reached'))
+                    . pg_commerce_settings_switch('ecommerce_reward_program_membership', $ecommerce_reward_program_membership_checked !== '', lang('Grant membership')) . '
+                    <div class="pg-f-xs">
+                        <label for="ecommerce_reward_program_membership_days" class="form-label">' . lang('Membership length') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                            <input value="' . $ecommerce_reward_program_membership_days . '" type="text" name="ecommerce_reward_program_membership_days" id="ecommerce_reward_program_membership_days" class="form-ghost text-end" size="5" maxlength="5" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-describedby="ecommerce_reward_program_membership_days_help"/>
+                        </label>
+                        <div class="form-text" id="ecommerce_reward_program_membership_days_help">' . lang('Leave blank for lifetime membership.') . '</div>
+                    </div>'
+                    . pg_commerce_settings_switch('ecommerce_reward_program_email', $ecommerce_reward_program_email_checked !== '', lang('Send e-mail')) . '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="ecommerce_reward_program_email_bcc_email_address">' . lang('BCC e-mail address') . '</label>
+                        <input type="text" value="' . h($ecommerce_reward_program_email_bcc_email_address) . '" class="form-control" id="ecommerce_reward_program_email_bcc_email_address" name="ecommerce_reward_program_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="ecommerce_reward_program_email_subject">' . lang('Subject') . '</label>
+                        <input type="text" value="' . h($ecommerce_reward_program_email_subject) . '" id="ecommerce_reward_program_email_subject" name="ecommerce_reward_program_email_subject" class="form-control" maxlength="255"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="ecommerce_reward_program_email_page_id">' . lang('Page') . '</label>
+                        ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                     </div>
                 </div>
             </div>
@@ -626,21 +565,14 @@ $commerce_parts['payments'] = array('html' => '
 // (pg_price_reference_rule()). Drawn once the schema has its column; the save
 // writes it only then.
 if ($reference_price_rule_ready) {
-    $reference_price_rule_options = array(
+    $reference_price_rule_options = array();
+
+    foreach (array(
         'lowest_30d' => array(lang('Lowest price of the last 30 days'), lang('The Turkish price label regulation and the EU Omnibus rule ask for this one.')),
         'lowest_10d' => array(lang('Lowest price of the last 10 days'), lang('The Turkish rule for discount advertising from 1 August 2026.')),
-        'manual'     => array(lang('Compare-at Price'), lang('The compare-at price entered on each product, shown only when it is higher than the current price.')),
-    );
-    $reference_price_rule_fields = '';
-
-    foreach ($reference_price_rule_options as $reference_rule => $reference_rule_text) {
-        $reference_rule_id = 'ecommerce_reference_price_rule_' . $reference_rule;
-        $reference_price_rule_fields .= '
-                            <div class="form-field">
-                                <input value="' . $reference_rule . '" class="radio" type="radio" id="' . $reference_rule_id . '" name="ecommerce_reference_price_rule"' . (($ecommerce_reference_price_rule === $reference_rule) ? ' checked' : '') . '>
-                                <label class="" for="' . $reference_rule_id . '">' . $reference_rule_text[0] . '</label>
-                            </div>
-                            <div class="form-text mb-3">' . $reference_rule_text[1] . '</div>';
+        'manual'     => array(lang('Compare-at price'), lang('The compare-at price entered on each product, shown only when it is higher than the current price.')),
+    ) as $reference_rule => $reference_rule_text) {
+        $reference_price_rule_options[] = array('value' => $reference_rule, 'label' => $reference_rule_text[0], 'line' => $reference_rule_text[1], 'on' => ($ecommerce_reference_price_rule === $reference_rule));
     }
 
     $commerce_parts['reference-price'] = array('html' => '
@@ -650,12 +582,7 @@ if ($reference_price_rule_ready) {
                 ' . lang('Reference Price') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
-                    <div class="col-12">
-                        <fieldset><legend class="form-label pg-field-label">' . lang('Price before the discount') . '</legend>' . $reference_price_rule_fields . '
-                        <div class="form-text">' . lang('Under a lowest-price rule, a product whose price history is shorter than the period shows its current price as the reference, never a lowest read from part of the period.') . '</div>
-                        </fieldset>
-                    </div>
+                <div class="row gy-5">' . pg_commerce_settings_choice('ecommerce_reference_price_rule', lang('Price before the discount'), $reference_price_rule_options, lang('Under a lowest-price rule, a product whose price history is shorter than the period shows its current price as the reference, never a lowest read from part of the period.')) . '
                 </div>
             </div>
         </div>

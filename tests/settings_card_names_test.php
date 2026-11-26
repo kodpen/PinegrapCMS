@@ -32,7 +32,6 @@ function test_settings_card_radio_groups_have_a_legend()
 {
 	$groups = array(
 		'appearance.php' => array('Editor version'),
-		'commerce.php' => array('Price before the discount'),
 		'features.php' => array('Site Search Type', 'Setup'),
 		'firewall.php' => array('Mode', 'Restriction', 'Content security policy'),
 		'general.php' => array('Date Format', 'Time Format'),
@@ -56,6 +55,9 @@ function test_settings_card_radio_groups_have_a_legend()
 	pg_assert_same(2, substr_count($commerce, "pg_commerce_settings_seg(lang('Transaction type')"), 'commerce.php: both Transaction type groups have a legend');
 	pg_assert_same(1, substr_count($commerce, "pg_commerce_settings_seg(lang('Recipient mode')"), 'commerce.php: Recipient mode has a legend');
 	pg_assert_same(1, substr_count($commerce, "pg_commerce_settings_seg(lang('Enforcement')"), 'commerce.php: Enforcement has a legend');
+	// The reference price rules are radio rows; pg_commerce_settings_choice()
+	// draws their legend (tests/settings_commerce_giftcards_test.php).
+	pg_assert_same(1, substr_count($commerce, "pg_commerce_settings_choice('ecommerce_reference_price_rule', lang('Price before the discount')"), 'commerce.php: Price before the discount has a legend');
 
 	$general = settings_card_names_source('general.php');
 	pg_assert_contains('<div class="pg-text-meta">\' . lang(\'Current Site Time\') . \': \'', $general, 'Current Site Time names no control, so it is a meta line, not a label');
