@@ -239,3 +239,19 @@ function test_preview_as_check_sold_out_chooses_the_record()
 	pg_assert_false(strpos($answer, "c.case !== 'sold_out'") !== false, 'one rule for the cases that choose the record');
 }
 
+// "Check all cases" asked while a draw of the bar is still on its way
+// waits for it: that answer would replace a case's document in the window
+// half way through the run and the wrong page would be measured.
+function test_preview_as_check_waits_for_a_draw_on_its_way()
+{
+	$part = preview_as_check_test_source('assets/js/style_designer_previewas.js');
+	$check = preview_as_check_test_fn($part, 'check');
+	pg_assert_contains('if (S.drawing) { S.waiting = true; render(); return; }', $check, 'a run waits for the draw');
+	pg_assert_contains('S.waiting = false;', $check);
+	$answer = preview_as_check_test_fn($part, 'answer');
+	pg_assert_contains('if (S.waiting) check();', $answer, 'and starts once it has come');
+	pg_assert_false(strpos($answer, 'attach(') !== false, 'on every path of the answer, a new document too (bindAnswer())');
+	pg_assert_contains('if (S.waiting) check();', preview_as_check_test_fn($part, 'openResult'), 'a row opened from the list draws without an answer');
+	$failed = preview_as_check_test_fn($part, 'failed');
+	pg_assert_contains('S.waiting = false;', $failed, 'a failed draw starts no run');
+}

@@ -46,11 +46,12 @@ StyleDesigner.definePart('previewas', function (K) {
     // drawing: a draw the bar asked for is on its way; line: the line under
     // the bar ({tone, text, act}) or null; narrow: the one-button form;
     // run: "Check all cases" (null when its list is closed); marks: the
-    // places of an opened row, outlined once its case is drawn.
+    // places of an opened row, outlined once its case is drawn; waiting: a
+    // run asked for while a draw was on its way, started by its answer.
     var S = {
         win: null, doc: null, root: null, setups: {}, audience: false, defaults: {}, labels: {},
         menu: '', sheet: '', sid: 0, find: {}, drawing: false, line: null, narrow: false, timer: 0, poll: 0,
-        run: null, marks: null, opening: null
+        run: null, marks: null, opening: null, waiting: false
     };
 
     function caseNames() {
@@ -862,6 +863,14 @@ StyleDesigner.definePart('previewas', function (K) {
         // The label of the default record, for the chooser's value.
         var sids = recordSids();
         if (sids.length && !S.find[sids[0]]) loadRecords(sids[0], '');
+        bindAnswer(w);
+        // "Check all cases" asked while this draw was on its way.
+        if (S.waiting) check();
+    }
+
+    // The answer's window and document: a new window or document is bound
+    // once it has loaded, the bound one drawn again.
+    function bindAnswer(w) {
         if (w && w !== S.win) { S.doc = null; S.menu = ''; S.sheet = ''; S.run = null; S.marks = null; attach(w); return; }
         if (!S.doc && w) { attach(w); return; }
         try { if (S.win && S.win.document !== S.doc) { attach(S.win); return; } } catch (e) {}
@@ -875,9 +884,13 @@ StyleDesigner.definePart('previewas', function (K) {
     // (the opened row), left (the list at the left edge)}.
     function check() {
         if (running()) return;
-        var runs = checkRuns(pageCases(), S.audience);
         S.menu = '';
         S.sheet = '';
+        // A draw still on its way would replace a case's document in the
+        // window half way through the run: the run starts with its answer.
+        if (S.drawing) { S.waiting = true; render(); return; }
+        S.waiting = false;
+        var runs = checkRuns(pageCases(), S.audience);
         if (!runs.length || !S.win) { render(); return; }
         if (S.line && S.line.tone === 'ok') S.line = null;
         clearMarks();
@@ -1126,6 +1139,7 @@ StyleDesigner.definePart('previewas', function (K) {
                 S.drawing = false;
                 if (d) S.marks = { paths: paths, doc: d };
                 render();
+                if (S.waiting) check();
             });
         });
     }
@@ -1171,6 +1185,7 @@ StyleDesigner.definePart('previewas', function (K) {
     // The draw the bar asked for failed: the last page stays.
     function failed() {
         S.drawing = false;
+        S.waiting = false;
         S.line = { tone: 'bad', text: _sdT('This case could not be drawn. The page shows the last one that was.'), act: 'retry' };
         render();
     }
