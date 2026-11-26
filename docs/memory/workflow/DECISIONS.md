@@ -1601,6 +1601,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-record-edit-in-place.md: Bug hunt of record edit in place ("Edit content here", "Edit this record's content", 2026-11-26): what was fixed, what read clean, what was left
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
 - workflow/bug-hunt-areas-satisfaction-surveys.md: Bug hunt of the satisfaction surveys (architect, 2026-11-26, request 3016, K2): faults fixed, what was read clean, what was left and asked
+- workflow/bug-hunt-areas-security-scan.md: The bug hunt in the Security Scan (built in #11425 to #11672, SC1 to SC9), PR #11777: the faults fixed, what was read clean and what was seen and left
 - workflow/bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean
 - workflow/bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean
 - workflow/bug-hunt-areas-workspace-calls.md: The bug hunt of Workspace voice and video calls (CL1-CL8, CN1-CN7), 2026-11-26, #11765: four faults fixed, the ring in a muted channel asked, what read clean
