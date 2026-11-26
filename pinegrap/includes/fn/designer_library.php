@@ -846,6 +846,7 @@ function pg_library_missing_pictures($urls, $path, $has_file, $host = '')
         } elseif (preg_match('/^[a-zA-Z][a-zA-Z0-9+.\-]*:/', $u)) {
             continue;
         }
+        if ($u === '') continue;
         if ($u[0] === '/') {
             if (strpos($u, $path) !== 0) continue;
             $u = substr($u, strlen($path));

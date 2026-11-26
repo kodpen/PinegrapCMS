@@ -427,6 +427,8 @@ function test_library_missing_pictures_counted()
 
 	pg_assert_same(1, pg_library_missing_pictures(array('/sub/a.webp', '/sub/a.webp', '/b.jpg', 'c.gif', '/sub/x/d.jpg'), '/sub/',
 		function ($name) { return $name === 'c.gif'; }), 'under the site path only, folders are not file names');
+	pg_assert_same(0, pg_library_missing_pictures(array('?v=1', '#top', '', 'https://shop.test'), '/', function ($name) { return false; }, 'shop.test:8080'),
+		'nothing left of an address once its query is dropped');
 	pg_assert_same(1, pg_library_missing_pictures(array('https://shop.test/a.jpg', 'https://other.test/b.jpg', '//shop.test/c.jpg?v=2'), '/',
 		function ($name) { return $name === 'c.jpg'; }, 'shop.test'), 'this site\'s own host counts');
 	pg_assert_same(0, pg_library_item_into_design($item, array(), array())['pictures_missing'], 'no callback: nothing counted');
