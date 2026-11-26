@@ -103,13 +103,19 @@
     }
 
     // The reported context, "412k of 1M tokens", its share of the window and
-    // whether that is 90% or more; null for none. Pure.
+    // whether that is 90% or more; with no size (none typed on the agent's
+    // form, none reported) the used tokens alone with a null percent and no
+    // mark; used above the size counts as full; null for none. Pure.
     function activityContext(context, t) {
         var used = context ? Number(context.used) : 0;
         var size = context ? Number(context.size) : 0;
 
-        if (!context || !(size > 0) || !(used >= 0)) {
+        if (!context || !(used >= 0)) {
             return null;
+        }
+
+        if (!(size > 0)) {
+            return { words: t('act_context_used', activityTokens(used)), percent: null, high: false };
         }
 
         var percent = Math.min(100, Math.round(used * 100 / size));
@@ -278,7 +284,9 @@
 
             add('model', agent.model);
 
-            if (context) {
+            if (context && (context.percent === null)) {
+                add('context', context.words, { percent: null, high: false });
+            } else if (context) {
                 add('context', t('agents_context', activityTokens(agent.context.used), activityTokens(agent.context.size), context.percent), { percent: context.percent, high: context.high });
             }
 
@@ -460,7 +468,11 @@
                     value.appendChild(document.createTextNode(' · ' + fact.since));
                 }
             } else if (fact.key === 'context') {
-                value.appendChild(bar(h, fact.percent, fact.text, fact.high));
+                // No size, no bar: the used tokens alone.
+                if (fact.percent !== null) {
+                    value.appendChild(bar(h, fact.percent, fact.text, fact.high));
+                }
+
                 value.appendChild(h.el('span', 'pg-tabular', fact.text));
             } else if (fact.key === 'branch') {
                 var cut = h.el('span', 'ws-agents-cut', fact.text);

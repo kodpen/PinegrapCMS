@@ -15,12 +15,12 @@ description: Channel info's one agents block over Info and Activity (#11617): wh
 - Order: working, waiting, not seen, ready, paused, then the assistants. Past six: six and `button.ws-agents-more` "3 more" (`agentsShown()`).
 
 ## What does an opened row list?
-- `agentsFacts()`, a fact with nothing to say left out: Doing, Asked by (link to the message · since), Queue, Handle, Wakes, Model, Context (bar and "412k of 1M · 41%"), "Git branch" ("Branch" is "Şube"; cut, whole in its tip), Seen (amber when not seen), Reported (amber when stale; "Not yet" for an app agent with no report). An assistant: Handle, Wakes, Seen.
+- `agentsFacts()`, a fact with nothing to say left out: Doing, Asked by (link to the message · since), Queue, Handle, Wakes, Model, Context (bar and "412k of 1M · 41%"; none without a size), "Git branch" ("Branch" is "Şube"; cut, whole in its tip), Seen (amber when not seen), Reported (amber when stale; "Not yet" for an app agent with no report). An assistant: Handle, Wakes, Seen.
 - Several rows may be open; Enter or Space toggles; Esc closes the open row holding the focus, the next Esc the panel. The name opens no card in the block; the agent card stays on messages and the head's faces.
 
 ## What does the head say?
 - "AI agents" (the bare "Agents" is the estate template's word, `workspace_agent_word_test.php`), a plain count of every row, then the read's `summary.words`, which names only working, waiting and not seen ('' when none), and for `can_manage` one icon button "Manage agents": Channel settings on "People and agents" (`h.channelSettings(channel, 'people')`).
-- A state that changes while the panel is open is said once in a polite live region: "Mimar: Working".
+- A state changed while open is said once in a polite live region: "Mimar: Working".
 
 ## What does the read give it, and when does it run?
 - `ws_channel_member_agent()`: `wake_fact` ("When mentioned", "On every message", "On {prefix}", "On replies to it") and `seen_rest` ("last knock 3 h ago", "not knocked yet", "always ready").
