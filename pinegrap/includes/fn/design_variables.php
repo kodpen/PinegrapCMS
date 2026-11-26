@@ -161,10 +161,23 @@ function pg_design_variable_value($def, $value)
     switch ($def['kind']) {
         case 'font':
             // A font stack: names, quotes and commas only, so nothing can end
-            // the declaration or the rule.
-            return (preg_match('/^[A-Za-z0-9 ,"\'\-]{1,200}$/', $value) && strpos($value, '""') === false) ? $value : null;
+            // the declaration or the rule; each name bare or in one closed
+            // pair of quotes, as an open one runs on over the declarations
+            // after it.
+            if (!preg_match('/^[A-Za-z0-9 ,"\'\-]{1,200}$/', $value)) return null;
+            foreach (explode(',', $value) as $part) {
+                if (!preg_match('/^(?:[A-Za-z0-9 \-]+|"[A-Za-z0-9 \-]+"|\'[A-Za-z0-9 \-]+\')$/', trim($part))) return null;
+            }
+            return $value;
         case 'length':
-            if ($value === '0') return '0';
+            // A bare 0 only where each unit's bounds start at 0: a base size
+            // or a base unit of 0 is outside the row, and hides the text.
+            if ($value === '0') {
+                foreach (array('rem', 'px') as $u) {
+                    if (isset($def[$u]) && $def[$u][0] > 0) return null;
+                }
+                return '0';
+            }
             if (!preg_match('/^(\d{1,3}(?:\.\d{1,4})?)(rem|px)$/', $value, $m) || !isset($def[$m[2]])) return null;
             $n = (float)$m[1];
             return ($n >= $def[$m[2]][0] && $n <= $def[$m[2]][1]) ? _pg_design_variable_num($n) . $m[2] : null;
@@ -953,9 +966,11 @@ function _pg_design_tokens_dimension($v)
 
 // The built-in variable a token's name stands for: its key in
 // pg_design_variable_list(), or ''. Our own export's names and a few common
-// names of other tools.
+// names of other tools. A token of the "own" group is one of the design's
+// own variables, whatever its key reads as.
 function _pg_design_tokens_key($path)
 {
+    if (count($path) > 1 && $path[0] === 'own') return '';
     $name = strtolower((string)preg_replace('/[^a-zA-Z0-9]+/', '_', (string)end($path)));
     $name = trim($name, '_');
     $aliases = array(
@@ -1073,7 +1088,11 @@ function pg_design_variables_tokens_import($text, $model, $defaults)
             if ($row !== null) {
                 $name = $t['desc'] !== '' ? $t['desc'] : implode(' ', $t['path'] && $t['path'][0] === 'own' ? array_slice($t['path'], 1) : $t['path']);
                 $row = array('key' => $slug, 'name' => mb_substr($name, 0, 40)) + $row;
-                if (isset($own_keys[$slug])) {
+                if (isset($own_keys[$slug]) && $m['custom'][$own_keys[$slug]]['kind'] !== $row['kind']) {
+                    // The design's own variable of another kind keeps it:
+                    // the places that read it would get a colour for a size.
+                    $ok = false;
+                } elseif (isset($own_keys[$slug])) {
                     $m['custom'][$own_keys[$slug]] = $row;
                     $ok = true;
                 } elseif (count($m['custom']) < 24) {

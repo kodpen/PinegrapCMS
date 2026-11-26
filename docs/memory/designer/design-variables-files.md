@@ -14,8 +14,8 @@ module: design_variables
 - File name: the design's name made a slug, `<name>.tokens.json` (`design.tokens.json` with none).
 
 ## How is a file read?
-- `pg_design_variables_tokens_import($text, $model, $defaults)`, pure. A token's last name picks the built-in variable (our names, and `primary`, `secondary`, `background`, `foreground`, `error`, `muted`, `border-radius`, `corners` ...) when its type fits; a colour without a dark value keeps the design's dark one.
-- Any other colour or dimension comes as an own variable (key: its path made a slug, an existing key is rewritten), up to 24. Everything else is counted by kind as left out (gradient, duration, a font with no place, a reference that leads nowhere, over the limit). References `{group.token}` are followed; the 2025 colour object (`hex` or sRGB `components`) and `#rrggbbaa` (alpha dropped) are read.
+- `pg_design_variables_tokens_import($text, $model, $defaults)`, pure. A token's last name picks the built-in variable (our names, and `primary`, `secondary`, `background`, `foreground`, `error`, `muted`, `border-radius`, `corners` ...) when its type fits (never under the `own` group, which holds own variables only); a colour without a dark value keeps the design's dark one.
+- Any other colour or dimension comes as an own variable (key: its path made a slug, an existing key of the same kind is rewritten, one of another kind is left out), up to 24. Everything else is counted by kind as left out (gradient, duration, a font with no place, a reference that leads nowhere, over the limit). References `{group.token}` are followed; the 2025 colour object (`hex` or sRGB `components`) and `#rrggbbaa` (alpha dropped) are read.
 - Every value passes the model's own checks (`pg_design_variable_value()`); the result is normalized.
 
 ## When is a file refused, and what does the person see?

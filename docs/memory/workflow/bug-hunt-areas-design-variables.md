@@ -11,7 +11,11 @@ description: The bug hunt in a design's variables (2026-11-26, PR #11770): the V
 - A bare 0 is refused where the row does not start at 0. Helpers `_sdVarsTypedOk()` / `_sdVarsTypedHint()`, twins of `pg_design_variable_value()`.
 - "Remove" on an own colour or size that elements read asks first ("“Sand” is used in 3 places. They lose its value."), as a curve's did. A bound control holds `var(--pg-var-c-…)` with no fallback, so before they lost the value silently.
 - A late answer of `variables_state` to an older change no longer overwrites a newer change in the hidden input `style_variables` (a Save in that moment lost the newer change).
-- Tests: `tests/design_variables_tab_test.php` (helpers and the change flow under Node).
+- `pg_design_variable_value()`: a bare `0` is a length only where each unit's bounds start at 0 (Corners, Line width); before, a posted or imported Base size 0 wrote `--pg-font-size: 0` and hid every page's text, and Base unit or Section rhythm 0 collapsed the bound spacing.
+- `pg_design_variable_value()`: each font name is bare or in one closed pair of quotes; an open quote (`"Inter`) ran on over the next declaration of the stylesheet, and that variable was lost.
+- Import: an own token of another kind than the design's own variable of that key is left out; before, it turned a size into a colour under the places that read it.
+- Import: a token under `own` is always an own variable (`_pg_design_tokens_key()`); before, own keys such as `size-base`, `border-width` or `muted` set the built-in on a round trip of our own export.
+- Tests: `tests/design_variables_tab_test.php` (helpers and the change flow under Node), `tests/design_variables_test.php`, `tests/design_variables_tokens_test.php`.
 
 ## What was read and found clean?
 - The stylesheet: colours pass `_pg_theme_rgb()`, lengths and numbers fixed patterns, the head's JSON keeps `/` escaped, the name line goes through `pg_design_theme_comment_text()`; custom keys are lowercase slugs, so two names by case are one key; built-in and own tokens never meet (`--pg-var-c-`).
@@ -20,9 +24,6 @@ description: The bug hunt in a design's variables (2026-11-26, PR #11770): the V
 - Rights: `variables_state` writes nothing and sits behind the `designer` action's token and role gate; the file is written only by the design save.
 
 ## What was seen and left?
-- Held by #11755 (same file) and kept for a follow-up: in `pg_design_variable_value()` a bare `0` passes every length row, so a posted or imported Base size 0 writes `--pg-font-size: 0` and hides the text of every page (the tab now refuses it, the server does not).
-- Also held by #11755: a font name with an open quote (`"Inter`) passes and swallows the next declaration of the stylesheet.
-- Also held by #11755: in the import, an own token of another kind than the design's own variable of that key turns it into that kind; a token under `own` whose key reads as a built-in name (`size-base`, `border-width`, `muted`) sets the built-in on a round trip.
 - Two people saving the Variables tab at once: the last save writes the whole file; the design save itself has the same rule.
 - The head is not held to `PG_DESIGN_VARIABLES_HEAD_MAX`: 24 own variables with names of escaped characters could pass the 8,256 bytes `pg_design_variables_stored()` reads, and the tab would show the defaults.
 - Curves are exported (`cubicBezier`) but an import leaves them out as "easing".
