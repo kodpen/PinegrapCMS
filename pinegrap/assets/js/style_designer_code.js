@@ -995,6 +995,9 @@ StyleDesigner.definePart('code', function (K) {
             if (ct === 'custom_html') return 'outer';
             if (['heading', 'paragraph', 'span', 'text', 'link', 'button'].indexOf(ct) !== -1) return 'inner';
         }
+        // A button prints its label as it is between its tags, its icons
+        // as children; an <input> button's label is its value attribute.
+        if (node.type === 'component' && node.props.componentType === 'btn' && node.props.btnElement !== 'input') return 'inner';
         return 'none';
     }
 

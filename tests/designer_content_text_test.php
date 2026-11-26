@@ -165,10 +165,11 @@ function test_designer_content_text_save_takes_button_labels()
 }
 
 // The code view writes a typed text back only for a node whose text kind it
-// knows (_sdCodeTextKind()): a content element and a semantic one. A ready-made
-// button's or a badge's label is printed by the component, so at content level
-// it stays fully locked there instead of taking a keystroke the next redraw
-// throws away; the double-click and the read-only panel's Text row edit it.
+// knows (_sdCodeTextKind()): a content element, a semantic one and a
+// ready-made button, whose label is the text between its tags. A badge
+// escapes its label, so at content level it stays fully locked there instead
+// of taking a keystroke the next redraw throws away; the double-click and the
+// read-only panel's Text row edit it.
 function test_designer_content_text_code_view_offers_only_writable_text()
 {
 	$result = designer_content_text_test_run(
@@ -190,7 +191,7 @@ function test_designer_content_text_code_view_offers_only_writable_text()
 	}
 
 	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
-	pg_assert_same(array('full/-/-', 'full/-/-', 'full/-/-', 'half/-/text', 'half/-/text'), $result['content'], 'content level, outside a marked area: a text island only for a heading and a <button>');
+	pg_assert_same(array('half/-/text', 'full/-/-', 'full/-/-', 'half/-/text', 'half/-/text'), $result['content'], 'content level, outside a marked area: a text island only for a button, a heading and a <button>');
 	pg_assert_same(array('full/-/-', 'full/-/-', 'full/-/-', 'full/-/-', 'full/-/-'), $result['inClosed'], 'a closed shared component or a system widget is fully locked');
 	pg_assert_same(array('/attrs', '/attrs', '/attrs', '/attrs', '/attrs'), $result['full'], 'a designer: no lock, values may change');
 }
