@@ -62800,6 +62800,11 @@ const StyleDesigner = (function () {
         // Refresh validate chip count from current issues
         updateValidationChip();
 
+        // With nothing selected no path reaches _positionSizeBadge(), the
+        // bands' only regular draw request: ask for one here so the spacing
+        // bands of the last selection are hidden (a page switch, a delete,
+        // an undo that drops the selected node, a tree laid again).
+        if (!selectedNode) _sdBandsSoon();
         if (!bar) return;
         if (!selectedNode) {
             var bc0 = document.getElementById('sd-statusbar-breadcrumb');

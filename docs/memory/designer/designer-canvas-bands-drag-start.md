@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-bands-drag-start
-description: Why canvas spacing handles take a drag (#11921): PGSpacingBox read late (Side by side), hit areas, auto and off-scale start values, bands back after Prototype
+description: Canvas spacing bands fixes: handles take a drag (#11921: late PGSpacingBox, hit areas, auto start), back after Prototype, hidden once the selection empties (#11939)
 ---
 
 ## Why do the handles work with Side by side on at load?
@@ -21,5 +21,10 @@ description: Why canvas spacing handles take a drag (#11921): PGSpacingBox read 
 ## Why are the bands back after the Prototype view?
 - `_sdProtoButtonState()` (run on open and close) calls `_sdBandsSoon()` beside `_sdLinkMarksSoon()`. Before #11921 nothing asked for a draw on close and the layer stayed hidden until another element was selected.
 
+## Why do the bands go when nothing is selected any more?
+- `renderStatusBar()` calls `_sdBandsSoon()` when it runs with no selection; `_sdBandsDraw()` finds no node and calls the part's `hide()`. Every full `render()` and `_sdPanelsNow()` run it, so a page tab switch (`_pgTabsSwitch()`), a removed page, deleting the selected element, an undo or redo that drops it and a tree laid again all hide the bands.
+- Before #11939 (PR #11942) the only regular draw request was `_positionSizeBadge()`, which every caller skips without a selection: the old element's bands and handles stayed over the next page's canvas until another element was selected.
+- A selection kept but not on the shown canvas still reaches `_sdBandsDraw()` through `_positionSizeBadge()`, which hides when `_sdCanvasInnerOf(node)` is missing.
+
 ## What tests it?
-- `tests/designer_canvas_bands_test.php`: `read_the_spacing_box_late`, `inner_handle_clears_the_outer`, `start_step`, `nearest_step_from_auto`, `key_step_from`. The hit areas and the drag itself were checked in Chromium on a sandbox (PR description).
+- `tests/designer_canvas_bands_test.php`: `read_the_spacing_box_late`, `inner_handle_clears_the_outer`, `start_step`, `nearest_step_from_auto`, `key_step_from`. The hit areas and the drag itself were checked in Chromium on a sandbox (PR description); the empty-selection hide too (tab switch, Delete, undo/redo; PR #11942).
