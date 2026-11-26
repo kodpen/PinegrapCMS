@@ -1354,7 +1354,9 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
 {
     $result = array('sent' => 0, 'failed' => 0);
 
-    if (!pg_whatsapp_queue_ready()) {
+    // A demonstration site sends nothing, even rows a copy of a live site
+    // brought with it.
+    if (!pg_whatsapp_queue_ready() || (function_exists('pg_demo') && pg_demo())) {
         return $result;
     }
 

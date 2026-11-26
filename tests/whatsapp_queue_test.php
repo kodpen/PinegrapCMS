@@ -175,3 +175,14 @@ function test_whatsapp_queue_sent_key_touch()
 	$enqueue = substr($enqueue, 0, strpos($enqueue, "\nfunction ", 10));
 	pg_assert_true(strpos($enqueue, 'pg_cart_recovery_whatsapp_key_sent') === false, 'queuing a message writes no touch');
 }
+
+function test_whatsapp_queue_run_sends_nothing_from_a_demo_site()
+{
+	// A demonstration site made from a copy of a live one carries its queue
+	// and its account; enqueue refuses there, and the send must too.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+	$run = substr($source, strpos($source, 'function pg_whatsapp_queue_run('));
+	$run = substr($run, 0, strpos($run, 'SELECT id FROM whatsapp_outbox LIMIT 1'));
+
+	pg_assert_contains("if (!pg_whatsapp_queue_ready() || (function_exists('pg_demo') && pg_demo())) {", $run, 'the run stops on a demo site');
+}
