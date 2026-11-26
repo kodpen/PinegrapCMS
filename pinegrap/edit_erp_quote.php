@@ -56,7 +56,7 @@ if ($_POST) {
     // array counts as not given: (int) read an array account as account 1,
     // (string) the others as "Array" with a notice, into the signer's name
     // and the e-mail too.
-    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action', 'signer_name', 'signature', 'mail_to', 'mail_subject',
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action', 'd', 'signer_name', 'signature', 'mail_to', 'mail_subject',
         'mail_message', 'mail_guest_link')));
 
     $action = (string) ($_POST['erp_action'] ?? 'save');
@@ -126,6 +126,13 @@ if ($_POST) {
 
         if (!in_array(erp_quote_state($quote), array('open', 'expired', 'accepted'), true)) {
             $liveform->mark_error('_error', h(lang('Only an open or accepted quote can be signed.')));
+            $go_card('signature');
+        }
+
+        // The signature binds the quote the screen showed: one changed since
+        // (another person's save, the API) would be signed unread.
+        if (!erp_quote_link_shown_matches((string) ($_POST['d'] ?? ''), $quote)) {
+            $liveform->mark_error('_error', h(lang('The quote was changed after this page was opened. Read it again before signing.')));
             $go_card('signature');
         }
 
@@ -503,6 +510,7 @@ if ($signature !== null) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $quote_id . '" />
                         <input type="hidden" name="erp_action" value="sign" />
+                        <input type="hidden" name="d" value="' . h(erp_signature_document_hash_quote($quote)) . '" />
                         <div class="col-12">
                             <div class="form-text mt-0">' . lang('The customer signs below, on this screen or a tablet showing it. The quote is then accepted, and the signature is printed on it.') . '</div>
                         </div>
