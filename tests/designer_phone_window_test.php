@@ -158,6 +158,13 @@ function test_designer_phone_window_draws_the_live_page_with_no_end_or_countdown
 		pg_assert_contains('data-ph="end"', $foot[1], 'a share link keeps End now');
 	}
 
+	// The host names the page on screen once it is saved, a page on the site
+	// too: the live code opens it, and the server takes a draft link's start
+	// only from a draft.
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$host = substr($core, strpos($core, 'function _sdPhoneHost()'), 600);
+	pg_assert_contains('id: saved ? p.page_id : 0', $host, 'a saved page is named, draft or not');
+
 	$draw = designer_phone_window_fn(designer_phone_window_source(), '_phDraw');
 	$at = strpos($draw, "state.view === 'live'");
 	pg_assert_true($at !== false, 'the window draws the live state');
