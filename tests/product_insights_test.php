@@ -309,6 +309,21 @@ function test_product_insights_sales_from_reads_the_product_lines()
 	pg_assert_true(strpos(pg_product_insights_sales_from(42, 0), 'order_date') === false, 'no floor for All');
 }
 
+// An order the Customers report does not count (cancelled, or refunded in
+// full: pg_customer_value_order_counts()) sells nothing here either.
+function test_product_insights_counted_sql_follows_the_customer_value_rule()
+{
+	$sql = pg_product_insights_counted_sql(true, true);
+
+	pg_assert_true(strpos($sql, "orders.status IN ('complete', 'exported')") !== false);
+	pg_assert_true(strpos($sql, 'COALESCE(orders.cancelled_at, 0) = 0') !== false, 'a cancelled order is left out');
+	pg_assert_true(strpos($sql, 'orders.refunded_amount <= 0 OR orders.refunded_amount < orders.total') !== false, 'a full refund is left out');
+
+	$bare = pg_product_insights_counted_sql(false, false);
+	pg_assert_true(strpos($bare, 'cancelled_at') === false, 'no column before its migration');
+	pg_assert_true(strpos($bare, 'refunded_amount') === false, 'no column before its migration');
+}
+
 function test_product_insights_head_pills()
 {
 	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));
