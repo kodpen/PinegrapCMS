@@ -24,7 +24,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - The office editors (owner 2026-11-26, `decisions-made-product-115.md`): the steps of `plans/office-sheet-abilities.md`, `office-sheet-formulas.md` and `office-document-abilities.md` are not free; the architect marks their lines `free` when OF4, SA5 and OP3 have landed, each by a docs PR, and tells k3.
 - The owner's designer reports of 2026-11-26 have landed: #11942 (bands), #11950 (code view), #11949 (panel drag).
 - His stutter everywhere is the design's size: bug issue #11960 with k3 (a selection lays the page out several times: five in the Store template 2.4 s on a sandbox, 0.12 s in a small design). Stored data is ruled out (poll 240; a 568 K autosave write costs 8 ms). When it has landed he is asked to try design 838 again.
-- Polls 241 (the View button after a storage reset, not reproduced) and 242 (what looks cramped in Options, 336 px wide) are open: each answer is a bug issue for k3.
+- With k3 too: #11965 (page bar label), #11966 and #11968 (phone preview; poll 243). Poll 242: Options is too narrow; his console line picks the issue.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
