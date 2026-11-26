@@ -310,6 +310,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_docx_format`: [[office-docx-format]]
 - `office_docx_kind`: [[office-docx-paragraph-kind]]
 - `office_docx_paragraphs`: [[office-docx-add-delete]]
+- `office_edit`: [[office-save-list]]
 - `office_format`: [[office-sheet-format]]
 - `office_new`: [[office-new-files]]
 - `office_pptx_canvas`: [[office-pptx-canvas-mapper]]
