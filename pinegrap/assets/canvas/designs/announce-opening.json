@@ -1,0 +1,15 @@
+{
+ "id": "announce-opening",
+ "width": 1080,
+ "height": 1080,
+ "background": "#0b7285",
+ "layers": [
+  {"type": "ellipse", "x": -150, "y": 850, "w": 400, "h": 400, "color": "#1098ad"},
+  {"type": "ellipse", "x": 880, "y": -100, "w": 320, "h": 320, "color": "#1098ad"},
+  {"type": "text", "text": "startAnnounceSmall", "font": "g:Montserrat", "size": 34, "weight": 700, "color": "#99e9f2", "align": "center", "x": 540, "y": 230, "maxW": 960, "spacing": 0.2},
+  {"type": "text", "text": "startAnnounceOpenHead", "font": "g:Bebas Neue", "size": 190, "weight": 400, "color": "#ffffff", "align": "center", "x": 540, "y": 320, "maxW": 960},
+  {"type": "text", "text": "startAnnounceOpenLine", "font": "g:Montserrat", "size": 40, "weight": 400, "color": "#e3fafc", "align": "center", "x": 540, "y": 570, "maxW": 960},
+  {"type": "rect", "x": 440, "y": 680, "w": 200, "h": 6, "color": "#99e9f2"},
+  {"type": "text", "text": "startAnnounceOpenWhere", "font": "g:Montserrat", "size": 34, "weight": 400, "color": "#c5f6fa", "align": "center", "x": 540, "y": 740, "maxW": 960}
+ ]
+}

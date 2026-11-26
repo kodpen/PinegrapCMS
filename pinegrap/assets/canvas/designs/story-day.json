@@ -1,0 +1,13 @@
+{
+ "id": "story-day",
+ "width": 1080,
+ "height": 1920,
+ "background": "#212529",
+ "layers": [
+  {"type": "slot", "x": 0, "y": 0, "w": 1080, "h": 1300},
+  {"type": "text", "text": "startStoryDaySmall", "font": "g:Montserrat", "size": 36, "weight": 700, "color": "#ffd43b", "align": "center", "x": 540, "y": 1380, "maxW": 960, "spacing": 0.2},
+  {"type": "text", "text": "startStoryDayHead", "font": "g:Playfair Display", "size": 88, "weight": 700, "color": "#ffffff", "align": "center", "x": 540, "y": 1450, "maxW": 960},
+  {"type": "text", "text": "startStoryDayLine", "font": "g:Lato", "size": 42, "weight": 400, "color": "#ced4da", "align": "center", "x": 540, "y": 1590, "maxW": 960},
+  {"type": "rect", "x": 440, "y": 1730, "w": 200, "h": 6, "color": "#ffd43b"}
+ ]
+}

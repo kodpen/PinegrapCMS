@@ -1,0 +1,16 @@
+{
+ "id": "post-tips",
+ "width": 1080,
+ "height": 1350,
+ "background": "#e6fcf5",
+ "layers": [
+  {"type": "text", "text": "startPostTipsHead", "font": "g:Poppins", "size": 84, "weight": 700, "color": "#087f5b", "align": "center", "x": 540, "y": 120, "maxW": 960},
+  {"type": "ellipse", "x": 110, "y": 398, "w": 40, "h": 40, "color": "#12b886"},
+  {"type": "text", "text": "startPostTipsOne", "font": "g:Poppins", "size": 44, "weight": 400, "color": "#212529", "align": "left", "x": 190, "y": 380, "maxW": 810},
+  {"type": "ellipse", "x": 110, "y": 558, "w": 40, "h": 40, "color": "#12b886"},
+  {"type": "text", "text": "startPostTipsTwo", "font": "g:Poppins", "size": 44, "weight": 400, "color": "#212529", "align": "left", "x": 190, "y": 540, "maxW": 810},
+  {"type": "ellipse", "x": 110, "y": 718, "w": 40, "h": 40, "color": "#12b886"},
+  {"type": "text", "text": "startPostTipsThree", "font": "g:Poppins", "size": 44, "weight": 400, "color": "#212529", "align": "left", "x": 190, "y": 700, "maxW": 810},
+  {"type": "slot", "x": 80, "y": 900, "w": 920, "h": 370, "radius": 30}
+ ]
+}

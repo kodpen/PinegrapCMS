@@ -1,0 +1,13 @@
+{
+ "id": "banner-collection",
+ "width": 1200,
+ "height": 630,
+ "background": "#f8f0fc",
+ "layers": [
+  {"type": "slot", "x": 600, "y": 0, "w": 600, "h": 630},
+  {"type": "text", "text": "startBannerSpringSmall", "font": "g:Raleway", "size": 30, "weight": 700, "color": "#ae3ec9", "align": "left", "x": 60, "y": 170, "maxW": 500, "spacing": 0.2},
+  {"type": "text", "text": "startBannerSpringHead", "font": "g:Playfair Display", "size": 68, "weight": 700, "color": "#212529", "align": "left", "x": 60, "y": 220, "maxW": 500},
+  {"type": "text", "text": "startBannerSpringLine", "font": "g:Raleway", "size": 30, "weight": 400, "color": "#495057", "align": "left", "x": 60, "y": 330, "maxW": 500},
+  {"type": "rect", "x": 60, "y": 420, "w": 80, "h": 6, "color": "#ae3ec9"}
+ ]
+}

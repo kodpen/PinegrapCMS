@@ -1,0 +1,15 @@
+{
+ "id": "post-team",
+ "width": 1200,
+ "height": 630,
+ "background": "#ffffff",
+ "layers": [
+  {"type": "ellipse", "x": 620, "y": 25, "w": 580, "h": 580, "color": "#e5dbff"},
+  {"type": "slot", "x": 660, "y": 65, "w": 500, "h": 500, "radius": 250},
+  {"type": "text", "text": "startPostTeamSmall", "font": "g:Montserrat", "size": 28, "weight": 700, "color": "#7048e8", "align": "left", "x": 70, "y": 150, "maxW": 540, "spacing": 0.15},
+  {"type": "text", "text": "startPostTeamHead", "font": "g:DM Serif Display", "size": 64, "weight": 400, "color": "#212529", "align": "left", "x": 70, "y": 200, "maxW": 540},
+  {"type": "text", "text": "startPostTeamLine", "font": "g:Lato", "size": 32, "weight": 400, "color": "#495057", "align": "left", "x": 70, "y": 300, "maxW": 540},
+  {"type": "rect", "x": 70, "y": 390, "w": 80, "h": 6, "color": "#7048e8"},
+  {"type": "text", "text": "startPostTeamName", "font": "g:Montserrat", "size": 30, "weight": 600, "color": "#7048e8", "align": "left", "x": 70, "y": 430, "maxW": 540}
+ ]
+}

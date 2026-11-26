@@ -15,15 +15,11 @@ module: image_editor
 - Select's panel for one box: "Choose a picture" (where Files can be reached) opens the Image tool (else Sticker) with Picture from Files open. A picture from Files, or one from this computer, then fills the box instead of adding a layer.
 - Filling: the picture cut to cover the box, centred (`M.startCover()`, the longer side at most 2000 px), kept as a new PNG or JPEG data picture (a save makes it a files row, as a pasted picture), a picture layer with the box's id, place, size, turn, opacity and group, one undo step (`slotPut()`). Leaving Image and Sticker ends the picking.
 
-## Where are the designs kept?
-- `assets/canvas/designs.json`: `{ designs: [{ id, purpose, label }] }`, the tiles' order; each design `assets/canvas/designs/<id>.json`: `{ id, width, height, background, layers }`, bottom layer first. Read once a page when the row first opens (config `starts`: `pg_image_editor_starts_urls()` with the index's time).
-- `M.startIndex()` keeps an id `[a-z0-9-]` once, a purpose of `M.START_PURPOSES` but all, a label `start…`; 60 at most. `M.startDesign()` refuses a whole design for a wrong id, a size outside 16-8000, more than 40 layers or one bad layer.
-- Layers a design may hold: `text` (label key `start…`, font sans, serif or a catalogue `g:` family, x, y, maxW), Draw's shapes `rect`, `ellipse`, `triangle`, `polygon`, `star`, and `slot` (box, radius); fields as `startLayer()` in the model.
-- The first six (AC7) cover the five sizes; AC8 adds twenty-four.
-- Licence: designs and words are own; faces Google Fonts (SIL OFL); no photo shipped.
-
 ## Where is the code?
 - `assets/js/pg_image_editor_starts.js` (part `starts`, bundled after `elements`): `startDocument()`, `startThumb()`, the row, `slotPick()`, `slotPut()`, `slotFill()`; it wraps `addFilePicture`, `addPicture`, `svgPanel` and the Image panel.
 - Core hook (artboard part): `Editor.newImageHeads`, rows above the sizes, each `fn(api)` with `api.close()` and `api.choose(make)`; `make()` gives `{ artboard, layers }` and `closeNewImage()` opens it. Rows under the sizes stay `Editor.newImageRows` (`image-editor-design-chooser.md`).
+- The designs' files, checks and the set shipped: `image-editor-starts-designs.md`.
 - Model section `STARTS`; rules under "Start from a design" in `pg_image_editor.src.css`.
-- Tests: `tests/image_editor_starts_test.php` (model, the shipped six, a design opened and a box filled on an editor). The dialog and a fill from Files were not run in a browser.
+- Tests: `tests/image_editor_starts_test.php` (model, the shipped thirty against labels, fonts and sizes, a box filled on an editor). Every shipped design is opened on an editor, its document kept by `pg_image_editor_canvas_doc_json()` as a canvas save in Files keeps it and opened again by `M.canvasOpenDoc()`. The dialog and a fill from Files were not run in a browser.
+
+Related: docs/memory/ui/image-editor-starts-designs.md

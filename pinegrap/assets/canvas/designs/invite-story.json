@@ -1,0 +1,14 @@
+{
+ "id": "invite-story",
+ "width": 1080,
+ "height": 1920,
+ "background": "#ffffff",
+ "layers": [
+  {"type": "rect", "x": 60, "y": 60, "w": 960, "h": 1800, "color": "#868e96", "fill": "none", "stroke": 2},
+  {"type": "text", "text": "startInviteDateHead", "font": "g:Great Vibes", "size": 140, "weight": 400, "color": "#343a40", "align": "center", "x": 540, "y": 200, "maxW": 920},
+  {"type": "slot", "x": 190, "y": 480, "w": 700, "h": 900, "radius": 350},
+  {"type": "text", "text": "startInviteDateWhat", "font": "g:Cormorant Garamond", "size": 80, "weight": 600, "color": "#343a40", "align": "center", "x": 540, "y": 1460, "maxW": 920},
+  {"type": "text", "text": "startInviteDateWhen", "font": "g:Cormorant Garamond", "size": 54, "weight": 400, "color": "#495057", "align": "center", "x": 540, "y": 1580, "maxW": 920},
+  {"type": "text", "text": "startInviteDateNote", "font": "g:Lato", "size": 36, "weight": 400, "color": "#868e96", "align": "center", "x": 540, "y": 1680, "maxW": 920, "spacing": 0.1}
+ ]
+}
